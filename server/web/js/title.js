@@ -18,7 +18,7 @@
     // The "where am I" line names this page by its title
     const pageName = opts.title || "";
     B.placeName = pageName;
-    const buttons = (opts.buttons || []).slice(0, MAX_BUTTONS);
+    const buttons = (opts.buttons || []).filter(Boolean).slice(0, MAX_BUTTONS);
     const tabs = [{ name: "Overview", id: "tpOverview", keep: true }, ...(opts.tabs || [])].filter((t) => !t.skip);
     if (opts.overviewFirst === false) {
       const o = tabs.shift();

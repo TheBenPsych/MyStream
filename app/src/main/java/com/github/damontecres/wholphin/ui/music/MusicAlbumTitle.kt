@@ -36,6 +36,7 @@ fun AlbumTitlePage(
     onLike: () -> Unit,
     onMore: () -> Unit,
     onSong: (Int) -> Unit,
+    onAskRest: () -> Unit = {},
     onSongMore: (Int) -> Unit,
     onAlbum: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -56,12 +57,16 @@ fun AlbumTitlePage(
         ).joinToString("  ·  ")
     val none = if (songs.isEmpty()) "No songs here yet" else null
     val buttons =
-        listOf(
-            TitleButton("Play", BenflixIcon.PLAY, onPlay, off = none),
-            TitleButton("Shuffle", BenflixIcon.SHUFFLE, onShuffle, off = none),
-            TitleButton(if (item.favorite) "Liked" else "Like", BenflixIcon.HEART, onLike),
-            TitleButton("More", BenflixIcon.MORE, onMore),
-        )
+        buildList {
+            add(TitleButton("Play", BenflixIcon.PLAY, onPlay, off = none))
+            add(TitleButton("Shuffle", BenflixIcon.SHUFFLE, onShuffle, off = none))
+            // Ben 2026-11-16: only some songs of the album are here: ask for the rest of it
+            if (state.albumAskId != null && state.albumTotal != null) {
+                add(TitleButton(state.albumAsked ?: "Ask for the rest", BenflixIcon.PLUS, onAskRest, off = state.albumAsked))
+            }
+            add(TitleButton(if (item.favorite) "Liked" else "Like", BenflixIcon.HEART, onLike))
+            add(TitleButton("More", BenflixIcon.MORE, onMore))
+        }
     val tabs =
         buildList {
             add(

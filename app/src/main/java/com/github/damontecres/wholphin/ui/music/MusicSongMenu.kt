@@ -91,6 +91,13 @@ class MusicActionsViewModel
 
         fun playNext(song: BaseItem) = viewModelScope.launchIO { musicService.playNextSong(song) }
 
+        /** Ben 2026-11-16: Start a radio plays this song, then songs like it from your music */
+        fun startRadio(song: BaseItem) =
+            viewModelScope.launchIO {
+                musicService.startInstantMix(song.id)
+                onMain { navigationManager.navigateTo(Destination.NowPlaying) }
+            }
+
         fun addToUpNext(song: BaseItem) = viewModelScope.launchIO { musicService.addToUpNext(song) }
 
         fun addAllToUpNext(songs: List<BaseItem>) = viewModelScope.launchIO { musicService.addAllToUpNext(songs) }
@@ -131,6 +138,7 @@ fun SongMenu(
     onDismiss: () -> Unit,
     onLikedChanged: (Boolean) -> Unit = {},
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onNotForThisPlaylist: (() -> Unit)? = null,
     onDeleted: () -> Unit = {},
     actions: MusicActionsViewModel = hiltViewModel(),
     playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
@@ -230,6 +238,20 @@ fun SongMenu(
                     }),
                 )
             }
+            if (onNotForThisPlaylist != null) {
+                add(
+                    DialogItem(headlineContent = { Text("Not for this playlist") }, onClick = {
+                        onNotForThisPlaylist()
+                        onDismiss()
+                    }),
+                )
+            }
+            add(
+                DialogItem(headlineContent = { Text("Start a radio") }, onClick = {
+                    actions.startRadio(song)
+                    onDismiss()
+                }),
+            )
             if (!song.data.albumArtists.isNullOrEmpty() || !song.data.artistItems.isNullOrEmpty()) {
                 add(
                     DialogItem(headlineContent = { Text("Go to artist") }, onClick = {

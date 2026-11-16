@@ -86,6 +86,8 @@ class MusicNowPlayingViewModel
         val navigationManager: NavigationManager,
         private val music: com.github.damontecres.wholphin.services.BenflixMusic,
         private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
+        /** 30-second tastes in Similar songs (Ben 2026-11-16); the playing song pauses while one plays */
+        val preview: com.github.damontecres.wholphin.services.SongPreview,
     ) : ViewModel() {
         /** Ben, or a grown-up family profile (their asks wait for Ben's yes). Never Kids or Guest. */
         val canAsk: Boolean get() = !KidsMode.isActive && !GuestMode.isActive
@@ -123,6 +125,7 @@ class MusicNowPlayingViewModel
         }
 
         fun closeSimilar() {
+            preview.stop()
             _similar.value = null
             similarPicked.value = null
         }
@@ -134,6 +137,7 @@ class MusicNowPlayingViewModel
             name: String,
         ) {
             similarPicked.value = null
+            preview.stop()
             viewModelScope.launchIO {
                 try {
                     music.ask(kind, id)
@@ -323,15 +327,19 @@ fun MusicNowPlayingPage(
     val similarPicked by viewModel.similarPicked.collectAsState()
     val similarNote by viewModel.similarNote.collectAsState()
     similar?.let { state ->
-        SimilarSongsPanel(
-            state = state,
-            admin = viewModel.isAdmin,
-            picked = similarPicked,
-            onPick = { viewModel.similarPicked.value = it },
-            onAsk = viewModel::askSimilar,
-            onDismiss = viewModel::closeSimilar,
-            note = similarNote,
-        )
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
+        ) {
+            SimilarSongsPanel(
+                state = state,
+                admin = viewModel.isAdmin,
+                picked = similarPicked,
+                onPick = { viewModel.similarPicked.value = it },
+                onAsk = viewModel::askSimilar,
+                onDismiss = viewModel::closeSimilar,
+                note = similarNote,
+            )
+        }
     }
 
     BoxWithConstraints(

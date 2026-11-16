@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +70,7 @@ fun SimilarSongsPanel(
     onDismiss: () -> Unit,
     note: String?,
 ) {
+    val preview = com.github.damontecres.wholphin.ui.discover.LocalSongPreview.current
     if (picked != null) {
         SongAskPanel(
             title = picked.title,
@@ -77,7 +80,10 @@ fun SimilarSongsPanel(
             cover = picked.cover,
             songId = picked.id,
             admin = admin,
-            onDismiss = { onPick(null) },
+            onDismiss = {
+                preview?.stop()
+                onPick(null)
+            },
             onSong = { onAsk("song", picked.id, picked.title) },
             onAlbum = { onAsk("album", picked.albumId, picked.album) },
         )
@@ -147,6 +153,31 @@ private fun SimilarLine(
     song: MusicSong,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+) {
+    // Ben 2026-11-16: a round play button beside each song plays 30 seconds of it (Right on the remote reaches it)
+    val preview = com.github.damontecres.wholphin.ui.discover.LocalSongPreview.current
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        SimilarSurface(song, onClick, modifier.weight(1f))
+        if (preview != null) {
+            val state by preview.state.collectAsState()
+            com.github.damontecres.wholphin.ui.discover.SongPreviewButton(
+                state = state,
+                songId = song.id,
+                onClick = { preview.toggle(song.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimilarSurface(
+    song: MusicSong,
+    onClick: () -> Unit,
+    modifier: Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Surface(

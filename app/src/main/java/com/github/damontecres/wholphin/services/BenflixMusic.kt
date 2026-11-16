@@ -155,6 +155,23 @@ class BenflixMusic
             album: String,
         ): Int = helper.getJson("/api/music/albumsize?artist=" + Uri.encode(artist) + "&album=" + Uri.encode(album)).optInt("songs")
 
+        /** The whole album in the music catalogue: how many songs it has and its id (for Ask for the rest) */
+        suspend fun albumFind(
+            artist: String,
+            album: String,
+        ): Pair<Int, Long?> {
+            val j = helper.getJson("/api/music/albumsize?artist=" + Uri.encode(artist) + "&album=" + Uri.encode(album))
+            return j.optInt("songs") to j.optLong("id").takeIf { it > 0 }
+        }
+
+        /** Not for this playlist: the song leaves this made-for-you or themed playlist for this profile */
+        suspend fun hideFromMix(
+            key: String,
+            songId: String,
+        ) {
+            helper.postJson("/api/music/mixes/hide", JSONObject().put("key", key).put("id", songId))
+        }
+
         suspend fun search(text: String): MusicSearch {
             val j = helper.getJson("/api/music/search?q=" + Uri.encode(text))
             return MusicSearch(
