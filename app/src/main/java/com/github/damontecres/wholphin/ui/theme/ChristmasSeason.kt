@@ -19,15 +19,17 @@ import java.time.LocalDate
 import java.time.Month
 
 /**
- * Benflix Christmas look: on from 1 December to 1 January on TV, phone and web, unless it's switched off
- * in Settings > Look. The same dates as the web's xmas.js, so every screen matches.
+ * Benflix Christmas look: on from 1 December to 26 December on TV, phone and web, unless it's switched off
+ * in Settings > Look. The same dates as the web's xmas.js, so every screen matches. It ends on the 26th so it never overlaps the New Year's look (27 Dec to 1 Jan).
  */
 object ChristmasSeason {
     /** Settings > Look > Christmas look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean =
-        date.month == Month.DECEMBER || (date.month == Month.JANUARY && date.dayOfMonth == 1)
+    /** The last day of the Christmas look; New Year's runs 27 December to 1 January */
+    const val LAST_DAY = 26
+
+    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.DECEMBER && date.dayOfMonth <= LAST_DAY
 
     fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
 
@@ -50,8 +52,6 @@ object ChristmasSeason {
 
     fun greeting(date: LocalDate = LocalDate.now()): String =
         when {
-            date.month == Month.JANUARY -> "Happy New Year"
-            date.dayOfMonth == 31 -> "Happy New Year's Eve"
             date.dayOfMonth == 24 -> "Merry Christmas Eve"
             else -> "Merry Christmas"
         }

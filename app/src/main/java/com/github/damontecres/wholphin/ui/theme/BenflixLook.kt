@@ -75,7 +75,7 @@ object BenflixColors {
     val Music = Color(0xFFB69CFF)
     val OnMusic = Color(0xFF160F26)
 
-    /** Christmas look: [c] while it's on (1 Dec to 1 Jan, not on Kids), else null */
+    /** Christmas look: [c] while it's on (December until New Year's, not on Kids), else null */
     private fun xmas(c: Color): Color? = if (XmasLook.on) c else null
 
     /** Thanksgiving look: [c] while it's on (16 to 30 Nov, not on Kids), else null */

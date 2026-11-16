@@ -132,7 +132,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   const kids = B.me.kids;
   // Easy mode: fewer rows, like Kids (Keep watching, My List, New)
   const fewer = kids || (B.easyMode && B.easyMode());
-  // Christmas look (1 December to 1 January): Christmas favourites right after Keep watching (like the TV app)
+  // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [

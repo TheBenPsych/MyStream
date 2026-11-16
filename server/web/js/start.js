@@ -33,7 +33,7 @@ B.route(/^\/who$/, async () => {
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
   const last = load("benflix.last");
-  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 December to 1 January
+  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 to 26 December
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
@@ -662,12 +662,12 @@ const fitRows = (list) => {
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 
-// Christmas look: on from 1 December to 1 January unless switched off in Settings › Look (this browser)
+// Christmas look: on from 1 to 26 December (New Year's has the 27th on) unless switched off in Settings › Look (this browser)
 B.xmas = window.BenflixXmas;
 B.xmasOff = () => { try { return localStorage.getItem("benflix.xmasOff") === "1"; } catch (e) { return false; } };
 B.setXmasOff = (off) => { try { localStorage.setItem("benflix.xmasOff", off ? "1" : "0"); } catch (e) {} };
 B.xmasOn = () => !!B.xmas && B.xmas.season(new Date()) && !B.xmasOff();
-B.xmasGreeting = () => { const d = new Date(); if (d.getMonth() === 0) return "Happy New Year"; if (d.getDate() === 31) return "Happy New Year's Eve"; return d.getDate() === 24 ? "Merry Christmas Eve" : "Merry Christmas"; };
+B.xmasGreeting = () => (new Date().getDate() === 24 ? "Merry Christmas Eve" : "Merry Christmas");
 // Thanksgiving look: on from 16 to 30 November unless switched off in Settings › Look (this browser)
 B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
