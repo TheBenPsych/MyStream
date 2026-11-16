@@ -127,6 +127,8 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -829,6 +831,50 @@ class BenflixRequestsViewModel
             prefs().edit().putStringSet(HIDDEN_KEY, next).apply()
         }
 
+        private val _libraryKeys = MutableStateFlow<Set<String>>(emptySet())
+
+        /**
+         * Benflix (Ben, 2026-11-16): what's really on Benflix, straight from Jellyfin (Seerr's own "available"
+         * often runs behind or is wrong), as "MOVIE-123" / "TV-456" keys to the Jellyfin id.
+         */
+        private val library =
+            viewModelScope.async(WholphinDispatchers.IO) {
+                try {
+                    val userId = serverRepository.currentUser?.id ?: return@async emptyMap<String, UUID>()
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                recursive = true,
+                                fields = listOf(ItemFields.PROVIDER_IDS),
+                                enableImages = false,
+                                enableUserData = false,
+                                enableTotalRecordCount = false,
+                            ),
+                        ).content.items
+                        .mapNotNull { dto ->
+                            val tmdb = dto.providerIds?.get("Tmdb")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                            val kind = if (dto.type == BaseItemKind.MOVIE) SeerrItemType.MOVIE else SeerrItemType.TV
+                            "${kind.name}-$tmdb" to dto.id
+                        }.toMap()
+                        .also { _libraryKeys.value = it.keys }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Requests: couldn't list what's already on Benflix")
+                    emptyMap()
+                }
+            }
+
+        /** Titles found in Jellyfin, so they stay hidden while the show is still being checked */
+        val libraryKeys: StateFlow<Set<String>> = _libraryKeys
+
+        private val _onBenflix = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+        /** By request key: true = all here (hidden), false = a show here with aired episodes missing */
+        val onBenflix: StateFlow<Map<String, Boolean>> = _onBenflix
+
         private val _ratings = MutableStateFlow<Map<String, ItemRating>>(emptyMap())
 
         /** Age ratings for the Family-friendly switch, looked up as needed */
@@ -858,6 +904,18 @@ class BenflixRequestsViewModel
                                             if (o == null) {
                                                 ItemRating(null, false)
                                             } else {
+                                                val key = item.requestKey()
+                                                val inJellyfin = library.await()[key]
+                                                val here =
+                                                    if (movie) {
+                                                        val media = o["mediaInfo"] as? JsonObject
+                                                        val status = (media?.get("status") as? JsonPrimitive)?.intOrNull
+                                                        val seerrHas = status == SeerrAvailability.AVAILABLE.status
+                                                        if (inJellyfin != null || seerrHas) true else null
+                                                    } else {
+                                                        showArrival.wholeShowHere(o, inJellyfin)
+                                                    }
+                                                if (here != null) _onBenflix.update { it + (key to here) }
                                                 val age = if (movie) movieAgeRating(o) else tvAgeRating(o)
                                                 if (isAdultContent(o, age)) AdultContentFlags.mark(item.requestKey())
                                                 ItemRating(
@@ -1570,9 +1628,16 @@ private fun FindShelf(
                 orderRequestRows(baseRows + because + collection)
             }
         }
+    // Benflix (Ben, 2026-11-16): anything already on Benflix is hidden (checked against Jellyfin itself, not
+    // only Seerr). A show that's here but missing aired episodes stays, marked "MISSING EPISODES".
+    val onBenflix by viewModel.onBenflix.collectAsState()
+    val libraryKeys by viewModel.libraryKeys.collectAsState()
     val visibleWith: (List<DiscoverItem>, Boolean) -> List<DiscoverItem> = { items, withOwned ->
-        items.filter { item ->
-            (withOwned || item.availability != SeerrAvailability.AVAILABLE) &&
+        items.map { item -> markOnBenflix(item, onBenflix[item.requestKey()]) }.filter { item ->
+            val here = onBenflix[item.requestKey()]
+            // Found in Jellyfin but the show isn't checked yet: keep it out until we know it's missing episodes
+            val stillChecking = here == null && item.requestKey() in libraryKeys
+            (withOwned || (item.availability != SeerrAvailability.AVAILABLE && !stillChecking)) &&
                 (
                     !hideAsked ||
                         (item.availability != SeerrAvailability.PENDING && item.availability != SeerrAvailability.PROCESSING)
@@ -1773,7 +1838,8 @@ private fun FindShelf(
                             }
                         val top = visibleWith(row.items, false).take(10)
                         add(topName, top, ranked = true)
-                        val rest = (row.items + if (section == FindSection.ANIME) emptyList() else popular).filter { it !in top }
+                        val more = if (section == FindSection.ANIME) emptyList() else popular
+                        val rest = (row.items + more).filter { r -> top.none { it.requestKey() == r.requestKey() } }
                         add(if (section == FindSection.ANIME) "This season" else "Trending", rest)
                     }
 
@@ -2687,3 +2753,36 @@ private fun PasswordDialog(
 
 private const val NOTHING_ASKED_YET =
     "You haven't asked for anything yet. Find something on the Movies, Shows or Anime tab and ask for it."
+
+/**
+ * Benflix (2026-11-16): [here] from the Jellyfin check: true = all on Benflix, false = a show missing aired
+ * episodes. Shown as the card's corner badge ("ON BENFLIX" / "MISSING EPISODES"); a request already made keeps
+ * its "REQUESTED" badge.
+ */
+fun markOnBenflix(
+    item: DiscoverItem,
+    here: Boolean?,
+): DiscoverItem =
+    when {
+        here == null -> {
+            item
+        }
+
+        item.availability == SeerrAvailability.PENDING || item.availability == SeerrAvailability.PROCESSING -> {
+            item
+        }
+
+        here -> {
+            if (item.availability == SeerrAvailability.AVAILABLE) item else item.copy(availability = SeerrAvailability.AVAILABLE)
+        }
+
+        else -> {
+            if (item.availability ==
+                SeerrAvailability.PARTIALLY_AVAILABLE
+            ) {
+                item
+            } else {
+                item.copy(availability = SeerrAvailability.PARTIALLY_AVAILABLE)
+            }
+        }
+    }
