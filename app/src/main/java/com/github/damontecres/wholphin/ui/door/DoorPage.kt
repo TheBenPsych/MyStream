@@ -357,7 +357,8 @@ private fun WideDoor(
     // focus away from the rows, put it back on the same row, on the card now in that spot.
     var rowsHaveFocus by remember { mutableStateOf(false) }
     var rowsLostFocusAt by remember { mutableStateOf(0L) }
-    val rowsSignature = state.rows.map { r -> r.key to r.items.size }
+    // (which cards, not just how many: a fresh row with the same count can still drop the card you were on)
+    val rowsSignature = state.rows.map { r -> r.key to r.items.map { it.id } }
     LaunchedEffect(rowsSignature) {
         val changedAt = System.currentTimeMillis()
         if (!isTv || !restored) return@LaunchedEffect
