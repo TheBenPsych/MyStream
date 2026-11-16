@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -73,6 +75,7 @@ import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
 import com.github.damontecres.wholphin.services.CustomChannel
 import com.github.damontecres.wholphin.services.DiskCache
+import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.MakeChannelPick
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -230,6 +233,8 @@ private sealed interface GuideEntry {
 
     data class Channel(
         val schedule: ChannelSchedule,
+        /** A copy of a favourite at the top of the guide (it still shows in its own type too) */
+        val favourite: Boolean = false,
     ) : GuideEntry
 }
 
@@ -273,13 +278,14 @@ fun ChannelsPage(
         )
         return
     }
-    // Benflix redesign: one page. The top area describes what's focused; Favourites, Recently
-    // watched and Benflix channels rows come first, then Down carries on into the full guide.
+    // Benflix redesign: one page. The top area describes what's focused; Recently watched comes
+    // first, then the full guide. Ben (2026-11-16): no separate Favourites or Benflix channels rows,
+    // because the guide already has them: favourites are its first group, Benflix channels their own type.
     // Hidden channel types ("Edit types") are left out of the guide.
     val hidden by ChannelPrefs.hidden.collectAsState()
     val shown = remember(list, hidden) { list.filter { it.group() !in hidden } }
     // Redesign 2 (section 6): the page sits in the shared door frame. Its side menu (chips on phones)
-    // jumps to Favourites, Recently watched, Benflix channels and the Guide further down the page.
+    // jumps to Recently watched, Favourites (the top of the guide) and the rest of the Guide.
     val frame = rememberDoorFrameState(BenflixDoor.LIVE_TV, jumps = true)
     val recentKeys by ChannelPrefs.recent.collectAsState()
     val hasRecent = remember(recentKeys, list) { recentKeys.any { k -> list.any { it.key == k } } }
@@ -287,9 +293,8 @@ fun ChannelsPage(
         remember(hasRecent) {
             listOfNotNull(
                 doorHome(),
-                DoorSection(LIVE_FAVOURITES, "Favourites", BenflixIcon.STAR),
                 if (hasRecent) DoorSection(LIVE_RECENT, "Recently watched", BenflixIcon.REFRESH) else null,
-                DoorSection(LIVE_BENFLIX, "Benflix channels", BenflixIcon.TV),
+                DoorSection(LIVE_FAVOURITES, "Favourites", BenflixIcon.STAR),
                 DoorSection(LIVE_GUIDE, "Guide", BenflixIcon.CALENDAR, count = shown.size),
             )
         }
@@ -307,7 +312,6 @@ fun ChannelsPage(
 /** Live TV's side menu places (Home is the top of the page) */
 private const val LIVE_FAVOURITES = "favourites"
 private const val LIVE_RECENT = "recent"
-private const val LIVE_BENFLIX = "benflix"
 private const val LIVE_GUIDE = "guide"
 
 /** The page's own left and right margins inside the door frame (TV: clear of the tucked side menu) */
@@ -345,24 +349,30 @@ private fun GuideGrid(
     // Headings between the types (only when more than one shows, like in Favourites)
     val severalTypes = remember(list) { list.map { it.group() }.distinct().size > 1 }
     val favourites by ChannelPrefs.favourites.collectAsState()
-    val entries =
-        remember(list) {
-            buildList<GuideEntry> {
-                var last: String? = null
-                list.forEach { schedule ->
-                    val group = schedule.group()
-                    if (severalTypes && group != last) add(GuideEntry.Heading(group))
-                    last = group
-                    add(GuideEntry.Channel(schedule))
-                }
-            }
-        }
     val listState = rememberLazyListState()
     val byKey = remember(all) { all.associateBy { it.key } }
     val favouriteChannels = remember(favourites, byKey) { favourites.mapNotNull { byKey[it] } }
     val recentKeys by ChannelPrefs.recent.collectAsState()
     val recentChannels = remember(recentKeys, byKey) { recentKeys.mapNotNull { byKey[it] } }
-    val benflixChannels = remember(all) { all.filter { it.group() == BENFLIX_GROUP } }
+    // Favourites are the guide's first group, then every type as before
+    val entries =
+        remember(list, favouriteChannels) {
+            buildList<GuideEntry> {
+                if (favouriteChannels.isNotEmpty()) {
+                    add(GuideEntry.Heading(FAVOURITES_GROUP))
+                    favouriteChannels.forEach { add(GuideEntry.Channel(it, favourite = true)) }
+                }
+                var last: String? = null
+                list.forEach { schedule ->
+                    val group = schedule.group()
+                    if ((severalTypes || favouriteChannels.isNotEmpty()) && group != last) add(GuideEntry.Heading(group))
+                    last = group
+                    add(GuideEntry.Channel(schedule))
+                }
+            }
+        }
+    val firstEntry = remember(entries) { entries.firstOrNull { it is GuideEntry.Channel } }
+    val firstTypeEntry = remember(entries) { entries.firstOrNull { it is GuideEntry.Channel && !it.favourite } }
     val onRowFocus = { schedule: ChannelSchedule ->
         schedule.programAt(System.currentTimeMillis())?.let { focused = schedule to it }
     }
@@ -392,17 +402,19 @@ private fun GuideGrid(
         }
     // The side menu's places: where each starts in the list, and what gets focus there
     val recentFocus = remember { FocusRequester() }
-    val benflixFocus = remember { FocusRequester() }
-    val recentIndex = if (recentChannels.isNotEmpty()) 1 else -1
-    val benflixIndex = if (recentChannels.isNotEmpty()) 2 else 1
-    val guideIndex = benflixIndex + 1
+    val guideFocus = remember { FocusRequester() }
+    val addFocus = remember { FocusRequester() }
+    val recentIndex = if (recentChannels.isNotEmpty()) 0 else -1
+    // The guide's heading, then its time ruler, then the favourites group (heading + channels)
+    val titleIndex = recentIndex + 1
+    val guideIndex = if (favouriteChannels.isEmpty()) titleIndex else titleIndex + 2 + 1 + favouriteChannels.size
     val scope = rememberCoroutineScope()
 
     fun focusAt(key: String) {
         when (key) {
             LIVE_RECENT -> recentFocus.tryRequestFocus()
-            LIVE_BENFLIX -> benflixFocus.tryRequestFocus()
-            LIVE_GUIDE -> firstFocus.tryRequestFocus()
+            LIVE_FAVOURITES -> if (favouriteChannels.isEmpty()) addFocus.tryRequestFocus() else firstFocus.tryRequestFocus()
+            LIVE_GUIDE -> guideFocus.tryRequestFocus()
             else -> if (!rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
         }
     }
@@ -411,7 +423,7 @@ private fun GuideGrid(
             val index =
                 when (key) {
                     LIVE_RECENT -> recentIndex.coerceAtLeast(0)
-                    LIVE_BENFLIX -> benflixIndex
+                    LIVE_FAVOURITES -> titleIndex
                     LIVE_GUIDE -> guideIndex
                     else -> 0
                 }
@@ -449,19 +461,23 @@ private fun GuideGrid(
             delay(JUMP_SETTLE_MS)
             val at =
                 when {
-                    spot.scroll >= guideIndex -> LIVE_GUIDE
-                    spot.scroll >= benflixIndex -> LIVE_BENFLIX
+                    spot.scroll >= guideIndex && favouriteChannels.isNotEmpty() -> LIVE_GUIDE
+                    spot.scroll >= titleIndex -> if (favouriteChannels.isEmpty()) LIVE_GUIDE else LIVE_FAVOURITES
                     spot.scroll == recentIndex -> LIVE_RECENT
                     else -> DOOR_HOME
                 }
             // Deep in the guide, keep the spot: focus the first channel on screen instead of jumping back up
-            if (at != LIVE_GUIDE || spot.scroll == guideIndex) focusAt(at)
+            if (at != LIVE_GUIDE || spot.scroll <= guideIndex) focusAt(at)
             return@LaunchedEffect
         }
-        // Ben: opens at the very top, on the first card of the top row: the first favourite, or
-        // "+ Add channels" when there are none yet (it used to jump down to the Benflix channels)
+        // Ben: opens on the first favourite (now the top of the guide), else the first recent
+        // channel, else the first channel in the guide
         listState.scrollToItem(0)
-        if (!rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
+        if (favouriteChannels.isNotEmpty()) {
+            firstFocus.tryRequestFocus()
+        } else if (!rowFocus.tryRequestFocus()) {
+            firstFocus.tryRequestFocus()
+        }
     }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -487,47 +503,7 @@ private fun GuideGrid(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Favourites (with "+ Add channels"), Recently watched, then Benflix's own channels
-            item(key = "row-favourites") {
-                ChannelTileRow(title = "Favourites") {
-                    items(favouriteChannels, key = { "f-${it.key}" }) { schedule ->
-                        RecentCard(
-                            schedule = schedule,
-                            width = if (isTv) 220.dp else 160.dp,
-                            onClick = { viewModel.watch(schedule) },
-                            onLongClick = { favouriteMenu = schedule },
-                            modifier =
-                                Modifier
-                                    .then(if (schedule == favouriteChannels.first()) Modifier.focusRequester(rowFocus) else Modifier)
-                                    .onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
-                        )
-                    }
-                    // Watched a channel 3 times and it isn't a favourite yet: offer to add it
-                    suggested?.let { schedule ->
-                        item(key = "suggest-${schedule.key}") {
-                            SuggestFavouriteTile(
-                                name = schedule.title,
-                                onAdd = { ChannelPrefs.toggleFavourite(schedule.key) },
-                                onNo = {
-                                    ChannelPrefs.declineSuggestion(schedule.key)
-                                    declinedNow = declinedNow + schedule.key
-                                },
-                            )
-                        }
-                    }
-                    item(key = "add") {
-                        AddChannelsTile(
-                            onClick = { addChannels = true },
-                            modifier =
-                                if (favouriteChannels.isEmpty()) {
-                                    Modifier.focusRequester(rowFocus)
-                                } else {
-                                    Modifier
-                                },
-                        )
-                    }
-                }
-            }
+            // Recently watched, then the full guide (favourites first)
             if (recentChannels.isNotEmpty()) {
                 item(key = "row-recent") {
                     Box(Modifier.focusRequester(recentFocus)) {
@@ -538,38 +514,11 @@ private fun GuideGrid(
                                     width = if (isTv) 220.dp else 160.dp,
                                     onClick = { viewModel.watch(schedule) },
                                     onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
-                                    modifier = Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            run {
-                item(key = "row-benflix") {
-                    Box(Modifier.focusRequester(benflixFocus)) {
-                        ChannelTileRow(title = "Benflix channels · No ads") {
-                            items(benflixChannels, key = { "b-${it.key}" }) { schedule ->
-                                RecentCard(
-                                    schedule = schedule,
-                                    width = if (isTv) 220.dp else 160.dp,
-                                    onClick = { viewModel.watch(schedule) },
-                                    onLongClick = {
-                                        // A home-made channel can also be taken away again
-                                        if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
-                                    },
                                     modifier =
-                                        Modifier.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
+                                        Modifier
+                                            .then(if (schedule == recentChannels.first()) Modifier.focusRequester(rowFocus) else Modifier)
+                                            .onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
                                 )
-                            }
-                            // Approved "Make a channel": the last tile in the Benflix channels row
-                            if (mine.size < CustomChannel.MAX) {
-                                item(key = "make") {
-                                    AddChannelsTile(
-                                        label = "+  Make a channel",
-                                        onClick = { makeChannel = true },
-                                    )
-                                }
                             }
                         }
                     }
@@ -577,36 +526,35 @@ private fun GuideGrid(
             }
             // The full guide: a heading with "Edit types", then the time ruler that stays at the top
             item(key = "guide-title") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(top = 10.dp),
-                ) {
-                    Text(
-                        text = "GUIDE",
-                        fontSize = BenflixType.tag,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
-                        color = Color(0xFFB8B8C0),
-                    )
-                    if (all.any { it.live != null }) {
-                        Surface(
-                            onClick = { showTypes = true },
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-                            colors =
-                                ClickableSurfaceDefaults.colors(
-                                    containerColor = Color(0xFF17171B),
-                                    contentColor = Color(0xFFB8B8C0),
-                                    focusedContainerColor = BenflixColors.LiveTv,
-                                    focusedContentColor = BenflixColors.OnLiveTv,
-                                ),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                        ) {
-                            Text(
-                                text = "Edit types",
-                                fontSize = BenflixType.tag,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        // Phones: the buttons slide sideways rather than squash
+                        modifier = Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = "GUIDE",
+                            fontSize = BenflixType.tag,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.sp,
+                            color = Color(0xFFB8B8C0),
+                        )
+                        if (all.any { it.live != null }) GuideChip("Edit types", onClick = { showTypes = true })
+                        // These used to be tiles at the ends of the Favourites and Benflix channels rows
+                        GuideChip("+  Add channels", onClick = { addChannels = true }, modifier = Modifier.focusRequester(addFocus))
+                        if (mine.size < CustomChannel.MAX) GuideChip("+  Make a channel", onClick = { makeChannel = true })
+                    }
+                    // Watched a channel 3 times and it isn't a favourite yet: offer to add it
+                    suggested?.let { schedule ->
+                        Box(Modifier.padding(top = 8.dp)) {
+                            SuggestFavouriteTile(
+                                name = schedule.title,
+                                onAdd = { ChannelPrefs.toggleFavourite(schedule.key) },
+                                onNo = {
+                                    ChannelPrefs.declineSuggestion(schedule.key)
+                                    declinedNow = declinedNow + schedule.key
+                                },
                             )
                         }
                     }
@@ -637,9 +585,12 @@ private fun GuideGrid(
                         }
 
                         is GuideEntry.Channel -> {
-                            it.schedule.live
-                                ?.id
-                                ?.toString() ?: "b-${it.schedule.number}"
+                            (if (it.favourite) "fav-" else "") +
+                                (
+                                    it.schedule.live
+                                        ?.id
+                                        ?.toString() ?: "b-${it.schedule.number}"
+                                )
                         }
                     }
                 },
@@ -649,6 +600,10 @@ private fun GuideGrid(
                     return@items
                 }
                 val schedule = (entry as GuideEntry.Channel).schedule
+                val entryFocus =
+                    Modifier
+                        .then(if (entry === firstEntry) Modifier.focusRequester(firstFocus) else Modifier)
+                        .then(if (entry === firstTypeEntry) Modifier.focusRequester(guideFocus) else Modifier)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.height(ROW_HEIGHT),
@@ -657,7 +612,10 @@ private fun GuideGrid(
                     val starred = schedule.key in favourites
                     Surface(
                         onClick = { channelPage = schedule },
-                        onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
+                        onLongClick = {
+                            // A home-made channel can also be taken away again
+                            if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
+                        },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors =
                             ClickableSurfaceDefaults.colors(
@@ -717,7 +675,7 @@ private fun GuideGrid(
                             val from = maxOf(program.startMs, windowStart)
                             val to = minOf(program.endMs, windowEnd)
                             val live = now >= program.startMs && now < program.endMs
-                            val isFirst = schedule == list.first() && live
+                            val isFirst = live
                             val isSelected =
                                 !isTv &&
                                     selected?.let { (s, p) -> s.number == schedule.number && p.startMs == program.startMs } == true
@@ -761,7 +719,7 @@ private fun GuideGrid(
                                         .offset(x = widthFor(from - windowStart))
                                         .width(widthFor(to - from) - 3.dp)
                                         .fillMaxHeight()
-                                        .then(if (isFirst) Modifier.focusRequester(firstFocus) else Modifier)
+                                        .then(if (isFirst) entryFocus else Modifier)
                                         .onFocusChanged { if (it.isFocused) focused = schedule to program },
                             ) {
                                 // On now: a thin red bar along the bottom up to where the show is
@@ -957,33 +915,32 @@ private fun ChannelTileRow(
     }
 }
 
-/** The "+ Add channels" tile at the end of Favourites */
+/** A small round button beside the guide's heading ("Edit types", "+ Add channels", "+ Make a channel") */
 @Composable
-private fun AddChannelsTile(
+private fun GuideChip(
+    label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "+  Add channels",
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color(0xFF17171B),
                 contentColor = Color(0xFFB8B8C0),
-                focusedContainerColor = Color(0xFF17171B),
-                focusedContentColor = Color.White,
-            ),
-        border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
+                focusedContainerColor = BenflixColors.LiveTv,
+                focusedContentColor = BenflixColors.OnLiveTv,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.width(160.dp).height(64.dp),
+        modifier = modifier,
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
-        }
+        Text(
+            text = label,
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+        )
     }
 }
 
@@ -1422,6 +1379,17 @@ private val NoAdsGreen = Color(0xFF3FBF7A)
 /** "No ads · Benflix channels" or "Live · free with ads · News" between the groups */
 @Composable
 private fun GroupHeading(name: String) {
+    if (name == FAVOURITES_GROUP) {
+        Text(
+            text = "★  FAVOURITES",
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp,
+            color = StarGold,
+            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+        )
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
