@@ -1,0 +1,40 @@
+{
+  "_id": "benflix_shrink",
+  "name": "Benflix shrink",
+  "description": "Made by the Benflix setup command (server/tdarr/setup-tdarr.sh). Changes here are overwritten when the setup runs again.",
+  "tags": "benflix",
+  "flowPlugins": [
+    { "name": "Input File", "sourceRepo": "Community", "pluginName": "inputFile", "version": "1.0.0", "id": "bfInput",
+      "position": { "x": 400, "y": 40 }, "fpEnabled": true, "inputsDB": {} },
+    { "name": "Worth shrinking?", "sourceRepo": "Local", "pluginName": "benflixShouldShrink", "version": "1.0.0", "id": "bfShould",
+      "position": { "x": 400, "y": 140 }, "fpEnabled": true,
+      "inputsDB": { "episodeMinGB": "__EPISODE_GB__", "movieMinGB": "__MOVIE_GB__" } },
+    { "name": "Start", "sourceRepo": "Community", "pluginName": "ffmpegCommandStart", "version": "1.0.0", "id": "bfStart",
+      "position": { "x": 300, "y": 240 }, "fpEnabled": true, "inputsDB": {} },
+    { "name": "Prepare", "sourceRepo": "Local", "pluginName": "benflixPrepare", "version": "1.0.0", "id": "bfPrepare",
+      "position": { "x": 300, "y": 340 }, "fpEnabled": true,
+      "inputsDB": { "quality": "__QUALITY__", "encoder": "__ENCODER__", "device": "/dev/dri/renderD128", "trimLanguages": "true",
+        "radarrUrl": "__RADARR_URL__", "radarrKey": "__RADARR_KEY__", "sonarrUrl": "__SONARR_URL__", "sonarrKey": "__SONARR_KEY__",
+        "mediaRoot": "/media", "arrRoot": "__ARR_ROOT__" } },
+    { "name": "Shrink", "sourceRepo": "Community", "pluginName": "ffmpegCommandExecute", "version": "1.0.0", "id": "bfExecute",
+      "position": { "x": 300, "y": 440 }, "fpEnabled": true, "inputsDB": {} },
+    { "name": "Check the new file", "sourceRepo": "Local", "pluginName": "benflixCheckNewFile", "version": "1.0.0", "id": "bfCheck",
+      "position": { "x": 300, "y": 540 }, "fpEnabled": true, "inputsDB": { "maxPercent": "90", "minPercent": "10" } },
+    { "name": "Keep a backup", "sourceRepo": "Local", "pluginName": "benflixKeepBackup", "version": "1.0.0", "id": "bfBackup",
+      "position": { "x": 200, "y": 640 }, "fpEnabled": true, "inputsDB": { "backupFolder": "__BACKUP__", "mediaRoot": "/media" } },
+    { "name": "Replace Original File", "sourceRepo": "Community", "pluginName": "replaceOriginalFile", "version": "1.0.0", "id": "bfReplace",
+      "position": { "x": 200, "y": 740 }, "fpEnabled": true, "inputsDB": {} },
+    { "name": "Shrink log", "sourceRepo": "Local", "pluginName": "benflixReport", "version": "1.0.0", "id": "bfReport",
+      "position": { "x": 200, "y": 840 }, "fpEnabled": true, "inputsDB": { "logFile": "/backup/shrink-log.txt" } }
+  ],
+  "flowEdges": [
+    { "source": "bfInput", "sourceHandle": "1", "target": "bfShould", "targetHandle": null, "id": "e1" },
+    { "source": "bfShould", "sourceHandle": "1", "target": "bfStart", "targetHandle": null, "id": "e2" },
+    { "source": "bfStart", "sourceHandle": "1", "target": "bfPrepare", "targetHandle": null, "id": "e3" },
+    { "source": "bfPrepare", "sourceHandle": "1", "target": "bfExecute", "targetHandle": null, "id": "e4" },
+    { "source": "bfExecute", "sourceHandle": "1", "target": "bfCheck", "targetHandle": null, "id": "e5" },
+    { "source": "bfCheck", "sourceHandle": "1", "target": "bfBackup", "targetHandle": null, "id": "e6" },
+    { "source": "bfBackup", "sourceHandle": "1", "target": "bfReplace", "targetHandle": null, "id": "e7" },
+    { "source": "bfReplace", "sourceHandle": "1", "target": "bfReport", "targetHandle": null, "id": "e8" }
+  ]
+}
