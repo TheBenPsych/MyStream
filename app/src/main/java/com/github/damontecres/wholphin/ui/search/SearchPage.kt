@@ -30,8 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -318,9 +318,12 @@ fun SearchPage(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 boxModifier
-                    .focusGroup()
-                    .focusRestorer(textFieldFocusRequester)
-                    .focusRequester(focusRequesters[SEARCH_ROW]),
+                    // Ben: Search opens (and comes back) on the search box, not the microphone beside it.
+                    // Order matters: the requester and onEnter must sit before focusGroup to belong to the
+                    // group (after it they went to the first child, the microphone)
+                    .focusRequester(focusRequesters[SEARCH_ROW])
+                    .focusProperties { onEnter = { textFieldFocusRequester.tryRequestFocus() } }
+                    .focusGroup(),
         ) {
             AnimatedVisibility(
                 visible = voiceSearchButtonVisible,
@@ -349,7 +352,10 @@ fun SearchPage(
                 // TV: the keyboard is tucked away, so say how to get it
                 placeholder =
                     if (isTv) {
-                        { Text("Press OK to type", color = BenflixColors.Muted) }
+                        {
+                            // short enough to fit the narrow box whole (the longer words were cut to "Press OK to")
+                            Text("OK to type", color = BenflixColors.Muted, maxLines = 1, softWrap = false)
+                        }
                     } else {
                         null
                     },

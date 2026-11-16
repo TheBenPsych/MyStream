@@ -198,8 +198,8 @@ private fun LetterButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
                 contentColor = BenflixColors.Soft,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

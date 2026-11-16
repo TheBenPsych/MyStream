@@ -399,7 +399,10 @@ class StreamChoiceService
                 val candidates =
                     candidates
                         .sortedWith(
-                            compareByDescending<MediaStream> { it.isExternal }
+                            // Benflix: plain subtitles before ones that also describe sounds ("[door slams]"), when
+                            // both are there. An SDH track is still used when it's the only one in that language.
+                            compareBy<MediaStream> { it.isHearingImpaired }
+                                .thenByDescending { it.isExternal }
                                 .thenByDescending { it.isDefault }
                                 .thenByDescending {
                                     !it.isForced && it.language.equals(subtitleLanguage, true)
@@ -454,9 +457,14 @@ class StreamChoiceService
                         }
 
                         SubtitlePlaybackMode.DEFAULT -> {
+                            // Benflix: with a subtitle language set, a track that is only marked "default" or
+                            // "forced" must still be in that language (English unless the profile picked
+                            // another) or have no language marked. Never another language by itself.
+                            // Before, a German forced track (yellow words for a few seconds after the intro on
+                            // The Big Bang Theory) turned on by itself on English shows.
                             if (subtitleLanguage.isNotNullOrBlank()) {
-                                candidates.firstOrNull { it.language == subtitleLanguage && (it.isDefault || it.isForced) }
-                                    ?: candidates.firstOrNull { it.isDefault || it.isForced }
+                                candidates.firstOrNull { it.language.equals(subtitleLanguage, true) && (it.isDefault || it.isForced) }
+                                    ?: candidates.firstOrNull { (it.isDefault || it.isForced) && it.language.isUnknown }
                             } else {
                                 candidates.firstOrNull { it.isDefault || it.isForced }
                             }
@@ -641,12 +649,24 @@ fun getPreferredLanguage(
                 throw IllegalArgumentException("Only audio or subtitle supported, not $type")
             }
         }
-    return when (pref) {
-        UserProfileSettings.USE_USER_PROFILE -> profileLang
-        UserProfileSettings.PREFER_ANY_LANGUAGE -> null
-        else -> pref
-    }?.takeIf { it.isNotNullOrBlank() }
+    val chosen =
+        when (pref) {
+            UserProfileSettings.USE_USER_PROFILE -> profileLang
+            UserProfileSettings.PREFER_ANY_LANGUAGE -> null
+            else -> pref
+        }?.takeIf { it.isNotNullOrBlank() }
+    // Benflix: subtitles are English unless someone picked another language
+    if (chosen == null && type == MediaStreamType.SUBTITLE && pref != UserProfileSettings.PREFER_ANY_LANGUAGE) {
+        return BENFLIX_SUBTITLE_LANGUAGE
+    }
+    return chosen
 }
+
+/** Benflix: the subtitle language everyone gets until they pick another one */
+const val BENFLIX_SUBTITLE_LANGUAGE = "eng"
+
+/** Benflix: a profile's subtitle language, English when it was never picked */
+fun String?.orBenflixSubtitleLanguage(): String = this?.takeIf { it.isNotBlank() } ?: BENFLIX_SUBTITLE_LANGUAGE
 
 /**
  * Scores streams based the user's explicit [SeriesTrackChoice]

@@ -50,8 +50,8 @@ fun SongPreviewButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (playing) BenflixColors.Text else BenflixColors.Raised,
                 contentColor = if (playing) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = doorFocusBorder(CircleShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

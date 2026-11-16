@@ -211,8 +211,8 @@ fun EpisodesPanel(
                             ButtonDefaults.colors(
                                 containerColor = if (selected) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
                                 contentColor = if (selected) Color.Black else Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         modifier = Modifier.height(40.dp),
@@ -223,6 +223,7 @@ fun EpisodesPanel(
                             fontSize = BenflixType.body,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -271,18 +272,11 @@ private fun EpisodePanelCard(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .08f),
-                focusedContainerColor = Color.White.copy(alpha = .22f),
+                focusedContainerColor = Color.White.copy(alpha = .3f),
             ),
         border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder =
-                    androidx.tv.material3.Border(
-                        border =
-                            androidx.compose.foundation
-                                .BorderStroke(2.dp, Color.White),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-            ),
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(RoundedCornerShape(10.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier

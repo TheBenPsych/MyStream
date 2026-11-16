@@ -367,6 +367,7 @@ private fun HigherLowerRound(
             color = if (state.right == true) Color(0xFF46D37A) else BenflixRed,
             textAlign = TextAlign.Center,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
         val first = remember(state.guess.name) { FocusRequester() }
         LaunchedEffect(state.guess.name) { first.tryRequestFocus() }
@@ -381,8 +382,8 @@ private fun HigherLowerRound(
                         ButtonDefaults.colors(
                             containerColor = Color(0xFF2A2A2E),
                             contentColor = Color.White,
-                            focusedContainerColor = Color.White,
-                            focusedContentColor = Color.Black,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                         ),
                     modifier =
                         Modifier

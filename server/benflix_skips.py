@@ -743,6 +743,30 @@ def pick(cands, length, kind="Intro"):
     return {"start": round(s, 2), "end": round(min(e, length) if length else e, 2), "source": source, "sure": sure}
 
 
+CREDITS_FROM = 0.75  # "Skip credits" only in the last quarter of the episode or movie
+
+
+def _credits_too_early(s, length):
+    return length > 0 and s < length * CREDITS_FROM
+
+
+def _tidy_kinds(cands, length):
+    """Credits can't come before the episode is almost over. A "credits" time near the start is
+    really the opening (anime openings show staff names, and some sources mix up OP and ED), so it
+    becomes an intro guess (never skipped by itself); anything else that early is thrown away."""
+    keep = []
+    for c in cands.get("Outro", []):
+        s, e = c[0], c[1]
+        if not _credits_too_early(s, length):
+            keep.append(c)
+            continue
+        head, _, _ = _windows(length)
+        if s <= max(head, length * 0.35) and INTRO_MIN <= e - s <= INTRO_MAX * 1.5:
+            cands.setdefault("Intro", []).append((s, e, c[2], False))
+        log(f"Credits at {s:.0f}s of {length:.0f}s from {c[2]} is too early, not used as credits")
+    cands["Outro"] = keep
+
+
 def _fix_segment(kind, fix, found, auto, length):
     """Turns the fix markers (the person's own, else ones found from fixes on other episodes) into a time"""
     start_key, end_key = ("intro_start", "intro_end") if kind == "Intro" else ("credits_start", "credits_end")
@@ -807,6 +831,8 @@ def answer(item_id, token, user_id, is_admin):
     for kind, s, e in _server_segments(eid, token):
         cands[kind].append((s, e, "server", False))
 
+    _tidy_kinds(cands, length)
+
     fixes = _fixes()
     fix = fixes["episodes"].get(eid) or {}
     found = ((_read(f"found/{_safe(series_id)}.json") or {}).get("episodes") or {}).get(eid, {}) if is_episode else {}
@@ -824,6 +850,8 @@ def answer(item_id, token, user_id, is_admin):
             if fixed:
                 cands[kind].append(fixed)
         chosen = pick(cands[kind], length, kind)
+        if chosen and kind == "Outro" and _credits_too_early(chosen["start"], length):
+            chosen = None  # Even a fix can't put the credits near the start (that skips the whole episode)
         if chosen:
             segments.append({"type": kind, **chosen})
     return {"ready": ready, "segments": segments, "none": none, "item": eid}

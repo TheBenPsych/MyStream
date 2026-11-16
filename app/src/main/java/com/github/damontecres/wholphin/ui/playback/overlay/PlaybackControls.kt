@@ -146,6 +146,17 @@ sealed interface PlaybackAction {
 
     data object Previous : PlaybackAction
 
+    /** Benflix: watch together, start a lobby with this movie or show */
+    data object TogetherStart : PlaybackAction
+
+    /** Benflix: watch together, join the lobby [code] */
+    data class TogetherJoin(
+        val code: String,
+    ) : PlaybackAction
+
+    /** Benflix: watch together, leave the lobby */
+    data object TogetherLeave : PlaybackAction
+
     data object Next : PlaybackAction
 
     data class ChangeBitrate(
@@ -464,8 +475,8 @@ fun PlayerCircleButton(
             ButtonDefaults.colors(
                 containerColor = Color.White.copy(alpha = .14f),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
@@ -523,8 +534,8 @@ fun PlayerPillButton(
             ButtonDefaults.colors(
                 containerColor = tint ?: if (highlighted) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
                 contentColor = if (highlighted && tint == null) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
@@ -547,6 +558,7 @@ fun PlayerPillButton(
                 fontSize = BenflixType.body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
         }

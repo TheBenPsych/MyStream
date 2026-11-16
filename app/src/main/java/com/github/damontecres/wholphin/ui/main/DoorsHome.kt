@@ -190,6 +190,9 @@ class HomeDoorsViewModel
         private val localGames: com.github.damontecres.wholphin.games.LocalGames,
         val navigationManager: NavigationManager,
         private val setupCheck: com.github.damontecres.wholphin.services.TowerSetupCheck,
+        private val cantFind: com.github.damontecres.wholphin.services.BenflixCantFind,
+        private val seerrServerRepository: com.github.damontecres.wholphin.services.SeerrServerRepository,
+        private val seerrService: com.github.damontecres.wholphin.services.SeerrService,
     ) : ViewModel() {
         private val _rows = MutableStateFlow(HomeParts())
         val rows: StateFlow<HomeParts> = _rows
@@ -411,6 +414,7 @@ class HomeDoorsViewModel
                         val music = async { musicNews() }
                         val bookRows = async { bookNews() }
                         val requests = async { requestNews() }
+                        val notFound = async { withTimeoutOrNull(CANT_FIND_WAIT_MS) { cantFindNews() }.orEmpty() }
                         val fact = async { withTimeoutOrNull(FACT_WAIT_MS) { factRows() }.orEmpty() }
                         val weather = async { withTimeoutOrNull(WEATHER_WAIT_MS) { towerWeather() } }
                         val saved = async { withTimeoutOrNull(PREFS_WAIT_MS) { savedPrefs() }.orEmpty() }
@@ -420,7 +424,7 @@ class HomeDoorsViewModel
                         news =
                             shown(
                                 setup.await() + benNews(custom) + episodes.await() + music.await() + bookRows.await() +
-                                    requests.await() + updateNews(),
+                                    requests.await() + notFound.await() + updateNews(),
                             ).filter { it.id !in opened }
                                 .sortedByDescending { it.at }
                                 .take(MAX_NEWS)
@@ -741,6 +745,93 @@ class HomeDoorsViewModel
                 }
 
         /**
+         * Something you asked for that Ben couldn't find (Ben 2026-11-15: a Home news row, not a pop-up). Pressing
+         * it opens a small pop-up with Ben's note and a See details button. Stays for [CANT_FIND_DAYS] days, or until
+         * cleared. Ben marks these himself, so he isn't told. Ones the old pop-up already showed aren't shown again.
+         */
+        private suspend fun cantFindNews(): List<HomeRow> {
+            if (serverRepository.currentUserDto?.policy?.isAdministrator == true) return emptyList()
+            if (!seerrService.active.first()) return emptyList()
+            val seerrUserId = seerrServerRepository.currentUserId.first() ?: return emptyList()
+            cantFind.refresh()
+            val told =
+                OrderedSeen
+                    .read(
+                        context.getSharedPreferences(CantFindNoticeViewModel.PREFS, Context.MODE_PRIVATE),
+                        CantFindNoticeViewModel.toldKey(serverRepository.currentUser?.id),
+                    ).toSet()
+            val today = java.time.LocalDate.now()
+            val recent =
+                cantFind.entries.value.values
+                    .filter { seerrUserId in it.askedBy && "${it.key}|${it.date}" !in told }
+                    .mapNotNull { entry ->
+                        val day = runCatching { java.time.LocalDate.parse(entry.date) }.getOrNull()
+                        if (day == null || java.time.temporal.ChronoUnit.DAYS
+                                .between(day, today) > CANT_FIND_DAYS
+                        ) {
+                            null
+                        } else {
+                            entry to day
+                        }
+                    }.sortedByDescending { it.second }
+                    .take(2)
+            return recent.mapNotNull { (entry, day) ->
+                val item = cantFindItem(entry)
+                // It turned up in the meantime: nothing to say sorry about
+                if (item?.availability == com.github.damontecres.wholphin.data.model.SeerrAvailability.AVAILABLE) {
+                    return@mapNotNull null
+                }
+                val title = item?.title ?: entry.title ?: "Something you asked for"
+                val why =
+                    if (entry.auto) {
+                        "We looked for $title for a week but couldn't find a copy yet."
+                    } else {
+                        "Ben looked for $title but couldn't find a copy yet."
+                    }
+                val note = entry.note?.let { "\n\nBen's note: \u201C$it\u201D" }.orEmpty()
+                HomeRow(
+                    id = "cant-${entry.key}-${entry.date}",
+                    kind = "Couldn't find it",
+                    title = title,
+                    kindColor = com.github.damontecres.wholphin.ui.discover.CANT_FIND_COLOR,
+                    image = item?.posterUrl ?: entry.posterUrl,
+                    destination = null,
+                    news = true,
+                    fullText = "$why If one turns up, it'll come to Benflix by itself.$note",
+                    goTo = ("See details" to (item?.destination ?: Destination.Requests)),
+                    at =
+                        day
+                            .atStartOfDay(java.time.ZoneId.systemDefault())
+                            .toInstant()
+                            .toEpochMilli(),
+                )
+            }
+        }
+
+        private suspend fun cantFindItem(entry: com.github.damontecres.wholphin.services.CantFindEntry) =
+            try {
+                val tmdbId = entry.key.substringAfter('-').toIntOrNull()
+                when {
+                    tmdbId == null -> {
+                        null
+                    }
+
+                    entry.key.startsWith("MOVIE") -> {
+                        seerrService.createDiscoverItem(seerrService.api.moviesApi.movieMovieIdGet(movieId = tmdbId))
+                    }
+
+                    else -> {
+                        seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
+                    }
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.d(ex, "Home news: couldn't look up %s", entry.key)
+                null
+            }
+
+        /**
          * Redesign 2 (approved ss-p-setup): Ben's note when Tower's helper is older than this app needs.
          * Pressing it opens Server, where the yellow card has the command with Copy. Clearing it hides it until
          * the next time a new setup is needed.
@@ -820,6 +911,8 @@ class HomeDoorsViewModel
                             if (name.isNotBlank() && !fact.contains(name.substringBefore(":").trim(), ignoreCase = true)) {
                                 fact = "$name: $fact"
                             }
+                            // the title in front can make it too long to show whole: skip that one
+                            if (fact.length > FACT_MAX_LENGTH + FACT_NAME_ROOM) return@mapNotNull null
                             HomeRow(
                                 id = "fact-$id",
                                 kind = "Did you know",
@@ -906,6 +999,8 @@ class HomeDoorsViewModel
             private const val WEATHER_AT_KEY = "weather-at"
             private const val WEATHER_KEEP_MS = 3 * 3_600_000L
             private const val NEWS_DAYS = 3L
+            private const val CANT_FIND_DAYS = 14L
+            private const val CANT_FIND_WAIT_MS = 2_500L
             private const val DAY_MS = 86_400_000L
             private const val PREFS_WAIT_MS = 2_000L
 
@@ -916,7 +1011,11 @@ class HomeDoorsViewModel
             private const val FACT_WAIT_MS = 1_200L
             private const val WEATHER_WAIT_MS = 1_200L
             private const val REQUESTS_GAP_MS = 5 * 60_000L
-            private const val FACT_MAX_LENGTH = 130
+
+            // Ben: Home list words must never be cut. Two lines of the fact row hold about 72 letters on a
+            // phone and a TV (longer ones ended in "…"), so only facts that short are picked
+            private const val FACT_MAX_LENGTH = 72
+            private const val FACT_NAME_ROOM = 6
             private const val POSTER_HEIGHT = 240
             const val MAX_NEWS = 12
             private const val MAX_SEEN = 80
@@ -1309,7 +1408,12 @@ fun DoorsHomePage(
             // Kids (kd-family), Easy mode (ez-family) and Guest (gs-family): big doors and one row
             FamilyHome(
                 kind = familyKind,
-                greeting = if (familyKind == FamilyKind.GUEST) "Welcome" else greetingFor(viewModel.userName),
+                greeting =
+                    when (familyKind) {
+                        FamilyKind.GUEST -> "Welcome"
+                        FamilyKind.KIDS -> "Hi there!"
+                        else -> greetingFor(viewModel.userName)
+                    },
                 doors = familyDoorSet,
                 // Never show rows that belong to someone else, even for a moment
                 data = if (familyData.key.endsWith("-" + familyKind.name)) familyData else FamilyHomeData(),

@@ -133,6 +133,7 @@ fun HeroButton(
                 fontSize = if (big) BenflixType.lead else BenflixType.body,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -177,6 +178,7 @@ fun HeroTag(
         fontSize = BenflixType.tag,
         fontWeight = FontWeight.ExtraBold,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
                 .background(BenflixColors.Text, RoundedCornerShape(6.dp))

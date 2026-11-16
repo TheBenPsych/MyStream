@@ -4,6 +4,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaMetadata
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Chapter
+import com.github.damontecres.wholphin.services.orBenflixSubtitleLanguage
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSourceInfo
@@ -37,6 +38,7 @@ internal fun PlaybackViewModel.getSubtitleStreams(mediaSource: MediaSourceInfo):
         serverRepository.currentUserDto
             ?.configuration
             ?.subtitleLanguagePreference
+            .orBenflixSubtitleLanguage()
     return BenflixSubtitleFilter
         .visible(mediaSource.mediaStreams.orEmpty())
         .filter { it.type == MediaStreamType.SUBTITLE }

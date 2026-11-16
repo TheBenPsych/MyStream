@@ -692,8 +692,8 @@ private fun GuideGrid(
                                     ClickableSurfaceDefaults.colors(
                                         containerColor = if (live) Color(0xFF26262D) else Color(0xFF1C1C21),
                                         contentColor = Color.White,
-                                        focusedContainerColor = Color.White,
-                                        focusedContentColor = Color.Black,
+                                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                                     ),
                                 border =
                                     if (isSelected) {
@@ -701,7 +701,7 @@ private fun GuideGrid(
                                             border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
                                             focusedBorder =
                                                 Border(
-                                                    BorderStroke(3.dp, BenflixColors.Text),
+                                                    BorderStroke(3.dp, BenflixColors.Focus),
                                                     shape = RoundedCornerShape(6.dp),
                                                 ),
                                         )
@@ -758,6 +758,7 @@ private fun GuideGrid(
                                                 text = clock(program.startMs),
                                                 fontSize = BenflixType.tag,
                                                 maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                         }
                                     }
@@ -954,7 +955,14 @@ private fun SuggestFavouriteTile(
                 .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp),
     ) {
-        Text("Add $name?", fontSize = BenflixType.small, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        Text(
+            "Add $name?",
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         SuggestButton("Add", onAdd)
         SuggestButton("No thanks", onNo)
     }
@@ -972,8 +980,8 @@ private fun SuggestButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = Color(0xFF26262C),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
@@ -1230,9 +1238,15 @@ private fun GuideHeader(
 @Composable
 fun ChannelBanner(
     playing: Boolean,
+    playingItemId: java.util.UUID?,
     modifier: Modifier = Modifier,
 ) {
-    val banner by ChannelSession.banner.collectAsState()
+    val rawBanner by ChannelSession.banner.collectAsState()
+    // Only while the player is showing the channel that was tuned in. A banner left over from
+    // Live TV must never show over a movie or episode started from somewhere else.
+    val watching = ChannelSession.isWatching(playingItemId)
+    // (Hidden, not cleared: while flipping channels the old player can still be on screen for a moment)
+    val banner = rawBanner?.takeIf { watching }
     LaunchedEffect(banner, playing) {
         if (banner != null) {
             // If the channel never starts, don't leave "Tuning in…" up forever
@@ -1259,7 +1273,14 @@ fun ChannelBanner(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(info.number.toString(), fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                Text(info.name, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                Text(
+                    info.name,
+                    fontSize = BenflixType.rowName,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (info.key in favourites) Text("★", fontSize = BenflixType.rowName, color = Color.White)
                 if (info.own) {
                     Text(
@@ -1284,6 +1305,7 @@ fun ChannelBanner(
                     fontSize = BenflixType.lead,
                     color = Color.White,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 val length = (info.endMs - info.startMs).coerceAtLeast(1L)
                 Box(
@@ -1311,7 +1333,13 @@ fun ChannelBanner(
                                 java.time.format.DateTimeFormatter
                                     .ofPattern("h:mm"),
                             )
-                    Text("Next at $at  ·  $next", fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1)
+                    Text(
+                        "Next at $at  ·  $next",
+                        fontSize = BenflixType.small,
+                        color = BenflixColors.Muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -1424,8 +1452,8 @@ private fun EasyButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Raised,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),

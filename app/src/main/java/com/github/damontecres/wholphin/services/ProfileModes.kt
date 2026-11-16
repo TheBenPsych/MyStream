@@ -23,6 +23,7 @@ object ProfileModes {
     ) {
         KidsMode.set(kids, big)
         GuestMode.set(guest)
+        RequestFor.clear()
     }
 
     /** Save the current Kids / Guest state for this sign-in */
@@ -49,7 +50,9 @@ object ProfileModes {
         userId: String?,
     ): Triple<Boolean, Boolean, Boolean> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val sameUser = userId.isNullOrBlank() || prefs.getString(KEY_USER, null).equals(userId, ignoreCase = true)
+        // The game player gets the id without dashes (Jellyfin's style), but it's saved with them: compare both bare
+        val savedUser = prefs.getString(KEY_USER, null)?.replace("-", "")
+        val sameUser = userId.isNullOrBlank() || savedUser.equals(userId.replace("-", ""), ignoreCase = true)
         if (!sameUser) return Triple(false, false, false)
         val kids = prefs.getBoolean(KEY_KIDS, false)
         return Triple(kids, kids && prefs.getBoolean(KEY_BIG, false), prefs.getBoolean(KEY_GUEST, false))
@@ -77,6 +80,7 @@ object ProfileModes {
         val guest = sameUser && prefs.getBoolean(KEY_GUEST, false)
         if (KidsMode.isActive != kids || KidsMode.isBig != big) KidsMode.set(kids, big)
         if (GuestMode.isActive != guest) GuestMode.set(guest)
+        RequestFor.clear()
         Timber.i("Restored profile mode: kids=%s, big=%s, guest=%s", kids, big, guest)
     }
 }

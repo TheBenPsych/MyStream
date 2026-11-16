@@ -97,6 +97,9 @@ class ServerNapViewModel
 
         suspend fun checkNow() {
             try {
+                // Benflix: first look for the server at every known address (home Wi-Fi, Tower's name, the
+                // internet name), so a phone that just came home isn't stuck retrying the internet address
+                serverRepository.reconnect()
                 withContext(WholphinDispatchers.IO) { api.systemApi.getPublicSystemInfo() }
             } catch (ex: CancellationException) {
                 throw ex

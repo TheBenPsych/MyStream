@@ -133,8 +133,8 @@ fun ExpandablePlayButtons(
                         androidx.tv.material3.ButtonDefaults.colors(
                             containerColor = androidx.compose.ui.graphics.Color.White,
                             contentColor = androidx.compose.ui.graphics.Color.Black,
-                            focusedContainerColor = androidx.compose.ui.graphics.Color.White,
-                            focusedContentColor = androidx.compose.ui.graphics.Color.Black,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                         )
                     },
                 // Phones have no remote focus: don't let the button grow wider than the page
@@ -454,7 +454,7 @@ private fun whiteBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                 inset = (-4).dp,
                 shape = FlatButtonShape,
             ),
@@ -465,7 +465,7 @@ private fun primaryBorder() =
     androidx.tv.material3.ClickableSurfaceDefaults.border(
         focusedBorder =
             androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                 shape = FlatButtonShape,
             ),
     )

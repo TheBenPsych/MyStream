@@ -238,7 +238,7 @@ fun BookChip(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
@@ -248,6 +248,7 @@ fun BookChip(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }

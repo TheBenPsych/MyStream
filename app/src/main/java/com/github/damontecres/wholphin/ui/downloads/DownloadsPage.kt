@@ -380,7 +380,13 @@ fun DownloadsPage(
                             overflow = TextOverflow.Ellipsis,
                         )
                         item.subtitle?.let {
-                            Text(text = it, fontSize = BenflixType.small, color = Color(0xFFB3B3B3), maxLines = 1)
+                            Text(
+                                text = it,
+                                fontSize = BenflixType.small,
+                                color = Color(0xFFB3B3B3),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                         Text(
                             text =

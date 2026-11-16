@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -393,7 +394,7 @@ private fun GridBoard(
                         shape = ClickableSurfaceDefaults.shape(shape),
                         border =
                             ClickableSurfaceDefaults.border(
-                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                                focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
                             ),
                         colors =
                             ClickableSurfaceDefaults.colors(
@@ -442,6 +443,7 @@ private fun RuleLabel(
             color = Color.White,
             textAlign = TextAlign.Center,
             maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

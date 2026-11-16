@@ -270,7 +270,46 @@
     else if (a === "like") M.like();
     else if (a === "stop") M.stop();
     else if (a === "queue") { closeNow(); B.go("#/upnext"); }
+    else if (a === "similar") similarSongs();
   };
+  // Ben 2026-11-15: a few songs like the playing one that you can ask for (songs already in your music left out)
+  async function similarSongs() {
+    const s = M.current();
+    if (!s) return;
+    const title = s.Name || "";
+    const artist = (artistOf(s) || "").split(",")[0].trim();
+    closeNow();
+    const admin = B.me.admin;
+    const panel = B.side(`<h3>Similar songs</h3><p class="dim">Like ${esc(title)}, and not in your music yet. Pick one to ask for it.</p><div id="msim">${B.spinner()}</div>`);
+    let found;
+    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+    const songs = (found && found.songs) || [];
+    const draw = () => {
+      $("#msim", panel).innerHTML = songs.length ? songs.map((x, i) => `<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="display:flex;align-items:center;gap:12px;text-align:left">
+        <span style="flex:none;width:44px;height:44px;border-radius:6px;background:var(--pg3) center/cover;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
+        <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button>`).join("")
+        : `<p class="dim">Nothing new like this one right now.</p>`;
+    };
+    draw();
+    panel.addEventListener("click", (ev) => {
+      const one = ev.target.closest("[data-sim]");
+      if (!one) return;
+      const x = songs[+one.dataset.sim];
+      const ask = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
+        ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
+        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`);
+      ask.addEventListener("click", (e2) => {
+        const p = e2.target.closest("[data-pick]");
+        if (!p) return;
+        const album = p.dataset.pick === "album";
+        B.busy(p, async () => {
+          await B.call("POST", "api/music/request", { kind: album ? "album" : "song", id: +(album ? x.album_id : x.id) });
+          B.closeAll();
+          return admin ? `Asked for ${album ? x.album : x.title}.` : `Asked Ben for ${album ? x.album : x.title}.`;
+        });
+      });
+    });
+  }
   setInterval(() => {
     if (!bar || !M.current()) return;
     const d = songLen();
@@ -291,7 +330,7 @@
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
             <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
+            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="similar" title="Songs like this one to ask for">${I("plus")} Similar songs</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
           <div class="np-words"></div>
@@ -437,7 +476,7 @@
   const card = (it, href, sub) => {
     const art = cover(it, 360);
     B.items[it.Id] = it;
-    return `<a class="mcard" href="${href}" data-id="${esc(it.Id)}" title="${esc(it.Name)}"><div class="im">${art ? `<img class="art" src="${art}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--music)">${esc(it.Name)}</div>`}</div><div class="cap"><span class="nm">${esc(it.Name)}</span><small>${esc(sub || "")}</small></div></a>`;
+    return `<a class="mcard" href="${href}" data-id="${esc(it.Id)}" title="${esc(it.Name)}"><div class="im">${art ? `<img class="art" src="${art}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--music)"><span class="nt">${esc(it.Name)}</span></div>`}</div><div class="cap"><span class="nm">${esc(it.Name)}</span><small>${esc(sub || "")}</small></div></a>`;
   };
   const albumCard = (a) => card(a, `#/album/${a.Id}`, a.AlbumArtist || a.ProductionYear || "");
   const artistCard = (a) => card(a, `#/artist/${a.Id}`, "Artist").replace('class="mcard"', 'class="mcard round"');
@@ -449,6 +488,13 @@
   };
   const likedCard = (n) => `<a class="mcard" href="#/liked"><div class="im liked">${I("heart")}</div><div class="cap"><span class="nm">Liked songs</span><small>${n} songs</small></div></a>`;
   B.musicMixes = () => B.cached("music-mixes-" + B.me.id + new Date().toDateString(), 3600000, async () => ((await B.call("GET", "api/music/mixes")) || {}).mixes || []);
+  // Themed playlists (Ben 2026-11-16): holidays in season, decades, genres, moods, throwbacks
+  B.musicThemes = () => B.cached("music-themes-" + B.me.id + new Date().toDateString(), 3600000, async () => (await B.call("GET", "api/music/themes")) || { themes: [] });
+  const THEME_ROWS = { season: "In season", decade: "Decades", genre: "Genres", mood: "Moods and moments", throwback: "Throwbacks" };
+  const themeRow = (th, group) => {
+    const list = (th.themes || []).filter((t) => t.group === group);
+    return list.length ? B.row((th.rows || {})[group] || THEME_ROWS[group], list.map(mixCard)) : "";
+  };
   const libs = () => B.cached("music-libs", 600000, async () => (await B.views()).filter((l) => l.CollectionType === "music"));
   const songRow = (s, i, opts) => {
     opts = opts || {};
@@ -527,20 +573,23 @@
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
     if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Benflix yet.</p>`; return; }
-    const [mixes, pls, liked, recent, played, artists] = await Promise.all([
+    const [mixes, pls, liked, recent, played, artists, themes] = await Promise.all([
       B.musicMixes().catch(() => []),
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount&Limit=30`).catch(() => []),
       B.get(`/Users/${B.uid()}/Items?Recursive=true&IncludeItemTypes=Audio&Filters=IsFavorite&Limit=0`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
       items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=30`).catch(() => []),
       items(`IncludeItemTypes=MusicAlbum&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=30`).catch(() => []),
       B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=PlayCount,SortName&SortOrder=Descending&Limit=30&Fields=PrimaryImageAspectRatio`).then((j) => j.Items || []).catch(() => []),
+      B.musicThemes().catch(() => ({ themes: [] })),
     ]);
     if (!B.alive(nav)) return;
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
+    rows.push(themeRow(themes, "season"));
     rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), B.me.admin ? [`<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}</div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, artists</small></div></a>`] : [])));
     rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
+    ["decade", "genre", "mood", "throwback"].forEach((g) => rows.push(themeRow(themes, g)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
     // Redesign 2: Songs, Albums, Artists, Genres, Playlists and Liked songs are in the door's side menu (js/doors.js)
     $("#mrows").innerHTML = rows.join("");
@@ -549,6 +598,7 @@
 
   // ---------- grids (See all, Browse by) ----------
   B.route(/^\/mgrid\/(\w+)(?:\/([\w-]+))?/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const kind = m[1], id = m[2];
     const titles = { recent: "Recently added", albums: "Albums", artists: "Artists", genres: "Genres", playlists: "Playlists", genre: B.q("name") || "Genre" };
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(titles[kind] || "Music")}</h1><div class="mgrid" id="mg">${B.spinner()}</div></div>`;
@@ -585,6 +635,7 @@
     wireSongs(root, songs, o.title, o.sourceId, o.extra);
     $(".mhero-btns").addEventListener("click", (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
+      if ((b.dataset.h === "play" || b.dataset.h === "shuffle") && !songs.length) return B.toast(o.title === "Liked songs" ? "No liked songs yet. Press the heart on a song to add it here." : "There are no songs here yet.");
       // Ben: Play or Shuffle goes straight to Now playing
       if (b.dataset.h === "play") { M.playList(songs, 0, false, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
       if (b.dataset.h === "shuffle") { M.playList(songs, 0, true, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
@@ -601,6 +652,7 @@
     setTimeout(() => { const p = $("[data-h=play]"); if (p) p.focus({ preventScroll: true }); }, 30);
   };
   B.route(/^\/album\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [al, songs] = await Promise.all([B.get(`/Users/${u}/Items/${m[1]}`), items(`ParentId=${enc(m[1])}&IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName&${SONG_FIELDS}`)]);
     if (!B.alive(nav)) return;
@@ -656,6 +708,7 @@
     if (similar.length && B.alive(nav)) tp.pane("tpSimilar").innerHTML = `<div class="grid tp-grid">${similar.map(albumCard).join("")}</div>`;
   });
   B.route(/^\/playlist\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [pl, list, perm] = await Promise.all([
       B.get(`/Users/${u}/Items/${m[1]}`),
@@ -679,6 +732,7 @@
   });
   // Browse by > Songs: every song, A to Z
   B.route(/^\/songs$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const raw = await items(`IncludeItemTypes=Audio&SortBy=SortName&Limit=10000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
     // The same song saved twice (same artist, same name ignoring spaces/punctuation, length within 3s) shows once
@@ -696,23 +750,53 @@
     await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
   });
   B.route(/^\/liked$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const songs = await items(`IncludeItemTypes=Audio&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=3000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
     await collection(nav, { kick: "PLAYLIST", title: "Liked songs", line: "Every song you gave a heart", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
   });
   B.route(/^\/mix\/([\w-]+)/, async (m, nav) => {
-    const mix = (await B.musicMixes()).find((x) => x.key === decodeURIComponent(m[1]));
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
+    const key = decodeURIComponent(m[1]);
+    const mix = (await B.musicMixes()).find((x) => x.key === key) || ((await B.musicThemes().catch(() => ({}))).themes || []).find((x) => x.key === key);
     if (!mix) return B.go("#/music");
-    const got = await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`);
+    const got = mix.songs.length ? await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`) : [];
     const byId = {}; got.forEach((s) => { byId[s.Id] = s; });
     const songs = mix.songs.map((id) => byId[id]).filter(Boolean);
     if (!B.alive(nav)) return;
-    await collection(nav, { kick: "MADE FOR YOU", title: mix.name, line: mix.line, collage: mix.covers.concat(mix.covers).slice(0, 4).map((c) => B.img(c, "Primary", { h: 300 })), songs, sourceId: null });
+    const covers = mix.covers.length ? mix.covers.concat(mix.covers).slice(0, 4).map((c) => B.img(c, "Primary", { h: 300 })) : null;
+    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.line, collage: covers, songs, sourceId: null });
+    if (mix.adds) themeAdds(nav, mix);
   });
+
+  // Every profile but Kids (Ben okays the others' asks): Songs to add under a themed playlist. Asking for one downloads it, and Tower puts it in this theme.
+  const themeAdds = async (nav, mix) => {
+    const box = $("#mbelow"); if (!box) return;
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Looking for songs that fit...</p>`;
+    const got = await B.call("GET", `api/music/theme?key=${enc(mix.key)}`).catch(() => null);
+    if (!B.alive(nav)) return;
+    const list = (got && got.songs) || [];
+    if (!list.length) { box.innerHTML = ""; return; }
+    const btn = (s) => s.asked ? `<span class="sl">${esc(s.asked)}</span>` : `<button class="btn small white" data-addsong="${esc(s.id)}">${I("plus")} Ask for it</button>`;
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs that fit ${esc(mix.name)}. Ask for one and it joins this playlist once it's in.${B.me.admin ? "" : " Ben okays asks first."}</p>
+      <div class="msongs">${list.map((s) => `<div class="srow"><span class="sn">${s.cover ? `<img class="sc" src="${esc(s.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span><span data-slot="${esc(s.id)}">${btn(s)}</span></div>`).join("")}</div>`;
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-addsong]"); if (!b) return;
+      b.disabled = true;
+      try {
+        const r = await B.call("POST", "api/music/request", { kind: "song", id: +b.dataset.addsong, theme: mix.key });
+        b.parentNode.innerHTML = `<span class="sl">${esc((r && r.words) || "Asked for")}</span>`;
+      } catch (err) {
+        b.disabled = false;
+        B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute.");
+      }
+    });
+  };
 
   // ---------- artist page ----------
   B.route(/^\/artist\/([\w-]+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
     const [ar, top, albums] = await Promise.all([
       B.get(`/Users/${u}/Items/${m[1]}`),

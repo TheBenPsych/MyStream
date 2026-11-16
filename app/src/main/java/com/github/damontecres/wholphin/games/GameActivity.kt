@@ -123,6 +123,10 @@ class GameActivity : ComponentActivity() {
 
     // What the menu and messages show
     private var menuOpen by mutableStateOf(false)
+
+    /** Benflix multi-disc games: how many discs (0 or 1 = nothing to swap) and which is in now (from 0) */
+    private var discCount by mutableIntStateOf(0)
+    private var discNow by mutableIntStateOf(0)
     private var message by mutableStateOf<String?>("Starting…")
     private var failed by mutableStateOf(false)
     private var gamepadSeen by mutableStateOf(false)
@@ -246,6 +250,8 @@ class GameActivity : ComponentActivity() {
         loadPanelColour()
         playedBefore = getSharedPreferences(PREFS, MODE_PRIVATE).getLong(todayKey(), 0L)
         playStart = SystemClock.elapsedRealtime()
+        // Benflix "Didn't start" list: tell Tower if the last game closed by itself, then note this one
+        diskWork.execute { GameProblems.starting(this, gameId, gameName, console.title, address, token) }
         (getSystemService(INPUT_SERVICE) as InputManager).registerInputDeviceListener(inputListener, handler)
         sideKey = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("side_key", true)
         val power = DevicePower.get(this)
@@ -358,6 +364,10 @@ class GameActivity : ComponentActivity() {
                 false
             }
         if (!ok) {
+            diskWork.execute {
+                GameProblems.fine(this)
+                GameProblems.send(gameId, gameName, console.title, "Couldn't load", address, token)
+            }
             runOnUiThread {
                 failed = true
                 message =
@@ -378,7 +388,42 @@ class GameActivity : ComponentActivity() {
         oneToOne = abs(displayHz - fps) < 1.0
         startAudio(timing[1].toInt())
         loaded = true
-        runOnUiThread { message = null }
+        runOnUiThread {
+            message = null
+            watchFirstMinute()
+        }
+    }
+
+    /**
+     * Benflix "Didn't start" list: after half a minute the game counts as started fine. If the picture is still all
+     * black at 30 and 45 seconds (not paused, no menu), Tower hears about it.
+     */
+    private fun watchFirstMinute() {
+        handler.postDelayed({ GameProblems.fine(this) }, GameProblems.OK_AFTER_MS)
+        var blackChecks = 0
+        val check =
+            object : Runnable {
+                override fun run() {
+                    if (quitting || isFinishing) return
+                    if (paused || menuOpen) {
+                        handler.postDelayed(this, BLACK_CHECK_GAP_MS)
+                        return
+                    }
+                    diskWork.execute {
+                        val black = GameProblems.looksBlack(onGameThread { RetroNative.snapshot() })
+                        runOnUiThread {
+                            if (!black) return@runOnUiThread
+                            blackChecks++
+                            if (blackChecks >= 2) {
+                                diskWork.execute { GameProblems.send(gameId, gameName, console.title, "Black screen", address, token) }
+                            } else {
+                                handler.postDelayed(this, BLACK_CHECK_GAP_MS)
+                            }
+                        }
+                    }
+                }
+            }
+        handler.postDelayed(check, GameProblems.OK_AFTER_MS)
     }
 
     private fun startAudio(rate: Int) {
@@ -579,6 +624,30 @@ class GameActivity : ComponentActivity() {
         if (failed || quitting) return
         menuOpen = true
         setPaused(true)
+        // Multi-disc games: how many discs and which one is in, for "Swap disc"
+        if (loaded) {
+            onGameThread { RetroNative.discCount() to RetroNative.discNow() }?.let { (count, now) ->
+                discCount = count
+                discNow = now
+            }
+        }
+    }
+
+    /** Benflix: puts the next disc in (after the last one, back to the first) */
+    private fun swapToNextDisc() {
+        if (discCount < 2) return
+        val next = (discNow + 1) % discCount
+        val ok = onGameThread { RetroNative.swapDisc(next) } == true
+        if (ok) discNow = next
+        message = if (ok) "Disc ${next + 1} is in" else "Couldn't swap the disc"
+        handler.postDelayed({
+            if (message?.startsWith("Disc") == true ||
+                message?.startsWith("Couldn't swap") == true
+            ) {
+                message = null
+            }
+        }, 2500)
+        closeMenu()
     }
 
     private fun closeMenu() {
@@ -787,6 +856,8 @@ class GameActivity : ComponentActivity() {
         padServer?.stop()
         audio = null
         if (isFinishing) {
+            // Left on purpose (or after the message that it couldn't start), so it didn't close by itself
+            GameProblems.fine(this)
             // Emulators keep their own memory around; a fresh process per game keeps things clean
             android.os.Process.killProcess(android.os.Process.myPid())
         }
@@ -1208,6 +1279,18 @@ class GameActivity : ComponentActivity() {
 
     // ---------- Screen ----------
 
+    /** Nintendo DS: a finger on the game picture (window pixels) touches the bottom screen */
+    private fun touchScreen(at: androidx.compose.ui.geometry.Offset?) {
+        if (!loaded) return
+        if (at == null) {
+            RetroNative.setPointer(0f, 0f, false)
+            return
+        }
+        val spot = IntArray(2)
+        glView.getLocationInWindow(spot)
+        RetroNative.setPointer(at.x - spot[0], at.y - spot[1], true)
+    }
+
     @Composable
     private fun Screen() {
         Box(
@@ -1233,6 +1316,7 @@ class GameActivity : ComponentActivity() {
                         push(0)
                     },
                     onMenu = { openMenu() },
+                    onScreenTouch = if (console.touchScreen) ::touchScreen else null,
                 )
             }
             message?.let { text ->
@@ -1525,7 +1609,14 @@ class GameActivity : ComponentActivity() {
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp, vertical = 24.dp),
             ) {
-                Text(gameName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                Text(
+                    gameName,
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     listOfNotNull(console.title, (playedTodayMs() / 60_000).takeIf { it > 0 }?.let { "played $it min today" })
                         .joinToString(" · "),
@@ -1616,6 +1707,12 @@ class GameActivity : ComponentActivity() {
                         MenuButton("Restart game", BenflixIcon.REFRESH.vector) {
                             onGameThread { RetroNative.reset() }
                             closeMenu()
+                        }
+                        if (discCount > 1) {
+                            MenuButton(
+                                "Swap disc (disc ${discNow + 1} of $discCount is in)",
+                                BenflixIcon.REFRESH.vector,
+                            ) { swapToNextDisc() }
                         }
                         if (sideShow != null && canSideShow) {
                             Group("Watch")
@@ -1851,3 +1948,6 @@ class GameActivity : ComponentActivity() {
         private val STRIP = 28.dp
     }
 }
+
+/** Benflix "Didn't start" list: how long between the two black-screen checks */
+private const val BLACK_CHECK_GAP_MS = 15_000L

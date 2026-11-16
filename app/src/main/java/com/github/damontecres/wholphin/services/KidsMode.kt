@@ -51,7 +51,19 @@ object KidsMode {
         seriesRatings.clear()
         isBig = on && big
         _active.value = on
+        // The Kids look (Sky and Sunshine) follows straight away, before the next screen is drawn
+        com.github.damontecres.wholphin.ui.theme.KidsLook
+            .refresh(on)
     }
+
+    /**
+     * Benflix games: Kids get games rated for everyone; Big kids also get E10+ and Teen ones
+     * (or whatever the main profile switched on in Server > Tools > Kids games)
+     */
+    fun allowsGame(
+        kids: Boolean,
+        bigKids: Boolean,
+    ): Boolean = !isActive || kids || (isBig && bigKids)
 
     /** Highest rating the server is asked for */
     private val maxRating: String get() = if (isBig) "PG-13" else "PG"

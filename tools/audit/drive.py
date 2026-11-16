@@ -550,7 +550,7 @@ def sign_in():
                 tap(n)
             time.sleep(4)
             continue
-        n = find(root, r"^Add profile$")
+        n = find(root, r"^Add profile$|^Add someone$")
         if n is not None:
             tap(n)
             time.sleep(2)
@@ -587,6 +587,9 @@ def welcome_setup():
     for _ in range(40):
         root = dump()
         step = find(root, r"^Step \d+ of \d+$")
+        # TV: moving down scrolls the step dots off the top; still the same step while its buttons show
+        if step is None and seen and find(root, r"^Next$|^Back$|^Skip for now$|^Looks good$|^No thanks$") is not None:
+            step = ET.Element("node", {"text": seen[-1]})
         if step is None:
             # the "You're all set" screen has no step dots
             n = find(root, r"^Go to Home$")
@@ -616,7 +619,7 @@ def welcome_setup():
         # (once picked it shows a tick; on TV the explanation underneath can also read just
         # "Only for other languages", so don't keep pressing it)
         n = find(root, r"^Only for other languages$")
-        if n is not None and find(root, r"^✓ ") is None:
+        if n is not None and find(root, r"^✓ ") is None and tries[label] <= 1:
             tap(n)
             time.sleep(1.5)
             continue
@@ -631,10 +634,17 @@ def welcome_setup():
         for b in buttons:
             n = find(root, b)
             if n is not None:
+                log(f"welcome {label}: pressing '{n.get('text') or n.get('content-desc')}' (try {tries[label]})")
                 tap(n)
                 time.sleep(2)
+                if tries[label] in (2, 5):
+                    shot(f"welcome-{label.split()[1]}-try{tries[label]}")
                 break
         else:
+            # TV: the button can sit below the bottom of the screen until the remote moves down to it
+            if MODE == "tv" and tries[label] <= 3:
+                key("DPAD_DOWN", 3, wait=0.5)
+                continue
             REPORT["problems"].append({"type": "welcome setup: no button to go on", "text": label})
             break
     REPORT["welcome_steps"] = seen

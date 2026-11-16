@@ -42,6 +42,7 @@ const P = {
   vol: '<path d="M11 5 6 9H2v6h4l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
   mute: '<path d="M11 5 6 9H2v6h4l5 4V5ZM22 9l-6 6M16 9l6 6"/>',
   full: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  pip: '<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="7" rx="1"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   dl: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   trailer: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/>',
@@ -73,8 +74,36 @@ B.saveProfiles = (list) => store("benflix.profiles", JSON.stringify(list));
 B.me = null;
 B.pick = (id) => {
   B.me = B.profiles().find((p) => p.id === id) || null;
+  B.reqFor = null;
   if (B.me) store("benflix.last", B.me.id);
+  if (B.kidsLook) B.kidsLook();
   B.cache = {};
+  if (B.me) B.englishSubs();
+};
+// Subtitles are English unless someone picked another language. A profile that never picked one
+// gets English saved on the server, so Jellyfin picks English subtitle tracks for this player too.
+B.englishSubs = async () => {
+  const id = B.me && B.me.id;
+  try {
+    const me = await B.get(`/Users/${enc(id)}`);
+    const cfg = me && me.Configuration;
+    if (cfg && B.me && B.me.id === id) B.subPref = cfg.SubtitleLanguagePreference || "eng";
+    if (!cfg || cfg.SubtitleLanguagePreference || !B.me || B.me.id !== id) return;
+    cfg.SubtitleLanguagePreference = "eng";
+    await B.jf("POST", `/Users/Configuration?userId=${enc(id)}`, cfg).catch(() => B.jf("POST", `/Users/${enc(id)}/Configuration`, cfg));
+  } catch (e) { /* tries again next time this profile is picked */ }
+};
+// Jellyfin turns on any subtitle track marked "default" or "forced" inside the file, in any language.
+// That showed German words for a few seconds after the intro on The Big Bang Theory. A track that
+// turned on by itself must be in your subtitle language (English unless you picked another) or not marked.
+B.autoSub = (streams, subIndex) => {
+  if (subIndex == null || subIndex < 0) return -1;
+  const sub = (streams || []).find((s) => s.Type === "Subtitle" && s.Index === subIndex);
+  if (!sub) return subIndex;
+  const lang = (sub.Language || "").toLowerCase();
+  if (!lang || lang === "und" || lang === "unknown") return subIndex;
+  const want = (B.subPref || "eng").toLowerCase();
+  return lang === want || (want === "eng" && lang === "en") ? subIndex : -1;
 };
 B.addProfile = (s) => {
   const list = B.profiles().filter((p) => p.id !== s.id);
@@ -101,7 +130,48 @@ B.picHtml = (p, cls, size) => {
 };
 
 // ---------- talking to the helper ----------
+// ---------- Ben's "Request for" (2026-11-16): ask for something in someone else's name ----------
+// Admins only, never Kids. It's theirs: their Your requests, their "it's ready" news. Starts on Me again
+// after 20 minutes without asking, or when the profile changes.
+B.reqFor = null; // { id, name, seerr, owner, at }
+B.reqForNow = () => {
+  const r = B.reqFor;
+  if (!r || !B.me || !B.me.admin || B.me.kids || r.owner !== B.me.id || Date.now() - r.at > 20 * 60000) { B.reqFor = null; return null; }
+  r.at = Date.now();
+  return r;
+};
+B.family = () => B.cached("family", 300000, () => B.call("GET", "api/family").then((d) => (d.people || []).filter((p) => p.id.replace(/-/g, "").toLowerCase() !== String(d.me || "").replace(/-/g, "").toLowerCase())));
+// A "For: Me" picker; put B.reqForHtml() in a page, then call B.reqForFill(root)
+B.reqForHtml = () => (B.me && B.me.admin && !B.me.kids ? `<label class="reqfor" title="Who is this request for?">For <select data-reqfor><option value="">Me</option></select></label>` : "");
+B.reqForFill = async (root) => {
+  const sels = $$("[data-reqfor]", root || document);
+  if (!sels.length) return;
+  const people = await B.family().catch(() => []);
+  const cur = B.reqForNow();
+  sels.forEach((sel) => {
+    sel.innerHTML = `<option value="">Me</option>` + people.map((p) => `<option value="${esc(p.id)}" ${cur && cur.id === p.id ? "selected" : ""}>${esc(p.name)}${p.seerr ? "" : " (music and books only)"}</option>`).join("");
+    sel.closest(".reqfor").classList.toggle("on", !!cur);
+    sel.onchange = () => {
+      const p = people.find((x) => x.id === sel.value);
+      B.reqFor = p ? { id: p.id, name: p.name, seerr: p.seerr || null, owner: B.me.id, at: Date.now() } : null;
+      $$("[data-reqfor]").forEach((o) => { o.value = sel.value; o.closest(".reqfor").classList.toggle("on", !!p); });
+      if (p) B.toast(`Anything you ask for now is ${p.name}'s. They'll be told when it's ready.`);
+    };
+  });
+};
+const reqForBody = (method, path, body) => {
+  if (method !== "POST" || !body || typeof body !== "object") return body;
+  const isSeerr = path === "api/web/jf/JellyfinEnhanced/jellyseerr/request";
+  if (!isSeerr && path !== "api/music/request" && path !== "api/books/request") return body;
+  const r = B.reqForNow();
+  if (!r) return body;
+  if (!isSeerr) return Object.assign({}, body, { for: r.id });
+  if (!r.seerr) throw new Error(`${r.name} isn't set up in Seerr yet. Pick Me, or bring them into Seerr (Seerr > Users > Import Jellyfin users).`);
+  return Object.assign({}, body, { userId: r.seerr });
+};
+
 B.call = async (method, path, body, opts) => {
+  body = reqForBody(method, path, body);
   const who = (opts && opts.profile) || B.me;
   const headers = { Accept: "application/json" };
   if (who) { headers["X-Benflix-Token"] = who.token; headers["X-Benflix-Device"] = who.device || ""; }
@@ -201,7 +271,13 @@ B.go = (hash, opts) => {
 B.back = () => (history.length > 1 ? history.back() : B.go("#/home"));
 B.page = () => $("#page");
 B.nav = 0;
+// Back (or opening the same door again within 10 minutes) comes back where you were on the page, like the TV
+const spots = {};
+let shownHash = "";
+const KEEPS_PLACE = /^#\/(home|movies|shows|music|books|live|games|requests|search|grid|mgrid|browse|songs|liked|mine)\b/;
 B.render = async () => {
+  if (shownHash && KEEPS_PLACE.test(shownHash)) spots[shownHash] = { y: window.scrollY, at: Date.now() };
+  shownHash = location.hash || "#/who";
   timers.forEach(clearInterval); timers = [];
   const l = leaving; leaving = [];
   l.forEach((f) => { try { f(); } catch (e) {} });
@@ -217,7 +293,16 @@ B.render = async () => {
     const m = hash.slice(1).match(re);
     if (m) {
       window.scrollTo(0, 0);
+      B.placeName = "";
       try { await fn(m, nav); } catch (e) { if (nav === B.nav) B.fail(e); }
+      if (nav === B.nav) B.where(hash);
+      const spot = spots[hash];
+      if (spot && spot.y > 0 && Date.now() - spot.at < 6e5 && nav === B.nav) {
+        // rows can still be loading in: try now and once more when they have
+        const put = () => { if (nav === B.nav && window.scrollY < 5) window.scrollTo(0, Math.min(spot.y, document.documentElement.scrollHeight - innerHeight)); };
+        put();
+        setTimeout(put, 700);
+      }
       return;
     }
   }
@@ -232,9 +317,43 @@ B.fail = (e) => {
 window.addEventListener("hashchange", B.render);
 B.q = (k) => new URLSearchParams((location.hash.split("?")[1] || "")).get(k);
 
+// ---------- "Where am I" line (Idea Box 24) ----------
+// Deeper pages show a small "Movies > Action > Die Hard" in the top bar, in place of the door name.
+// Click any part to jump back to it. The trail lives for this tab only.
+const TRAIL_KEY = "benflix.trail";
+B.placeName = "";
+B.where = (hash) => {
+  let trail = [];
+  try { trail = JSON.parse(sessionStorage.getItem(TRAIL_KEY) || "[]"); } catch (e) {}
+  const page = hash.split("?")[0];
+  if (/^#\/(home|who|signin)$/.test(page)) trail = [];
+  // A door or a page from the top bar starts a new line (Movies then Shows isn't "Movies > Shows")
+  if (/^#\/(movies|shows|live|music|games|books|requests|search|settings(\/\w+)?|help(\/\w+)?|mine|lobby)$/.test(page)) trail = [];
+  const name = B.placeName || "";
+  const at = trail.findIndex((t) => t.h === hash);
+  if (at >= 0) trail = trail.slice(0, at + 1);
+  else if (name && trail.length && trail[trail.length - 1].n === name) trail[trail.length - 1] = { h: hash, n: name.slice(0, 80) };
+  else if (name) trail.push({ h: hash, n: name.slice(0, 80) });
+  trail = trail.slice(-6);
+  try { sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail)); } catch (e) {}
+  let place = $(".top .place");
+  if (!place && $(".top .homelink") && trail.length >= 2) {
+    place = document.createElement("span");
+    place.className = "place";
+    $(".top .homelink").after(place);
+  }
+  if (!place || trail.length < 2 || /^#\/(home|who|signin|play|game|read)/.test(page)) return;
+  const steps = trail.slice(-4);
+  place.classList.add("where");
+  place.innerHTML = steps.map((t, i) => (i === steps.length - 1 || t.h === hash
+    ? `<b>${esc(t.n)}</b>`
+    : `<a href="${esc(t.h)}">${esc(t.n)}</a>`)).join('<span class="sep">›</span>');
+};
+
 // ---------- top bar ----------
 B.top = (place, color, opts) => {
   opts = opts || {};
+  if (place) B.placeName = place;
   const now = new Date();
   const t = B.clock(now).split(" ");
   return `<header class="top ${opts.solid ? "solid" : ""}">
@@ -417,7 +536,10 @@ B.doorOf = (it) => {
       if (name) {
         const d = document.createElement("div");
         d.className = "noart";
-        d.textContent = name;
+        const nt = document.createElement("span");
+        nt.className = "nt";
+        nt.textContent = name;
+        d.appendChild(nt);
         const it = card.dataset.id && B.items[card.dataset.id];
         if (it && it.Type) d.style.setProperty("--door", B.doorOf(it));
         im.appendChild(d);
@@ -491,7 +613,7 @@ B.posterCard = (it, opts) => {
   const newCount = it.Type === "Series" && ud.UnplayedItemCount && opts.newCount ? opts.newCount : 0;
   const year = it.ProductionYear ? String(it.ProductionYear) : "";
   return `<a class="poster" href="${opts.href || B.hrefOf(it)}" data-id="${esc(it.Id)}" title="${esc(it.Name)}">
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(it.SeriesName || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(it.SeriesName || it.Name)}</span></div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}
@@ -507,7 +629,7 @@ B.wideCard = (it, opts) => {
   const pct = ud.PlayedPercentage ? Math.min(100, ud.PlayedPercentage) : 0;
   const soon = opts.soon;
   return `<${soon ? "div" : "a"} class="wide ${soon ? "soon" : ""}" ${soon ? "" : `href="${opts.href || B.hrefOf(it)}"`} data-id="${esc(it.Id)}" ${opts.play ? `data-play="${esc(it.Id)}"` : ""}>
-    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}">${esc(opts.title || it.Name)}</div>`}
+    <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(opts.title || it.Name)}</span></div>`}
       ${pct && !ud.Played ? `<div class="prog" style="position:absolute;left:10px;right:10px;bottom:9px;height:4px;border-radius:2px;background:rgba(0,0,0,.55);overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:#fff"></i></div>` : ""}
       ${ud.Played ? `<span class="tick" style="position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center">${I("check")}</span>` : ""}
       ${opts.tag ? `<span class="tag">${esc(opts.tag)}</span>` : ""}
@@ -716,3 +838,28 @@ B.install = async () => {
 if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+
+// Idea Box 24 "The Play button plays": press P on a poster (picked with Tab, or under the mouse) and it
+// starts right away, from where you left off. A show plays its next episode. Enter still opens the page.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "p" && e.key !== "P") return;
+  if (e.ctrlKey || e.metaKey || e.altKey || !B.me) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (/^#\/(play|playgame|read)/.test(location.hash)) return;
+  const hovered = Array.from(document.querySelectorAll(":hover")).reverse().map((x) => x.closest && x.closest("[data-id]")).find(Boolean);
+  const card = (t && t.closest && t.closest("[data-id]")) || hovered;
+  if (!card) return;
+  const it = B.items[card.dataset.id];
+  if (!it) return;
+  e.preventDefault();
+  if (["Movie", "Episode", "Video", "MusicVideo"].includes(it.Type)) return B.go(`#/play/${it.Id}?resume=1`);
+  if (it.Type === "Series") {
+    B.get(`/Shows/NextUp?SeriesId=${it.Id}&UserId=${B.uid()}&Limit=1&EnableResumable=true`)
+      .then((r) => (r.Items || [])[0] || B.get(`/Shows/${it.Id}/Episodes?UserId=${B.uid()}&Limit=1`).then((x) => (x.Items || [])[0]))
+      .then((ep) => B.go(ep ? `#/play/${ep.Id}?resume=1` : B.hrefOf(it)))
+      .catch(() => B.go(B.hrefOf(it)));
+    return;
+  }
+  B.go(B.hrefOf(it));
+});

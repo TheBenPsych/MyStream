@@ -158,9 +158,13 @@ fun CantFindDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BenflixCantFind.QUICK_NOTES.forEach { note ->
-                    Button(onClick = { onMark(note) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(note, maxLines = 1) }
+                    Button(onClick = {
+                        onMark(note)
+                    }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text(note, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                Button(onClick = { onMark(null) }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("No note", maxLines = 1) }
+                Button(onClick = {
+                    onMark(null)
+                }, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("No note", maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             OutlinedTextField(
                 value = typed,
@@ -179,9 +183,11 @@ fun CantFindDialog(
                     Button(
                         onClick = { onMark(typed) },
                         scale = ButtonDefaults.scale(focusedScale = 1f),
-                    ) { Text("Save my note", maxLines = 1) }
+                    ) { Text("Save my note", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                    Text("Cancel", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
@@ -252,7 +258,7 @@ fun CantFindBlock(
                 Button(
                     onClick = { viewModel.undo(key) },
                     scale = ButtonDefaults.scale(focusedScale = 1f),
-                ) { Text("Try again", maxLines = 1) }
+                ) { Text("Try again", maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
         CantFindNoteLine(entry)
@@ -287,9 +293,13 @@ fun CantFindOnlyRow(
 ) {
     val isTv = rememberIsTv()
     val buttons: @Composable () -> Unit = {
-        Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Details", maxLines = 1, softWrap = false) }
+        Button(onClick = onOpen, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+            Text("Details", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+        }
         onTryAgain?.let {
-            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Try again", maxLines = 1, softWrap = false) }
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Try again", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
         }
     }
     Column(
@@ -345,6 +355,7 @@ fun CantFindOnlyRow(
                         fontWeight = FontWeight.Bold,
                         color = CANT_FIND_COLOR,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         softWrap = false,
                     )
                 }

@@ -60,6 +60,16 @@ class UserSwitchListener
                         }
                     }
             }
+            // Benflix: the server's address changed while in use (came home, left home): bring Requests along
+            context.lifecycleScope.launchDefault {
+                serverRepository.addressChanged.collect {
+                    try {
+                        benflixSeerrLink.afterAddressChange()
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Couldn't move Requests to the new address")
+                    }
+                }
+            }
             context.lifecycleScope.launchDefault {
                 serverRepository.currentUserFlow
                     .distinctUntilChanged { old, new ->

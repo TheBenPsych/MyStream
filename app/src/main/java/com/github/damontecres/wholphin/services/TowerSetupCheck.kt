@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 2
+            const val SETUP_NEEDED = 9
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -82,6 +82,37 @@ class TowerSetupCheck
                             "Safer ebook reading: book pages can't run hidden code",
                             "Other websites can't show Benflix inside their pages",
                         ),
+                    3 to
+                        listOf(
+                            "Kids accounts in the web browser only see titles rated for kids",
+                            "Games in more console folders (like ps1 or fds) play everywhere",
+                        ),
+                    4 to
+                        listOf(
+                            "Kids and Big kids game choices, and the \"Games that didn't start\" list",
+                            "Games on more than one disc, and browser play for games made of several files",
+                            "Drive health from Scrutiny on the Server page",
+                        ),
+                    5 to
+                        listOf(
+                            "The family can ask for music (it waits for Ben's Approve)",
+                        ),
+                    6 to
+                        listOf(
+                            "The Lobby: a 3D room in web Benflix to watch together, chat and play pool",
+                        ),
+                    7 to
+                        listOf(
+                            "TVs find Tower on the Wi-Fi by themselves, even after Tower's address changes",
+                        ),
+                    8 to
+                        listOf(
+                            "Phones and TVs learn every way to reach Tower (home, internet name, Tailscale) so they never get stuck on one",
+                        ),
+                    9 to
+                        listOf(
+                            "Tower installs helper updates by itself, only when nobody is watching (this is the last time you'll need this command)",
+                        ),
                 )
 
             /** The command, exactly as Ben pastes it into Unraid's Terminal */
@@ -90,9 +121,9 @@ class TowerSetupCheck
                     "benflix-games-helper-setup.sh | bash ; true"
 
             const val WHERE =
-                "On your computer, open Unraid in the browser (http://10.0.0.58), click the Terminal button " +
-                    "(the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, " +
-                    "and Benflix keeps working while it runs."
+                "On your computer, open Unraid in the browser (http://tower, or Tower's home address), " +
+                    "click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. " +
+                    "It takes about a minute, and Benflix keeps working while it runs."
 
             private const val MIN_GAP_MS = 60_000L
         }

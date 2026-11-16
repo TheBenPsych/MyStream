@@ -148,6 +148,7 @@ fun BooksKidsPage(
                                 color = BenflixColors.Muted,
                                 fontSize = BenflixType.small,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         Switch(checked = b.allowed, onCheckedChange = null)

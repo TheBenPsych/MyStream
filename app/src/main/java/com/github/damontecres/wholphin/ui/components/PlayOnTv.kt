@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -343,7 +344,13 @@ fun PhoneRemoteDialog(
                             fontSize = BenflixType.small,
                             color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Music,
                         )
-                        Text(song, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 2)
+                        Text(
+                            song,
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             RemoteKey("⏮") { viewModel.playstate(tv, PlaystateCommand.PREVIOUS_TRACK) }
                             RemoteKey("⏯", highlight = true) { viewModel.playstate(tv, PlaystateCommand.PLAY_PAUSE) }

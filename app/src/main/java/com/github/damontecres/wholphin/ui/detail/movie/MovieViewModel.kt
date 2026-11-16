@@ -13,7 +13,10 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
+import com.github.damontecres.wholphin.services.AskKind
+import com.github.damontecres.wholphin.services.AskMore
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.BenflixLibraryTmdb
 import com.github.damontecres.wholphin.services.CollectionLookup
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.ExtrasService
@@ -69,6 +72,7 @@ class MovieViewModel
     constructor(
         private val api: ApiClient,
         private val seerrService: SeerrService,
+        private val libraryTmdb: BenflixLibraryTmdb,
         @param:ApplicationContext private val context: Context,
         private val navigationManager: NavigationManager,
         val serverRepository: ServerRepository,
@@ -190,12 +194,11 @@ class MovieViewModel
                     }
                 }
                 viewModelScope.launchIO {
-                    val results = seerrService.moreToAsk(movie).orEmpty()
-                    _state.update {
-                        it.copy(
-                            discovered = results,
-                        )
-                    }
+                    val ask = seerrService.moreToAsk(movie) ?: AskMore.EMPTY
+                    // Benflix: the real library check (Seerr's own "available" runs behind)
+                    val best = libraryTmdb.notOnBenflix(ask.best)
+                    val more = libraryTmdb.notOnBenflix(ask.more)
+                    _state.update { it.copy(discovered = best, discoveredMore = more, askKind = ask.kind) }
                 }
 
                 if (state.value.similar.isEmpty()) {
@@ -371,6 +374,9 @@ data class MovieState(
     val extras: List<ExtrasItem> = emptyList(),
     val similar: List<BaseItem> = emptyList(),
     val discovered: List<DiscoverItem> = emptyList(),
+    /** Benflix "Ask for similar" tab: popular titles of the same kind, after [discovered]'s closest matches */
+    val discoveredMore: List<DiscoverItem> = emptyList(),
+    val askKind: AskKind = AskKind.LIVE,
     val chosenStreams: ChosenStreams? = null,
     val canDelete: Boolean = false,
     /** Benflix "More from this director" */

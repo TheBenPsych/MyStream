@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -449,8 +450,8 @@ private fun GridChip(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) BenflixColors.Text else BenflixColors.Raised,
                 contentColor = if (selected) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 pressedContainerColor = BenflixColors.Text,
                 pressedContentColor = BenflixColors.Tray,
             ),
@@ -462,6 +463,7 @@ private fun GridChip(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = if (small) 10.dp else 14.dp, vertical = if (small) 4.dp else 7.dp),
         )
     }
@@ -485,11 +487,19 @@ private fun SearchBox(
                 .width(180.dp)
                 .onFocusChanged { focused = it.isFocused }
                 .background(BenflixColors.Raised, shape)
-                .border(if (focused) 3.dp else 1.dp, if (focused) BenflixColors.Text else BenflixColors.Line, shape),
+                .border(if (focused) 3.dp else 1.dp, if (focused) BenflixColors.Focus else BenflixColors.Line, shape),
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 14.dp, vertical = 7.dp)) {
                 Box {
-                    if (value.isEmpty()) Text("Search this list", color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+                    if (value.isEmpty()) {
+                        Text(
+                            "Search this list",
+                            color = BenflixColors.Muted,
+                            fontSize = BenflixType.small,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     inner()
                 }
             }

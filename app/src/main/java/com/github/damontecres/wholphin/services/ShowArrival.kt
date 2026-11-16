@@ -79,6 +79,34 @@ class ShowArrival
                 }
             }
 
+        /**
+         * Benflix (Ben, 2026-11-16): for the Requests page. Is this whole show on Benflix?
+         * true = every aired episode is here (hide it), false = it's here but missing aired episodes,
+         * null = it isn't on Benflix at all. [tv] is Seerr's /tv/{id} answer, [jellyfinId] the show in Jellyfin
+         * when we found it ourselves (Seerr's own link is used otherwise).
+         */
+        suspend fun wholeShowHere(
+            tv: JsonObject,
+            jellyfinId: UUID?,
+        ): Boolean? {
+            val media = tv["mediaInfo"] as? JsonObject
+            val seerrStatus = media.int("status")
+            val id = jellyfinId ?: media.text("jellyfinMediaId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+            if (id == null) {
+                return when (seerrStatus) {
+                    SeerrAvailability.AVAILABLE.status -> true
+                    SeerrAvailability.PARTIALLY_AVAILABLE.status -> false
+                    else -> null
+                }
+            }
+            val aired = airedEpisodes(tv)
+            val have = jellyfinEpisodes(id)
+            // Nothing aired that we know of (or Jellyfin has none counted): it's on Benflix, nothing to add
+            if (aired.isEmpty()) return true
+            if (have != null && have.isEmpty() && seerrStatus == null) return null
+            return decide(aired, aired, seasonStatuses(tv, false), have, currentlyAiring(tv))
+        }
+
         /** Episodes in Jellyfin per season (real files only, specials left out) */
         private suspend fun jellyfinEpisodes(seriesId: UUID): Map<Int, Int>? =
             try {

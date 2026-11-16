@@ -25,6 +25,12 @@ enum class TouchLayout {
 
     /** Stick, A B, four C buttons, Z R L, Start (Nintendo 64) */
     N64,
+
+    /** D-pad, A B C below X Y Z, L R, Start (Sega Saturn) */
+    SATURN,
+
+    /** D-pad, A B C, L R, Stop and Play (3DO) */
+    THREEDO,
 }
 
 /** How much power a console needs from the TV or phone, see [DevicePower] */
@@ -55,6 +61,8 @@ data class LocalConsole(
     val hwRender: Boolean = false,
     /** Moving uses the analog stick: arrows on the remote, phone and keyboard push the stick all the way */
     val analog: Boolean = false,
+    /** Has a touch screen (Nintendo DS): on phones, touching the game picture touches it */
+    val touchScreen: Boolean = false,
     val options: Map<String, String> = emptyMap(),
     val help: List<String>,
 ) {
@@ -298,6 +306,81 @@ data class LocalConsole(
                             "Needs a strong TV box (like an Nvidia Shield) or a good phone",
                         ),
                 ),
+                // Idea Box 24: four more consoles
+                LocalConsole(
+                    key = "nds",
+                    title = "Nintendo DS",
+                    slugs = setOf("nds", "nintendo-ds", "nintendods", "ds"),
+                    core = "melonds",
+                    touch = TouchLayout.SNES,
+                    power = PowerNeed.HEAVY,
+                    touchScreen = true,
+                    bios = setOf("bios7.bin", "bios9.bin", "firmware.bin"),
+                    options =
+                        mapOf(
+                            "melonds_touch_mode" to "Touch",
+                            "melonds_screen_layout" to "Top/Bottom",
+                            "melonds_threaded_renderer" to "enabled",
+                        ),
+                    help =
+                        listOf(
+                            "Both screens show, one above the other. On a phone, touch the bottom screen with your finger",
+                            "Games that need the touch screen all the time are best on a phone",
+                            "Controller buttons sit where they are on a DS",
+                        ),
+                ),
+                LocalConsole(
+                    key = "saturn",
+                    title = "Sega Saturn",
+                    slugs = setOf("saturn", "sega-saturn", "segasaturn"),
+                    core = "yabause",
+                    touch = TouchLayout.SATURN,
+                    power = PowerNeed.HEAVY,
+                    bios = setOf("saturn_bios.bin"),
+                    help =
+                        listOf(
+                            "Controller: bottom row A B C, top row X Y Z, triggers L and R",
+                            "Put saturn_bios.bin in Games/bios on Tower for the best results (games with more than one disc need it)",
+                            "Needs a strong TV box (like an Nvidia Shield) or a good phone",
+                        ),
+                ),
+                LocalConsole(
+                    key = "sega32x",
+                    title = "Sega 32X",
+                    slugs = setOf("sega32", "sega32x", "sega-32x", "32x"),
+                    core = "picodrive",
+                    touch = TouchLayout.GENESIS,
+                    power = PowerNeed.MEDIUM,
+                    help = listOf("Controller: left button A, bottom button B, right button C"),
+                ),
+                LocalConsole(
+                    key = "3do",
+                    title = "3DO",
+                    slugs = setOf("3do", "panasonic-3do", "3do-interactive-multiplayer"),
+                    core = "opera",
+                    touch = TouchLayout.THREEDO,
+                    power = PowerNeed.MEDIUM,
+                    bios =
+                        setOf(
+                            "panafz10.bin",
+                            "panafz1.bin",
+                            "panafz10-norsa.bin",
+                            "panafz10e-anvil.bin",
+                            "panafz10e-anvil-norsa.bin",
+                            "panafz1j.bin",
+                            "panafz1j-norsa.bin",
+                            "goldstar.bin",
+                            "sanyotry.bin",
+                            "panafz1-kanji.bin",
+                            "panafz10ja-anvil-kanji.bin",
+                            "panafz1j-kanji.bin",
+                        ),
+                    help =
+                        listOf(
+                            "Needs a 3DO BIOS file (like panafz10.bin) in Games/bios on Tower",
+                            "Controller: left button A, bottom button B, right button C, Select is Stop, Start is Play",
+                        ),
+                ),
             )
 
         /** Consoles on the way, shown as "coming later" instead of hidden */
@@ -354,6 +437,32 @@ fun buttonLabels(touch: TouchLayout): Map<Int, String> =
                 RetroButton.R2 to "R",
                 RetroButton.SELECT to "L",
                 RetroButton.START to "Start",
+            )
+        }
+
+        TouchLayout.SATURN -> {
+            mapOf(
+                RetroButton.B to "A",
+                RetroButton.A to "B",
+                RetroButton.R to "C",
+                RetroButton.Y to "X",
+                RetroButton.X to "Y",
+                RetroButton.L to "Z",
+                RetroButton.L2 to "L",
+                RetroButton.R2 to "R",
+                RetroButton.START to "Start",
+            )
+        }
+
+        TouchLayout.THREEDO -> {
+            mapOf(
+                RetroButton.Y to "A",
+                RetroButton.B to "B",
+                RetroButton.A to "C",
+                RetroButton.L to "L",
+                RetroButton.R to "R",
+                RetroButton.SELECT to "Stop",
+                RetroButton.START to "Play",
             )
         }
 

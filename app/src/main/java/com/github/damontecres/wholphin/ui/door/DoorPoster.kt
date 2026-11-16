@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.cards.doorColor
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.PosterHoldMenu
+import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
@@ -65,7 +66,7 @@ private val PosterShape = BenflixShapes.Card
 @Composable
 fun doorFocusBorder(shape: androidx.compose.ui.graphics.Shape = PosterShape) =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Text), inset = 0.dp, shape = shape),
+        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
     )
 
 /** How far through it is, 0 to 1 (null when not started or finished) */
@@ -138,7 +139,7 @@ fun DoorPoster(
     // Benflix: holding a poster (finger on phones, OK on TV) opens its menu, unless the page has its own
     var timesHeld by remember(item.id) { mutableIntStateOf(0) }
     if (onLongClick == null && timesHeld > 0) PosterHoldMenu(item, timesHeld)
-    Column(modifier = modifier.width(width)) {
+    Column(modifier = modifier.playButtonPlays(item).width(width)) {
         Surface(
             onClick = onClick,
             onLongClick = onLongClick ?: { timesHeld += 1 },
@@ -172,6 +173,7 @@ fun DoorPoster(
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .align(Alignment.TopStart)
@@ -279,6 +281,7 @@ fun DoorTop10Poster(
                 ),
             color = if (focused) BenflixColors.Text else TOP10_GREY,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .offset(x = pull, y = numberHeight * 0.07f)
@@ -368,6 +371,7 @@ fun BrowseTile(
                 fontSize = if (big) BenflixType.rowName else BenflixType.lead,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

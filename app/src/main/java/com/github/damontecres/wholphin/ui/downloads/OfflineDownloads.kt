@@ -290,6 +290,10 @@ fun OfflineScreen(
     }
     var openDownloads by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
+    // Benflix: Tower moved to a new address? Type it here instead of being stuck on Try again.
+    var askAddress by remember { mutableStateOf(false) }
+    var addressProblem by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val focus =
         remember {
             androidx.compose.ui.focus
@@ -353,6 +357,20 @@ fun OfflineScreen(
                 onClick = { (context as? android.app.Activity)?.recreate() },
                 modifier = if (isTv) Modifier.padding(top = 12.dp).focusRequester(focus) else Modifier,
             )
+            OfflineButton(
+                icon = R.string.fa_location_dot,
+                label = "Change server address",
+                primary = false,
+                onClick = { askAddress = true },
+            )
+            addressProblem?.let {
+                Text(
+                    text = it,
+                    fontSize = BenflixType.small,
+                    color = Color(0xFFFFB4A8),
+                    textAlign = TextAlign.Center,
+                )
+            }
             Text(
                 text = stringResource(if (showDetails) R.string.offline_hide_details else R.string.offline_details),
                 fontSize = BenflixType.small,
@@ -376,6 +394,35 @@ fun OfflineScreen(
                 )
             }
         }
+    }
+    if (askAddress) {
+        com.github.damontecres.wholphin.ui.preferences.StringInputDialog(
+            input =
+                com.github.damontecres.wholphin.ui.preferences.StringInput(
+                    title = "Tower's address (like 192.168.1.105:8096)",
+                    value = "",
+                    keyboardOptions =
+                        androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                        ),
+                    onSubmit = {},
+                ),
+            onSave = { typed ->
+                askAddress = false
+                addressProblem = "Checking…"
+                scope.launch {
+                    val problem =
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            com.github.damontecres.wholphin.data.ServerMoved
+                                .useAddress(context, typed)
+                        }
+                    addressProblem = problem
+                    if (problem == null) (context as? android.app.Activity)?.recreate()
+                }
+            },
+            onDismissRequest = { askAddress = false },
+        )
     }
     if (openDownloads) {
         val viewModel: OfflineDownloadsViewModel = hiltViewModel()
@@ -405,8 +452,8 @@ private fun OfflineButton(
             androidx.tv.material3.ButtonDefaults.colors(
                 containerColor = if (primary) BENFLIX_RED else Color(0xFF333333),
                 contentColor = if (primary) Color(0xFF0B0C10) else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color(0xFF0B0C10),
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier.widthIn(min = 240.dp),
     ) {

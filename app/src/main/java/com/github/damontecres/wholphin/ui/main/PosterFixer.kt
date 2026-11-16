@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -48,6 +49,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -355,6 +357,7 @@ private fun Picture(
             color = Color(0xFFA7A9B0),
             textAlign = TextAlign.Center,
             maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(width),
         )
     }
@@ -376,11 +379,11 @@ private fun FixButton(
             ButtonDefaults.colors(
                 containerColor = if (white) Color.White else Color(0xFF1E2026),
                 contentColor = if (white) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.benflixOuterFocusRing(BenflixShapes.Pill).fillMaxWidth(),
     ) {
         Text(text, fontWeight = FontWeight.Bold, fontSize = BenflixType.body)
     }

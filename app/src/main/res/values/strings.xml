@@ -1020,7 +1020,7 @@
     <string name="new_badge">NEW</string>
     <string name="badge_requested">REQUESTED</string>
     <string name="badge_on_benflix">ON BENFLIX</string>
-    <string name="badge_some_on_benflix">SOME ON BENFLIX</string>
+    <string name="badge_some_on_benflix">MISSING EPISODES</string>
     <string name="theme_halloween">Halloween picks</string>
     <string name="theme_holiday">Holiday favorites</string>
     <string name="theme_date_night">Date night</string>

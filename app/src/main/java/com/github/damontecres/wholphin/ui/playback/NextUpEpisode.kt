@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.Clock
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -155,6 +156,7 @@ fun NextUpEpisode(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -179,13 +181,14 @@ fun NextUpEpisode(
                         ButtonDefaults.colors(
                             containerColor = Color.White.copy(alpha = .75f),
                             contentColor = Color.Black,
-                            focusedContainerColor = Color.White,
-                            focusedContentColor = Color.Black,
+                            focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                            focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                         ),
                     // Takes whatever room is left after "Watch credits", so that button is never cut off
                     modifier =
                         Modifier
                             .weight(1f, fill = false)
+                            .benflixOuterFocusRing(RoundedCornerShape(6.dp))
                             .height(44.dp)
                             .focusRequester(focusRequester),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
@@ -233,8 +236,8 @@ fun NextUpEpisode(
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
@@ -245,6 +248,7 @@ fun NextUpEpisode(
                             fontWeight = FontWeight.Bold,
                             fontSize = BenflixType.body,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -256,8 +260,8 @@ fun NextUpEpisode(
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         contentPadding = PaddingValues(horizontal = 18.dp),
                         modifier = Modifier.height(44.dp),
@@ -268,6 +272,7 @@ fun NextUpEpisode(
                             fontWeight = FontWeight.Bold,
                             fontSize = BenflixType.body,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

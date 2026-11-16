@@ -4,6 +4,7 @@ import android.view.Gravity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -185,6 +187,7 @@ fun BenflixTopBar(
                 fontSize = 22.sp * scale,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 4.dp),
             )
         }
@@ -215,7 +218,12 @@ fun BenflixTopBar(
                 badge = badge,
                 onClick = onClickProfile,
                 pictureSize = 40.dp * scale,
-                modifier = down.focusRequester(profileFocusRequester),
+                // Your picture is the last thing on the bar: Right stays put instead of jumping down onto
+                // whatever sits below on the right (on Home that was a notice's X, which then got cleared)
+                modifier =
+                    down
+                        .focusProperties { right = FocusRequester.Cancel }
+                        .focusRequester(profileFocusRequester),
             )
         }
     }
@@ -256,6 +264,7 @@ fun BenflixPhoneHeader(
     onClickProfile: () -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onHome: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -277,6 +286,13 @@ fun BenflixPhoneHeader(
         BenflixLogo(
             height = 22.dp,
             markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
+            // Benflix Idea Box 24: tapping the logo goes straight Home, from anywhere
+            modifier =
+                if (onHome != null) {
+                    Modifier.clickable(onClickLabel = "Home", onClick = onHome)
+                } else {
+                    Modifier
+                },
         )
         if (door == null) {
             com.github.damontecres.wholphin.ui.main
@@ -289,6 +305,7 @@ fun BenflixPhoneHeader(
                 fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.weight(1f))
@@ -324,6 +341,7 @@ private fun BigClock(scale: Float) {
             fontSize = 25.sp * scale,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         if (suffix.isNotBlank()) {
             Text(
@@ -332,6 +350,7 @@ private fun BigClock(scale: Float) {
                 fontSize = 13.sp * scale,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 4.dp, bottom = 3.dp),
             )
         }
@@ -441,7 +460,7 @@ fun focusRing(shape: androidx.compose.ui.graphics.Shape) =
     ClickableSurfaceDefaults.border(
         focusedBorder =
             Border(
-                border = BorderStroke(2.5.dp, BenflixColors.Text),
+                border = BorderStroke(2.5.dp, BenflixColors.Focus),
                 shape = shape,
             ),
     )
@@ -578,6 +597,7 @@ fun ProfileMenu(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 minutesWatched?.let {
                     Text(
@@ -661,8 +681,8 @@ private fun MenuPill(
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Line,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
@@ -714,6 +734,7 @@ private fun MenuRow(
                 fontSize = 15.sp,
                 fontWeight = if (focused) FontWeight.ExtraBold else FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             item.note?.let {
@@ -723,6 +744,7 @@ private fun MenuRow(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
                             .background(BenflixColors.Text, RoundedCornerShape(50))

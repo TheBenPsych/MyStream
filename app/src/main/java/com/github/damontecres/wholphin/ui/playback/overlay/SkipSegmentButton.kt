@@ -41,14 +41,14 @@ fun SkipSegmentButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), inset = (-4).dp, shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), inset = (-4).dp, shape = shape),
             ),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color(0xFFF2F2F4),
                 contentColor = Color(0xFF0B0C10),
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color(0xFF0B0C10),
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier,
     ) {

@@ -538,8 +538,8 @@ fun SeerrTagsBlock(
                     ClickableSurfaceDefaults.colors(
                         containerColor = Color.Transparent,
                         contentColor = LABEL_GREY,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
+                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                     ),
                 modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -613,8 +613,15 @@ private fun InfoStrip(
                     fontSize = BenflixType.rowName,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = BenflixType.tag, maxLines = 1)
+                Text(
+                    text = score.label,
+                    color = Color(0xFFC9CCD4),
+                    fontSize = BenflixType.tag,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         if (scores.isNotEmpty() && facts.isNotEmpty()) {
@@ -636,7 +643,15 @@ private fun InfoStrip(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                fact.note?.let { Text(text = it, color = Color(0xFFFFB3B3), fontSize = BenflixType.tag, maxLines = 1) }
+                fact.note?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFFFB3B3),
+                        fontSize = BenflixType.tag,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

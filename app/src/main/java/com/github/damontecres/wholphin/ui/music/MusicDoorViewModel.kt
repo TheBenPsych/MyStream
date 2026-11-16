@@ -168,6 +168,7 @@ class MusicDoorViewModel
                 }
                 kotlinx.coroutines.coroutineScope {
                     val mixes = async { library.mixes() }
+                    val themes = async { library.themes() }
                     val playlists = async { safe { library.playlists() } }
                     val liked = async { safe { library.likedCount() } ?: 0 }
                     val recent = async { safe { library.albums(ItemSortBy.DATE_CREATED, descending = true, limit = ROW) } }
@@ -185,6 +186,20 @@ class MusicDoorViewModel
                     val earlyMixes = if (fromSnapshot) mixes.await() else withTimeoutOrNull(MIX_WAIT_MS) { mixes.await() }
                     val mixTiles = earlyMixes.orEmpty().map { MusicTile.Mix(it) }
                     if (mixTiles.isNotEmpty()) rows += MusicRow("mixes", "Made for you", mixTiles)
+                    // Themed playlists (Ben 2026-11-16): holidays and seasons right under Made for you, the
+                    // decades, genres, moods and throwbacks lower down, before Artists. They wait as long as the mixes.
+                    val earlyThemes =
+                        if (fromSnapshot) themes.await() else withTimeoutOrNull(MIX_WAIT_MS) { themes.await() }
+
+                    fun themeRow(
+                        found: com.github.damontecres.wholphin.services.MusicThemes,
+                        group: String,
+                    ): MusicRow? {
+                        val tiles = found.themes.filter { it.group == group }.map { MusicTile.Mix(it) }
+                        if (tiles.isEmpty()) return null
+                        return MusicRow("theme-$group", found.rowTitles[group] ?: THEME_TITLES[group] ?: "Playlists", tiles)
+                    }
+                    earlyThemes?.let { found -> themeRow(found, "season")?.let { rows += it } }
                     publish()
 
                     val playlistTiles =
@@ -224,6 +239,15 @@ class MusicDoorViewModel
                                     .map { it.id }
                             }.distinct()
                             .take(ROW)
+                    val lateThemes = earlyThemes ?: themes.await()
+                    LOWER_THEMES.forEach { group -> themeRow(lateThemes, group)?.let { rows += it } }
+                    if (earlyThemes == null) {
+                        themeRow(lateThemes, "season")?.let { season ->
+                            val at = rows.indexOfFirst { it.key == "playlists" }.takeIf { it >= 0 } ?: 0
+                            rows.add(at, season)
+                        }
+                    }
+                    publish()
                     val artists =
                         (if (artistIds.isNotEmpty()) safe { library.artists(ids = artistIds) }.orEmpty() else emptyList())
                             .ifEmpty { safe { library.artists(limit = ROW) }.orEmpty() }
@@ -272,7 +296,18 @@ class MusicDoorViewModel
             private const val RELOAD_MS = 5 * 60_000L
             private const val MIX_WAIT_MS = 2_500L
             private const val SNAPSHOT_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
-            private const val SNAPSHOT_FORMAT = 1
+            private const val SNAPSHOT_FORMAT = 2
+
+            /** The theme rows lower down the page, in this order */
+            private val LOWER_THEMES = listOf("decade", "genre", "mood", "throwback")
+            private val THEME_TITLES =
+                mapOf(
+                    "season" to "In season",
+                    "decade" to "Decades",
+                    "genre" to "Genres",
+                    "mood" to "Moods and moments",
+                    "throwback" to "Throwbacks",
+                )
 
             /** Each profile's Music page in memory for this run of the app, with when it was saved */
             private val memory = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<MusicRow>>>()

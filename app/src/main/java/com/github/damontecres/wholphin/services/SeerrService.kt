@@ -23,11 +23,17 @@ import com.github.damontecres.wholphin.data.model.hasPermission
 import com.github.damontecres.wholphin.ui.detail.discover.SeerrProfile
 import com.github.damontecres.wholphin.ui.detail.discover.SeerrRequestData
 import com.github.damontecres.wholphin.ui.detail.discover.SeerrRootFolder
+import com.github.damontecres.wholphin.ui.detail.discover.isAnime
+import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.toLocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
@@ -170,60 +176,152 @@ class SeerrService
             }
 
         /**
-         * Benflix: the "Ask for something like it" row on a movie or show page. TMDB's
-         * recommendations first (they match better), topped up with its similar list, leaving out
-         * anything already on Benflix, blocklisted ones and repeats. Empty for Kids and Guest, and
-         * null when Seerr isn't connected (the row then stays hidden).
+         * Benflix (Ben, 2026-11-16): the "Ask for similar" tab on a movie or show page. Only titles of the same
+         * kind as this one: anime gets anime, cartoons get cartoons (non-Japanese animation), live action gets
+         * live action. [AskMore.best] = TMDB's recommendations then its similar list (two pages each);
+         * [AskMore.more] tops that up with popular titles of the same kind sharing this one's genres. Leaves out
+         * blocklisted ones, repeats and what Seerr says is here; callers also run it through
+         * BenflixLibraryTmdb.notOnBenflix for the real library check. Empty for Kids and Guest, null when Seerr
+         * isn't connected (the tab then stays hidden).
          */
-        suspend fun moreToAsk(item: BaseItem): List<DiscoverItem>? {
-            if (KidsMode.isActive || GuestMode.isActive) return emptyList()
+        suspend fun moreToAsk(item: BaseItem): AskMore? {
+            if (KidsMode.isActive || GuestMode.isActive) return AskMore.EMPTY
             if (!active.first()) return null
             val tmdbId =
                 item.data.providerIds
                     ?.get("Tmdb")
-                    ?.toIntOrNull() ?: return emptyList()
+                    ?.toIntOrNull() ?: return AskMore.EMPTY
             val isMovie = item.type == BaseItemKind.MOVIE
-            if (!isMovie && item.type != BaseItemKind.SERIES) return emptyList()
-            val recommended =
+            if (!isMovie && item.type != BaseItemKind.SERIES) return AskMore.EMPTY
+
+            // What kind is this one? Seerr's details know the genres, keywords and language
+            val details =
                 runCatching {
-                    if (isMovie) {
-                        api.moviesApi
-                            .movieMovieIdRecommendationsGet(movieId = tmdbId, page = 1)
-                            .results
-                            ?.map { createDiscoverItem(it) }
-                    } else {
-                        api.tvApi
-                            .tvTvIdRecommendationsGet(tvId = tmdbId, page = 1)
-                            .results
-                            ?.map { createDiscoverItem(it) }
+                    api
+                        .getRaw(if (isMovie) "/movie/$tmdbId" else "/tv/$tmdbId")
+                        ?.let { Json.parseToJsonElement(it).jsonObject }
+                }.getOrNull()
+            val genreIds =
+                (details?.get("genres") as? JsonArray)
+                    .orEmpty()
+                    .mapNotNull { (it as? JsonObject)?.get("id").str()?.toIntOrNull() }
+            val jfGenres =
+                item.data.genres
+                    .orEmpty()
+                    .map { it.lowercase() }
+            val kind =
+                when {
+                    details != null && isAnime(details) -> AskKind.ANIME
+                    details == null && "anime" in jfGenres -> AskKind.ANIME
+                    ANIMATION in genreIds -> AskKind.CARTOON
+                    details == null && "animation" in jfGenres -> AskKind.CARTOON
+                    else -> AskKind.LIVE
+                }
+
+            fun sameKind(d: DiscoverItem): Boolean =
+                when (kind) {
+                    AskKind.ANIME -> d.isAnime
+                    AskKind.CARTOON -> d.isAnimation && !d.isAnime
+                    AskKind.LIVE -> !d.isAnimation
+                }
+
+            fun usable(d: DiscoverItem): Boolean =
+                d.id != tmdbId &&
+                    d.jellyfinItemId == null &&
+                    d.availability != SeerrAvailability.AVAILABLE &&
+                    d.availability != SeerrAvailability.PARTIALLY_AVAILABLE &&
+                    d.availability != SeerrAvailability.BLOCKLISTED &&
+                    d.posterUrl != null &&
+                    sameKind(d)
+
+            suspend fun page(
+                recommended: Boolean,
+                number: Int,
+            ): List<DiscoverItem> =
+                runCatching {
+                    when {
+                        isMovie && recommended -> {
+                            api.moviesApi
+                                .movieMovieIdRecommendationsGet(movieId = tmdbId, page = number)
+                                .results
+                                ?.map { createDiscoverItem(it) }
+                        }
+
+                        isMovie -> {
+                            api.moviesApi
+                                .movieMovieIdSimilarGet(movieId = tmdbId, page = number)
+                                .results
+                                ?.map { createDiscoverItem(it) }
+                        }
+
+                        recommended -> {
+                            api.tvApi
+                                .tvTvIdRecommendationsGet(tvId = tmdbId, page = number)
+                                .results
+                                ?.map { createDiscoverItem(it) }
+                        }
+
+                        else -> {
+                            api.tvApi
+                                .tvTvIdSimilarGet(tvId = tmdbId, page = number)
+                                .results
+                                ?.map { createDiscoverItem(it) }
+                        }
                     }
                 }.getOrNull().orEmpty()
-            val similar =
-                runCatching {
-                    if (isMovie) {
-                        api.moviesApi
-                            .movieMovieIdSimilarGet(movieId = tmdbId)
-                            .results
-                            ?.map { createDiscoverItem(it) }
-                    } else {
-                        api.tvApi
-                            .tvTvIdSimilarGet(tvId = tmdbId)
-                            .results
-                            ?.map { createDiscoverItem(it) }
-                    }
-                }.getOrNull().orEmpty()
-            return (recommended + similar)
-                .asSequence()
-                .filter { it.id != tmdbId }
-                .filter { it.jellyfinItemId == null }
-                .filter {
-                    it.availability != SeerrAvailability.AVAILABLE &&
-                        it.availability != SeerrAvailability.PARTIALLY_AVAILABLE &&
-                        it.availability != SeerrAvailability.BLOCKLISTED
-                }.filter { it.posterUrl != null }
-                .distinctBy { it.id }
-                .take(20)
-                .toList()
+
+            val best =
+                (page(true, 1) + page(true, 2) + page(false, 1) + page(false, 2))
+                    .filter(::usable)
+                    .distinctBy { it.id }
+                    .take(30)
+
+            // Top up with popular titles of the same kind sharing this one's main genres (TMDB: "," = all of them)
+            val mainGenres = genreIds.filter { it != ANIMATION }.take(2)
+            val genreSets =
+                buildList {
+                    if (mainGenres.size > 1) add(mainGenres.joinToString(","))
+                    mainGenres.firstOrNull()?.let { add(it.toString()) }
+                    if (isEmpty()) add(null)
+                }.map { genres ->
+                    if (kind == AskKind.CARTOON) listOfNotNull(ANIMATION.toString(), genres).joinToString(",") else genres
+                }.let {
+                    // Plain Animation too, so anime and cartoons still fill up when the genre mix is thin
+                    if (kind == AskKind.LIVE) it else it + ANIMATION.toString()
+                }
+            val keywords = if (kind == AskKind.ANIME) ANIME_KEYWORD.toString() else null
+            val seen = best.map { it.id }.toSet()
+            val more =
+                genreSets
+                    .flatMap { genres -> listOf(1, 2).map { genres to it } }
+                    .flatMap { (genres, number) ->
+                        runCatching {
+                            if (isMovie) {
+                                api.searchApi
+                                    .discoverMoviesGet(
+                                        page = number,
+                                        genre = genres,
+                                        keywords = keywords,
+                                        sortBy = "popularity.desc",
+                                        voteCountGte = 30,
+                                    ).results
+                                    ?.map { createDiscoverItem(it) }
+                            } else {
+                                api.searchApi
+                                    .discoverTvGet(
+                                        page = number,
+                                        genre = genres,
+                                        keywords = keywords,
+                                        sortBy = "popularity.desc",
+                                        voteCountGte = 30,
+                                    ).results
+                                    ?.map { createDiscoverItem(it) }
+                            }
+                        }.getOrNull().orEmpty()
+                    }.filter { usable(it) && it.id !in seen }
+                    .distinctBy { it.id }
+                    .take(30)
+            return AskMore(kind = kind, best = best, more = more)
         }
 
         /**
@@ -494,6 +592,7 @@ class SeerrService
                         ?.toDoubleOrNull()
                         ?.takeIf { it > 0 },
                 isAnime = movie.genreIds?.contains(16) == true && movie.originalLanguage == "ja",
+                isAnimation = movie.genreIds?.contains(16) == true,
             )
 
         suspend fun createDiscoverItem(movie: MovieDetails): DiscoverItem =
@@ -534,6 +633,7 @@ class SeerrService
                         ?.toDoubleOrNull()
                         ?.takeIf { it > 0 },
                 isAnime = tv.genreIds?.contains(16) == true && tv.originalLanguage == "ja",
+                isAnimation = tv.genreIds?.contains(16) == true,
             )
 
         suspend fun createDiscoverItem(tv: TvDetails): DiscoverItem =
@@ -656,3 +756,28 @@ val MediaInfo.jellyfinId: UUID?
 
 val MediaInfo.jellyfinIdAsString: String?
     get() = jellyfinMediaId4k ?: jellyfinMediaId
+
+/** Benflix: which kind of title the "Ask for similar" tab sticks to */
+enum class AskKind(
+    val label: String,
+) {
+    ANIME("anime"),
+    CARTOON("cartoons"),
+    LIVE("live action"),
+}
+
+/** Benflix: the "Ask for similar" tab's two rows (see SeerrService.moreToAsk) */
+data class AskMore(
+    val kind: AskKind,
+    val best: List<DiscoverItem>,
+    val more: List<DiscoverItem>,
+) {
+    val isEmpty get() = best.isEmpty() && more.isEmpty()
+
+    companion object {
+        val EMPTY = AskMore(AskKind.LIVE, emptyList(), emptyList())
+    }
+}
+
+private const val ANIMATION = 16
+private const val ANIME_KEYWORD = 210024

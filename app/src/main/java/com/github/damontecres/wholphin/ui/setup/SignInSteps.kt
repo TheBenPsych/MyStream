@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -413,13 +414,14 @@ private fun TvField(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
-            Text(label, color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1)
+            Text(label, color = BenflixColors.Muted, fontSize = BenflixType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 text = shown.ifEmpty { " " },
                 color = BenflixColors.Text,
                 fontSize = BenflixType.lead,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Box(
                 Modifier
@@ -559,6 +561,7 @@ internal fun Answer(
                 fontSize = BenflixType.pageTitle,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 modifier =
                     Modifier
@@ -663,7 +666,7 @@ internal fun SignInButton(
             ClickableSurfaceDefaults.border(
                 focusedBorder =
                     androidx.tv.material3.Border(
-                        border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                        border = androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                         inset = (-4).dp,
                         shape = shape,
                     ),
@@ -679,7 +682,13 @@ internal fun SignInButton(
             if (icon != null) {
                 BenflixIconImage(icon, color = if (white) BenflixColors.Tray else BenflixColors.Text, size = 26.dp)
             }
-            Text(text = label, fontSize = if (big) BenflixType.lead else BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                text = label,
+                fontSize = if (big) BenflixType.lead else BenflixType.body,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -835,8 +844,8 @@ private fun Key(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (lit) BenflixColors.Soft else BenflixColors.Raised,
                 contentColor = if (lit) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 pressedContainerColor = BenflixColors.Text,
                 pressedContentColor = BenflixColors.Tray,
             ),
@@ -857,6 +866,7 @@ private fun Key(
                     },
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

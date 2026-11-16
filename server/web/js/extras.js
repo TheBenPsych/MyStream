@@ -1,7 +1,7 @@
 /* Benflix web: pieces the TV and phone app already had on movie, show and people pages, brought to
    the browser (2026-11-10 "Find features missing from web"):
      - "Part 1 of 3" + In this collection (movies in a collection)
-     - Ask for more like this (titles like this one that aren't on Benflix yet, from Requests)
+     - Ask for similar tab (titles of the same kind that aren't on Benflix yet, from Requests)
      - Parents' guide (IMDb's guide, through Tower)
      - Season 4 is out. Ask for it (once you've watched everything of a show)
      - Anime extras: AniList score, English and Japanese names, next episode countdown, fan tags,
@@ -66,27 +66,48 @@
     add(box || $("#below"), B.row(`In this collection`, kids.map((k) => B.posterCard(k)), { id: "inColl" }));
   };
 
-  // ---------- Ask for more like this ----------
+  // ---------- Ask for similar (its own tab) ----------
+  // Benflix (Ben, 2026-11-16): only titles of the same kind (anime -> anime, cartoons -> cartoons, live
+  // action -> live action) that aren't on Benflix yet, checked against the real Jellyfin library.
+  // "Closest matches" = TMDB's recommendations + similar; "More ... to ask for" = popular ones sharing its genres.
   X.askMore = async (it, nav, box) => {
     const tmdb = tmdbOf(it);
-    if (!tmdb || !(await requestsOn())) return;
+    if (!tmdb || !box || !(await requestsOn())) return;
     const kind = it.Type === "Movie" ? "movie" : "tv";
-    const [rec, sim] = await Promise.all([
-      B.seerr(`/${kind}/${tmdb}/recommendations?page=1`).catch(() => null),
-      B.seerr(`/${kind}/${tmdb}/similar?page=1`).catch(() => null),
-    ]);
-    if (!B.alive(nav)) return;
-    const seen = new Set();
-    const list = [...((rec && rec.results) || []), ...((sim && sim.results) || [])].filter((r) => {
-      if (!r || r.id === tmdb || seen.has(r.id) || !r.posterPath) return false;
-      seen.add(r.id);
+    const [d, lib] = await Promise.all([B.seerr(`/${kind}/${tmdb}`).catch(() => null), B.libTmdb ? B.libTmdb().catch(() => null) : null]);
+    const genres = ((d && d.genres) || []).map((g) => g.id);
+    const kw = ((d && d.keywords) || []).some((k) => k.id === 210024 || String(k.name).toLowerCase() === "anime");
+    const jfGenres = (it.Genres || []).map((g) => g.toLowerCase());
+    const sort = d
+      ? (kw || (genres.includes(16) && d.originalLanguage === "ja") ? "anime" : genres.includes(16) ? "cartoon" : "live")
+      : (jfGenres.includes("anime") ? "anime" : jfGenres.includes("animation") ? "cartoon" : "live");
+    const label = { anime: "anime", cartoon: "cartoons", live: "live action" }[sort];
+    const same = (r) => {
+      const anim = (r.genreIds || []).includes(16);
+      const anime = anim && r.originalLanguage === "ja";
+      return sort === "anime" ? anime : sort === "cartoon" ? anim && !anime : !anim;
+    };
+    const seen = new Set([tmdb]);
+    const keep = (list) => list.filter((r) => {
+      if (!r || seen.has(r.id) || !r.posterPath || !same(r)) return false;
       const s = statusOf(r);
-      return s !== 4 && s !== 5 && s !== 6 && !(r.mediaInfo && r.mediaInfo.jellyfinMediaId);
-    }).map((r) => Object.assign({ mediaType: kind }, r)).slice(0, 20);
-    // Right after More like this
-    const more = box && [...box.querySelectorAll(".rowx h3")].find((h) => h.textContent.startsWith("More like this"));
-    const html = B.row("Ask for more like this", list.map((r) => B.askCard(r)));
-    if (more) more.closest(".rowx").insertAdjacentHTML("afterend", html); else add(box, html);
+      if (s === 4 || s === 5 || s === 6 || (r.mediaInfo && r.mediaInfo.jellyfinMediaId)) return false;
+      if (lib && lib.has(kind + ":" + r.id)) return false;
+      seen.add(r.id);
+      return true;
+    }).map((r) => Object.assign({ mediaType: kind }, r));
+    const pages = (paths) => Promise.all(paths.map((p) => B.seerr(p).catch(() => null))).then((got) => got.flatMap((g) => (g && g.results) || []));
+    const best = keep(await pages([1, 2].flatMap((n) => [`/${kind}/${tmdb}/recommendations?page=${n}`, `/${kind}/${tmdb}/similar?page=${n}`]))).slice(0, 30);
+    const main = genres.filter((g) => g !== 16).slice(0, 2);
+    const gs = sort === "live" ? main : [...main, 16];
+    const path = kind === "movie" ? "movies" : "tv";
+    const more = keep(await pages((gs.length ? gs : [null]).flatMap((g) => [1, 2].map((n) => g ? `/discover/${path}/genre/${g}?page=${n}` : `/discover/${path}?page=${n}`)))).slice(0, 30);
+    if (!B.alive(nav) || (!best.length && !more.length)) return;
+    const note = `<small class="dim">Only ${esc(label)} · not on Benflix yet</small>`;
+    add(box, (best.length ? B.row("Closest matches", best.map((r) => B.askCard(r))) : "") +
+      (more.length ? B.row(`More ${label} to ask for`, more.map((r) => B.askCard(r))) : ""));
+    const h = box.querySelector(".rowx h3");
+    if (h) h.insertAdjacentHTML("beforeend", " " + note);
   };
 
   // ---------- Parents' guide ----------
@@ -218,7 +239,7 @@
     const p = panes || {};
     const box = p.more || $("#below");
     X.collection(it, nav, box).catch(() => {});
-    X.askMore(it, nav, box).catch(() => {});
+    X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
     X.parents(it, nav, p.parents || box).catch(() => {});
   };
@@ -226,7 +247,7 @@
     const p = panes || {};
     const box = p.more || $("#below2");
     X.nextSeason(it, nav).catch(() => {});
-    X.askMore(it, nav, box).catch(() => {});
+    X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
     X.parents(it, nav, p.parents || box).catch(() => {});
   };

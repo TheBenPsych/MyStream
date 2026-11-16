@@ -479,6 +479,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
+      { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
       { name: "Did you know", id: "tpFacts" },
@@ -487,8 +488,8 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   // Details (studio, release date, the file for you) under the whole story
   B.facts(it).then((html) => tp.setStoryExtra(html));
   B.tpFacts(it, tp.pane("tpFacts"), nav);
-  // In this collection, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
+  // In this collection, Ask for similar, anime extras and the parents' guide (extras.js)
+  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
 });
 // The Did you know tab: every fact about this title from Tower
 B.tpFacts = async (it, pane, nav) => {
@@ -505,6 +506,7 @@ const movieMore = (it) => {
   B.tpMore(it.Name, [
     { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) },
     resume ? { label: "Play from the start", icon: "restart", onClick: () => B.go(`#/play/${it.Id}`) } : null,
+    !B.lobby || !B.lobby.allowed() ? null : { label: "Watch together in the Lobby", icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: it, pos: resume ? ud.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Audio, subtitles and version", icon: "sub", onClick: () => B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`)) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     ids.Imdb ? { label: "Open on IMDb", icon: "info", href: `https://www.imdb.com/title/${esc(ids.Imdb)}`, blank: true } : null,
@@ -516,7 +518,7 @@ B.trackPicker = (it, done) => {
   const ms = (it.MediaSources || [])[0] || {};
   const streams = ms.MediaStreams || [];
   const audio = streams.filter((s) => s.Type === "Audio"), subs = streams.filter((s) => s.Type === "Subtitle");
-  let a = ms.DefaultAudioStreamIndex ?? (audio[0] && audio[0].Index), s = ms.DefaultSubtitleStreamIndex ?? -1;
+  let a = ms.DefaultAudioStreamIndex ?? (audio[0] && audio[0].Index), s = B.autoSub(streams, ms.DefaultSubtitleStreamIndex ?? -1, a);
   const draw = () => `<h3>Audio and subtitles</h3>
     <h4 class="dim" style="margin:16px 0 8px">Audio</h4>${audio.map((x) => `<button class="opt ${x.Index === a ? "on" : ""}" data-a="${x.Index}">${esc(x.DisplayTitle || x.Language || "Track " + x.Index)}</button>`).join("") || '<p class="dim">Only one sound track.</p>'}
     <h4 class="dim" style="margin:16px 0 8px">Subtitles</h4><button class="opt ${s === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((x) => `<button class="opt ${x.Index === s ? "on" : ""}" data-s="${x.Index}">${esc(x.DisplayTitle || x.Language || "Subtitle " + x.Index)}</button>`).join("")}
@@ -579,6 +581,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
+      { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
       { name: "Did you know", id: "tpFacts" },
@@ -589,6 +592,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   $("#bMore").onclick = () => B.tpMore(it.Name, [
     { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
     B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+    !B.lobby || !B.lobby.allowed() || !target ? null : { label: `Watch S${target.ParentIndexNumber} E${target.IndexNumber} together in the Lobby`, icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: Object.assign({ OfficialRating: it.OfficialRating }, target, target.OfficialRating ? {} : { OfficialRating: it.OfficialRating }), pos: target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? target.UserData.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
   ]);
@@ -635,8 +639,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
-  // Newer seasons to ask for, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
+  // Newer seasons to ask for, Ask for similar, anime extras and the parents' guide (extras.js)
+  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
 });
 
 // ---------- collection page ----------

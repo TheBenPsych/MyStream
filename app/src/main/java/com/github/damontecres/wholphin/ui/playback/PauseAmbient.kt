@@ -131,6 +131,7 @@ fun PauseAmbient(
                         fontSize = BenflixType.rowName,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 item.data.overview?.let {

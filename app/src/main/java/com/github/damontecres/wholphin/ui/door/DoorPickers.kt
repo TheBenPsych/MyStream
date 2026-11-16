@@ -14,6 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,8 +42,17 @@ fun PickerRow(
     compact: Boolean,
     onOpen: (Destination) -> Unit,
     modifier: Modifier = Modifier,
+    /** TV: coming Back from a game lands on the card you opened (0 = This or that, 1 = Mood quiz) */
+    focusRequester: FocusRequester? = null,
+    focusIndex: Int = 0,
+    onFocus: (Int) -> Unit = {},
 ) {
     val kind = if (door == BenflixDoor.SHOWS) "shows" else "movies"
+
+    fun tileModifier(i: Int): Modifier {
+        val m = Modifier.onFocusChanged { if (it.isFocused) onFocus(i) }
+        return if (focusRequester != null && focusIndex.coerceIn(0, 1) == i) m.focusRequester(focusRequester) else m
+    }
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "Can't decide?",
@@ -58,7 +70,7 @@ fun PickerRow(
                 easy = easy,
                 compact = compact,
                 onClick = { onOpen(Destination.ThisOrThat(door.name)) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).then(tileModifier(0)),
             )
             PickerTile(
                 door = door,
@@ -68,7 +80,7 @@ fun PickerRow(
                 easy = easy,
                 compact = compact,
                 onClick = { onOpen(Destination.MoodQuiz(door.name)) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).then(tileModifier(1)),
             )
         }
     }
@@ -126,7 +138,13 @@ private fun PickerTile(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
             ) {
                 badge()
-                Text(text = title, fontSize = BenflixType.body, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(
+                    text = title,
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(text = line, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         } else {
@@ -142,6 +160,7 @@ private fun PickerTile(
                         fontSize = if (easy) BenflixType.rowName else BenflixType.lead,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (!easy) {
                         Text(

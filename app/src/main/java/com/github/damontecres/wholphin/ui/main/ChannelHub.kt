@@ -104,7 +104,7 @@ private fun tileColors(container: Color) =
 @Composable
 private fun tileBorder() =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = RoundedCornerShape(10.dp)),
+        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
     )
 
 /** A channel's logo on white (live channels), or its coloured letter badge (Benflix channels) */
@@ -170,8 +170,8 @@ internal fun ChannelRow(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (playing) Color(0xFF2A2A32) else Color(0xFF1C1C21),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.fillMaxWidth().height(52.dp),
@@ -304,8 +304,8 @@ internal fun HideTypesDialog(
                             ClickableSurfaceDefaults.colors(
                                 containerColor = Color(0xFF222228),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier =

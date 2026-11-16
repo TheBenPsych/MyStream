@@ -33,12 +33,30 @@ class NavigationManager
             log()
         }
 
+        /** Benflix: swap the page on top for [destination] (watch together follows the lobby to its next movie) */
+        fun replaceTop(destination: Destination) {
+            synchronized(this) {
+                if (backStack.isEmpty()) backStack.add(destination) else backStack[backStack.lastIndex] = destination
+            }
+            log()
+        }
+
         /**
          * Go to the previous page
          */
         fun goBack() {
             synchronized(this) {
                 if (backStack.size > 1) {
+                    backStack.removeLastOrNull()
+                }
+            }
+            log()
+        }
+
+        /** Benflix "where am I" line: back to the page at [index] in the back stack */
+        fun goBackTo(index: Int) {
+            synchronized(this) {
+                while (backStack.size > index + 1 && backStack.size > 1) {
                     backStack.removeLastOrNull()
                 }
             }
@@ -81,6 +99,26 @@ class NavigationManager
                 backStack[0] = destination
             }
             log()
+        }
+
+        /**
+         * Benflix: swap the page right under [top] (when it's still on the back stack) for what
+         * [change] returns, e.g. so the show page under the player shows the episode on now.
+         * Nothing happens when [change] returns null or the same page.
+         */
+        fun replaceBelow(
+            top: Destination,
+            change: (Destination) -> Destination?,
+        ) {
+            synchronized(this) {
+                val topIndex = backStack.lastIndexOf(top)
+                if (topIndex < 1) return
+                val below = backStack[topIndex - 1]
+                val replacement = change(below) ?: return
+                if (replacement == below) return
+                Timber.i("Page under the player now: %s", replacement)
+                backStack[topIndex - 1] = replacement
+            }
         }
 
         private fun log() {

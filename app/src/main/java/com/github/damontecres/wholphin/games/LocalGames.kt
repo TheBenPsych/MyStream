@@ -33,6 +33,8 @@ data class GameRef(
     val size: Long = 0,
     /** Rated for everyone, so it shows on the Kids profile (also kept with downloads, for when Tower can't be reached) */
     val kids: Boolean = false,
+    /** Fine for Big kids (E10+ and Teen too) */
+    val bigKids: Boolean = false,
 )
 
 /** A game kept on this device */
@@ -151,6 +153,7 @@ class LocalGames
                             size = j.optLong("bytes"),
                             // Games downloaded before this was kept count as not for kids
                             kids = j.optBoolean("kids", false),
+                            bigKids = j.optBoolean("bigkids", j.optBoolean("kids", false)),
                         ),
                     startFile = start,
                     bytes = j.optLong("bytes"),
@@ -179,6 +182,7 @@ class LocalGames
                     .put("played", System.currentTimeMillis())
                     .put("pinned", pinned)
                     .put("kids", ref.kids)
+                    .put("bigkids", ref.bigKids)
             prefs.edit().putString("game_${ref.id}", j.toString()).apply()
             _downloadsVersion.value++
         }
@@ -375,7 +379,7 @@ class LocalGames
             val dir = gameDir(ref.id)
             downloaded(ref.id)?.let { have ->
                 record(
-                    have.ref.copy(coverUrl = ref.coverUrl ?: have.ref.coverUrl, kids = ref.kids),
+                    have.ref.copy(coverUrl = ref.coverUrl ?: have.ref.coverUrl, kids = ref.kids, bigKids = ref.bigKids),
                     have.startFile,
                     have.bytes,
                     pinned ?: have.pinned,
@@ -537,7 +541,7 @@ class LocalGames
             resume: Boolean,
         ) {
             // Every player checks Kids for itself: a game not rated for everyone never starts on Kids
-            if (KidsMode.isActive && !game.ref.kids) {
+            if (!KidsMode.allowsGame(game.ref.kids, game.ref.bigKids)) {
                 Timber.w("Kids: %s isn't a kids game, not starting it", game.ref.name)
                 return
             }

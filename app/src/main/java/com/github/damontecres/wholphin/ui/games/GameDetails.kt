@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
@@ -287,8 +288,15 @@ private fun SaveTile(
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        Text(savedAgoText(spot.time), fontSize = BenflixType.tag, color = BenflixColors.Muted, maxLines = 1)
+        Text(
+            savedAgoText(spot.time),
+            fontSize = BenflixType.tag,
+            color = BenflixColors.Muted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

@@ -36,7 +36,7 @@
     let champ = pool[0], next = 1, round = 1;
     const box = $("#tot");
     const card = (it, side) => `<button class="totp" data-side="${side}" aria-label="${esc(it.Name)}">
-        <span class="im">${B.poster(it, 600) ? `<img src="${B.poster(it, 600)}" alt="">` : `<span class="noart">${esc(it.Name)}</span>`}</span>
+        <span class="im">${B.poster(it, 600) ? `<img src="${B.poster(it, 600)}" alt="">` : `<span class="noart"><span class="nt">${esc(it.Name)}</span></span>`}</span>
         <span class="cap">${esc(it.Name)}${it.ProductionYear ? ` · ${it.ProductionYear}` : ""}</span></button>`;
     const draw = () => {
       if (!champ) {

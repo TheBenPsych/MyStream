@@ -827,7 +827,13 @@ private fun MusicAskDialog(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(item.artist, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                    Text(
+                        item.artist,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.small,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     if (item.kind == "song" && item.albumTitle.isNotBlank() && plain(item.albumTitle) != plain(item.title)) {
                         Text(
                             "Album: ${item.albumTitle}",
@@ -895,8 +901,8 @@ private fun SeeAllChip(onClick: () -> Unit) {
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Raised,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

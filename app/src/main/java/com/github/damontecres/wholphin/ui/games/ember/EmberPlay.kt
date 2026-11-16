@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -329,15 +330,33 @@ private fun StatTile(
             .background(EmberPanelDark, RoundedCornerShape(6.dp))
             .padding(horizontal = if (isTv) 8.dp else 5.dp, vertical = if (isTv) 4.dp else 3.dp),
     ) {
-        Text(label.uppercase(), color = EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1, letterSpacing = 0.5.sp)
+        Text(
+            label.uppercase(),
+            color = EmberDim,
+            fontSize = if (isTv) 11.sp else 9.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            letterSpacing = 0.5.sp,
+        )
         Text(
             value,
             color = if (warn) EmberBad else EmberText,
             fontSize = if (isTv) 21.sp else 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        if (sub != null) Text(sub, color = if (warn) EmberBad else EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1)
+        if (sub !=
+            null
+        ) {
+            Text(
+                sub,
+                color = if (warn) EmberBad else EmberDim,
+                fontSize = if (isTv) 11.sp else 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -439,6 +458,7 @@ private fun MemberLine(
                     fontSize = if (isTv) 15.sp else 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Text(
@@ -457,6 +477,7 @@ private fun MemberLine(
                         },
                     fontSize = if (isTv) 13.sp else 11.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             val about =
@@ -464,7 +485,15 @@ private fun MemberLine(
                     m.role?.let { EmberSkills[it]?.first },
                     m.traits.firstOrNull()?.let { t -> traitNames[t] },
                 ).joinToString(" · ")
-            if (about.isNotEmpty()) Text(about, color = EmberDim, fontSize = if (isTv) 11.sp else 9.sp, maxLines = 1)
+            if (about.isNotEmpty()) {
+                Text(
+                    about,
+                    color = EmberDim,
+                    fontSize = if (isTv) 11.sp else 9.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -901,6 +930,7 @@ private fun ForkContent(
                 color = if (land.tag == "danger") EmberBad else EmberText,
                 fontSize = if (isTv) 15.sp else 14.sp,
                 maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         VoteLine(vm)

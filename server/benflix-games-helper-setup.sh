@@ -36,10 +36,12 @@ chown nobody:users "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers" 2
 chmod 777 "$MEDIA/Music Drop"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
+[ -n "$HOST_IP" ] || HOST_IP=$(hostname -i 2>/dev/null | awk '{print $1}')
 [ -n "$HOST_IP" ] || HOST_IP=10.0.0.58
+echo "Tower's home address right now: $HOST_IP"
 
 say "Downloading the helper"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_home.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_home.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     exit 1
@@ -224,6 +226,26 @@ find_bazarr() {
 }
 find_bazarr
 
+say "Connecting Scrutiny (drive health on the Server page)"
+find_scrutiny() {
+  local c port ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i scrutiny | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Scrutiny app found. Install it from Apps (the Scrutiny steps), then run this again."; return; fi
+  # The port Unraid gave Scrutiny's web page (8080 inside the app)
+  port=$(docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{if eq $p "8080/tcp"}}{{(index $b 0).HostPort}}{{end}}{{end}}' "$c")
+  [ -n "$port" ] || port=8080
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port" "http://$HOST_IP:$port" ${ipaddr:+"http://$ipaddr:8080"}; do
+    if curl -fs -m 8 "$u/api/health" >/dev/null; then
+      printf 'SCRUTINY_URL=%s\n' "$u" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but it didn't answer on port $port. Send this output to Claude."
+}
+find_scrutiny
+
 say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
 SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
 find_slskd() {
@@ -342,6 +364,71 @@ if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"live_tv": true'; then
 else
   echo "  PROBLEM  Live TV didn't load in the helper. Send this output to Claude."
 fi
+
+say "Tower's address in Jellyfin's Live TV"
+# After a move (new router, new home address) Jellyfin's Live TV links still point at the old address.
+# This finds them in Jellyfin's settings file and swaps in Tower's address now. Nothing changes if they're right.
+fix_livetv_links() {
+  local c dir f
+  c=$(docker ps -a --format '{{.Names}}' | grep -i jellyfin | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Jellyfin app found."; return; fi
+  dir=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")
+  f=$(find "$dir" -maxdepth 3 -name livetv.xml 2>/dev/null | head -1)
+  if [ -z "$f" ]; then echo "  skip  Live TV isn't set up in Jellyfin yet."; return; fi
+  if ! grep -Eq "http://[0-9.]+:8097/livetv/" "$f"; then echo "  ok  Jellyfin's Live TV links don't use an address that can go stale."; return; fi
+  if ! grep -Eo "http://[0-9.]+:8097/livetv/" "$f" | grep -vq "^http://$HOST_IP:8097/"; then
+    echo "  ok  Jellyfin's Live TV links already use $HOST_IP"; return
+  fi
+  echo "  Jellyfin's Live TV links use an old address. Changing them to $HOST_IP (Jellyfin restarts, about 30 seconds)."
+  cp "$f" "$f.before-move"
+  docker stop "$c" >/dev/null
+  sed -i -E "s#http://[0-9.]+:8097/livetv/#http://$HOST_IP:8097/livetv/#g" "$f"
+  docker start "$c" >/dev/null
+  echo "  ok  Done. Jellyfin's Live TV now uses http://$HOST_IP:8097/livetv/ (old file kept as $(basename "$f").before-move)"
+}
+fix_livetv_links
+
+say "The address Jellyfin tells TVs"
+# Jellyfin can be told to always say "I'm at <address>" (JELLYFIN_PublishedServerUrl). After a move that old
+# address sends TVs to the wrong place on "Is this your server?", so warn when it isn't Tower's address now.
+check_published() {
+  local c pub h
+  c=$(docker ps -a --format '{{.Names}}' | grep -i jellyfin | head -1)
+  [ -n "$c" ] || return
+  pub=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$c" | sed -n 's/^JELLYFIN_PublishedServerUrl=//p' | head -1)
+  if [ -z "$pub" ]; then echo "  ok  Jellyfin works out its own address."; return; fi
+  h=${pub#*://}
+  h=${h%%[:/]*}
+  case "$h" in
+    "$HOST_IP" | *[a-zA-Z]*) echo "  ok  Jellyfin tells TVs: $pub" ;;
+    *) echo "  PROBLEM  Jellyfin tells TVs it's at $pub, but Tower is at $HOST_IP now."
+       echo "           Docker tab > Jellyfin > Edit > JELLYFIN_PublishedServerUrl = http://$HOST_IP:8096 > Apply." ;;
+  esac
+}
+check_published
+
+say "Keeping Tower up to date by itself"
+# Every hour Tower checks GitHub for a newer helper and runs this command again by itself when there is one,
+# so nobody has to paste it after an update. It lives on the USB stick, so it survives restarts.
+install_autosetup() {
+  local cron=/boot/config/plugins/dynamix/benflix-autosetup.cron line
+  line="23 * * * * /bin/bash /boot/config/benflix/autosetup.sh >/dev/null 2>&1"
+  # Remember this copy of the command, so the hourly check only runs it again when GitHub has a newer one
+  curl -fsSL "$RAW/benflix-games-helper-setup.sh" -o "$APP/setup-last.sh" 2>/dev/null
+  if ! mkdir -p /boot/config/benflix || ! curl -fsSL "$RAW/benflix-autosetup.sh" -o /boot/config/benflix/autosetup.sh; then
+    echo "  PROBLEM  Couldn't save the hourly update check. Run this command again later."
+    return
+  fi
+  if command -v update_cron >/dev/null 2>&1 && mkdir -p "$(dirname "$cron")"; then
+    printf '# Benflix: check GitHub for helper updates every hour\n%s\n' "$line" >"$cron"
+    update_cron
+  else
+    (crontab -l 2>/dev/null | grep -v benflix/autosetup.sh; echo "$line") | crontab -
+  fi
+  echo "  ok  Tower checks for helper updates every hour and installs them by itself."
+  echo "      You won't need to run this command again after updates. What it did: $APP/autosetup.log"
+}
+install_autosetup
 
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."

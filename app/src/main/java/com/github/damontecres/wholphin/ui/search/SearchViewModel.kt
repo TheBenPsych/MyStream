@@ -175,8 +175,11 @@ class SearchViewModel
                             emptyList()
                         } else {
                             c.games
-                                .filter { !kids || it.kids }
-                                .map { g ->
+                                .filter {
+                                    !kids ||
+                                        com.github.damontecres.wholphin.services.KidsMode
+                                            .allowsGame(it.kids, it.bigKids)
+                                }.map { g ->
                                     SearchGame(
                                         key = "rom-${g.id}",
                                         title = g.name,
@@ -194,13 +197,19 @@ class SearchViewModel
 
         private val _musicAsk = MutableStateFlow<List<SearchMusicAsk>>(emptyList())
 
-        /** Benflix: songs and albums that aren't on Benflix yet, for the Ask for it door (only Ben, never Kids) */
+        /** Benflix: songs and albums that aren't on Benflix yet, for the Ask for it door (every profile but Kids and Guest) */
         val musicAsk: StateFlow<List<SearchMusicAsk>> = _musicAsk
 
         /** A short line after asking for music, shown as a toast */
         val musicNote = MutableStateFlow<String?>(null)
 
-        private fun canAskForMusic(): Boolean = serverRepository.currentUserDto?.policy?.isAdministrator == true && !KidsMode.isActive
+        // Ben 2026-11-15: every account but Kids can ask (family asks wait for Ben's yes). Guest borrows the owner's
+        // sign-in, so it would skip Ben's yes: no asking there.
+        private fun canAskForMusic(): Boolean =
+            !KidsMode.isActive &&
+                !com.github.damontecres.wholphin.services.GuestMode.isActive
+
+        private val musicAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
 
         private fun searchMusicAsk(query: String?) {
             val q = query?.trim().orEmpty()
@@ -245,7 +254,8 @@ class SearchViewModel
                     val id = if (kind == "album") item.albumId else item.id
                     music.ask(kind, id)
                     val name = if (kind == "album") item.albumTitle else item.title
-                    musicNote.value = "Asked for $name. Tower is getting it."
+                    musicNote.value =
+                        if (musicAdmin) "Asked for $name. Tower is getting it." else "Asked Ben for $name. He says yes before it downloads."
                     _musicAsk.value =
                         _musicAsk.value.map {
                             if (it.key == item.key || (kind == "album" && it.albumId == item.albumId)) it.copy(asked = "Asked") else it

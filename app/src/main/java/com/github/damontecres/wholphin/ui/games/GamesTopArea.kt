@@ -188,6 +188,7 @@ internal fun GamesTopArea(
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = preview.title,
@@ -200,7 +201,14 @@ internal fun GamesTopArea(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     preview.line?.let {
-                        Text(it, color = BenflixColors.Muted, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(
+                            it,
+                            color = BenflixColors.Muted,
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     preview.playWith.forEach { PlayIcon(it) }
                 }
@@ -223,7 +231,14 @@ internal fun GamesTopArea(
                     ) {
                         Text(stringResource(R.string.fa_trophy), fontFamily = FontAwesome, fontSize = 13.sp, color = BenflixColors.Soft)
                         preview.top3.forEach {
-                            Text(it, color = BenflixColors.Soft, fontSize = BenflixType.small, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(
+                                it,
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
@@ -270,7 +285,10 @@ internal fun LeaderboardRow(
                     onClick = g.open,
                     shape = ClickableSurfaceDefaults.shape(shape),
                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                    border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape)),
+                    border =
+                        ClickableSurfaceDefaults.border(
+                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
+                        ),
                     colors =
                         ClickableSurfaceDefaults.colors(
                             containerColor = BenflixColors.Raised,

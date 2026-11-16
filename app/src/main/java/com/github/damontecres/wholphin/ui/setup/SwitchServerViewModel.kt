@@ -264,13 +264,30 @@ class SwitchServerViewModel
         }
 
         fun discoverServers() {
+            // Benflix: also find Tower through its Benflix helper and its names, so it shows up even when
+            // Jellyfin's own finder is silent or names an old address
+            viewModelScope.launchIO {
+                val extra =
+                    com.github.damontecres.wholphin.data.ServerMoved
+                        .findOnWifi()
+                if (extra.isEmpty()) return@launchIO
+                _state.update { st ->
+                    st.copy(
+                        discoveredServers =
+                            (extra.map { JellyfinServer(it.id, it.name, it.url, null) } + st.discoveredServers)
+                                .distinctBy { it.id },
+                    )
+                }
+            }
             viewModelScope.launchIO {
                 jellyfin.discovery.discoverLocalServers().collect { server ->
                     val jellyfinServer =
                         JellyfinServer(
                             server.id.toUUID(),
                             server.name,
-                            server.address,
+                            // Benflix: Jellyfin may still say its old address after Tower moves; use one that answers
+                            com.github.damontecres.wholphin.data.ServerMoved
+                                .reachableAddress(server.id, server.address),
                             null,
                         )
                     _state.update {
@@ -281,8 +298,8 @@ class SwitchServerViewModel
                                     .apply {
                                         add(jellyfinServer)
                                     }.distinctBy {
-                                        // Filter out duplicates within the discovered servers list (same URL appearing multiple times)
-                                        it.url.lowercase().trim()
+                                        // Benflix: one entry per server (the address that answered first wins)
+                                        it.id
                                     },
                         )
                     }

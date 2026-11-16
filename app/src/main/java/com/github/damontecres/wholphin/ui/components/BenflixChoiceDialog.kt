@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -117,8 +118,8 @@ internal fun ChoiceRow(
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                 pressedContainerColor = BenflixColors.Text,
                 pressedContentColor = BenflixColors.Tray,
             ),
@@ -152,6 +153,7 @@ internal fun ChoiceRow(
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.End,
                     modifier = Modifier.widthIn(max = 200.dp),
                 )

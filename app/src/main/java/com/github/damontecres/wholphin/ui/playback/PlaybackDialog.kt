@@ -48,6 +48,9 @@ enum class PlaybackDialogType {
 
     /** Benflix: "Report a problem" from the player's Fix a problem list */
     REPORT,
+
+    /** Benflix: watch together with people on other TVs, phones and browsers */
+    TOGETHER,
 }
 
 data class PlaybackSettings(
@@ -66,6 +69,8 @@ data class PlaybackSettings(
     val title: String? = null,
     /** "Skip at the wrong time" only shows when there's something to skip (not on live channels) */
     val canFixSkips: Boolean = true,
+    /** Watch together (not on live channels) */
+    val canWatchTogether: Boolean = false,
 )
 
 /**
@@ -130,50 +135,37 @@ fun PlaybackDialog(
                         )
                     }
                     add(PanelLine.Heading("Something off?"))
-                    if (subtitlesOn && enableSubtitleDelay) {
+                    // Benflix: these rows always show (greyed-out rows stay reachable and say why, ground rule 1)
+                    val turnOnFirst = { Toast.makeText(context, "Pick a subtitle above first, then try again.", Toast.LENGTH_LONG).show() }
+                    if (enableSubtitleDelay) {
                         add(
                             PanelLine.Row(
                                 label = "Subtitle timing",
-                                value = delayWords(settings.subtitleDelay),
-                                note = "Move the words earlier or later yourself",
-                                closes = false,
-                                onClick = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
-                            ),
-                        )
-                    }
-                    if (subtitlesOn) {
-                        add(
-                            PanelLine.Row(
-                                label = "Subtitles are early or late",
-                                note = "Tower lines them up with the voices",
-                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) },
-                            ),
-                        )
-                        add(
-                            PanelLine.Row(
-                                label = "Find better subtitles",
-                                note = "Bazarr swaps them for different ones",
-                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.FindBetterSubtitles) },
+                                value = if (subtitlesOn) delayWords(settings.subtitleDelay) else null,
+                                note = if (subtitlesOn) "Move the words earlier or later yourself" else "Turn subtitles on above first",
+                                closes = !subtitlesOn,
+                                onClick = {
+                                    if (subtitlesOn) onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) else turnOnFirst()
+                                },
                             ),
                         )
                     }
                     add(
                         PanelLine.Row(
-                            label = "Find other subtitles",
-                            // Greyed-out rows stay reachable and say why (Redesign 2 ground rule 1)
-                            note = if (settings.hasSubtitleDownloadPermission) "Search and download" else "Only Ben can download subtitles",
+                            label = "Subtitles are early or late",
+                            note = if (subtitlesOn) "Tower lines them up with the voices" else "Turn subtitles on above first",
                             onClick = {
-                                if (settings.hasSubtitleDownloadPermission) {
-                                    onPlaybackActionClick.invoke(PlaybackAction.SearchCaptions)
-                                } else {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "Only Ben can download subtitles. Report a problem to ask him.",
-                                            Toast.LENGTH_LONG,
-                                        ).show()
-                                }
+                                if (subtitlesOn) onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) else turnOnFirst()
                             },
+                        ),
+                    )
+                    // One button for new subtitles: Bazarr throws out the ones on screen and gets different
+                    // ones (Jellyfin's own search has nothing to search with on Tower, so it's gone)
+                    add(
+                        PanelLine.Row(
+                            label = "Find other subtitles",
+                            note = if (subtitlesOn) "Bazarr deletes these and gets different ones" else "Bazarr looks for subtitles",
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.FindBetterSubtitles) },
                         ),
                     )
                 }
@@ -247,6 +239,18 @@ fun PlaybackDialog(
                             onClick = { onClickPlaybackDialogType(PlaybackDialogType.BITRATE) },
                         ),
                     )
+                    if (settings.canWatchTogether) {
+                        add(
+                            PanelLine.Row(
+                                label = "Watch together",
+                                value = WatchTogether.code?.let { "On · ${WatchTogether.people.size + 1} watching" } ?: "Off",
+                                note = "In step with other TVs, phones and the web Lobby",
+                                icon = BenflixIcon.PERSON,
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.TOGETHER) },
+                            ),
+                        )
+                    }
                     add(PanelLine.Heading("Fix a problem"))
                     add(
                         PanelLine.Row(
@@ -431,6 +435,75 @@ fun PlaybackDialog(
                         )
                     },
                 onDismissRequest = onDismissRequest,
+            )
+        }
+
+        PlaybackDialogType.TOGETHER -> {
+            val inLobby = WatchTogether.code
+            androidx.compose.runtime.LaunchedEffect(inLobby) {
+                if (inLobby == null) WatchTogether.loadLobbies(context)
+            }
+            val lobbies = WatchTogether.lobbies
+            PlayerPanel(
+                title = "Watch together",
+                subtitle =
+                    if (inLobby != null) {
+                        val others = WatchTogether.people
+                        if (others.isEmpty()) {
+                            "Waiting for others. On another TV or phone: Settings > Watch together > join ${WatchTogether.hostName}'s."
+                        } else {
+                            "Watching with ${others.joinToString(", ")}. Play, pause and jumps happen for everyone."
+                        }
+                    } else {
+                        "Watch in step with people on other TVs, phones and the web Lobby."
+                    },
+                lines =
+                    buildList {
+                        if (inLobby != null) {
+                            WatchTogether.problem?.let { add(PanelLine.Heading(it)) }
+                            add(
+                                PanelLine.Row(
+                                    label = "Stop watching together",
+                                    icon = BenflixIcon.CLOSE,
+                                    onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherLeave) },
+                                ),
+                            )
+                        } else {
+                            add(
+                                PanelLine.Row(
+                                    label = "Start watching together",
+                                    note = "Others join from their TV, phone or the web Lobby",
+                                    icon = BenflixIcon.PLAY,
+                                    onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherStart) },
+                                ),
+                            )
+                            when {
+                                lobbies == null -> {
+                                    add(PanelLine.Heading("Looking for people watching…"))
+                                }
+
+                                lobbies.none { !it.mine } -> {
+                                    add(PanelLine.Heading("Nobody else is watching together right now"))
+                                }
+
+                                else -> {
+                                    add(PanelLine.Heading("Join"))
+                                    lobbies.filter { !it.mine }.forEach { lobby ->
+                                        add(
+                                            PanelLine.Row(
+                                                label = "${lobby.hostName}'s",
+                                                value = lobby.title.ifBlank { "Nothing on yet" },
+                                                note = "${lobby.people} watching",
+                                                icon = BenflixIcon.PERSON,
+                                                onClick = { onPlaybackActionClick.invoke(PlaybackAction.TogetherJoin(lobby.code)) },
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                onDismissRequest = dismissAndPulse,
             )
         }
 

@@ -74,9 +74,15 @@ import kotlinx.coroutines.delay
 /** The words on a poster's top-left pill, or null for nothing */
 private fun DiscoverItem.statusWord(): String? =
     when (availability) {
-        SeerrAvailability.PENDING, SeerrAvailability.PROCESSING -> "ASKED FOR"
-        SeerrAvailability.PARTIALLY_AVAILABLE -> "SOME ON BENFLIX"
-        SeerrAvailability.AVAILABLE -> "ON BENFLIX"
+        // Redesign 2: the same words as the status pills everywhere else
+        SeerrAvailability.PENDING -> "ASKED"
+
+        SeerrAvailability.PROCESSING -> "GETTING IT"
+
+        SeerrAvailability.PARTIALLY_AVAILABLE -> "PARTLY HERE"
+
+        SeerrAvailability.AVAILABLE -> "READY TO WATCH"
+
         else -> null
     }
 
@@ -282,6 +288,7 @@ private fun RankedPoster(
                 ),
             color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.offset(y = posterHeight * 0.2f),
         )
         Box(Modifier.offset(x = -width * 0.18f).onFocusChanged { focused = it.hasFocus }) {
@@ -414,6 +421,7 @@ fun RequestPoster(
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
@@ -460,6 +468,7 @@ private fun Pill(
         fontSize = BenflixType.tag,
         fontWeight = FontWeight.ExtraBold,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
                 .background(BenflixColors.Text, RoundedCornerShape(6.dp))

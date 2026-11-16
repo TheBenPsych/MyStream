@@ -384,10 +384,9 @@ class MainActivity : AppCompatActivity() {
                                                 BenflixNoticeLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
-                                                // Benflix: "Sorry, Ben couldn't find it"
-                                                com.github.damontecres.wholphin.ui.main.CantFindLayer(
-                                                    currentDestination = navigationManager.backStack.lastOrNull(),
-                                                )
+                                                // Benflix: Ben's auto "Couldn't find it" check (people are told on Home)
+                                                com.github.damontecres.wholphin.ui.main
+                                                    .CantFindLayer()
                                                 // Benflix Wrapped (December)
                                                 com.github.damontecres.wholphin.ui.main.BenflixWrappedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
@@ -418,6 +417,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.github.damontecres.wholphin.ui.util.FastScroll
+            .onKey(event)
+        com.github.damontecres.wholphin.ui.util.LastRemoteKey
             .onKey(event)
         if (screensaverService.state.value.run { show || showDim }) {
             // Benflix screensaver: OK opens what's on screen, any other button just wakes the app
@@ -576,6 +577,21 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Timber.d("onDestroy")
+    }
+
+    // Benflix: a phone playing a movie or show goes into a small window when you leave (see PhonePip)
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        com.github.damontecres.wholphin.ui.playback.PhonePip
+            .onLeave(this)
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        com.github.damontecres.wholphin.ui.playback.PhonePip.active = isInPictureInPictureMode
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -799,6 +815,13 @@ class MainActivityViewModel
             if (signInAutomatically && currentUser != null && !currentUser.user.isProtected) {
                 // Hot reload
                 Timber.v("Hot reload restoring state")
+                // Benflix: back after a while (maybe on a different network now)? Make sure the server answers at
+                // the address in use, else switch to one that does, before Home starts asking it for rows
+                try {
+                    kotlinx.coroutines.withTimeoutOrNull(4_000) { serverRepository.reconnect() }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Couldn't check the server address")
+                }
                 setupNavigationManager.navigateTo(
                     SetupDestination.AppContent(currentUser),
                 )

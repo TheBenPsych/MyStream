@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -286,7 +287,13 @@ private fun WideDoor(
     // press a button the door keeps going back to the top row as rows arrive above it.
     val firstKey = state.rows.firstOrNull()?.key
     val savedRow = viewModel.focusedRow.takeIf { viewModel.userMoved }
-    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+    // the "Can't decide?" cards at the bottom count as a row too, so Back from a game lands on them again
+    val targetRow =
+        if (savedRow == PICKERS_KEY && door.hasPickers() && state.rows.isNotEmpty()) {
+            PICKERS_KEY
+        } else {
+            state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
+        }
     val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     // Back (approved dr-p-back): first back up to the top row's first card, then out of the door
@@ -311,7 +318,14 @@ private fun WideDoor(
     // Ben (TV): cards were too small to read; 120 wide with a slightly shorter top area still shows the next row
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
-        rememberLazyListState(initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0))
+        rememberLazyListState(
+            initialFirstVisibleItemIndex =
+                if (targetRow == PICKERS_KEY) {
+                    state.entries().size
+                } else {
+                    state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0)
+                },
+        )
     LaunchedEffect(firstKey) {
         snapshotFlow { columnState.firstVisibleItemIndex == 0 && (focusedKey == null || focusedKey == firstKey) }
             .collect { frame.atTop = it }
@@ -338,6 +352,20 @@ private fun WideDoor(
         }
     }
 
+    // Ben (robot find): coming Back after finishing a movie, Keep watching drops that card while it has the
+    // focus, and the focus fell onto the side menu (which opened over the page). When a row change takes the
+    // focus away from the rows, put it back on the same row, on the card now in that spot.
+    var rowsHaveFocus by remember { mutableStateOf(false) }
+    var rowsLostFocusAt by remember { mutableStateOf(0L) }
+    // (which cards, not just how many: a fresh row with the same count can still drop the card you were on)
+    val rowsSignature = state.rows.map { r -> r.key to r.items.map { it.id } }
+    LaunchedEffect(rowsSignature) {
+        val changedAt = System.currentTimeMillis()
+        if (!isTv || !restored) return@LaunchedEffect
+        delay(FOCUS_SETTLE_MS)
+        if (!rowsHaveFocus && rowsLostFocusAt >= changedAt - FOCUS_SETTLE_MS) restore.tryRequestFocus()
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
@@ -352,7 +380,11 @@ private fun WideDoor(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .onFocusChanged {
+                            if (rowsHaveFocus && !it.hasFocus) rowsLostFocusAt = System.currentTimeMillis()
+                            rowsHaveFocus = it.hasFocus
+                        },
             ) {
                 state.entries().forEach { entry ->
                     val row = (entry as? DoorEntry.Real)?.row
@@ -382,13 +414,20 @@ private fun WideDoor(
                 }
                 // Ben: the "Can't decide?" games sit at the very bottom, and only pick from this door
                 if (door.hasPickers() && state.rows.isNotEmpty()) {
-                    item(key = "pickers") {
+                    item(key = PICKERS_KEY) {
                         PickerRow(
                             door = door,
                             easy = easy,
                             compact = false,
                             onOpen = { viewModel.navigationManager.navigateTo(it) },
                             modifier = Modifier.padding(start = SIDE, end = SIDE),
+                            focusRequester = if (targetRow == PICKERS_KEY) restore else null,
+                            focusIndex = targetIndex,
+                            onFocus = { index ->
+                                focusedKey = PICKERS_KEY
+                                viewModel.focusedRow = PICKERS_KEY
+                                viewModel.focusedIndex = index
+                            },
                         )
                     }
                 }
@@ -751,7 +790,7 @@ fun ScoreLine(
                 withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(" $site") }
             }
         }
-    Text(text = text, fontSize = BenflixType.body, maxLines = 1, modifier = modifier)
+    Text(text = text, fontSize = BenflixType.body, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
 /** "2023 · 1h 52m · PG-13 · Drama" (episodes: "S2 E5 · Episode name") */
@@ -930,6 +969,7 @@ private fun PickedCard(
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.tag,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
@@ -997,3 +1037,5 @@ private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
+
+private const val PICKERS_KEY = "pickers"

@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import java.time.LocalDate
 import java.time.Year
@@ -168,10 +169,10 @@ fun RequestsChip(
             ButtonDefaults.colors(
                 containerColor = if (selected) Color.White else CHIP,
                 contentColor = if (selected) Color.Black else Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
-        modifier = modifier.height(40.dp),
+        modifier = modifier.benflixOuterFocusRing(RoundedCornerShape(20.dp)).height(40.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = label, fontSize = BenflixType.body, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
@@ -193,10 +194,10 @@ fun ActiveFilterChip(
                 // Redesign: greys and white, no red
                 containerColor = Color.White,
                 contentColor = Color.Black,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
-        modifier = Modifier.height(36.dp),
+        modifier = Modifier.benflixOuterFocusRing(RoundedCornerShape(20.dp)).height(36.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = "$label  ✕", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
@@ -456,6 +457,7 @@ fun RequestSteps(
                     fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
                     color = if (done) Color.White else MUTED,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     softWrap = false,
                     modifier = Modifier.padding(start = 4.dp),
                 )
@@ -553,7 +555,7 @@ fun SeasonPickDialog(
             if (open.size > 1) {
                 val all = chosen.containsAll(open)
                 Button(onClick = { chosen = if (all) emptySet() else open.toSet() }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
-                    Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1)
+                    Text(if (all) "Clear all" else "All seasons (${open.size})", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Column(
@@ -599,9 +601,12 @@ fun SeasonPickDialog(
                             else -> "Ask for ${chosen.size} seasons"
                         },
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel", maxLines = 1) }
+                Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                    Text("Cancel", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

@@ -46,6 +46,9 @@ static void *(*c_get_memory_data)(unsigned);
 static size_t (*c_get_memory_size)(unsigned);
 
 static int core_ready;
+/* Benflix: swapping discs in multi-disc games (the emulator hands these over when the game is a .m3u list) */
+static struct retro_disk_control_callback disk_cb;
+static int disk_ready;
 static int game_loaded;
 static char system_dir[1024];
 static char save_dir[1024];
@@ -124,6 +127,13 @@ static void core_log(enum retro_log_level level, const char *fmt, ...) {
 
 static bool environment(unsigned cmd, void *data) {
     switch (cmd & ~RETRO_ENVIRONMENT_EXPERIMENTAL) {
+        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE:
+            /* The newer form starts with the same calls, so both are kept the same way */
+        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE:
+            if (!data) return false;
+            memcpy(&disk_cb, data, sizeof(disk_cb));
+            disk_ready = disk_cb.get_num_images != NULL && disk_cb.set_image_index != NULL && disk_cb.set_eject_state != NULL;
+            return true;
         case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
             ((struct retro_log_callback *)data)->log = core_log;
             return true;
@@ -277,6 +287,12 @@ static size_t audio_batch(const int16_t *data, size_t frames) {
 
 static void input_poll(void) {}
 
+/* Touch screen (Nintendo DS): where the finger is on the game picture, -0x7fff..0x7fff across it */
+static volatile int16_t touch_x, touch_y;
+static volatile int touch_down;
+/* How much of the view the game picture fills (set each time it's drawn) */
+static volatile float pic_sx = 1.0f, pic_sy = 1.0f;
+
 static int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id) {
     if (port >= 4) return 0;
     switch (device & RETRO_DEVICE_MASK) {
@@ -286,6 +302,13 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
             return (pad_buttons[port] >> id) & 1;
         case RETRO_DEVICE_ANALOG:
             if (index < 2 && id < 2) return pad_analog[port][index][id];
+            return 0;
+        case RETRO_DEVICE_POINTER:
+            if (port != 0 || index != 0) return 0;
+            if (id == RETRO_DEVICE_ID_POINTER_X) return touch_x;
+            if (id == RETRO_DEVICE_ID_POINTER_Y) return touch_y;
+            if (id == RETRO_DEVICE_ID_POINTER_PRESSED) return touch_down ? 1 : 0;
+            if (id == RETRO_DEVICE_ID_POINTER_COUNT) return touch_down ? 1 : 0;
             return 0;
         default:
             return 0;
@@ -549,7 +572,41 @@ JNIEXPORT jintArray JNICALL JNI_FN(snapshot)(JNIEnv *env, jobject thiz) {
     return out;
 }
 
+/* Benflix: how many discs the game has (0 when it can't swap) */
+JNIEXPORT jint JNICALL JNI_FN(discCount)(JNIEnv *env, jobject thiz) {
+    if (!game_loaded || !disk_ready) return 0;
+    return (jint)disk_cb.get_num_images();
+}
+
+/* Benflix: the disc in now, counting from 0 */
+JNIEXPORT jint JNICALL JNI_FN(discNow)(JNIEnv *env, jobject thiz) {
+    if (!game_loaded || !disk_ready || !disk_cb.get_image_index) return 0;
+    return (jint)disk_cb.get_image_index();
+}
+
+/* Benflix: opens the lid, puts in disc [index] and closes it again, like on the real console */
+JNIEXPORT jboolean JNICALL JNI_FN(swapDisc)(JNIEnv *env, jobject thiz, jint index) {
+    if (!game_loaded || !disk_ready || index < 0 || (unsigned)index >= disk_cb.get_num_images()) return JNI_FALSE;
+    if (!disk_cb.set_eject_state(true)) return JNI_FALSE;
+    bool ok = disk_cb.set_image_index((unsigned)index);
+    disk_cb.set_eject_state(false);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL JNI_FN(setPointer)(JNIEnv *env, jobject thiz, jfloat x, jfloat y, jboolean down) {
+    float nx = ((x / (float)view_w) * 2.0f - 1.0f) / pic_sx;
+    float ny = ((y / (float)view_h) * 2.0f - 1.0f) / pic_sy;
+    if (!down || nx < -1.0f || nx > 1.0f || ny < -1.0f || ny > 1.0f) {
+        touch_down = 0;
+        return;
+    }
+    touch_x = (int16_t)(nx * 0x7fff);
+    touch_y = (int16_t)(ny * 0x7fff);
+    touch_down = 1;
+}
+
 JNIEXPORT void JNICALL JNI_FN(unload)(JNIEnv *env, jobject thiz) {
+    disk_ready = 0;
     if (game_loaded) c_unload_game();
     game_loaded = 0;
     rotation = 0;
@@ -688,6 +745,8 @@ JNIEXPORT void JNICALL JNI_FN(glDraw)(JNIEnv *env, jobject thiz) {
     float view_aspect = (float)view_w / (float)view_h;
     float sx = 1.0f, sy = 1.0f;
     if (view_aspect > aspect) sx = aspect / view_aspect; else sy = view_aspect / aspect;
+    pic_sx = sx;
+    pic_sy = sy;
     /* Corners anticlockwise from bottom left; a turned game takes its picture corners from further round */
     float uv[4][2] = {{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}};
     if (hw_on && hw_w > 0 && hw_h > 0) {

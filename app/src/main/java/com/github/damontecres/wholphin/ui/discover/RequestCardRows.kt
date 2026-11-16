@@ -26,7 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -228,8 +227,8 @@ private fun CardButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (primary) BenflixColors.Text else BenflixColors.Raised,
                 contentColor = if (primary) BenflixColors.Tray else BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -240,6 +239,7 @@ private fun CardButton(
             fontSize = BenflixType.small,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .align(Alignment.Center)
@@ -251,14 +251,7 @@ private fun CardButton(
 private fun declined(entry: RequestEntry) =
     !entry.available && (entry.status == RequestStatus.DECLINED || entry.status == RequestStatus.FAILURE)
 
-private fun statusWords(entry: RequestEntry): String =
-    when {
-        entry.available -> "Ready to watch"
-        declined(entry) -> "Not this time"
-        entry.downloading -> entry.downloadPercent?.let { "Downloading, $it%" } ?: "Downloading"
-        entry.status == RequestStatus.PENDING -> "Waiting for a yes"
-        else -> "Yes! Looking for it"
-    }
+private fun statusWords(entry: RequestEntry): String = entry.askPill().words
 
 private fun progress(entry: RequestEntry): Float =
     when {

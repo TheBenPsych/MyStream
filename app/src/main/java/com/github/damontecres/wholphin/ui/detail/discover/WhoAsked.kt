@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -314,7 +315,7 @@ fun WhoAskedBlock(
             Button(
                 onClick = { askCantFind = true },
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-            ) { Text("Can't find it", maxLines = 1) }
+            ) { Text("Can't find it", maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }

@@ -146,7 +146,7 @@ fun GamesPage(
             playable
                 .flatMap { (c, _, _) ->
                     c.games.map {
-                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids)
+                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids, bigKids = it.bigKids)
                     }
                 }.toMap()
         }
@@ -403,6 +403,7 @@ fun GamesPage(
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.width(cardHeight * BoxArt.DEFAULT_RATIO),
                                         )
                                     }
@@ -711,7 +712,7 @@ fun GamesPage(
         StringInputDialog(
             input =
                 StringInput(
-                    title = "Games server address (for example 10.0.0.58). Leave empty for automatic.",
+                    title = "Games server address (Tower's home address, like 10.0.0.58). Leave empty for automatic.",
                     value = viewModel.gamesAddress.removePrefix("http://"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     onSubmit = {},
@@ -748,7 +749,7 @@ internal fun ActionTile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
         modifier = Modifier.size(width = 280.dp, height = 84.dp),
@@ -781,6 +782,9 @@ private fun KeepPlayingCard(
     val shape = RoundedCornerShape(16.dp)
     val context = LocalContext.current
     Surface(
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(shape),
         onClick = onOpen,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
@@ -832,8 +836,17 @@ private fun KeepPlayingCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = status ?: line, color = BenflixColors.Soft, fontSize = BenflixType.small, maxLines = 1)
+                Text(
+                    text = status ?: line,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Surface(
+                    border =
+                        com.github.damontecres.wholphin.ui.theme
+                            .benflixFocusBorder(RoundedCornerShape(50)),
                     onClick = onPlay,
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
                     colors =
@@ -877,7 +890,7 @@ internal fun ServerGameCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1F1F1F), focusedContainerColor = Color(0xFF1F1F1F)),
         modifier = modifier,

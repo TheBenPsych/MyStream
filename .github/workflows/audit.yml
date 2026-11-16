@@ -222,7 +222,8 @@ jobs:
 
   publish:
     needs: robot
-    if: ${{ !cancelled() }}
+    # don't wipe the last good pictures when the robot didn't run (a failed build skips it)
+    if: ${{ !cancelled() && needs.robot.result != 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

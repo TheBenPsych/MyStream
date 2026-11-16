@@ -537,8 +537,8 @@ private fun TagChip(
             androidx.tv.material3.ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .12f),
                 contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = Color.Black,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         modifier = modifier,
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -559,6 +559,9 @@ private fun CharacterCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
         onClick = onClick,
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),
@@ -628,6 +631,9 @@ private fun MovieOrderCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
         onClick = onClick,
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),

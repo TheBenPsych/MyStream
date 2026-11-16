@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -105,6 +106,7 @@ internal fun Badge(
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

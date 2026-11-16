@@ -772,6 +772,9 @@ private fun StepButtons(
         extra()
         if (viewModel.single == null && step in FlowSteps && step != WelcomeStep.FINISH) {
             androidx.tv.material3.Surface(
+                border =
+                    com.github.damontecres.wholphin.ui.theme
+                        .benflixFocusBorder(RoundedCornerShape(50)),
                 onClick = viewModel::next,
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
                 colors =
@@ -878,7 +881,7 @@ private fun PictureStep(
                         border =
                             ClickableSurfaceDefaults.border(
                                 border = Border(BorderStroke(3.dp, if (index == chosen) Color.White else Color.Transparent)),
-                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
+                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus)),
                             ),
                         modifier =
                             Modifier
@@ -908,7 +911,7 @@ private fun PictureStep(
                         border =
                             ClickableSurfaceDefaults.border(
                                 border = Border(BorderStroke(3.dp, if (color == accent) Color.White else Color.Transparent)),
-                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
+                                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus)),
                             ),
                         modifier = Modifier.size(44.dp),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
@@ -1278,7 +1281,7 @@ private fun PosterTile(
         border =
             ClickableSurfaceDefaults.border(
                 border = Border(BorderStroke(3.dp, if (selected) BenflixRed else Color.Transparent)),
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Text)),
+                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus)),
             ),
         modifier =
             modifier

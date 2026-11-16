@@ -36,6 +36,30 @@ data class TowerDownload(
     val episodes: Int = 1,
 )
 
+/** One drive's health, from the Scrutiny app on Tower (Idea Box 24) */
+data class DriveHealth(
+    val name: String,
+    /** Like /dev/sdb */
+    val where: String,
+    val size: Long,
+    val ok: Boolean,
+    /** "Healthy", "Failing: ..." or "Warning signs: ..." */
+    val words: String,
+    val temp: Int?,
+    val hours: Long?,
+)
+
+private fun driveOf(it: JSONObject) =
+    DriveHealth(
+        name = it.optString("name"),
+        where = it.optString("where"),
+        size = it.optLong("size"),
+        ok = it.optBoolean("ok", true),
+        words = it.optString("words"),
+        temp = if (it.isNull("temp") || !it.has("temp")) null else it.optInt("temp"),
+        hours = if (it.isNull("hours") || !it.has("hours")) null else it.optLong("hours"),
+    )
+
 /** What the Benflix helper on Tower says, in one answer */
 data class TowerStatus(
     val upSeconds: Long?,
@@ -51,6 +75,8 @@ data class TowerStatus(
     val problems: List<String>,
     /** Free space where the movies and shows live (name, used bytes, free bytes) */
     val disks: List<Triple<String, Long, Long>> = emptyList(),
+    /** Drives with warning signs (from Scrutiny) */
+    val drivesBad: List<DriveHealth> = emptyList(),
 )
 
 /** Home's weather town on Tower (blank = off) */
@@ -179,8 +205,26 @@ class BenflixTower
                     j.optJSONArray("disks")?.objects().orEmpty().map {
                         Triple(it.optString("name"), it.optLong("used"), it.optLong("free"))
                     },
+                drivesBad =
+                    j
+                        .optJSONArray("drives_bad")
+                        ?.objects()
+                        .orEmpty()
+                        .map { driveOf(it) },
             )
         }
+
+        /** Whether Scrutiny is connected, and every drive's health, worst first */
+        suspend fun drives(fresh: Boolean = false): Pair<Boolean, List<DriveHealth>> =
+            atHome {
+                val j = helper.getJson("/api/admin/drives" + if (fresh) "?fresh=1" else "")
+                j.optBoolean("set_up") to
+                    j
+                        .optJSONArray("drives")
+                        ?.objects()
+                        .orEmpty()
+                        .map { driveOf(it) }
+            }
 
         /** Home's weather: the town Ben typed (at home only, admin) */
         suspend fun homeTown(): HomeTown = atHome { homeTownOf(helper.getJson("/api/admin/home/town")) }

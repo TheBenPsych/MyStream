@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -47,7 +48,10 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.AudioItem
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.GuestMode
+import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.MusicService
+import com.github.damontecres.wholphin.services.MusicSong
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NowPlayingStatus
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
@@ -80,7 +84,85 @@ class MusicNowPlayingViewModel
         private val api: ApiClient,
         val musicService: MusicService,
         val navigationManager: NavigationManager,
+        private val music: com.github.damontecres.wholphin.services.BenflixMusic,
+        private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
     ) : ViewModel() {
+        /** Ben, or a grown-up family profile (their asks wait for Ben's yes). Never Kids or Guest. */
+        val canAsk: Boolean get() = !KidsMode.isActive && !GuestMode.isActive
+
+        val isAdmin: Boolean get() = serverRepository.currentUserDto?.policy?.isAdministrator == true
+
+        /** Similar songs (null = the panel is closed) */
+        private val _similar = MutableStateFlow<SimilarState?>(null)
+        val similar: StateFlow<SimilarState?> = _similar
+        val similarPicked = MutableStateFlow<MusicSong?>(null)
+        val similarNote = MutableStateFlow<String?>(null)
+
+        fun openSimilar() {
+            val audio = musicService.state.value.currentAudio ?: return
+            val artist =
+                audio.artistNames
+                    .orEmpty()
+                    .substringBefore(",")
+                    .trim()
+            val title = audio.title.orEmpty()
+            similarNote.value = null
+            similarPicked.value = null
+            _similar.value = SimilarState.Loading
+            viewModelScope.launchIO {
+                _similar.value =
+                    try {
+                        SimilarState.Songs(title, music.similar(artist, title))
+                    } catch (ex: kotlinx.coroutines.CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Similar songs")
+                        SimilarState.Problem(ex.message ?: "Couldn't reach Tower.")
+                    }
+            }
+        }
+
+        fun closeSimilar() {
+            _similar.value = null
+            similarPicked.value = null
+        }
+
+        /** [kind] is "song" or "album" */
+        fun askSimilar(
+            kind: String,
+            id: Long,
+            name: String,
+        ) {
+            similarPicked.value = null
+            viewModelScope.launchIO {
+                try {
+                    music.ask(kind, id)
+                    similarNote.value = if (isAdmin) "Asked for $name." else "Asked Ben for $name. He says yes before it downloads."
+                    val now = _similar.value
+                    if (now is SimilarState.Songs) {
+                        _similar.value =
+                            now.copy(
+                                songs =
+                                    now.songs.map { s ->
+                                        if (s.id == id ||
+                                            (kind == "album" && s.albumId == id)
+                                        ) {
+                                            s.copy(asked = "Asked for")
+                                        } else {
+                                            s
+                                        }
+                                    },
+                            )
+                    }
+                } catch (ex: kotlinx.coroutines.CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Ask for a similar song")
+                    similarNote.value = ex.message ?: "Couldn't ask Tower for it."
+                }
+            }
+        }
+
         val player get() = musicService.player
         private val _lyrics = MutableStateFlow<Pair<UUID, LyricDto>?>(null)
         val lyrics: StateFlow<Pair<UUID, LyricDto>?> = _lyrics
@@ -221,14 +303,35 @@ fun MusicNowPlayingPage(
     }
     val next = remember(music.queueVersion, music.currentIndex) { nextSong(viewModel) }
     val playFocus = remember { FocusRequester() }
+    // Ben 2026-11-15: the first open after an update can be slow to draw, and one try at 60ms missed, so nothing
+    // had focus until Down was pressed. Keep trying for a few seconds until Play really has it.
+    val playFocused = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(60)
-        playFocus.tryRequestFocus()
+        if (!wide) return@LaunchedEffect
+        repeat(30) {
+            delay(if (it == 0) 60L else 100L)
+            if (playFocused.value) return@LaunchedEffect
+            playFocus.tryRequestFocus()
+        }
     }
     val lyricIndex = lyrics?.let { currentLine(it, position, duration) }
     val menuSong by viewModel.menuSong.collectAsState()
     menuSong?.let { song ->
         SongMenu(song = song, liked = music.liked, onDismiss = viewModel::closeMenu)
+    }
+    val similar by viewModel.similar.collectAsState()
+    val similarPicked by viewModel.similarPicked.collectAsState()
+    val similarNote by viewModel.similarNote.collectAsState()
+    similar?.let { state ->
+        SimilarSongsPanel(
+            state = state,
+            admin = viewModel.isAdmin,
+            picked = similarPicked,
+            onPick = { viewModel.similarPicked.value = it },
+            onAsk = viewModel::askSimilar,
+            onDismiss = viewModel::closeSimilar,
+            note = similarNote,
+        )
     }
 
     BoxWithConstraints(
@@ -269,13 +372,12 @@ fun MusicNowPlayingPage(
                 cover = { size -> CoverImage(audio?.imageUrl, Modifier.size(size)) },
                 middle = {
                     SongWords(audio, music.thenTitle, easy, big = true)
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(12.dp))
                     ProgressLine(position, duration)
-                    Spacer(Modifier.height(16.dp))
-                    Controls(viewModel, playing, music.liked, easy, isTv, playFocus)
                     Spacer(Modifier.height(14.dp))
-                    UpNextLine(next)
+                    Controls(viewModel, playing, music.liked, easy, isTv, playFocus, onPlayFocus = { playFocused.value = it })
                 },
+                underCover = { UpNextLine(next, stacked = true) },
                 side =
                     if (lyrics != null) {
                         { mod -> LyricsColumn(lyrics, lyricIndex, mod, fontSize = if (easy) 24f else 20f) }
@@ -372,6 +474,7 @@ private fun Controls(
     easy: Boolean,
     isTv: Boolean,
     playFocus: FocusRequester,
+    onPlayFocus: (Boolean) -> Unit = {},
 ) {
     // True while Left or Right is held down (rewinding or fast forwarding)
     var held by remember { mutableStateOf(false) }
@@ -392,6 +495,7 @@ private fun Controls(
             modifier =
                 Modifier
                     .focusRequester(playFocus)
+                    .onFocusChanged { if (it.isFocused) onPlayFocus(true) }
                     .onPreviewKeyEvent { e ->
                         // Ben: on the TV remote, Left/Right = previous/next song; holding = rewind/fast forward
                         if (!isTv) return@onPreviewKeyEvent false
@@ -416,20 +520,53 @@ private fun Controls(
                     },
         )
         MusicButton(if (easy) "Next song" else null, BenflixIcon.NEXT, onClick = viewModel::next, big = easy, modifier = tvSkip)
-        if (!isTv) {
-            Spacer(Modifier.width(4.dp))
+    }
+    if (!isTv) {
+        // Phones held sideways: the round buttons on their own line under Play (wrapping when narrow)
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 10.dp),
+        ) {
             ExtraButtons(viewModel, liked, easy)
         }
-    }
-    if (isTv) {
-        // TV: Left/Right on Play change the song, so the heart, Up next and Stop sit one row down
-        // Wraps onto a second line when the middle is narrow, so no button is ever cut off
+    } else if (easy) {
+        // Easy read: the buttons keep their names, wrapping onto a second line when the middle is narrow
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(top = 12.dp),
         ) {
             ExtraButtons(viewModel, liked, easy, labels = true)
+        }
+    } else {
+        // TV: Left/Right on Play change the song, so the heart, Up next, Similar songs, Stop and More sit one row
+        // down. Ben 2026-11-15: as named pills they wrapped onto two lines and got cut off, so they're round
+        // buttons on one line, and the name of the one you're on shows beside them.
+        var focusedName by remember { mutableStateOf<String?>(null) }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 12.dp),
+        ) {
+            ExtraButtons(viewModel, liked, easy, labels = false, onFocusName = { n, f ->
+                if (f) {
+                    focusedName = n
+                } else if (focusedName ==
+                    n
+                ) {
+                    focusedName = null
+                }
+            })
+            Text(
+                text = focusedName.orEmpty(),
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 4.dp),
+            )
         }
     }
 }
@@ -440,25 +577,75 @@ private fun ExtraButtons(
     liked: Boolean,
     easy: Boolean,
     labels: Boolean = easy,
+    onFocusName: ((name: String, focused: Boolean) -> Unit)? = null,
 ) {
+    val named: (String) -> Modifier = { name ->
+        if (onFocusName == null) Modifier else Modifier.onFocusChanged { onFocusName(name, it.isFocused) }
+    }
+    val likeName = if (liked) "Liked" else "Like"
     MusicButton(
-        if (labels) (if (liked) "Liked" else "Like") else null,
+        if (labels) likeName else null,
         BenflixIcon.HEART,
         filledHeart = liked,
         onClick = viewModel::like,
         big = easy,
+        modifier = named(likeName),
     )
-    MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy)
-    MusicButton(if (labels) "Stop" else null, BenflixIcon.STOP, onClick = viewModel::stop, big = easy)
+    MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy, modifier = named("Up next"))
+    // Ben 2026-11-15: a few songs like this one to ask for
+    if (viewModel.canAsk) {
+        MusicButton(
+            if (labels) "Similar songs" else null,
+            BenflixIcon.REQUESTS,
+            onClick = viewModel::openSimilar,
+            big = easy,
+            modifier = named("Similar songs"),
+        )
+    }
+    MusicButton(if (labels) "Stop" else null, BenflixIcon.STOP, onClick = viewModel::stop, big = easy, modifier = named("Stop"))
     // Play next, Add to a playlist, Go to album ... and, on Ben's profile, Delete and find again
-    MusicButton(if (labels) "More" else null, BenflixIcon.MORE_VERT, onClick = viewModel::openMenu, big = easy)
+    MusicButton(if (labels) "More" else null, BenflixIcon.MORE_VERT, onClick = viewModel::openMenu, big = easy, modifier = named("More"))
 }
 
 private const val SEEK_STEP_MS = 5_000L
 
 /** "UP NEXT" with the next song's small cover, name and artist (always there) */
 @Composable
-internal fun UpNextLine(next: AudioItem?) {
+internal fun UpNextLine(
+    next: AudioItem?,
+    stacked: Boolean = false,
+) {
+    if (stacked) {
+        // Under the cover: UP NEXT on its own line, then the next song's cover, name and artist
+        androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            MusicKicker("Up next", color = BenflixColors.Muted)
+            if (next != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CoverImage(next.imageUrl, Modifier.size(44.dp), shape = RoundedCornerShape(6.dp))
+                    androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+                        Text(
+                            text = next.title.orEmpty(),
+                            color = BenflixColors.Text,
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = next.artistNames.orEmpty(),
+                            color = BenflixColors.Soft,
+                            fontSize = BenflixType.small,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            } else {
+                Text("A mix like this one", color = BenflixColors.Muted, fontSize = BenflixType.small)
+            }
+        }
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MusicKicker("Up next", color = BenflixColors.Muted)
         if (next != null) {

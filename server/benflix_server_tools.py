@@ -129,6 +129,60 @@ def disks():
     return [{"name": "Movies and shows", "used": total - free, "free": free}]
 
 
+# Drive health (Idea Box 24): Scrutiny reads each drive's own health report (SMART) and spots the warning signs
+# of a drive that's about to fail. The setup command finds the Scrutiny app and saves its address.
+_drives_cache = {"at": 0.0, "data": None}
+DRIVES_SECONDS = 600
+
+
+def _drive_words(status):
+    """Scrutiny's status number in plain words (0 is healthy)"""
+    if not status:
+        return "Healthy"
+    if status & 1:
+        return "Failing: the drive says it's going wrong"
+    return "Warning signs: back up anything you can't download again"
+
+
+def drives(fresh=False):
+    """Each drive's health from Scrutiny, worst first. {"set_up": False} when Scrutiny isn't connected."""
+    url = os.environ.get("SCRUTINY_URL", "").rstrip("/")
+    if not url:
+        return {"set_up": False, "drives": []}
+    with _lock:
+        if not fresh and _drives_cache["data"] is not None and time.time() - _drives_cache["at"] < DRIVES_SECONDS:
+            return _drives_cache["data"]
+    try:
+        with urllib.request.urlopen(url + "/api/summary", timeout=15) as r:
+            summary = (json.loads(r.read()).get("data") or {}).get("summary") or {}
+    except (OSError, ValueError, urllib.error.URLError):
+        raise ToolError(502, "Couldn't reach Scrutiny (the drive health app). Is it running?")
+    out = []
+    for one in summary.values():
+        dev = one.get("device") or {}
+        smart = one.get("smart") or {}
+        status = int(dev.get("device_status") or 0)
+        size = int(dev.get("capacity") or 0)
+        name = " ".join(x for x in (dev.get("label") or "", dev.get("model_name") or "") if x).strip()
+        out.append(
+            {
+                "name": name or dev.get("device_name") or "Drive",
+                "where": "/dev/" + dev["device_name"] if dev.get("device_name") else "",
+                "size": size,
+                "ok": status == 0,
+                "words": _drive_words(status),
+                "temp": smart.get("temp"),
+                "hours": smart.get("power_on_hours"),
+                "checked": smart.get("collector_date") or "",
+            }
+        )
+    out.sort(key=lambda d: (d["ok"], d["name"].lower()))
+    data = {"set_up": True, "drives": out, "link": url}
+    with _lock:
+        _drives_cache.update(at=time.time(), data=data)
+    return data
+
+
 def up_seconds():
     try:
         with open("/proc/uptime") as f:
@@ -233,13 +287,110 @@ def _plain_status(state, status, code=None, oom=False):
     return f"Stopped{when}"
 
 
+# Docker's "unhealthy" comes from a little self-test baked into some app images (slskd, some Sonarr builds). That
+# self-test often fails while the app itself is fine (a changed port, web sign-in turned on, a tool missing inside the
+# image, a network change), which made the Server page cry wolf. So before calling an app broken, the helper knocks on
+# the app's door itself. If the app answers, it's working, whatever Docker's self-test says.
+KNOWN_ADDRESSES = {
+    "sonarr": lambda: [ARRS["sonarr"][0] + "/ping"] if ARRS["sonarr"][0] else [],
+    "radarr": lambda: [ARRS["radarr"][0] + "/ping"] if ARRS["radarr"][0] else [],
+    "slskd": lambda: [os.environ.get("SLSKD_URL", "").rstrip("/") + "/health"] if os.environ.get("SLSKD_URL") else [],
+    "lidarr": lambda: [os.environ.get("LIDARR_URL", "").rstrip("/") + "/ping"] if os.environ.get("LIDARR_URL") else [],
+}
+CHECK_SECONDS = 4
+
+
+def _http_answers(url):
+    """True when something answers at this web address at all (even "sign in first" counts: the app is awake)"""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "*/*"}), timeout=CHECK_SECONDS):
+            return True
+    except urllib.error.HTTPError as e:
+        return e.code < 500
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
+
+
+def _port_open(host, port):
+    try:
+        with socket.create_connection((host, int(port)), timeout=CHECK_SECONDS):
+            return True
+    except (OSError, ValueError):
+        return False
+
+
+def _app_doors(c, info):
+    """Web addresses the helper (on Tower's own network) can try for this app, best first"""
+    low = ((c.get("Names") or ["/?"])[0]).lower()
+    urls = []
+    for key, known in KNOWN_ADDRESSES.items():
+        if key in low:
+            urls += known()
+    ports = set()
+    for p in c.get("Ports") or []:
+        if p.get("PublicPort") and p.get("Type", "tcp") == "tcp":
+            ports.add(("127.0.0.1", p["PublicPort"]))
+    exposed = [k.split("/")[0] for k in ((info.get("Config") or {}).get("ExposedPorts") or {}) if k.endswith("/tcp")]
+    nets = (info.get("NetworkSettings") or {}).get("Networks") or {}
+    mode = ((info.get("HostConfig") or {}).get("NetworkMode") or "").lower()
+    for port in exposed:
+        if mode == "host":
+            ports.add(("127.0.0.1", port))
+        for net in nets.values():
+            if net.get("IPAddress"):
+                ports.add((net["IPAddress"], port))
+    for host, port in sorted(ports, key=lambda hp: (hp[0] != "127.0.0.1", str(hp[1]))):
+        urls.append(f"http://{host}:{port}/")
+    return urls, ports
+
+
+def _health_note(info):
+    """The last thing Docker's self-test said, in short, for when the app really doesn't answer"""
+    log = ((info.get("State") or {}).get("Health") or {}).get("Log") or []
+    text = " ".join(((log[-1] if log else {}).get("Output") or "").split())
+    return text[:140]
+
+
+def _second_opinion(c):
+    """(answers, note). answers is True when the app answers the helper, so Docker's "unhealthy" was a false alarm."""
+    try:
+        info = _docker("GET", f"/containers/{urllib.parse.quote(c.get('Id') or '')}/json", timeout=10) or {}
+    except ToolError:
+        return None, ""
+    urls, ports = _app_doors(c, info)
+    for url in urls[:6]:
+        if _http_answers(url):
+            return True, ""
+    # Apps that don't speak web (like a database) still count as awake when their port takes a call
+    for host, port in list(ports)[:4]:
+        if _port_open(host, port):
+            return True, ""
+    return (False if urls or ports else None), _health_note(info)
+
+
 def apps():
     containers = _docker("GET", "/containers/json?all=1")
+    # Ask the apps Docker calls "unhealthy" ourselves, all at once so the page doesn't wait long
+    opinions = {}
+    sick = [c for c in containers or [] if c.get("State") == "running" and "unhealthy" in (c.get("Status") or "")]
+
+    def ask(c):
+        opinions[c.get("Id")] = _second_opinion(c)
+
+    threads = [threading.Thread(target=ask, args=(c,), daemon=True) for c in sick]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(CHECK_SECONDS * 4)
     out = []
     for c in containers or []:
         name = (c.get("Names") or ["/?"])[0].lstrip("/")
         state = c.get("State") or ""
         status = c.get("Status") or ""
+        answers, note = opinions.get(c.get("Id"), (None, ""))
+        if answers:
+            # It answers the helper, so it's working. Drop Docker's false "unhealthy" from what Benflix shows.
+            status = re.sub(r"\s*\((?:unhealthy|health: starting)\)", "", status)
         code = _exit_code(status) if state == "exited" else None
         # 137 can also mean it ran out of memory, which is worth knowing about
         oom = code == 137 and _out_of_memory(c.get("Id"))
@@ -254,7 +405,7 @@ def apps():
                 "problem": problem,
                 "state": state,
                 "exit_code": code,
-                "status": _plain_status(state, status, code, oom),
+                "status": _plain_status(state, status, code, oom) + (f" ({note})" if problem and state == "running" and note else ""),
                 "restartable": name.lower() != SELF,
             }
         )
@@ -568,6 +719,10 @@ def tower(fresh=False):
         if not fresh and _cache["data"] is not None and time.time() - _cache["at"] < CACHE_SECONDS:
             return _cache["data"]
     result = {"up_seconds": up_seconds(), "memory": memory_busy(), "gpu": gpu_busy(), "disks": disks()}
+    try:  # Drives with warning signs show on the Server page's first screen
+        result["drives_bad"] = [d for d in drives().get("drives", []) if not d["ok"]]
+    except ToolError:
+        result["drives_bad"] = []
     problems = []
     holder = {}
 

@@ -201,6 +201,11 @@ class PlaybackViewModel
         @Inject
         var favoriteWatchManager: FavoriteWatchManager? = null
 
+        /** Benflix Live TV: reaches Tower's channel addresses at home or away (null in tests) */
+        @JvmField
+        @Inject
+        var gameLibraryClient: com.github.damontecres.wholphin.services.GameLibraryClient? = null
+
         internal var mediaSession: MediaSession? = null
 
         // Mutex & Job for changing playlist index
@@ -298,6 +303,13 @@ class PlaybackViewModel
         /** Benflix: which fallback step (see onPlayerError) was last used, and for which video */
         private var fallbackStepFor: UUID? = null
         private var fallbackStep = 0
+
+        // Benflix Live TV: when a channel won't play, the next copies of it are tried (Tower's ?skip=1, 2),
+        // then the server's way of playing it. Only once per channel, so it never goes round in circles
+        private var liveTriesFor: UUID? = null
+        private var liveTries = 0
+        private var liveViaServer = false
+        private var lastLiveWasTower = false
 
         /** Benflix: restarts a video once if it starts with a low, jerky frame rate */
         internal val pictureWatchdog by lazy {
@@ -653,6 +665,9 @@ class PlaybackViewModel
                 }
                 this@PlaybackViewModel.currentItem = playlistItem
                 this@PlaybackViewModel.itemId = item.id
+                // Benflix: autoplay moved on to another episode, so the show page under the player
+                // shows this one when they come back (or tab out of the app and back in)
+                if (item.type == BaseItemKind.EPISODE) pointPageUnderAt(item)
 
                 val isLiveTv = item.type == BaseItemKind.TV_CHANNEL
                 val base = item.data
@@ -908,15 +923,35 @@ class PlaybackViewModel
                     // Benflix free Live TV: play the channel's own stream on the TV. The server's converter
                     // trips over the free channels' ad breaks (it loops the channel's intro, then errors),
                     // while the TV's player handles them fine and the server has nothing to do
-                    val liveDirect =
-                        item.type == BaseItemKind.TV_CHANNEL &&
-                            source.isRemote &&
-                            source.path?.startsWith("http") == true &&
+                    // Tower's own channel address (/livetv/play/<channel>), which picks a working copy of the
+                    // channel each time. It's a home address, so Jellyfin doesn't call it "remote"
+                    val liveViaServerNow = liveTriesFor == itemId && liveViaServer
+                    val liveSkip = if (liveTriesFor == itemId) liveTries else 0
+                    val towerChannelUrl =
+                        if (item.type == BaseItemKind.TV_CHANNEL &&
+                            !liveViaServerNow &&
                             currentPlayer.value?.backend == PlayerBackend.EXO_PLAYER
+                        ) {
+                            source.path
+                                ?.let { gameLibraryClient?.liveChannelUrl(it) }
+                                ?.let { if (liveSkip > 0) "$it?skip=$liveSkip" else it }
+                        } else {
+                            null
+                        }
+                    lastLiveWasTower = towerChannelUrl != null
+                    val liveDirect =
+                        towerChannelUrl != null ||
+                            (
+                                item.type == BaseItemKind.TV_CHANNEL &&
+                                    !liveViaServerNow &&
+                                    source.isRemote &&
+                                    source.path?.startsWith("http") == true &&
+                                    currentPlayer.value?.backend == PlayerBackend.EXO_PLAYER
+                            )
                     val mediaUrl =
                         if (liveDirect) {
                             Timber.i("Live TV: playing the channel's stream directly")
-                            source.path
+                            towerChannelUrl ?: source.path
                         } else if (source.supportsDirectPlay) {
                             if (source.isRemote && source.path.isNotNullOrBlank()) {
                                 Timber.i("Playback is remote for source: %s", source.id)
@@ -1044,7 +1079,14 @@ class PlaybackViewModel
                             TrackActivityPlaybackListener(
                                 api = api,
                                 player = player,
-                                getState = { playbackItemState },
+                                // Benflix: the sound or subtitles picked while playing (a direct-play switch keeps this
+                                // listener), so Tower sees and remembers the new choice
+                                getState = {
+                                    state.value.currentPlayback
+                                        ?.takeIf { it.item.id == playback.item.id && it.playSessionId == playback.playSessionId }
+                                        ?.let { PlaybackItemState(it) }
+                                        ?: playbackItemState
+                                },
                                 countWatchTime = playback.item.type == BaseItemKind.MOVIE || playback.item.type == BaseItemKind.EPISODE,
                                 watchDoor =
                                     when (playback.item.type) {
@@ -1063,6 +1105,15 @@ class PlaybackViewModel
                                 currentPlayback = playback,
                             )
                         }
+                        // Benflix: subtitles off means off. Without this the player could turn on a track
+                        // marked "default" or "forced" inside the file by itself (like German words after
+                        // the intro on The Big Bang Theory), because nothing told it subtitles were off.
+                        player.trackSelectionParameters =
+                            player.trackSelectionParameters
+                                .buildUpon()
+                                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, (subtitleIndex ?: -1) < 0)
+                                .build()
                         player.setMediaItem(
                             mediaItem,
                             positionMs,
@@ -1086,7 +1137,7 @@ class PlaybackViewModel
                             }
                         }
                         val onTracksChangedListener =
-                            if (transcodeType == PlayMethod.DIRECT_PLAY && (audioIndex != null || subtitleIndex != null)) {
+                            if (transcodeType == PlayMethod.DIRECT_PLAY) {
                                 TracksChangedListener(
                                     player = player,
                                     audioIndex = audioIndex,
@@ -1169,7 +1220,8 @@ class PlaybackViewModel
                     .filter { it.type == MediaStreamType.SUBTITLE && it.isForced != true }
             val pick =
                 subtitles.firstOrNull { it.language?.lowercase() in listOf("eng", "en", "english") }
-                    ?: subtitles.firstOrNull()
+                    // Benflix: never flash up words in a language nobody asked for
+                    ?: subtitles.firstOrNull { it.language.isNullOrBlank() || it.language.equals("und", true) }
                     ?: return
             val offIndex = currentPlayback.subtitleIndex
             whatDidTheySayJob =
@@ -1670,10 +1722,16 @@ class PlaybackViewModel
                                     unsureSegments = fresh.unsure
                                 }
                             }
-                            val currentTicks =
-                                onMain { player.currentPosition.milliseconds.inWholeTicks }
+                            val (currentTicks, lengthTicks) =
+                                onMain {
+                                    val d = player.duration
+                                    player.currentPosition.milliseconds.inWholeTicks to
+                                        (if (d > 0) d.milliseconds.inWholeTicks else 0L)
+                                }
+                            // Benflix: an intro is never "Skip credits" (credits only near the end)
                             val currentSegment =
-                                segments
+                                BenflixSkipsService
+                                    .tidy(segments, lengthTicks)
                                     .firstOrNull {
                                         it.type != MediaSegmentType.UNKNOWN && currentTicks >= it.startTicks && currentTicks < it.endTicks
                                     }
@@ -2045,6 +2103,33 @@ class PlaybackViewModel
             viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
                 state.value.currentPlayback?.let {
                     val itemNow = it.item.id
+                    if (it.item.type == BaseItemKind.TV_CHANNEL && it.playMethod == PlayMethod.DIRECT_PLAY) {
+                        if (liveTriesFor != itemNow) {
+                            liveTriesFor = itemNow
+                            liveTries = 0
+                            liveViaServer = false
+                        }
+                        if (lastLiveWasTower && liveTries < 2) liveTries++ else liveViaServer = true
+                        Timber.w(
+                            "Live channel didn't play, trying %s",
+                            if (liveViaServer) "through the server" else "copy ${liveTries + 1}",
+                        )
+                        changeStreams(
+                            item = currentItem.item,
+                            sourceId = it.mediaSourceInfo.id,
+                            audioIndex = it.audioIndex,
+                            subtitleIndex = it.subtitleIndex,
+                            positionMs = 0L,
+                            enableDirectPlay = !liveViaServer,
+                            enableDirectStream = true,
+                            allowAudioStreamCopy = false,
+                        )
+                        withContext(WholphinDispatchers.Main) {
+                            player.prepare()
+                            player.play()
+                        }
+                        return@launch
+                    }
                     // Benflix fallback steps when the TV can't play something:
                     //  1. play the file as is (direct play)
                     //  2. server repackages it: picture kept as is, sound turned into AAC. Light for
@@ -2123,6 +2208,47 @@ class PlaybackViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not report the damaged file")
+                }
+            }
+        }
+
+        /** Benflix: the page under the player follows the episode playing now (see [play]) */
+        private fun pointPageUnderAt(episode: BaseItem) {
+            val data = episode.data
+            val seasonId = data.seasonId
+            val seriesId = data.seriesId
+            viewModelScope.launch(WholphinDispatchers.Main) {
+                try {
+                    navigationManager.replaceBelow(destination) { below ->
+                        when {
+                            below is Destination.SeriesOverview &&
+                                below.itemId == seriesId &&
+                                seasonId != null &&
+                                below.seasonEpisode?.episodeId != episode.id -> {
+                                below.copy(
+                                    seasonEpisode =
+                                        com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds(
+                                            seasonId,
+                                            data.parentIndexNumber,
+                                            episode.id,
+                                            data.indexNumber,
+                                        ),
+                                )
+                            }
+
+                            below is Destination.MediaItem &&
+                                below.type == BaseItemKind.EPISODE &&
+                                below.itemId != episode.id -> {
+                                below.copy(itemId = episode.id)
+                            }
+
+                            else -> {
+                                null
+                            }
+                        }
+                    }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not move the page under the player to %s", episode.id)
                 }
             }
         }

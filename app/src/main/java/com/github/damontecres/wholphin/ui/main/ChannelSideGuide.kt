@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -143,8 +144,8 @@ private fun SideGuideContent(
                             ClickableSurfaceDefaults.colors(
                                 containerColor = if (name == group) Color(0xFF3A3A42) else Color(0xFF1C1C21),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color.Black,
+                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                             ),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     ) {
@@ -153,6 +154,7 @@ private fun SideGuideContent(
                             fontSize = BenflixType.tag,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                         )
                     }

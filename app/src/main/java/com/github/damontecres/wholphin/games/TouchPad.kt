@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -20,6 +21,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -122,7 +125,20 @@ private fun layoutFor(
                 )
             }
 
-            TouchLayout.GENESIS -> {
+            TouchLayout.SATURN -> {
+                // A B C along the bottom, X Y Z smaller above them, like the Saturn pad
+                val small = Size(b * 1.5f, b * 1.5f)
+                listOf(
+                    PadButton("A", RetroButton.B, at(-0.75f, 0.45f), small, true),
+                    PadButton("B", RetroButton.A, at(0f, 0.3f), small, true),
+                    PadButton("C", RetroButton.R, at(0.75f, 0.15f), small, true),
+                    PadButton("X", RetroButton.Y, at(-0.75f, -0.35f), small, true),
+                    PadButton("Y", RetroButton.X, at(0f, -0.5f), small, true),
+                    PadButton("Z", RetroButton.L, at(0.75f, -0.65f), small, true),
+                )
+            }
+
+            TouchLayout.GENESIS, TouchLayout.THREEDO -> {
                 listOf(
                     PadButton("A", RetroButton.Y, at(-0.7f, 0.25f), round, true),
                     PadButton("B", RetroButton.B, at(0f, 0f), round, true),
@@ -140,7 +156,14 @@ private fun layoutFor(
                 )
             }
 
-            TouchLayout.GBA, TouchLayout.SNES -> {
+            TouchLayout.SATURN -> {
+                listOf(
+                    PadButton("L", RetroButton.L2, Offset(margin + pill.width / 2, margin + pill.height / 2), pill, false),
+                    PadButton("R", RetroButton.R2, Offset(w - margin - pill.width / 2, margin + pill.height / 2), pill, false),
+                )
+            }
+
+            TouchLayout.GBA, TouchLayout.SNES, TouchLayout.THREEDO -> {
                 listOf(
                     PadButton("L", RetroButton.L, Offset(margin + pill.width / 2, margin + pill.height / 2), pill, false),
                     PadButton("R", RetroButton.R, Offset(w - margin - pill.width / 2, margin + pill.height / 2), pill, false),
@@ -167,20 +190,26 @@ private fun layoutFor(
     val middle =
         buildList {
             val selectAt = Offset(w / 2 - small.width * 0.65f, sy)
-            if (touch != TouchLayout.GENESIS) {
+            val noSelect = touch == TouchLayout.GENESIS || touch == TouchLayout.SATURN
+            if (!noSelect) {
                 val label =
                     when (touch) {
                         TouchLayout.ARCADE -> "COIN"
                         TouchLayout.N64 -> "L"
+                        TouchLayout.THREEDO -> "STOP"
                         else -> "SELECT"
                     }
                 add(PadButton(label, RetroButton.SELECT, selectAt, small, false))
             }
             add(
                 PadButton(
-                    if (touch == TouchLayout.ONE_BUTTON) "RESET" else "START",
+                    when (touch) {
+                        TouchLayout.ONE_BUTTON -> "RESET"
+                        TouchLayout.THREEDO -> "PLAY"
+                        else -> "START"
+                    },
                     RetroButton.START,
-                    Offset(if (touch == TouchLayout.GENESIS) w / 2 else w / 2 + small.width * 0.65f, sy),
+                    Offset(if (noSelect) w / 2 else w / 2 + small.width * 0.65f, sy),
                     small,
                     false,
                 ),
@@ -237,8 +266,11 @@ fun TouchPad(
     onButtons: (Int) -> Unit,
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    /** For a console with a touch screen: where a finger not on a button is (in window pixels), or null when lifted */
+    onScreenTouch: ((Offset?) -> Unit)? = null,
 ) {
     val view = LocalView.current
+    var where by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val margin = with(LocalDensity.current) { 20.dp.toPx() }
     var pressed by remember { mutableIntStateOf(0) }
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -248,11 +280,13 @@ fun TouchPad(
         Canvas(
             Modifier
                 .fillMaxSize()
+                .onGloballyPositioned { where = it }
                 .pointerInput(layout) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
                             var mask = 0
+                            var screenAt: Offset? = null
                             for (c in event.changes) {
                                 if (!c.pressed) {
                                     if (c.previousPressed &&
@@ -263,9 +297,14 @@ fun TouchPad(
                                     }
                                     continue
                                 }
-                                mask = mask or hit(layout, c.position)
+                                val pressing = hit(layout, c.position)
+                                if (pressing == 0 && onScreenTouch != null) {
+                                    screenAt = where?.localToWindow(c.position) ?: c.position
+                                }
+                                mask = mask or pressing
                                 c.consume()
                             }
+                            onScreenTouch?.invoke(screenAt)
                             if (mask and pressed.inv() != 0) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             if (mask != pressed) {
                                 pressed = mask

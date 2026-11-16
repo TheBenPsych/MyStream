@@ -129,6 +129,53 @@ class BenflixSkipsService
                 )
             }
 
+            /** "Skip credits" only shows in the last quarter of the episode or movie */
+            const val CREDITS_FROM = 0.75
+
+            /**
+             * Makes sure an intro is never called credits. Credits that start before the last quarter
+             * (like an anime opening, which shows staff names, or AniSkip's OP and ED mixed up) become
+             * an intro when they sit near the start and are intro length, and are dropped otherwise, so
+             * "Skip credits" can't jump over the whole episode. Where two kinds overlap, the intro or
+             * recap wins. [lengthTicks] 0 or less = length not known yet (credits near the start are
+             * then held back until it is).
+             */
+            fun tidy(
+                segments: List<MediaSegmentDto>,
+                lengthTicks: Long,
+            ): List<MediaSegmentDto> {
+                if (segments.none { it.type == MediaSegmentType.OUTRO }) return segments
+                val out = mutableListOf<MediaSegmentDto>()
+                for (seg in segments) {
+                    if (seg.type != MediaSegmentType.OUTRO) {
+                        out.add(seg)
+                        continue
+                    }
+                    if (lengthTicks > 0 && seg.startTicks >= (lengthTicks * CREDITS_FROM).toLong()) {
+                        out.add(seg)
+                        continue
+                    }
+                    if (lengthTicks <= 0) continue
+                    val lengthSec = (seg.endTicks - seg.startTicks) / 10_000_000.0
+                    val nearStart = seg.startTicks <= (lengthTicks * 0.35).toLong()
+                    val hasIntro =
+                        segments.any {
+                            it.type == MediaSegmentType.INTRO && it.startTicks < seg.endTicks && seg.startTicks < it.endTicks
+                        }
+                    if (nearStart && lengthSec in 12.0..300.0 && !hasIntro) {
+                        out.add(seg.copy(type = MediaSegmentType.INTRO))
+                    }
+                }
+                // Intro and recap first, so they win over anything else at the same moment
+                return out.sortedBy {
+                    when (it.type) {
+                        MediaSegmentType.INTRO, MediaSegmentType.RECAP -> 0
+                        MediaSegmentType.OUTRO -> 2
+                        else -> 1
+                    }
+                }
+            }
+
             /**
              * Puts Tower's times together with AniSkip's (hand-checked anime times). Fixes people made
              * win over everything; AniSkip wins over Tower's other times for the same kind. Kinds

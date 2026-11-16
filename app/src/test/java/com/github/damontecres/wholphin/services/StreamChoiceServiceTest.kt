@@ -204,8 +204,9 @@ class TestStreamChoiceServiceDefault(
                         ),
                     userSubtitleLang = null,
                 ),
+                // Benflix: a Spanish track marked default doesn't turn on by itself on English sound
                 TestInput(
-                    1,
+                    null,
                     SubtitlePlaybackMode.DEFAULT,
                     subtitles =
                         listOf(
@@ -213,6 +214,27 @@ class TestStreamChoiceServiceDefault(
                             subtitle(1, "spa", true),
                         ),
                     userSubtitleLang = null,
+                ),
+                // Benflix: German forced words on an English show stay off (The Big Bang Theory)
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.DEFAULT,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", false),
+                            subtitle(1, "ger", default = true, forced = true),
+                        ),
+                ),
+                // Benflix: only English turns on by itself, even when the sound is German
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.DEFAULT,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", false),
+                            subtitle(1, "ger", forced = true),
+                        ),
+                    streamAudioLang = "ger",
                 ),
                 TestInput(
                     null,
@@ -524,6 +546,42 @@ class TestStreamChoiceServiceOnlyForced(
                             subtitle(1, "spa", forced = true),
                         ),
                     streamAudioLang = "eng",
+                    appSubtitleLang = UserProfileSettings.PREFER_ANY_LANGUAGE,
+                ),
+                // Benflix: a profile that never picked a subtitle language gets English
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.ONLY_FORCED,
+                    userSubtitleLang = null,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", forced = false),
+                            subtitle(1, "spa", forced = true),
+                        ),
+                    streamAudioLang = "eng",
+                ),
+                TestInput(
+                    2,
+                    SubtitlePlaybackMode.SMART,
+                    userAudioLang = null,
+                    userSubtitleLang = "",
+                    subtitles =
+                        listOf(
+                            subtitle(0, "spa", default = true),
+                            subtitle(1, "fre"),
+                            subtitle(2, "eng"),
+                        ),
+                    streamAudioLang = "jpn",
+                ),
+                TestInput(
+                    1,
+                    SubtitlePlaybackMode.ALWAYS,
+                    userSubtitleLang = null,
+                    subtitles =
+                        listOf(
+                            subtitle(0, "spa", default = true),
+                            subtitle(1, "eng"),
+                        ),
                 ),
                 TestInput(
                     0,
@@ -633,6 +691,8 @@ class TestStreamChoiceServiceMultipleChoices(
                         ),
                     userSubtitleLang = null,
                     userAudioLang = null,
+                    // Benflix: a blank language now means English, so "no preference" is the in-app Any language choice
+                    appSubtitleLang = UserProfileSettings.PREFER_ANY_LANGUAGE,
                 ),
                 TestInput(
                     null,

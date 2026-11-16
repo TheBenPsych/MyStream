@@ -30,6 +30,8 @@ data class ServerGame(
     val genres: List<String> = emptyList(),
     /** Rated for everyone, so it shows on the Kids profile */
     val kids: Boolean = false,
+    /** Fine for Big kids too (E10+ and Teen, or switched on by the main profile) */
+    val bigKids: Boolean = false,
     /** How well loved it is, 0 to 100, from RomM's IGDB ratings (0 if unknown) */
     val rating: Double = 0.0,
 )
@@ -79,6 +81,12 @@ class GameLibraryClient
         private val homeAddress: String
             get() {
                 customAddress.takeIf { it.isNotBlank() }?.let { return it }
+                return autoHomeAddress
+            }
+
+        /** The Jellyfin server's address with port 8097 */
+        private val autoHomeAddress: String
+            get() {
                 val host =
                     serverRepository.currentServer
                         ?.url
@@ -142,6 +150,16 @@ class GameLibraryClient
         suspend fun pickAddress() = withContext(Dispatchers.IO) { pickNow() }
 
         private fun pickNow() {
+            picked = true
+            // Benflix: a typed-in home address (like the old 10.0.0.58) stops working when Tower moves. When it
+            // doesn't answer but the automatic one does, forget the typed one so it heals by itself.
+            if (customAddress.isNotBlank() && !lastWasAway) {
+                val auto = autoHomeAddress
+                if (auto.isNotBlank() && auto != customAddress && !answers(customAddress) && answers(auto)) {
+                    Timber.i("Typed games helper address stopped working, using the automatic one")
+                    prefs.edit().putString("address", "").apply()
+                }
+            }
             val home = homeAddress
             val away = awayAddress
             val awayFirst = lastWasAway && away != null
@@ -158,6 +176,25 @@ class GameLibraryClient
                 prefs.edit().putBoolean(KEY_LAST_AWAY, nowAway).apply()
             }
             if (working != null) Timber.i("Games helper reached through the internet address")
+        }
+
+        @Volatile
+        private var picked = false
+
+        /**
+         * Benflix Live TV: Jellyfin lists each channel at Tower's own /livetv/play/<channel> address, which
+         * hands out whichever copy of the channel plays right now. Returns that address through the helper
+         * address that works from here (at home or away), or null when [path] isn't one of those.
+         */
+        suspend fun liveChannelUrl(path: String): String? {
+            val at = path.indexOf("/livetv/play/")
+            if (at < 0) return null
+            if (!picked) {
+                pickAddress()
+                picked = true
+            }
+            val base = address.ifBlank { return null }
+            return base.trimEnd('/') + path.substring(at)
         }
 
         /** Every game in the library, grouped by console. Throws with a friendly message when it can't. */
@@ -244,6 +281,7 @@ class GameLibraryClient
                                     g.optJSONArray("genres")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                                         ?: emptyList(),
                                 kids = g.optBoolean("kids", false),
+                                bigKids = g.optBoolean("bigkids", g.optBoolean("kids", false)),
                                 rating = g.optDouble("rating", 0.0).takeIf { !it.isNaN() } ?: 0.0,
                             )
                         },
@@ -261,6 +299,10 @@ class GameLibraryClient
             body: JSONObject = JSONObject(),
         ): JSONObject =
             withContext(Dispatchers.IO) {
+                // Benflix "Request for": Ben asking for a song, album or book in someone else's name
+                if (path == "/api/music/request" || path == "/api/books/request") {
+                    RequestFor.current()?.let { body.put("for", it.id) }
+                }
                 JSONObject(
                     call(
                         Request

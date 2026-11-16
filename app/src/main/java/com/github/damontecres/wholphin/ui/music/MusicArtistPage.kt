@@ -310,7 +310,14 @@ fun MusicArtistPage(
                     ) {
                         CoverImage(photo, Modifier.size(200.dp), shape = CircleShape)
                         MusicKicker("Artist", Modifier.padding(top = 12.dp), color = BenflixColors.Soft)
-                        Text(name, color = BenflixColors.Text, fontSize = BenflixType.hero, fontWeight = FontWeight.ExtraBold, maxLines = 2)
+                        Text(
+                            name,
+                            color = BenflixColors.Text,
+                            fontSize = BenflixType.hero,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         if (counts.isNotBlank()) Text(counts, color = BenflixColors.Soft, fontSize = BenflixType.small)
                         Box(Modifier.padding(top = 12.dp, bottom = 8.dp)) { buttons() }
                     }

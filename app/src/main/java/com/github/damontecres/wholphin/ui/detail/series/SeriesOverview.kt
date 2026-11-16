@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.orBenflixSubtitleLanguage
 import com.github.damontecres.wholphin.ui.RequestOrRestoreFocus
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
@@ -161,7 +162,7 @@ fun SeriesOverview(
     val chosenStreams = state.chosenStreams
 
     val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
-    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference
+    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference.orBenflixSubtitleLanguage()
 
     when (val st = state.series) {
         is DataLoadingState.Error -> {

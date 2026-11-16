@@ -331,6 +331,7 @@ fun PlaybackPageContent(
             )
         }
 
+    val togetherContext = LocalContext.current
     val onPlaybackActionClick: (PlaybackAction) -> Unit = {
         when (it) {
             is PlaybackAction.PlaybackSpeed -> {
@@ -377,7 +378,8 @@ fun PlaybackPageContent(
             PlaybackAction.FindBetterSubtitles -> {
                 controllerViewState.hideControls()
                 val playing = viewModel.state.value.currentPlayback
-                if (playing != null && playing.subtitleIndex >= 0) {
+                if (playing != null) {
+                    // With subtitles off, -1 tells Tower to just ask Bazarr for some
                     subtitleTiming.fix(playing.itemId, playing.subtitleIndex, better = true) { viewModel.afterSubtitleFix() }
                 }
             }
@@ -415,6 +417,20 @@ fun PlaybackPageContent(
             is PlaybackAction.ReportProblem -> {
                 viewModel.reportProblem(it.problem)
             }
+
+            PlaybackAction.TogetherStart -> {
+                state.currentPlayback?.item?.let { item ->
+                    scope.launch { WatchTogether.start(togetherContext, item, player.currentPosition, player.playWhenReady) }
+                }
+            }
+
+            is PlaybackAction.TogetherJoin -> {
+                WatchTogether.join(it.code)
+            }
+
+            PlaybackAction.TogetherLeave -> {
+                WatchTogether.leave(togetherContext)
+            }
         }
     }
 
@@ -446,6 +462,36 @@ fun PlaybackPageContent(
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
+    }
+
+    // Benflix: watch together, in step with the lobby (see WatchTogether)
+    WatchTogetherEffect(player, state.currentPlayback?.item, viewModel.navigationManager)
+
+    // Benflix on phones: keep watching in a small window when leaving the app (see PhonePip)
+    if (!isTv) {
+        val activity = LocalActivity.current
+        DisposableEffect(player, activity) {
+            val listener =
+                object : androidx.media3.common.Player.Listener {
+                    override fun onEvents(
+                        p: androidx.media3.common.Player,
+                        events: androidx.media3.common.Player.Events,
+                    ) {
+                        val size = p.videoSize
+                        val playing = p.playWhenReady && p.playbackState != androidx.media3.common.Player.STATE_ENDED
+                        PhonePip.update(activity, playing, size.width, size.height)
+                    }
+                }
+            player.addListener(listener)
+            PhonePip.update(activity, player.playWhenReady, player.videoSize.width, player.videoSize.height)
+            onDispose {
+                player.removeListener(listener)
+                PhonePip.clear(activity)
+            }
+        }
+        LaunchedEffect(PhonePip.active) {
+            if (PhonePip.active) controllerViewState.hideControls()
+        }
     }
 
     // Benflix on phones: the player always turns sideways (either way up)
@@ -889,6 +935,7 @@ fun PlaybackPageContent(
         }
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
             playing = channelPlaying,
+            playingItemId = state.currentPlayback?.item?.id ?: (destination as? Destination.Playback)?.itemId,
             modifier = Modifier.align(Alignment.BottomStart),
         )
         // Benflix "Pause live TV" (Behind live tag, Jump to live) and "This channel is broken"
@@ -1286,6 +1333,13 @@ fun PlaybackPageContent(
                             }
                         },
                     canFixSkips = state.currentPlayback?.item?.type != BaseItemKind.TV_CHANNEL,
+                    // Not for Kids profiles, like the Lobby (Ben, 2026-11-15)
+                    canWatchTogether =
+                        !com.github.damontecres.wholphin.services.KidsMode.isActive &&
+                            state.currentPlayback
+                                ?.item
+                                ?.type
+                                .let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
                 ),
             onDismissRequest = {
                 playbackDialog =

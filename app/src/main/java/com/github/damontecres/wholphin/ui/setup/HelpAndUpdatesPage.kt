@@ -148,8 +148,8 @@ private fun HelpRow(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) BenflixColors.Raised else androidx.compose.ui.graphics.Color.Transparent,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.Text,
-                focusedContentColor = BenflixColors.Tray,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         border = doorFocusBorder(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

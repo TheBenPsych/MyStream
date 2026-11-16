@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.ui.detail.series.NextSeasonAsk
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -247,6 +248,7 @@ fun ShowDoneCard(
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             modifier =
                                 Modifier
+                                    .benflixOuterFocusRing(RoundedCornerShape(10.dp), width = 4.dp)
                                     .width(if (isTv) 150.dp else 100.dp)
                                     .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
                         ) {
@@ -269,7 +271,10 @@ fun ShowDoneCard(
             }
             Button(
                 onClick = onClose,
-                modifier = if (done.similar.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier,
+                modifier =
+                    Modifier
+                        .benflixOuterFocusRing(androidx.compose.foundation.shape.CircleShape)
+                        .then(if (done.similar.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Done")

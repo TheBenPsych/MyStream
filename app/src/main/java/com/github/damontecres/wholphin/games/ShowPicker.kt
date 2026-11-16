@@ -419,6 +419,6 @@ private fun PickerChip(
                 .padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
         if (icon) Icon(BenflixIcon.BACK_ARROW.vector, null, tint = fg, modifier = Modifier.size(18.dp))
-        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

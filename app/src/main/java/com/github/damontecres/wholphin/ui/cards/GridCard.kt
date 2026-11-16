@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import kotlinx.coroutines.delay
 
 /**
@@ -71,7 +72,7 @@ fun GridCard(
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier,
+        modifier = modifier.playButtonPlays(item),
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),

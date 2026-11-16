@@ -392,6 +392,6 @@ internal fun pickerButtonColors(primary: Boolean) =
     ButtonDefaults.colors(
         containerColor = if (primary) BenflixColors.Text else BenflixColors.FocusRow,
         contentColor = if (primary) BenflixColors.Tray else BenflixColors.Text,
-        focusedContainerColor = BenflixColors.Text,
-        focusedContentColor = BenflixColors.Tray,
+        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
+        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
     )

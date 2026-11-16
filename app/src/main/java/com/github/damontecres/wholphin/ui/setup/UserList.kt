@@ -247,6 +247,9 @@ private fun WhoLink(
     onClick: () -> Unit,
 ) {
     Surface(
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(RoundedCornerShape(50)),
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
         colors =
@@ -316,7 +319,7 @@ fun AvatarPickerDialog(
                                         ),
                                     focusedBorder =
                                         androidx.tv.material3.Border(
-                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Text),
+                                            androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                                         ),
                                 ),
                             modifier =

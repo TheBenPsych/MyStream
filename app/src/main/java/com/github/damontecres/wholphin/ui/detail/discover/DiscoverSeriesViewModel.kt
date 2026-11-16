@@ -63,6 +63,8 @@ class DiscoverSeriesViewModel
         val seerrService: SeerrService,
         private val seerrServerRepository: SeerrServerRepository,
         @Assisted val item: DiscoverItem,
+        // Benflix (2026-11-16): "More like this" leaves out what's already on Benflix
+        private val libraryTmdb: com.github.damontecres.wholphin.services.BenflixLibraryTmdb,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -153,7 +155,7 @@ class DiscoverSeriesViewModel
                                     .results
                                     ?.map { seerrService.createDiscoverItem(it) }
                                     .orEmpty()
-                            _state.update { it.copy(similar = result) }
+                            _state.update { it.copy(similar = libraryTmdb.notOnBenflix(result)) }
                         }
                         viewModelScope.launchIO {
                             val result =
@@ -162,7 +164,7 @@ class DiscoverSeriesViewModel
                                     .results
                                     ?.map { seerrService.createDiscoverItem(it) }
                                     .orEmpty()
-                            _state.update { it.copy(recommended = result) }
+                            _state.update { it.copy(recommended = libraryTmdb.notOnBenflix(result)) }
                         }
                     }
                     val people =

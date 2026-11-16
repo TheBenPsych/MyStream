@@ -21,6 +21,7 @@ import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.services.orBenflixSubtitleLanguage
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.ContextMenu
@@ -80,7 +81,7 @@ fun EpisodeDetails(
     val canDelete by viewModel.canDelete.collectAsState()
 
     val userDto by viewModel.serverRepository.currentUserDtoFlow.collectAsState(null)
-    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference
+    val preferredSubtitleLanguage = userDto?.configuration?.subtitleLanguagePreference.orBenflixSubtitleLanguage()
 
     val contextActions =
         remember {

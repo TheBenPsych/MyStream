@@ -53,6 +53,9 @@ class WholphinApplication :
     }
 
     override fun onCreate() {
+        // Benflix: crashing on every open fixes itself (clears saved screen copies, keeps sign-ins)
+        com.github.damontecres.wholphin.util.CrashLoopGuard
+            .onStart(this)
         super.onCreate()
         com.github.damontecres.wholphin.util.StartupTimer
             .mark(com.github.damontecres.wholphin.util.StartupTimer.APP)
@@ -120,6 +123,8 @@ class WholphinApplication :
         com.github.damontecres.wholphin.ui.components.BenflixPopups.waiting.size
         com.github.damontecres.wholphin.ui.downloads.OfflineScreenState.showing.value
         com.github.damontecres.wholphin.ui.nav.TopBarInset.heightPx
+        com.github.damontecres.wholphin.ui.playback.PhonePip.active
+        com.github.damontecres.wholphin.ui.playback.WatchTogether.code
     }
 
     @Inject
