@@ -481,10 +481,29 @@
   const albumCard = (a) => card(a, `#/album/${a.Id}`, a.AlbumArtist || a.ProductionYear || "");
   const artistCard = (a) => card(a, `#/artist/${a.Id}`, "Artist").replace('class="mcard"', 'class="mcard round"');
   const playlistCard = (p) => card(p, `#/playlist/${p.Id}`, p.ChildCount ? `${p.ChildCount} songs` : "Playlist");
+  // Mix and theme covers: up to four album covers in a square (one cover fills it, two or three repeat).
+  // A mix with no covers yet (a holiday Ben is still filling) gets its own colour instead of a grey square.
+  const MIX_TINTS = [["#5B3FB8", "#A78BFA"], ["#B8323F", "#2E7D4F"], ["#C2410C", "#F59E0B"], ["#1E3A8A", "#60A5FA"], ["#0F766E", "#5EEAD4"], ["#9D174D", "#F472B6"]];
+  const mixTint = (key) => {
+    let h = 0;
+    for (const ch of String(key || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const t = { christmas: 1, halloween: 2, "cozy-fall": 2, winter: 3, summer: 4, valentines: 5 }[key];
+    return MIX_TINTS[t != null ? t : h % MIX_TINTS.length];
+  };
+  B.mixCovers = (list) => {
+    const c = (list || []).filter(Boolean).slice(0, 4);
+    if (c.length === 1 || !c.length) return c;
+    while (c.length < 4) c.push(c[c.length - 2] || c[0]);
+    return c;
+  };
   const mixCard = (m) => {
-    const covers = (m.covers || []).slice(0, 4);
-    while (covers.length && covers.length < 4) covers.push(covers[covers.length % Math.max(1, covers.length)]);
-    return `<a class="mcard mix" href="#/mix/${enc(m.key)}"><div class="im collage">${covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("")}<b>${esc(m.name)}</b></div><div class="cap"><span class="nm">${esc(m.name)}</span><small>${esc(m.line || "")}</small></div></a>`;
+    const covers = B.mixCovers(m.covers);
+    const [a, b] = mixTint(m.key);
+    const art = covers.length === 1
+      ? `<span class="one" style="background-image:url('${B.img(covers[0], "Primary", { h: 360 })}')"></span>`
+      : covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("");
+    const look = covers.length ? "" : ` empty" style="background:linear-gradient(135deg, ${a}, ${b})`;
+    return `<a class="mcard mix" href="#/mix/${enc(m.key)}"><div class="im collage${look}">${covers.length ? art : `<i>${esc(m.name)}</i>`}<b>${esc(m.name)}</b></div><div class="cap"><span class="nm">${esc(m.name)}</span><small>${esc(m.line || "")}</small></div></a>`;
   };
   const likedCard = (n) => `<a class="mcard" href="#/liked"><div class="im liked">${I("heart")}</div><div class="cap"><span class="nm">Liked songs</span><small>${n} songs</small></div></a>`;
   B.musicMixes = () => B.cached("music-mixes-" + B.me.id + new Date().toDateString(), 3600000, async () => ((await B.call("GET", "api/music/mixes")) || {}).mixes || []);
@@ -765,8 +784,10 @@
     const byId = {}; got.forEach((s) => { byId[s.Id] = s; });
     const songs = mix.songs.map((id) => byId[id]).filter(Boolean);
     if (!B.alive(nav)) return;
-    const covers = mix.covers.length ? mix.covers.concat(mix.covers).slice(0, 4).map((c) => B.img(c, "Primary", { h: 300 })) : null;
-    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.line, collage: covers, songs, sourceId: null });
+    const cv = B.mixCovers(mix.covers);
+    const covers = cv.length > 1 ? cv.map((c) => B.img(c, "Primary", { h: 300 })) : null;
+    const art = cv.length === 1 ? B.img(cv[0], "Primary", { h: 600 }) : "";
+    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null });
     if (mix.adds) themeAdds(nav, mix);
   });
 

@@ -242,15 +242,46 @@ fun MixCover(
     modifier: Modifier = Modifier,
     size: Dp,
 ) {
-    Box(modifier = modifier.clip(BenflixShapes.Card).background(BenflixColors.PanelHigh)) {
+    // One cover fills the square, two or three repeat to make four; none (a holiday still being filled) gets
+    // a colour of its own with the name, instead of a grey square
+    val urls = coverUrls.filterNotNull().take(4)
+    val four = if (urls.size in 2..3) (urls + urls).take(4) else urls
+    val empty = urls.isEmpty()
+    Box(
+        modifier =
+            modifier
+                .clip(BenflixShapes.Card)
+                .then(
+                    if (empty) {
+                        Modifier.background(Brush.linearGradient(mixTint(name)))
+                    } else {
+                        Modifier.background(BenflixColors.PanelHigh)
+                    },
+                ),
+    ) {
         val half = size / 2
-        coverUrls.take(4).forEachIndexed { i, url ->
-            Box(
-                Modifier
-                    .padding(start = if (i % 2 == 1) half else 0.dp, top = if (i > 1) half else 0.dp)
-                    .size(half),
-            ) {
-                if (url != null) {
+        if (empty) {
+            Text(
+                text = name,
+                color = Color.White,
+                fontSize = BenflixType.body,
+                lineHeight = BenflixType.body,
+                fontWeight = FontWeight.Black,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = size * 0.1f, end = size * 0.1f, top = size * 0.14f),
+            )
+        }
+        if (four.size == 1) {
+            AsyncImage(model = four[0], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        if (four.size > 1) {
+            four.forEachIndexed { i, url ->
+                Box(
+                    Modifier
+                        .padding(start = if (i % 2 == 1) half else 0.dp, top = if (i > 1) half else 0.dp)
+                        .size(half),
+                ) {
                     AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
@@ -276,6 +307,30 @@ fun MixCover(
             )
         }
     }
+}
+
+/** A colour pair for a mix with no covers yet: holidays get their own, the rest pick one by name */
+private fun mixTint(name: String): List<Color> {
+    val tints =
+        listOf(
+            listOf(Color(0xFF5B3FB8), Color(0xFFA78BFA)),
+            listOf(Color(0xFFB8323F), Color(0xFF2E7D4F)),
+            listOf(Color(0xFFC2410C), Color(0xFFF59E0B)),
+            listOf(Color(0xFF1E3A8A), Color(0xFF60A5FA)),
+            listOf(Color(0xFF0F766E), Color(0xFF5EEAD4)),
+            listOf(Color(0xFF9D174D), Color(0xFFF472B6)),
+        )
+    val n = name.lowercase()
+    val pick =
+        when {
+            "christmas" in n -> 1
+            "halloween" in n || "fall" in n -> 2
+            "winter" in n -> 3
+            "summer" in n -> 4
+            "valentine" in n -> 5
+            else -> (n.hashCode() and 0x7fffffff) % tints.size
+        }
+    return tints[pick]
 }
 
 /** Liked songs: a violet square with a big heart */
