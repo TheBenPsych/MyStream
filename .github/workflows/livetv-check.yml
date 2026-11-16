@@ -25,3 +25,13 @@ jobs:
         with:
           name: livetv-report
           path: report.json
+      - name: A Pluto channel's video list
+        if: always()
+        run: |
+          m=$(curl -sSL -A "ExoPlayerLib/2.19.1" https://jmp2.uk/plu-5ca525b650be2571e3943c63.m3u8 -w '\n%{url_effective}')
+          echo "$m" | head -30
+          base=$(echo "$m" | tail -1); v=$(echo "$m" | grep -v '^#' | grep -m1 m3u8)
+          python3 -c "import sys,urllib.parse;print(urllib.parse.urljoin(sys.argv[1],sys.argv[2]))" "$base" "$v" > v.txt
+          curl -sS -A "ExoPlayerLib/2.19.1" "$(cat v.txt)" | head -40
+          echo "== with a Jellyfin sign-in header"
+          curl -sS -o /dev/null -w "%{http_code}\n" -H 'Authorization: MediaBrowser Client="Benflix", Device="TV", DeviceId="x", Version="1", Token="abc"' -A "Dalvik/2.1.0" "$(cat v.txt)"

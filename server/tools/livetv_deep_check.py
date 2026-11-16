@@ -17,6 +17,8 @@ import benflix_livetv as lt  # noqa: E402
 from benflix_livetv_lineup import LINEUP  # noqa: E402
 
 EXO_UA = "ExoPlayerLib/2.19.1"
+# What Android's own web code sends when the app's player sets no name (the TV player today)
+DALVIK_UA = "Dalvik/2.1.0 (Linux; U; Android 11; 65S455 Build/RP1A.200720.012)"
 
 
 def get(url, ua, limit=256 * 1024, timeout=15):
@@ -75,7 +77,9 @@ def main(out):
     def check(c):
         quick = lt.alive(c["url"])
         d = deep(c["url"], EXO_UA)
-        return {"name": lt.tidy_name(c["name"]), "source": c["source"], "url": c["url"], "quick": quick,
+        dv = deep(c["url"], DALVIK_UA)
+        br = deep(c["url"], lt.UA)
+        return {"dalvik": dv[0], "dalvik_detail": dv[2], "browser": br[0], "name": lt.tidy_name(c["name"]), "source": c["source"], "url": c["url"], "quick": quick,
                 "deep": d[0], "step": d[1], "detail": d[2]}
 
     t = time.time()
@@ -83,7 +87,9 @@ def main(out):
         res = list(pool.map(check, cand))
     by_src = {}
     for r in res:
-        s = by_src.setdefault(r["source"], {"copies": 0, "quick_ok": 0, "deep_ok": 0, "quick_ok_deep_bad": 0})
+        s = by_src.setdefault(r["source"], {"copies": 0, "quick_ok": 0, "deep_ok": 0, "quick_ok_deep_bad": 0, "dalvik_ok": 0, "browser_ok": 0})
+        s["dalvik_ok"] += r["dalvik"]
+        s["browser_ok"] += r["browser"]
         s["copies"] += 1
         s["quick_ok"] += r["quick"]
         s["deep_ok"] += r["deep"]
@@ -109,6 +115,8 @@ def main(out):
         print(f"--- {src} works:")
         for r in good:
             print(f"  {r['name']}: {r['detail']}")
+    for r in [r for r in res if r["deep"] and not r["dalvik"]][:15]:
+        print(f"DALVIK FAILS {r['source']} {r['name']}: {r['dalvik_detail']}")
     for nm in ("hotones", "80srewind", "classictvcomedy", "pluto"):
         for r in res:
             if nm in lt._key(r["name"]):
