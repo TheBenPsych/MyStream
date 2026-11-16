@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 11
+            const val SETUP_NEEDED = 12
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -116,6 +116,10 @@ class TowerSetupCheck
                     11 to
                         listOf(
                             "Music remembers what you played, your pins and your recent searches on every screen",
+                        ),
+                    12 to
+                        listOf(
+                            "Artist pages show their popular songs and Fans also like, artists get photos overnight, and your playlists get Songs to add",
                         ),
                 )
 

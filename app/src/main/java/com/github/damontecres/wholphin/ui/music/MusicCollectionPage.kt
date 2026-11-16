@@ -205,8 +205,23 @@ fun MusicCollectionPage(
                 }
             }
         }
+    // Music redesign 3: Find and Sort on playlists, mixes and Liked songs, and style chips on Liked songs
+    val tools = kind != CollectionKind.ALBUM && songs.size > 1
+    var find by androidx.compose.runtime.saveable
+        .rememberSaveable(kind, id) { mutableStateOf("") }
+    var sortAt by androidx.compose.runtime.saveable
+        .rememberSaveable(kind, id) { androidx.compose.runtime.mutableIntStateOf(0) }
+    var style by androidx.compose.runtime.saveable
+        .rememberSaveable(kind, id) { mutableStateOf("") }
+    var finding by remember { mutableStateOf(false) }
+    val styles = remember(songs, kind) { if (kind == CollectionKind.LIKED) likedStyles(songs) else emptyList() }
+    val shownIdx =
+        remember(songs, find, sortAt, style, editing) {
+            if (editing) songs.indices.toList() else shownSongs(songs, find, SONG_SORTS[sortAt % SONG_SORTS.size], style)
+        }
+    val shown = remember(shownIdx, songs) { shownIdx.mapNotNull { songs.getOrNull(it) } }
     val play: (Int, Boolean) -> Unit = { index, shuffle ->
-        actions.playList(songs, index, shuffle, state.item, sourceName, place = place)
+        actions.playList(shown, index, shuffle, state.item, sourceName, place = place)
     }
 
     // Redesign 2: albums use the shared title page frame (playlists and mixes keep this page, they can be long)
@@ -223,13 +238,31 @@ fun MusicCollectionPage(
             onSong = { play(it, false) },
             onSongMore = { menuFor = it },
             onAskRest = viewModel::askForRest,
+            preview = viewModel.preview,
+            onAskSong = viewModel::askForSong,
             onAlbum = { actions.navigationManager.navigateTo(it.destination()) },
             modifier = modifier.fillMaxSize().padding(top = overlap),
         )
     } else {
+        val listState =
+            androidx.compose.foundation.lazy
+                .rememberLazyListState()
+        val imageUrlService = LocalImageUrlService.current
+        val tintUrl =
+            remember(state.item?.id, state.collage) {
+                state.item?.let { imageUrlService.musicCover(it, 96) }
+                    ?: state.collage.firstOrNull()?.let { imageUrlService.albumCover(it, 96) }
+            }
+        val tint = if (kind == CollectionKind.LIKED) BenflixColors.Music else rememberCoverTint(tintUrl)
         BoxWithConstraints(modifier = modifier.fillMaxSize()) {
             val heroHeight = if (wide) ((maxHeight - overlap) * 0.46f).coerceIn(200.dp, 340.dp) + overlap else 0.dp
+            // A little of the cover's colour at the top of the page only (it scrolls away with the top)
+            val washShift by remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+            if (washShift) {
+                CoverWash(tint, (if (wide) heroHeight else 420.dp) + 60.dp)
+            }
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(bottom = 48.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -243,12 +276,39 @@ fun MusicCollectionPage(
                         side = side,
                         playFocus = playFocus,
                         // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
-                        onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true, place = place) },
-                        onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true, place = place) },
+                        onPlay = { actions.playList(shown, 0, false, state.item, sourceName, openNow = true, place = place) },
+                        onShuffle = { actions.playList(shown, 0, true, state.item, sourceName, openNow = true, place = place) },
                         onHeart = viewModel::toggleAlbumFavourite,
                         onMore = { pageMenu = true },
                         editing = editing,
                     )
+                }
+                if (tools && !editing) {
+                    item(key = "tools") {
+                        SongTools(
+                            kind = kind,
+                            find = find,
+                            sort = SONG_SORTS[sortAt % SONG_SORTS.size],
+                            styles = styles,
+                            style = style,
+                            side = side,
+                            onFind = { finding = true },
+                            onClearFind = { find = "" },
+                            onSort = { sortAt = (sortAt + 1) % SONG_SORTS.size },
+                            onStyle = { style = it },
+                            onDownloadAll = if (!isTv && kind == CollectionKind.LIKED) ({ actions.download(songs) }) else null,
+                        )
+                    }
+                    if (shownIdx.isEmpty() && songs.isNotEmpty()) {
+                        item(key = "none-found") {
+                            Text(
+                                if (find.isBlank()) "No songs in this style here yet." else "No songs here match \"$find\".",
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.body,
+                                modifier = Modifier.padding(start = side, top = 12.dp),
+                            )
+                        }
+                    }
                 }
                 if (songs.isEmpty() && state.loaded) {
                     item(key = "empty") {
@@ -282,9 +342,10 @@ fun MusicCollectionPage(
                     }
                 }
                 var lastDisc: Int? = null
-                songs.forEachIndexed { index, song ->
+                shownIdx.forEachIndexed { pos, index ->
+                    val song = songs[index]
                     val disc = song.data.parentIndexNumber
-                    if (discs && disc != lastDisc) {
+                    if (discs && shownIdx.size == songs.size && disc != lastDisc) {
                         lastDisc = disc
                         item(key = "disc-$disc-$index") {
                             Text(
@@ -308,13 +369,13 @@ fun MusicCollectionPage(
                         ) {
                             SongRow(
                                 song = song,
-                                number = if (withCover) index + 1 else (song.data.indexNumber ?: (index + 1)),
+                                number = if (withCover) pos + 1 else (song.data.indexNumber ?: (index + 1)),
                                 withCover = withCover,
                                 isCurrent = song.id == currentId,
                                 isPlaying = playing,
                                 liked = song.id in state.liked,
                                 big = easy,
-                                onClick = { if (!editing) play(index, false) },
+                                onClick = { if (!editing) play(pos, false) },
                                 onMore = { if (!editing) menuFor = index },
                                 modifier =
                                     Modifier
@@ -359,7 +420,11 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else {
-                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in.$okNote"
+                                        if (kind == CollectionKind.PLAYLIST) {
+                                            "Songs like the ones here. Ask for one and it joins this playlist once it's in.$okNote"
+                                        } else {
+                                            "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in.$okNote"
+                                        }
                                     },
                                 color = BenflixColors.Soft,
                                 fontSize = BenflixType.small,
@@ -403,7 +468,33 @@ fun MusicCollectionPage(
                     }
                 }
             }
+            // Phones: once the top has scrolled away, a slim bar with the name and Play sticks to the top
+            val scrolled by remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex > 0 } }
+            if (!isTv && scrolled && shown.isNotEmpty()) {
+                StickyPlayBar(
+                    title = state.title,
+                    tint = tint,
+                    top = overlap,
+                    onPlay = { actions.playList(shown, 0, false, state.item, sourceName, openNow = true, place = place) },
+                )
+            }
         }
+    }
+    if (finding) {
+        StringInputDialog(
+            input =
+                StringInput(
+                    title = if (kind == CollectionKind.LIKED) "Find in Liked songs" else "Find in this playlist",
+                    value = find,
+                    keyboardOptions = KeyboardOptions.Default,
+                    onSubmit = { find = it.trim() },
+                ),
+            onSave = {
+                find = it.trim()
+                finding = false
+            },
+            onDismissRequest = { finding = false },
+        )
     }
 
     menuFor?.let { index ->
@@ -771,5 +862,176 @@ fun ago(time: LocalDateTime): String {
         days < 60 -> "${days / 7} weeks ago"
         days < 730 -> "${days / 30} months ago"
         else -> "${days / 365} years ago"
+    }
+}
+
+/** How a playlist can be sorted (Music redesign 3) */
+val SONG_SORTS = listOf("Custom order", "Title", "Artist", "Album", "Recently added")
+
+/** The songs to show, as places in [songs]: matching the Find words and the style chip, in the picked order */
+fun shownSongs(
+    songs: List<BaseItem>,
+    find: String,
+    sort: String,
+    style: String,
+): List<Int> {
+    val words = find.trim().lowercase()
+    val keep =
+        songs.indices.filter { i ->
+            val s = songs[i]
+            (
+                words.isEmpty() ||
+                    s.title
+                        .orEmpty()
+                        .lowercase()
+                        .contains(words) ||
+                    s.data.artists
+                        .orEmpty()
+                        .any { it.lowercase().contains(words) } ||
+                    s.data.album
+                        .orEmpty()
+                        .lowercase()
+                        .contains(words)
+            ) &&
+                (style.isEmpty() || styleOf(s) == style)
+        }
+    return when (sort) {
+        "Title" -> {
+            keep.sortedBy { songs[it].title.orEmpty().lowercase() }
+        }
+
+        "Artist" -> {
+            keep.sortedBy { (songs[it].data.albumArtist ?: songs[it].data.artists?.firstOrNull()).orEmpty().lowercase() }
+        }
+
+        "Album" -> {
+            keep.sortedWith(
+                compareBy({
+                    songs[it]
+                        .data.album
+                        .orEmpty()
+                        .lowercase()
+                }, { songs[it].data.indexNumber ?: 0 }),
+            )
+        }
+
+        "Recently added" -> {
+            keep.sortedByDescending { songs[it].data.dateCreated }
+        }
+
+        else -> {
+            keep
+        }
+    }
+}
+
+/** The style chips on Liked songs: the kinds of music you like most, from the songs' genres */
+private val STYLE_WORDS =
+    listOf(
+        "Rap" to listOf("hip hop", "hip-hop", "rap", "trap", "drill"),
+        "R&B" to listOf("r&b", "rnb", "soul", "funk"),
+        "Metal" to listOf("metal", "metalcore", "hardcore"),
+        "Rock" to listOf("rock", "grunge", "alternative", "punk"),
+        "Country" to listOf("country", "americana", "bluegrass"),
+        "Dance" to listOf("electronic", "edm", "dance", "house", "techno", "trance", "dubstep"),
+        "Latin" to listOf("latin", "reggaeton", "salsa"),
+        "Indie" to listOf("indie", "folk", "acoustic", "singer-songwriter"),
+        "Pop" to listOf("pop", "k-pop", "j-pop", "synthpop"),
+        "Jazz" to listOf("jazz", "blues", "swing"),
+        "Classical" to listOf("classical", "soundtrack", "score", "orchestral"),
+    )
+
+/** A song's style for the chips (null when its genres don't say) */
+fun styleOf(song: BaseItem): String? {
+    val gs =
+        song.data.genres
+            .orEmpty()
+            .joinToString(" | ") { it.lowercase() }
+    if (gs.isBlank()) return null
+    return STYLE_WORDS
+        .firstOrNull { (_, words) ->
+            words.any { w -> Regex("(?<![a-z0-9])" + Regex.escape(w) + "(?![a-z0-9])").containsMatchIn(gs) }
+        }?.first
+}
+
+/** The styles with the most liked songs (at most 6, each with at least 3 songs) */
+fun likedStyles(songs: List<BaseItem>): List<String> =
+    songs
+        .mapNotNull { styleOf(it) }
+        .groupingBy { it }
+        .eachCount()
+        .filter { it.value >= 3 }
+        .entries
+        .sortedByDescending { it.value }
+        .take(6)
+        .map { it.key }
+
+/** Find, Sort, the style chips (Liked songs) and Download all (phones, Liked songs) */
+@Composable
+private fun SongTools(
+    kind: CollectionKind,
+    find: String,
+    sort: String,
+    styles: List<String>,
+    style: String,
+    side: Dp,
+    onFind: () -> Unit,
+    onClearFind: () -> Unit,
+    onSort: () -> Unit,
+    onStyle: (String) -> Unit,
+    onDownloadAll: (() -> Unit)?,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(start = side, end = side, top = 4.dp, bottom = 8.dp),
+    ) {
+        if (styles.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item(key = "all") { MusicButton("All", null, onClick = { onStyle("") }, primary = style.isEmpty()) }
+                items(styles, key = { it }) { st -> MusicButton(st, null, onClick = { onStyle(st) }, primary = style == st) }
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            item(key = "find") {
+                MusicButton(
+                    find.ifBlank { if (kind == CollectionKind.LIKED) "Find in Liked songs" else "Find in playlist" },
+                    BenflixIcon.SEARCH,
+                    onClick = onFind,
+                )
+            }
+            if (find.isNotBlank()) item(key = "clear") { MusicButton(null, BenflixIcon.CLOSE, onClick = onClearFind) }
+            item(key = "sort") { MusicButton("Sort: $sort", BenflixIcon.LIST, onClick = onSort) }
+            if (onDownloadAll != null) item(key = "dl") { MusicButton("Download all", BenflixIcon.DOWNLOAD, onClick = onDownloadAll) }
+        }
+    }
+}
+
+/** Phones: the slim bar with the name and Play once you scroll down a long list */
+@Composable
+private fun StickyPlayBar(
+    title: String,
+    tint: Color?,
+    top: Dp,
+    onPlay: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background((tint?.forPageTop() ?: BenflixColors.Panel).copy(alpha = .97f))
+                .padding(start = 16.dp, end = 12.dp, top = top + 6.dp, bottom = 6.dp),
+    ) {
+        Text(
+            title,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.lead,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        MusicButton(null, null, onClick = onPlay, primary = true, filledPlay = true)
     }
 }

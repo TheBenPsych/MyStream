@@ -367,6 +367,24 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
     val discoverProblem by viewModel.discoverProblem.collectAsState()
     val isTv = rememberIsTv()
     LaunchedEffect(Unit) { if (viewModel.discover.value == null) viewModel.loadDiscover() }
+    // Music redesign 3: an album or artist that isn't on Benflix, opened from an artist page or Search
+    val askOpen = com.github.damontecres.wholphin.ui.music.MusicAskNav.open
+    LaunchedEffect(askOpen) {
+        when (askOpen) {
+            is MusicAlbum -> {
+                viewModel.openAlbum(askOpen)
+            }
+
+            is MusicArtist -> {
+                viewModel.openArtist(askOpen)
+            }
+
+            else -> {}
+        }
+        if (askOpen != null) {
+            com.github.damontecres.wholphin.ui.music.MusicAskNav.open = null
+        }
+    }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var askSong by remember { mutableStateOf<MusicSong?>(null) }
     var playlistOpen by remember { mutableStateOf(false) }

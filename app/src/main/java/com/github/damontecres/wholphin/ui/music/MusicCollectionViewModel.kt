@@ -69,7 +69,59 @@ data class MusicCollectionState(
     val albumAskId: Long? = null,
     /** Words after Ask for the rest was pressed, like "Asked for the rest" */
     val albumAsked: String? = null,
+    /**
+     * Music redesign 3: the whole album in its real order, the songs Benflix has and the ones it doesn't (greyed,
+     * with a preview and Ask). Empty when Benflix has the whole album (or the catalogue can't be reached).
+     */
+    val albumLines: List<AlbumLine> = emptyList(),
+    /** Your own playlists: songs asked for from Songs to add that will join it once they're in */
+    val waitingAdds: Int = 0,
 )
+
+/** One line of an album's song list */
+sealed interface AlbumLine {
+    /** A song Benflix has ([index] in the page's songs) */
+    data class Have(
+        val index: Int,
+    ) : AlbumLine
+
+    /** A song Benflix doesn't have yet */
+    data class Missing(
+        val song: com.github.damontecres.wholphin.services.MusicSong,
+        val number: Int,
+    ) : AlbumLine
+}
+
+/** The album's songs in the catalogue's order, matched up with the ones Benflix has */
+fun albumLines(
+    songs: List<BaseItem>,
+    catalogue: List<com.github.damontecres.wholphin.services.MusicSong>,
+): List<AlbumLine> {
+    if (catalogue.isEmpty()) return emptyList()
+    val byKey = HashMap<String, MutableList<Int>>()
+    songs.forEachIndexed { i, s -> byKey.getOrPut(songKey(s.title)) { mutableListOf() }.add(i) }
+    val used = HashSet<Int>()
+    val out = mutableListOf<AlbumLine>()
+    catalogue.forEachIndexed { n, c ->
+        val idx = byKey[songKey(c.title)]?.firstOrNull { it !in used }
+        when {
+            idx != null -> {
+                used.add(idx)
+                out.add(AlbumLine.Have(idx))
+            }
+
+            c.have -> {}
+
+            // In Music under another name: it shows with the songs Benflix has, below
+
+            else -> {
+                out.add(AlbumLine.Missing(c, n + 1))
+            }
+        }
+    }
+    songs.indices.filter { it !in used }.forEach { out.add(AlbumLine.Have(it)) }
+    return if (out.none { it is AlbumLine.Missing }) emptyList() else out
+}
 
 @HiltViewModel
 class MusicCollectionViewModel
@@ -82,6 +134,7 @@ class MusicCollectionViewModel
         private val benflixMusic: com.github.damontecres.wholphin.services.BenflixMusic,
         /** 30-second tastes of Songs to add (Ben 2026-11-16) */
         val preview: com.github.damontecres.wholphin.services.SongPreview,
+        private val musicMe: com.github.damontecres.wholphin.services.MusicMe,
     ) : ViewModel() {
         private val _state = MutableStateFlow(MusicCollectionState())
         val state: StateFlow<MusicCollectionState> = _state
@@ -144,6 +197,11 @@ class MusicCollectionViewModel
                 try {
                     val (total, askId) = benflixMusic.albumFind(albumArtist, album.title.orEmpty())
                     if (total > songs.size) _state.update { it.copy(albumTotal = total, albumAskId = askId) }
+                    // Music redesign 3: the songs it doesn't have show greyed in their place, with a preview and Ask
+                    if (total > songs.size && askId != null) {
+                        val catalogue = benflixMusic.album(askId).second
+                        _state.update { it.copy(albumLines = albumLines(it.songs, catalogue)) }
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -217,6 +275,103 @@ class MusicCollectionViewModel
                     canEdit = canEdit,
                     loaded = true,
                 )
+            }
+            if (canEdit && userId != null) {
+                joinArrivedAdds(id, userId)
+                ownPlaylistAdds()
+            }
+        }
+
+        /** Songs asked for from this playlist's Songs to add that are on Benflix now join it (Music redesign 3) */
+        private suspend fun joinArrivedAdds(
+            id: UUID,
+            userId: UUID,
+        ) {
+            try {
+                musicMe.load(force = true)
+                val key = id.toString().replace("-", "")
+                val waiting =
+                    musicMe.state.value.adds[key]
+                        .orEmpty()
+                var joined = 0
+                for ((artist, title) in waiting) {
+                    val found =
+                        library
+                            .search(title, org.jellyfin.sdk.model.api.BaseItemKind.AUDIO, 10)
+                            .firstOrNull { s ->
+                                songKey(s.title) == songKey(title) &&
+                                    (
+                                        artist.isBlank() ||
+                                            s.data.artists
+                                                .orEmpty()
+                                                .any { it.contains(artist, true) || artist.contains(it, true) }
+                                    )
+                            } ?: continue
+                    if (_state.value.songs.none { it.id == found.id }) {
+                        api.playlistsApi.addItemToPlaylist(id, listOf(found.id), userId)
+                        joined++
+                    }
+                    musicMe.addLater(key, artist, title, remove = true)
+                }
+                if (joined > 0) {
+                    val songs = library.playlistSongs(id)
+                    _state.update { it.copy(songs = songs, liked = likedOf(songs)) }
+                }
+                _state.update {
+                    it.copy(
+                        waitingAdds =
+                            musicMe.state.value.adds[key]
+                                .orEmpty()
+                                .size,
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Songs to add that came in")
+            }
+        }
+
+        /** Songs to add under your own playlist: songs like a few of its songs, not on Benflix yet */
+        private suspend fun ownPlaylistAdds() {
+            val seeds =
+                _state.value.songs
+                    .shuffled()
+                    .take(3)
+            if (seeds.isEmpty()) return
+            _state.update { it.copy(addsLoading = true, askNeedsOk = serverRepository.currentUserDto?.policy?.isAdministrator != true) }
+            val found = LinkedHashMap<Long, com.github.damontecres.wholphin.services.MusicSong>()
+            for (s in seeds) {
+                val artist = s.data.albumArtist ?: s.data.artists?.firstOrNull() ?: continue
+                try {
+                    benflixMusic.similar(artist, s.title.orEmpty()).filter { !it.have }.forEach { found.putIfAbsent(it.id, it) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.d(ex, "Songs to add")
+                }
+            }
+            _state.update { it.copy(adds = found.values.take(10), addsLoading = false) }
+        }
+
+        /** Songs to add on your own playlist: ask, and it joins the playlist once it's in */
+        private fun askToAddHere(song: com.github.damontecres.wholphin.services.MusicSong) {
+            val playlist = _state.value.item ?: return
+            _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = "Asking...") else it }) }
+            viewModelScope.launchIO {
+                val words =
+                    try {
+                        val r = benflixMusic.ask("song", song.id)
+                        musicMe.addLater(playlist.id.toString().replace("-", ""), song.artist, song.title)
+                        _state.update { it.copy(waitingAdds = it.waitingAdds + 1) }
+                        r.words.ifBlank { "Asked ✓" }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Couldn't ask for %s", song.title)
+                        null
+                    }
+                _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = words) else it }) }
             }
         }
 
@@ -332,8 +487,51 @@ class MusicCollectionViewModel
                         Timber.w(ex, "Ask for the rest")
                         null
                     }
-                _state.update { it.copy(albumAsked = words) }
+                _state.update { st ->
+                    st.copy(
+                        albumAsked = words,
+                        albumLines =
+                            if (words == null) {
+                                st.albumLines
+                            } else {
+                                st.albumLines.map { l ->
+                                    if (l is AlbumLine.Missing && l.song.asked == null) l.copy(song = l.song.copy(asked = "Asked ✓")) else l
+                                }
+                            },
+                    )
+                }
             }
+        }
+
+        /** Ask on one greyed song of an album (Music redesign 3) */
+        fun askForSong(song: com.github.damontecres.wholphin.services.MusicSong) {
+            if (song.asked != null) return
+            preview.stop()
+            setAlbumAsked(song.id, "Asking...")
+            viewModelScope.launchIO {
+                val words =
+                    try {
+                        benflixMusic.ask("song", song.id).words.ifBlank { "Asked ✓" }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Ask for %s", song.title)
+                        null
+                    }
+                setAlbumAsked(song.id, words)
+            }
+        }
+
+        private fun setAlbumAsked(
+            id: Long,
+            words: String?,
+        ) = _state.update { st ->
+            st.copy(
+                albumLines =
+                    st.albumLines.map { l ->
+                        if (l is AlbumLine.Missing && l.song.id == id) l.copy(song = l.song.copy(asked = words)) else l
+                    },
+            )
         }
 
         /** Not for this playlist (Ben 2026-11-16): the song leaves this made-for-you or themed playlist for good */
@@ -357,6 +555,7 @@ class MusicCollectionViewModel
         fun askToAdd(song: com.github.damontecres.wholphin.services.MusicSong) {
             if (song.asked != null || song.have) return
             preview.stop()
+            if (_state.value.kind == CollectionKind.PLAYLIST) return askToAddHere(song)
             val key = loadedFor?.substringAfter("-") ?: return
             _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = "Asking...") else it }) }
             viewModelScope.launchIO {
