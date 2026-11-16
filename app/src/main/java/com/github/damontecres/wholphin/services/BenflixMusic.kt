@@ -54,12 +54,22 @@ data class MusicDiscover(
     val genres: List<MusicGenre>,
     /** Albums the catalogue's editors are picking right now */
     val picks: List<MusicAlbum> = emptyList(),
-    /** "Because you have <artist>": songs like artists already in your music */
+    /** "Because you have <song>": songs like songs already in your music (new picks every time the page opens) */
     val because: List<MusicBecause> = emptyList(),
+    /** "Trending in <genre>": each genre's top songs, none of them in the Top 100 */
+    val trending: List<MusicTrending> = emptyList(),
 )
 
 data class MusicBecause(
     val artist: String,
+    val songs: List<MusicSong>,
+    /** The song in your music this list starts from (blank from an older Tower: then it's the artist) */
+    val song: String = "",
+)
+
+data class MusicTrending(
+    val genreId: Long,
+    val genre: String,
     val songs: List<MusicSong>,
 )
 
@@ -173,9 +183,30 @@ class BenflixMusic
                 picks = j.optJSONArray("picks").objects().map(::album),
                 because =
                     j.optJSONArray("because").objects().map { b ->
-                        MusicBecause(artist = b.optString("artist"), songs = b.optJSONArray("songs").objects().map(::song))
+                        MusicBecause(
+                            artist = b.optString("artist"),
+                            songs = b.optJSONArray("songs").objects().map(::song),
+                            song = b.optString("song"),
+                        )
+                    },
+                trending =
+                    j.optJSONArray("trending").objects().map { t ->
+                        MusicTrending(
+                            genreId = t.optLong("id"),
+                            genre = t.optString("genre"),
+                            songs = t.optJSONArray("songs").objects().map(::song),
+                        )
                     },
             )
+
+        /** A few songs like this one (from your music) to ask for, for Now playing. Songs already in Music are left out. */
+        suspend fun similar(
+            artist: String,
+            title: String,
+        ): List<MusicSong> {
+            val j = helper.getJson("/api/music/similar?artist=${Uri.encode(artist)}&title=${Uri.encode(title)}")
+            return j.optJSONArray("songs").objects().map(::song)
+        }
 
         private fun genre(j: JSONObject) = MusicGenre(id = j.optLong("id"), name = j.optString("name"), picture = j.text("picture"))
 

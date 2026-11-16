@@ -46,6 +46,7 @@ fun NowPlayingWideFrame(
     middle: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
     side: (@Composable (Modifier) -> Unit)? = null,
+    underCover: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier) {
         val height = maxHeight - reservedBottom - NOW_PLAYING_TOP
@@ -58,7 +59,17 @@ fun NowPlayingWideFrame(
                     .padding(start = 48.dp, end = 48.dp, top = NOW_PLAYING_TOP)
                     .height(height),
         ) {
-            cover((width * 0.22f).coerceAtMost(height - 20.dp))
+            val coverSize = (width * 0.22f).coerceAtMost(height - 20.dp)
+            if (underCover == null) {
+                cover(coverSize)
+            } else {
+                // Ben 2026-11-15: the empty room under the cover holds Up next, so the middle never runs out of room
+                Column(Modifier.width(coverSize).fillMaxHeight()) {
+                    cover(coverSize)
+                    Spacer(Modifier.height(16.dp))
+                    underCover()
+                }
+            }
             // Scrolls (focus brings the button into view) so the buttons are never squashed away
             Column(
                 modifier =

@@ -270,7 +270,46 @@
     else if (a === "like") M.like();
     else if (a === "stop") M.stop();
     else if (a === "queue") { closeNow(); B.go("#/upnext"); }
+    else if (a === "similar") similarSongs();
   };
+  // Ben 2026-11-15: a few songs like the playing one that you can ask for (songs already in your music left out)
+  async function similarSongs() {
+    const s = M.current();
+    if (!s) return;
+    const title = s.Name || "";
+    const artist = (artistOf(s) || "").split(",")[0].trim();
+    closeNow();
+    const admin = B.me.admin;
+    const panel = B.side(`<h3>Similar songs</h3><p class="dim">Like ${esc(title)}, and not in your music yet. Pick one to ask for it.</p><div id="msim">${B.spinner()}</div>`);
+    let found;
+    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+    const songs = (found && found.songs) || [];
+    const draw = () => {
+      $("#msim", panel).innerHTML = songs.length ? songs.map((x, i) => `<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="display:flex;align-items:center;gap:12px;text-align:left">
+        <span style="flex:none;width:44px;height:44px;border-radius:6px;background:var(--pg3) center/cover;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
+        <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button>`).join("")
+        : `<p class="dim">Nothing new like this one right now.</p>`;
+    };
+    draw();
+    panel.addEventListener("click", (ev) => {
+      const one = ev.target.closest("[data-sim]");
+      if (!one) return;
+      const x = songs[+one.dataset.sim];
+      const ask = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
+        ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
+        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`);
+      ask.addEventListener("click", (e2) => {
+        const p = e2.target.closest("[data-pick]");
+        if (!p) return;
+        const album = p.dataset.pick === "album";
+        B.busy(p, async () => {
+          await B.call("POST", "api/music/request", { kind: album ? "album" : "song", id: +(album ? x.album_id : x.id) });
+          B.closeAll();
+          return admin ? `Asked for ${album ? x.album : x.title}.` : `Asked Ben for ${album ? x.album : x.title}.`;
+        });
+      });
+    });
+  }
   setInterval(() => {
     if (!bar || !M.current()) return;
     const d = songLen();
@@ -291,7 +330,7 @@
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
             <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
+            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="similar" title="Songs like this one to ask for">${I("plus")} Similar songs</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
           <div class="np-words"></div>

@@ -418,6 +418,8 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, search(q("q"))
         if method == "GET" and path == "/api/music/discover":
             return 200, discover()
+        if method == "GET" and path == "/api/music/similar":
+            return 200, similar(q("artist"), q("title"))
         if method == "GET" and path == "/api/music/genre":
             return 200, genre_page(q("id"))
         if method == "GET" and path == "/api/music/preview":
@@ -614,51 +616,198 @@ def _your_artists():
     return [n for n, c in sorted(counts.items(), key=lambda x: -x[1]) if c]
 
 
-def _because():
-    """'Because you have <artist>': songs like two artists already in Music (new picks every day)"""
+# Trending by genre: the genres shown as "Trending in <genre>" lists, in this order (names as the catalogue writes them)
+TREND_GENRES = (
+    "Pop", "Rap/Hip Hop", "R&B", "Rock", "Dance", "Alternative", "Electro", "Country", "Latin Music", "Reggaeton",
+    "Asian Music", "Metal", "Soul & Funk", "Reggae", "Folk", "Jazz", "Blues", "Films/Games",
+)
+TREND_ROWS = 12
+SEED_ROWS = 4
+_pool = None
+
+
+def _workers():
+    """A few helpers so the catalogue calls for one page run side by side (the page opens faster on old TVs)"""
+    global _pool
+    with _lock:
+        if _pool is None:
+            from concurrent.futures import ThreadPoolExecutor
+
+            _pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="music-discover")
+        return _pool
+
+
+def _each(jobs, wait=25):
+    """Runs every (function, value) at once and gives back the answers in the same order (None when one failed)"""
+    futures = [_workers().submit(f, v) for f, v in jobs]
+    out = []
+    for fu in futures:
+        try:
+            out.append(fu.result(timeout=wait))
+        except Exception:  # noqa: BLE001 - one slow or broken list never stops the page
+            out.append(None)
+    return out
+
+
+def _genre_songs(genre):
+    """The top songs of one genre. The genre chart first; when the catalogue only sends the main chart back,
+    the best songs of the genre's top artists instead. Kept for 4 hours."""
 
     def load():
         try:
-            names = _your_artists()[:30]
-        except OSError:
-            return []
-        if not names:
-            return []
-        day = int(time.time() // 86400)
-        picked = [names[(day * 7 + i * 13) % len(names)] for i in range(min(3, len(names)))]
-        out = []
-        for name in dict.fromkeys(picked):
+            tracks = deezer(f"/chart/{genre['id']}/tracks", limit=50).get("data") or []
+        except MusicError:
+            tracks = []
+        try:
+            artists = (deezer(f"/genre/{genre['id']}/artists", limit=8).get("data") or [])[:6]
+        except MusicError:
+            artists = []
+        extra = []
+        for a in artists:
             try:
-                found = deezer("/search/artist", q=name, limit=5).get("data") or []
-                a = next((x for x in found if same(x.get("name"), name)), None)
-                if not a:
-                    continue
-                radio = deezer(f"/artist/{a['id']}/radio", limit=40).get("data") or []
+                extra.append([t for t in deezer(f"/artist/{a['id']}/top", limit=5).get("data") or [] if t.get("id")])
             except MusicError:
                 continue
-            # Other artists' songs first, so it's something new
-            songs = [_song(t) for t in radio if t.get("id") and not same((t.get("artist") or {}).get("name"), name)]
-            if len(songs) >= 6:
-                out.append({"artist": a.get("name") or name, "songs": songs[:25]})
-            if len(out) >= 2:
-                break
-        return out
+        # One song from each artist in turn, so the list isn't five songs in a row from the same person
+        mixed = [lst[i] for i in range(5) for lst in extra if i < len(lst)]
+        return {"chart": [_song(t) for t in tracks if t.get("id")], "artists": [_song(t) for t in mixed]}
 
-    return _cached(f"because-{int(time.time() // 86400)}", load, keep=12 * 3600)
+    return _cached(f"genre-songs-{genre['id']}", load)
+
+
+def _trending(top_ids):
+    """'Trending in Pop', 'Trending in Rock' ...: each list skips songs already in the Top 100 or an earlier list"""
+    by_name = {norm(g["name"]): g for g in _genres()}
+    wanted = [by_name[norm(n)] for n in TREND_GENRES if norm(n) in by_name]
+    found = _each([(_genre_songs, g) for g in wanted])
+    seen = set(top_ids)
+    rows = []
+    for g, songs in zip(wanted, found):
+        if not songs:
+            continue
+        fresh = [x for x in songs["chart"] if x["id"] not in seen]
+        if len(fresh) < 10:
+            # The genre chart was just the main chart again: use the genre's top artists
+            fresh = [x for x in songs["artists"] if x["id"] not in seen]
+        fresh = list({x["id"]: x for x in fresh}.values())[:30]
+        if len(fresh) >= 8:
+            seen.update(x["id"] for x in fresh)
+            rows.append({"id": g["id"], "genre": g["name"], "songs": fresh})
+        if len(rows) >= TREND_ROWS:
+            break
+    return rows
+
+
+def _seed_row(seed):
+    """'Because you have <song>': finds the song in the catalogue, then songs like it from its artist's radio
+    (the artist and artists like them). Kept for a day."""
+    artist, title = seed
+
+    def load():
+        try:
+            found = deezer("/search/track", q=f'artist:"{artist}" track:"{title}"', limit=5).get("data") or []
+            if not found:
+                found = deezer("/search/track", q=f"{artist} {title}", limit=8).get("data") or []
+        except MusicError:
+            return None
+        t = next((x for x in found if same(x.get("title"), title) and same((x.get("artist") or {}).get("name"), artist)), None)
+        if not t:
+            return None
+        a = t.get("artist") or {}
+        try:
+            radio = deezer(f"/artist/{a['id']}/radio", limit=50).get("data") or []
+        except MusicError:
+            return None
+        # Other artists' songs first, so it's something new; a couple from the same artist at the end
+        others = [_song(x) for x in radio if x.get("id") and not same((x.get("artist") or {}).get("name"), a.get("name"))]
+        own = [_song(x) for x in radio if x.get("id") and same((x.get("artist") or {}).get("name"), a.get("name")) and x.get("id") != t.get("id")]
+        return {"artist": a.get("name") or artist, "song": t.get("title") or title, "seed": t.get("id"), "songs": others + own[:3]}
+
+    return _cached(f"seed-{norm(artist)}-{norm(title)}", load, keep=24 * 3600)
+
+
+SKIP_SEEDS = re.compile(r"\b(intro|outro|skit|interlude|prelude|untitled|track \d+)\b", re.I)
+
+
+def _because():
+    """Several 'Because you have <song>' lists, from songs picked at random in Music: different every time the page opens"""
+    import random
+
+    try:
+        _have_songs()
+        mine = list(_have["named"])
+    except OSError:
+        return []
+    mine = [x for x in mine if len(x[1]) > 1 and not SKIP_SEEDS.search(x[1])]
+    random.shuffle(mine)
+    # One song per artist, so two lists are never the same artist's radio
+    picked, artists = [], set()
+    for who, title in mine:
+        if norm(who) not in artists:
+            artists.add(norm(who))
+            picked.append((who, title))
+        if len(picked) >= SEED_ROWS * 2:
+            break
+    rows = []
+    for row in _each([(_seed_row, x) for x in picked]):
+        if row and len(row["songs"]) >= 8:
+            row = dict(row)
+            row["songs"] = random.sample(row["songs"], len(row["songs"]))
+            rows.append(row)
+    return rows
+
+
+def _album_owned(album, have_albums):
+    who = {norm(main_artist(album.get("artist"))), norm(album.get("artist"))}
+    title = norm(album.get("title"))
+    return bool(title) and any((w, title) in have_albums for w in who)
+
+
+def _hide_owned_albums(out):
+    """Albums already in Music never show in the lists"""
+    try:
+        _have_songs()
+        have_albums = set(_have["albums"])
+    except OSError:
+        return
+    for key in ("albums", "new", "picks"):
+        if out.get(key):
+            out[key] = [a for a in out[key] if not _album_owned(a, have_albums)]
 
 
 def discover():
-    out = _chart(0)
+    out = _chart(0, songs=100)
+    top_ids = [x["id"] for x in out["songs"][:100]]
     out["genres"] = _genres()
     out["picks"] = _picks()
-    out["because"] = _because()
+    trending, because = _each([(lambda _x: _trending(top_ids), None), (lambda _x: _because(), None)], wait=40)
+    out["trending"] = trending or []
+    out["because"] = because or []
     _mark_asked(out)
+    _hide_owned_albums(out)
+    for row in out["trending"]:
+        _mark_asked(row)
+        row["songs"] = [x for x in row["songs"] if not x.get("have")]
+    out["trending"] = [r for r in out["trending"] if len(r["songs"]) >= 6]
     for b in out["because"]:
         _mark_asked(b)
         # Songs you already have aren't much of a find
-        b["songs"] = [x for x in b["songs"] if not x.get("have")][:20]
-    out["because"] = [b for b in out["because"] if len(b["songs"]) >= 5]
+        b["songs"] = [x for x in b["songs"] if not x.get("have")][:24]
+    out["because"] = [b for b in out["because"] if len(b["songs"]) >= 6][:SEED_ROWS]
     return out
+
+
+def similar(artist, title):
+    """A few songs like the one playing, to ask for from Now playing (songs already in Music left out)"""
+    if not artist or not title:
+        raise MusicError(400, "Which song?")
+    row = _seed_row((artist, title))
+    if not row:
+        return {"songs": []}
+    row = copy.deepcopy(row)
+    _mark_asked(row)
+    row["songs"] = [x for x in row["songs"] if not x.get("have")][:12]
+    return row
 
 
 def genre_page(genre_id):
@@ -670,6 +819,9 @@ def genre_page(genre_id):
     out = _chart(int(genre_id), songs=50)
     out["genre"] = g
     _mark_asked(out)
+    _hide_owned_albums(out)
+    # Ben 2026-11-15: genre pages only show songs you don't have yet
+    out["songs"] = [x for x in out["songs"] if not x.get("have")]
     return out
 
 
@@ -699,7 +851,7 @@ def album_size(artist, album):
     return n
 
 
-_have = {"at": 0, "songs": set()}
+_have = {"at": 0, "songs": set(), "albums": set(), "named": []}
 
 
 def _have_reset():
@@ -708,22 +860,30 @@ def _have_reset():
 
 
 def _have_songs():
-    """(artist, song) pairs already in Music, from the folder and file names (looked at every 10 minutes)"""
+    """(artist, song) pairs already in Music, from the folder and file names (looked at every 10 minutes).
+    Also keeps (artist, album) pairs, and the songs with their real names for 'Because you have <song>'."""
     if time.time() - _have["at"] < 600:
         return _have["songs"]
-    found = set()
+    found, albums, named = set(), set(), []
     if os.path.isdir(MUSIC):
         for base, dirs, files in os.walk(MUSIC):
             dirs[:] = [d for d in dirs if not d.startswith(".")]
             rel = os.path.relpath(base, MUSIC)
             if rel == ".":
                 continue
-            who = norm(main_artist(rel.split(os.sep)[0]))
+            parts = rel.split(os.sep)
+            shown = main_artist(parts[0])
+            who = norm(shown)
+            if len(parts) >= 2:
+                albums.add((who, norm(re.sub(r"\s*[\(\[]\d{4}[\)\]]\s*$", "", parts[1]))))
+            various = parts[0].lower() in ("various artists", "unknown", "singles")
             for f in files:
                 if os.path.splitext(f)[1].lower() in AUDIO:
                     stem = re.sub(r"^\d{1,2}-?\d{0,3}\s+-\s+", "", os.path.splitext(f)[0])
                     found.add((who, norm(stem)))
-    _have.update({"at": time.time(), "songs": found})
+                    if not various and shown:
+                        named.append((shown, stem))
+    _have.update({"at": time.time(), "songs": found, "albums": albums, "named": named})
     return found
 
 
@@ -782,7 +942,7 @@ def _mark_asked(out, extra_have=None):
             out["album"]["asked"] = _words(r)[0]
 
 
-FAMILY_READ = ("/api/music/search", "/api/music/discover", "/api/music/genre", "/api/music/preview", "/api/music/artist", "/api/music/album")
+FAMILY_READ = ("/api/music/search", "/api/music/discover", "/api/music/similar", "/api/music/genre", "/api/music/preview", "/api/music/artist", "/api/music/album")
 
 
 def _family_route(method, path, query, user_id, user_name, read_json):
@@ -796,6 +956,8 @@ def _family_route(method, path, query, user_id, user_name, read_json):
                 return 200, search(q("q"))
             if path == "/api/music/discover":
                 return 200, discover()
+            if path == "/api/music/similar":
+                return 200, similar(q("artist"), q("title"))
             if path == "/api/music/genre":
                 return 200, genre_page(q("id"))
             if path == "/api/music/preview":

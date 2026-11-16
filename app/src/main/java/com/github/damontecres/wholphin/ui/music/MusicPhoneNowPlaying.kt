@@ -134,6 +134,7 @@ internal fun PhoneNowPlaying(
         ) {
             SmallButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, easy, filledHeart = liked, onClick = viewModel::like)
             SmallButton("Up next", BenflixIcon.LIST, easy, onClick = viewModel::openUpNext)
+            if (viewModel.canAsk) SmallButton("Similar", BenflixIcon.REQUESTS, easy, onClick = viewModel::openSimilar)
             SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
             SmallButton("More", BenflixIcon.MORE_VERT, easy, onClick = viewModel::openMenu)
         }

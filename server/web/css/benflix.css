@@ -991,6 +991,9 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .rqside .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--check); }
 .rqside h4 { margin: 14px 14px 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); }
 .rqside h4:first-child { margin-top: 4px; }
+/* Music has long side lists (Trending in every genre, a few Because you have): the list scrolls on its own */
+.rqside { max-height: calc(100vh - var(--bar) - 24px); overflow-y: auto; }
+.rqside .rqlong { display: none; }
 .rqhead { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 14px; }
 .rqhead b { font-size: 22px; font-weight: 800; color: var(--ink); }
 .rqhead span { color: var(--ink3); font-size: 14px; }
@@ -1048,6 +1051,9 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .rqsplit > * { min-width: 0; }
   .rqside { width: auto; max-width: 100%; position: static; flex-direction: row; overflow-x: auto; gap: 8px; padding: 0 0 4px; background: none; border-radius: 0; }
   .rqside h4 { display: none; }
+  .rqside { max-height: none; overflow-y: visible; }
+  .rqside .rqshort { display: none; }
+  .rqside .rqlong { display: inline; }
   .rqside button { width: auto; flex: none; white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; font-size: 14px; }
   .rqside button.on { background: var(--ink); color: var(--tray); border-color: var(--ink); }
   .rqside button.on .n { color: var(--tray); }

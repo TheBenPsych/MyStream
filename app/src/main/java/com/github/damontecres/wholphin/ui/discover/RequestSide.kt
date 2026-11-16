@@ -56,6 +56,10 @@ internal val WaitingAmber = Color(0xFFF2B544)
 internal data class SideList(
     val key: String,
     val title: String,
+    /** Lists next to each other with the same heading sit under it on TV, like TRENDING > Pop, Rock */
+    val heading: String? = null,
+    /** The shorter name used under its heading on TV ([title] on phones, which have no headings) */
+    val short: String? = null,
 )
 
 /**
@@ -107,8 +111,23 @@ internal fun RequestSideFrame(
                 if (loading && lists.isEmpty()) {
                     item(key = "side-loading") { SideEntry("Loading…", selected = false, onPick = {}) }
                 }
-                items(lists, key = { "side-${it.key}" }) { l ->
-                    SideEntry(l.title, selected = picked == l.key, onPick = { onPick(l.key) })
+                lists.forEachIndexed { i, l ->
+                    if (l.heading != null && lists.getOrNull(i - 1)?.heading != l.heading) {
+                        item(key = "side-h-${l.key}") { SideHeading(l.heading) }
+                    }
+                    item(key = "side-${l.key}") {
+                        SideEntry(
+                            if (l.heading !=
+                                null
+                            ) {
+                                l.short ?: l.title
+                            } else {
+                                l.title
+                            },
+                            selected = picked == l.key,
+                            onPick = { onPick(l.key) },
+                        )
+                    }
                 }
                 extraSide()
             }

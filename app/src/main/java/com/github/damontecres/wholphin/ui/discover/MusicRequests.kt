@@ -450,27 +450,28 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
         return
     }
     // Redesign 2 (Requests, Ben 2026-11-10): the same side list and wall as Movies, Shows and Anime.
-    // Lists: Top 10 songs, Trending, Because you have, New this week, Genres, Import a playlist (Ben only).
+    // Lists (Ben 2026-11-15): Top 100 songs, TRENDING (one list per genre), BECAUSE YOU HAVE (a few songs from your
+    // music, picked again every time the page opens), then MORE: New this week, Genres, Import a playlist (Ben only).
     val admin = viewModel.isAdmin
     val s = status
     val d = discover
-    val because =
-        remember(d) {
-            val seen = HashSet<Long>()
-            d
-                ?.because
-                .orEmpty()
-                .flatMap { it.songs }
-                .filter { seen.add(it.id) }
-        }
     val lists =
         buildList {
-            if (d != null && d.songs.isNotEmpty()) add(SideList("top", "Top 10 songs"))
-            if (d != null && d.songs.size > 10) add(SideList("trending", "Trending"))
-            if (because.isNotEmpty()) add(SideList("because", "Because you have"))
-            if (d != null && d.newReleases.isNotEmpty()) add(SideList("new", "New this week"))
-            if (d != null && d.genres.isNotEmpty()) add(SideList("genres", "Genres"))
-            if (admin) add(SideList("playlist", "Import a playlist"))
+            if (d != null && d.songs.isNotEmpty()) add(SideList("top", "Top 100 songs"))
+            if (d != null && d.trending.isEmpty() && d.songs.size > 10) add(SideList("trending", "Trending"))
+            d?.trending.orEmpty().forEach { t ->
+                add(SideList("trend-${t.genreId}", "Trending in ${t.genre}", heading = "Trending", short = t.genre))
+            }
+            d?.because.orEmpty().forEachIndexed { i, b ->
+                if (b.songs.isNotEmpty()) {
+                    val name = b.song.ifBlank { b.artist }
+                    add(SideList("because-$i", "Because you have $name", heading = "Because you have", short = name))
+                }
+            }
+            val more = if (d != null && (d.trending.isNotEmpty() || d.because.isNotEmpty())) "More" else null
+            if (d != null && d.newReleases.isNotEmpty()) add(SideList("new", "New this week", heading = more))
+            if (d != null && d.genres.isNotEmpty()) add(SideList("genres", "Genres", heading = more))
+            if (admin) add(SideList("playlist", "Import a playlist", heading = more))
         }
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
     val pickedKey =
@@ -572,10 +573,35 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
                     }
                     val songs =
                         when (pickedKey) {
-                            "top" -> d.songs.take(10)
-                            "trending" -> d.songs.drop(10)
-                            "because" -> because
-                            else -> emptyList()
+                            "top" -> {
+                                d.songs.filter { !it.have }.take(100) + d.songs.filter { it.have }
+                            }
+
+                            "trending" -> {
+                                d.songs.drop(10)
+                            }
+
+                            else -> {
+                                when {
+                                    pickedKey.startsWith("trend-") -> {
+                                        d.trending
+                                            .firstOrNull { "trend-${it.genreId}" == pickedKey }
+                                            ?.songs
+                                            .orEmpty()
+                                    }
+
+                                    pickedKey.startsWith("because-") -> {
+                                        d.because
+                                            .getOrNull(pickedKey.removePrefix("because-").toIntOrNull() ?: -1)
+                                            ?.songs
+                                            .orEmpty()
+                                    }
+
+                                    else -> {
+                                        emptyList()
+                                    }
+                                }
+                            }
                         }
                     when (pickedKey) {
                         "new" -> {
@@ -857,7 +883,7 @@ private fun LazyListScope.discoverRows(
         if (b.songs.isNotEmpty()) {
             item(key = "d-because-$i") {
                 SongTileRow(
-                    title = "Because you have ${b.artist}",
+                    title = "Because you have ${b.song.ifBlank { b.artist }}",
                     songs = b.songs,
                     onSong = onSong,
                     allLabel = null,
