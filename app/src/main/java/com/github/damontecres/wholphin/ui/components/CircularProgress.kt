@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.components
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
