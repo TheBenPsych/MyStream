@@ -695,7 +695,14 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
-    val primaryFill = if (xmas) XmasLook.Red else if (tg) TgLook.Orange else BenflixColors.Text
+    val primaryFill =
+        if (xmas) {
+            XmasLook.Red
+        } else if (tg) {
+            TgLook.Orange
+        } else {
+            BenflixColors.Text
+        }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content = if (primary) (if (xmas || tg) Color.White else BenflixColors.Tray) else BenflixColors.Text
     val off = button.off

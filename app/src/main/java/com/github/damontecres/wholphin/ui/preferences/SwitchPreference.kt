@@ -63,7 +63,8 @@ fun SwitchPreference(
             ) {
                 // Thanksgiving look: a small acorn next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
-                    com.github.damontecres.wholphin.ui.theme.TgAcorn()
+                    com.github.damontecres.wholphin.ui.theme
+                        .TgAcorn()
                 }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",

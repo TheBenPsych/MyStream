@@ -48,7 +48,9 @@ fun CircularProgress(modifier: Modifier = Modifier) {
                     .align(Alignment.Center),
         )
         if (tg) {
-            val turn = androidx.compose.animation.core.rememberInfiniteTransition(label = "tgLeaf")
+            val turn =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "tgLeaf")
             val angle by turn.animateFloat(
                 initialValue = 0f,
                 targetValue = 360f,
