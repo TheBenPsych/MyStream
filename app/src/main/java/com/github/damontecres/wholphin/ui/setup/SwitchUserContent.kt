@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -164,8 +165,12 @@ fun SwitchUserContent(
                 // Christmas (1 Dec to 1 Jan, unless switched off in Settings): the cosy room with the tree,
                 // the train and the parade past the window, instead of the wall
                 val christmas = ChristmasSeason.on()
+                // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
+                val feast = !christmas && ThanksgivingSeason.on()
                 if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
+                } else if (feast) {
+                    FeastRoom(modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -214,6 +219,15 @@ fun SwitchUserContent(
                                 modifier = Modifier.padding(top = 6.dp),
                             )
                         }
+                    } else if (feast) {
+                        Text(
+                            text = ThanksgivingSeason.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
                     } else {
                         Text(
                             text = holiday?.text ?: stringResource(R.string.select_user),

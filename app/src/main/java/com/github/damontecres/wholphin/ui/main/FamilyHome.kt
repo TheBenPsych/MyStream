@@ -53,6 +53,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
@@ -199,7 +202,9 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                fontWeight = FontWeight.ExtraBold,
+                // Thanksgiving look (not Kids): the greeting is in the curly holiday font
+                fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -426,7 +431,7 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door))
+                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

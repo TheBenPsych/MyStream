@@ -50,9 +50,25 @@ import java.util.concurrent.TimeUnit
  * (tools/xmas/record.js), so TVs and phones show exactly the same thing and older TVs stay fast. The video
  * for today is downloaded the first time (about 1 to 2 MB); until then the room is a plain warm dark.
  */
+@Composable
+fun ChristmasRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(XmasVideos, { tall -> XmasVideos.name(ChristmasSeason.variant(LocalDate.now()), tall) }, modifier)
+
+/**
+ * Benflix Thanksgiving: the feast table room behind Who's watching (16 to 30 November). Drawn by the web
+ * version (server/web/js/feast.js) and recorded as 30-second loops by tools/feast/record.js.
+ */
+@Composable
+fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
+
+/** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
 @Composable
-fun ChristmasRoom(modifier: Modifier = Modifier) {
+private fun LoopingRoom(
+    videos: RoomVideos,
+    nameFor: (Boolean) -> String,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     BoxWithConstraints(
         modifier =
@@ -63,9 +79,9 @@ fun ChristmasRoom(modifier: Modifier = Modifier) {
                 ),
     ) {
         val tall = maxWidth < maxHeight * 0.8f
-        val name = remember(tall) { XmasVideos.name(ChristmasSeason.variant(LocalDate.now()), tall) }
-        var file by remember(name) { mutableStateOf(XmasVideos.cached(context, name)) }
-        LaunchedEffect(name) { if (file == null) file = XmasVideos.fetch(context, name) }
+        val name = remember(tall) { nameFor(tall) }
+        var file by remember(name) { mutableStateOf(videos.cached(context, name)) }
+        LaunchedEffect(name) { if (file == null) file = videos.fetch(context, name) }
         val video = file ?: return@BoxWithConstraints
 
         val player =
@@ -116,13 +132,30 @@ fun ChristmasRoom(modifier: Modifier = Modifier) {
     }
 }
 
-/** Downloads and keeps the Christmas room videos (extras/scenes/xmas in the repo) */
-object XmasVideos {
-    private const val BASE = "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/extras/scenes/xmas"
-    private const val MIN_BYTES = 10_000L
+/** A downloaded video smaller than this is a failed download */
+private const val MIN_BYTES = 10_000L
 
-    /** Bump when the room is re-recorded, so devices fetch the new videos instead of keeping the old ones */
-    const val VERSION = 1
+/** Downloads and keeps the Christmas room videos (extras/scenes/xmas in the repo) */
+object XmasVideos : RoomVideos("xmas", version = 1) {
+    /** The recording's name in the repo, like "EVE-wide" */
+    fun name(
+        variant: String,
+        tall: Boolean,
+    ) = "$variant-${if (tall) "tall" else "wide"}"
+}
+
+/** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
+object FeastVideos : RoomVideos("feast", version = 1)
+
+/**
+ * Downloads and keeps one holiday room's videos (extras/scenes/[folder] in the repo).
+ * [version]: bump when the room is re-recorded, so devices fetch the new videos instead of keeping the old ones.
+ */
+open class RoomVideos(
+    private val folder: String,
+    private val version: Int,
+) {
+    private val base = "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/extras/scenes/$folder"
 
     private val http by lazy {
         OkHttpClient
@@ -136,16 +169,10 @@ object XmasVideos {
             .newKeySet()
     private val lock = Mutex()
 
-    /** The recording's name in the repo, like "EVE-wide" */
-    fun name(
-        variant: String,
-        tall: Boolean,
-    ) = "$variant-${if (tall) "tall" else "wide"}"
-
     private fun file(
         context: Context,
         name: String,
-    ) = File(context.filesDir, "scenes/xmas/$name-v$VERSION.mp4")
+    ) = File(context.filesDir, "scenes/$folder/$name-v$version.mp4")
 
     fun cached(
         context: Context,
@@ -171,7 +198,7 @@ object XmasVideos {
         return try {
             target.parentFile?.mkdirs()
             val tmp = File(target.path + ".part")
-            http.newCall(Request.Builder().url("$BASE/$name.mp4?v=$VERSION").build()).execute().use { response ->
+            http.newCall(Request.Builder().url("$base/$name.mp4?v=$version").build()).execute().use { response ->
                 if (!response.isSuccessful) {
                     failed += name
                     return null
@@ -192,7 +219,7 @@ object XmasVideos {
                 ?.forEach { it.delete() }
             target
         } catch (e: Exception) {
-            Timber.i("Christmas room video not downloaded: %s", e.javaClass.simpleName)
+            Timber.i("%s room video not downloaded: %s", folder, e.javaClass.simpleName)
             failed += name
             null
         }

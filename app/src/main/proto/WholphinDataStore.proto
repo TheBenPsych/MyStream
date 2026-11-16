@@ -291,6 +291,8 @@ message BenflixPreferences {
   bool music_bars_off = 12;
   // Benflix Christmas look (1 Dec to 1 Jan) is on unless this is set
   bool christmas_look_off = 13;
+  // Benflix Thanksgiving look (16 to 30 Nov) is on unless this is set
+  bool thanksgiving_look_off = 14;
 }
 
 enum BenflixAccent {

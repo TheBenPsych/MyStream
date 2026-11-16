@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
@@ -35,14 +36,36 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(
-            color = BenflixColors.Text,
+            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
+            color = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Orange else BenflixColors.Text,
+            trackColor = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Brown else androidx.compose.ui.graphics.Color.Transparent,
             modifier =
                 Modifier
                     .fillMaxSize()
                     .align(Alignment.Center),
         )
+        if (tg) {
+            val turn = androidx.compose.animation.core.rememberInfiniteTransition(label = "tgLeaf")
+            val angle by turn.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(6000, easing = androidx.compose.animation.core.LinearEasing),
+                    ),
+                label = "tgLeafAngle",
+            )
+            com.github.damontecres.wholphin.ui.theme.TgLoadingLeaf(
+                Modifier
+                    .fillMaxSize(.62f)
+                    .align(Alignment.Center)
+                    .rotate(angle),
+            )
+        }
     }
 }
 
