@@ -150,6 +150,7 @@ class GameLibraryClient
         suspend fun pickAddress() = withContext(Dispatchers.IO) { pickNow() }
 
         private fun pickNow() {
+            picked = true
             // Benflix: a typed-in home address (like the old 10.0.0.58) stops working when Tower moves. When it
             // doesn't answer but the automatic one does, forget the typed one so it heals by itself.
             if (customAddress.isNotBlank() && !lastWasAway) {
@@ -175,6 +176,25 @@ class GameLibraryClient
                 prefs.edit().putBoolean(KEY_LAST_AWAY, nowAway).apply()
             }
             if (working != null) Timber.i("Games helper reached through the internet address")
+        }
+
+        @Volatile
+        private var picked = false
+
+        /**
+         * Benflix Live TV: Jellyfin lists each channel at Tower's own /livetv/play/<channel> address, which
+         * hands out whichever copy of the channel plays right now. Returns that address through the helper
+         * address that works from here (at home or away), or null when [path] isn't one of those.
+         */
+        suspend fun liveChannelUrl(path: String): String? {
+            val at = path.indexOf("/livetv/play/")
+            if (at < 0) return null
+            if (!picked) {
+                pickAddress()
+                picked = true
+            }
+            val base = address.ifBlank { return null }
+            return base.trimEnd('/') + path.substring(at)
         }
 
         /** Every game in the library, grouped by console. Throws with a friendly message when it can't. */
