@@ -397,6 +397,15 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         except Exception as e:
             log(f"Made for you problem: {e!r}")
             return 200, {"mixes": []}
+    if method == "GET" and path == "/api/music/themes":
+        # Themed playlists (holidays in season, decades, genres, moods, throwbacks). Never Kids.
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        try:
+            return 200, themes_for(token, user_id, is_admin)
+        except Exception as e:
+            log(f"themed playlists problem: {e!r}")
+            return 200, {"themes": []}
     if method == "GET" and path == "/api/music/albumsize":
         # How many songs the whole album has, for the "3 of 12 songs" note (everyone but Kids)
         if is_kids:
@@ -406,7 +415,7 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
     if is_kids:
         return 403, {"error": "No music requests on the Kids profile."}
     if not is_admin:
-        return _family_route(method, path, query, user_id, user_name, read_json)
+        return _family_route(method, path, query, user_id, user_name, read_json, token=token)
     if not _dir:
         return 503, {"error": "Music is off: the helper has no folder to save requests in. Run the Benflix setup command again."}
     remember_admin(token, user_id)
@@ -428,9 +437,14 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, artist_page(q("id"))
         if method == "GET" and path == "/api/music/album":
             return 200, album_page(q("id"))
+        if method == "GET" and path == "/api/music/theme":
+            return 200, theme_adds(token, user_id, q("key"))
         if method == "POST" and path == "/api/music/request":
             body = read_json()
-            return 200, ask(str(body.get("kind") or ""), body.get("id"))
+            answer = ask(str(body.get("kind") or ""), body.get("id"))
+            if body.get("theme") and answer.get("kind") == "song":
+                _theme_pin(str(body["theme"]), answer)
+            return 200, answer
         if method == "POST" and path == "/api/music/redo":
             body = read_json()
             return 200, redo_song(str(body.get("id") or ""), token, user_id)
@@ -945,7 +959,7 @@ def _mark_asked(out, extra_have=None):
 FAMILY_READ = ("/api/music/search", "/api/music/discover", "/api/music/similar", "/api/music/genre", "/api/music/preview", "/api/music/artist", "/api/music/album")
 
 
-def _family_route(method, path, query, user_id, user_name, read_json):
+def _family_route(method, path, query, user_id, user_name, read_json, token=None):
     """A grown-up family profile: look, hear previews and ask. Asks wait for Ben (state waiting_ben)."""
     if not _dir:
         return 503, {"error": "Music requests aren't set up on Tower yet. Ask Ben."}
@@ -965,6 +979,9 @@ def _family_route(method, path, query, user_id, user_name, read_json):
             if path == "/api/music/artist":
                 return 200, artist_page(q("id"))
             return 200, album_page(q("id"))
+        if method == "GET" and path == "/api/music/theme":
+            # Songs to add under a themed playlist (Ben 2026-11-16: every profile but Kids can ask, Ben okays it)
+            return 200, theme_adds(token, user_id, q("key"))
         if method == "GET" and path == "/api/music/status":
             with _lock:
                 reqs = [_public(r) for r in _state["requests"] if r.get("user") == user_id]
@@ -972,7 +989,10 @@ def _family_route(method, path, query, user_id, user_name, read_json):
                          "drop_folder": "", "music_folder": "", "drop_lines": [], "drop_last": None, "tidy": None}
         if method == "POST" and path == "/api/music/request":
             body = read_json()
-            return 200, ask(str(body.get("kind") or ""), body.get("id"), who=user_name or "Someone", user=user_id)
+            answer = ask(str(body.get("kind") or ""), body.get("id"), who=user_name or "Someone", user=user_id)
+            if body.get("theme") and answer.get("kind") == "song":
+                _theme_pin(str(body["theme"]), answer)
+            return 200, answer
         m = re.fullmatch(r"/api/music/request/([\w-]+)/remove", path)
         if method == "POST" and m:
             with _lock:
@@ -3421,6 +3441,414 @@ def mixes_for(token, user_id):
         with _mix_lock:
             _mixes[user_id] = (day, answer)
     return answer
+
+
+# ---------- Themed playlists: holidays in season, decades, genres, moods, activities, throwbacks, seasons ----------
+# Ben 2026-11-16 ("like Spotify does"). Tower makes them each morning from the person's own music, the same way as
+# Made for you. A song joins a theme when its name or album has the theme's words (Christmas, ghost, summer...),
+# its genre fits, it is on the music catalogue's own playlists for that theme, or Ben asked for it from that theme's
+# "Songs to add" row. Everyone sees a theme once it has 15 songs (Ben sooner). Every profile but Kids gets Songs to add;
+# asks from other profiles wait for Ben's Approve, like the rest of music requests (Ben 2026-11-16).
+
+THEME_MIN = 15
+THEME_MIN_ADMIN = 3
+THEME_SONGS = 60
+THEME_ROWS = {
+    "season": "In season",
+    "decade": "Decades",
+    "genre": "Genres",
+    "mood": "Moods and moments",
+    "throwback": "Throwbacks",
+}
+
+_themes = {}  # user id -> (day, answer)
+_theme_lock = threading.Lock()
+_theme_warm = {"running": False}
+
+
+def _thanksgiving(year):
+    import datetime
+
+    d = datetime.date(year, 11, 1)
+    first_thu = d + datetime.timedelta(days=(3 - d.weekday()) % 7)
+    return first_thu + datetime.timedelta(days=21)
+
+
+def _holiday_dates(key, today):
+    """When a holiday or season theme shows for everyone: (first day, last day) of the next one that hasn't ended"""
+    import datetime
+
+    spans = {
+        "halloween": ((10, 1), (10, 31)),
+        "newyear": ((12, 27), (1, 1)),
+        "valentines": ((2, 1), (2, 14)),
+        "july4": ((6, 28), (7, 5)),
+        "stpatricks": ((3, 10), (3, 17)),
+        "summer": ((6, 1), (8, 31)),
+        "fall": ((9, 1), (11, 30)),
+        "winter": ((12, 1), (2, 28)),
+    }
+    if key != "christmas" and key not in spans:
+        return None
+    for y in (today.year - 1, today.year, today.year + 1):
+        if key == "christmas":
+            start, end = _thanksgiving(y), datetime.date(y, 12, 26)
+        else:
+            (sm, sd), (em, ed) = spans[key]
+            start = datetime.date(y, sm, sd)
+            end = datetime.date(y if (em, ed) >= (sm, sd) else y + 1, em, ed)
+        if end >= today:
+            return start, end
+    return None
+
+
+# words: whole words in the song or album name. genres: bits of a genre name. dz: the catalogue search for its
+# playlists (Songs to add, and songs of yours on them). Moods and activities are a best guess from genre.
+THEMES = [
+    {"key": "christmas", "group": "season", "name": "Christmas", "line": "Christmas songs from your music", "dz": "christmas hits",
+     "genres": ["christmas", "holiday"],
+     "words": ["christmas", "xmas", "santa", "sleigh", "jingle", "mistletoe", "reindeer", "rudolph", "frosty", "noel", "navidad", "silent night", "holly", "let it snow", "winter wonderland", "north pole", "feliz", "carol of", "little drummer", "deck the halls", "o holy night", "chestnuts", "snowman"]},
+    {"key": "halloween", "group": "season", "name": "Halloween", "line": "Spooky songs from your music", "dz": "halloween party",
+     "genres": ["horror"],
+     "words": ["halloween", "monster", "monsters", "ghost", "ghosts", "ghostbusters", "zombie", "zombies", "witch", "witchy", "spooky", "haunted", "thriller", "vampire", "werewolf", "skeleton", "skeletons", "pumpkin", "boo", "nightmare", "graveyard", "grave", "creep", "scream", "black magic", "evil", "demon", "demons", "bat", "devil", "superstition", "psycho", "horror"]},
+    {"key": "newyear", "group": "season", "name": "New Year's Eve party", "line": "Count down to midnight", "dz": "new year's eve party",
+     "genres": [],
+     "words": ["new year", "new years", "auld lang syne", "midnight", "countdown", "celebrate", "celebration", "champagne", "1999", "tonight", "party", "fireworks", "firework"]},
+    {"key": "valentines", "group": "season", "name": "Valentine's love songs", "line": "Love songs from your music", "dz": "love songs",
+     "genres": ["romance"],
+     "words": ["love", "lover", "valentine", "kiss", "darling", "sweetheart", "my girl", "crazy in love", "forever", "baby i", "heart", "romance", "honey"]},
+    {"key": "july4", "group": "season", "name": "4th of July", "line": "Summer in the USA", "dz": "4th of july",
+     "genres": ["americana"],
+     "words": ["america", "american", "usa", "u s a", "freedom", "independence", "fireworks", "firework", "star spangled", "red white", "fourth of july", "4th of july", "born in the u s a", "party in the u s a"]},
+    {"key": "stpatricks", "group": "season", "name": "St. Patrick's Day", "line": "A bit of the Irish", "dz": "st patrick's day",
+     "genres": ["celtic", "irish"],
+     "words": ["irish", "ireland", "dublin", "galway", "shamrock", "whiskey", "whisky", "shipping up to boston", "danny boy"]},
+    {"key": "summer", "group": "season", "name": "Summer hits", "line": "Sunny songs for June to August", "dz": "summer hits",
+     "genres": ["reggae", "tropical", "surf"],
+     "words": ["summer", "summertime", "sun", "sunshine", "beach", "california", "hot", "heat", "july", "august", "vacation", "island", "surf", "ocean", "waves", "pool", "tan"]},
+    {"key": "fall", "group": "season", "name": "Cozy fall", "line": "Warm songs for cooler days", "dz": "cozy fall",
+     "genres": ["folk", "acoustic", "singer-songwriter", "singer songwriter"],
+     "words": ["autumn", "fall", "october", "september", "november", "leaves", "harvest", "rain", "sweater", "cozy"]},
+    {"key": "winter", "group": "season", "name": "Winter", "line": "Songs for cold days", "dz": "winter songs",
+     "genres": [],
+     "words": ["winter", "snow", "snowfall", "cold", "ice", "frozen", "freeze", "december", "january", "fire", "fireplace", "blizzard"]},
+    # Moods
+    {"key": "chill", "group": "mood", "name": "Chill", "line": "Easy, laid-back songs", "dz": "chill hits",
+     "genres": ["chill", "lo-fi", "lofi", "ambient", "downtempo", "acoustic", "soul", "r&b", "rnb", "bossa", "trip hop", "trip-hop", "dream pop", "neo soul", "indie folk"],
+     "words": ["chill", "slow", "easy", "calm", "breeze", "lazy", "sunday"]},
+    {"key": "feelgood", "group": "mood", "name": "Feel-good", "line": "Songs to lift you up", "dz": "feel good hits",
+     "genres": ["funk", "disco", "motown", "reggae", "ska", "dance pop", "k-pop", "kpop"],
+     "words": ["happy", "good", "sunshine", "dance", "dancing", "smile", "celebrate", "fun", "feel good", "walking on", "best day", "shake"]},
+    {"key": "sad", "group": "mood", "name": "Sad songs", "line": "For when you need a good cry", "dz": "sad songs",
+     "genres": ["emo", "blues", "slowcore", "sad"],
+     "words": ["cry", "crying", "tears", "sad", "alone", "lonely", "goodbye", "broken", "hurt", "sorry", "miss you", "without you", "gone", "lost", "heartbreak", "say something", "someone like you"]},
+    {"key": "hype", "group": "mood", "name": "Hype", "line": "Loud songs to get going", "dz": "hype songs",
+     "genres": ["hip hop", "hip-hop", "rap", "trap", "edm", "dubstep", "metal", "hard rock", "punk", "drum and bass", "drum & bass", "grime", "drill"],
+     "words": ["hype", "turn up", "jump", "loud", "bounce"]},
+    # Activities
+    {"key": "workout", "group": "mood", "name": "Workout", "line": "Fast songs for the gym", "dz": "workout hits",
+     "genres": ["hip hop", "hip-hop", "rap", "edm", "electro", "dance", "metal", "hard rock", "punk", "drum and bass", "house", "trap", "dubstep", "techno"],
+     "words": ["run", "running", "stronger", "power", "fighter", "eye of the tiger", "pump", "lose yourself", "champion", "unstoppable"]},
+    {"key": "focus", "group": "mood", "name": "Focus", "line": "Quiet songs for working or study", "dz": "focus music",
+     "genres": ["classical", "instrumental", "ambient", "lo-fi", "lofi", "soundtrack", "score", "piano", "post-rock", "post rock", "new age", "jazz", "game"],
+     "words": ["theme", "prelude", "sonata", "concerto", "nocturne", "etude", "suite", "interlude", "instrumental"]},
+    {"key": "roadtrip", "group": "mood", "name": "Road trip", "line": "Windows down, volume up", "dz": "road trip",
+     "genres": ["classic rock", "country", "americana", "pop rock", "pop-rock", "folk rock", "southern rock", "alternative rock"],
+     "words": ["road", "drive", "driving", "highway", "car", "ride", "riding", "home", "miles", "route", "life is a highway", "take me home"]},
+    {"key": "dinner", "group": "mood", "name": "Dinner", "line": "Smooth songs for eating together", "dz": "dinner jazz",
+     "genres": ["jazz", "soul", "bossa", "swing", "lounge", "motown", "crooner", "vocal", "easy listening", "neo soul"],
+     "words": ["wine", "dinner", "moonlight", "fly me", "sway", "smooth"]},
+    {"key": "sleep", "group": "mood", "name": "Sleep", "line": "Soft songs to drift off to", "dz": "sleep",
+     "genres": ["ambient", "classical", "piano", "new age", "sleep", "meditation"],
+     "words": ["sleep", "sleeping", "dream", "dreams", "dreaming", "lullaby", "goodnight", "good night", "moon", "stars", "night", "quiet"]},
+]
+THEME_BY_KEY = {t["key"]: t for t in THEMES}
+
+
+def _theme_words_re(words):
+    if not words:
+        return None
+    return re.compile(r"\b(" + "|".join(re.escape(norm(w)) for w in words if norm(w)) + r")\b")
+
+
+for _t in THEMES:
+    _t["_re"] = _theme_words_re(_t["words"])
+
+
+def _theme_song_key(song):
+    """(artist, song name) the same way the catalogue songs are compared"""
+    who = song.get("AlbumArtist") or (song.get("Artists") or [""])[0] or ""
+    return norm(main_artist(who)), norm(song.get("Name"))
+
+
+def _theme_pins():
+    return (_read("theme-pins.json") or {}) if _dir else {}
+
+
+def _theme_pin(key, song):
+    """Ben asked for this song from a theme's Songs to add: it joins that theme once it's in"""
+    if not _dir or (key not in THEME_BY_KEY and not key.startswith(("decade-", "genre-"))):
+        return
+    with _lock:
+        pins = _read("theme-pins.json") or {}
+        lst = pins.setdefault(key, [])
+        pair = [norm(main_artist(song.get("artist"))), norm(song.get("title"))]
+        if pair not in lst:
+            lst.append(pair)
+            del lst[:-300]
+        _write("theme-pins.json", pins)
+
+
+def _theme_dz(key):
+    """The catalogue's songs for a theme (from its top playlists, or decade/genre playlists), kept a week.
+    None while it hasn't been looked up yet (the morning look-up runs in the background)."""
+    with _lock:
+        hit = _found_cache.get("theme-" + key)
+    if hit and time.time() - hit[0] < 7 * 24 * 3600:
+        return copy.deepcopy(hit[1])
+    return None
+
+
+def _theme_query(key):
+    t = THEME_BY_KEY.get(key)
+    if t:
+        return t["dz"]
+    if key.startswith("decade-"):
+        d = key.split("-", 1)[1]
+        return f"{d[2:] if d < '2000' else d}s hits"
+    if key.startswith("genre-"):
+        return key.split("-", 1)[1].replace("_", " ") + " hits"
+    return None
+
+
+def _theme_dz_load(key):
+    q = _theme_query(key)
+    if not q:
+        return []
+    out, seen = [], set()
+    found = deezer("/search/playlist", q=q, limit=6).get("data") or []
+    # The biggest playlists first (the catalogue's own editors' ones are usually biggest)
+    found.sort(key=lambda p: -(p.get("nb_tracks") or 0) if (p.get("nb_tracks") or 0) <= 300 else 0)
+    for p in found[:3]:
+        try:
+            tracks = deezer(f"/playlist/{p['id']}/tracks", limit=100).get("data") or []
+        except MusicError:
+            continue
+        for tr in tracks:
+            s = _song(tr)
+            k = (norm(main_artist(s["artist"])), norm(s["title"]))
+            if s.get("id") and k not in seen:
+                seen.add(k)
+                out.append(s)
+    with _lock:
+        _found_cache["theme-" + key] = (time.time(), out)
+    return out
+
+
+def _theme_warm_start(keys):
+    """Looks up the catalogue songs for these themes in the background, then remakes the themes"""
+    with _theme_lock:
+        if _theme_warm["running"]:
+            return
+        _theme_warm["running"] = True
+
+    def run():
+        try:
+            for k in keys:
+                if _theme_dz(k) is None:
+                    try:
+                        _theme_dz_load(k)
+                    except Exception as e:
+                        log(f"theme look-up for {k} didn't work: {e!r}")
+            with _theme_lock:
+                _themes.clear()
+        finally:
+            _theme_warm["running"] = False
+
+    threading.Thread(target=run, name="music-themes", daemon=True).start()
+
+
+def _played_days_ago(song, now):
+    """How many days since this person last played the song (None if never). Jellyfin's times are UTC."""
+    import datetime
+
+    when = (song.get("UserData") or {}).get("LastPlayedDate") or ""
+    try:
+        t = datetime.datetime.strptime(when[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+    return (now - t).total_seconds() / 86400
+
+
+def _theme_out(key, group, name, line, songs, rnd, need, limit=THEME_SONGS, adds=False, note=""):
+    seen, ids, covers = set(), [], []
+    songs = list(songs)
+    rnd.shuffle(songs)
+    for s in songs:
+        if s["Id"] in seen:
+            continue
+        seen.add(s["Id"])
+        ids.append(s["Id"])
+        if len(ids) >= limit:
+            break
+    for s in songs:
+        a = s.get("AlbumId")
+        if s["Id"] in seen and a and a not in covers:
+            covers.append(a)
+        if len(covers) >= 4:
+            break
+    if len(ids) < need:
+        return None
+    out = {"key": key, "name": name, "line": note or line, "songs": ids, "covers": covers, "group": group}
+    if adds:
+        out["adds"] = True
+    return out
+
+
+def themes_for(token, user_id, is_admin):
+    import datetime
+    import random
+
+    day = time.strftime("%Y-%m-%d")
+    with _theme_lock:
+        cached = _themes.get(user_id)
+        if cached and cached[0] == day:
+            return cached[1]
+    songs = _songs(token, user_id, "Limit=8000")
+    if not songs:
+        return {"themes": []}
+    rnd = random.Random(f"themes-{user_id}-{day}")
+    today = datetime.date.today()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    need = THEME_MIN_ADMIN if is_admin else THEME_MIN
+    pins = _theme_pins()
+    by_key = {}
+    for s in songs:
+        by_key.setdefault(_theme_song_key(s), []).append(s)
+    for s in songs:
+        s["_names"] = norm(s.get("Name")) + " | " + norm(s.get("Album"))
+        s["_genres"] = " | ".join(g.lower() for g in s.get("Genres") or [])
+    out, warm = [], []
+
+    def from_catalogue(key):
+        dz = _theme_dz(key)
+        if dz is None:
+            warm.append(key)
+            return []
+        mine = []
+        for x in dz:
+            for k in {(norm(main_artist(x["artist"])), norm(x["title"])), (norm(x["artist"]), norm(x["title"]))}:
+                mine += by_key.get(k, [])
+        return mine
+
+    def pinned(key):
+        mine = []
+        for a, t in pins.get(key) or []:
+            mine += by_key.get((a, t), [])
+        return mine
+
+    # Holidays and seasons: only in season (Ben sees a holiday 3 weeks early, so he can fill it before it starts)
+    for t in THEMES:
+        if t["group"] != "season":
+            continue
+        span = _holiday_dates(t["key"], today)
+        if not span:
+            continue
+        start, end = span
+        live = start <= today <= end
+        early = is_admin and not live and 0 < (start - today).days <= 21
+        if not live and not early:
+            continue
+        mine = [s for s in songs if (t["_re"] and t["_re"].search(s["_names"])) or any(g in s["_genres"] for g in t["genres"])]
+        mine += from_catalogue(t["key"]) + pinned(t["key"])
+        note = f"Shows for everyone from {start.strftime('%b')} {start.day}" if early else ""
+        # A holiday Ben is filling shows on his profile even before it has songs
+        m = _theme_out(t["key"], "season", t["name"], t["line"], mine, rnd, 0 if is_admin else need, limit=100, adds=True, note=note)
+        if m:
+            out.append(m)
+
+    # Decades: every decade with enough songs, oldest first
+    decades = {}
+    for s in songs:
+        y = s.get("ProductionYear")
+        if y and 1940 <= y <= today.year:
+            decades.setdefault(y // 10 * 10, []).append(s)
+    for d in sorted(decades):
+        key = f"decade-{d}"
+        short = f"{str(d)[2:]}s" if d < 2000 else f"{d}s"
+        mine = decades[d] + pinned(key)
+        m = _theme_out(key, "decade", f"{short} mix", f"Songs from the {d}s", mine, rnd, need, adds=True)
+        if m:
+            out.append(m)
+
+    # Genres: the biggest ones in the music (up to 10)
+    counts = {}
+    names = {}
+    for s in songs:
+        for g in s.get("Genres") or []:
+            k = g.strip().lower()
+            if k:
+                counts[k] = counts.get(k, 0) + 1
+                names.setdefault(k, g.strip())
+    for g in sorted(counts, key=lambda k: -counts[k])[:10]:
+        if counts[g] < need:
+            break
+        key = "genre-" + re.sub(r"[^a-z0-9]+", "_", g).strip("_")
+        mine = [s for s in songs if g in [x.strip().lower() for x in s.get("Genres") or []]] + pinned(key)
+        m = _theme_out(key, "genre", f"{names[g]} mix", f"{names[g]} from your music", mine, rnd, need, adds=True)
+        if m:
+            out.append(m)
+
+    # Moods and activities
+    for t in THEMES:
+        if t["group"] != "mood":
+            continue
+        mine = [s for s in songs if any(g in s["_genres"] for g in t["genres"]) or (t["_re"] and t["_re"].search(norm(s.get("Name"))))]
+        mine += from_catalogue(t["key"]) + pinned(t["key"])
+        m = _theme_out(t["key"], "mood", t["name"], t["line"], mine, rnd, need, adds=True)
+        if m:
+            out.append(m)
+
+    # Throwbacks (no Songs to add: these are about what you've played)
+    count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
+    forgot = [s for s in songs if count(s) >= 3 and (_played_days_ago(s, now) or 0) > 90]
+    m = _theme_out("forgotten", "throwback", "Forgotten favourites", "Songs you loved and haven't played in months", forgot, rnd, max(8, need))
+    if m:
+        out.append(m)
+    lastyear = [s for s in songs if 344 <= (_played_days_ago(s, now) or 0) <= 386]
+    m = _theme_out("lastyear", "throwback", "This week last year", "What you were playing around now last year", lastyear, rnd, max(8, need))
+    if m:
+        out.append(m)
+
+    for s in songs:
+        s.pop("_names", None)
+        s.pop("_genres", None)
+    if warm:
+        _theme_warm_start(warm)
+    answer = {"themes": out, "rows": THEME_ROWS}
+    with _theme_lock:
+        _themes[user_id] = (day, answer)
+    return answer
+
+
+def theme_adds(token, user_id, key):
+    """Songs to add for one theme: catalogue songs that fit it and aren't in the music yet"""
+    if not _theme_query(key):
+        raise MusicError(404, "That theme isn't there any more.")
+    dz = _theme_dz(key)
+    if dz is None:
+        dz = _theme_dz_load(key)
+    out = {"songs": dz}
+    have = set()
+    try:
+        have = set(_have_songs())
+    except OSError:
+        pass
+    for s in _songs(token, user_id, "Limit=8000"):
+        have.add(_theme_song_key(s))
+    _mark_asked(out, extra_have=have)
+    out["songs"] = [s for s in out["songs"] if not s.get("have")][:40]
+    return out
 
 
 # ---------- Lyrics: Tower fetches missing ones from LRCLIB each night ----------
