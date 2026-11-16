@@ -21,7 +21,7 @@ BACKUP_DAYS=3
 NIGHT_START=1       # 1 AM
 NIGHT_END=8         # 8 AM
 FOLDER_MATCH=anime  # which Media folders it works on (any folder whose name contains this)
-SETUP_VERSION=1     # bump when the container itself needs re-making
+SETUP_VERSION=2     # bump when the container itself needs re-making
 
 # ---- Where things are ----
 MEDIA=${TDARR_MEDIA:-/mnt/user/Homelab/Media}
@@ -104,7 +104,9 @@ if [ "$running" = "true" ] && [ "$(cat "$APP/benflix-recipe.txt" 2>/dev/null)" =
 else
   docker rm -f tdarr >/dev/null 2>&1
   dev=()
-  [ -n "$GPU" ] && dev=(--device "$GPU:/dev/dri/renderD128")
+  # The whole /dev/dri, so each card keeps its real name (renaming the Arc to renderD128 broke Quick Sync,
+  # 2026-11-16). The flow picks the Arc by its name, so the built-in graphics stays free for everything else.
+  [ -n "$GPU" ] && dev=(--device /dev/dri)
   if ! docker run -d --name tdarr --restart unless-stopped --memory=4g \
     -p 8265:8265 -p 8266:8266 "${dev[@]}" \
     -e serverIP=0.0.0.0 -e serverPort=8266 -e webUIPort=8265 -e internalNode=true -e inContainer=true \
@@ -152,7 +154,7 @@ echo "  ok  5 Benflix steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
 sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__QUALITY__|$QUALITY|" \
-  -e "s|__ENCODER__|$ENCODER|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
+  -e "s|__ENCODER__|$ENCODER|" -e "s|__DEVICE__|${GPU:-/dev/dri/renderD128}|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
   -e "s|__RADARR_URL__|$(esc "$radarr_url")|" -e "s|__RADARR_KEY__|$(esc "$radarr_key")|" \
   -e "s|__SONARR_URL__|$(esc "$sonarr_url")|" -e "s|__SONARR_KEY__|$(esc "$sonarr_key")|" \
   "$TMP/benflix-shrink-flow.json" | tr -d '\n' >"$TMP/flow.json"
