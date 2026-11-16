@@ -1,0 +1,1361 @@
+{
+ "files": {
+  "Test Pattern One": {
+   "start": 2.5,
+   "first": {
+    "t": 3.8,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1920,
+    "h": 1080
+   },
+   "second": {
+    "t": 13.8,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1920,
+    "h": 1080
+   },
+   "server": {
+    "item": "Test Pattern One",
+    "seconds": 13.3,
+    "method": "Transcode",
+    "audio_index": 1,
+    "subtitle_index": 3
+   },
+   "moves": true
+  },
+  "Big Color Test": {
+   "start": 3,
+   "first": {
+    "t": 3.8,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 3840,
+    "h": 2160
+   },
+   "second": {
+    "t": 13.8,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 3840,
+    "h": 2160
+   },
+   "server": {
+    "item": "Big Color Test",
+    "seconds": 13.7,
+    "method": "Transcode",
+    "audio_index": 1,
+    "subtitle_index": -1,
+    "converting_because": [
+     "ContainerNotSupported",
+     "VideoCodecNotSupported",
+     "AudioCodecNotSupported"
+    ],
+    "video": "h264",
+    "audio": "aac"
+   },
+   "moves": true
+  },
+  "Surround Test": {
+   "start": 2.5,
+   "first": {
+    "t": 3.7,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1920,
+    "h": 1080
+   },
+   "second": {
+    "t": 13.7,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1920,
+    "h": 1080
+   },
+   "server": {
+    "item": "Surround Test",
+    "seconds": 13.2,
+    "method": "Transcode",
+    "audio_index": 1,
+    "subtitle_index": -1,
+    "converting_because": [
+     "ContainerNotSupported",
+     "AudioCodecNotSupported"
+    ],
+    "video": "h264",
+    "audio": "aac"
+   },
+   "moves": true
+  },
+  "Kids Cartoon Test": {
+   "start": 1,
+   "first": {
+    "t": 3.9,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1280,
+    "h": 720
+   },
+   "second": {
+    "t": 13.9,
+    "paused": false,
+    "ready": 4,
+    "error": null,
+    "w": 1280,
+    "h": 720
+   },
+   "server": {
+    "item": "Kids Cartoon Test",
+    "seconds": 13.9,
+    "method": "DirectPlay",
+    "audio_index": 1,
+    "subtitle_index": -1
+   },
+   "moves": true
+  }
+ },
+ "timings": {
+  "sign in to Home": 3.3,
+  "title page: Test Pattern One": 0.8,
+  "press Play to picture moving: Test Pattern One": 2.5,
+  "title page: Big Color Test": 0.8,
+  "press Play to picture moving: Big Color Test": 3,
+  "title page: Surround Test": 0.8,
+  "press Play to picture moving: Surround Test": 2.5,
+  "title page: Kids Cartoon Test": 0.8,
+  "press Play to picture moving: Kids Cartoon Test": 1,
+  "press Play to picture moving: Test Pattern One (switching)": 1.5,
+  "press Play to picture moving: Test Pattern One (resume)": 1.5,
+  "press Play to picture moving: Test Show E1": 1,
+  "press Play to picture moving: Surround Test (bad Wi-Fi)": 2.5,
+  "computer normal page home": 0,
+  "computer normal page movies": 0.1,
+  "computer normal page shows": 0.1,
+  "computer normal page live": 0.1,
+  "computer normal page music": 0,
+  "computer normal page games": 0.1,
+  "computer normal page books": 0.1,
+  "computer normal page requests": 0,
+  "computer normal page search": 0.1,
+  "computer normal page search?q=test": 0.1,
+  "computer normal page settings": 0,
+  "computer normal page settings/you": 0,
+  "computer normal page help": 0.1,
+  "computer normal page mine": 0.1,
+  "computer normal page who": 0,
+  "computer normal page movie/8ab8c102f33d26b5b52a9375f0ca5fdd": 0,
+  "computer normal page show/4dc7290c0ad027aefd9480af329699d3": 0,
+  "computer easy page home": 0.1,
+  "computer easy page movies": 0.1,
+  "computer easy page shows": 0.1,
+  "computer easy page live": 0.1,
+  "computer easy page music": 0,
+  "computer easy page games": 0,
+  "computer easy page books": 0.1,
+  "computer easy page requests": 0.1,
+  "computer easy page search": 0.1,
+  "computer easy page search?q=test": 0.1,
+  "computer easy page settings": 0,
+  "computer easy page settings/you": 0,
+  "computer easy page help": 0.1,
+  "computer easy page mine": 0.1,
+  "computer easy page who": 0,
+  "computer easy page movie/8ab8c102f33d26b5b52a9375f0ca5fdd": 0,
+  "computer easy page show/4dc7290c0ad027aefd9480af329699d3": 0,
+  "phone normal page home": 0,
+  "phone normal page movies": 0.1,
+  "phone normal page shows": 0.1,
+  "phone normal page live": 0.1,
+  "phone normal page music": 0,
+  "phone normal page games": 0,
+  "phone normal page books": 0.1,
+  "phone normal page requests": 0,
+  "phone normal page search": 0.1,
+  "phone normal page search?q=test": 0.1,
+  "phone normal page settings": 0,
+  "phone normal page settings/you": 0,
+  "phone normal page help": 0.1,
+  "phone normal page mine": 0.1,
+  "phone normal page who": 0,
+  "phone normal page movie/8ab8c102f33d26b5b52a9375f0ca5fdd": 0,
+  "phone normal page show/4dc7290c0ad027aefd9480af329699d3": 0,
+  "phone easy page home": 0.1,
+  "phone easy page movies": 0.1,
+  "phone easy page shows": 0.1,
+  "phone easy page live": 0.1,
+  "phone easy page music": 0,
+  "phone easy page games": 0.1,
+  "phone easy page books": 0,
+  "phone easy page requests": 0.1,
+  "phone easy page search": 0.1,
+  "phone easy page search?q=test": 0.1,
+  "phone easy page settings": 0,
+  "phone easy page settings/you": 0,
+  "phone easy page help": 0,
+  "phone easy page mine": 0.1,
+  "phone easy page who": 0,
+  "phone easy page movie/8ab8c102f33d26b5b52a9375f0ca5fdd": 0,
+  "phone easy page show/4dc7290c0ad027aefd9480af329699d3": 0
+ },
+ "pages": {
+  "computer normal home": {
+   "file": "024-computer-normal-home.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal movies": {
+   "file": "025-computer-normal-movies.jpg",
+   "seconds": 0.1,
+   "where": "Movies",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal shows": {
+   "file": "026-computer-normal-shows.jpg",
+   "seconds": 0.1,
+   "where": "Shows",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal live": {
+   "file": "027-computer-normal-live.jpg",
+   "seconds": 0.1,
+   "where": "Live TV",
+   "cut": [
+    "Recently watched"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal music": {
+   "file": "028-computer-normal-music.jpg",
+   "seconds": 0,
+   "where": "Music",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal games": {
+   "file": "029-computer-normal-games.jpg",
+   "seconds": 0.1,
+   "where": "Games",
+   "cut": [
+    "Continue playing"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal books": {
+   "file": "030-computer-normal-books.jpg",
+   "seconds": 0.1,
+   "where": "Books",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal requests": {
+   "file": "031-computer-normal-requests.jpg",
+   "seconds": 0,
+   "where": "Requests",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal search": {
+   "file": "032-computer-normal-search.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal search?q=test": {
+   "file": "033-computer-normal-search-q-test.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal settings": {
+   "file": "034-computer-normal-settings.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal settings/you": {
+   "file": "035-computer-normal-settings-you.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal help": {
+   "file": "036-computer-normal-help.jpg",
+   "seconds": 0.1,
+   "where": "Help and updates",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal mine": {
+   "file": "037-computer-normal-mine.jpg",
+   "seconds": 0.1,
+   "where": "My watching",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal who": {
+   "file": "038-computer-normal-who.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal movie/8ab8c102f33d26b5b52a9375f0ca5fdd": {
+   "file": "039-computer-normal-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [
+    "Test Pattern One"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer normal show/4dc7290c0ad027aefd9480af329699d3": {
+   "file": "040-computer-normal-show-4dc7290c0ad027aefd9480af329699d3.jpg",
+   "seconds": 0,
+   "where": "Test Pattern One›Test Show",
+   "cut": [
+    "Test Show"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy home": {
+   "file": "041-computer-easy-home.jpg",
+   "seconds": 0.1,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy movies": {
+   "file": "042-computer-easy-movies.jpg",
+   "seconds": 0.1,
+   "where": "Movies",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy shows": {
+   "file": "043-computer-easy-shows.jpg",
+   "seconds": 0.1,
+   "where": "Shows",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy live": {
+   "file": "044-computer-easy-live.jpg",
+   "seconds": 0.1,
+   "where": "Live TV",
+   "cut": [
+    "Recently watched"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy music": {
+   "file": "045-computer-easy-music.jpg",
+   "seconds": 0,
+   "where": "Music",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy games": {
+   "file": "046-computer-easy-games.jpg",
+   "seconds": 0,
+   "where": "Games",
+   "cut": [
+    "Continue playing"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy books": {
+   "file": "047-computer-easy-books.jpg",
+   "seconds": 0.1,
+   "where": "Books",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy requests": {
+   "file": "048-computer-easy-requests.jpg",
+   "seconds": 0.1,
+   "where": "Requests",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy search": {
+   "file": "049-computer-easy-search.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy search?q=test": {
+   "file": "050-computer-easy-search-q-test.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy settings": {
+   "file": "051-computer-easy-settings.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy settings/you": {
+   "file": "052-computer-easy-settings-you.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy help": {
+   "file": "053-computer-easy-help.jpg",
+   "seconds": 0.1,
+   "where": "Help and updates",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy mine": {
+   "file": "054-computer-easy-mine.jpg",
+   "seconds": 0.1,
+   "where": "My watching",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy who": {
+   "file": "055-computer-easy-who.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy movie/8ab8c102f33d26b5b52a9375f0ca5fdd": {
+   "file": "056-computer-easy-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [
+    "Test Pattern One"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "computer easy show/4dc7290c0ad027aefd9480af329699d3": {
+   "file": "057-computer-easy-show-4dc7290c0ad027aefd9480af329699d3.jpg",
+   "seconds": 0,
+   "where": "Test Pattern One›Test Show",
+   "cut": [
+    "Test Show"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone normal home": {
+   "file": "058-phone-normal-home.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Clear all (73x28)",
+    "Clear Test Show (36x36)"
+   ],
+   "wide": 0
+  },
+  "phone normal movies": {
+   "file": "059-phone-normal-movies.jpg",
+   "seconds": 0.1,
+   "where": "Movies",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal shows": {
+   "file": "060-phone-normal-shows.jpg",
+   "seconds": 0.1,
+   "where": "Shows",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal live": {
+   "file": "061-phone-normal-live.jpg",
+   "seconds": 0.1,
+   "where": "Live TV",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal music": {
+   "file": "062-phone-normal-music.jpg",
+   "seconds": 0,
+   "where": "Music",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal games": {
+   "file": "063-phone-normal-games.jpg",
+   "seconds": 0,
+   "where": "Games",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal books": {
+   "file": "064-phone-normal-books.jpg",
+   "seconds": 0.1,
+   "where": "Books",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal requests": {
+   "file": "065-phone-normal-requests.jpg",
+   "seconds": 0,
+   "where": "Requests",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal search": {
+   "file": "066-phone-normal-search.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal search?q=test": {
+   "file": "067-phone-normal-search-q-test.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)",
+    "Test Pattern One (145x37)",
+    "Test Show (100x37)",
+    "Big Color Test (125x37)",
+    "See all › (65x24)"
+   ],
+   "wide": 0
+  },
+  "phone normal settings": {
+   "file": "068-phone-normal-settings.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal settings/you": {
+   "file": "069-phone-normal-settings-you.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal help": {
+   "file": "070-phone-normal-help.jpg",
+   "seconds": 0.1,
+   "where": "Help and updates",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal mine": {
+   "file": "071-phone-normal-mine.jpg",
+   "seconds": 0.1,
+   "where": "My watching",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)"
+   ],
+   "wide": 0
+  },
+  "phone normal who": {
+   "file": "072-phone-normal-who.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Add someone (103x33)"
+   ],
+   "wide": 0
+  },
+  "phone normal movie/8ab8c102f33d26b5b52a9375f0ca5fdd": {
+   "file": "073-phone-normal-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Cast (38x44)",
+    "More (36x25)"
+   ],
+   "wide": 0
+  },
+  "phone normal show/4dc7290c0ad027aefd9480af329699d3": {
+   "file": "074-phone-normal-show-4dc7290c0ad027aefd9480af329699d3.jpg",
+   "seconds": 0,
+   "where": "Test Pattern One›Test Show",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Home (36x44)",
+    "Test Pattern One (111x19)"
+   ],
+   "wide": 0
+  },
+  "phone easy home": {
+   "file": "075-phone-easy-home.jpg",
+   "seconds": 0.1,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy movies": {
+   "file": "076-phone-easy-movies.jpg",
+   "seconds": 0.1,
+   "where": "Movies",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy shows": {
+   "file": "077-phone-easy-shows.jpg",
+   "seconds": 0.1,
+   "where": "Shows",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy live": {
+   "file": "078-phone-easy-live.jpg",
+   "seconds": 0.1,
+   "where": "Live TV",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy music": {
+   "file": "079-phone-easy-music.jpg",
+   "seconds": 0,
+   "where": "Music",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy games": {
+   "file": "080-phone-easy-games.jpg",
+   "seconds": 0.1,
+   "where": "Games",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy books": {
+   "file": "081-phone-easy-books.jpg",
+   "seconds": 0,
+   "where": "Books",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy requests": {
+   "file": "082-phone-easy-requests.jpg",
+   "seconds": 0.1,
+   "where": "Requests",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy search": {
+   "file": "083-phone-easy-search.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy search?q=test": {
+   "file": "084-phone-easy-search-q-test.jpg",
+   "seconds": 0.1,
+   "where": "Search",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "See all › (81x30)"
+   ],
+   "wide": 0
+  },
+  "phone easy settings": {
+   "file": "085-phone-easy-settings.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy settings/you": {
+   "file": "086-phone-easy-settings-you.jpg",
+   "seconds": 0,
+   "where": "Settings",
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy help": {
+   "file": "087-phone-easy-help.jpg",
+   "seconds": 0,
+   "where": "Help and updates",
+   "cut": [
+    "Help and updates"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy mine": {
+   "file": "088-phone-easy-mine.jpg",
+   "seconds": 0.1,
+   "where": "My watching",
+   "cut": [
+    "My watching"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  "phone easy who": {
+   "file": "089-phone-easy-who.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Add someone (103x33)"
+   ],
+   "wide": 0
+  },
+  "phone easy movie/8ab8c102f33d26b5b52a9375f0ca5fdd": {
+   "file": "090-phone-easy-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg",
+   "seconds": 0,
+   "where": "",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "More (45x31)"
+   ],
+   "wide": 0
+  },
+  "phone easy show/4dc7290c0ad027aefd9480af329699d3": {
+   "file": "091-phone-easy-show-4dc7290c0ad027aefd9480af329699d3.jpg",
+   "seconds": 0,
+   "where": "Test Pattern One›Test Show",
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Test Pattern One (139x24)"
+   ],
+   "wide": 0
+  }
+ },
+ "problems": [],
+ "steps": [
+  {
+   "name": "file-Test Pattern One-title",
+   "file": "001-file-Test-Pattern-One-title.jpg"
+  },
+  {
+   "name": "file-Test Pattern One-playing",
+   "file": "002-file-Test-Pattern-One-playing.jpg"
+  },
+  {
+   "name": "file-Big Color Test-title",
+   "file": "003-file-Big-Color-Test-title.jpg"
+  },
+  {
+   "name": "file-Big Color Test-playing",
+   "file": "004-file-Big-Color-Test-playing.jpg"
+  },
+  {
+   "name": "file-Surround Test-title",
+   "file": "005-file-Surround-Test-title.jpg"
+  },
+  {
+   "name": "file-Surround Test-playing",
+   "file": "006-file-Surround-Test-playing.jpg"
+  },
+  {
+   "name": "file-Kids Cartoon Test-title",
+   "file": "007-file-Kids-Cartoon-Test-title.jpg"
+  },
+  {
+   "name": "file-Kids Cartoon Test-playing",
+   "file": "008-file-Kids-Cartoon-Test-playing.jpg"
+  },
+  {
+   "name": "switch-settings-panel",
+   "file": "009-switch-settings-panel.jpg"
+  },
+  {
+   "name": "switch-audio-spanish",
+   "file": "010-switch-audio-spanish.jpg"
+  },
+  {
+   "name": "switch-subtitles-spanish",
+   "file": "011-switch-subtitles-spanish.jpg"
+  },
+  {
+   "name": "resume-title-page",
+   "file": "012-resume-title-page.jpg"
+  },
+  {
+   "name": "resume-home",
+   "file": "013-resume-home.jpg"
+  },
+  {
+   "name": "episode-up-next",
+   "file": "014-episode-up-next.jpg"
+  },
+  {
+   "name": "episode-after-end",
+   "file": "015-episode-after-end.jpg"
+  },
+  {
+   "name": "wifi-before",
+   "file": "016-wifi-before.jpg"
+  },
+  {
+   "name": "wifi-frozen-8s",
+   "file": "017-wifi-frozen-8s.jpg"
+  },
+  {
+   "name": "wifi-frozen-30s",
+   "file": "018-wifi-frozen-30s.jpg"
+  },
+  {
+   "name": "wifi-back",
+   "file": "019-wifi-back.jpg"
+  },
+  {
+   "name": "tower-off-movies",
+   "file": "020-tower-off-movies.jpg"
+  },
+  {
+   "name": "tower-off-shows",
+   "file": "021-tower-off-shows.jpg"
+  },
+  {
+   "name": "tower-off-search",
+   "file": "022-tower-off-search.jpg"
+  },
+  {
+   "name": "tower-back-on-movies",
+   "file": "023-tower-back-on-movies.jpg"
+  },
+  {
+   "name": "computer-normal-home",
+   "file": "024-computer-normal-home.jpg"
+  },
+  {
+   "name": "computer-normal-movies",
+   "file": "025-computer-normal-movies.jpg"
+  },
+  {
+   "name": "computer-normal-shows",
+   "file": "026-computer-normal-shows.jpg"
+  },
+  {
+   "name": "computer-normal-live",
+   "file": "027-computer-normal-live.jpg"
+  },
+  {
+   "name": "computer-normal-music",
+   "file": "028-computer-normal-music.jpg"
+  },
+  {
+   "name": "computer-normal-games",
+   "file": "029-computer-normal-games.jpg"
+  },
+  {
+   "name": "computer-normal-books",
+   "file": "030-computer-normal-books.jpg"
+  },
+  {
+   "name": "computer-normal-requests",
+   "file": "031-computer-normal-requests.jpg"
+  },
+  {
+   "name": "computer-normal-search",
+   "file": "032-computer-normal-search.jpg"
+  },
+  {
+   "name": "computer-normal-search?q=test",
+   "file": "033-computer-normal-search-q-test.jpg"
+  },
+  {
+   "name": "computer-normal-settings",
+   "file": "034-computer-normal-settings.jpg"
+  },
+  {
+   "name": "computer-normal-settings/you",
+   "file": "035-computer-normal-settings-you.jpg"
+  },
+  {
+   "name": "computer-normal-help",
+   "file": "036-computer-normal-help.jpg"
+  },
+  {
+   "name": "computer-normal-mine",
+   "file": "037-computer-normal-mine.jpg"
+  },
+  {
+   "name": "computer-normal-who",
+   "file": "038-computer-normal-who.jpg"
+  },
+  {
+   "name": "computer-normal-movie/8ab8c102f33d26b5b52a9375f0ca5fdd",
+   "file": "039-computer-normal-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg"
+  },
+  {
+   "name": "computer-normal-show/4dc7290c0ad027aefd9480af329699d3",
+   "file": "040-computer-normal-show-4dc7290c0ad027aefd9480af329699d3.jpg"
+  },
+  {
+   "name": "computer-easy-home",
+   "file": "041-computer-easy-home.jpg"
+  },
+  {
+   "name": "computer-easy-movies",
+   "file": "042-computer-easy-movies.jpg"
+  },
+  {
+   "name": "computer-easy-shows",
+   "file": "043-computer-easy-shows.jpg"
+  },
+  {
+   "name": "computer-easy-live",
+   "file": "044-computer-easy-live.jpg"
+  },
+  {
+   "name": "computer-easy-music",
+   "file": "045-computer-easy-music.jpg"
+  },
+  {
+   "name": "computer-easy-games",
+   "file": "046-computer-easy-games.jpg"
+  },
+  {
+   "name": "computer-easy-books",
+   "file": "047-computer-easy-books.jpg"
+  },
+  {
+   "name": "computer-easy-requests",
+   "file": "048-computer-easy-requests.jpg"
+  },
+  {
+   "name": "computer-easy-search",
+   "file": "049-computer-easy-search.jpg"
+  },
+  {
+   "name": "computer-easy-search?q=test",
+   "file": "050-computer-easy-search-q-test.jpg"
+  },
+  {
+   "name": "computer-easy-settings",
+   "file": "051-computer-easy-settings.jpg"
+  },
+  {
+   "name": "computer-easy-settings/you",
+   "file": "052-computer-easy-settings-you.jpg"
+  },
+  {
+   "name": "computer-easy-help",
+   "file": "053-computer-easy-help.jpg"
+  },
+  {
+   "name": "computer-easy-mine",
+   "file": "054-computer-easy-mine.jpg"
+  },
+  {
+   "name": "computer-easy-who",
+   "file": "055-computer-easy-who.jpg"
+  },
+  {
+   "name": "computer-easy-movie/8ab8c102f33d26b5b52a9375f0ca5fdd",
+   "file": "056-computer-easy-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg"
+  },
+  {
+   "name": "computer-easy-show/4dc7290c0ad027aefd9480af329699d3",
+   "file": "057-computer-easy-show-4dc7290c0ad027aefd9480af329699d3.jpg"
+  },
+  {
+   "name": "phone-normal-home",
+   "file": "058-phone-normal-home.jpg"
+  },
+  {
+   "name": "phone-normal-movies",
+   "file": "059-phone-normal-movies.jpg"
+  },
+  {
+   "name": "phone-normal-shows",
+   "file": "060-phone-normal-shows.jpg"
+  },
+  {
+   "name": "phone-normal-live",
+   "file": "061-phone-normal-live.jpg"
+  },
+  {
+   "name": "phone-normal-music",
+   "file": "062-phone-normal-music.jpg"
+  },
+  {
+   "name": "phone-normal-games",
+   "file": "063-phone-normal-games.jpg"
+  },
+  {
+   "name": "phone-normal-books",
+   "file": "064-phone-normal-books.jpg"
+  },
+  {
+   "name": "phone-normal-requests",
+   "file": "065-phone-normal-requests.jpg"
+  },
+  {
+   "name": "phone-normal-search",
+   "file": "066-phone-normal-search.jpg"
+  },
+  {
+   "name": "phone-normal-search?q=test",
+   "file": "067-phone-normal-search-q-test.jpg"
+  },
+  {
+   "name": "phone-normal-settings",
+   "file": "068-phone-normal-settings.jpg"
+  },
+  {
+   "name": "phone-normal-settings/you",
+   "file": "069-phone-normal-settings-you.jpg"
+  },
+  {
+   "name": "phone-normal-help",
+   "file": "070-phone-normal-help.jpg"
+  },
+  {
+   "name": "phone-normal-mine",
+   "file": "071-phone-normal-mine.jpg"
+  },
+  {
+   "name": "phone-normal-who",
+   "file": "072-phone-normal-who.jpg"
+  },
+  {
+   "name": "phone-normal-movie/8ab8c102f33d26b5b52a9375f0ca5fdd",
+   "file": "073-phone-normal-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg"
+  },
+  {
+   "name": "phone-normal-show/4dc7290c0ad027aefd9480af329699d3",
+   "file": "074-phone-normal-show-4dc7290c0ad027aefd9480af329699d3.jpg"
+  },
+  {
+   "name": "phone-easy-home",
+   "file": "075-phone-easy-home.jpg"
+  },
+  {
+   "name": "phone-easy-movies",
+   "file": "076-phone-easy-movies.jpg"
+  },
+  {
+   "name": "phone-easy-shows",
+   "file": "077-phone-easy-shows.jpg"
+  },
+  {
+   "name": "phone-easy-live",
+   "file": "078-phone-easy-live.jpg"
+  },
+  {
+   "name": "phone-easy-music",
+   "file": "079-phone-easy-music.jpg"
+  },
+  {
+   "name": "phone-easy-games",
+   "file": "080-phone-easy-games.jpg"
+  },
+  {
+   "name": "phone-easy-books",
+   "file": "081-phone-easy-books.jpg"
+  },
+  {
+   "name": "phone-easy-requests",
+   "file": "082-phone-easy-requests.jpg"
+  },
+  {
+   "name": "phone-easy-search",
+   "file": "083-phone-easy-search.jpg"
+  },
+  {
+   "name": "phone-easy-search?q=test",
+   "file": "084-phone-easy-search-q-test.jpg"
+  },
+  {
+   "name": "phone-easy-settings",
+   "file": "085-phone-easy-settings.jpg"
+  },
+  {
+   "name": "phone-easy-settings/you",
+   "file": "086-phone-easy-settings-you.jpg"
+  },
+  {
+   "name": "phone-easy-help",
+   "file": "087-phone-easy-help.jpg"
+  },
+  {
+   "name": "phone-easy-mine",
+   "file": "088-phone-easy-mine.jpg"
+  },
+  {
+   "name": "phone-easy-who",
+   "file": "089-phone-easy-who.jpg"
+  },
+  {
+   "name": "phone-easy-movie/8ab8c102f33d26b5b52a9375f0ca5fdd",
+   "file": "090-phone-easy-movie-8ab8c102f33d26b5b52a9375f0ca5fdd.jpg"
+  },
+  {
+   "name": "phone-easy-show/4dc7290c0ad027aefd9480af329699d3",
+   "file": "091-phone-easy-show-4dc7290c0ad027aefd9480af329699d3.jpg"
+  },
+  {
+   "name": "kids-home",
+   "file": "092-kids-home.jpg"
+  },
+  {
+   "name": "kids-movies",
+   "file": "093-kids-movies.jpg"
+  },
+  {
+   "name": "kids-shows",
+   "file": "094-kids-shows.jpg"
+  },
+  {
+   "name": "kids-search?q=Test",
+   "file": "095-kids-search-q-Test.jpg"
+  }
+ ],
+ "browser": "chrome",
+ "switching": {
+  "before": {
+   "item": "Test Pattern One",
+   "seconds": 5,
+   "method": "DirectPlay",
+   "audio_index": 1,
+   "subtitle_index": 3
+  },
+  "afterAudio": {
+   "item": "Test Pattern One",
+   "seconds": 11.8,
+   "method": "Transcode",
+   "audio_index": 2,
+   "subtitle_index": 3
+  },
+  "afterSubs": {
+   "item": "Test Pattern One",
+   "seconds": 24.8,
+   "method": "Transcode",
+   "audio_index": 2,
+   "subtitle_index": 4
+  },
+  "shown": "English - Default - SUBRIP | Spanish - SUBRIP",
+  "video": {
+   "t": 25.2,
+   "paused": false,
+   "ready": 4,
+   "error": null,
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "resume": {
+  "savedSeconds": 61,
+  "resumeButton": true
+ },
+ "nextEpisode": {
+  "seen": [
+   "#/play/70e1edd009d981feff1ebc9fc9e9fc1a Episode number 1",
+   "#/play/9200d7b3da60876d437b28fb12d9e54a "
+  ],
+  "now": "#/play/9200d7b3da60876d437b28fb12d9e54a",
+  "video": {
+   "t": 5.8,
+   "paused": false,
+   "ready": 4,
+   "error": null,
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "badWifi": {
+  "during": {
+   "t": 35.7,
+   "paused": false,
+   "ready": 4,
+   "error": null,
+   "w": 1920,
+   "h": 1080
+  },
+  "secondsToCarryOn": 3,
+  "after": {
+   "t": 38.8,
+   "paused": false,
+   "ready": 4,
+   "error": null,
+   "w": 1920,
+   "h": 1080
+  },
+  "text": "Surround Test\nA Benflix robot test video.\nSurround Test\nRated PG-13\n10\n10\n0:38 / 10:00\nEnds at 1:33 AM\n?"
+ },
+ "towerOff-movies": "Benflix 1:23AM D Home All movies Genres Collections Studios My List Anime Something went wrong The helper couldn't reach Jellyfin. Check it's running. Try again",
+ "towerOff-shows": "Benflix 1:24AM D Home All shows Genres Networks My List Anime Something went wrong The helper couldn't reach Jellyfin. Check it's running. Try again",
+ "towerOff-search": "Benflix Search 1:24AM D Browse Movie genres Show genres Networks Channel types Consoles",
+ "towerBackOn": {
+  "posters": 7
+ },
+ "kids": {
+  "movies": [
+   "Kids Cartoon Test"
+  ],
+  "shows": [],
+  "search?q=Test": [
+   "Kids Cartoon Test"
+  ]
+ }
+}

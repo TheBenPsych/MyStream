@@ -1,0 +1,18 @@
+  [39,167][265,241] Settings
+  [151,300][381,347] Find a setting
+  [176,450][278,499] demo
+  [176,499][748,539] PIN lock, your colour, birthday, language
+  [176,636][346,685] Watching
+  [176,685][664,725] Next episode, resume, skip buttons
+  [176,793][493,842] Picture and sound
+  [176,842][770,882] Subtitle look, audio and subtitle languages
+  [176,950][264,999] Look
+  [176,999][609,1039] Easy-read text, late-night look
+  [176,1107][296,1156] Family
+  [176,1156][753,1196] Parent PIN, Kids bedtime, Big kids, Guest
+  [176,1264][456,1313] Phones and TVs
+  [176,1313][554,1353] Mobile data, buzz on touch
+  [176,1450][260,1499] Help
+  [176,1499][683,1539] How to use Benflix, version, updates
+  [176,1607][435,1656] Quick Connect
+  [176,1656][738,1696] Sign in another TV or phone with a code

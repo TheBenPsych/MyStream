@@ -1,0 +1,1491 @@
+{
+ "mode": "phone",
+ "steps": [
+  {
+   "step": "home",
+   "shot": 10,
+   "focused": "Movies",
+   "focus_box": "[39,404][356,721]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Good afternoon, demo",
+    "Shows",
+    "Series and episodes",
+    "Live TV",
+    "Channels playing now",
+    "Movies",
+    "Films for any night",
+    "Games",
+    "Play on the TV",
+    "Music",
+    "Your songs and playlists",
+    "Books",
+    "Read and listen",
+    "Clear all",
+    "NEW EPISODE \u00b7 S1 E1",
+    "Test Show",
+    "Clear",
+    "DID YOU KNOW",
+    "Rhydon, not Pikachu or Bulbasaur, was the very first Pok\u00e9mon ever designed.",
+    "Clear"
+   ]
+  },
+  {
+   "step": "speed-Movies",
+   "shot": 11,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Movies",
+    "Search",
+    "demo",
+    "Nothing in Movies yet",
+    "Once the server has some, they show up here."
+   ]
+  },
+  {
+   "step": "speed-Shows",
+   "shot": 12,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Shows",
+    "Search",
+    "demo",
+    "Home",
+    "All shows",
+    "Genres",
+    "Networks",
+    "My List",
+    "Keep watching",
+    "Test Show",
+    "NEW",
+    "Test Show",
+    "S1 E1",
+    "New episodes",
+    "Test Show",
+    "NEW",
+    "Test Show",
+    "2020",
+    "Can't decide?",
+    "VS",
+    "This or that",
+    "Pick one of two, 8 rounds",
+    ":)",
+    "Mood quiz",
+    "Moods and time"
+   ]
+  },
+  {
+   "step": "speed-Live TV",
+   "shot": 13,
+   "focused": "+  Add channels",
+   "focus_box": "[59,756][451,913]",
+   "covered": [],
+   "small": [
+    " (18x52 dp)",
+    " (21x52 dp)",
+    " (22x52 dp)",
+    " (23x52 dp)",
+    " (24x52 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Live TV",
+    "Search",
+    "demo",
+    "Home",
+    "Favourites",
+    "Benflix channels",
+    "Guide",
+    "1  \u00b7  MOVIE NIGHT  \u00b7  ON NOW  \u00b7  11:54 AM \u2013 12:06 PM  \u00b7  NO ADS",
+    "Test Pattern One",
+    "A Benflix robot test video.",
+    "ON NOW",
+    "FAVOURITES",
+    "+  Add channels",
+    "BENFLIX CHANNELS \u00b7 NO ADS",
+    "M",
+    "1  Movie Night",
+    "Test Pattern One",
+    "+  Make a channel",
+    "GUIDE",
+    "12:00 PM",
+    "12:30 PM",
+    "1:00 PM",
+    "\u2606",
+    "1",
+    "M",
+    "Movie Night",
+    "NO ADS"
+   ]
+  },
+  {
+   "step": "speed-Music",
+   "shot": 14,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Music",
+    "Search",
+    "demo",
+    "No music on Benflix yet",
+    "Once Tower has a Music library, your songs and playlists show up here."
+   ]
+  },
+  {
+   "step": "speed-Games",
+   "shot": 15,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [
+    "\uf6d5 (381x30 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Games",
+    "Search",
+    "demo",
+    "Home",
+    "Movie puzzles",
+    "Arcade",
+    "Leaderboards",
+    "Movie puzzles",
+    "\uf008",
+    "Scene by scene",
+    "Movie puzzle",
+    "\uf302",
+    "Poster puzzle",
+    "Movie puzzle",
+    "\uf0ca",
+    "Movie grid",
+    "Movie puzzle",
+    "Party",
+    "\uf3cd",
+    "Join a party",
+    "Party",
+    "\uf130",
+    "Quiz night",
+    "Party",
+    "\ue2ca",
+    "Fake plot",
+    "Party",
+    "Arcade",
+    "\uf0e7",
+    "Popcorn Pop",
+    "Arcade",
+    "\uf0e7",
+    "Reel Rush",
+    "Arcade",
+    "\uf0e7",
+    "Snack Catch",
+    "Arcade",
+    "\uf6d5"
+   ]
+  },
+  {
+   "step": "speed-Books",
+   "shot": 16,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [
+    " (5x44 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Books",
+    "Search",
+    "demo",
+    "Home",
+    "Books",
+    "Audiobooks",
+    "Series",
+    "Authors",
+    "No books on Benflix yet",
+    "Put books, audiobooks or manga in Tower's Media folder (Books, Audiobooks, Manga), and they show up here within 10 minutes."
+   ]
+  },
+  {
+   "step": "file-Test Pattern One-title",
+   "shot": 17,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Test Pattern One",
+    "PG-13",
+    "2020 \u00b7 12m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More",
+    "English"
+   ]
+  },
+  {
+   "step": "file-Test Pattern One-playing",
+   "shot": 18,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "file-Test Pattern One-after-back",
+   "shot": 19,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Test Pattern One",
+    "PG-13",
+    "2020 \u00b7 12m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More",
+    "English"
+   ]
+  },
+  {
+   "step": "file-Big Color Test-title",
+   "shot": 20,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Big Color Test",
+    "R",
+    "2021 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "file-Big Color Test-playing",
+   "shot": 21,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "file-Big Color Test-after-back",
+   "shot": 22,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Big Color Test",
+    "R",
+    "2021 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "file-Surround Test-title",
+   "shot": 23,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Surround Test",
+    "PG-13",
+    "2019 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "file-Surround Test-playing",
+   "shot": 24,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "file-Surround Test-after-back",
+   "shot": 25,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Surround Test",
+    "PG-13",
+    "2019 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "file-Kids Cartoon Test-title",
+   "shot": 26,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Kids Cartoon Test",
+    "G",
+    "2022 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "file-Kids Cartoon Test-playing",
+   "shot": 27,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "file-Kids Cartoon Test-after-back",
+   "shot": 28,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Kids Cartoon Test",
+    "G",
+    "2022 \u00b7 10m \u00b7 Animation",
+    "Play",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More"
+   ]
+  },
+  {
+   "step": "switch-controls",
+   "shot": 29,
+   "focused": "Subtitles",
+   "focus_box": "[181,373][2347,499]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Settings",
+    "Test Pattern One",
+    "Audio",
+    "English",
+    "Subtitle timing",
+    "On time",
+    "Quality",
+    "Light \u00b7 2 Mbps",
+    "Watch together",
+    "In step with other TVs, phones and the web Lobby",
+    "Off",
+    "Subtitles",
+    "English SRT (Default)"
+   ]
+  },
+  {
+   "step": "switch-settings-panel",
+   "shot": 30,
+   "focused": "Subtitles",
+   "focus_box": "[181,373][2347,499]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Settings",
+    "Test Pattern One",
+    "Audio",
+    "English",
+    "Subtitle timing",
+    "On time",
+    "Quality",
+    "Light \u00b7 2 Mbps",
+    "Watch together",
+    "In step with other TVs, phones and the web Lobby",
+    "Off",
+    "Subtitles",
+    "English SRT (Default)"
+   ]
+  },
+  {
+   "step": "switch-audio-list",
+   "shot": 31,
+   "focused": "English",
+   "focus_box": "[181,653][2347,803]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Audio",
+    "Spanish",
+    "Spanish AAC mono",
+    "English",
+    "English AAC mono (Default)"
+   ]
+  },
+  {
+   "step": "switch-audio-spanish",
+   "shot": 32,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "switch-subtitle-list",
+   "shot": 33,
+   "focused": "English SRT (Default)",
+   "focus_box": "[181,550][2347,676]",
+   "covered": [],
+   "small": [
+    "Subtitles are early or late (825x31 dp)"
+   ],
+   "texts": [
+    "Subtitles",
+    "Off",
+    "Only when people speak another language",
+    "Something off?",
+    "Subtitle timing",
+    "Move the words earlier or later yourself",
+    "On time",
+    "Subtitles are early or late",
+    "English SRT (Default)"
+   ]
+  },
+  {
+   "step": "resume-title-page",
+   "shot": 34,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "Test Pattern One",
+    "PG-13",
+    "2020 \u00b7 12m \u00b7 Animation",
+    "Resume",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More",
+    "Spanish"
+   ]
+  },
+  {
+   "step": "resume-home",
+   "shot": 35,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Good afternoon, demo",
+    "Movies",
+    "Films for any night",
+    "Shows",
+    "Series and episodes",
+    "Live TV",
+    "Channels playing now",
+    "Games",
+    "Play on the TV",
+    "Music",
+    "Your songs and playlists",
+    "Books",
+    "Read and listen",
+    "Clear all",
+    "NEW EPISODE \u00b7 S1 E1",
+    "Test Show",
+    "Clear",
+    "DID YOU KNOW",
+    "Psycho was the first American movie to show a toilet being flushed.",
+    "Clear"
+   ]
+  },
+  {
+   "step": "show-page",
+   "shot": 36,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Episode number 3 (1x105 dp)",
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "\u203a",
+    "Test Show",
+    "Test Show",
+    "TV-PG",
+    "2020 \u00b7 1 season",
+    "Play S1 \u00b7 E1",
+    "Episodes",
+    "Trailer",
+    "My List",
+    "More",
+    "Episodes",
+    "Overview",
+    "Season 1",
+    "E1 \u00b7 Episode number 1 \u00b7 Test episode 1.",
+    "Episode number 1",
+    "E1 \u00b7 Episode number 1",
+    "Episode number 2",
+    "E2 \u00b7 Episode number 2",
+    "Episode number 3",
+    "E3 \u00b7 Episode number 3"
+   ]
+  },
+  {
+   "step": "episode-ending",
+   "shot": 37,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "episode-after-end",
+   "shot": 38,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Smoothing out the picture..."
+   ]
+  },
+  {
+   "step": "wifi-before",
+   "shot": 39,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "wifi-frozen-8s",
+   "shot": 40,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "wifi-frozen-25s",
+   "shot": 41,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "wifi-frozen-45s",
+   "shot": 42,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "wifi-back",
+   "shot": 43,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": []
+  },
+  {
+   "step": "tower-off-8s",
+   "shot": 44,
+   "focused": "Try now",
+   "focus_box": "[213,1448][420,1574]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "The server is taking a nap, or being worked on",
+    "Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.",
+    "Checking again in 13 seconds\u2026",
+    "Watch my downloads",
+    "Try now"
+   ]
+  },
+  {
+   "step": "tower-off-30s",
+   "shot": 45,
+   "focused": "Try now",
+   "focus_box": "[213,1448][420,1574]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "The server is taking a nap, or being worked on",
+    "Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.",
+    "Checking again in 6 seconds\u2026",
+    "Watch my downloads",
+    "Try now"
+   ]
+  },
+  {
+   "step": "tower-back-on",
+   "shot": 46,
+   "focused": "demo",
+   "focus_box": "[192,959][418,1185]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Who's watching?",
+    "demo",
+    "demo",
+    "Kids",
+    "Kids",
+    "?",
+    "Guest",
+    "Press and hold a picture to change it",
+    "Add someone",
+    "Change server"
+   ]
+  },
+  {
+   "step": "app was closed; opening it again"
+  },
+  {
+   "step": "who-for-Kids",
+   "shot": 48,
+   "focused": "demo",
+   "focus_box": "[192,959][418,1185]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Who's watching?",
+    "demo",
+    "demo",
+    "Kids",
+    "Kids",
+    "?",
+    "Guest",
+    "Press and hold a picture to change it",
+    "Add someone",
+    "Change server"
+   ]
+  },
+  {
+   "step": "kids-home",
+   "shot": 49,
+   "focused": "Movies",
+   "focus_box": "[39,443][354,814]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Kids",
+    "Search",
+    "Kids",
+    "Hi there!",
+    "What do you want to watch?",
+    "Shows",
+    "Games",
+    "Movies",
+    "Keep watching",
+    "Test Show",
+    "Test Show"
+   ]
+  },
+  {
+   "step": "kids-movies",
+   "shot": 50,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Movies",
+    "Search",
+    "Kids",
+    "Nothing in Movies yet",
+    "Once the server has some, they show up here."
+   ]
+  },
+  {
+   "step": "kids-search",
+   "shot": 51,
+   "focused": "Test",
+   "focus_box": "[196,295][903,413]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Kids",
+    "Search",
+    "Kids",
+    "\uf130",
+    "Test",
+    "Search",
+    "\uf1de",
+    "Test Show",
+    "Kids Cartoon Test",
+    "Nothing in Live TV \u00b7 Games",
+    "Movies",
+    "1",
+    "Kids Cartoon Test",
+    "Movie \u00b7 2022",
+    "Shows",
+    "1",
+    "Test Show",
+    "Show \u00b7 2020"
+   ]
+  },
+  {
+   "step": "who-for-Guest",
+   "shot": 52,
+   "focused": "demo",
+   "focus_box": "[192,959][418,1185]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Who's watching?",
+    "demo",
+    "demo",
+    "Kids",
+    "Kids",
+    "?",
+    "Guest",
+    "Press and hold a picture to change it",
+    "Add someone",
+    "Change server"
+   ]
+  },
+  {
+   "step": "guest-home",
+   "shot": 53,
+   "focused": "Movies",
+   "focus_box": "[39,439][525,799]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Guest",
+    "Search",
+    "Guest",
+    "Welcome",
+    "Nothing you watch is saved",
+    "Shows",
+    "Series and episodes",
+    "Movies",
+    "Films for any night",
+    "Live TV",
+    "Channels playing now",
+    "Games",
+    "Play on the TV",
+    "Popular here this week",
+    "Open a door to find something to watch."
+   ]
+  },
+  {
+   "step": "guest-playing",
+   "shot": 54,
+   "focused": "",
+   "focus_box": "[128,63][2400,1017]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "PG-13",
+    "Parents strongly cautioned. May not suit under 13"
+   ]
+  },
+  {
+   "step": "who-for-demo",
+   "shot": 55,
+   "focused": "demo",
+   "focus_box": "[192,959][418,1185]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Who's watching?",
+    "demo",
+    "demo",
+    "Kids",
+    "Kids",
+    "?",
+    "Guest",
+    "Press and hold a picture to change it",
+    "Add someone",
+    "Change server"
+   ]
+  },
+  {
+   "step": "easy-setting",
+   "shot": 56,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Settings",
+    "Find a setting",
+    "demo",
+    "PIN lock, your colour, birthday, language",
+    "Watching",
+    "Next episode, resume, skip buttons",
+    "Picture and sound",
+    "Subtitle look, audio and subtitle languages",
+    "Look",
+    "Easy-read text, late-night look",
+    "Family",
+    "Parent PIN, Kids bedtime, Big kids, Guest",
+    "Phones and TVs",
+    "Mobile data, buzz on touch",
+    "Help",
+    "How to use Benflix, version, updates",
+    "Quick Connect",
+    "Sign in another TV or phone with a code"
+   ]
+  },
+  {
+   "step": "easy-turned-on",
+   "shot": 57,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Settings",
+    "Find a setting",
+    "demo",
+    "PIN lock, your colour, birthday, language",
+    "Watching",
+    "Next episode, resume, skip buttons",
+    "Picture and sound",
+    "Subtitle look, audio and subtitle languages",
+    "Look",
+    "Easy-read text, late-night look",
+    "Family",
+    "Parent PIN, Kids bedtime, Big kids, Guest",
+    "Phones and TVs",
+    "Mobile data, buzz on touch",
+    "Help",
+    "How to use Benflix, version, updates",
+    "Quick Connect",
+    "Sign in another TV or phone with a code"
+   ]
+  },
+  {
+   "step": "easy-home",
+   "shot": 58,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Good afternoon, demo",
+    "Movies",
+    "Films for any night",
+    "Shows",
+    "Series and episodes",
+    "Live TV",
+    "Channels playing now",
+    "Games",
+    "Play on the TV",
+    "Music",
+    "Your songs and playlists",
+    "Books",
+    "Read and listen",
+    "Clear all",
+    "NEW EPISODE \u00b7 S1 E3",
+    "Test Show",
+    "Clear",
+    "DID YOU KNOW",
+    "Pixar's Toy Story 2 was almost lost when someone ran a delete command on the files. A backup on an employee's home computer saved it.",
+    "Clear"
+   ]
+  },
+  {
+   "step": "easy-Movies",
+   "shot": 59,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Movies",
+    "Search",
+    "demo",
+    "Home",
+    "All movies",
+    "Genres",
+    "Collections",
+    "Studios",
+    "Keep watching",
+    "Test Pattern One",
+    "NEW",
+    "Test Pattern One",
+    "2020",
+    "Can't decide?",
+    "VS",
+    "This or that",
+    "Pick one of two, 8 rounds",
+    ":)",
+    "Mood quiz",
+    "Moods and time"
+   ]
+  },
+  {
+   "step": "easy-Shows",
+   "shot": 60,
+   "focused": null,
+   "focus_box": null,
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Shows",
+    "Search",
+    "demo",
+    "Home",
+    "All shows",
+    "Genres",
+    "Networks",
+    "My List",
+    "Keep watching",
+    "Test Show",
+    "NEW",
+    "Test Show",
+    "S1 E3",
+    "New episodes",
+    "Test Show",
+    "NEW",
+    "Test Show",
+    "2020",
+    "Can't decide?",
+    "VS",
+    "This or that",
+    "Pick one of two, 8 rounds",
+    ":)",
+    "Mood quiz",
+    "Moods and time"
+   ]
+  },
+  {
+   "step": "easy-title-page",
+   "shot": 61,
+   "focused": null,
+   "focus_box": null,
+   "covered": [
+    "Benflix / Home",
+    "Benflix / Search"
+   ],
+   "small": [
+    "Home (44x35 dp)",
+    "Search (44x35 dp)"
+   ],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Search",
+    "demo",
+    "Home",
+    "\u203a",
+    "Search",
+    "\u203a",
+    "Test Pattern One",
+    "Test Pattern One",
+    "PG-13",
+    "2020 \u00b7 12m \u00b7 Animation",
+    "Resume",
+    "Trailer",
+    "My List",
+    "Rate",
+    "More",
+    "Overview",
+    "More like this",
+    "A Benflix robot test video.",
+    "More",
+    "Spanish"
+   ]
+  },
+  {
+   "step": "reopened",
+   "shot": 62,
+   "focused": "demo",
+   "focus_box": "[192,959][418,1185]",
+   "covered": [],
+   "small": [],
+   "texts": [
+    "Benflix",
+    "Benflix",
+    "Who's watching?",
+    "demo",
+    "demo",
+    "Kids",
+    "Kids",
+    "?",
+    "Guest",
+    "Press and hold a picture to change it",
+    "Add someone",
+    "Change server"
+   ]
+  }
+ ],
+ "problems": [
+  {
+   "type": "switching subtitles to Spanish didn't change them on the server",
+   "text": "{'item': 'Test Pattern One', 'seconds': 4.0, 'paused': False, 'method': 'DirectPlay', 'audio_index': 1, 'subtitle_index': 3, 'converting_because': None, 'video': None, 'audio': None} -> {'item': 'Test Pattern One', 'seconds': 51.0, 'paused': False, 'method': 'DirectPlay', 'audio_index': 2, 'subtitle_index': 3, 'converting_because': None, 'video': None, 'audio': None}"
+  },
+  {
+   "type": "after Tower came back, the app went to Who's watching instead of where you were",
+   "text": "Benflix | Benflix | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Press and hold a picture to change it | Add someone | Change server"
+  }
+ ],
+ "deep": {
+  "files": {
+   "Test Pattern One": {
+    "title page seconds": 2.5,
+    "seconds to start": 3.1,
+    "first look": {
+     "item": "Test Pattern One",
+     "seconds": 7.0,
+     "paused": false,
+     "method": "DirectPlay",
+     "audio_index": 1,
+     "subtitle_index": 3,
+     "converting_because": null,
+     "video": null,
+     "audio": null
+    },
+    "second look": {
+     "item": "Test Pattern One",
+     "seconds": 20.0,
+     "paused": false,
+     "method": "DirectPlay",
+     "audio_index": 1,
+     "subtitle_index": 3,
+     "converting_because": null,
+     "video": null,
+     "audio": null
+    },
+    "time moves on": true
+   },
+   "Big Color Test": {
+    "title page seconds": 2.2,
+    "seconds to start": 7.1,
+    "first look": {
+     "item": "Big Color Test",
+     "seconds": 6.4,
+     "paused": false,
+     "method": "Transcode",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": [
+      "ContainerBitrateExceedsLimit"
+     ],
+     "video": "h264",
+     "audio": "aac"
+    },
+    "second look": {
+     "item": "Big Color Test",
+     "seconds": 17.6,
+     "paused": false,
+     "method": "Transcode",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": [
+      "ContainerBitrateExceedsLimit"
+     ],
+     "video": "h264",
+     "audio": "aac"
+    },
+    "time moves on": true
+   },
+   "Surround Test": {
+    "title page seconds": 2.3,
+    "seconds to start": 2.0,
+    "first look": {
+     "item": "Surround Test",
+     "seconds": 6.9,
+     "paused": false,
+     "method": "DirectPlay",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": null,
+     "video": null,
+     "audio": null
+    },
+    "second look": {
+     "item": "Surround Test",
+     "seconds": 18.9,
+     "paused": false,
+     "method": "DirectPlay",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": null,
+     "video": null,
+     "audio": null
+    },
+    "time moves on": true
+   },
+   "Kids Cartoon Test": {
+    "title page seconds": 2.2,
+    "seconds to start": 3.1,
+    "first look": {
+     "item": "Kids Cartoon Test",
+     "seconds": 7.4,
+     "paused": false,
+     "method": "Transcode",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": [
+      "VideoProfileNotSupported"
+     ],
+     "video": "h264",
+     "audio": "aac"
+    },
+    "second look": {
+     "item": "Kids Cartoon Test",
+     "seconds": 19.4,
+     "paused": false,
+     "method": "Transcode",
+     "audio_index": 1,
+     "subtitle_index": null,
+     "converting_because": [
+      "VideoProfileNotSupported"
+     ],
+     "video": "h264",
+     "audio": "aac"
+    },
+    "time moves on": true
+   }
+  },
+  "timings": {
+   "first start to Home (with sign-in)": 105.0,
+   "door: Movies": 4.7,
+   "door: Shows": 4.7,
+   "door: Live TV": 4.9,
+   "door: Music": 4.6,
+   "door: Games": 4.7,
+   "door: Books": 4.6,
+   "title page: Test Pattern One": 2.3,
+   "press Play to picture moving: Test Pattern One": 3.1,
+   "title page: Big Color Test": 2.2,
+   "press Play to picture moving: Big Color Test": 7.1,
+   "title page: Surround Test": 2.5,
+   "press Play to picture moving: Surround Test": 2.0,
+   "title page: Kids Cartoon Test": 2.2,
+   "press Play to picture moving: Kids Cartoon Test": 3.1,
+   "press Play to picture moving: Test Pattern One (switching)": 2.0,
+   "press Play to picture moving: Test Pattern One (resume)": 3.0,
+   "title page: Test Show": 2.3,
+   "press Play to picture moving: Test Show": 3.0,
+   "press Play to picture moving: Test Pattern One (bad Wi-Fi)": 4.0,
+   "open the app again to Home": 4.0
+  },
+  "notes": [],
+  "user_id": "eb74d00e1b3641e294300bec15f62619",
+  "switching": {
+   "before": {
+    "item": "Test Pattern One",
+    "seconds": 4.0,
+    "paused": false,
+    "method": "DirectPlay",
+    "audio_index": 1,
+    "subtitle_index": 3,
+    "converting_because": null,
+    "video": null,
+    "audio": null
+   },
+   "after sound": {
+    "item": "Test Pattern One",
+    "seconds": 36.0,
+    "paused": false,
+    "method": "DirectPlay",
+    "audio_index": 2,
+    "subtitle_index": 3,
+    "converting_because": null,
+    "video": null,
+    "audio": null
+   },
+   "after subtitles": {
+    "item": "Test Pattern One",
+    "seconds": 51.0,
+    "paused": false,
+    "method": "DirectPlay",
+    "audio_index": 2,
+    "subtitle_index": 3,
+    "converting_because": null,
+    "video": null,
+    "audio": null
+   }
+  },
+  "resume": {
+   "server saved seconds": 98,
+   "Resume on screen": true,
+   "Continue watching on Home": false
+  },
+  "countdown": true,
+  "next episode": {
+   "played in order": [
+    "Episode number 1",
+    "Episode number 2"
+   ]
+  },
+  "bad wifi": {
+   "seconds to play again after Tower came back": 5.0
+  },
+  "tower off": {
+   "seconds to leave the nap screen after Tower came back": 9.9,
+   "landed on": "Benflix | Benflix | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Press and hold a picture to change it | Add someone | Change server"
+  },
+  "kids": {
+   "grown-up titles seen in Kids Movies": [],
+   "cartoon seen": false,
+   "grown-up titles in Kids Search": []
+  },
+  "guest": {
+   "saved seconds before": 0.0,
+   "after": 0.0
+  }
+ },
+ "crashes": []
+}

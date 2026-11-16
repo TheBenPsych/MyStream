@@ -1,0 +1,24 @@
+  [39,166][274,234] Benflix
+  [106,166][274,234] Benflix
+  [854,176][902,224] Search
+  [960,163][1034,237] demo
+  [39,286][680,360] Good afternoon, demo
+  [60,583][187,630] Movies
+  [60,635][292,700] Films for any night
+  [402,583][518,630] Shows
+  [402,635][650,700] Series and episodes
+  [744,583][879,630] Live TV
+  [744,635][1014,700] Channels playing now
+  [60,925][187,972] Games
+  [60,977][241,1042] Play on the TV
+  [402,925][506,972] Music
+  [402,977][677,1042] Your songs and playlists
+  [744,925][853,972] Books
+  [744,977][937,1042] Read and listen
+  [870,1131][999,1171] Clear all
+  [218,1219][503,1253] NEW EPISODE · S1 E3
+  [218,1253][397,1300] Test Show
+  [936,1216][1024,1304] Clear
+  [218,1358][435,1392] DID YOU KNOW
+  [218,1392][900,1484] Pixar's Toy Story 2 was almost lost when someone ran a delete command on the files. A backup on an employee's home computer saved it.
+  [936,1377][1024,1465] Clear

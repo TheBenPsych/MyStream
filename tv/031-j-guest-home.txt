@@ -1,0 +1,21 @@
+  [96,50][369,128] Benflix
+  [173,50][369,128] Benflix
+  [426,68][523,111] Guest
+  [572,70][966,109] Nothing you watch is saved
+  [1354,51][1464,127] 1:37
+  [1472,82][1522,121] AM
+  [1573,64][1623,114] Search
+  [1680,47][1764,131] Guest
+  [80,170][345,246] Welcome
+  [80,250][460,288] Nothing you watch is saved
+  [573,713][784,799] Shows
+  [573,807][857,845] Series and episodes
+  [1022,713][1266,799] Live TV
+  [1022,807][1337,845] Channels playing now
+  [1471,713][1701,799] Games
+  [1471,807][1681,845] Play on the TV
+* [80,324][493,889] 
+  [124,713][355,799] Movies
+  [124,807][395,845] Films for any night
+  [80,925][558,980] Popular here this week
+  [80,1000][697,1040] Open a door to find something to watch.

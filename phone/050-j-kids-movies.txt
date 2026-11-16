@@ -1,0 +1,7 @@
+  [39,167][270,233] Benflix
+  [106,167][270,233] Benflix
+  [299,172][454,228] Movies
+  [854,176][902,224] Search
+  [960,163][1034,237] Kids
+  [118,344][715,415] Nothing in Movies yet
+  [118,430][905,475] Once the server has some, they show up here.

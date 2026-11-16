@@ -1,0 +1,10 @@
+  [213,232][420,291] Subtitles
+  [213,352][282,401] Off
+  [213,470][1015,519] Only when people speak another language
+  [213,714][478,757] Something off?
+  [213,802][496,851] Subtitle timing
+  [213,851][859,894] Move the words earlier or later yourself
+  [2183,827][2315,870] On time
+  [213,963][695,964] Subtitles are early or late
+* [181,550][2347,676] 
+  [213,588][616,637] English SRT (Default)

@@ -1,0 +1,27 @@
+  [96,47][327,113] Benflix
+  [161,47][327,113] Benflix
+  [1414,49][1509,112] 1:26
+  [1517,73][1560,106] AM
+  [1607,59][1649,101] Search
+  [1702,46][1770,114] demo
+  [80,160][667,236] Good evening, demo
+  [445,539][559,585] Shows
+  [445,590][667,648] Series and episodes
+  [789,539][921,585] Live TV
+  [789,590][1036,648] Channels playing now
+* [80,352][397,669] 
+  [101,539][226,585] Movies
+  [101,590][313,648] Films for any night
+  [101,882][225,928] Games
+  [101,933][263,991] Play on the TV
+  [445,882][546,928] Music
+  [445,933][716,991] Your songs and playlists
+  [789,882][895,928] Books
+  [789,933][964,991] Read and listen
+  [1685,371][1807,407] Clear all
+  [1265,439][1457,462] NEW EPISODE · S1 E1
+  [1265,462][1386,492] Test Show
+  [1777,440][1828,491] Clear
+  [1265,522][1415,545] DID YOU KNOW
+  [1265,545][1755,605] Ted Lasso started as a character in a few NBC Sports ads.
+  [1777,538][1828,589] Clear

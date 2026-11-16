@@ -1,0 +1,18 @@
+  [39,167][318,248] Benflix
+  [118,167][318,248] Benflix
+  [882,198][1041,218] Step 3 of 4
+  [132,297][949,371] How big should the words be?
+  [333,420][747,469] This is the normal size.
+  [178,557][509,606] Continue watching
+  [316,669][380,716] Surround Test
+  [316,721][380,758] 32 min left
+  [567,669][631,716] Test Pattern One
+  [567,721][631,758] S1:E4
+  [818,669][882,716] Big Color Test
+  [818,721][882,758] 1 hr 10 min left
+  [621,930][716,970] Bigger
+* [327,891][543,1009] 
+  [366,930][504,970] ✓ Normal
+  [254,1097][324,1137] Back
+  [441,1097][509,1137] Next
+  [621,1088][832,1135] Skip for now

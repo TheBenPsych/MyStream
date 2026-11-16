@@ -1,0 +1,12 @@
+  [39,166][274,234] Benflix
+  [106,166][274,234] Benflix
+  [303,170][441,229] Books
+  [854,176][902,224] Search
+  [960,163][1034,237] demo
+  [73,303][164,343] Home
+  [252,303][346,343] Books
+  [434,303][615,343] Audiobooks
+  [703,303][799,343] Series
+  [887,303][1011,343] Authors
+  [39,419][693,493] No books on Benflix yet
+  [39,522][1041,661] Put books, audiobooks or manga in Tower's Media folder (Books, Audiobooks, Manga), and they show up here within 10 minutes.

@@ -1,0 +1,14 @@
+  [213,232][402,291] Settings
+  [213,307][491,350] Test Pattern One
+  [213,529][324,578] Audio
+  [2195,532][2315,575] English
+  [213,647][496,696] Subtitle timing
+  [2183,650][2315,693] On time
+  [213,765][357,814] Quality
+  [2086,768][2315,811] Light · 2 Mbps
+  [298,883][598,932] Watch together
+  [298,932][1107,964] In step with other TVs, phones and the web Lobby
+  [2256,908][2315,951] Off
+* [181,373][2347,499] 
+  [213,411][384,460] Subtitles
+  [1968,414][2315,457] English SRT (Default)

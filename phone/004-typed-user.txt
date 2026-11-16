@@ -1,0 +1,8 @@
+  [285,168][796,247] Sign in to Benflix
+  [293,295][788,344] Signing in to 0beac2efef1b
+  [42,423][140,452] Name
+* [42,452][1038,578] demo
+  [42,601][201,630] Password
+  [471,832][609,885] Sign in
+  [42,969][1038,1072] Already signed in on a TV? Sign in here with a code instead:
+  [412,1143][762,1192] Sign in with a code

@@ -1,0 +1,8 @@
+  [287,903][793,1048] Benflix
+  [430,903][793,1048] Benflix
+  [63,1080][1017,1189] The server is taking a nap, or being worked on
+  [63,1221][1017,1324] Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.
+  [266,1356][815,1405] Checking again in 6 seconds…
+  [494,1489][826,1532] Watch my downloads
+* [213,1448][420,1574] 
+  [255,1489][378,1532] Try now

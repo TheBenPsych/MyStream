@@ -1,0 +1,17 @@
+  [96,47][327,113] Benflix
+  [161,47][327,113] Benflix
+  [363,53][494,108] Books
+  [1415,49][1509,112] 1:28
+  [1517,73][1560,106] AM
+  [1702,46][1770,114] demo
+* [1580,32][1676,128] 
+  [1607,59][1649,101] Search
+  [148,168][795,244] No books on Benflix yet
+  [148,268][1888,348] Put books, audiobooks or manga in Tower's Media folder (Books, Audiobooks, Manga), and they show up here within 10 minutes.
+  [50,182][90,222] Home
+  [50,282][90,322] Books
+  [50,382][90,422] Audiobooks
+  [50,482][90,522] Series
+  [50,582][90,622] Authors
+  [50,682][90,722] Want to read
+  [50,782][90,822] Finished

@@ -1,0 +1,7 @@
+  [39,166][274,234] Benflix
+  [106,166][274,234] Benflix
+  [303,170][463,229] Movies
+  [854,176][902,224] Search
+  [960,163][1034,237] demo
+  [118,344][722,418] Nothing in Movies yet
+  [118,433][890,480] Once the server has some, they show up here.

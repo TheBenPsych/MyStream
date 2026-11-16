@@ -1,0 +1,22 @@
+  [96,51][367,127] Benflix
+  [173,51][367,127] Benflix
+  [424,69][489,110] Kids
+  [1360,53][1465,125] 1:37
+  [1473,82][1522,119] AM
+  [1573,64][1623,114] Search
+  [1680,47][1764,131] Kids
+  [137,205][168,247] 
+* [208,178][564,266] 
+  [232,202][280,250] Search
+  [304,207][466,246] OK to type
+  [604,209][637,243] 
+  [764,223][1214,262] Can't decide? Play This or that
+  [764,323][1348,362] Watching together? Take the mood quiz
+  [764,423][1409,462] Watch in order: Marvel, Star Wars and more
+  [728,522][966,575] Pick a mood
+  [830,670][1026,713] Binge Mode
+  [1176,650][1528,733] Something Thoughtful
+  [1624,670][1856,713] Background Noise
+  [728,831][1059,884] Browse by genre
+  [752,973][855,1012] Action
+  [1136,973][1258,1012] Comedy
