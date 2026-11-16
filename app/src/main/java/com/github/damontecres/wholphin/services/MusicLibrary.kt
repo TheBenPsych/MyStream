@@ -42,6 +42,16 @@ data class MusicMix(
     val songIds: List<UUID>,
     /** Up to four album ids for the cover collage */
     val coverAlbumIds: List<UUID>,
+    /** Themed playlists only: season, decade, genre, mood or throwback (which row it sits in) */
+    val group: String = "",
+    /** Ben's profile: the page ends with Songs to add (catalogue songs for this theme he can ask for) */
+    val adds: Boolean = false,
+)
+
+/** Tower's themed playlists (holidays in season, decades, genres, moods, throwbacks) and each row's name */
+data class MusicThemes(
+    val themes: List<MusicMix> = emptyList(),
+    val rowTitles: Map<String, String> = emptyMap(),
 )
 
 /** Benflix music: everything the music pages need from Jellyfin (and the mixes from Tower) */
@@ -289,6 +299,25 @@ class MusicLibrary
                 emptyList()
             }
 
+        /** Themed playlists: Tower makes them each morning from this profile's music */
+        suspend fun themes(): MusicThemes =
+            try {
+                val j = helper.getJson("/api/music/themes")
+                val arr = j.optJSONArray("themes")
+                val rows = j.optJSONObject("rows")
+                MusicThemes(
+                    themes = (0 until (arr?.length() ?: 0)).mapNotNull { i -> arr?.optJSONObject(i)?.let(::parseMix) },
+                    rowTitles = rows?.keys()?.asSequence()?.associateWith { rows.optString(it) }.orEmpty(),
+                )
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't get the themed playlists from Tower")
+                MusicThemes()
+            }
+
+        /** A Made for you mix or a themed playlist, by its key */
+        suspend fun mixOrTheme(key: String): MusicMix? =
+            mixes().firstOrNull { it.key == key } ?: themes().themes.firstOrNull { it.key == key }
+
         private fun parseMix(j: JSONObject): MusicMix? {
             val ids = j.optJSONArray("songs") ?: return null
             val covers = j.optJSONArray("covers")
@@ -298,6 +327,8 @@ class MusicLibrary
                 line = j.optString("line"),
                 songIds = (0 until ids.length()).mapNotNull { ids.optString(it).toUUIDOrNull() },
                 coverAlbumIds = (0 until (covers?.length() ?: 0)).mapNotNull { covers?.optString(it)?.toUUIDOrNull() },
-            ).takeIf { it.songIds.isNotEmpty() }
+                group = j.optString("group"),
+                adds = j.optBoolean("adds"),
+            ).takeIf { it.songIds.isNotEmpty() || it.adds }
         }
     }

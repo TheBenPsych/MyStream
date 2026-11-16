@@ -449,6 +449,13 @@
   };
   const likedCard = (n) => `<a class="mcard" href="#/liked"><div class="im liked">${I("heart")}</div><div class="cap"><span class="nm">Liked songs</span><small>${n} songs</small></div></a>`;
   B.musicMixes = () => B.cached("music-mixes-" + B.me.id + new Date().toDateString(), 3600000, async () => ((await B.call("GET", "api/music/mixes")) || {}).mixes || []);
+  // Themed playlists (Ben 2026-11-16): holidays in season, decades, genres, moods, throwbacks
+  B.musicThemes = () => B.cached("music-themes-" + B.me.id + new Date().toDateString(), 3600000, async () => (await B.call("GET", "api/music/themes")) || { themes: [] });
+  const THEME_ROWS = { season: "In season", decade: "Decades", genre: "Genres", mood: "Moods and moments", throwback: "Throwbacks" };
+  const themeRow = (th, group) => {
+    const list = (th.themes || []).filter((t) => t.group === group);
+    return list.length ? B.row((th.rows || {})[group] || THEME_ROWS[group], list.map(mixCard)) : "";
+  };
   const libs = () => B.cached("music-libs", 600000, async () => (await B.views()).filter((l) => l.CollectionType === "music"));
   const songRow = (s, i, opts) => {
     opts = opts || {};
@@ -527,20 +534,23 @@
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
     if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Benflix yet.</p>`; return; }
-    const [mixes, pls, liked, recent, played, artists] = await Promise.all([
+    const [mixes, pls, liked, recent, played, artists, themes] = await Promise.all([
       B.musicMixes().catch(() => []),
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount&Limit=30`).catch(() => []),
       B.get(`/Users/${B.uid()}/Items?Recursive=true&IncludeItemTypes=Audio&Filters=IsFavorite&Limit=0`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
       items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=30`).catch(() => []),
       items(`IncludeItemTypes=MusicAlbum&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=30`).catch(() => []),
       B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=PlayCount,SortName&SortOrder=Descending&Limit=30&Fields=PrimaryImageAspectRatio`).then((j) => j.Items || []).catch(() => []),
+      B.musicThemes().catch(() => ({ themes: [] })),
     ]);
     if (!B.alive(nav)) return;
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
+    rows.push(themeRow(themes, "season"));
     rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), B.me.admin ? [`<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}</div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, artists</small></div></a>`] : [])));
     rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
+    ["decade", "genre", "mood", "throwback"].forEach((g) => rows.push(themeRow(themes, g)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
     // Redesign 2: Songs, Albums, Artists, Genres, Playlists and Liked songs are in the door's side menu (js/doors.js)
     $("#mrows").innerHTML = rows.join("");
@@ -709,14 +719,41 @@
   });
   B.route(/^\/mix\/([\w-]+)/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
-    const mix = (await B.musicMixes()).find((x) => x.key === decodeURIComponent(m[1]));
+    const key = decodeURIComponent(m[1]);
+    const mix = (await B.musicMixes()).find((x) => x.key === key) || ((await B.musicThemes().catch(() => ({}))).themes || []).find((x) => x.key === key);
     if (!mix) return B.go("#/music");
-    const got = await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`);
+    const got = mix.songs.length ? await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`) : [];
     const byId = {}; got.forEach((s) => { byId[s.Id] = s; });
     const songs = mix.songs.map((id) => byId[id]).filter(Boolean);
     if (!B.alive(nav)) return;
-    await collection(nav, { kick: "MADE FOR YOU", title: mix.name, line: mix.line, collage: mix.covers.concat(mix.covers).slice(0, 4).map((c) => B.img(c, "Primary", { h: 300 })), songs, sourceId: null });
+    const covers = mix.covers.length ? mix.covers.concat(mix.covers).slice(0, 4).map((c) => B.img(c, "Primary", { h: 300 })) : null;
+    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.line, collage: covers, songs, sourceId: null });
+    if (mix.adds) themeAdds(nav, mix);
   });
+
+  // Ben's profile: Songs to add under a themed playlist. Asking for one downloads it, and Tower puts it in this theme.
+  const themeAdds = async (nav, mix) => {
+    const box = $("#mbelow"); if (!box) return;
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Looking for songs that fit...</p>`;
+    const got = await B.call("GET", `api/music/theme?key=${enc(mix.key)}`).catch(() => null);
+    if (!B.alive(nav)) return;
+    const list = (got && got.songs) || [];
+    if (!list.length) { box.innerHTML = ""; return; }
+    const btn = (s) => s.asked ? `<span class="sl">${esc(s.asked)}</span>` : `<button class="btn small white" data-addsong="${esc(s.id)}">${I("plus")} Ask for it</button>`;
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs that fit ${esc(mix.name)}. Ask for one and it joins this playlist once it's in.</p>
+      <div class="msongs">${list.map((s) => `<div class="srow"><span class="sn">${s.cover ? `<img class="sc" src="${esc(s.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span><span data-slot="${esc(s.id)}">${btn(s)}</span></div>`).join("")}</div>`;
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-addsong]"); if (!b) return;
+      b.disabled = true;
+      try {
+        const r = await B.call("POST", "api/music/request", { kind: "song", id: +b.dataset.addsong, theme: mix.key });
+        b.parentNode.innerHTML = `<span class="sl">${esc((r && r.words) || "Asked for")}</span>`;
+      } catch (err) {
+        b.disabled = false;
+        B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute.");
+      }
+    });
+  };
 
   // ---------- artist page ----------
   B.route(/^\/artist\/([\w-]+)/, async (m, nav) => {

@@ -1150,6 +1150,13 @@ private fun albumType(album: MusicAlbum) =
         else -> if (album.songs > 0) "${album.songs} songs" else "Album"
     }
 
+/** One catalogue song with its "Ask for it" words, for other music pages (a themed playlist's Songs to add) */
+@Composable
+fun CatalogueSongRow(
+    song: MusicSong,
+    onClick: () -> Unit,
+) = SongRow(song = song, showAlbum = false, onClick = onClick)
+
 @Composable
 private fun SongRow(
     song: MusicSong,

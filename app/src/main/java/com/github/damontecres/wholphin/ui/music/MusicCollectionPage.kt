@@ -218,6 +218,12 @@ fun MusicCollectionPage(
                                 when (kind) {
                                     CollectionKind.LIKED -> "Press the heart on a song and it lands here."
                                     CollectionKind.PLAYLIST -> "No songs in this playlist yet. Use a song's More menu to add some."
+                                    CollectionKind.MIX ->
+                                        if (state.addsLoading || state.adds.isNotEmpty()) {
+                                            "None of your songs fit yet. Ask for some below and they land here."
+                                        } else {
+                                            "No songs here yet."
+                                        }
                                     else -> "No songs here yet."
                                 },
                             color = BenflixColors.Soft,
@@ -275,6 +281,41 @@ fun MusicCollectionPage(
                             } else if (!isTv) {
                                 MusicButton(null, BenflixIcon.MORE_VERT, onClick = { menuFor = index })
                             }
+                        }
+                    }
+                }
+                // Ben's profile: songs that fit this themed playlist and aren't in Music yet. Asking for one
+                // downloads it, and it joins this playlist by itself (Tower remembers which theme it was for)
+                if (state.addsLoading || state.adds.isNotEmpty()) {
+                    item(key = "adds-head") {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(start = side, top = 28.dp, bottom = 8.dp),
+                        ) {
+                            Text(
+                                text = "Songs to add",
+                                color = BenflixColors.Text,
+                                fontSize = BenflixType.rowName,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
+                            Text(
+                                text =
+                                    if (state.addsLoading) {
+                                        "Looking for songs that fit..."
+                                    } else {
+                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in."
+                                    },
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.small,
+                            )
+                        }
+                    }
+                    items(state.adds, key = { "add-${it.id}" }) { song ->
+                        Box(Modifier.padding(start = side - 16.dp, bottom = 6.dp)) {
+                            com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
+                                song = song,
+                                onClick = { viewModel.askToAdd(song) },
+                            )
                         }
                     }
                 }
@@ -411,7 +452,7 @@ private fun CollectionHero(
         when (state.kind) {
             CollectionKind.ALBUM -> if (item?.data?.childCount == 1 || state.songs.size == 1) "Single" else "Album"
             CollectionKind.PLAYLIST -> "Playlist"
-            CollectionKind.MIX -> "Made for you · new every morning"
+            CollectionKind.MIX -> if (state.themed) "Playlist by theme · new every morning" else "Made for you · new every morning"
             CollectionKind.LIKED -> "Your playlist"
             CollectionKind.SONGS -> "Every song on Benflix"
         }

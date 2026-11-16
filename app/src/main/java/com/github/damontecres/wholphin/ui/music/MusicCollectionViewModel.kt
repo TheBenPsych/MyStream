@@ -47,6 +47,11 @@ data class MusicCollectionState(
     val collage: List<UUID> = emptyList(),
     /** The words under a mix name */
     val mixLine: String = "",
+    /** A themed playlist (holiday, decade, genre, mood...) rather than a Made for you mix */
+    val themed: Boolean = false,
+    /** Ben's Songs to add under a themed playlist, and whether they're still coming */
+    val adds: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
+    val addsLoading: Boolean = false,
     val liked: Set<UUID> = emptySet(),
     val loaded: Boolean = false,
     val failed: Boolean = false,
@@ -264,7 +269,7 @@ class MusicCollectionViewModel
             key: String,
             title: String,
         ) {
-            val mix = library.mixes().firstOrNull { it.key == key }
+            val mix = library.mixOrTheme(key)
             if (mix == null) {
                 _state.update { it.copy(loaded = true, failed = true) }
                 return
@@ -277,8 +282,41 @@ class MusicCollectionViewModel
                     liked = likedOf(songs),
                     collage = mix.coverAlbumIds,
                     mixLine = mix.line,
+                    themed = mix.group.isNotBlank(),
+                    addsLoading = mix.adds,
                     loaded = true,
                 )
+            }
+            if (mix.adds) {
+                val adds =
+                    try {
+                        benflixMusic.themeAdds(key)
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Couldn't get Songs to add for %s", key)
+                        emptyList()
+                    }
+                _state.update { it.copy(adds = adds, addsLoading = false) }
+            }
+        }
+
+        /** Songs to add: asks for the song; once it's downloaded it joins this themed playlist by itself */
+        fun askToAdd(song: com.github.damontecres.wholphin.services.MusicSong) {
+            if (song.asked != null || song.have) return
+            val key = loadedFor?.substringAfter("-") ?: return
+            _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = "Asking...") else it }) }
+            viewModelScope.launchIO {
+                val words =
+                    try {
+                        benflixMusic.ask("song", song.id, theme = key).words.ifBlank { "Asked for" }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Couldn't ask for %s", song.title)
+                        null
+                    }
+                _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = words) else it }) }
             }
         }
 
