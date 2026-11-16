@@ -13,7 +13,7 @@
       "position": { "x": 300, "y": 240 }, "fpEnabled": true, "inputsDB": {} },
     { "name": "Prepare", "sourceRepo": "Local", "pluginName": "benflixPrepare", "version": "1.0.0", "id": "bfPrepare",
       "position": { "x": 300, "y": 340 }, "fpEnabled": true,
-      "inputsDB": { "quality": "__QUALITY__", "encoder": "__ENCODER__", "device": "/dev/dri/renderD128", "trimLanguages": "true",
+      "inputsDB": { "quality": "__QUALITY__", "encoder": "__ENCODER__", "device": "__DEVICE__", "trimLanguages": "true",
         "radarrUrl": "__RADARR_URL__", "radarrKey": "__RADARR_KEY__", "sonarrUrl": "__SONARR_URL__", "sonarrKey": "__SONARR_KEY__",
         "mediaRoot": "/media", "arrRoot": "__ARR_ROOT__" } },
     { "name": "Shrink", "sourceRepo": "Community", "pluginName": "ffmpegCommandExecute", "version": "1.0.0", "id": "bfExecute",
