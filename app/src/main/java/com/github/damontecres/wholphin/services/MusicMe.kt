@@ -176,6 +176,15 @@ class MusicMe
             )
         }
 
+        /** Skip learning: [songId] was skipped in its first 30 seconds (3 times and it stays out of the mixes) */
+        suspend fun skipped(songId: java.util.UUID) {
+            try {
+                helper.postJson("/api/music/me/skip", JSONObject().put("id", songId.toString()))
+            } catch (ex: Exception) {
+                Timber.d(ex, "Skip learning")
+            }
+        }
+
         /** The profiles you can send music to (everyone else but Kids) */
         suspend fun people(): List<MusicPerson> =
             try {

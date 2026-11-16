@@ -84,7 +84,20 @@ class MusicService
         private val userPreferencesService: UserPreferencesService,
         private val downloadService: DownloadService,
         private val carLibraryLazy: dagger.Lazy<MusicCarLibrary>,
+        private val musicMeLazy: dagger.Lazy<MusicMe>,
     ) {
+        /**
+         * Next song, pressed by the person. Skip learning (Music redesign 3): a song skipped in its first 30 seconds
+         * is noted on Tower, and after 3 times it stays out of the mixes.
+         */
+        fun skipToNext() {
+            val audio = _state.value.currentAudio
+            if (audio != null && player.currentPosition < SKIP_LEARN_MS && !KidsMode.isActive && !GuestMode.isActive) {
+                defaultScope.launch { musicMeLazy.get().skipped(audio.id) }
+            }
+            player.seekToNext()
+        }
+
         private val carLibrary: MusicCarLibrary get() = carLibraryLazy.get()
 
         private val _state = MutableStateFlow(MusicServiceState.EMPTY)
@@ -932,6 +945,9 @@ fun rememberQueue(
             override fun get(index: Int): AudioItem = player.getMediaItemAt(index).localConfiguration?.tag as AudioItem
         }
     }
+
+/** Skip learning: a skip before this far into a song counts */
+private const val SKIP_LEARN_MS = 30_000L
 
 @dagger.hilt.EntryPoint
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)

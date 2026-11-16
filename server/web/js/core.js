@@ -734,6 +734,7 @@ B.previewLevel = (a, now) => {
 };
 const pvQuiet = () => { if (PV.audio) { PV.audio.pause(); PV.audio.src = ""; PV.audio = null; } };
 B.previewStop = () => {
+  PV.chain = null;
   PV.n++;
   pvQuiet();
   PV.id = null;
@@ -741,7 +742,23 @@ B.previewStop = () => {
   PV.paused = false;
   pvDraw();
 };
-B.previewToggle = async (id, btn) => {
+// Music redesign 3 (Discover weekly, Release radar): the previews of a list, one after another
+B.previewAll = (ids) => {
+  const list = (ids || []).map(String);
+  if (!list.length) return;
+  B.previewStop();
+  PV.chain = list.slice(1);
+  B.previewToggle(list[0], null, true);
+};
+B.previewChainOn = () => !!(PV.chain && PV.id);
+const pvNext = () => {
+  const nx = PV.chain && PV.chain.shift();
+  if (nx == null) return B.previewStop();
+  pvQuiet();
+  B.previewToggle(nx, null, true);
+};
+B.previewToggle = async (id, btn, chained) => {
+  if (!chained) PV.chain = null;
   if (PV.id === String(id)) return B.previewStop();
   pvQuiet();
   const n = ++PV.n;
@@ -750,6 +767,7 @@ B.previewToggle = async (id, btn) => {
   let url = "";
   try { url = (await B.call("GET", "api/music/preview?id=" + encodeURIComponent(id))).url || ""; } catch (e) { url = ""; }
   if (n !== PV.n) return;
+  if (!url && chained && PV.chain) return pvNext();
   if (!url) {
     PV.id = null;
     pvDraw();
@@ -762,7 +780,7 @@ B.previewToggle = async (id, btn) => {
   if (m && !m.paused) { m.pause(); PV.paused = true; }
   const a = new Audio(url);
   B.previewLevel(a);
-  a.onended = () => { if (PV.audio === a) B.previewStop(); };
+  a.onended = () => { if (PV.audio === a) { if (PV.chain && PV.chain.length) pvNext(); else B.previewStop(); } };
   a.onerror = () => { if (PV.audio === a) B.previewStop(); };
   PV.audio = a;
   a.play().catch(() => { if (PV.audio === a) B.previewStop(); });

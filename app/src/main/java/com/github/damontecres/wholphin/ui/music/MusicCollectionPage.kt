@@ -276,9 +276,22 @@ fun MusicCollectionPage(
                         overlap = overlap,
                         side = side,
                         playFocus = playFocus,
-                        // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
-                        onPlay = { actions.playList(shown, 0, false, state.item, sourceName, openNow = true, place = place) },
-                        onShuffle = { actions.playList(shown, 0, true, state.item, sourceName, openNow = true, place = place) },
+                        // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing. Discover weekly
+                        // and Release radar (songs not on Benflix yet) play their previews one after another instead.
+                        onPlay = {
+                            if (state.catalogue) {
+                                viewModel.playPreviews()
+                            } else {
+                                actions.playList(shown, 0, false, state.item, sourceName, openNow = true, place = place)
+                            }
+                        },
+                        onShuffle = {
+                            if (state.catalogue) {
+                                viewModel.playPreviews()
+                            } else {
+                                actions.playList(shown, 0, true, state.item, sourceName, openNow = true, place = place)
+                            }
+                        },
                         onHeart = viewModel::toggleAlbumFavourite,
                         onMore = { pageMenu = true },
                         editing = editing,
@@ -311,7 +324,7 @@ fun MusicCollectionPage(
                         }
                     }
                 }
-                if (songs.isEmpty() && state.loaded) {
+                if (songs.isEmpty() && state.loaded && !state.catalogue) {
                     item(key = "empty") {
                         Text(
                             text =
@@ -411,7 +424,7 @@ fun MusicCollectionPage(
                             modifier = Modifier.padding(start = side, top = 28.dp, bottom = 8.dp),
                         ) {
                             Text(
-                                text = "Songs to add",
+                                text = if (state.catalogue) "This week's songs" else "Songs to add",
                                 color = BenflixColors.Text,
                                 fontSize = BenflixType.rowName,
                                 fontWeight = FontWeight.ExtraBold,
@@ -420,6 +433,8 @@ fun MusicCollectionPage(
                                 text =
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
+                                    } else if (state.catalogue) {
+                                        "Not on Benflix yet. Play hears 30 seconds of each, one after another. The heart asks for a song.$okNote"
                                     } else {
                                         if (kind == CollectionKind.PLAYLIST) {
                                             "Songs like the ones here. Ask for one and it joins this playlist once it's in.$okNote"
@@ -438,10 +453,31 @@ fun MusicCollectionPage(
                             androidx.compose.runtime.CompositionLocalProvider(
                                 com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
                             ) {
-                                com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
-                                    song = song,
-                                    onClick = { viewModel.askToAdd(song) },
-                                )
+                                if (state.catalogue) {
+                                    // Discover weekly and Release radar: the heart asks for the song
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Box(Modifier.weight(1f)) {
+                                            com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
+                                                song = song,
+                                                onClick = { viewModel.preview.toggle(song.id) },
+                                            )
+                                        }
+                                        MusicButton(
+                                            null,
+                                            BenflixIcon.HEART,
+                                            filledHeart = song.asked != null || song.have,
+                                            onClick = { viewModel.askToAdd(song) },
+                                        )
+                                    }
+                                } else {
+                                    com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
+                                        song = song,
+                                        onClick = { viewModel.askToAdd(song) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -568,6 +604,15 @@ fun MusicCollectionPage(
                         DialogItem(headlineContent = { Text("Add all to Up next") }, onClick = {
                             pageMenu = false
                             actions.addAllToUpNext(songs)
+                        }),
+                    )
+                }
+                // Music redesign 3 (part 4): Smart shuffle mixes in songs like these after every 3 songs
+                if ((kind == CollectionKind.PLAYLIST || kind == CollectionKind.LIKED) && shown.size > 3) {
+                    add(
+                        DialogItem(headlineContent = { Text("Smart shuffle (adds songs like these)") }, onClick = {
+                            pageMenu = false
+                            actions.smartShuffle(shown, state.item, sourceName, place)
                         }),
                     )
                 }
