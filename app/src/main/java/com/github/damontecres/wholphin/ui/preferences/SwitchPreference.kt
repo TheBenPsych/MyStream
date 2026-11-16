@@ -68,6 +68,15 @@ fun SwitchPreference(
 @Composable
 fun SwitchColors(): SwitchColors {
     val theme = LocalTheme.current
+    // Christmas look: switches that are on are pine green with a white knob
+    if (com.github.damontecres.wholphin.ui.theme.XmasLook.on) {
+        return SwitchDefaults.colors(
+            checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+            checkedTrackColor =
+                com.github.damontecres.wholphin.ui.theme.XmasLook.Pine,
+            uncheckedThumbColor = MaterialTheme.colorScheme.onPrimary,
+        )
+    }
     return when (theme) {
         AppThemeColors.UNRECOGNIZED,
         AppThemeColors.PURPLE,

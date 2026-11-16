@@ -164,6 +164,58 @@ class DoorDataService
                 ),
             )
 
+        /**
+         * Christmas favourites (Christmas look, 1 Dec to 1 Jan): the hand-picked Christmas films, titles with a
+         * Christmas word in the name and titles tagged Christmas, of this kind.
+         */
+        suspend fun christmas(
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
+        ): List<BaseItem> =
+            coroutineScope {
+                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
+
+                fun search(term: String) =
+                    GetItemsRequest(
+                        userId = userId,
+                        includeItemTypes = listOf(type),
+                        recursive = true,
+                        searchTerm = term,
+                        fields = SlimItemFields,
+                        enableUserData = true,
+                        limit = 10,
+                    )
+                val picked =
+                    theme.titles
+                        .map { it.substringBefore(':').trimEnd('.', '!', '?').trim() }
+                        .distinct()
+                        .map { term -> async { items(search(term)).filter { theme.isPicked(it.name, it.data.originalTitle) } } }
+                val named =
+                    theme.nameWords.map { word ->
+                        async { items(search(word)).filter { theme.hasNameWord(it.name) || theme.hasNameWord(it.data.originalTitle) } }
+                    }
+                val tagged =
+                    async {
+                        items(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(type),
+                                recursive = true,
+                                tags = theme.tags,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                fields = SlimItemFields,
+                                enableUserData = true,
+                                limit = limit,
+                            ),
+                        )
+                    }
+                (picked.awaitAll().flatten() + named.awaitAll().flatten() + tagged.await())
+                    .distinctBy { it.id }
+                    .shuffled()
+                    .take(limit)
+            }
+
         /** Newest of this kind in these libraries */
         suspend fun newest(
             userId: UUID,

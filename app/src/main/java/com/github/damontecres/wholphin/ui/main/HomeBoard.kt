@@ -57,6 +57,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /*
@@ -341,13 +342,14 @@ private fun SquareDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha() }
+                .xmasDoorOrnament(door)
                 .padding(u * 0.85f),
         ) {
-            BenflixIconImage(icon = door.icon(), color = door.onColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
+            BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text(
                     text = door.title,
-                    color = door.onColor,
+                    color = door.labelColor,
                     fontSize = words.name,
                     lineHeight = words.name * 1.1f,
                     fontWeight = FontWeight.ExtraBold,
@@ -358,7 +360,7 @@ private fun SquareDoor(
                 // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
                 Text(
                     text = door.description,
-                    color = door.onColor.copy(alpha = .85f),
+                    color = door.labelColor.copy(alpha = .85f),
                     fontSize = words.desc,
                     lineHeight = words.desc * 1.22f,
                     fontWeight = FontWeight.SemiBold,

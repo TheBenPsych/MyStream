@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -323,6 +324,9 @@ class DoorViewModel
                     listOf(KEEP, MY_LIST, NEW)
                 } else {
                     listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
+                }.let { rows ->
+                    // Christmas look (1 Dec to 1 Jan): Christmas favourites right after Keep watching
+                    if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -349,6 +353,14 @@ class DoorViewModel
                 launch {
                     val items = data.myList(userId, BaseItemKind.MOVIE)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
+                }
+                if (CHRISTMAS in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
                 }
                 launch {
                     val dislikes = disliked.await()
@@ -563,6 +575,7 @@ class DoorViewModel
 
         companion object {
             const val KEEP = "keep"
+            const val CHRISTMAS = "christmas"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

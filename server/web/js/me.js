@@ -171,7 +171,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
-      if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.render(); return; }
+      if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
   }
@@ -211,6 +211,8 @@ B.kidsLook = () => {
   const root = document.documentElement;
   root.classList.toggle("kids", kids);
   root.classList.toggle("night", kids && (h >= 20 || h < 6));
+  // Christmas look (1 December to 1 January, unless switched off): red, pine green and the hanging ornaments
+  root.classList.toggle("xmas", !!(B.me && !kids && B.xmasOn && B.xmasOn()));
 };
 setInterval(() => B.kidsLook(), 60000);
 

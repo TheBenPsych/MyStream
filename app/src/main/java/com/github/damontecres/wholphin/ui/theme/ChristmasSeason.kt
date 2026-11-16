@@ -3,6 +3,18 @@ package com.github.damontecres.wholphin.ui.theme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.Month
 
@@ -55,3 +67,141 @@ object ChristmasSeason {
         }
     }
 }
+
+/**
+ * Benflix Christmas look for the rest of the app (approved round 11): red highlights, pine green buttons and
+ * panels, and one decoration used one way: the doors' glass ornament hanging from a gold pin on a top edge
+ * (doors, Play, notices and the focused poster). Not on Kids (Sky and Sunshine stay).
+ */
+object XmasLook {
+    val on: Boolean get() = ChristmasSeason.on() && !KidsLook.on
+
+    val Red = Color(0xFFE0344E)
+    val Pine = Color(0xFF1E6B45)
+    val PineDark = Color(0xFF0F241A)
+    val PineHigh = Color(0xFF173A28)
+    val PineLine = Color(0xFF1F3D2C)
+    val PineRaised = Color(0xFF143524)
+    val Gold = Color(0xFFE9C877)
+    val GreenBall = Color(0xFF2E9E5E)
+    val RedBall = Color(0xFFE23A55)
+}
+
+/**
+ * Hangs a glass ornament from a gold pin on this thing's top edge, [fromEnd] in from its right edge.
+ * Drawn over the content (outside any clip), so it costs nothing on old TVs.
+ */
+fun Modifier.xmasOrnament(
+    color: Color,
+    ball: Dp = 22.dp,
+    string: Dp = 8.dp,
+    fromEnd: Dp = 30.dp,
+    band: Boolean = false,
+): Modifier =
+    drawWithContent {
+        drawContent()
+        drawXmasOrnament(
+            x = size.width - fromEnd.toPx(),
+            top = 0f,
+            radius = ball.toPx() / 2f,
+            string = string.toPx(),
+            color = color,
+            band = band,
+        )
+    }
+
+/** The ornament itself: pin, gold thread, cap, glass ball with a soft shine and a shadow */
+fun DrawScope.drawXmasOrnament(
+    x: Float,
+    top: Float,
+    radius: Float,
+    string: Float,
+    color: Color,
+    band: Boolean = false,
+) {
+    val gold = XmasLook.Gold
+    val goldDark = Color(0xFF9A7426)
+    val capH = radius * 0.36f
+    val cy = top + string + capH + radius * 0.92f
+    // shadow
+    drawCircle(
+        brush =
+            Brush.radialGradient(
+                0f to Color.Black.copy(alpha = .45f),
+                1f to Color.Transparent,
+                center = Offset(x + radius * .25f, cy + radius * .4f),
+                radius = radius * 1.35f,
+            ),
+        radius = radius * 1.35f,
+        center = Offset(x + radius * .25f, cy + radius * .4f),
+    )
+    // thread and pin
+    drawLine(gold, Offset(x, top), Offset(x, top + string + capH * .5f), strokeWidth = maxOf(1.5f, radius * .09f))
+    drawCircle(gold, radius = maxOf(2.5f, radius * .2f), center = Offset(x, top))
+    // glass
+    val light = lerp(color, Color.White, .62f)
+    val dark = lerp(color, Color.Black, .55f)
+    val darkest = lerp(color, Color.Black, .8f)
+    drawCircle(
+        brush =
+            Brush.radialGradient(
+                0f to light,
+                .3f to color,
+                .78f to dark,
+                1f to darkest,
+                center = Offset(x - radius * .3f, cy - radius * .4f),
+                radius = radius * 1.6f,
+            ),
+        radius = radius,
+        center = Offset(x, cy),
+    )
+    if (band) {
+        // the doors' gold band round the middle
+        val bh = radius * .18f
+        drawArc(
+            color = gold,
+            startAngle = 0f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(x - radius * .99f, cy - bh * 1.6f),
+            size = Size(radius * 1.98f, bh * 3.2f),
+            style = Stroke(width = bh),
+        )
+    }
+    // shine
+    drawOval(
+        color = Color.White.copy(alpha = .7f),
+        topLeft = Offset(x - radius * .68f, cy - radius * .62f),
+        size = Size(radius * .55f, radius * .3f),
+    )
+    // cap
+    drawRoundRect(
+        brush = Brush.horizontalGradient(listOf(goldDark, gold, goldDark), startX = x - radius * .28f, endX = x + radius * .28f),
+        topLeft = Offset(x - radius * .28f, top + string),
+        size = Size(radius * .56f, capH),
+        cornerRadius = CornerRadius(radius * .08f),
+    )
+}
+
+/** Christmas look on a Home door: one glass ornament in the door's own colour, hanging from a gold pin on the top edge */
+fun Modifier.xmasDoorOrnament(door: BenflixDoor): Modifier =
+    if (!XmasLook.on) {
+        this
+    } else {
+        drawWithContent {
+            drawContent()
+            val w = minOf(size.width, size.height * 1.4f)
+            drawXmasOrnament(
+                x = size.width - w * .17f,
+                top = 0f,
+                radius = w * .13f,
+                string = size.height * .2f,
+                color = door.ornamentColor,
+                band = true,
+            )
+        }
+    }
+
+/** Christmas look: the poster or card the remote is on gets a red glass ornament hanging from its top edge */
+fun Modifier.xmasFocusOrnament(focused: Boolean): Modifier =
+    if (focused && XmasLook.on) xmasOrnament(XmasLook.RedBall, ball = 22.dp, string = 6.dp, fromEnd = 24.dp) else this
