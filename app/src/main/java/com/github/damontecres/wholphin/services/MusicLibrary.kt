@@ -307,7 +307,12 @@ class MusicLibrary
                 val rows = j.optJSONObject("rows")
                 MusicThemes(
                     themes = (0 until (arr?.length() ?: 0)).mapNotNull { i -> arr?.optJSONObject(i)?.let(::parseMix) },
-                    rowTitles = rows?.keys()?.asSequence()?.associateWith { rows.optString(it) }.orEmpty(),
+                    rowTitles =
+                        rows
+                            ?.keys()
+                            ?.asSequence()
+                            ?.associateWith { rows.optString(it) }
+                            .orEmpty(),
                 )
             } catch (ex: Exception) {
                 Timber.w(ex, "Couldn't get the themed playlists from Tower")

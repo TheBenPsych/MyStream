@@ -216,15 +216,25 @@ fun MusicCollectionPage(
                         Text(
                             text =
                                 when (kind) {
-                                    CollectionKind.LIKED -> "Press the heart on a song and it lands here."
-                                    CollectionKind.PLAYLIST -> "No songs in this playlist yet. Use a song's More menu to add some."
-                                    CollectionKind.MIX ->
+                                    CollectionKind.LIKED -> {
+                                        "Press the heart on a song and it lands here."
+                                    }
+
+                                    CollectionKind.PLAYLIST -> {
+                                        "No songs in this playlist yet. Use a song's More menu to add some."
+                                    }
+
+                                    CollectionKind.MIX -> {
                                         if (state.addsLoading || state.adds.isNotEmpty()) {
                                             "None of your songs fit yet. Ask for some below and they land here."
                                         } else {
                                             "No songs here yet."
                                         }
-                                    else -> "No songs here yet."
+                                    }
+
+                                    else -> {
+                                        "No songs here yet."
+                                    }
                                 },
                             color = BenflixColors.Soft,
                             fontSize = BenflixType.body,
@@ -288,6 +298,7 @@ fun MusicCollectionPage(
                 // downloads it, and it joins this playlist by itself (Tower remembers which theme it was for)
                 if (state.addsLoading || state.adds.isNotEmpty()) {
                     item(key = "adds-head") {
+                        val okNote = if (state.askNeedsOk) " Ben okays asks first." else ""
                         Column(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             modifier = Modifier.padding(start = side, top = 28.dp, bottom = 8.dp),
@@ -303,8 +314,7 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else {
-                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in." +
-                                            if (state.askNeedsOk) " Ben okays asks first." else ""
+                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in.$okNote"
                                     },
                                 color = BenflixColors.Soft,
                                 fontSize = BenflixType.small,

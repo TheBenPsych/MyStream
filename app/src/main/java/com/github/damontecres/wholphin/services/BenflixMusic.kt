@@ -211,7 +211,11 @@ class BenflixMusic
 
         /** Songs to add for one themed playlist (Ben's profile): catalogue songs that fit and aren't in Music yet */
         suspend fun themeAdds(key: String): List<MusicSong> =
-            helper.getJson("/api/music/theme?key=${Uri.encode(key)}").optJSONArray("songs").objects().map(::song)
+            helper
+                .getJson("/api/music/theme?key=${Uri.encode(key)}")
+                .optJSONArray("songs")
+                .objects()
+                .map(::song)
 
         /**
          * Ben's "Delete and find again" on a song: Tower deletes the file, makes sure the same copy is never taken
