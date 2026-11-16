@@ -84,6 +84,8 @@ data class MusicSearchResults(
     val notHere: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
     /** The words these results are for */
     val term: String = "",
+    /** Music redesign 3 (lyrics search): songs on Benflix whose words have these words, with the line that matched */
+    val byWords: List<Pair<BaseItem, String>> = emptyList(),
 ) {
     val empty get() = songs.isEmpty() && artists.isEmpty() && albums.isEmpty() && playlists.isEmpty()
 
@@ -161,6 +163,30 @@ class MusicSearchViewModel
                                 .filter { !it.have }
                                 .take(NOT_HERE)
                         _results.value = _results.value.copy(notHere = outside, searching = false)
+                        // Lyrics search: a line you remember ("is this the real life") finds the song
+                        if (term.trim().split(Regex("\\s+")).size >= 2) {
+                            val have =
+                                _results.value.songs
+                                    .map { it.id }
+                                    .toSet()
+                            val found =
+                                safe { benflixMusic.lyricsSearch(term) }.orEmpty().take(LYRIC_HITS).mapNotNull { (artist, title, line) ->
+                                    safe { library.search(title, BaseItemKind.AUDIO, 5) }
+                                        ?.firstOrNull { song ->
+                                            song.title.equals(title, ignoreCase = true) &&
+                                                (
+                                                    artist.isBlank() ||
+                                                        song.data.artists.orEmpty().any {
+                                                            it.contains(artist, true) ||
+                                                                artist.contains(it, true)
+                                                        } ||
+                                                        song.data.albumArtist?.contains(artist, true) == true
+                                                )
+                                        }?.takeIf { it.id !in have }
+                                        ?.let { it to line }
+                                }
+                            if (_results.value.term == term) _results.value = _results.value.copy(byWords = found)
+                        }
                     } catch (ex: kotlinx.coroutines.CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -231,6 +257,7 @@ class MusicSearchViewModel
         companion object {
             private const val TYPING_MS = 350L
             private const val NOT_HERE = 6
+            private const val LYRIC_HITS = 6
         }
     }
 
@@ -436,7 +463,7 @@ private fun LazyListScope.searchResults(
     preview: com.github.damontecres.wholphin.services.SongPreview,
     onAsk: (com.github.damontecres.wholphin.services.MusicSong) -> Unit,
 ) {
-    if (results.empty) {
+    if (results.empty && results.byWords.isEmpty()) {
         item(key = "nothing") {
             MusicEmptyLine(
                 if (results.searching) {
@@ -485,7 +512,40 @@ private fun LazyListScope.searchResults(
             }
         }
     }
+    byWords(results, onSong)
     notHere(results, preview, onAsk)
+}
+
+/** Music redesign 3 (lyrics search): songs whose words have what you typed, with the line under the name */
+private fun LazyListScope.byWords(
+    results: MusicSearchResults,
+    onSong: (List<BaseItem>, Int) -> Unit,
+) {
+    if (results.byWords.isEmpty()) return
+    item(key = "words-title") { MusicRowName("Songs with these words", Modifier.padding(top = 14.dp, bottom = 4.dp)) }
+    val list = results.byWords.map { it.first }
+    itemsIndexed(results.byWords, key = { _, w -> "w-${w.first.id}" }) { i, (song, line) ->
+        androidx.compose.foundation.layout.Column {
+            SongRow(
+                song = song,
+                number = i + 1,
+                withCover = true,
+                isCurrent = false,
+                isPlaying = false,
+                liked = song.data.userData?.isFavorite == true,
+                onClick = { onSong(list, i) },
+                onMore = { onSong(list, i) },
+            )
+            Text(
+                "\u201C$line\u201D",
+                color = BenflixColors.Muted,
+                fontSize = BenflixType.small,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 64.dp, bottom = 4.dp),
+            )
+        }
+    }
 }
 
 /** Not on Benflix yet: songs from the catalogue for these words, greyed, with a preview and Ask */

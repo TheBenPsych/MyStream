@@ -39,8 +39,13 @@ object RemoteShortcuts {
         goHome: () -> Unit,
         openSearch: () -> Unit,
         play: (BaseItem) -> Unit,
+        musicHold: () -> Unit = {},
+        musicTap: () -> Unit = {},
     ): Boolean {
         val down = native.action == KeyEvent.ACTION_DOWN
+        if (native.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || native.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
+            return playKey(native, destination, kids, play, musicHold, musicTap)
+        }
         if (native.keyCode == KeyEvent.KEYCODE_BACK) {
             if (swallowBack) {
                 if (native.action == KeyEvent.ACTION_UP) swallowBack = false
@@ -59,13 +64,6 @@ object RemoteShortcuts {
             KeyEvent.KEYCODE_SEARCH -> {
                 if (kids) return false
                 if (native.repeatCount == 0 && destination !is Destination.Search) openSearch()
-                true
-            }
-
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                val item = focused ?: return false
-                if (native.repeatCount > 0) return true
-                play(item)
                 true
             }
 
@@ -97,6 +95,58 @@ object RemoteShortcuts {
         }
     }
 
+    /** Play/Pause was held down long enough to start music (the rest of that press is ignored) */
+    @Volatile private var playHeld = false
+
+    /** Play/Pause was pressed on a poster: it plays when let go (unless it was held for music) */
+    @Volatile private var playOn: BaseItem? = null
+
+    /**
+     * Play/Pause: a short press on a poster or episode starts it. Music redesign 3: holding it (about a second)
+     * on a door carries on the music, or starts the top quick pick.
+     */
+    private fun playKey(
+        native: KeyEvent,
+        destination: Destination,
+        kids: Boolean,
+        play: (BaseItem) -> Unit,
+        musicHold: () -> Unit,
+        musicTap: () -> Unit,
+    ): Boolean {
+        val musicOk = !kids && destination.isDoorPage()
+        if (native.action == KeyEvent.ACTION_DOWN) {
+            if (native.repeatCount == 0) {
+                playHeld = false
+                playOn = focused
+                return playOn != null || musicOk
+            }
+            if (playHeld) return true
+            if (musicOk && native.repeatCount == PLAY_HOLD_REPEATS) {
+                playHeld = true
+                playOn = null
+                musicHold()
+                return true
+            }
+            return playOn != null || musicOk
+        }
+        if (native.action == KeyEvent.ACTION_UP) {
+            val item = playOn
+            playOn = null
+            if (playHeld) {
+                playHeld = false
+                return true
+            }
+            if (item != null) {
+                play(item)
+                return true
+            }
+            // A short press with no poster: plays or pauses the music, like before
+            if (musicOk) musicTap()
+            return musicOk
+        }
+        return false
+    }
+
     /** Moves one step at a time (so long rows have time to load the next posters), stopping at the end */
     private fun jump(
         focusManager: FocusManager,
@@ -120,6 +170,7 @@ object RemoteShortcuts {
 
     /** Key repeats come about every 50 ms after the first 0.4 s, so this is a little over a second */
     private const val BACK_HOLD_REPEATS = 14
+    private const val PLAY_HOLD_REPEATS = 14
     private const val ROWS_PER_PAGE = 3
     private const val POSTERS_PER_PAGE = 7
     private const val STEP_MS = 45L

@@ -1552,3 +1552,20 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
   .srow.ghost .sl { display: none; }
   .mfind { max-width: none; }
 }
+
+/* Music redesign 3, part 3: the About cards, Play on, lyrics search and the queue */
+.mcard { background: var(--tray); border-radius: 12px; padding: 14px; margin: 0 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.mkick { color: var(--music); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.mabout-ar { display: flex; align-items: center; gap: 12px; }
+.mabout-pic { width: 64px; height: 64px; border-radius: 50%; background: #2a2142 center/cover; flex: none; }
+.mabout-bio { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.mcredit div { font-weight: 600; }
+.mnextq { display: flex; align-items: center; gap: 10px; }
+.mnextq .sc { width: 40px; height: 40px; border-radius: 6px; background: #2a2142 center/cover; flex: none; }
+.mnextq span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.mnextq b, .mnextq small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mcard .btn { align-self: flex-start; }
+#mplayon .btn { display: flex; width: 100%; margin: 0 0 8px; justify-content: flex-start; gap: 8px; }
+.mword-line { font-size: 13px; padding: 0 12px 6px 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow.dragging { opacity: .45; }
+.srow.dropto { box-shadow: inset 0 -2px 0 var(--music); }

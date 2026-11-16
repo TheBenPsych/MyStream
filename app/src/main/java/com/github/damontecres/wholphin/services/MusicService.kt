@@ -932,3 +932,15 @@ fun rememberQueue(
             override fun get(index: Int): AudioItem = player.getMediaItemAt(index).localConfiguration?.tag as AudioItem
         }
     }
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface MusicServiceEntryPoint {
+    fun musicService(): MusicService
+}
+
+/** The one MusicService, for small pieces that aren't on a page with a view model (swipe to queue) */
+fun musicService(context: Context): MusicService =
+    dagger.hilt.android.EntryPointAccessors
+        .fromApplication(context.applicationContext, MusicServiceEntryPoint::class.java)
+        .musicService()

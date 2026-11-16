@@ -193,6 +193,7 @@ class HomeDoorsViewModel
         private val cantFind: com.github.damontecres.wholphin.services.BenflixCantFind,
         private val seerrServerRepository: com.github.damontecres.wholphin.services.SeerrServerRepository,
         private val seerrService: com.github.damontecres.wholphin.services.SeerrService,
+        private val musicMe: com.github.damontecres.wholphin.services.MusicMe,
     ) : ViewModel() {
         private val _rows = MutableStateFlow(HomeParts())
         val rows: StateFlow<HomeParts> = _rows
@@ -412,7 +413,7 @@ class HomeDoorsViewModel
                     // Benflix speed: everything is asked at the same time, so a slow Tower can't hold the doors up
                     coroutineScope {
                         val episodes = async { episodeNews() }
-                        val music = async { musicNews() }
+                        val music = async { musicNews() + sentMusicNews() }
                         val bookRows = async { bookNews() }
                         val requests = async { requestNews() }
                         val notFound = async { withTimeoutOrNull(CANT_FIND_WAIT_MS) { cantFindNews() }.orEmpty() }
@@ -687,6 +688,41 @@ class HomeDoorsViewModel
                 throw ex
             } catch (ex: Exception) {
                 Timber.w(ex, "Home news: music")
+                emptyList()
+            }
+        }
+
+        /** Music redesign 3: a song, album, playlist or artist someone sent you (Send to a profile) */
+        private suspend fun sentMusicNews(): List<HomeRow> {
+            if (KidsMode.isActive || GuestMode.isActive) return emptyList()
+            return try {
+                withTimeoutOrNull(BOOK_NEWS_WAIT_MS) { musicMe.load(force = true) }
+                musicMe.state.value.sent.take(3).mapNotNull { sent ->
+                    val id = runCatching { java.util.UUID.fromString(sent.place.id) }.getOrNull() ?: return@mapNotNull null
+                    val kind =
+                        when (sent.place.kind) {
+                            "song" -> org.jellyfin.sdk.model.api.BaseItemKind.AUDIO
+                            "album" -> org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ALBUM
+                            "playlist" -> org.jellyfin.sdk.model.api.BaseItemKind.PLAYLIST
+                            "artist" -> org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST
+                            else -> return@mapNotNull null
+                        }
+                    HomeRow(
+                        id = "sent-${sent.sentId}",
+                        kind = if (sent.from.isBlank()) "Sent to you" else "From ${sent.from}",
+                        title = sent.place.name,
+                        kindColor = HomeKind.Other,
+                        image = poster(id),
+                        destination = Destination.MediaItem(id, kind),
+                        square = true,
+                        news = true,
+                        at = (sent.place.at * 1000).toLong(),
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.d(ex, "Home news: music sent to you")
                 emptyList()
             }
         }

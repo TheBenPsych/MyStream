@@ -89,7 +89,47 @@ class NavDrawerViewModel
         val backdropService: BackdropService,
         private val musicService: MusicService,
         private val imageUrlService: ImageUrlService,
+        private val musicLibrary: com.github.damontecres.wholphin.services.MusicLibrary,
     ) : ViewModel() {
+        /** A short Play/Pause on a door (no poster picked): plays or pauses the music that's waiting */
+        fun musicTap() {
+            if (musicService.state.value.queueSize == 0) return
+            val p = musicService.player
+            if (p.isPlaying) p.pause() else p.play()
+        }
+
+        /**
+         * Music redesign 3: holding Play/Pause on a TV door. Paused music carries on; with no music waiting, the
+         * top quick pick (Liked songs, shuffled) starts. Never on Kids, which has no music.
+         */
+        fun musicHold(kids: Boolean) {
+            if (kids) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                if (musicService.state.value.queueSize > 0) {
+                    com.github.damontecres.wholphin.ui
+                        .onMain { musicService.player.play() }
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Music carries on")
+                    return@launch
+                }
+                val liked =
+                    try {
+                        musicLibrary.likedSongs()
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Hold Play: Liked songs")
+                        emptyList()
+                    }
+                if (liked.isEmpty()) {
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Like a few songs in Music first, then hold Play to start them")
+                    return@launch
+                }
+                musicService.playList(liked, 0, true, null, "Liked songs")
+                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                    .pill("Playing your Liked songs")
+            }
+        }
+
         val serviceState = navDrawerService.state
 
         /** Browse menu cards: a backdrop from one of each library's titles, and how many titles it has */
@@ -739,6 +779,8 @@ fun NavDrawer(
                         goHome = { viewModel.navigationManager.goToHome() },
                         openSearch = onClickSearch,
                         play = { viewModel.quickPlay(it) },
+                        musicHold = { viewModel.musicHold(kids) },
+                        musicTap = { viewModel.musicTap() },
                     )
                 ) {
                     true

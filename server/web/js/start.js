@@ -450,6 +450,8 @@ B.loadBoard = async (nav) => {
     B.call("GET", "api/home/weather").catch(() => null),
     cantFindRows().catch(() => []),
   ]);
+  // Music redesign 3: songs, albums, playlists and artists someone sent you (Send to someone)
+  const sentMusic = DOORS.music && !B.me.kids && B.musicMe ? await B.musicMe(true).catch(() => null) : null;
   if (!B.alive(nav) || !$("#blist")) return;
   // Weather: Tower's line with today's name in front (nothing when no town is set on the Server page)
   if (weather) {
@@ -492,6 +494,12 @@ B.loadBoard = async (nav) => {
     if (who.has(name) || who.size >= 2) return;
     who.add(name);
     add({ id: `music-${a.Id}`, news: true, kind: "New music", title: `${name} · ${a.Name}`, kc: KIND_OTHER, img: B.img(a.Id, "Primary", { h: 160 }), square: true, href: `#/album/${a.Id}`, t: Date.parse(a.DateCreated) || 0 });
+  });
+  const SENT_HREF = { song: "album", album: "album", playlist: "playlist", artist: "artist" };
+  ((sentMusic && sentMusic.sent) || []).slice(0, 3).forEach((x) => {
+    if (!SENT_HREF[x.kind] || !x.id) return;
+    const href = x.kind === "song" ? `#/song/${x.id}` : `#/${SENT_HREF[x.kind]}/${x.id}`;
+    add({ id: `sent-${x.id_sent}`, news: true, kind: x.from ? `From ${x.from}` : "Sent to you", title: x.name, kc: KIND_OTHER, img: B.img(x.id, "Primary", { h: 160 }), square: true, href, t: (x.at || 0) * 1000 });
   });
   const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
   ((books && books.news) || []).slice(0, 2).forEach((b) => {

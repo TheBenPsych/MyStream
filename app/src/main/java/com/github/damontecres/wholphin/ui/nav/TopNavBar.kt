@@ -90,3 +90,11 @@ fun BenflixLogo(
         modifier = modifier,
     )
 }
+
+/** Home and the door pages (Movies, Shows, Music, Books): where holding Play/Pause starts music */
+fun Destination.isDoorPage(): Boolean =
+    this is Destination.Home ||
+        this is Destination.MoviesDoor ||
+        this is Destination.ShowsDoor ||
+        this is Destination.MusicDoor ||
+        this is Destination.BooksDoor

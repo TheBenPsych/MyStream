@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.music
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -41,6 +44,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -128,6 +132,14 @@ fun MusicMiniBar(
         }
     }
     val shape = RoundedCornerShape(12.dp)
+    // Music redesign 3: swipe the mini player left for the next song, right for the one before
+    val slide =
+        remember(audio.key) {
+            androidx.compose.animation.core
+                .Animatable(0f)
+        }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val skipAt = with(androidx.compose.ui.platform.LocalDensity.current) { 72.dp.toPx() }
     Surface(
         border =
             com.github.damontecres.wholphin.ui.theme
@@ -143,7 +155,29 @@ fun MusicMiniBar(
                 focusedContentColor = BenflixColors.Text,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .pointerInput(audio.key) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val at = slide.value
+                            when {
+                                at <= -skipAt -> viewModel.musicService.player.seekToNext()
+                                at >= skipAt -> viewModel.musicService.player.seekToPrevious()
+                            }
+                            scope.launch { slide.animateTo(0f) }
+                        },
+                        onDragCancel = { scope.launch { slide.animateTo(0f) } },
+                    ) { change, dx ->
+                        change.consume()
+                        scope.launch { slide.snapTo((slide.value + dx).coerceIn(-skipAt * 1.4f, skipAt * 1.4f)) }
+                    }
+                }.graphicsLayer {
+                    translationX = slide.value
+                    alpha = 1f - (kotlin.math.abs(slide.value) / (skipAt * 3f))
+                },
     ) {
         Column {
             Row(

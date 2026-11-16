@@ -23,6 +23,19 @@ data class MusicPlace(
     val key get() = "$kind:$id"
 }
 
+/** Music someone else sent you (Send to a profile): it shows in your Home news */
+data class MusicSent(
+    val sentId: String,
+    val from: String,
+    val place: MusicPlace,
+)
+
+/** A profile you can send music to */
+data class MusicPerson(
+    val id: String,
+    val name: String,
+)
+
 data class MusicSearchWords(
     val q: String,
     val at: Double,
@@ -36,6 +49,8 @@ data class MusicMeState(
     val noArtists: List<String> = emptyList(),
     /** Songs asked for from Songs to add on your own playlists: playlist id to (artist, title) */
     val adds: Map<String, List<Pair<String, String>>> = emptyMap(),
+    /** Music other profiles sent you (last 2 weeks) */
+    val sent: List<MusicSent> = emptyList(),
     val loaded: Boolean = false,
 )
 
@@ -161,6 +176,36 @@ class MusicMe
             )
         }
 
+        /** The profiles you can send music to (everyone else but Kids) */
+        suspend fun people(): List<MusicPerson> =
+            try {
+                helper
+                    .getJson(
+                        "/api/music/people",
+                    ).optJSONArray("people")
+                    .objects()
+                    .map { MusicPerson(it.optString("id"), it.optString("name")) }
+            } catch (ex: Exception) {
+                Timber.w(ex, "People to send music to")
+                emptyList()
+            }
+
+        /** Send to a profile: [place] shows in their Home news. Returns false when Tower couldn't take it. */
+        suspend fun send(
+            to: MusicPerson,
+            place: MusicPlace,
+        ): Boolean =
+            try {
+                helper.postJson(
+                    "/api/music/me/send",
+                    placeJson(place).put("to", to.id).put("from_name", serverRepository.currentUser?.name.orEmpty()),
+                )
+                true
+            } catch (ex: Exception) {
+                Timber.w(ex, "Send to %s", to.name)
+                false
+            }
+
         private suspend fun post(
             path: String,
             body: JSONObject,
@@ -195,6 +240,19 @@ class MusicMe
                                     o.optJSONArray(k).objects().map { it.optString("artist") to it.optString("title") }
                                 }
                             }.orEmpty(),
+                    sent =
+                        j.optJSONArray("sent").objects().mapNotNull { o ->
+                            val kind = o.optString("kind")
+                            if (kind.isBlank()) {
+                                null
+                            } else {
+                                MusicSent(
+                                    o.optString("id_sent"),
+                                    o.optString("from"),
+                                    MusicPlace(kind, o.optString("id"), o.optString("name"), o.optDouble("at", 0.0)),
+                                )
+                            }
+                        },
                     loaded = true,
                 )
         }

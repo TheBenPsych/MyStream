@@ -177,6 +177,7 @@ fun MusicCollectionPage(
     }
     var pageMenu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    var sendTo by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     val currentId = music.currentAudio?.id
     val playing = music.status == NowPlayingStatus.PLAYING
@@ -570,6 +571,15 @@ fun MusicCollectionPage(
                         }),
                     )
                 }
+                // Music redesign 3: Send to a profile (albums and playlists)
+                if (item != null && (item.type == BaseItemKind.MUSIC_ALBUM || item.type == BaseItemKind.PLAYLIST)) {
+                    add(
+                        DialogItem(headlineContent = { Text("Send to someone") }, onClick = {
+                            pageMenu = false
+                            sendTo = true
+                        }),
+                    )
+                }
             }
         if (entries.isEmpty()) {
             pageMenu = false
@@ -582,6 +592,11 @@ fun MusicCollectionPage(
                 dismissOnClick = false,
             )
         }
+    }
+    if (sendTo) {
+        state.item?.let { item ->
+            musicPlaceOf(item, state.title)?.let { place -> SendToDialog(place = place, onDismiss = { sendTo = false }) }
+        } ?: run { sendTo = false }
     }
     if (renaming) {
         StringInputDialog(

@@ -139,6 +139,30 @@ class PlayOnTvViewModel
                 false
             }
 
+        /** Music redesign 3 (Play on): the queue from the playing song, starting at [positionMs] there */
+        suspend fun playSongs(
+            screen: BenflixScreen,
+            ids: List<java.util.UUID>,
+            positionMs: Long,
+        ): Boolean =
+            try {
+                withContext(WholphinDispatchers.IO) {
+                    api.sessionApi.play(
+                        sessionId = screen.sessionId,
+                        playCommand = PlayCommand.PLAY_NOW,
+                        itemIds = ids,
+                        startIndex = 0,
+                        startPositionTicks = positionMs * TICKS_PER_MS,
+                    )
+                }
+                true
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Play on: couldn't send the songs")
+                false
+            }
+
         /** Benflix phone remote: a remote button */
         fun press(
             screen: BenflixScreen,

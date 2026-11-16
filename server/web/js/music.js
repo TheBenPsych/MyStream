@@ -253,6 +253,8 @@
       });
       document.body.appendChild(bar);
       B.wireVolume($(".volw", bar), audio, "musicVolume");
+      // Music redesign 3: on phones, swipe the mini player left for the next song, right for the one before
+      swipe(bar, () => M.next(), () => M.prev(), 60);
     }
     const on = !!s;
     bar.classList.toggle("hidden", !on);
@@ -276,7 +278,66 @@
     else if (a === "stop") M.stop();
     else if (a === "queue") { closeNow(); B.go("#/upnext"); }
     else if (a === "similar") similarSongs();
+    else if (a === "about") aboutCards();
+    else if (a === "playon") playOn();
   };
+  // Music redesign 3 (np cards): About the artist, Credits, Next in queue, Songs like this to ask for
+  async function aboutCards() {
+    const s = M.current();
+    if (!s) return;
+    closeNow();
+    const card = (title, body) => `<div class="mcard"><div class="mkick">${esc(title)}</div>${body}</div>`;
+    const panel = B.side(`<h3>About this song</h3><div id="mabout">${B.spinner()}</div>`);
+    const full = await B.get(`/Users/${B.uid()}/Items/${enc(s.Id)}`).catch(() => s);
+    const ar = (full.AlbumArtists || [])[0] || (full.ArtistItems || [])[0];
+    const artist = ar ? await B.get(`/Users/${B.uid()}/Items/${enc(ar.Id)}`).catch(() => null) : null;
+    const box = $("#mabout", panel);
+    if (!box || !document.body.contains(panel)) return;
+    const ROLES = { Composer: "Written by", Lyricist: "Words by", Producer: "Produced by", Arranger: "Arranged by", Conductor: "Conducted by" };
+    const credits = [];
+    if ((full.Artists || []).length) credits.push(["Performed by", full.Artists.join(", ")]);
+    const byRole = {};
+    (full.People || []).forEach((x) => { if (ROLES[x.Type]) (byRole[x.Type] = byRole[x.Type] || []).push(x.Name); });
+    Object.keys(byRole).forEach((k) => credits.push([ROLES[k], [...new Set(byRole[k])].join(", ")]));
+    if (full.Album) credits.push(["Album", [full.Album, full.ProductionYear].filter(Boolean).join(" · ")]);
+    if ((full.Genres || []).length) credits.push(["Style", full.Genres.slice(0, 3).join(", ")]);
+    const next = M.queue.slice(M.index + 1, M.index + 4);
+    const pic = ar ? B.img(ar.Id, "Primary", { h: 200 }) : "";
+    box.innerHTML = card("About the artist", `<div class="mabout-ar"><span class="mabout-pic" style="${pic ? `background-image:url('${pic}')` : ""}"></span><b>${esc((ar && ar.Name) || artistOf(s))}</b></div>
+        ${artist && artist.Overview ? `<p class="dim mabout-bio">${esc(artist.Overview)}</p>` : ""}${ar ? `<a class="btn small" href="#/artist/${ar.Id}">${I("user")} Go to artist</a>` : ""}`)
+      + (credits.length ? card("Credits", credits.map(([r, n]) => `<div class="mcredit"><small class="dim">${esc(r)}</small><div>${esc(n)}</div></div>`).join("")) : "")
+      + card("Next in queue", (next.length ? next.map((x) => `<div class="mnextq"><span class="sc" style="background-image:url('${cover(x, 80)}')"></span><span><b>${esc(x.Name)}</b><small class="dim">${esc(artistOf(x))}</small></span></div>`).join("") : `<p class="dim">Nothing waiting. A mix like this one starts by itself.</p>`)
+        + `<a class="btn small" href="#/upnext">${I("list")} Open the queue</a>`)
+      + (B.me.kids || B.me.guest ? "" : card("Songs like this to ask for", `<p class="dim">Songs like this one that aren't on Benflix yet. Play 30 seconds of each, then ask for the ones you like.</p><button class="btn small" data-simnow>${I("plus")} Show songs like this</button>`));
+    box.addEventListener("click", (e) => {
+      if (e.target.closest("[data-simnow]")) { B.closeAll(); openNow(); similarSongs(); }
+      else if (e.target.closest("a")) B.closeAll();
+    });
+  }
+  // Music redesign 3: Play on. Another Benflix (a TV or phone open on Benflix) plays the queue from here, straight away
+  async function playOn() {
+    const s = M.current();
+    if (!s) return;
+    const panel = B.side(`<h3>Play on</h3><div id="mplayon">${B.spinner()}</div>`);
+    const list = await B.get(`/Sessions?ControllableByUserId=${B.uid()}`).catch(() => []);
+    const box = $("#mplayon", panel);
+    if (!box) return;
+    const seen = new Set();
+    const screens = (list || []).filter((x) => String(x.DeviceId || "").startsWith("benflix-") && x.SupportsRemoteControl && !seen.has(x.DeviceId) && seen.add(x.DeviceId));
+    if (!screens.length) { box.innerHTML = `<p class="dim">No TV or phone found. Open Benflix on the TV (any page), then try again.</p>`; return; }
+    box.innerHTML = screens.map((x) => `<button class="btn wide" data-sess="${esc(x.Id)}">${I("tv")} ${esc(x.DeviceName || "Benflix")}${x.UserId !== B.uid() && x.UserName ? ` (${esc(x.UserName)})` : ""}</button>`).join("");
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-sess]"); if (!b) return;
+      const ids = M.queue.slice(M.index, M.index + 100).map((x) => x.Id);
+      const ticks = Math.round(pos() * B.TICKS);
+      try {
+        await B.jf("POST", `/Sessions/${enc(b.dataset.sess)}/Playing?playCommand=PlayNow&itemIds=${ids.join(",")}&startIndex=0&startPositionTicks=${ticks}`);
+        audio.pause();
+        B.closeAll();
+        B.toast(`Playing on ${b.textContent.trim()}`);
+      } catch (err) { B.toast(`Couldn't reach ${b.textContent.trim()}`); }
+    });
+  }
   // Ben 2026-11-15: a few songs like the playing one that you can ask for (songs already in your music left out)
   async function similarSongs() {
     const s = M.current();
@@ -354,7 +415,7 @@
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
             <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="similar" title="Songs like this one to ask for">${I("plus")} Similar songs</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
+            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="about" title="About the artist, credits, what's next, songs like this">${I("info")} About</button><button class="btn" data-a="playon" title="Play on a TV or phone that's open on Benflix">${I("tv")} Play on</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
           <div class="np-words"></div>
@@ -557,6 +618,7 @@
   const songMenu = (anchor, s, extra) => {
     const opts = [{ label: "Play next", value: "next" }, { label: "Add to Up next", value: "add" }, { label: "Add to a playlist", value: "pl" }, { label: M.liked.has(s.Id) || (s.UserData || {}).IsFavorite ? "Unlike" : "Like", value: "like" }];
     opts.push({ label: "Start a radio", value: "radio" });
+    opts.push({ label: "Send to someone", value: "send" });
     if (s.AlbumArtists && s.AlbumArtists[0]) opts.push({ label: "Go to artist", value: "artist" });
     if (s.AlbumId) opts.push({ label: "Go to album", value: "album" });
     (extra || []).forEach((o) => opts.push(o));
@@ -571,9 +633,32 @@
       else if (v === "pl") addToPlaylist(anchor, [s]);
       else if (v === "redo") redoSong(s);
       else if (v === "radio") startRadio(s);
+      else if (v === "send") sendTo(anchor, { kind: "song", id: s.Id, name: s.Name || "" });
       else (extra || []).forEach((o) => { if (o.value === v && o.run) o.run(); });
     });
   };
+  // Music redesign 3: Send to a profile. It shows in their Home news (everyone but Kids).
+  const sendTo = async (anchor, place) => {
+    const j = await B.call("GET", "api/music/people").catch(() => null);
+    const people = (j && j.people) || [];
+    if (!people.length) return B.toast("There's no one else to send music to yet.");
+    B.dropdown(anchor, people.map((x) => ({ label: x.name, value: x.id })), null, async (to) => {
+      const who = people.find((x) => x.id === to);
+      try {
+        await B.call("POST", "api/music/me/send", Object.assign({}, place, { to, from_name: (B.me && B.me.name) || "" }));
+        B.toast(`Sent to ${who ? who.name : "them"}. It shows on their Home.`);
+      } catch (e) { B.toast(e.message || "Couldn't send that right now. Try again in a minute."); }
+    });
+  };
+  B.musicSendTo = sendTo;
+  // A song someone sent you (Home news): it plays, and its album opens
+  B.route(/^\/song\/([\w-]+)/, async (m) => {
+    const s = await B.get(`/Users/${B.uid()}/Items/${enc(m[1])}`).catch(() => null);
+    if (!s || s.Type !== "Audio") return B.go("#/music");
+    M.playList([s], 0, false, "Sent to you"); M.sourceId = null;
+    B.go(s.AlbumId ? `#/album/${s.AlbumId}` : "#/music");
+    setTimeout(openNow, 200);
+  });
   // Ben 2026-11-16: this song, then songs like it from your music
   const startRadio = async (s) => {
     try {
@@ -667,7 +752,25 @@
       const r = e.target.closest(".srow:not(.ghost)");
       if (r && r.dataset.i != null) { M.playList(songs, +r.dataset.i, false, title, place); M.sourceId = sourceId; refreshRows(root, songs); }
     });
+    // Music redesign 3: on phones, swipe a song to the right to add it to the queue
+    swipe(root, null, (e) => {
+      const r = e.target.closest(".srow:not(.ghost)");
+      if (r && r.dataset.i != null && songs[+r.dataset.i]) M.addToUpNext(songs[+r.dataset.i]);
+    }, 80);
   };
+  /** A sideways swipe on a touch screen (mostly sideways, at least [minX] pixels) */
+  function swipe(el, onLeft, onRight, minX) {
+    let x0 = null, y0 = 0;
+    el.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    el.addEventListener("touchend", (e) => {
+      if (x0 == null) return;
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < minX || Math.abs(dx) < 2 * Math.abs(dy)) return;
+      const f = dx < 0 ? onLeft : onRight;
+      if (f) f(e);
+    }, { passive: true });
+  }
   const refreshRows = (root, songs) => setTimeout(() => $$(".srow", root).forEach((r) => r.classList.toggle("now", M.current() && songs[+r.dataset.i] && M.current().Id === songs[+r.dataset.i].Id)), 50);
 
   // ---------- Music redesign 3: your places (Recently played, pins, Recent searches) ----------
@@ -1009,9 +1112,27 @@
           <span class="mtop-art ${top.Type === "MusicArtist" ? "round" : ""}" style="${cover(top, 200) ? `background-image:url('${cover(top, 200)}')` : ""}"></span>
           <span><b>${esc(top.Name)}</b><small>${esc(top.Type === "MusicArtist" ? "Artist" : top.Type === "MusicAlbum" ? `Album · ${top.AlbumArtist || ""}` : top.Type === "Playlist" ? "Playlist" : `Song · ${artistOf(top)}`)}</small></span></${topTag}>` : "";
       res.innerHTML = (none ? `<p class="dim">Nothing on Benflix by that name yet.</p>` : topHtml + (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
-        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard))) + `<div id="mnothere"></div>`;
+        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard))) + `<div id="mwords"></div><div id="mnothere"></div>`;
       if (songs.length) wireSongs($("#ms"), songs, "Search", null);
       const tp = $("[data-topsong]"); if (tp) tp.addEventListener("click", () => { keep(); M.playList([top], 0, false, "Search"); M.sourceId = null; });
+      // Music redesign 3 (lyrics search): a line you remember finds the song
+      if (q.split(/\s+/).length >= 2) {
+        B.call("GET", `api/music/lyricsearch?q=${enc(q)}`).then(async (j) => {
+          const hits = ((j && j.songs) || []).slice(0, 6);
+          const have = new Set(songs.map((x) => x.Id));
+          const found = [];
+          for (const h of hits) {
+            const got = (await items(`searchTerm=${enc(h.title)}&IncludeItemTypes=Audio&Limit=5&${SONG_FIELDS}`).catch(() => [])).find((x) => songKey(x.Name) === songKey(h.title)
+              && (!h.artist || (x.Artists || []).some((a) => a.toLowerCase().includes(h.artist.toLowerCase()) || h.artist.toLowerCase().includes(a.toLowerCase()))));
+            if (got && !have.has(got.Id) && !found.some((f) => f.s.Id === got.Id)) found.push({ s: got, line: h.line });
+          }
+          if (mine !== ticket || !B.alive(nav) || !$("#mwords") || !found.length) return;
+          const list = found.map((f) => f.s);
+          $("#mwords").innerHTML = `<h3 class="msub">Songs with these words</h3><div class="msongs" id="mwl">${found.map((f, i) => songRow(f.s, i, { cover: true, artist: true }) + `<div class="mword-line dim">\u201C${esc(f.line)}\u201D</div>`).join("")}</div>`;
+          wireSongs($("#mwl"), list, "Search", null);
+          if (none) { const d = res.querySelector("p.dim"); if (d && /Nothing on Benflix/.test(d.textContent)) d.remove(); }
+        }).catch(() => {});
+      }
       // Not on Benflix yet: songs from the music catalogue for these words, with a preview and Ask
       const cat = await B.call("GET", `api/music/search?q=${enc(q)}`).catch(() => null);
       if (mine !== ticket || !B.alive(nav) || !$("#mnothere")) return;
@@ -1033,6 +1154,29 @@
     run();
     box.focus();
   });
+
+  // ---------- Music redesign 3: a song you asked for came in: a corner card offers to play it next (once) ----------
+  let arrivedAt = 0;
+  const arrivals = async () => {
+    if (!B.me || B.me.kids || Date.now() - arrivedAt < 300000) return;
+    arrivedAt = Date.now();
+    const key = `benflix.musicArrived.${B.uid()}`;
+    let seen = null;
+    try { seen = JSON.parse(localStorage.getItem(key) || "null"); } catch (e) {}
+    const st = await B.call("GET", "api/music/status").catch(() => null);
+    if (!st || !st.requests) return;
+    const name = ((B.me && B.me.name) || "").toLowerCase();
+    const mine = st.requests.filter((r) => r.state === "ready" && (r.kind || "song") === "song" && (!r.who || r.who.toLowerCase() === name));
+    const fresh = mine.filter((r) => !(seen || []).includes(r.id));
+    try { localStorage.setItem(key, JSON.stringify((seen || []).concat(fresh.map((r) => r.id)).slice(-300))); } catch (e) {}
+    if (!seen || !fresh.length) return; // the first time, songs already in are never offered
+    const r = fresh[0];
+    const got = (await items(`searchTerm=${enc(r.title)}&IncludeItemTypes=Audio&Limit=8&${SONG_FIELDS}`).catch(() => [])).find((x) => songKey(x.Name) === songKey(r.title));
+    if (!got) return;
+    B.corner({ id: `music-arrived-${r.id}`, title: `"${r.title}" is here`, line: "Click to play it next", img: r.cover || "", run: () => M.playNext(got) });
+  };
+  window.addEventListener("hashchange", () => { if (/^#\/(music|msearch|mlibrary)/.test(location.hash)) arrivals(); });
+  setTimeout(() => { if (/^#\/(music|msearch|mlibrary)/.test(location.hash)) arrivals(); }, 1500);
 
   // ---------- the Now playing panel on the right of Music pages (approved r3-web3, wide windows) ----------
   let panel;
@@ -1181,8 +1325,10 @@
       if (b.dataset.h === "heart") { const on = !b.classList.contains("on"); M.like(o.sourceId, on).then(() => b.classList.toggle("on", on)); }
       if (b.dataset.h === "more") {
         const menu = [{ label: "Add all to Up next", value: "all" }, { label: "Add all to a playlist", value: "pl" }].concat(o.menu || []);
+        if (o.place && (o.place.kind === "album" || o.place.kind === "playlist")) menu.push({ label: "Send to someone", value: "send" });
         B.dropdown(b, menu, null, (v) => {
-          if (v === "all") shown.forEach((s) => M.addToUpNext(s));
+          if (v === "send") setTimeout(() => sendTo(b, o.place), 0);
+          else if (v === "all") shown.forEach((s) => M.addToUpNext(s));
           else if (v === "pl") addToPlaylist(b, shown);
           else (o.menu || []).forEach((x) => { if (x.value === v && x.run) x.run(); });
         });
@@ -1464,7 +1610,7 @@
         B.toast(follow ? `Following ${ar.Name}: new music shows up on Home` : `Stopped following ${ar.Name}`);
       }
       if (b.dataset.h === "more") {
-        const menu = [{ label: noMix ? `Play ${ar.Name} in my mixes again` : "Don't play this artist in my mixes", value: "nomix" }, { label: "Add all to Up next", value: "all" }];
+        const menu = [{ label: noMix ? `Play ${ar.Name} in my mixes again` : "Don't play this artist in my mixes", value: "nomix" }, { label: "Add all to Up next", value: "all" }, { label: "Send to someone", value: "send" }];
         if (cat && cat.artist) menu.push({ label: `Ask for more by ${ar.Name}`, value: "ask" });
         B.dropdown(b, menu, null, async (v) => {
           if (v === "nomix") {
@@ -1473,6 +1619,7 @@
             B.toast(noMix ? `${ar.Name} won't play in your mixes any more` : `${ar.Name} can play in your mixes again`);
           }
           if (v === "all") (await allSongs().catch(() => [])).forEach((x) => M.addToUpNext(x));
+          if (v === "send") setTimeout(() => sendTo(b, arPlace), 0);
           if (v === "ask") B.go(`#/requests?tab=music&mopen=artist:${cat.artist.id}`);
         });
       }
@@ -1533,15 +1680,30 @@
       const now = M.current();
       const rest = M.queue.slice(M.index + 1).map((s, k) => ({ s, i: M.index + 1 + k }));
       const added = rest.filter((x) => M.added.has(x.s._key)), then = rest.filter((x) => !M.added.has(x.s._key)).slice(0, 100);
-      const row = (x, mine) => `<div class="srow" data-q="${x.i}"><span class="sn"><span class="sc" style="background-image:url('${cover(x.s, 80)}')"></span></span><span class="st"><b>${esc(x.s.Name)}</b><small>${esc(artistOf(x.s))}</small></span><span class="sl">${len(x.s.RunTimeTicks)}</span>
-        ${mine ? `<button class="sm" data-up="${x.i}" title="Move up">${I("up")}</button><button class="sm" data-down="${x.i}" title="Move down">${I("down")}</button>` : ""}<button class="sm" data-rm="${x.i}" title="Take out">${I("x")}</button></div>`;
-      B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">Up next</h1>
-        ${now ? `<h3 class="msub">Playing now</h3><div class="msongs"><div class="srow now" data-open><span class="sn"><span class="bars"><i></i><i></i><i></i></span></span><span class="st"><b>${esc(now.Name)}</b><small>${esc(artistOf(now))}</small></span><span class="sl">${len(now.RunTimeTicks)}</span></div></div>` : `<p class="dim">Nothing is playing.</p>`}
-        ${added.length ? `<h3 class="msub">Up next · songs you added</h3><div class="msongs">${added.map((x) => row(x, true)).join("")}</div>` : ""}
-        ${then.length ? `<h3 class="msub">Then plays${M.thenTitle ? ": " + esc(M.thenTitle) : ""}</h3><div class="msongs">${then.map((x) => row(x, false)).join("")}</div>` : now ? `<p class="dim">Nothing waiting. When this song ends, a mix like it starts by itself.</p>` : ""}
+      const row = (x, mine) => `<div class="srow" data-q="${x.i}" draggable="true"><span class="sn"><span class="sc" style="background-image:url('${cover(x.s, 80)}')"></span></span><span class="st"><b>${esc(x.s.Name)}</b><small>${esc(artistOf(x.s))}</small></span><span class="sl">${len(x.s.RunTimeTicks)}</span>
+        <button class="sm" data-up="${x.i}" title="Move up">${I("up")}</button><button class="sm" data-down="${x.i}" title="Move down">${I("down")}</button><button class="sm" data-rm="${x.i}" title="Take out">${I("x")}</button></div>`;
+      B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">Queue</h1><p class="dim">Drag a song to move it, or use the arrows.</p>
+        ${now ? `<h3 class="msub">Now playing</h3><div class="msongs"><div class="srow now" data-open><span class="sn"><span class="bars"><i></i><i></i><i></i></span></span><span class="st"><b>${esc(now.Name)}</b><small>${esc(artistOf(now))}</small></span><span class="sl">${len(now.RunTimeTicks)}</span></div></div>` : `<p class="dim">Nothing is playing.</p>`}
+        ${added.length ? `<h3 class="msub">Next in queue</h3><div class="msongs">${added.map((x) => row(x, true)).join("")}</div>` : ""}
+        ${then.length ? `<h3 class="msub">${M.thenTitle ? "Next from: " + esc(M.thenTitle) : "Next from your music"}</h3><div class="msongs">${then.map((x) => row(x, false)).join("")}</div>` : now ? `<p class="dim">Nothing waiting. When this song ends, a mix like it starts by itself.</p>` : ""}
       </div>`;
       B.wireTop();
       $(".mpage").onclick = onClick;
+      // Drag and drop: a song dropped on another takes its place
+      let from = null;
+      $$(".srow[draggable]").forEach((r) => {
+        r.addEventListener("dragstart", (e) => { from = +r.dataset.q; r.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+        r.addEventListener("dragend", () => r.classList.remove("dragging"));
+        r.addEventListener("dragover", (e) => { e.preventDefault(); r.classList.add("dropto"); });
+        r.addEventListener("dragleave", () => r.classList.remove("dropto"));
+        r.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const to = +r.dataset.q;
+          if (from == null || from === to || to <= M.index) return;
+          const [song] = M.queue.splice(from, 1); M.queue.splice(to, 0, song);
+          from = null; draw();
+        });
+      });
     };
     const onClick = (e) => {
       const t = e.target.closest("[data-up],[data-down],[data-rm],[data-q],[data-open]");
