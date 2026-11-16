@@ -418,6 +418,8 @@ class MainActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.github.damontecres.wholphin.ui.util.FastScroll
             .onKey(event)
+        com.github.damontecres.wholphin.ui.util.LastRemoteKey
+            .onKey(event)
         if (screensaverService.state.value.run { show || showDim }) {
             // Benflix screensaver: OK opens what's on screen, any other button just wakes the app
             val jump =

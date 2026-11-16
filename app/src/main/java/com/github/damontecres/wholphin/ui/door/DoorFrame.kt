@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 
@@ -247,6 +248,18 @@ private fun DoorRail(
     val overlap = LocalTopBarOverlap.current
     // Right or Back tucks the rail away again and goes back to the card you were on
     BackHandler(enabled = focused && !alwaysOpen) { state.content.tryRequestFocus() }
+    // Ben: a few seconds after a door opened, the focus often jumped onto this menu by itself (rows swapping
+    // in took away the card you were on, and the focus fell here). The menu only keeps the focus when you
+    // moved onto it with the remote; otherwise it hands it straight back to the page.
+    var strays by remember { mutableIntStateOf(0) }
+    LaunchedEffect(strays) {
+        if (strays == 0) return@LaunchedEffect
+        repeat(STRAY_TRIES) {
+            if (!focused || LastRemoteKey.movedRecently()) return@LaunchedEffect
+            state.content.tryRequestFocus()
+            delay(STRAY_RETRY_MS)
+        }
+    }
     Box(
         Modifier
             .fillMaxHeight()
@@ -270,8 +283,11 @@ private fun DoorRail(
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
                     .padding(start = 14.dp, end = 14.dp, top = overlap + 10.dp, bottom = 24.dp)
-                    .onFocusChanged { focused = it.hasFocus }
-                    .focusRestorer(active)
+                    .onFocusChanged {
+                        val came = it.hasFocus && !focused
+                        focused = it.hasFocus
+                        if (came && !alwaysOpen && !LastRemoteKey.movedRecently()) strays++
+                    }.focusRestorer(active)
                     .onPreviewKeyEvent { event ->
                         if (!alwaysOpen && event.key == Key.DirectionRight) {
                             if (event.type == KeyEventType.KeyDown) state.content.tryRequestFocus()
@@ -434,3 +450,7 @@ private val CONTENT_TUCK = 28.dp
 private val ITEM_HEIGHT = 46.dp
 private const val RAIL_MS = 160
 private const val SECTION_FOCUS_MS = 220L
+
+/** The menu keeps handing a focus that fell on it back to the page while the page is still filling in */
+private const val STRAY_RETRY_MS = 150L
+private const val STRAY_TRIES = 20
