@@ -45,6 +45,8 @@ import javax.inject.Inject
 
 data class MusicListState(
     val items: List<BaseItem> = emptyList(),
+    /** Browse > Decades, Genres, Moods or Throwbacks: Tower's themed playlists in that group */
+    val mixes: List<com.github.damontecres.wholphin.services.MusicMix> = emptyList(),
     val loaded: Boolean = false,
 )
 
@@ -67,15 +69,54 @@ class MusicListViewModel
             if (loadedFor == key) return
             loadedFor = key
             viewModelScope.launchIO {
+                if (kind == "themes") {
+                    val mixes =
+                        try {
+                            library.themes().themes.filter { it.group == id }
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Music themes %s", id)
+                            emptyList()
+                        }
+                    _state.value = MusicListState(mixes = mixes, loaded = true)
+                    return@launchIO
+                }
                 val items =
                     try {
                         when (kind) {
-                            "recent" -> library.albums(ItemSortBy.DATE_CREATED, descending = true, limit = MAX)
-                            "artists" -> library.artists(limit = MAX)
-                            "genres" -> library.genres()
-                            "genre" -> library.albums(genreId = id?.toUUIDOrNull(), limit = MAX)
-                            "playlists" -> library.playlists()
-                            else -> library.albums(limit = MAX)
+                            "recent" -> {
+                                library.albums(ItemSortBy.DATE_CREATED, descending = true, limit = MAX)
+                            }
+
+                            "artists" -> {
+                                library.artists(limit = MAX)
+                            }
+
+                            "genres" -> {
+                                library.genres()
+                            }
+
+                            "genre" -> {
+                                library.albums(genreId = id?.toUUIDOrNull(), limit = MAX)
+                            }
+
+                            "playlists" -> {
+                                library.playlists()
+                            }
+
+                            // New to you (approved x-filter): albums that came in during the last two weeks
+                            "new" -> {
+                                val since =
+                                    java.time.LocalDateTime
+                                        .now()
+                                        .minusDays(NEW_DAYS)
+                                library
+                                    .albums(ItemSortBy.DATE_CREATED, descending = true, limit = 300)
+                                    .filter { it.data.dateCreated?.isAfter(since) == true }
+                            }
+
+                            else -> {
+                                library.albums(limit = MAX)
+                            }
                         }
                     } catch (ex: Exception) {
                         Timber.w(ex, "Music list %s", kind)
@@ -87,6 +128,7 @@ class MusicListViewModel
 
         companion object {
             private const val MAX = 3000
+            private const val NEW_DAYS = 14L
         }
     }
 
@@ -95,6 +137,7 @@ class MusicListViewModel
 fun MusicListPage(
     destination: Destination.MusicList,
     modifier: Modifier = Modifier,
+    showTitle: Boolean = true,
     viewModel: MusicListViewModel = hiltViewModel(key = "music-list-${destination.kind}-${destination.id}"),
 ) {
     LaunchedEffect(destination) { viewModel.load(destination.kind, destination.id) }
@@ -111,15 +154,21 @@ fun MusicListPage(
     }
     val genres = destination.kind == "genres"
     Column(modifier = modifier.fillMaxSize().padding(top = 8.dp)) {
-        Text(
-            text = destination.title.ifBlank { "Music" },
-            color = BenflixColors.Text,
-            fontSize = BenflixType.pageTitle,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-        if (state.loaded && state.items.isEmpty()) {
-            Text("Nothing here yet.", color = BenflixColors.Soft, fontSize = BenflixType.body)
+        if (showTitle) {
+            Text(
+                text = destination.title.ifBlank { "Music" },
+                color = BenflixColors.Text,
+                fontSize = BenflixType.pageTitle,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
+        if (state.loaded && state.items.isEmpty() && state.mixes.isEmpty()) {
+            Text(
+                if (destination.kind == "new") "Nothing new in the last two weeks." else "Nothing here yet.",
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.body,
+            )
             return@Column
         }
         val size = if (wide) 132.dp else 104.dp
@@ -130,6 +179,14 @@ fun MusicListPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
+            itemsIndexed(state.mixes, key = { _, it -> "mix-${it.key}" }) { i, mix ->
+                MusicTileCard(
+                    tile = MusicTile.Mix(mix),
+                    size = size,
+                    onClick = { viewModel.navigationManager.navigateTo(Destination.MusicList("mix", mix.key, mix.name)) },
+                    modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
+                )
+            }
             itemsIndexed(state.items, key = { _, it -> it.id.toString() }) { i, item ->
                 val mod = if (i == 0) Modifier.focusRequester(first) else Modifier
                 if (genres) {

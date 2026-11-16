@@ -63,7 +63,7 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 10;
+const SETUP_NEEDED = 11;
 const SETUP_WAITING = {
   1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
@@ -74,6 +74,7 @@ const SETUP_WAITING = {
   7: ["TVs find Tower on the Wi-Fi by themselves, even after Tower's address changes"],
   8: ["Phones and TVs learn every way to reach Tower (home, internet name, Tailscale) so they never get stuck on one"],
   9: ["Tower installs helper updates by itself, only when nobody is watching (this is the last time you'll need this command)"],
+  11: ["Music remembers what you played, your pins and your recent searches on every screen"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
 const setupNeed = async () => {

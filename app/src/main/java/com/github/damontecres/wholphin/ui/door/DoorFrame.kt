@@ -178,6 +178,8 @@ fun DoorFrame(
     ready: Boolean = true,
     /** Phones: give the page the usual side margins (doors that don't draw edge to edge themselves) */
     phoneInset: Boolean = false,
+    /** Phones: the sections as chips along the top (Music has its own tabs along the bottom instead) */
+    phoneChips: Boolean = true,
     content: @Composable (Modifier) -> Unit,
 ) {
     val isTv = rememberIsTv()
@@ -205,7 +207,7 @@ fun DoorFrame(
     }
     if (!wide) {
         Column(modifier.fillMaxSize()) {
-            if (sections.size > 1) {
+            if (sections.size > 1 && phoneChips) {
                 DoorChips(state, sections, Modifier.padding(top = LocalTopBarOverlap.current))
             }
             content(

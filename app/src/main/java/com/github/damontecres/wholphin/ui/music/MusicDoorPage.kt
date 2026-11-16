@@ -123,6 +123,14 @@ fun MusicDoorPage(
             is MusicTile.SeeAll -> {
                 nav.navigateTo(Destination.MusicList(tile.kind, title = tile.title))
             }
+
+            is MusicTile.Browse -> {
+                nav.navigateTo(Destination.MusicList("themes", tile.group, tile.title))
+            }
+
+            MusicTile.AllSongs -> {
+                nav.navigateTo(Destination.MusicList("songs", title = "All songs"))
+            }
         }
     }
     val overlap = LocalTopBarOverlap.current
@@ -130,7 +138,7 @@ fun MusicDoorPage(
     // Ben: opened again within 10 minutes, the door comes back on the card you were on
     remember(viewModel) {
         DoorMemory.recall(BenflixDoor.MUSIC)?.let { spot ->
-            spot.row?.toIntOrNull()?.let { viewModel.lastRow = it.coerceAtLeast(0) }
+            spot.row?.toIntOrNull()?.let { viewModel.lastRow = it.coerceAtLeast(-1) }
             viewModel.lastIndex = spot.index
         }
         true
@@ -188,7 +196,7 @@ fun MusicDoorPage(
         return
     }
 
-    val rows = if (easy) state.rows.filter { it.key == "mixes" || it.key == "playlists" } else state.rows
+    val rows = if (easy) state.rows.filter { it.key == "mixes" || it.key == "playlists" || it.key == "jump" } else state.rows
     val cardSize =
         if (easy) {
             168.dp
@@ -197,22 +205,19 @@ fun MusicDoorPage(
         } else {
             118.dp
         }
-    var focused by remember { mutableStateOf<MusicTile?>(null) }
-    var shown by remember { mutableStateOf<MusicTile?>(null) }
-    LaunchedEffect(focused) {
-        val t = focused ?: return@LaunchedEffect
-        if (shown != null) delay(PREVIEW_DELAY_MS)
-        shown = t
-    }
+    val quick = state.quick
     val firstFocus = remember { FocusRequester() }
-    val firstKey = rows.firstOrNull()?.key
-    // True while focus is somewhere in the rows (not the top bar)
+    // True while focus is somewhere in the page (not the top bar or the side menu)
     var rowsFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(firstKey) {
-        // Ben: start on the first made-for-you playlist (people start a song or playlist over); coming Back
-        // lands on the card you were on. The cards can take a moment to appear (and the top bar may grab focus
-        // first), so keep asking for a little while until the card really has it.
-        if (isTv && firstKey != null && !rowsFocused) {
+    // Music redesign 3 (approved x-filter chips on Home): All, Mixes, Playlists, Albums, Artists, New to you
+    var chip by remember { mutableStateOf(viewModel.lastChip) }
+    LaunchedEffect(chip) { viewModel.lastChip = chip }
+    val ready = quick.isNotEmpty() || rows.isNotEmpty()
+    LaunchedEffect(ready, frame.section) {
+        // Ben (approved g2-home): focus starts on Liked songs, the first quick pick; coming Back lands on the
+        // card you were on. The cards can take a moment to appear (and the top bar may grab focus first), so
+        // keep asking for a little while until the card really has it.
+        if (isTv && ready && !rowsFocused && frame.section == DOOR_HOME) {
             var steady = 0
             repeat(40) {
                 delay(60)
@@ -226,18 +231,19 @@ fun MusicDoorPage(
         }
     }
 
-    // Back (approved dr-p-back): first up to the first card of the top row, then out of the door
+    // Back (approved dr-p-back): first up to Liked songs, then out of the door
     val listState = rememberLazyListState()
     var topRequest by remember { mutableIntStateOf(0) }
-    // Where focus goes when the rows appear: the card you were on (the top row's first after Back)
+    // Where focus goes when the page appears: the card you were on (Liked songs after Back)
     var target by remember { mutableStateOf(viewModel.lastRow to viewModel.lastIndex) }
     LaunchedEffect(Unit) {
-        snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it && viewModel.lastRow <= 0 }
+        snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it && viewModel.lastRow < 0 && chip == "all" }
     }
     frame.toTop = {
-        viewModel.lastRow = 0
+        viewModel.lastRow = -1
         viewModel.lastIndex = 0
-        target = 0 to 0
+        target = -1 to 0
+        chip = "all"
         frame.atTop = true
         topRequest++
     }
@@ -247,66 +253,121 @@ fun MusicDoorPage(
         delay(160)
         if (isTv) firstFocus.tryRequestFocus()
     }
-    DoorFrame(frame, sections, modifier) { inner ->
+    // The phone tabs and the browser's left side pick a place from outside this page
+    DisposableEffect(frame) {
+        MusicPlaceNav.frame = frame
+        onDispose { if (MusicPlaceNav.frame === frame) MusicPlaceNav.frame = null }
+    }
+    val pending = MusicPlaceNav.pending
+    LaunchedEffect(pending) {
+        if (pending != null) {
+            MusicPlaceNav.pending = null
+            frame.pick(pending)
+        }
+    }
+    LaunchedEffect(frame.section) { MusicPlaceNav.place = frame.section }
+
+    fun isTarget(
+        row: Int,
+        index: Int,
+        size: Int,
+    ): Boolean {
+        val wantRow =
+            if (target.first < 0 ||
+                quick.isEmpty()
+            ) {
+                (if (quick.isEmpty()) 0 else -1)
+            } else {
+                target.first.coerceIn(0, (rows.size - 1).coerceAtLeast(0))
+            }
+        return row == wantRow && index == target.second.coerceIn(0, (size - 1).coerceAtLeast(0))
+    }
+    DoorFrame(frame, sections, modifier, phoneChips = false) { inner ->
         if (frame.section != DOOR_HOME) {
-            MusicSectionPage(frame.section, preferences, wide, inner)
+            MusicSectionPage(frame.section, wide, inner)
         } else {
-            BoxWithConstraints(modifier = inner.fillMaxSize()) {
-                val topHeight = if (wide) ((maxHeight - overlap) * 0.34f).coerceIn(150.dp, 280.dp) + overlap else 0.dp
-                Column(Modifier.fillMaxSize()) {
-                    if (wide && !easy) {
-                        MusicTopArea(
-                            tile = shown ?: rows.firstOrNull()?.tiles?.firstOrNull(),
-                            height = topHeight,
-                            overlap = overlap,
-                        )
-                    } else {
-                        Spacer(Modifier.height(if (wide) overlap + 16.dp else 8.dp))
+            Column(inner.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
+                Spacer(Modifier.height(if (wide) overlap + 8.dp else 4.dp))
+                Text(
+                    text = state.greeting.ifBlank { "Music" },
+                    color = BenflixColors.Text,
+                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = side(wide), end = side(wide)),
+                )
+                if (!easy) {
+                    MusicHomeChips(
+                        chip = chip,
+                        onChip = { chip = it },
+                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                        start = side(wide),
+                    )
+                }
+                if (chip != "all") {
+                    MusicChipGrid(
+                        chip = chip,
+                        state = state,
+                        wide = wide,
+                        onTile = onTile,
+                        modifier = Modifier.fillMaxWidth().weight(1f).padding(start = side(wide), end = 8.dp, top = 8.dp),
+                    )
+                    return@Column
+                }
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 48.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                ) {
+                    if (quick.isNotEmpty()) {
+                        item(key = "quick") {
+                            QuickPicks(
+                                tiles = quick,
+                                across = if (wide) 4 else 2,
+                                big = easy,
+                                onTile = onTile,
+                                onFocus = { i ->
+                                    viewModel.lastRow = -1
+                                    viewModel.lastIndex = i
+                                    frame.atTop = listState.firstVisibleItemIndex == 0
+                                },
+                                focusFor = { i -> if (isTarget(-1, i, quick.size)) Modifier.focusRequester(firstFocus) else Modifier },
+                                modifier = Modifier.padding(horizontal = side(wide)),
+                            )
+                        }
                     }
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(bottom = 48.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .onFocusChanged { rowsFocused = it.hasFocus },
-                    ) {
-                        rows.forEachIndexed { rowIndex, row ->
-                            item(key = row.key) {
-                                Column {
-                                    MusicRowName(row.title, Modifier.padding(start = side(wide), bottom = 8.dp))
-                                    val rowState = rememberLazyListState()
-                                    if (rowIndex == 0) {
-                                        LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
-                                    }
-                                    LazyRow(
-                                        state = rowState,
-                                        contentPadding = PaddingValues(horizontal = side(wide)),
-                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                    ) {
-                                        itemsIndexed(row.tiles, key = { _, t -> t.key }) { i, tile ->
-                                            MusicTileCard(
-                                                tile = tile,
-                                                size = cardSize,
-                                                onClick = { onTile(tile) },
-                                                onFocus = {
-                                                    focused = tile
-                                                    viewModel.lastRow = rowIndex
-                                                    viewModel.lastIndex = i
-                                                    frame.atTop = rowIndex == 0 && listState.firstVisibleItemIndex == 0
+                    rows.forEachIndexed { rowIndex, row ->
+                        item(key = row.key) {
+                            Column {
+                                MusicRowName(row.title, Modifier.padding(start = side(wide), bottom = 8.dp))
+                                val rowState = rememberLazyListState()
+                                if (rowIndex == 0) {
+                                    LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
+                                }
+                                LazyRow(
+                                    state = rowState,
+                                    contentPadding = PaddingValues(horizontal = side(wide)),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                ) {
+                                    itemsIndexed(row.tiles, key = { _, t -> t.key }) { i, tile ->
+                                        MusicTileCard(
+                                            tile = tile,
+                                            size = cardSize,
+                                            onClick = { onTile(tile) },
+                                            onFocus = {
+                                                viewModel.lastRow = rowIndex
+                                                viewModel.lastIndex = i
+                                                frame.atTop = false
+                                            },
+                                            modifier =
+                                                if (isTarget(rowIndex, i, row.tiles.size)) {
+                                                    Modifier.focusRequester(firstFocus)
+                                                } else {
+                                                    Modifier
                                                 },
-                                                modifier =
-                                                    if (rowIndex == target.first.coerceIn(0, rows.size - 1) &&
-                                                        i == target.second.coerceIn(0, row.tiles.size - 1)
-                                                    ) {
-                                                        Modifier.focusRequester(firstFocus)
-                                                    } else {
-                                                        Modifier
-                                                    },
-                                            )
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -318,67 +379,48 @@ fun MusicDoorPage(
     }
 }
 
-/** Phones and TV: the Music menu (Ben: everything "Browse by" opened, plus Liked songs). Easy read: fewer. */
-private fun musicSections(easy: Boolean): List<DoorSection> =
-    buildList {
-        add(doorHome())
-        if (!easy) {
-            add(DoorSection("songs", "Songs", BenflixIcon.HEADPHONES))
-            add(DoorSection("albums", "Albums", BenflixIcon.IMAGE))
-            add(DoorSection("artists", "Artists", BenflixIcon.PERSON))
-            add(DoorSection("genres", "Genres", BenflixIcon.LIST))
-        }
-        add(DoorSection("playlists", "Playlists", BenflixIcon.MENU))
-        add(DoorSection("liked", "Liked songs", BenflixIcon.HEART))
-    }
+/**
+ * Music redesign 3 (approved g2-places): the same four places everywhere, in the same order: Home, Search, Your
+ * library and Ask for music (TV side menu, phone tabs along the bottom, the browser's left side).
+ */
+private fun musicSections(
+    @Suppress("UNUSED_PARAMETER") easy: Boolean,
+): List<DoorSection> =
+    listOf(
+        doorHome(),
+        DoorSection(MUSIC_SEARCH, "Search", BenflixIcon.SEARCH),
+        DoorSection(MUSIC_LIBRARY, "Your library", BenflixIcon.LIST),
+        DoorSection(MUSIC_ASK, "Ask for music", BenflixIcon.PLUS),
+    )
 
-/** A section from the Music menu, in place of the door's Home rows (the same pages "Browse by" opened) */
+/** A place from the Music menu (Search, Your library, Ask for music), in place of the door's Home */
 @Composable
 private fun MusicSectionPage(
     key: String,
-    preferences: UserPreferences,
     wide: Boolean,
     modifier: Modifier,
 ) {
-    val hero = key == "songs" || key == "liked"
-    val railGap = doorSectionStart()
-    val listStart =
-        when {
-            !wide -> BenflixSpace.phoneEdge
-            hero -> 0.dp
-            else -> railGap
-        }
     val inner =
         modifier.padding(
-            // Songs and Liked songs draw their cover up behind the top bar, like they do on their own
-            top = if (wide && !hero) LocalTopBarOverlap.current else 0.dp,
-            // Songs and Liked songs keep their own side margin; the lists need one to clear the side menu
-            start = listStart,
-            end = if (wide) 16.dp else 8.dp,
+            top = if (wide) LocalTopBarOverlap.current else 0.dp,
+            // The places need a side margin to clear the side menu
+            start = if (wide) doorSectionStart() else 0.dp,
         )
     when (key) {
-        "songs" -> {
-            MusicCollectionPage(kind = CollectionKind.SONGS, id = null, title = "All songs", preferences = preferences, modifier = inner)
+        MUSIC_SEARCH -> {
+            MusicSearchPlace(wide = wide, modifier = inner)
         }
 
-        "liked" -> {
-            MusicCollectionPage(kind = CollectionKind.LIKED, id = null, title = "Liked songs", preferences = preferences, modifier = inner)
+        MUSIC_LIBRARY -> {
+            MusicLibraryPlace(wide = wide, modifier = inner)
         }
 
-        "albums" -> {
-            MusicListPage(Destination.MusicList("albums", title = "Albums"), inner)
-        }
-
-        "artists" -> {
-            MusicListPage(Destination.MusicList("artists", title = "Artists"), inner)
-        }
-
-        "genres" -> {
-            MusicListPage(Destination.MusicList("genres", title = "Genres"), inner)
-        }
-
-        "playlists" -> {
-            MusicListPage(Destination.MusicList("playlists", title = "Playlists"), inner)
+        MUSIC_ASK -> {
+            // Requests > Music, right inside the Music door (every profile but Kids; Ben okays the others' asks)
+            Box(inner.fillMaxSize()) {
+                com.github.damontecres.wholphin.ui.discover
+                    .MusicShelf()
+            }
         }
     }
 }
@@ -444,165 +486,25 @@ fun MusicTileCard(
                 ActionCover(tile.title, BenflixIcon.ARROW, Modifier.fillMaxSize())
             }
         }
-    }
-}
 
-/**
- * The top area (approved m2-q-top): the card's name, what's inside, how many songs and how long, with its
- * picture on the right fading into the dark.
- */
-@Composable
-private fun MusicTopArea(
-    tile: MusicTile?,
-    height: Dp,
-    overlap: Dp,
-) {
-    val imageUrlService = LocalImageUrlService.current
-    val density = LocalDensity.current
-    val px = with(density) { height.roundToPx() }
-    Box(Modifier.fillMaxWidth().heightIn(min = height)) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .height(height)
-                .aspectRatio(1f),
-        ) {
-            val key = tile?.key
-            Crossfade(targetState = key, animationSpec = tween(400), label = "musicTop") { k ->
-                val t = if (k == tile?.key) tile else null
-                when (t) {
-                    is MusicTile.Item -> {
-                        CoverImage(
-                            imageUrlService.musicCover(t.item, px),
-                            Modifier.fillMaxSize(),
-                            shape = androidx.compose.ui.graphics.RectangleShape,
-                        )
-                    }
-
-                    is MusicTile.Mix -> {
-                        MixCover(
-                            t.mix.name,
-                            t.mix.coverAlbumIds.map { imageUrlService.albumCover(it, px / 2) },
-                            Modifier.fillMaxSize(),
-                            height,
-                        )
-                    }
-
-                    is MusicTile.Liked -> {
-                        LikedCover(Modifier.fillMaxSize())
-                    }
-
-                    else -> {
-                        Unit
-                    }
-                }
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to BenflixColors.Tray,
-                            0.45f to BenflixColors.Tray.copy(alpha = .45f),
-                            1f to Color.Transparent,
-                        ),
-                    ),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to BenflixColors.Tray)),
-            )
+        is MusicTile.Browse -> {
+            MusicCardFrame(
+                name = tile.title,
+                line = browseLine(tile.group),
+                size = size,
+                onClick = onClick,
+                onFocus = onFocus,
+                modifier = modifier,
+            ) { BrowseCover(tile, size, Modifier.fillMaxSize()) }
         }
-        Column(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = overlap + 16.dp, bottom = 8.dp)
-                    .widthIn(max = 620.dp),
-        ) {
-            val (kicker, name, line) = topWords(tile)
-            if (kicker != null) MusicKicker(kicker)
-            Text(
-                text = name,
-                color = BenflixColors.Text,
-                fontSize = BenflixType.pageTitle,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            if (line.isNotBlank()) {
-                Text(
-                    text = line,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
+
+        MusicTile.AllSongs -> {
+            MusicCardFrame(name = "All songs", line = "A to Z", size = size, onClick = onClick, onFocus = onFocus, modifier = modifier) {
+                ActionCover("All songs", BenflixIcon.HEADPHONES, Modifier.fillMaxSize())
             }
         }
     }
 }
-
-private fun topWords(tile: MusicTile?): Triple<String?, String, String> =
-    when (tile) {
-        is MusicTile.Mix -> {
-            Triple(
-                "Made for you · new every morning",
-                tile.mix.name,
-                listOf(tile.mix.line, songCount(tile.mix.songIds.size))
-                    .filter {
-                        it.isNotBlank()
-                    }.joinToString(" · "),
-            )
-        }
-
-        is MusicTile.Liked -> {
-            Triple("Your playlist", "Liked songs", songCount(tile.count))
-        }
-
-        is MusicTile.Item -> {
-            val item = tile.item
-            when (item.type) {
-                BaseItemKind.MUSIC_ALBUM -> {
-                    Triple("Album", item.title.orEmpty(), albumLine(item))
-                }
-
-                BaseItemKind.MUSIC_ARTIST -> {
-                    Triple("Artist", item.title.orEmpty(), "")
-                }
-
-                BaseItemKind.PLAYLIST -> {
-                    Triple(
-                        "Playlist",
-                        item.title.orEmpty(),
-                        item.data.childCount
-                            ?.let { songCount(it) }
-                            .orEmpty(),
-                    )
-                }
-
-                else -> {
-                    Triple(null, item.title.orEmpty(), "")
-                }
-            }
-        }
-
-        MusicTile.Ask -> {
-            Triple(null, "Ask for music", "Find a song, an album or a playlist and Tower gets it for you")
-        }
-
-        is MusicTile.SeeAll -> {
-            Triple(null, tile.title, "Everything, as a grid")
-        }
-
-        null -> {
-            Triple(null, "Music", "Your songs and playlists")
-        }
-    }
 
 /** "Static Bloom · 2024 · 10 songs" */
 fun albumLine(item: BaseItem): String =
@@ -611,5 +513,3 @@ fun albumLine(item: BaseItem): String =
         item.data.productionYear?.toString(),
         item.data.childCount?.let { songCount(it) },
     ).joinToString(" · ")
-
-private const val PREVIEW_DELAY_MS = 350L

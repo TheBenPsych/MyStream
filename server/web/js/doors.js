@@ -60,14 +60,12 @@
       ["Consoles", "pad", "jump:Consoles", () => location.hash.startsWith("#/console/")],
       ["Arcade", "pad", "jump:Arcade"],
     ];
+    // Music redesign 3 (approved g2-places): the same four places as the TV and phones
     const music = [
       ["Home", "home", "#/music", () => location.hash === "#/music"],
-      ["Songs", "ears", "#/songs", () => location.hash === "#/songs"],
-      ["Albums", "image", "#/mgrid/albums", () => location.hash.startsWith("#/mgrid/albums") || location.hash.startsWith("#/mgrid/recent")],
-      ["Artists", "user", "#/mgrid/artists", () => location.hash.startsWith("#/mgrid/artists")],
-      ["Genres", "list", "#/mgrid/genres", () => location.hash.startsWith("#/mgrid/genre")],
-      ["Playlists", "note", "#/mgrid/playlists", () => location.hash.startsWith("#/mgrid/playlists")],
-      ["Liked songs", "heart", "#/liked", () => location.hash === "#/liked"],
+      ["Search", "search", "#/msearch", () => location.hash.startsWith("#/msearch")],
+      ["Your library", "list", "#/mlibrary", () => location.hash.startsWith("#/mlibrary") || location.hash.startsWith("#/mgrid/") || location.hash === "#/songs" || location.hash === "#/liked"],
+      ["Ask for music", "plus", "#/requests?tab=music", () => false],
     ];
     const place = () => has("p") || "home";
     const c = bookCounts || {};
@@ -94,7 +92,7 @@
     if (/^#\/(shows$|grid\/shows|browse\/shows)/.test(hash)) return "shows";
     if (/^#\/live$/.test(hash)) return "live";
     if (/^#\/(games$|console\/)/.test(hash)) return "games";
-    if (/^#\/(music$|songs$|liked$|mgrid\/)/.test(hash)) return "music";
+    if (/^#\/(music$|msearch|mlibrary|mthemes\/|songs$|liked$|mgrid\/)/.test(hash)) return "music";
     if (/^#\/books(\?|$)/.test(hash)) return "books";
     if (/^#\/server(\/|$)/.test(hash)) return "server";
     return null;
@@ -104,12 +102,12 @@
     const list = (menus()[door] || []).filter(Boolean);
     if (list.length < 2) return "";
     const anyOn = list.slice(1).some((s) => s[3] && s[3]());
-    return `<nav class="drail" aria-label="${esc(door)} sections" style="--door:${COLORS[door]};--ondoor:${ON[door]}">${list.map((s, i) => {
+    return `<nav class="drail" data-door="${esc(door)}" aria-label="${esc(door)} sections" style="--door:${COLORS[door]};--ondoor:${ON[door]}">${list.map((s, i) => {
       const [label, icon, link, isOn, count] = s;
       const on = i === 0 ? !anyOn : !!(isOn && isOn());
       const jump = link.startsWith("jump:");
       return `<a class="${on ? "on" : ""}" href="${jump ? "#" : esc(link)}" ${jump ? `data-jump="${esc(link.slice(5))}"` : ""}>${I(icon)}<span>${esc(label)}</span>${count ? `<small>${esc(count)}</small>` : ""}</a>`;
-    }).join("")}</nav>`;
+    }).join("")}${B.railExtra ? B.railExtra(door) : ""}</nav>`;
   };
 
   // Puts the menu just under the top bar of the page (again after the page redraws itself)
