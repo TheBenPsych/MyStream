@@ -1618,3 +1618,44 @@ html.xmas .door::after { background:
     linear-gradient(transparent 50%, var(--xgold) 50% 57%, transparent 57%),
     radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%); }
 .who .xroom { pointer-events: none; }
+
+/* ---------- Thanksgiving look (approved 2026-11-16, 16 to 30 November, not on Kids) ----------
+   Pumpkin orange for selected things, harvest brown for other buttons and panels, white words on every door,
+   and a different harvest charm hanging on each door from twine and a brass tack (acorn, maple leaf, pumpkin,
+   pinecone, wheat, apple). Small harvest touches, each used once: a candle glow behind Play, a gold leaf at the
+   end of progress, a red leaf turning in the loading ring, and a brass tack pinning notices.
+   Settings › Look › Thanksgiving look turns it off (js/start.js B.tgOn). */
+html.tg {
+  --pg2: #24170F; --pg3: #2E1E14; --pg4: #7A4A24; --line: #3A2618; --accent: #E2702A;
+  --torange: #E2702A; --tbrown: #7A4A24;
+}
+html.tg .door { color: #fff; }
+html.tg .door > svg.i, html.tg .door .n, html.tg .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.tg .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: 1.7%; top: -2.7%; width: 50%; max-width: 150px; aspect-ratio: 120 / 132; background: center top / contain no-repeat; }
+html.tg .door[data-door="movies"]::after { background-image: url("../img/tg/tg_charm_movies.png"); }
+html.tg .door[data-door="shows"]::after { background-image: url("../img/tg/tg_charm_shows.png"); }
+html.tg .door[data-door="live"]::after { background-image: url("../img/tg/tg_charm_live.png"); }
+html.tg .door[data-door="games"]::after { background-image: url("../img/tg/tg_charm_games.png"); }
+html.tg .door[data-door="music"]::after { background-image: url("../img/tg/tg_charm_music.png"); }
+html.tg .door[data-door="books"]::after { background-image: url("../img/tg/tg_charm_books.png"); }
+html.tg .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.tg .btn.white, html.tg .btn.red, html.tg .chip.on { background: var(--torange); border-color: var(--torange); color: #fff; }
+html.tg .btn.white:hover, html.tg .btn.red:hover { background: #EC8240; color: #fff; }
+html.tg .btn { background: var(--tbrown); }
+html.tg .btn.ghost { background: none; }
+html.tg .poster .prog { background: rgba(122,74,36,.85); }
+html.tg .poster .prog i, html.tg .kwbar .line i, html.tg .player .bar .knob { background: var(--torange); }
+html.tg .corner .ctime { background: var(--torange); }
+/* candle glow behind Play */
+html.tg .tp .btns .btn.white { box-shadow: 0 0 30px 8px rgba(255, 168, 80, .38); }
+/* a gold maple leaf riding the end of the progress line */
+html.tg .kwbar .line { overflow: visible; background: var(--tbrown); }
+html.tg .kwbar .line i { position: relative; border-radius: 2px; }
+html.tg .kwbar .line i::after { content: ""; position: absolute; right: -13px; top: -11px; width: 26px; height: 26px; background: url("../img/tg/tg_leaf_gold.png") center / contain no-repeat; }
+/* a red maple leaf turning slowly inside the loading ring */
+html.tg .spin { position: relative; border: 0; animation: none; width: 46px; height: 46px; }
+html.tg .spin::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--tbrown); border-top-color: var(--torange); animation: spin .8s linear infinite; }
+html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: url("../img/tg/tg_leaf_red.png") center / contain no-repeat; animation: spin 6s linear infinite; }
+/* notices are pinned with a brass tack */
+html.tg .corner { overflow: visible; }
+html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }

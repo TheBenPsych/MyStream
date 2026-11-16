@@ -70,7 +70,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -691,9 +693,18 @@ private fun TitleButtonView(
     val shape = RoundedCornerShape(10.dp)
     // Christmas look: Play is ornament red with white words, and a green glass ornament hangs from it
     val xmas = XmasLook.on
-    val primaryFill = if (xmas) XmasLook.Red else BenflixColors.Text
+    // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
+    val tg = TgLook.on
+    val primaryFill =
+        if (xmas) {
+            XmasLook.Red
+        } else if (tg) {
+            TgLook.Orange
+        } else {
+            BenflixColors.Text
+        }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) (if (xmas) Color.White else BenflixColors.Tray) else BenflixColors.Text
+    val content = if (primary) (if (xmas || tg) Color.White else BenflixColors.Tray) else BenflixColors.Text
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
@@ -713,6 +724,7 @@ private fun TitleButtonView(
             modifier
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
+                .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

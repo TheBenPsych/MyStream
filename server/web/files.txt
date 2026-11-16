@@ -37,6 +37,7 @@ js/server.js
 js/start.js
 js/title.js
 js/xmas.js
+js/feast.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -46,3 +47,13 @@ vendor/hls.LICENSE.txt
 vendor/hls.min.js
 vendor/three.LICENSE.txt
 vendor/three.min.js
+img/tg/tg_acorn.png
+img/tg/tg_charm_books.png
+img/tg/tg_charm_games.png
+img/tg/tg_charm_live.png
+img/tg/tg_charm_movies.png
+img/tg/tg_charm_music.png
+img/tg/tg_charm_shows.png
+img/tg/tg_leaf_gold.png
+img/tg/tg_leaf_red.png
+img/tg/tg_tack.png

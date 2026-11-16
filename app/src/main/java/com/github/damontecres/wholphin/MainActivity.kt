@@ -342,6 +342,8 @@ class MainActivity : AppCompatActivity() {
                                     // Christmas look switch (Settings > Look), read before the theme picks its colours
                                     com.github.damontecres.wholphin.ui.theme.ChristmasSeason.lookOff =
                                         appPreferences.benflixPreferences.christmasLookOff
+                                    com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.lookOff =
+                                        appPreferences.benflixPreferences.thanksgivingLookOff
                                     WholphinTheme(
                                         true,
                                         // Benflix always uses its own red and black look

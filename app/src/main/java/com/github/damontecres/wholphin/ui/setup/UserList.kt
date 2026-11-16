@@ -412,8 +412,12 @@ private fun UserIconCard(
     val focused by interactionSource.collectIsFocusedAsState()
     val xmasGlow =
         focused &&
-            com.github.damontecres.wholphin.ui.theme.ChristmasSeason
-                .on()
+            (
+                com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+                    .on() ||
+                    com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
+                        .on()
+            )
 
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)

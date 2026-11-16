@@ -4,6 +4,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
@@ -54,10 +55,22 @@ fun SwitchPreference(
         },
         // Benflix redesign: the words On and Off instead of a switch
         trailingContent = {
-            androidx.tv.material3.Text(
-                text = if (value) "On" else "Off",
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            )
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement =
+                    androidx.compose.foundation.layout.Arrangement
+                        .spacedBy(8.dp),
+            ) {
+                // Thanksgiving look: a small acorn next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .TgAcorn()
+                }
+                androidx.tv.material3.Text(
+                    text = if (value) "On" else "Off",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                )
+            }
         },
         interactionSource = interactionSource,
         modifier = modifier,
