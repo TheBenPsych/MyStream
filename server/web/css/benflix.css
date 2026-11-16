@@ -1441,3 +1441,9 @@ html.kids .chip.on:hover, html.kids .chip.on:focus-visible, html.kids .btn.white
 .reqfor select option { color: #000; }
 .reqfor.on { background: var(--accent, var(--ink)); border-color: var(--accent, var(--ink)); color: var(--dark); }
 .reqfor.on select { color: var(--dark); }
+
+/* Pop-out player: the player page stays alive (hidden) while you browse, so the small window keeps playing */
+.kept-page { position: fixed; left: -300vw; top: 0; width: 100vw; height: 100vh; transform: translateX(0); visibility: hidden; pointer-events: none; overflow: hidden; }
+.kept-pill { position: fixed; z-index: 60; right: 16px; bottom: 92px; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: #1D2027; color: #fff; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.kept-pill:hover { background: #2A2E37; }
+.kept-pill .i { width: 20px; height: 20px; }
