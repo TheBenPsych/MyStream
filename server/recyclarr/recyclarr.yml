@@ -3,7 +3,9 @@
 #  - German and other non-English copies of normal shows and movies are blocked (Language: Not English = -10000)
 #  - Sonarr LQ and LQ (Release Title) are -10000 (they were +100 in places)
 #  - min score is 0, so ordinary releases are no longer skipped
-#  - Radarr WEB Tier 01 is left alone on purpose, so Ben's YTS boost stays
+#  - Radarr: YTS is kept but scores 0, so it is only grabbed when no better release exists
+#    (the full LQ list is not used because it blocks YTS; LQ (Release Title) is used instead)
+#  - Radarr: BR-DISK, 3D, Extras, Upscaled, Bad Dual Groups, Obfuscated, Retags, Scene blocked
 # Keys and addresses live in secrets.yml next to this file, on Tower only.
 sonarr:
   sonarr-main:
@@ -459,4 +461,57 @@ radarr:
       - trash_ids: [06b6542a47037d1e33b15aa3677c2365]  # Anime Raws
         assign_scores_to:
           - name: Anime HD - 720p/1080p
+            score: -10000
+      # HD - 720p/1080p extras (2026-11-16): YTS has no bonus now, so it is only picked when nothing better exists
+      - trash_ids: [c20f169ef63c5f40c2def54abaf4438e]  # WEB Tier 01 (guide version, without YTS)
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: 1700
+      - trash_ids: [e7718d7a3ce595f289bfee26adc178f5]  # Repack/Proper
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: 5
+      - trash_ids: [ae43b294509409a6a13919dedd4764c4]  # Repack2
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: 6
+      - trash_ids: [5caaaa1c08c1742aa4342d8c4cc463f2]  # Repack3
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: 7
+      - trash_ids: [ed38b889b31be83fda192888e2286d83]  # BR-DISK
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [e204b80c87be9497a8a6eaff48f72905]  # LQ (Release Title)
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [b8cd450cbfa689c0259a01d9e29ba3d6]  # 3D
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [0a3f082873eb454bde444150b70253cc]  # Extras
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [bfd8eb01832d646a0a89c4deb46f8564]  # Upscaled
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [b6832f586342ef70d9c128d40c07b872]  # Bad Dual Groups
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [7357cf5161efbf8c4d5d0c30b4815ee2]  # Obfuscated
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [5c44f52a8714fdd79bb4d98e2673be1f]  # Retags
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [f537cf427b64c38c8e36298f657e4828]  # Scene
+        assign_scores_to:
+          - name: HD - 720p/1080p
             score: -10000
