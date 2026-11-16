@@ -13,7 +13,11 @@ defaults:
     shell: bash
 
 env:
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+  # Memory for the build. The build machine has 16 GB. Gradle (and R8, the step that
+  # shrinks the app) gets 7 GB and the Kotlin compiler 3 GB, so together they never
+  # run the machine out of memory. (12 GB each used to kill the machine mid-build:
+  # "The runner has received a shutdown signal", and the update never got published.)
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx7g -XX:MaxMetaspaceSize=1024m' -Dkotlin.daemon.jvm.options=-Xmx3g"
 
 jobs:
   build:
@@ -32,6 +36,18 @@ jobs:
           fetch-depth: 0 # Need the tags to build
       - name: Setup
         uses: ./.github/actions/setup
+
+      # Extra spare memory (swap on disk) so a big build step can't crash the build machine
+      - name: Add spare memory
+        continue-on-error: true
+        run: |
+          free -h
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile /swapfile || true
+          sudo fallocate -l 8G /mnt/swapfile || sudo fallocate -l 8G /swapfile
+          f=/mnt/swapfile; [ -f "$f" ] || f=/swapfile
+          sudo chmod 600 "$f" && sudo mkswap "$f" && sudo swapon "$f"
+          free -h
 
       # A release build is optimized (much smoother on TVs) and signed with the Benflix key
       - name: Build app
