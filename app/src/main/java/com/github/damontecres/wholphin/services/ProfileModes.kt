@@ -23,6 +23,7 @@ object ProfileModes {
     ) {
         KidsMode.set(kids, big)
         GuestMode.set(guest)
+        RequestFor.clear()
     }
 
     /** Save the current Kids / Guest state for this sign-in */
@@ -79,6 +80,7 @@ object ProfileModes {
         val guest = sameUser && prefs.getBoolean(KEY_GUEST, false)
         if (KidsMode.isActive != kids || KidsMode.isBig != big) KidsMode.set(kids, big)
         if (GuestMode.isActive != guest) GuestMode.set(guest)
+        RequestFor.clear()
         Timber.i("Restored profile mode: kids=%s, big=%s, guest=%s", kids, big, guest)
     }
 }

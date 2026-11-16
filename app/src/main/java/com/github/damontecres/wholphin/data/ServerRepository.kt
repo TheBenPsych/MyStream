@@ -103,6 +103,9 @@ class ServerRepository
             user: JellyfinUser,
         ): CurrentUser =
             withContext(ioDispatcher) {
+                // Benflix "Request for": a new profile always starts asking for itself
+                com.github.damontecres.wholphin.services.RequestFor
+                    .clear()
                 if (server.id != user.serverId) {
                     throw IllegalStateException("User is not part of the server")
                 }
@@ -350,6 +353,8 @@ class ServerRepository
             authenticationResult: AuthenticationResult,
             existingUser: JellyfinUser?,
         ) = withContext(ioDispatcher) {
+            com.github.damontecres.wholphin.services.RequestFor
+                .clear()
             val accessToken = authenticationResult.accessToken
             if (accessToken != null) {
                 val authedUser = authenticationResult.user

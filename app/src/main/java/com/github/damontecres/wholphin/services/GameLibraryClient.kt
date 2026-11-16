@@ -299,6 +299,10 @@ class GameLibraryClient
             body: JSONObject = JSONObject(),
         ): JSONObject =
             withContext(Dispatchers.IO) {
+                // Benflix "Request for": Ben asking for a song, album or book in someone else's name
+                if (path == "/api/music/request" || path == "/api/books/request") {
+                    RequestFor.current()?.let { body.put("for", it.id) }
+                }
                 JSONObject(
                     call(
                         Request

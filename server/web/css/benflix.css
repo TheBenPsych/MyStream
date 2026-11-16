@@ -1412,3 +1412,9 @@ html.kids .btn:focus-visible, html.kids .pill:focus-visible, html.kids .chip:foc
 html.kids .chip.on:hover, html.kids .chip.on:focus-visible, html.kids .btn.white:hover, html.kids .btn.white:focus-visible {
   box-shadow: 0 0 0 3px var(--tray), 0 0 0 6px var(--kacc);
 }
+/* Ben's "Request for" picker (admins only): who the next ask is for */
+.reqfor { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 4px 6px 4px 14px; color: var(--ink2); font-weight: 600; font-size: 14px; white-space: nowrap; }
+.reqfor select { background: none; border: 0; color: var(--ink); font: inherit; padding: 4px 6px; cursor: pointer; max-width: 180px; }
+.reqfor select option { color: #000; }
+.reqfor.on { background: var(--accent, var(--ink)); border-color: var(--accent, var(--ink)); color: var(--dark); }
+.reqfor.on select { color: var(--dark); }

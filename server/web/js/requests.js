@@ -89,7 +89,8 @@ B.askPanel = async (type, id) => {
       ${status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Benflix</a>`
         : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Benflix" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
         ${status === 2 || status === 3 ? `<p>${B.rqPillHtml(status === 3 ? { k: "looking", w: "Still looking" } : { k: "asked", w: "Asked · waiting for Ben" })}</p>` : ""}
-        <div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for it</button></div>`}`;
+        <div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for it</button>${B.reqForHtml()}</div>`}`;
+    B.reqForFill(p);
     const go = $("#askGo", p);
     if (go) go.onclick = () => B.busy(go, async () => {
       const body = { mediaType: type, mediaId: +id };
@@ -98,10 +99,11 @@ B.askPanel = async (type, id) => {
         if (!picked.length) throw new Error("Tick at least one season.");
         body.seasons = picked;
       }
+      const forWho = B.reqForNow();
       await seerr("/request", "POST", body);
       B.closeAll();
       B.cache["seerr-mine"] = null;
-      return `Asked for ${t}. It shows in Your requests as Asked.`;
+      return forWho ? `Asked for ${t} for ${forWho.name}. It's on their list, and they're told when it's ready.` : `Asked for ${t}. It shows in Your requests as Asked.`;
     });
     p.addEventListener("click", (e) => {
       const b = e.target.closest("[data-season]");
@@ -194,9 +196,11 @@ B.route(/^\/requests/, async (m, nav) => {
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
     <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => k !== "books" || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
+      ${tab !== "yours" ? B.reqForHtml() : ""}
 </div></div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
+  B.reqForFill(B.page());
   if (tab === "music") return B.musicTab(nav);
   if (tab === "books") return B.booksTab(nav);
   if (tab === "yours") return B.yoursTab(nav);
