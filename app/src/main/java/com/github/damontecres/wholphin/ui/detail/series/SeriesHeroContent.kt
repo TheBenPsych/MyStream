@@ -50,7 +50,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.detail.AskShelf
+import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
@@ -193,14 +193,20 @@ fun SeriesHeroContent(
             if (anime && !easy) {
                 add(TitleTab("Characters and voices") { scope -> AnimeRows(series, Modifier.padding(start = scope.side)) })
             }
-            if (state.similar.isNotEmpty() || (!easy && state.discovered.isNotEmpty())) {
+            if (state.similar.isNotEmpty()) {
+                add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })
+            }
+            if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
                 add(
-                    TitleTab("More like this") { scope ->
-                        val both = state.similar.isNotEmpty() && !easy && state.discovered.isNotEmpty()
-                        TitlePosterRow(scope, state.similar, actions.openItem, name = if (both) "More like this" else null)
-                        if (!easy && state.discovered.isNotEmpty()) {
-                            AskShelf(items = state.discovered, side = scope.side, showName = !scope.wide, onClick = actions.openAsk)
-                        }
+                    TitleTab("Ask for similar") { scope ->
+                        AskForSimilarTab(
+                            kind = state.askKind,
+                            best = state.discovered,
+                            more = state.discoveredMore,
+                            side = scope.side,
+                            showName = !scope.wide,
+                            onClick = actions.openAsk,
+                        )
                     },
                 )
             }

@@ -109,6 +109,8 @@ data class DiscoverItem(
     val score: Double? = null,
     // Benflix: Japanese animation, so the Requests Movies/Shows tabs leave it to the Anime tab
     val isAnime: Boolean = false,
+    // Benflix: any animation (TMDB genre 16), so title pages can tell cartoons from live action
+    val isAnimation: Boolean = false,
 ) : CardGridItem {
     override val gridId: String get() = id.toString()
     override val playable: Boolean = false
