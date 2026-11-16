@@ -347,7 +347,7 @@
       bar.innerHTML = `<button class="mbar-open" data-open title="Open the book"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
         <div class="mbar-ctl"><button class="circle" data-a="b15" title="Back 15 seconds">${I("b15")}</button><button class="circle white" data-a="toggle" title="Play or pause"></button><button class="circle" data-a="f30" title="Ahead 30 seconds">${I("f30")}</button>
         <select class="field bk-speed" title="Speed">${[0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3].map((s) => `<option value="${s}">${s}x</option>`).join("")}</select>
-        <button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button><button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
+        <button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button>${B.volume("", "circle")}<button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
         <div class="mbar-line"><i></i></div>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
@@ -369,6 +369,7 @@
       });
       $(".bk-speed", bar).onchange = (e) => { audio.playbackRate = +e.target.value; try { localStorage.setItem("benflix.bk.speed." + BK.now.t.id, e.target.value); } catch (x) {} };
       document.body.appendChild(bar);
+      B.wireVolume($(".volw", bar), audio, "bookVolume");
     }
     const on = !!BK.now;
     bar.classList.toggle("hidden", !on);
