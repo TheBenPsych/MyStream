@@ -56,6 +56,7 @@ class BenflixSkipsTest {
         assertEquals(MediaSegmentType.INTRO, BenflixSkipsService.typeOf("intro"))
         assertEquals(null, BenflixSkipsService.typeOf("nonsense"))
     }
+
     private val episode = 1440L * 10_000_000L
 
     @Test
