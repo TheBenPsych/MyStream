@@ -181,8 +181,32 @@ fun MusicCollectionPage(
     val currentId = music.currentAudio?.id
     val playing = music.status == NowPlayingStatus.PLAYING
     val sourceName = state.title
+    // Mixes, Liked songs and All songs have no Jellyfin item, so say what they are for Jump back in
+    val place =
+        remember(kind, id, state.title) {
+            when (kind) {
+                CollectionKind.MIX -> {
+                    com.github.damontecres.wholphin.services
+                        .MusicPlace("mix", id.orEmpty(), state.title)
+                }
+
+                CollectionKind.LIKED -> {
+                    com.github.damontecres.wholphin.services
+                        .MusicPlace("liked", "", "Liked songs")
+                }
+
+                CollectionKind.SONGS -> {
+                    com.github.damontecres.wholphin.services
+                        .MusicPlace("songs", "", "All songs")
+                }
+
+                else -> {
+                    null
+                }
+            }
+        }
     val play: (Int, Boolean) -> Unit = { index, shuffle ->
-        actions.playList(songs, index, shuffle, state.item, sourceName)
+        actions.playList(songs, index, shuffle, state.item, sourceName, place = place)
     }
 
     // Redesign 2: albums use the shared title page frame (playlists and mixes keep this page, they can be long)
@@ -192,8 +216,8 @@ fun MusicCollectionPage(
             currentId = currentId,
             playing = playing,
             easy = easy,
-            onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
-            onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
+            onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true, place = place) },
+            onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true, place = place) },
             onLike = viewModel::toggleAlbumFavourite,
             onMore = { pageMenu = true },
             onSong = { play(it, false) },
@@ -219,8 +243,8 @@ fun MusicCollectionPage(
                         side = side,
                         playFocus = playFocus,
                         // Ben: Play or Shuffle on any album, playlist or mix goes straight to Now playing
-                        onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true) },
-                        onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true) },
+                        onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true, place = place) },
+                        onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true, place = place) },
                         onHeart = viewModel::toggleAlbumFavourite,
                         onMore = { pageMenu = true },
                         editing = editing,

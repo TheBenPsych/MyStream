@@ -288,6 +288,61 @@ class MusicLibrary
                 ),
             )
 
+        /** Albums, playlists and artists by id, in the order given (Jump back in, pins) */
+        suspend fun byIds(ids: List<UUID>): List<BaseItem> {
+            if (ids.isEmpty()) return emptyList()
+            val found =
+                ids.chunked(100).flatMap { chunk ->
+                    items(GetItemsRequest(ids = chunk, fields = listOf(ItemFields.CHILD_COUNT, ItemFields.DATE_CREATED)))
+                }
+            val byId = found.associateBy { it.id }
+            return ids.mapNotNull { byId[it] }
+        }
+
+        /** Albums or artists you liked (Jellyfin favourites), the ones Your library keeps */
+        suspend fun likedOf(kind: BaseItemKind): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    includeItemTypes = listOf(kind),
+                    recursive = true,
+                    filters = listOf(ItemFilter.IS_FAVORITE),
+                    sortBy = listOf(ItemSortBy.SORT_NAME),
+                    fields = listOf(ItemFields.CHILD_COUNT, ItemFields.DATE_CREATED),
+                    limit = 500,
+                ),
+            )
+
+        /** The songs you played last, newest first (Recently played) */
+        suspend fun recentlyPlayedSongs(limit: Int): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    includeItemTypes = listOf(BaseItemKind.AUDIO),
+                    recursive = true,
+                    filters = listOf(ItemFilter.IS_PLAYED),
+                    sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = SongListFields,
+                    limit = limit,
+                ),
+            )
+
+        /** Music search: songs, albums, artists and playlists whose name has [term] */
+        suspend fun search(
+            term: String,
+            kind: BaseItemKind,
+            limit: Int,
+        ): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    searchTerm = term,
+                    includeItemTypes = listOf(kind),
+                    recursive = true,
+                    mediaTypes = if (kind == BaseItemKind.PLAYLIST) listOf(MediaType.AUDIO) else null,
+                    fields = if (kind == BaseItemKind.AUDIO) SongListFields else listOf(ItemFields.CHILD_COUNT),
+                    limit = limit,
+                ),
+            )
+
         /** Made for you: Tower's mixes for this profile, new every morning */
         suspend fun mixes(): List<MusicMix> =
             try {

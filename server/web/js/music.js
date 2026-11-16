@@ -103,8 +103,10 @@
   };
   // Bumped by Stop and by starting a new list, so a mix that arrives late can't restart or change it
   let gen = 0;
-  M.playList = (songs, start, shuffle, title) => {
+  M.playList = (songs, start, shuffle, title, place) => {
     gen++;
+    // Music redesign 3: what you played from goes to the top of Jump back in and Recently played (on every screen)
+    if (place && place.kind) B.musicPlayed(place);
     songs = (songs || []).filter((s) => s.Type === "Audio");
     if (!songs.length) return;
     start = Math.max(0, Math.min(start || 0, songs.length - 1));
@@ -255,6 +257,7 @@
     const on = !!s;
     bar.classList.toggle("hidden", !on);
     document.body.classList.toggle("has-mbar", on);
+    if (M.onDraw) M.onDraw();
     if (!on) return drawNow();
     const art = cover(s, 120);
     $(".mbar-cover", bar).style.backgroundImage = art ? `url('${art}')` : "";
@@ -606,48 +609,392 @@
       });
     } catch (e) { B.toast(e.message); }
   };
-  const wireSongs = (root, songs, title, sourceId, extra) => {
+  const wireSongs = (root, songs, title, sourceId, extra, place) => {
     root.addEventListener("click", (e) => {
       const h = e.target.closest("[data-heart]");
       if (h) { e.stopPropagation(); const s = songs.find((x) => x.Id === h.dataset.heart); const on = !h.classList.contains("on"); M.like(h.dataset.heart, on).then(() => { if (s) s.UserData = Object.assign(s.UserData || {}, { IsFavorite: on }); }); return; }
       const m = e.target.closest("[data-more]");
       if (m) { e.stopPropagation(); return songMenu(m, songs[+m.dataset.more], extra && extra(+m.dataset.more)); }
       const r = e.target.closest(".srow");
-      if (r) { M.playList(songs, +r.dataset.i, false, title); M.sourceId = sourceId; refreshRows(root, songs); }
+      if (r) { M.playList(songs, +r.dataset.i, false, title, place); M.sourceId = sourceId; refreshRows(root, songs); }
     });
   };
   const refreshRows = (root, songs) => setTimeout(() => $$(".srow", root).forEach((r) => r.classList.toggle("now", M.current() && songs[+r.dataset.i] && M.current().Id === songs[+r.dataset.i].Id)), 50);
 
-  // ---------- the Music page ----------
+  // ---------- Music redesign 3: your places (Recently played, pins, Recent searches) ----------
+  // Kept per profile on Tower (api/music/me), so the TV, the phones and the browser show the same.
+  let me = null, meAt = 0;
+  const NO_ME = { recents: [], searches: [], pins: [] };
+  B.musicMe = async (force) => {
+    if (!force && me && Date.now() - meAt < 30000) return me;
+    try { const j = await B.call("GET", "api/music/me"); if (j && j.recents) { me = j; meAt = Date.now(); } } catch (e) { /* older Tower: works from memory */ }
+    return me || (me = { recents: [], searches: [], pins: [] });
+  };
+  const meSave = async (path, body) => {
+    try { const j = await B.call("POST", path, body); if (j && j.recents) { me = j; meAt = Date.now(); } } catch (e) { if (e && e.message && /pin/i.test(e.message)) B.toast(e.message); }
+    paintSide();
+  };
+  B.musicPlayed = (place) => {
+    const mine = me || (me = { recents: [], searches: [], pins: [] });
+    mine.recents = [Object.assign({}, place, { at: Date.now() / 1000 })].concat((mine.recents || []).filter((r) => !(r.kind === place.kind && r.id === place.id)));
+    meSave("api/music/me/played", place);
+  };
+  const keyOf = (p) => `${p.kind}:${p.id}`;
+  const PIN_MAX = 4;
+  const togglePin = (place) => {
+    if (place.kind === "liked") return B.toast("Liked songs is always pinned first");
+    const mine = me || NO_ME;
+    const on = !(mine.pins || []).some((x) => keyOf(x) === keyOf(place));
+    if (on && (mine.pins || []).length >= PIN_MAX) return B.toast(`You can pin ${PIN_MAX}. Unpin one first.`);
+    mine.pins = on ? (mine.pins || []).concat([place]) : (mine.pins || []).filter((x) => keyOf(x) !== keyOf(place));
+    B.toast(on ? `Pinned ${place.name}` : `Unpinned ${place.name}`);
+    meSave("api/music/me/pin", Object.assign({}, place, { on }));
+  };
+  // The albums, playlists and artists behind a list of places (by id), and today's mixes and themes by key
+  const resolve = async (places) => {
+    const ids = [...new Set(places.filter((p) => ["album", "playlist", "artist"].includes(p.kind) && p.id).map((p) => p.id))].slice(0, 80);
+    const [got, mixes, themes] = await Promise.all([
+      ids.length ? items(`Ids=${enc(ids.join(","))}&Fields=ChildCount,DateCreated`).catch(() => []) : [],
+      B.musicMixes().catch(() => []),
+      B.musicThemes().catch(() => ({ themes: [] })),
+    ]);
+    const byId = {}; got.forEach((x) => { byId[x.Id] = x; });
+    const byKey = {}; mixes.concat(themes.themes || []).forEach((x) => { byKey[x.key] = x; });
+    return { byId, byKey };
+  };
+  const hrefOf = (p) => ({ album: `#/album/${p.id}`, playlist: `#/playlist/${p.id}`, artist: `#/artist/${p.id}`, mix: `#/mix/${enc(p.id)}`, liked: "#/liked", songs: "#/songs" }[p.kind] || "#/music");
+  // A card for a place you played (Jump back in): null when it's gone (an old mix, a deleted playlist)
+  const placeCard = (p, r, liked) => {
+    if (p.kind === "mix") return r.byKey[p.id] ? mixCard(r.byKey[p.id]) : null;
+    if (p.kind === "liked") return likedCard(liked);
+    if (p.kind === "songs") return `<a class="mcard" href="#/songs"><div class="im ask">${icon("note")}</div><div class="cap"><span class="nm">All songs</span><small>A to Z</small></div></a>`;
+    const it = r.byId[p.id];
+    if (!it) return null;
+    return p.kind === "album" ? albumCard(it) : p.kind === "artist" ? artistCard(it) : playlistCard(it);
+  };
+  // A small square picture for a place (quick picks, Your library, the left side)
+  const placeArt = (p, r) => {
+    if (p.kind === "liked") return `<span class="qa liked">${I("heart")}</span>`;
+    if (p.kind === "songs") return `<span class="qa">${icon("note")}</span>`;
+    if (p.kind === "mix") {
+      const m = r.byKey[p.id]; const c = m && B.mixCovers(m.covers)[0];
+      return c ? `<span class="qa" style="background-image:url('${B.img(c, "Primary", { h: 120 })}')"></span>` : `<span class="qa mixq">${icon("note")}</span>`;
+    }
+    const it = r.byId[p.id]; const art = it && cover(it, 120);
+    return `<span class="qa ${p.kind === "artist" ? "round" : ""}" ${art ? `style="background-image:url('${art}')"` : ""}></span>`;
+  };
+  const quickTile = (p, r) => `<a class="mquick" href="${hrefOf(p)}" title="${esc(p.name)}">${placeArt(p, r)}<b>${esc(p.name)}</b></a>`;
+  const placeOfItem = (it) => ({ kind: it.Type === "MusicAlbum" ? "album" : it.Type === "MusicArtist" ? "artist" : "playlist", id: it.Id, name: it.Name });
+  const placeOfMix = (m) => ({ kind: "mix", id: m.key, name: m.name });
+
+  // ---------- the browser's left side (approved r3-web3): the four places, then a short Your library ----------
+  let sideHtml = "";
+  const paintSide = async () => {
+    if (B.me.kids) return;
+    const mine = await B.musicMe();
+    const list = [{ kind: "liked", id: "", name: "Liked songs" }].concat(mine.pins || [], (mine.recents || []).slice(0, 12));
+    const seen = new Set(); const short = list.filter((p) => !seen.has(keyOf(p)) && seen.add(keyOf(p))).slice(0, 9);
+    const r = await resolve(short).catch(() => ({ byId: {}, byKey: {} }));
+    const pins = new Set((mine.pins || []).map(keyOf));
+    sideHtml = `<div class="mside"><a class="mside-h" href="#/mlibrary">${I("list")}<span>Your library</span></a>${short.map((p) => `<a class="mside-i" href="${hrefOf(p)}">${placeArt(p, r)}<span><b>${esc(p.name)}</b><small>${p.kind === "liked" || pins.has(keyOf(p)) ? "● " : ""}${esc({ album: "Album", artist: "Artist", playlist: "Playlist", mix: "Made for you", liked: "Playlist", songs: "Every song" }[p.kind] || "")}</small></span></a>`).join("")}</div>`;
+    const rail = $(".drail");
+    if (rail && rail.dataset.door === "music") { const old = $(".mside", rail); if (old) old.outerHTML = sideHtml; else rail.insertAdjacentHTML("beforeend", sideHtml); }
+  };
+  B.railExtra = (door) => (door === "music" ? sideHtml : "");
+  window.addEventListener("hashchange", () => { if (/^#\/(music|msearch|mlibrary|mthemes|songs|liked|mgrid)/.test(location.hash)) setTimeout(paintSide, 60); });
+
+  // ---------- Music Home (approved g2-home): greeting, chips, 8 quick picks, shorter rows, one Browse row ----------
+  const HOME_CHIPS = [["all", "All"], ["mixes", "Mixes"], ["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["new", "New to you"]];
+  const BROWSE = { decade: "Every decade you have", genre: "Your music by style", mood: "For any moment", throwback: "Songs from years ago" };
+  const browseCard = (group, title, list) => {
+    const covers = B.mixCovers([...new Set(list.flatMap((t) => t.covers || []))].slice(0, 4));
+    const art = covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("");
+    return `<a class="mcard mix" href="#/mthemes/${enc(group)}?name=${enc(title)}"><div class="im collage${covers.length ? "" : " empty"}">${covers.length ? art : `<i>${esc(title)}</i>`}<b>${esc(title)}</b></div><div class="cap"><span class="nm">${esc(title)}</span><small>${esc(BROWSE[group] || "")}</small></div></a>`;
+  };
   B.route(/^\/music$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mhead"><div class="mkick">MUSIC</div><h1>Your songs and playlists</h1></div><div id="mrows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><h1 class="mhello">${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}</h1>
+      <div class="mchips">${HOME_CHIPS.map(([k, l]) => `<button class="chip ${k === "all" ? "on" : ""}" data-chip="${k}" style="--accent:var(--music)">${esc(l)}</button>`).join("")}</div>
+      <div id="mquick" class="mquickgrid"></div><div id="mrows">${B.spinner()}</div></div>`;
     B.wireTop();
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
     if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Benflix yet.</p>`; return; }
-    const [mixes, pls, liked, recent, played, artists, themes] = await Promise.all([
+    const [mixes, pls, liked, recent, played, artists, themes, mine] = await Promise.all([
       B.musicMixes().catch(() => []),
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount&Limit=30`).catch(() => []),
       B.get(`/Users/${B.uid()}/Items?Recursive=true&IncludeItemTypes=Audio&Filters=IsFavorite&Limit=0`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
-      items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=30`).catch(() => []),
+      items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=DateCreated`).catch(() => []),
       items(`IncludeItemTypes=MusicAlbum&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=30`).catch(() => []),
       B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=PlayCount,SortName&SortOrder=Descending&Limit=30&Fields=PrimaryImageAspectRatio`).then((j) => j.Items || []).catch(() => []),
       B.musicThemes().catch(() => ({ themes: [] })),
+      B.musicMe(true),
     ]);
     if (!B.alive(nav)) return;
+    const recents = mine.recents || [];
+    const r = await resolve(recents.slice(0, 40)).catch(() => ({ byId: {}, byKey: {} }));
+    if (!B.alive(nav)) return;
+    pls.forEach((p) => { r.byId[p.Id] = p; });
+    const season = (themes.themes || []).filter((t) => t.group === "season");
+    // Quick picks: Liked songs first, then what you played in the last few days, then what's in season, the mixes, your playlists
+    const cut = Date.now() / 1000 - 5 * 86400;
+    const live = (p) => p.kind === "liked" || p.kind === "songs" || (p.kind === "mix" ? !!r.byKey[p.id] : !!r.byId[p.id]);
+    const pool = [{ kind: "liked", id: "", name: "Liked songs" }]
+      .concat(recents.filter((p) => (p.at || 0) >= cut && p.kind !== "songs" && live(p)), season.map(placeOfMix), mixes.map(placeOfMix), pls.map(placeOfItem));
+    const seen = new Set();
+    const quick = pool.filter((p) => !seen.has(keyOf(p)) && seen.add(keyOf(p))).slice(0, 8);
+    season.concat(mixes).forEach((x) => { r.byKey[x.key] = x; });
+    $("#mquick").innerHTML = quick.map((p) => quickTile(p, r)).join("");
+    const jump = recents.map((p) => placeCard(p, r, liked)).filter(Boolean).slice(0, 20);
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
+    if (jump.length >= 2) rows.push(B.row("Jump back in", jump));
+    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard))));
     rows.push(themeRow(themes, "season"));
-    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), B.me.admin ? [`<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}</div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, artists</small></div></a>`] : [])));
     rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
-    ["decade", "genre", "mood", "throwback"].forEach((g) => rows.push(themeRow(themes, g)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
-    // Redesign 2: Songs, Albums, Artists, Genres, Playlists and Liked songs are in the door's side menu (js/doors.js)
-    $("#mrows").innerHTML = rows.join("");
-    const f = $("#mrows a"); if (f) f.focus({ preventScroll: true });
+    // Ben (shorter Home + one Browse row): Decades, Genres, Moods and Throwbacks are tiles at the bottom
+    const groups = ["decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
+    if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
+    const allRows = rows.join("");
+    $("#mrows").innerHTML = allRows;
+    const f = $("#mquick a"); if (f) f.focus({ preventScroll: true });
+    // The chips (approved x-filter): pick one and the page shows only that, as a grid
+    $(".mchips").addEventListener("click", async (e) => {
+      const c = e.target.closest("[data-chip]"); if (!c) return;
+      $$(".mchips .chip").forEach((x) => x.classList.toggle("on", x === c));
+      const k = c.dataset.chip;
+      $("#mquick").hidden = k !== "all";
+      if (k === "all") { $("#mrows").innerHTML = allRows; return; }
+      $("#mrows").innerHTML = B.spinner();
+      let cards = [];
+      if (k === "mixes") cards = mixes.concat(themes.themes || []).map(mixCard);
+      else if (k === "playlists") cards = [likedCard(liked)].concat(pls.map(playlistCard));
+      else if (k === "albums") cards = (await items(`IncludeItemTypes=MusicAlbum&SortBy=SortName&Limit=3000`).catch(() => [])).map(albumCard);
+      else if (k === "artists") cards = ((await B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=SortName&Limit=3000`).catch(() => ({}))).Items || []).map(artistCard);
+      else if (k === "new") {
+        const since = Date.now() - 14 * 86400000;
+        cards = (await items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=300&Fields=DateCreated`).catch(() => [])).filter((a) => Date.parse(a.DateCreated || 0) >= since).map(albumCard);
+      }
+      if (!B.alive(nav) || !c.classList.contains("on")) return;
+      $("#mrows").innerHTML = cards.length ? `<div class="mgrid">${cards.join("")}</div>` : `<p class="dim">${k === "new" ? "Nothing new in the last two weeks." : "Nothing here yet."}</p>`;
+    });
   });
+
+  // Browse > Decades, Genres, Moods or Throwbacks: that group's themed playlists
+  B.route(/^\/mthemes\/(\w+)/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home");
+    const title = B.q("name") || THEME_ROWS[m[1]] || "Browse";
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(title)}</h1><div class="mgrid" id="mg">${B.spinner()}</div></div>`;
+    B.wireTop();
+    const th = await B.musicThemes().catch(() => ({ themes: [] }));
+    if (!B.alive(nav)) return;
+    const list = (th.themes || []).filter((t) => t.group === m[1]);
+    $("#mg").innerHTML = list.length ? list.map(mixCard).join("") : `<p class="dim">Nothing here yet.</p>`;
+  });
+
+  // ---------- Your library (approved g2-library, x-recent) ----------
+  const LIB_SORTS = ["Recently played", "Recently added", "A to Z", "Made by"];
+  B.route(/^\/mlibrary$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home");
+    let chip = B.q("c") || "all", sort = +(B.q("s") || 0) % LIB_SORTS.length;
+    let grid = false;
+    try { grid = localStorage.getItem("benflix-mlib-grid") === "1"; } catch (e) { /* private window */ }
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mlib-head"><h1 class="mtitle">Your library</h1>
+      <button class="btn" data-l="new">${I("plus")} New playlist</button><a class="btn" href="#/requests?tab=music">${I("dl")} Import</a><button class="btn" data-l="view" title="Grid or list"></button></div>
+      <div class="mchips" id="lchips"></div><div class="mlib-sort"><button class="btn small" data-l="sort"></button><span class="dim">Right-click (or hold) to pin up to ${PIN_MAX}</span></div><div id="lbody">${B.spinner()}</div></div>`;
+    B.wireTop();
+    const [pls, mixes, liked, likedAlbums, likedArtists, mine, status] = await Promise.all([
+      items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount,DateCreated`).catch(() => []),
+      B.musicMixes().catch(() => []),
+      B.get(`/Users/${B.uid()}/Items?Recursive=true&IncludeItemTypes=Audio&Filters=IsFavorite&Limit=0`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
+      items(`IncludeItemTypes=MusicAlbum&Filters=IsFavorite&SortBy=SortName&Fields=ChildCount,DateCreated&Limit=500`).catch(() => []),
+      items(`IncludeItemTypes=MusicArtist&Filters=IsFavorite&SortBy=SortName&Limit=500`).catch(() => []),
+      B.musicMe(true),
+      B.call("GET", "api/music/status").catch(() => null),
+    ]);
+    if (!B.alive(nav)) return;
+    const found = ((status && status.playlists) || []).filter((p) => !p.done);
+    const r = await resolve((mine.pins || []).concat(mine.recents || [])).catch(() => ({ byId: {}, byKey: {} }));
+    if (!B.alive(nav)) return;
+    mixes.forEach((x) => { r.byKey[x.key] = x; });
+    const entry = (p, line, added, madeBy) => ({ p, line, added: added || 0, madeBy });
+    const itemEntry = (it, madeBy) => { r.byId[it.Id] = it; return entry(placeOfItem(it), it.Type === "Playlist" ? `Playlist${it.ChildCount ? ` · ${it.ChildCount} songs` : ""}` : it.Type === "MusicAlbum" ? `Album · ${it.AlbumArtist || ""}` : "Artist", Date.parse(it.DateCreated || 0) || 0, madeBy); };
+    const extras = Object.values(r.byId).filter((it) => !pls.concat(likedAlbums, likedArtists).some((x) => x.Id === it.Id));
+    const base = [entry({ kind: "liked", id: "", name: "Liked songs" }, `Playlist · ${liked} songs`, 0, 1)]
+      .concat(mixes.map((x) => entry(placeOfMix(x), "Made for you", 0, 0)), pls.map((it) => itemEntry(it, 1)), likedAlbums.concat(likedArtists, extras).map((it) => itemEntry(it, 2)),
+        [entry({ kind: "songs", id: "", name: "All songs" }, "Every song, A to Z", 0, 1)]);
+    let allAlbums = null, allArtists = null;
+    const chips = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["recent", "Recently played"]].concat(found.length ? [["found", "Being found"]] : []);
+    const order = (list) => {
+      const pins = (me || NO_ME).pins || [];
+      const liked1 = list.filter((e) => e.p.kind === "liked");
+      const byKey = {}; list.forEach((e) => { byKey[keyOf(e.p)] = e; });
+      const pinned = pins.map((p) => byKey[keyOf(p)]).filter((e) => e && e.p.kind !== "liked");
+      const pk = new Set(pinned.map((e) => keyOf(e.p)));
+      const played = {}; ((me || NO_ME).recents || []).forEach((p, i) => { played[keyOf(p)] = i; });
+      let rest = list.filter((e) => e.p.kind !== "liked" && !pk.has(keyOf(e.p)));
+      const name = (e) => (e.p.name || "").toLowerCase();
+      if (sort === 1) rest.sort((a, b) => b.added - a.added);
+      else if (sort === 2) rest.sort((a, b) => name(a).localeCompare(name(b)));
+      else if (sort === 3) rest.sort((a, b) => a.madeBy - b.madeBy || name(a).localeCompare(name(b)));
+      else rest.sort((a, b) => (played[keyOf(a.p)] ?? 1e9) - (played[keyOf(b.p)] ?? 1e9));
+      return liked1.concat(pinned, rest);
+    };
+    const rowHtml = (e, i) => {
+      const pinned = e.p.kind === "liked" || ((me || NO_ME).pins || []).some((x) => keyOf(x) === keyOf(e.p));
+      return `<a class="mlib-row" href="${hrefOf(e.p)}" data-i="${i}">${placeArt(e.p, r)}<span><b>${esc(e.p.name)}</b><small>${pinned ? '<i class="pin">●</i> ' : ""}${esc(e.line)}</small></span></a>`;
+    };
+    const cardHtml = (e) => {
+      if (e.p.kind === "liked") return likedCard(liked);
+      if (e.p.kind === "songs") return placeCard(e.p, r, liked);
+      if (e.p.kind === "mix") return r.byKey[e.p.id] ? mixCard(r.byKey[e.p.id]) : "";
+      const it = r.byId[e.p.id]; if (!it) return "";
+      return e.p.kind === "album" ? albumCard(it) : e.p.kind === "artist" ? artistCard(it) : playlistCard(it);
+    };
+    let shown = [];
+    const draw = async () => {
+      $("#lchips").innerHTML = chips.map(([k, l]) => `<button class="chip ${k === chip ? "on" : ""}" data-chip="${k}" style="--accent:var(--music)">${esc(l)}</button>`).join("");
+      $("[data-l=sort]").textContent = `Sort: ${LIB_SORTS[sort]}`;
+      $("[data-l=view]").innerHTML = grid ? `${I("list")} List` : `${I("film")} Grid`;
+      $(".mlib-sort").hidden = chip === "recent" || chip === "found";
+      const body = $("#lbody");
+      if (chip === "recent") {
+        const days = {};
+        const today = new Date().toDateString(), yest = new Date(Date.now() - 86400000).toDateString();
+        ((me || NO_ME).recents || []).forEach((p) => {
+          const d = new Date((p.at || 0) * 1000);
+          const name = d.toDateString() === today ? "Today" : d.toDateString() === yest ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+          (days[name] = days[name] || []).push(p);
+        });
+        const names = Object.keys(days);
+        shown = [];
+        body.innerHTML = names.length ? names.map((n) => `<h3 class="msub">${esc(n)}</h3>` + days[n].map((p) => { shown.push(entry(p, { album: "Album", artist: "Artist", playlist: "Playlist", mix: "Made for you", liked: "Playlist", songs: "Every song" }[p.kind] || "")); return rowHtml(shown[shown.length - 1], shown.length - 1); }).join("")).join("")
+          : `<p class="dim">Nothing played yet. Everything you play shows up here for 3 months.</p>`;
+        return;
+      }
+      if (chip === "found") {
+        shown = [];
+        body.innerHTML = found.map((p) => `<a class="mlib-row" href="#/requests?tab=music"><span class="qa">${I("dl")}</span><span><b>${esc(p.name)}</b><small>${esc(p.words || "")}</small></span></a>`).join("");
+        return;
+      }
+      let list = base;
+      if (chip === "playlists") list = base.filter((e) => ["playlist", "mix", "liked"].includes(e.p.kind));
+      if (chip === "albums") {
+        if (!allAlbums) { body.innerHTML = B.spinner(); allAlbums = (await items(`IncludeItemTypes=MusicAlbum&SortBy=SortName&Fields=ChildCount,DateCreated&Limit=3000`).catch(() => [])).map((it) => itemEntry(it, 2)); }
+        list = allAlbums;
+      }
+      if (chip === "artists") {
+        if (!allArtists) { body.innerHTML = B.spinner(); allArtists = ((await B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=SortName&Limit=3000`).catch(() => ({}))).Items || []).map((it) => itemEntry(it, 2)); }
+        list = allArtists;
+      }
+      shown = order(list);
+      body.innerHTML = shown.length ? (grid ? `<div class="mgrid">${shown.map(cardHtml).join("")}</div>` : `<div class="mlib-list">${shown.map(rowHtml).join("")}</div>`) : `<p class="dim">Nothing here yet.</p>`;
+    };
+    $(".mpage").addEventListener("click", async (e) => {
+      const c = e.target.closest("[data-chip]");
+      if (c) { chip = chip === c.dataset.chip ? "all" : c.dataset.chip; return draw(); }
+      const l = e.target.closest("[data-l]"); if (!l) return;
+      if (l.dataset.l === "sort") { sort = (sort + 1) % LIB_SORTS.length; draw(); }
+      if (l.dataset.l === "view") { grid = !grid; try { localStorage.setItem("benflix-mlib-grid", grid ? "1" : "0"); } catch (err) { /* private window */ } draw(); }
+      if (l.dataset.l === "new") {
+        const name = await B.askText("New playlist", "What should it be called?", "");
+        if (!name) return;
+        try { await B.jf("POST", `/Playlists`, { Name: name, Ids: [], UserId: B.me.id, MediaType: "Audio" }); B.toast(`Made ${name}`); B.render(); } catch (err) { B.toast(err.message); }
+      }
+    });
+    // Right-click (or a long press on a touch screen) pins or unpins
+    $("#lbody").addEventListener("contextmenu", (e) => {
+      const row = e.target.closest(".mlib-row[data-i]"); if (!row || chip === "recent") return;
+      e.preventDefault();
+      const it = shown[+row.dataset.i]; if (it) { togglePin(it.p); setTimeout(draw, 50); }
+    });
+    draw();
+  });
+
+  // ---------- Search inside Music (approved x-recentsearch) ----------
+  B.route(/^\/msearch$/, async (m, nav) => {
+    if (B.me.kids) return B.go("#/home");
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">Search</h1>
+      <input class="field msearch-box" id="mq" type="search" placeholder="What do you want to listen to?" autocomplete="off" value="${esc(B.q("q") || "")}">
+      <div id="mres"></div></div>`;
+    B.wireTop();
+    const box = $("#mq"), res = $("#mres");
+    let timer = 0, ticket = 0;
+    const keep = () => { const q = box.value.trim(); if (q.length >= 2) meSave("api/music/me/search", { q }); };
+    const recentHtml = async () => {
+      const mine = await B.musicMe();
+      const list = mine.searches || [];
+      if (!B.alive(nav) || box.value.trim().length >= 2) return;
+      res.innerHTML = list.length ? `<div class="mlib-head"><h3 class="msub">Recent searches</h3><button class="btn small" data-rs="clear">Clear all</button></div>
+        <div class="mlib-list">${list.map((s) => `<div class="mrs"><button class="mrs-q" data-rq="${esc(s.q)}">${I("search")} ${esc(s.q)}</button><button class="circle" data-rx="${esc(s.q)}" title="Remove">${I("x")}</button></div>`).join("")}</div>`
+        : `<p class="dim">Your recent searches show here.</p>`;
+    };
+    const run = async () => {
+      const q = box.value.trim();
+      if (q.length < 2) return recentHtml();
+      const mine = ++ticket;
+      const st = `searchTerm=${enc(q)}`;
+      const [songs, artists, albums, pls] = await Promise.all([
+        items(`${st}&IncludeItemTypes=Audio&Limit=12&${SONG_FIELDS}`).catch(() => []),
+        items(`${st}&IncludeItemTypes=MusicArtist&Limit=10`).catch(() => []),
+        items(`${st}&IncludeItemTypes=MusicAlbum&Limit=12`).catch(() => []),
+        items(`${st}&IncludeItemTypes=Playlist&MediaTypes=Audio&Limit=8&Fields=ChildCount`).catch(() => []),
+      ]);
+      if (mine !== ticket || !B.alive(nav)) return;
+      if (!songs.length && !artists.length && !albums.length && !pls.length) { res.innerHTML = `<p class="dim">Nothing on Benflix by that name. <a href="#/requests?tab=music">Ask for music</a> to get it.</p>`; return; }
+      res.innerHTML = (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
+        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard));
+      if (songs.length) wireSongs($("#ms"), songs, "Search", null);
+    };
+    box.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 300); });
+    box.addEventListener("keydown", (e) => { if (e.key === "Enter") keep(); });
+    res.addEventListener("click", (e) => {
+      const q = e.target.closest("[data-rq]"); if (q) { box.value = q.dataset.rq; run(); return; }
+      const x = e.target.closest("[data-rx]"); if (x) { meSave("api/music/me/search", { q: x.dataset.rx, remove: true }).then(recentHtml); return; }
+      if (e.target.closest("[data-rs=clear]")) { meSave("api/music/me/search", { clear: true }).then(recentHtml); return; }
+      // Opening or playing anything from the results keeps the words in Recent searches
+      if (e.target.closest("a, .srow")) keep();
+    });
+    run();
+    box.focus();
+  });
+
+  // ---------- the Now playing panel on the right of Music pages (approved r3-web3, wide windows) ----------
+  let panel;
+  const onMusicPage = () => /^#\/(music|msearch|mlibrary|mthemes|mgrid|songs|liked|album|artist|playlist|mix|upnext)/.test(location.hash || "");
+  const drawPanel = () => {
+    const s = M.current();
+    const want = !!s && onMusicPage() && window.innerWidth >= 1280 && !B.me.kids;
+    document.body.classList.toggle("has-mnp", want);
+    if (!want) { if (panel) panel.hidden = true; return; }
+    if (!panel) {
+      panel = document.createElement("aside");
+      panel.className = "mnp";
+      panel.addEventListener("click", (e) => {
+        const a = e.target.closest("[data-p]"); if (!a) return;
+        if (a.dataset.p === "open") openNow();
+        if (a.dataset.p === "like") M.like();
+        if (a.dataset.p === "queue") B.go("#/upnext");
+        if (a.dataset.p === "x") { panelOff = true; drawPanel(); }
+      });
+      document.body.appendChild(panel);
+    }
+    if (panelOff) { panel.hidden = true; document.body.classList.remove("has-mnp"); return; }
+    panel.hidden = false;
+    const art = cover(s, 500);
+    const next = M.queue.slice(M.index + 1, M.index + 4);
+    panel.innerHTML = `<div class="mnp-top"><b>Now playing</b><button class="circle" data-p="x" title="Hide">${I("x")}</button></div>
+      <button class="mnp-cover" data-p="open" title="Open Now playing" ${art ? `style="background-image:url('${art}')"` : ""}></button>
+      <div class="mnp-words"><span><b>${esc(s.Name || "")}</b><small>${esc(artistOf(s))}</small></span><button class="circle mheart ${M.liked.has(s.Id) ? "on" : ""}" data-p="like" title="Like">${I("heart")}</button></div>
+      <div class="mnp-card"><div class="mnp-h"><b>Next in queue</b><button class="btn small" data-p="queue">Open queue</button></div>
+      ${next.length ? next.map((n) => `<div class="mnp-n"><span class="qa" style="${cover(n, 80) ? `background-image:url('${cover(n, 80)}')` : ""}"></span><span><b>${esc(n.Name || "")}</b><small>${esc(artistOf(n))}</small></span></div>`).join("") : `<p class="dim">${esc(M.thenTitle ? `Then a mix like ${M.thenTitle}` : "Then a mix like this song")}</p>`}</div>`;
+  };
+  let panelOff = false;
+  M.onDraw = drawPanel;
+  window.addEventListener("hashchange", () => setTimeout(drawPanel, 30));
+  window.addEventListener("resize", () => drawPanel());
 
   // ---------- grids (See all, Browse by) ----------
   B.route(/^\/mgrid\/(\w+)(?:\/([\w-]+))?/, async (m, nav) => {
@@ -685,13 +1032,13 @@
       <div class="msongs" id="ms">${body || `<p class="dim">No songs here yet.</p>`}</div><div id="mbelow"></div></div>`;
     B.wireTop();
     const root = $("#ms");
-    wireSongs(root, songs, o.title, o.sourceId, o.extra);
+    wireSongs(root, songs, o.title, o.sourceId, o.extra, o.place);
     $(".mhero-btns").addEventListener("click", (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
       if ((b.dataset.h === "play" || b.dataset.h === "shuffle") && !songs.length) return B.toast(o.title === "Liked songs" ? "No liked songs yet. Press the heart on a song to add it here." : "There are no songs here yet.");
       // Ben: Play or Shuffle goes straight to Now playing
-      if (b.dataset.h === "play") { M.playList(songs, 0, false, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
-      if (b.dataset.h === "shuffle") { M.playList(songs, 0, true, o.title); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
+      if (b.dataset.h === "play") { M.playList(songs, 0, false, o.title, o.place); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
+      if (b.dataset.h === "shuffle") { M.playList(songs, 0, true, o.title, o.place); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
       if (b.dataset.h === "heart") { const on = !b.classList.contains("on"); M.like(o.sourceId, on).then(() => b.classList.toggle("on", on)); }
       if (b.dataset.h === "more") {
         const menu = [{ label: "Add all to Up next", value: "all" }, { label: "Add all to a playlist", value: "pl" }].concat(o.menu || []);
@@ -732,7 +1079,8 @@
       body += songRow(s, i, { number: s.IndexNumber || i + 1, cover: false, artist: false });
     });
     let liked = !!(al.UserData || {}).IsFavorite;
-    const playAll = (shuffle) => { M.playList(songs, 0, shuffle, al.Name); M.sourceId = al.Id; refreshRows($("#ms"), songs); openNow(); };
+    const alPlace = { kind: "album", id: al.Id, name: al.Name };
+    const playAll = (shuffle) => { M.playList(songs, 0, shuffle, al.Name, alPlace); M.sourceId = al.Id; refreshRows($("#ms"), songs); openNow(); };
     const none = songs.length ? "" : "No songs here yet";
     const tp = B.titlePage({
       title: al.Name,
@@ -760,7 +1108,7 @@
     });
     // An album has no story: the Overview tab isn't used
     const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
-    wireSongs($("#ms"), songs, al.Name, al.Id);
+    wireSongs($("#ms"), songs, al.Name, al.Id, null, alPlace);
     if (artist) {
       const more = (await items(`IncludeItemTypes=MusicAlbum&AlbumArtistIds=${enc(artist.Id)}&SortBy=ProductionYear&SortOrder=Descending&Limit=20`).catch(() => [])).filter((a) => a.Id !== al.Id);
       if (more.length && B.alive(nav)) tp.pane("tpMoreBy").innerHTML = `<div class="grid tp-grid">${more.map(albumCard).join("")}</div>`;
@@ -782,7 +1130,7 @@
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
     const art = (pl.ImageTags || {}).Primary ? cover(pl, 900) : null;
     await collection(nav, {
-      kick: "PLAYLIST", title: pl.Name, line: "", art, collage: art || covers.length < 2 ? null : covers.concat(covers).slice(0, 4), songs, sourceId: pl.Id,
+      kick: "PLAYLIST", title: pl.Name, line: "", art, collage: art || covers.length < 2 ? null : covers.concat(covers).slice(0, 4), songs, sourceId: pl.Id, place: { kind: "playlist", id: pl.Id, name: pl.Name },
       menu: canEdit ? [{ label: "Rename", value: "rename", run: async () => { const n = await B.askText("Rename playlist", "", pl.Name); if (n) { await B.jf("POST", `/Playlists/${enc(pl.Id)}`, { Name: n }); B.render(); } } }] : [],
       extra: canEdit ? (i) => [
         { label: "Move up", value: "up", run: async () => { if (i > 0) { await B.jf("POST", `/Playlists/${enc(pl.Id)}/Items/${enc(songs[i].PlaylistItemId)}/Move/${i - 1}`); B.render(); } } },
@@ -808,14 +1156,14 @@
       return true;
     });
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].sort(() => Math.random() - 0.5).slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
-    await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
+    await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null, place: { kind: "songs", id: "", name: "All songs" } });
   });
   B.route(/^\/liked$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const songs = await items(`IncludeItemTypes=Audio&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=3000&${SONG_FIELDS}`);
     if (!B.alive(nav)) return;
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
-    await collection(nav, { kick: "PLAYLIST", title: "Liked songs", line: "Every song you gave a heart", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null });
+    await collection(nav, { kick: "PLAYLIST", title: "Liked songs", line: "Every song you gave a heart", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null, place: { kind: "liked", id: "", name: "Liked songs" } });
   });
   B.route(/^\/mix\/([\w-]+)/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
@@ -839,7 +1187,7 @@
         B.render();
       } catch (e) { B.toast(e.message || "Couldn't take that song out. Try again in a minute."); }
     } }];
-    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null, extra: notHere });
+    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null, extra: notHere, place: { kind: "mix", id: mix.key, name: mix.name } });
     if (mix.adds) themeAdds(nav, mix);
   });
 
@@ -886,13 +1234,14 @@
       <h3 class="msub">Top songs</h3><div class="msongs" id="ms">${top.map((s, i) => songRow(s, i, { cover: true })).join("")}</div>
       ${B.row("Albums", full.map(albumCard))}${B.row("Singles and EPs", singles.map(albumCard))}</div>`;
     B.wireTop();
-    wireSongs($("#ms"), top, `${ar.Name}: top songs`, ar.Id);
+    const arPlace = { kind: "artist", id: ar.Id, name: ar.Name };
+    wireSongs($("#ms"), top, `${ar.Name}: top songs`, ar.Id, null, arPlace);
     $(".mhero-btns").addEventListener("click", async (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
-      if (b.dataset.h === "top") { M.playList(top, 0, false, `${ar.Name}: top songs`); M.sourceId = ar.Id; openNow(); }
+      if (b.dataset.h === "top") { M.playList(top, 0, false, `${ar.Name}: top songs`, arPlace); M.sourceId = ar.Id; openNow(); }
       if (b.dataset.h === "shuffle") {
         const all = await items(`IncludeItemTypes=Audio&ArtistIds=${enc(ar.Id)}&Limit=5000&${SONG_FIELDS}`);
-        M.playList(all, 0, true, ar.Name); M.sourceId = ar.Id; openNow();
+        M.playList(all, 0, true, ar.Name, arPlace); M.sourceId = ar.Id; openNow();
       }
       if (b.dataset.h === "follow") {
         const on = !b.classList.contains("on");

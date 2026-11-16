@@ -45,6 +45,7 @@ class MusicActionsViewModel
         val downloads: DownloadService,
         private val benflixMusic: BenflixMusic,
         @param:ApplicationContext private val context: Context,
+        private val musicMe: com.github.damontecres.wholphin.services.MusicMe,
     ) : ViewModel() {
         /**
          * Ben only: deletes this song's file on Tower and has Lidarr (or Soulseek) find a better copy. The bad
@@ -78,9 +79,12 @@ class MusicActionsViewModel
             source: BaseItem?,
             sourceName: String?,
             openNow: Boolean = false,
+            place: com.github.damontecres.wholphin.services.MusicPlace? = null,
         ) {
             viewModelScope.launchIO {
                 musicService.playList(songs, startIndex, shuffled, source?.id ?: songs.getOrNull(startIndex)?.id, sourceName)
+                // Music redesign 3: what you played from goes to the top of Jump back in and Recently played
+                (place ?: source?.let { musicPlaceOf(it, sourceName) })?.let { musicMe.played(it) }
                 // Ben: Play or Shuffle goes straight to Now playing (once the music has started)
                 if (openNow) onMain { navigationManager.navigateTo(Destination.NowPlaying) }
             }
@@ -287,4 +291,20 @@ fun SongMenu(
         // "Add to a playlist" opens the playlist picker in place of this menu
         dismissOnClick = false,
     )
+}
+
+/** The album, playlist or artist [item] as a place you played music from */
+fun musicPlaceOf(
+    item: BaseItem,
+    name: String? = null,
+): com.github.damontecres.wholphin.services.MusicPlace? {
+    val kind =
+        when (item.type) {
+            org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ALBUM -> "album"
+            org.jellyfin.sdk.model.api.BaseItemKind.PLAYLIST -> "playlist"
+            org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST -> "artist"
+            else -> return null
+        }
+    return com.github.damontecres.wholphin.services
+        .MusicPlace(kind, item.id.toString(), name?.ifBlank { null } ?: item.title.orEmpty())
 }
