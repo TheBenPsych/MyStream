@@ -27,6 +27,7 @@ import io
 import json
 import os
 import re
+import sys
 import threading
 import time
 import urllib.error
@@ -295,6 +296,7 @@ def build():
     report["channels_key"] = hashlib.sha1(" ".join(sorted(copies)).encode()).hexdigest()[:12]
     report["finished"] = int(time.time())
     report["minutes"] = round((time.time() - started) / 60, 1)
+    report["jellyfin_synced"] = status().get("jellyfin_synced")
     with open(STATUS_FILE, "w") as f:
         json.dump(report, f, indent=1)
     print(f"Live TV: kept {report['kept']} channels ({report['dead']} dead) in {report['minutes']} min", flush=True)
@@ -529,7 +531,9 @@ def sync_jellyfin(token=None):
     of an admin who used Benflix since the helper started (kept in memory only)."""
     if token:
         _admin["token"] = token
-    token = _admin["token"]
+    # Else the admin sign-in Tower's skip-times finder keeps (benflix_skips), if it has one
+    skips = sys.modules.get("benflix_skips")
+    token = _admin["token"] or (getattr(skips, "_admin", None) or {}).get("token")
     if not token:
         return
     st = status()
