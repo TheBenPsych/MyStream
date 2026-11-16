@@ -1690,10 +1690,16 @@ class PlaybackViewModel
                                     unsureSegments = fresh.unsure
                                 }
                             }
-                            val currentTicks =
-                                onMain { player.currentPosition.milliseconds.inWholeTicks }
+                            val (currentTicks, lengthTicks) =
+                                onMain {
+                                    val d = player.duration
+                                    player.currentPosition.milliseconds.inWholeTicks to
+                                        (if (d > 0) d.milliseconds.inWholeTicks else 0L)
+                                }
+                            // Benflix: an intro is never "Skip credits" (credits only near the end)
                             val currentSegment =
-                                segments
+                                BenflixSkipsService
+                                    .tidy(segments, lengthTicks)
                                     .firstOrNull {
                                         it.type != MediaSegmentType.UNKNOWN && currentTicks >= it.startTicks && currentTicks < it.endTicks
                                     }

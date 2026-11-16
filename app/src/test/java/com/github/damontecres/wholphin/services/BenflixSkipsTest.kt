@@ -56,4 +56,33 @@ class BenflixSkipsTest {
         assertEquals(MediaSegmentType.INTRO, BenflixSkipsService.typeOf("intro"))
         assertEquals(null, BenflixSkipsService.typeOf("nonsense"))
     }
+
+    private val episode = 1440L * 10_000_000L
+
+    @Test
+    fun `credits during the opening become Skip intro`() {
+        val early = seg(MediaSegmentType.OUTRO, 150, 240)
+        val tidy = BenflixSkipsService.tidy(listOf(early), episode)
+        assertEquals(listOf(MediaSegmentType.INTRO), tidy.map { it.type })
+    }
+
+    @Test
+    fun `credits that run from the opening to the end are dropped`() {
+        val wrong = seg(MediaSegmentType.OUTRO, 150, 1440)
+        assertEquals(emptyList<MediaSegmentDto>(), BenflixSkipsService.tidy(listOf(wrong), episode))
+    }
+
+    @Test
+    fun `an intro wins over credits at the same moment`() {
+        val intro = seg(MediaSegmentType.INTRO, 140, 230)
+        val early = seg(MediaSegmentType.OUTRO, 150, 240)
+        val real = seg(MediaSegmentType.OUTRO, 1300, 1400)
+        assertEquals(listOf(intro, real), BenflixSkipsService.tidy(listOf(early, real, intro), episode))
+    }
+
+    @Test
+    fun `real credits near the end stay`() {
+        val real = seg(MediaSegmentType.OUTRO, 1300, 1400)
+        assertEquals(listOf(real), BenflixSkipsService.tidy(listOf(real), episode))
+    }
 }
