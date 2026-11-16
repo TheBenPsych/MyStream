@@ -569,6 +569,7 @@ B.cardMenu = (it, href) => {
     watchable && B.markWatched ? { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) } : null,
     B.toggleList && it.Type !== "TvChannel" ? { label: ud.IsFavorite ? "Take off My List" : "Add to My List", icon: ud.IsFavorite ? "check" : "plus", onClick: () => B.toggleList(it) } : null,
     B.me && B.me.admin && B.fixItem && it.Type !== "Playlist" ? { label: "Pick a " + word, icon: "swap", youOnly: true, onClick: () => B.fixItem(Object.assign(it, { fixTab: "Primary" })) } : null,
+    B.me && B.me.admin && !B.me.kids && B.kidsChoice && watchable ? { label: "Kids profile", icon: "star", youOnly: true, onClick: () => B.kidsChoice(it) } : null,
   ]);
 };
 (() => {

@@ -282,11 +282,14 @@ B.loadFamilyRow = async (nav, kids) => {
   const card = (it) => (it.Type === "Episode"
     ? B.posterCard(Object.assign({}, it, { Name: it.SeriesName }), { href: B.hrefOf(it), sub: `S${it.ParentIndexNumber} E${it.IndexNumber}`, noTick: true })
     : B.posterCard(it, { progress: true }));
+  // Idea Box 25: titles Ben put on the Kids home come first ("Picked for you")
+  const picks = kids ? await get(`/Items?userId=${u}&Tags=benflix-kids-pick&IncludeItemTypes=Movie,Series&Recursive=true&SortBy=SortName&Limit=30&Fields=${F}`) : [];
+  if (!B.alive(nav)) return;
   const box = $("#famrow");
   if (box) {
-    box.innerHTML = list.length
+    box.innerHTML = (picks.length ? B.row("Picked for you", picks.map((it) => B.posterCard(it))) : "") + (list.length
       ? B.row("Keep watching", list.map(card))
-      : `<section class="rowx"><h3>Keep watching</h3><p class="sub">${kids ? "Nothing started yet. Open a door and pick something fun!" : "Nothing started yet. Open a door to find something to watch."}</p></section>`;
+      : `<section class="rowx"><h3>Keep watching</h3><p class="sub">${kids ? "Nothing started yet. Open a door and pick something fun!" : "Nothing started yet. Open a door to find something to watch."}</p></section>`);
   }
   if (!kids) return;
   const names = async (type) => (await get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SortBy=DatePlayed,DateCreated&SortOrder=Descending&Limit=4&EnableImages=false`))

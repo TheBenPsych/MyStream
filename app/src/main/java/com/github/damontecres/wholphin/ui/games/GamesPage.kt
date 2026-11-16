@@ -146,7 +146,18 @@ fun GamesPage(
             playable
                 .flatMap { (c, _, _) ->
                     c.games.map {
-                        it.id to GameRef(it.id, it.name, c.slug, c.name, it.coverUrl, it.size, kids = it.kids, bigKids = it.bigKids)
+                        it.id to
+                            GameRef(
+                                it.id,
+                                it.name,
+                                c.slug,
+                                c.name,
+                                it.coverUrl,
+                                it.size,
+                                kids = it.kids,
+                                bigKids = it.bigKids,
+                                players = it.players,
+                            )
                     }
                 }.toMap()
         }
@@ -281,32 +292,36 @@ fun GamesPage(
         // Redesign 2 (rc-family): game boxes keep their own shape, with the name in 2 lines and the console
         // under them on TV, phone and web
         Column(Modifier.width(cardHeight * ratio)) {
-            ServerGameCard(
-                game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
-                // Approved: the works-with icons live in the top area, not on the box art
-                playWith =
-                    if (wide) {
-                        emptyList()
-                    } else {
-                        listOfNotNull(
-                            if (LocalConsole.forSlug(ref.slug)?.remoteFriendly ==
-                                true
-                            ) {
-                                PlayWith.REMOTE
-                            } else {
-                                null
-                            },
-                        )
-                    },
-                token = viewModel.gamesToken,
-                status = status,
-                progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
-                onClick = onClick,
-                modifier =
-                    Modifier
-                        .size(width = cardHeight * ratio, height = cardHeight)
-                        .onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
-            )
+            Box {
+                ServerGameCard(
+                    game = ServerGame(id = ref.id, name = ref.name, coverUrl = ref.coverUrl, playable = true, size = ref.size),
+                    // Approved: the works-with icons live in the top area, not on the box art
+                    playWith =
+                        if (wide) {
+                            emptyList()
+                        } else {
+                            listOfNotNull(
+                                if (LocalConsole.forSlug(ref.slug)?.remoteFriendly ==
+                                    true
+                                ) {
+                                    PlayWith.REMOTE
+                                } else {
+                                    null
+                                },
+                            )
+                        },
+                    token = viewModel.gamesToken,
+                    status = status,
+                    progress = prep?.takeIf { it.gameId == ref.id }?.fraction,
+                    onClick = onClick,
+                    modifier =
+                        Modifier
+                            .size(width = cardHeight * ratio, height = cardHeight)
+                            .onFocusChanged { if (it.isFocused) onFocus(refPreview(ref, recentTimes[ref.id])) },
+                )
+                // Idea Box 25: "2P" or "4P" on games people can play together
+                if (ref.players >= 2) PlayersTag(ref.players, Modifier.align(Alignment.TopStart).padding(6.dp))
+            }
             com.github.damontecres.wholphin.ui.cards.CardNameUnder(
                 name = ref.name,
                 line = ref.consoleName,
@@ -468,6 +483,30 @@ fun GamesPage(
                             if (state.consoles.isEmpty()) {
                                 InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                             }
+                            // Idea Box 25: a controller that's nearly flat (newer TVs and phones can tell), checked each minute
+                            val lowBattery by produceState<String?>(null) {
+                                while (true) {
+                                    value =
+                                        com.github.damontecres.wholphin.games.ControllerBattery
+                                            .words()
+                                    delay(BATTERY_CHECK_MS)
+                                }
+                            }
+                            lowBattery?.let { words ->
+                                Text(
+                                    text = words,
+                                    color = Color(0xFF1D1405),
+                                    fontSize = BenflixType.small,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier =
+                                        Modifier
+                                            .background(
+                                                Color(0xFFF2B544),
+                                                androidx.compose.foundation.shape
+                                                    .RoundedCornerShape(50),
+                                            ).padding(horizontal = 14.dp, vertical = 6.dp),
+                                )
+                            }
                             val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
                             if (favRefs.isNotEmpty()) {
                                 Column(
@@ -485,6 +524,38 @@ fun GamesPage(
                                         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                                     ) {
                                         items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
+                                    }
+                                }
+                            }
+                            // Idea Box 25 "Games for two": the best-loved games two or more can play at once
+                            val forTwo =
+                                remember(ready, refs) {
+                                    ready
+                                        ?.consoles
+                                        .orEmpty()
+                                        .flatMap { it.games }
+                                        .filter { it.players >= 2 }
+                                        .sortedByDescending { it.rating }
+                                        .mapNotNull { refs[it.id] }
+                                        .filter { !KidsMode.isActive || it.kids }
+                                        .take(FOR_TWO_ROW)
+                                }
+                            if (forTwo.isNotEmpty()) {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.scrollAsOneBlock(),
+                                ) {
+                                    Text(
+                                        text = "Games for two",
+                                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                                    ) {
+                                        items(forTwo, key = { "two-${it.id}" }) { Card(it) }
                                     }
                                 }
                             }
@@ -575,6 +646,9 @@ fun GamesPage(
                                 )
                                 // Sort is remembered per console (A to Z to start)
                                 var sort by rememberSaveable(console.slug) { mutableStateOf(GameSort.AZ) }
+                                // Idea Box 25: "2 players" shows only games two or more can play at once
+                                var twoOnly by rememberSaveable(console.slug) { mutableStateOf(false) }
+                                val hasTwo = remember(console) { console.games.any { it.players >= 2 } }
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier.focusRequester(consoleFocus),
@@ -585,6 +659,11 @@ fun GamesPage(
                                         key = { "sort-${it.name}" },
                                     ) { mode ->
                                         SortChip(mode.label, selected = mode == sort) { sort = mode }
+                                    }
+                                    if (hasTwo) {
+                                        item(key = "two-players") {
+                                            SortChip("2 players", selected = twoOnly) { twoOnly = !twoOnly }
+                                        }
                                     }
                                 }
                                 val rows =
@@ -618,8 +697,13 @@ fun GamesPage(
                                     }
                                 }
                                 val sections =
-                                    remember(console, sort, recent, playTimes) {
-                                        consoleGridSections(console.games, sort, recent.map { it.first.id }, playTimes)
+                                    remember(console, sort, recent, playTimes, twoOnly) {
+                                        consoleGridSections(
+                                            if (twoOnly) console.games.filter { it.players >= 2 } else console.games,
+                                            sort,
+                                            recent.map { it.first.id },
+                                            playTimes,
+                                        )
                                     }
                                 val config = LocalConfiguration.current
                                 ConsoleGameGrid(
@@ -1007,3 +1091,31 @@ private const val TOP_SLACK_PX = 40
 
 /** Coming back within 10 minutes: wait for the rows to be drawn before scrolling down to where you were */
 private const val RETURN_WAIT_MS = 450L
+
+/** Idea Box 25: how often the Games page checks controller batteries */
+private const val BATTERY_CHECK_MS = 60_000L
+
+/** Idea Box 25: how many games the "Games for two" row shows */
+private const val FOR_TWO_ROW = 20
+
+/** Idea Box 25: a small "2P" / "4P" tag on the box art of games people can play together */
+@Composable
+internal fun PlayersTag(
+    players: Int,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = "${players}P",
+        fontSize = BenflixType.tag,
+        fontWeight = FontWeight.Bold,
+        color = Color.Black,
+        maxLines = 1,
+        modifier =
+            modifier
+                .background(
+                    Color.White,
+                    androidx.compose.foundation.shape
+                        .RoundedCornerShape(6.dp),
+                ).padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}

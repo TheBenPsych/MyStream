@@ -135,6 +135,14 @@ object KidsMode {
                 return@Interceptor chain.proceed(request)
             }
             val builder = request.url.newBuilder()
+            // Ben's "Kids profile: Let it through / Hide it" choice is kept as the title's custom rating,
+            // which Jellyfin uses instead of the official one, so ask for it with every list
+            val fields = request.url.queryParameter("fields")
+            if (fields == null) {
+                builder.addQueryParameter("fields", "CustomRating")
+            } else if (!fields.contains("CustomRating", ignoreCase = true)) {
+                builder.setQueryParameter("fields", "$fields,CustomRating")
+            }
             if (request.url.queryParameter("maxOfficialRating") == null) {
                 builder.addQueryParameter("maxOfficialRating", maxRating)
             }
@@ -218,6 +226,7 @@ object KidsMode {
                 .encodedPath("$basePath/Items")
                 .query(null)
                 .addQueryParameter("ids", missing.joinToString(","))
+                .addQueryParameter("fields", "CustomRating")
                 .build()
         chain.proceed(request.newBuilder().url(url).build()).use { response ->
             if (!response.isSuccessful) return
@@ -238,8 +247,35 @@ object KidsMode {
         return result
     }
 
+    /** The title's rating for Kids: Ben's own choice (custom rating) first, else the official one */
     private fun ratingOf(item: JSONObject): String? =
-        if (item.isNull("OfficialRating")) null else item.optString("OfficialRating").trim().takeIf { it.isNotEmpty() }
+        listOf("CustomRating", "OfficialRating").firstNotNullOfOrNull { key ->
+            if (item.isNull(key)) null else item.optString(key).trim().takeIf { it.isNotEmpty() }
+        }
+
+    /** Ben's "Kids profile" choice for one title (kept as its custom rating) */
+    enum class TitleRule { FOLLOW, LET_THROUGH, HIDE }
+
+    /** The custom rating that lets a title into Kids and Big kids */
+    fun letThroughRating(show: Boolean): String = if (show) "TV-PG" else "PG"
+
+    /** The custom rating that keeps a title out of Kids and Big kids */
+    fun hideRating(show: Boolean): String = if (show) "TV-MA" else "R"
+
+    /** What Ben chose for a title, read from its custom rating */
+    fun ruleOf(customRating: String?): TitleRule =
+        when (customRating?.trim()?.uppercase()) {
+            null, "" -> TitleRule.FOLLOW
+            "PG", "TV-PG" -> TitleRule.LET_THROUGH
+            "R", "TV-MA" -> TitleRule.HIDE
+            else -> TitleRule.FOLLOW
+        }
+
+    /** Whether a rating (official or custom) is one Kids can see */
+    fun kidsRating(rating: String?): Boolean = rating?.trim()?.uppercase()?.let { it in ALLOWED_RATINGS } == true
+
+    /** The tag on titles Ben put on the Kids home ("Picked for you") */
+    const val PICK_TAG = "benflix-kids-pick"
 
     private fun isAllowed(item: JSONObject): Boolean {
         val type = item.optString("Type")

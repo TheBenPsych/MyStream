@@ -357,6 +357,7 @@ fun ServerStatusPage(
             ServerSection.OVERVIEW -> {
                 requestsViewModel.loadRequests(mineOnly = false)
                 care.loadReport()
+                care.loadSignins()
             }
 
             ServerSection.PEOPLE -> {
@@ -418,6 +419,7 @@ fun ServerStatusPage(
     var askRestart by remember { mutableStateOf(false) }
     val history by data.history.collectAsState()
     val careReport by care.report.collectAsState()
+    val signins by care.signins.collectAsState()
     val careReportProblem by care.reportProblem.collectAsState()
     val carePlaytest by care.playtest.collectAsState()
     val careTidy by care.tidy.collectAsState()
@@ -553,6 +555,32 @@ fun ServerStatusPage(
                 }
             }
         }
+    // Idea Box 25 "New sign-in alert"
+    val signinNeeds =
+        remember(signins) {
+            signins.map { s ->
+                NeedLine(
+                    key = "signin-${s.id}",
+                    text = "New sign-in on ${s.user}'s account",
+                    light = Light.WARN,
+                    supporting =
+                        listOfNotNull(
+                            s.device,
+                            when (s.away) {
+                                true -> "away from home"
+                                false -> "at home"
+                                null -> null
+                            },
+                            s.whenWords(),
+                        ).joinToString(" · "),
+                    actions =
+                        listOf(
+                            "That's fine" to { care.answerSignin(s, signOut = false) },
+                            "Sign it out" to { care.answerSignin(s, signOut = true) },
+                        ),
+                )
+            }
+        }
     val requestNeeds =
         remember(requests, lookYourself) {
             val waiting = requests.orEmpty().filter { it.status == pendingStatus }
@@ -683,7 +711,7 @@ fun ServerStatusPage(
                 setupNeed?.let { need -> item(key = "setup-card") { ServerSetupCard(need) } }
                 item(key = "cards") {
                     ServerOverviewCards(
-                        needs = healthNeeds + requestNeeds,
+                        needs = healthNeeds + signinNeeds + requestNeeds,
                         watching = watching,
                         onOpenWatching = { frame.pick(ServerSection.NOW.key) },
                     )

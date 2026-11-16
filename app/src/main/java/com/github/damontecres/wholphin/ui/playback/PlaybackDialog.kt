@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +53,9 @@ enum class PlaybackDialogType {
 
     /** Benflix: watch together with people on other TVs, phones and browsers */
     TOGETHER,
+
+    /** Benflix (Idea Box 25): someone watching with you on your profile gets the same progress */
+    ALSO_COUNTS,
 }
 
 data class PlaybackSettings(
@@ -71,6 +76,8 @@ data class PlaybackSettings(
     val canFixSkips: Boolean = true,
     /** Watch together (not on live channels) */
     val canWatchTogether: Boolean = false,
+    /** Benflix (Idea Box 25): "Also counts for" (main profile only, movies and episodes) */
+    val canAlsoCount: Boolean = false,
 )
 
 /**
@@ -248,6 +255,20 @@ fun PlaybackDialog(
                                 icon = BenflixIcon.PERSON,
                                 closes = false,
                                 onClick = { onClickPlaybackDialogType(PlaybackDialogType.TOGETHER) },
+                            ),
+                        )
+                    }
+                    if (settings.canAlsoCount) {
+                        val also =
+                            com.github.damontecres.wholphin.services.AlsoCountsFor.chosen.value
+                        add(
+                            PanelLine.Row(
+                                label = "Also counts for",
+                                value = if (also.isEmpty()) "Just you" else also.joinToString(", ") { it.name },
+                                note = "Someone watching with you on your profile keeps up too",
+                                icon = BenflixIcon.PERSON,
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.ALSO_COUNTS) },
                             ),
                         )
                     }
@@ -433,6 +454,43 @@ fun PlaybackDialog(
                             note = skipFixHint(fix),
                             onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSkip(fix)) },
                         )
+                    },
+                onDismissRequest = onDismissRequest,
+            )
+        }
+
+        PlaybackDialogType.ALSO_COUNTS -> {
+            val alsoFor = com.github.damontecres.wholphin.services.AlsoCountsFor
+            val chosen by alsoFor.chosen.collectAsState()
+            val family by alsoFor.family.collectAsState()
+            PlayerPanel(
+                title = "Also counts for",
+                subtitle = "Tick who's watching with you. When this ends, it's marked watched for them too, and their spot moves along.",
+                lines =
+                    buildList {
+                        when {
+                            family == null -> {
+                                add(PanelLine.Heading("Looking for family profiles…"))
+                            }
+
+                            family.orEmpty().isEmpty() -> {
+                                add(PanelLine.Heading("There are no other profiles on Benflix yet"))
+                            }
+
+                            else -> {
+                                family.orEmpty().forEach { person ->
+                                    add(
+                                        PanelLine.Row(
+                                            label = person.name,
+                                            selected = chosen.any { it.id == person.id },
+                                            icon = if (chosen.any { it.id == person.id }) BenflixIcon.CHECK else BenflixIcon.PERSON,
+                                            closes = false,
+                                            onClick = { alsoFor.toggle(person) },
+                                        ),
+                                    )
+                                }
+                            }
+                        }
                     },
                 onDismissRequest = onDismissRequest,
             )

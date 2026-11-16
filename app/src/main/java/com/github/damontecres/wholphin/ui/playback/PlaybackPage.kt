@@ -218,6 +218,12 @@ fun PlaybackPageContent(
     val density = LocalDensity.current
     LaunchedEffect(density) { viewModel.updateDensity(density) }
     val userDto by viewModel.currentUserDto.collectAsState()
+    // Benflix (Idea Box 25): "Also counts for" is for the main profile (Jellyfin only lets an admin save someone else's spot)
+    val canAlsoCount =
+        userDto?.policy?.isAdministrator == true &&
+            !com.github.damontecres.wholphin.services.KidsMode.isActive &&
+            !com.github.damontecres.wholphin.services.GuestMode.isActive
+    LaunchedEffect(canAlsoCount) { if (canAlsoCount) viewModel.loadAlsoCountsFamily() }
 
     var showDebugInfo by remember { mutableStateOf(prefs.showDebugInfo) }
 
@@ -1334,6 +1340,12 @@ fun PlaybackPageContent(
                         },
                     canFixSkips = state.currentPlayback?.item?.type != BaseItemKind.TV_CHANNEL,
                     // Not for Kids profiles, like the Lobby (Ben, 2026-11-15)
+                    canAlsoCount =
+                        canAlsoCount &&
+                            state.currentPlayback
+                                ?.item
+                                ?.type
+                                .let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
                     canWatchTogether =
                         !com.github.damontecres.wholphin.services.KidsMode.isActive &&
                             state.currentPlayback

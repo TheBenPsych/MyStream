@@ -211,4 +211,61 @@
     skipped: async () => setOf(await readPrefs(), "skip"),
     leave: (id) => addTo("skip", id),
   };
+
+  // Idea Box 25: "Kids profile" for one movie or show (Ben only). Let it through, hide it, or follow its age rating,
+  // kept as Jellyfin's custom rating (it passes down to every season and episode), and put it on the Kids home.
+  const KIDS_OK = ["G", "PG", "TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "TV-PG", "U", "UC", "ALL", "APPROVED", "0", "6", "7", "FSK-0", "FSK-6"];
+  const PICK = "benflix-kids-pick";
+  const ruleOf = (c) => { const r = String(c || "").trim().toUpperCase(); return r === "PG" || r === "TV-PG" ? "let" : r === "R" || r === "TV-MA" ? "hide" : "follow"; };
+  B.kidsChoice = async (start) => {
+    if (!B.me || !B.me.admin || B.me.kids || !start) return;
+    const id = (start.Type === "Episode" || start.Type === "Season") && start.SeriesId ? start.SeriesId : start.Id;
+    const p = B.side(`<div id="kcBody">${B.spinner()}</div>`);
+    const body = () => p.querySelector("#kcBody");
+    const load = () => B.get(`/Items/${id}?userId=${B.uid()}&Fields=Overview,Genres,Tags,Studios,People,ProviderIds,Taglines,LockedFields,ProductionLocations,DateCreated,PremiereDate,Path`)
+      .then((r) => (r && r.Items ? r.Items[0] : r));
+    let it;
+    try { it = await load(); } catch (e) { B.closeAll(); return B.toast(e.message); }
+    if (!it || !body()) return;
+    const show = it.Type === "Series";
+    const draw = () => {
+      const rule = ruleOf(it.CustomRating), picked = (it.Tags || []).some((t) => t.toLowerCase() === PICK);
+      const rating = it.OfficialRating ? `rated ${it.OfficialRating}` : "no rating";
+      const ok = KIDS_OK.includes(String(it.OfficialRating || "").toUpperCase());
+      const opt = (key, label, line) => `<button class="opt ${rule === key ? "on" : ""}" data-rule="${key}">${I(rule === key ? "check" : "more")} ${esc(label)}<small>${esc(line)}</small></button>`;
+      body().innerHTML = `<h3>Kids profile</h3><p class="dim">${esc(it.Name)}</p>
+        ${opt("let", "Let it through", "Kids and Big kids can see it")}
+        ${opt("hide", "Hide it", "Kids and Big kids never see it")}
+        ${opt("follow", "Follow its age rating", `It's ${rating}, so Kids ${ok ? "can" : "can't"} see it`)}
+        <h4 class="dim" style="margin:16px 0 8px">Kids home</h4>
+        <button class="opt" data-pick="${picked ? "off" : "on"}">${I(picked ? "check" : "plus")} ${picked ? "Take off the Kids home" : "Put on the Kids home"}<small>The "Picked for you" row</small></button>`;
+    };
+    draw();
+    const save = async (rule, pick) => {
+      const full = await load();
+      const out = Object.assign({}, full);
+      if (rule) out.CustomRating = rule === "let" ? (show ? "TV-PG" : "PG") : rule === "hide" ? (show ? "TV-MA" : "R") : null;
+      if (pick != null) out.Tags = pick ? [...new Set([...(full.Tags || []), PICK])] : (full.Tags || []).filter((t) => t.toLowerCase() !== PICK);
+      await B.jf("POST", `/Items/${id}`, out);
+      it = Object.assign(it, { CustomRating: out.CustomRating, Tags: out.Tags || it.Tags });
+    };
+    p.onclick = (e) => {
+      const b = e.target.closest("[data-rule],[data-pick]"); if (!b) return;
+      B.busy(b, async () => {
+        if (b.dataset.rule) {
+          const r = b.dataset.rule;
+          await save(r, null);
+          draw();
+          return r === "let" ? `Kids and Big kids can now see ${it.Name}.` : r === "hide" ? `${it.Name} is now hidden from Kids and Big kids.` : `${it.Name} follows its age rating again.`;
+        }
+        const on = b.dataset.pick === "on";
+        const r = ruleOf(it.CustomRating);
+        // A title Kids can't see yet is let through too, so it really shows up on the Kids home
+        const letIn = on && r !== "let" && (r === "hide" || !KIDS_OK.includes(String(it.OfficialRating || "").toUpperCase()));
+        await save(letIn ? "let" : null, on);
+        draw();
+        return !on ? `${it.Name} is off the Kids home.` : letIn ? `${it.Name} is on the Kids home. It wasn't rated for Kids, so it's let through too.` : `${it.Name} is on the Kids home.`;
+      });
+    };
+  };
 })();

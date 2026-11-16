@@ -35,6 +35,8 @@ data class GameRef(
     val kids: Boolean = false,
     /** Fine for Big kids (E10+ and Teen too) */
     val bigKids: Boolean = false,
+    /** Idea Box 25: how many can play at once (0 = one, or not known), for the 2P / 4P tag */
+    val players: Int = 0,
 )
 
 /** A game kept on this device */

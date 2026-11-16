@@ -1698,6 +1698,23 @@ class GameActivity : ComponentActivity() {
                     }
 
                     MenuPage.MAIN -> {
+                        // Idea Box 25: a controller that's nearly flat (newer TVs and phones can tell)
+                        val lowBattery = remember { ControllerBattery.words() }
+                        if (lowBattery != null) {
+                            Text(
+                                text = lowBattery,
+                                color = Color(0xFF1D1405),
+                                fontSize = 15.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                modifier =
+                                    Modifier
+                                        .background(
+                                            Color(0xFFF2B544),
+                                            androidx.compose.foundation.shape
+                                                .RoundedCornerShape(50),
+                                        ).padding(horizontal = 12.dp, vertical = 4.dp),
+                            )
+                        }
                         Group("Game")
                         MenuButton("Resume", BenflixPlayFilled, Modifier.focusRequester(focus)) { closeMenu() }
                         MenuButton("Save", BenflixIcon.PLUS.vector) { page = MenuPage.SAVE }
