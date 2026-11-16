@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,6 +24,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -585,7 +585,11 @@ private fun GuideGrid(
 
                         is GuideEntry.Channel -> {
                             (if (it.favourite) "fav-" else "") +
-                                (it.schedule.live?.id?.toString() ?: "b-${it.schedule.number}")
+                                (
+                                    it.schedule.live
+                                        ?.id
+                                        ?.toString() ?: "b-${it.schedule.number}"
+                                )
                         }
                     }
                 },
