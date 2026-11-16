@@ -3762,7 +3762,9 @@ def _theme_out(key, group, name, line, songs, rnd, need, limit=THEME_SONGS, adds
             break
     if len(ids) < need:
         return None
-    out = {"key": key, "name": name, "line": note or line, "songs": ids, "covers": covers, "group": group}
+    out = {"key": key, "name": name, "line": line, "songs": ids, "covers": covers, "group": group}
+    if note:
+        out["note"] = note
     if adds:
         out["adds"] = True
     return out
@@ -3824,7 +3826,8 @@ def themes_for(token, user_id, is_admin):
             continue
         mine = [s for s in songs if (t["_re"] and t["_re"].search(s["_names"])) or any(g in s["_genres"] for g in t["genres"])]
         mine += from_catalogue(t["key"]) + pinned(t["key"])
-        note = f"Shows for everyone from {start.strftime('%b')} {start.day}" if early else ""
+        # The card keeps describing the songs; the "not out yet" note goes on the playlist page only
+        note = f"Only you can see this until {start.strftime('%b')} {start.day}" if early else ""
         # A holiday Ben is filling shows on his profile even before it has songs
         m = _theme_out(t["key"], "season", t["name"], t["line"], mine, rnd, 0 if is_admin else need, limit=100, adds=True, note=note)
         if m:
