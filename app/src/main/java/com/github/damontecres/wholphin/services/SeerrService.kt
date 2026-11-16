@@ -205,7 +205,10 @@ class SeerrService
                 (details?.get("genres") as? JsonArray)
                     .orEmpty()
                     .mapNotNull { (it as? JsonObject)?.get("id").str()?.toIntOrNull() }
-            val jfGenres = item.data.genres.orEmpty().map { it.lowercase() }
+            val jfGenres =
+                item.data.genres
+                    .orEmpty()
+                    .map { it.lowercase() }
             val kind =
                 when {
                     details != null && isAnime(details) -> AskKind.ANIME
