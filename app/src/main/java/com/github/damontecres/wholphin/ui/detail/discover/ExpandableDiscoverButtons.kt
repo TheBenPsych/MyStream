@@ -23,6 +23,8 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
 import com.github.damontecres.wholphin.ui.components.TrailerButton
+import com.github.damontecres.wholphin.ui.discover.RequestForButton
+import com.github.damontecres.wholphin.ui.discover.rememberCanRequestFor
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlin.time.Duration
 
@@ -50,7 +52,7 @@ fun ExpandableDiscoverButtons(
     val kids by KidsMode.active.collectAsState()
     val noAsking = kids && availability == SeerrAvailability.UNKNOWN && !blocked
     val firstFocus = remember { FocusRequester() }
-    val canRequestFor = com.github.damontecres.wholphin.ui.discover.rememberCanRequestFor(isAdmin)
+    val canRequestFor = rememberCanRequestFor(isAdmin)
     // Benflix look A: flat buttons on the request pages too
     androidx.compose.runtime.CompositionLocalProvider(
         com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
@@ -173,7 +175,7 @@ fun ExpandableDiscoverButtons(
                     (availability == SeerrAvailability.UNKNOWN || availability == SeerrAvailability.PARTIALLY_AVAILABLE)
             if (canRequestFor && askable) {
                 item("request_for") {
-                    com.github.damontecres.wholphin.ui.discover.RequestForButton(
+                    RequestForButton(
                         modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                     )
                 }

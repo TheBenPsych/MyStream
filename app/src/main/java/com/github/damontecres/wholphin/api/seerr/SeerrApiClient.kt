@@ -57,7 +57,7 @@ class SeerrApiClient(
                         .code(409)
                         .message("Not in Seerr")
                         .body(
-                            "{\"message\":\"${forWho.name.replace("\"", "")} isn't set up in Seerr yet. Open Seerr > Users > Import Jellyfin users, or pick Me.\"}"
+                            notInSeerr(forWho.name)
                                 .toResponseBody("application/json".toMediaType()),
                         ).build()
                 }
@@ -170,6 +170,12 @@ private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
         }
     }
     return null
+}
+
+/** Benflix "Request for": the answer when the picked person has no Seerr account yet */
+private fun notInSeerr(name: String): String {
+    val words = "${name.filter { it != '"' && it != '\\' }} isn't set up in Seerr yet. Pick Me, or import them in Seerr."
+    return "{\"message\":\"$words\"}"
 }
 
 /** Benflix: a POST that makes a new Seerr request */
