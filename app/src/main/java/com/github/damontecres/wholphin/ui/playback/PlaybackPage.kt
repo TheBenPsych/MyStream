@@ -935,6 +935,7 @@ fun PlaybackPageContent(
         }
         com.github.damontecres.wholphin.ui.main.ChannelBanner(
             playing = channelPlaying,
+            playingItemId = state.currentPlayback?.item?.id ?: (destination as? Destination.Playback)?.itemId,
             modifier = Modifier.align(Alignment.BottomStart),
         )
         // Benflix "Pause live TV" (Behind live tag, Jump to live) and "This channel is broken"

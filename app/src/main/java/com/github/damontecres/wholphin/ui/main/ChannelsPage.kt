@@ -1286,9 +1286,15 @@ private fun GuideHeader(
 @Composable
 fun ChannelBanner(
     playing: Boolean,
+    playingItemId: java.util.UUID?,
     modifier: Modifier = Modifier,
 ) {
-    val banner by ChannelSession.banner.collectAsState()
+    val rawBanner by ChannelSession.banner.collectAsState()
+    // Only while the player is showing the channel that was tuned in. A banner left over from
+    // Live TV must never show over a movie or episode started from somewhere else.
+    val watching = ChannelSession.isWatching(playingItemId)
+    // (Hidden, not cleared: while flipping channels the old player can still be on screen for a moment)
+    val banner = rawBanner?.takeIf { watching }
     LaunchedEffect(banner, playing) {
         if (banner != null) {
             // If the channel never starts, don't leave "Tuning in…" up forever
