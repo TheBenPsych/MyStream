@@ -287,8 +287,7 @@ private fun DoorRail(
                         val came = it.hasFocus && !focused
                         focused = it.hasFocus
                         if (came && !alwaysOpen && !LastRemoteKey.movedRecently()) strays++
-                    }
-                    .focusRestorer(active)
+                    }.focusRestorer(active)
                     .onPreviewKeyEvent { event ->
                         if (!alwaysOpen && event.key == Key.DirectionRight) {
                             if (event.type == KeyEventType.KeyDown) state.content.tryRequestFocus()
