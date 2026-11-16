@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
 /**
@@ -425,18 +426,19 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
+                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door))
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(
                 icon = doorIcon(door),
-                color = door.onColor,
+                color = door.labelColor,
                 size = (if (small) 32.dp else 44.dp) * scale,
                 modifier = Modifier.align(Alignment.TopStart),
             )
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text(
                     text = door.title,
-                    color = door.onColor,
+                    color = door.labelColor,
                     fontSize = (if (small) 22.sp else 34.sp) * scale,
                     lineHeight = (if (small) 24.sp else 36.sp) * scale,
                     fontWeight = FontWeight.ExtraBold,
@@ -447,7 +449,7 @@ private fun FamilyDoor(
                 if (!line.isNullOrBlank()) {
                     Text(
                         text = line,
-                        color = door.onColor.copy(alpha = .85f),
+                        color = door.labelColor.copy(alpha = .85f),
                         fontSize = (if (small) 12.sp else 15.sp) * scale,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,

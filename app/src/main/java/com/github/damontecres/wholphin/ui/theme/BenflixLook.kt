@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /**
  * The Benflix look (redesign, Nov 2026): one calm dark tray for everyone, white words, neutral greys,
@@ -22,28 +23,28 @@ object BenflixColors {
     val Muted: Color get() = KidsLook.palette?.muted ?: Color(0xFF9497A3)
 
     /** Pills, chips and small raised things */
-    val Raised: Color get() = KidsLook.palette?.raised ?: Color(0xFF15171D)
+    val Raised: Color get() = KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: Color(0xFF15171D)
 
     /** Menus and panels */
-    val Panel: Color get() = KidsLook.palette?.panel ?: Color(0xFF16181E)
+    val Panel: Color get() = KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: Color(0xFF16181E)
 
     /** The lighter side of a panel (profile card picture side) */
-    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: Color(0xFF1D2027)
+    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
     val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
 
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
-    val FocusFill: Color get() = KidsLook.palette?.accent ?: Color.White
+    val FocusFill: Color get() = KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: Color.White
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: Color(0xFF0B0C10)
+    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: xmas(Color.White) ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
-    val Line: Color get() = KidsLook.palette?.line ?: Color(0xFF2A2D35)
+    val Line: Color get() = KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
-    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: Color(0xFF262932)
+    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: Color(0xFF262932)
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
     val Dim = Color(0xB8050608)
@@ -73,6 +74,9 @@ object BenflixColors {
     /** Music, the fifth door: soft violet with dark words */
     val Music = Color(0xFFB69CFF)
     val OnMusic = Color(0xFF160F26)
+
+    /** Christmas look: [c] while it's on (December until New Year's, not on Kids), else null */
+    private fun xmas(c: Color): Color? = if (XmasLook.on) c else null
 
     /** Books, the sixth door: lime with dark words */
     val Books = Color(0xFFB9E36A)
@@ -105,6 +109,14 @@ enum class BenflixDoor(
                 MUSIC -> BenflixColors.Music
                 BOOKS -> BenflixColors.Books
             }
+
+    /** The words on the door itself: white on every door in the Christmas look (Ben: Books too) */
+    val labelColor: Color
+        get() = if (XmasLook.on) Color.White else onColor
+
+    /** Christmas look: the colour of the glass ornament hanging on this door */
+    val ornamentColor: Color
+        get() = lerp(color, Color.White, .12f)
 
     /** Words on top of [color] */
     val onColor: Color

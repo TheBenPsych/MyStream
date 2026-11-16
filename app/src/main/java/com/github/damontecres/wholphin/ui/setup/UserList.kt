@@ -408,7 +408,7 @@ private fun UserIconCard(
 
     // Card dimensions - circular card
     val cardSize = LocalProfileTileSize.current
-    // Christmas (1 Dec to 1 Jan): the focused profile gets a soft warm glow around its white ring
+    // Christmas (December until New Year's): the focused profile gets a soft warm glow around its white ring
     val focused by interactionSource.collectIsFocusedAsState()
     val xmasGlow =
         focused &&

@@ -51,6 +51,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -200,6 +202,8 @@ private fun CornerCard(
         modifier =
             Modifier
                 .then(if (isTv) Modifier.widthIn(min = 300.dp, max = 400.dp) else Modifier.fillMaxWidth())
+                // Christmas look: a red glass ornament hangs from the notice's top edge
+                .then(if (XmasLook.on) Modifier.xmasOrnament(XmasLook.RedBall, ball = 24.dp, string = 6.dp, fromEnd = 34.dp) else Modifier)
                 .clip(shape)
                 .background(BenflixColors.Panel)
                 .border(1.dp, BenflixColors.Line, shape)

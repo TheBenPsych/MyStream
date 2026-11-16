@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -160,7 +161,8 @@ fun BannerCard(
             modifier
                 .playButtonPlays(item)
                 .bringIntoViewRequester(bringIntoView)
-                .size(cardWidth, cardHeight),
+                .size(cardWidth, cardHeight)
+                .xmasFocusOrnament(focused),
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
         interactionSource = cardInteractionSource,

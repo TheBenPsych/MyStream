@@ -61,7 +61,8 @@ fun WholphinTheme(
     // everything when Kids is switched on or off.
     val kidsPalette = KidsLook.palette
     val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
-    val accentColor = kidsPalette?.accent ?: BenflixRedBase
+    // Christmas look (December until New Year's): highlights and progress lines turn ornament red
+    val accentColor = kidsPalette?.accent ?: (if (XmasLook.on) XmasLook.Red else BenflixRedBase)
     // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
     val density = LocalDensity.current
     val readDensity =

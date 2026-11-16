@@ -70,6 +70,8 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -687,8 +689,11 @@ private fun TitleButtonView(
     onOffTap: (String) -> Unit = {},
 ) {
     val shape = RoundedCornerShape(10.dp)
-    val container = if (primary) BenflixColors.Text else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) BenflixColors.Tray else BenflixColors.Text
+    // Christmas look: Play is ornament red with white words, and a green glass ornament hangs from it
+    val xmas = XmasLook.on
+    val primaryFill = if (xmas) XmasLook.Red else BenflixColors.Text
+    val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
+    val content = if (primary) (if (xmas) Color.White else BenflixColors.Tray) else BenflixColors.Text
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
@@ -697,7 +702,7 @@ private fun TitleButtonView(
             ClickableSurfaceDefaults.colors(
                 containerColor = container,
                 contentColor = content,
-                focusedContainerColor = if (primary) BenflixColors.Text else BenflixColors.PanelHigh,
+                focusedContainerColor = if (primary) primaryFill else BenflixColors.PanelHigh,
                 focusedContentColor = content,
                 pressedContainerColor = container,
                 pressedContentColor = content,
@@ -707,7 +712,14 @@ private fun TitleButtonView(
         modifier =
             modifier
                 .alpha(if (off != null) .45f else 1f)
-                .onFocusChanged { onFocus(it.isFocused) },
+                .onFocusChanged { onFocus(it.isFocused) }
+                .then(
+                    if (primary && xmas) {
+                        Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)
+                    } else {
+                        Modifier
+                    },
+                ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -715,7 +727,9 @@ private fun TitleButtonView(
             modifier =
                 Modifier
                     .then(if (fill) Modifier.fillMaxWidth() else Modifier)
-                    .padding(horizontal = if (big) 22.dp else 16.dp, vertical = if (big) 13.dp else 10.dp),
+                    .padding(horizontal = if (big) 22.dp else 16.dp, vertical = if (big) 13.dp else 10.dp)
+                    // Room for the Christmas ornament hanging on the right of Play
+                    .padding(end = if (primary && xmas) 30.dp else 0.dp),
         ) {
             BenflixIconImage(button.icon, color = content, size = if (big) 22.dp else 18.dp)
             Text(

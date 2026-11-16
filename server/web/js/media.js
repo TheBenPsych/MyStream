@@ -81,6 +81,22 @@ B.trending = async (type, onlyAnime) => {
   }
   return B.keep(items.slice(0, 10));
 };
+// Christmas favourites: movies tagged Christmas or with a Christmas word in the name, shuffled (cached 30 minutes)
+B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const tags = encodeURIComponent(["christmas", "christmas eve", "santa claus", "christmas party", "christmas tree"].join("|"));
+  const words = ["Christmas", "Xmas", "Santa Claus", "Grinch", "Elf", "Home Alone", "Polar Express", "Klaus", "Jingle"];
+  // Name searches only keep whole-word matches, so "Elf" doesn't bring in "Self/less"
+  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => new RegExp(`\\b${w}\\b`, "i").test(x.Name || "")) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
+    ...words.map(byWord),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Ids of anime titles (anything in a library with "anime" in its name)
 B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
   const libs = (await B.libs(type === "Movie" ? "movies" : "shows")).filter(B.isAnimeLib);
@@ -116,8 +132,12 @@ B.route(/^\/movies$/, async (m, nav) => {
   const kids = B.me.kids;
   // Easy mode: fewer rows, like Kids (Keep watching, My List, New)
   const fewer = kids || (B.easyMode && B.easyMode());
+  // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
+  const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
+    xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
     fewer ? "" : B.row("Top 10 movies", B.top10(top)),

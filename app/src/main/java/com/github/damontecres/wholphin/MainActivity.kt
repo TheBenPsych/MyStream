@@ -339,6 +339,9 @@ class MainActivity : AppCompatActivity() {
                                     LocalImageUrlService provides imageUrlService,
                                     androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides snappyBringIntoView,
                                 ) {
+                                    // Christmas look switch (Settings > Look), read before the theme picks its colours
+                                    com.github.damontecres.wholphin.ui.theme.ChristmasSeason.lookOff =
+                                        appPreferences.benflixPreferences.christmasLookOff
                                     WholphinTheme(
                                         true,
                                         // Benflix always uses its own red and black look
@@ -350,8 +353,6 @@ class MainActivity : AppCompatActivity() {
                                             !appPreferences.benflixPreferences.hapticsOff
                                         com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter.englishOnly =
                                             !appPreferences.benflixPreferences.allSubtitleLanguages
-                                        com.github.damontecres.wholphin.ui.theme.ChristmasSeason.lookOff =
-                                            appPreferences.benflixPreferences.christmasLookOff
                                         ProvideLocalClock {
                                             Box(modifier = Modifier.fillMaxSize()) {
                                                 MainContent(

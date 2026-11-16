@@ -150,7 +150,7 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .who { position: relative; isolation: isolate; }
 .who .wall { position: absolute; inset: 0; z-index: -1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 1fr); overflow: hidden; opacity: 0; transition: opacity .6s; }
 .who .wall.on { opacity: 1; }
-/* Christmas: the cosy room behind Who's watching (1 Dec to 1 Jan) */
+/* Christmas: the cosy room behind Who's watching (1 to 26 Dec) */
 .who .xroom { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; background: #0D0A0A; }
 .who h1.xmas { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; font-size: 54px; margin: 0 0 6px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
 .who .xcount { margin: 0 0 30px; font-size: 20px; font-weight: 600; color: #F2D27E; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
@@ -1577,3 +1577,44 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
 .mword-line { font-size: 13px; padding: 0 12px 6px 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .srow.dragging { opacity: .45; }
 .srow.dropto { box-shadow: inset 0 -2px 0 var(--music); }
+
+/* ---------- Christmas look (approved 2026-11-16, 1 to 26 December, not on Kids) ----------
+   Red highlights, pine green buttons and panels, white words on every door, and one decoration used one way:
+   a glass ornament hanging from a gold pin on a top edge (the doors, Play, notices and the poster you're on).
+   Settings › Look › Christmas look turns it off (js/start.js B.xmasOn). */
+html.xmas {
+  --pg2: #0F241A; --pg3: #173A28; --pg4: #1E6B45; --line: #1F3D2C; --accent: #E0344E;
+  --xred: #E0344E; --xpine: #1E6B45; --xgold: #E9C877;
+}
+html.xmas .door { color: #fff; }
+html.xmas .btn.white, html.xmas .btn.red, html.xmas .chip.on { background: var(--xred); border-color: var(--xred); color: #fff; }
+html.xmas .btn.white:hover, html.xmas .btn.red:hover { background: #EA4C64; color: #fff; }
+html.xmas .btn { background: var(--xpine); }
+html.xmas .btn.ghost { background: none; }
+html.xmas .poster .prog { background: rgba(30,107,69,.85); }
+html.xmas .poster .prog i, html.xmas .kwbar .line i, html.xmas .player .bar .knob { background: var(--xred); }
+html.xmas .corner .ctime { background: var(--xred); }
+/* the ornament: ::before is the gold pin, thread and cap; ::after is the glass ball (--ob is its colour) */
+html.xmas .door, html.xmas .tp .btns .btn.white, html.xmas .corner, html.xmas .poster:focus-visible, html.xmas .poster:hover { position: relative; --ob: #E23A55; --os: 22px; --ol: 7px; --ox: 26px; }
+html.xmas .door { --ob: color-mix(in srgb, var(--c) 88%, #fff); --os: clamp(26px, 3.4vw, 46px); --ol: clamp(16px, 2vw, 34px); --ox: clamp(22px, 3vw, 44px); }
+html.xmas .tp .btns .btn.white { --ob: #2E9E5E; --os: 22px; --ol: 4px; --ox: 18px; padding-right: 52px; }
+html.xmas .corner { --os: 24px; --ol: 5px; --ox: 30px; overflow: visible; }
+html.xmas .door::before, html.xmas .tp .btns .btn.white::before, html.xmas .corner::before, html.xmas .poster:focus-visible::before, html.xmas .poster:hover::before {
+  content: ""; position: absolute; z-index: 3; pointer-events: none; top: -3px; right: calc(var(--ox) - var(--os) * .15); width: calc(var(--os) * .3); height: calc(var(--ol) + var(--os) * .32 + 3px);
+  background:
+    radial-gradient(circle at 50% 3px, var(--xgold) 0 3px, transparent 3.5px) top / 100% 7px no-repeat,
+    linear-gradient(var(--xgold), var(--xgold)) center 3px / 2px var(--ol) no-repeat,
+    linear-gradient(90deg, #9A7426, var(--xgold), #9A7426) center bottom / 100% calc(var(--os) * .32) no-repeat;
+}
+html.xmas .door::after, html.xmas .tp .btns .btn.white::after, html.xmas .corner::after, html.xmas .poster:focus-visible::after, html.xmas .poster:hover::after {
+  content: ""; position: absolute; z-index: 3; pointer-events: none; top: calc(var(--ol) + var(--os) * .3); right: calc(var(--ox) - var(--os) * .5); width: var(--os); height: var(--os); border-radius: 50%;
+  background:
+    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%);
+  box-shadow: 2px 5px 10px rgba(0,0,0,.45);
+}
+html.xmas .door::after { background:
+    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
+    linear-gradient(transparent 50%, var(--xgold) 50% 57%, transparent 57%),
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%); }
+.who .xroom { pointer-events: none; }
