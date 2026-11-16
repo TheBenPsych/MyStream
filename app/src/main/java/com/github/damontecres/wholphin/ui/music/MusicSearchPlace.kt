@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -77,8 +80,22 @@ data class MusicSearchResults(
     val albums: List<BaseItem> = emptyList(),
     val playlists: List<BaseItem> = emptyList(),
     val searching: Boolean = false,
+    /** Not on Benflix yet: catalogue songs for these words that aren't in Music (preview and Ask) */
+    val notHere: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
+    /** The words these results are for */
+    val term: String = "",
 ) {
     val empty get() = songs.isEmpty() && artists.isEmpty() && albums.isEmpty() && playlists.isEmpty()
+
+    /** The one big Top result: an artist whose name fits, else the first song, album or playlist */
+    val top: BaseItem?
+        get() =
+            artists.firstOrNull { it.title.orEmpty().startsWith(term.trim(), ignoreCase = true) }
+                ?: songs.firstOrNull { it.title.orEmpty().startsWith(term.trim(), ignoreCase = true) }
+                ?: artists.firstOrNull()
+                ?: songs.firstOrNull()
+                ?: albums.firstOrNull()
+                ?: playlists.firstOrNull()
 }
 
 /** Music redesign 3: Search inside Music (Recent searches before you type, approved x-recentsearch) */
@@ -90,7 +107,11 @@ class MusicSearchViewModel
         val musicMe: MusicMe,
         private val musicService: MusicService,
         val navigationManager: NavigationManager,
+        private val benflixMusic: com.github.damontecres.wholphin.services.BenflixMusic,
+        val preview: com.github.damontecres.wholphin.services.SongPreview,
     ) : ViewModel() {
+        /** Browse all: the themed playlists (In season, decades, genres, moods) as colour tiles */
+        val browse = MutableStateFlow<List<com.github.damontecres.wholphin.services.MusicMix>>(emptyList())
         val query = MutableStateFlow("")
         private val _results = MutableStateFlow(MusicSearchResults())
         val results: StateFlow<MusicSearchResults> = _results
@@ -98,6 +119,11 @@ class MusicSearchViewModel
 
         init {
             viewModelScope.launchIO { musicMe.load() }
+            viewModelScope.launchIO {
+                val t = library.themes()
+                val order = listOf("season", "mood", "genre", "decade", "throwback")
+                browse.value = t.themes.sortedBy { order.indexOf(it.group).let { i -> if (i < 0) 99 else i } }
+            }
         }
 
         fun type(words: String) {
@@ -124,8 +150,17 @@ class MusicSearchViewModel
                                     artists = artists.await().orEmpty(),
                                     albums = albums.await().orEmpty(),
                                     playlists = playlists.await().orEmpty(),
+                                    term = term,
+                                    searching = true,
                                 )
                         }
+                        // Not on Benflix yet (from the music catalogue through Tower; it can take a moment)
+                        val outside =
+                            safe { benflixMusic.search(term).songs }
+                                .orEmpty()
+                                .filter { !it.have }
+                                .take(NOT_HERE)
+                        _results.value = _results.value.copy(notHere = outside, searching = false)
                     } catch (ex: kotlinx.coroutines.CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -154,6 +189,31 @@ class MusicSearchViewModel
             viewModelScope.launchIO { musicService.playList(songs, index, false, songs.getOrNull(index)?.id, "Search") }
         }
 
+        /** Ask on a song that isn't on Benflix yet */
+        fun ask(song: com.github.damontecres.wholphin.services.MusicSong) {
+            if (song.asked != null) return
+            keep()
+            preview.stop()
+            setAsked(song.id, "Asking...")
+            viewModelScope.launchIO {
+                val words = safe { benflixMusic.ask("song", song.id).words.ifBlank { "Asked ✓" } }
+                setAsked(song.id, words)
+            }
+        }
+
+        private fun setAsked(
+            id: Long,
+            words: String?,
+        ) {
+            _results.value = _results.value.copy(notHere = _results.value.notHere.map { if (it.id == id) it.copy(asked = words) else it })
+        }
+
+        fun openMix(mix: com.github.damontecres.wholphin.services.MusicMix) =
+            navigationManager.navigateTo(
+                com.github.damontecres.wholphin.ui.nav.Destination
+                    .MusicList("mix", mix.key, mix.name),
+            )
+
         fun remove(words: String) = viewModelScope.launchIO { musicMe.removeSearch(words) }
 
         fun clear() = viewModelScope.launchIO { musicMe.clearSearches() }
@@ -170,6 +230,7 @@ class MusicSearchViewModel
 
         companion object {
             private const val TYPING_MS = 350L
+            private const val NOT_HERE = 6
         }
     }
 
@@ -183,6 +244,8 @@ fun MusicSearchPlace(
     val query by viewModel.query.collectAsState()
     val results by viewModel.results.collectAsState()
     val me by viewModel.musicMe.state.collectAsState()
+    val browse by viewModel.browse.collectAsState()
+    androidx.lifecycle.compose.LifecycleResumeEffect(viewModel.preview) { onPauseOrDispose { viewModel.preview.stop() } }
     val side = if (wide) 0.dp else BenflixSpace.phoneEdge
     val list: LazyListScope.() -> Unit = {
         if (query.trim().length < 2) {
@@ -192,11 +255,14 @@ fun MusicSearchPlace(
                 onRemove = { viewModel.remove(it) },
                 onClear = { viewModel.clear() },
             )
+            browseAll(browse, if (wide) 4 else 2, viewModel::openMix)
         } else {
             searchResults(
                 results = results,
                 onSong = viewModel::play,
                 onOpen = viewModel::open,
+                preview = viewModel.preview,
+                onAsk = viewModel::ask,
             )
         }
     }
@@ -367,12 +433,31 @@ private fun LazyListScope.searchResults(
     results: MusicSearchResults,
     onSong: (List<BaseItem>, Int) -> Unit,
     onOpen: (BaseItem) -> Unit,
+    preview: com.github.damontecres.wholphin.services.SongPreview,
+    onAsk: (com.github.damontecres.wholphin.services.MusicSong) -> Unit,
 ) {
     if (results.empty) {
         item(key = "nothing") {
-            MusicEmptyLine(if (results.searching) "Looking…" else "Nothing on Benflix by that name. Try Ask for music to get it.")
+            MusicEmptyLine(
+                if (results.searching) {
+                    "Looking…"
+                } else if (results.notHere.isNotEmpty()) {
+                    "Nothing on Benflix by that name yet."
+                } else {
+                    "Nothing on Benflix by that name. Try Ask for music to get it."
+                },
+            )
         }
+        notHere(results, preview, onAsk)
         return
+    }
+    results.top?.let { top ->
+        item(key = "top-title") { MusicRowName("Top result", Modifier.padding(top = 4.dp, bottom = 4.dp)) }
+        item(key = "top-card") {
+            TopResult(top, onClick = {
+                if (top.type == BaseItemKind.AUDIO) onSong(listOf(top), 0) else onOpen(top)
+            })
+        }
     }
     if (results.songs.isNotEmpty()) {
         item(key = "songs-title") { MusicRowName("Songs", Modifier.padding(top = 8.dp, bottom = 4.dp)) }
@@ -399,5 +484,174 @@ private fun LazyListScope.searchResults(
                 }
             }
         }
+    }
+    notHere(results, preview, onAsk)
+}
+
+/** Not on Benflix yet: songs from the catalogue for these words, greyed, with a preview and Ask */
+private fun LazyListScope.notHere(
+    results: MusicSearchResults,
+    preview: com.github.damontecres.wholphin.services.SongPreview,
+    onAsk: (com.github.damontecres.wholphin.services.MusicSong) -> Unit,
+) {
+    if (results.notHere.isEmpty()) return
+    item(key = "nothere-title") {
+        Text(
+            "Not on Benflix yet",
+            color = MusicAskColor,
+            fontSize = BenflixType.rowName,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
+        )
+    }
+    items(results.notHere, key = { "nh-${it.id}" }) { song ->
+        MissingSongRow(song = song, number = null, preview = preview, onAsk = { onAsk(song) }, withCover = true)
+    }
+}
+
+/** The one big Top result card */
+@Composable
+private fun TopResult(
+    item: BaseItem,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    val imageUrlService = com.github.damontecres.wholphin.ui.LocalImageUrlService.current
+    val url = remember(item.id) { imageUrlService.musicCover(item, 200) }
+    val round = item.type == BaseItemKind.MUSIC_ARTIST
+    val kind =
+        when (item.type) {
+            BaseItemKind.MUSIC_ARTIST -> {
+                "Artist"
+            }
+
+            BaseItemKind.MUSIC_ALBUM -> {
+                "Album · " + (item.data.albumArtist ?: "")
+            }
+
+            BaseItemKind.PLAYLIST -> {
+                "Playlist"
+            }
+
+            else -> {
+                "Song · " +
+                    item.data.artists
+                        ?.joinToString(", ")
+                        .orEmpty()
+            }
+        }
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = BenflixColors.Raised,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.FocusRow,
+                focusedContentColor = BenflixColors.Text,
+            ),
+        border = focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(14.dp),
+        ) {
+            CoverImage(
+                url,
+                Modifier.size(88.dp),
+                shape = if (round) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(8.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.title.orEmpty(),
+                    fontSize = BenflixType.pageTitle,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    kind.trimEnd(' ', '·'),
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** Colours for the Browse all tiles (each theme keeps the same colour) */
+private val BROWSE_COLOURS =
+    listOf(
+        Color(0xFFB83B5E),
+        Color(0xFF2E86AB),
+        Color(0xFFE07A1F),
+        Color(0xFF6A4C93),
+        Color(0xFF1B998B),
+        Color(0xFFC0392B),
+        Color(0xFF3D5A80),
+        Color(0xFF8E7D2B),
+        Color(0xFF9B2C6E),
+        Color(0xFF2D6A4F),
+    )
+
+/** Browse all (before you type): In season, moods, genres and decades as colour tiles */
+private fun LazyListScope.browseAll(
+    themes: List<com.github.damontecres.wholphin.services.MusicMix>,
+    across: Int,
+    onOpen: (com.github.damontecres.wholphin.services.MusicMix) -> Unit,
+) {
+    if (themes.isEmpty()) return
+    item(key = "browse-title") { MusicRowName("Browse all", Modifier.padding(top = 18.dp, bottom = 6.dp)) }
+    themes.chunked(across).forEachIndexed { r, row ->
+        item(key = "browse-$r") {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                row.forEach { mix ->
+                    BrowseTile(
+                        mix,
+                        BROWSE_COLOURS[(mix.key.hashCode() and 0x7fffffff) % BROWSE_COLOURS.size],
+                        Modifier.weight(1f),
+                    ) { onOpen(mix) }
+                }
+                repeat(across - row.size) { Box(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseTile(
+    mix: com.github.damontecres.wholphin.services.MusicMix,
+    colour: Color,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = colour,
+                contentColor = Color.White,
+                focusedContainerColor = colour,
+                focusedContentColor = Color.White,
+            ),
+        border = focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.height(84.dp),
+    ) {
+        Text(
+            mix.name,
+            fontSize = BenflixType.lead,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }

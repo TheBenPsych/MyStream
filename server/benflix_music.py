@@ -432,6 +432,14 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         one = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
         found = album_find(one("artist"), one("album"))
         return 200, {"songs": found["songs"], "id": found["id"]}
+    if method == "GET" and path == "/api/music/artistfind":
+        # Artist pages (Music redesign 3): Popular worldwide, every album and Fans also like (everyone but Kids)
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        try:
+            return 200, artist_find((query.get("name") or [""])[0].strip())
+        except MusicError as e:
+            return e.status, {"error": e.message}
     if method == "POST" and path == "/api/music/mixes/hide":
         # Not for this playlist (Ben 2026-11-16): the song leaves this made-for-you or themed playlist for this profile
         if is_kids:
@@ -1495,6 +1503,11 @@ def _worker():
             _doubles_daily()
         except Exception as e:
             log(f"doubles check problem: {e!r}")
+        try:
+            if _state["admin"].get("token"):
+                _artist_photos_nightly()
+        except Exception as e:
+            log(f"artist photos problem: {e!r}")
 
 
 def _tick():
@@ -3566,6 +3579,11 @@ def mixes_for(token, user_id):
     xmas_ok = _christmas_time()
     if not xmas_ok:
         played, liked, fresh, lately = ([x for x in lst if not _is_christmas(x)] for lst in (played, liked, fresh, lately))
+    # Don't play this artist in my mixes (Music redesign 3)
+    blocked = _no_artists(user_id)
+    if blocked:
+        ok = lambda x: norm(_mix_artist(x)[0]) not in blocked  # noqa: E731
+        played, liked, fresh, lately = ([x for x in lst if ok(x)] for lst in (played, liked, fresh, lately))
     pool = {s["Id"]: s for s in played + liked + fresh}
     count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
     # The artists each person plays most (likes count a little too)
@@ -3588,6 +3606,8 @@ def mixes_for(token, user_id):
         more = _songs(token, user_id, f"ArtistIds={','.join(ids)}&SortBy=Random&Limit=200") if ids else []
         if not xmas_ok:
             more = [x for x in more if not _is_christmas(x)]
+        if blocked:
+            more = [x for x in more if norm(_mix_artist(x)[0]) not in blocked]
         both = dict(pool)
         both.update({x["Id"]: x for x in list(more) + list(extra) if x["Id"] not in both})
         mine = [s for s in both.values() if _mix_artist(s)[0] in names or (style and s["Id"] in {e["Id"] for e in extra})]
@@ -3645,7 +3665,7 @@ def mixes_for(token, user_id):
     mixes.append(repeat)
     for i, (name, aid) in enumerate([a for a in top if a[1]][:2]):
         j = _as_user(token, f"/Items/{aid}/InstantMix?UserId={user_id}&Limit=40&{SONG_FIELDS}") or {}
-        radio = [x for x in j.get("Items") or [] if x.get("Id") and (xmas_ok or not _is_christmas(x))]
+        radio = [x for x in j.get("Items") or [] if x.get("Id") and (xmas_ok or not _is_christmas(x)) and norm(_mix_artist(x)[0]) not in blocked]
         mixes.append(_mix(f"radio-{i + 1}", f"{name} radio", f"{name} and music like it", radio))
     # The decade they play most (by the year each song first came out, when Tower knows it)
     decades = {}
@@ -3742,7 +3762,17 @@ def me_get(user_id):
         "recents": [r for r in mine.get("recents") or [] if (r.get("at") or 0) >= cut],
         "searches": (mine.get("searches") or [])[:ME_SEARCH_MAX],
         "pins": (mine.get("pins") or [])[:ME_PIN_MAX],
+        "noartists": mine.get("noartists") or [],
+        "adds": mine.get("adds") or {},
     }
+
+
+def _no_artists(user_id):
+    """Artists this profile said not to play in their mixes (lowercase, simple letters)"""
+    try:
+        return {norm(n) for n in (_me_all().get(user_id) or {}).get("noartists") or [] if n}
+    except Exception:
+        return set()
 
 
 def me_route(method, path, user_id, read_json):
@@ -3782,10 +3812,126 @@ def me_route(method, path, user_id, read_json):
                     raise MusicError(409, f"You can pin {ME_PIN_MAX}. Unpin one first.")
                 pins.append(entry)
             mine["pins"] = pins
+        elif path == "/api/music/me/add":
+            # Songs to add on your own playlist (Music redesign 3): an asked-for song joins the playlist once it's in.
+            # The app adds it when it finds the song on Benflix, then takes it off this list ({"remove": true}).
+            pl = str(body.get("playlist") or "")
+            if not re.fullmatch(r"[\w-]{1,64}", pl):
+                raise MusicError(400, "Which playlist?")
+            artist = " ".join(str(body.get("artist") or "").split())[:120]
+            title = " ".join(str(body.get("title") or "").split())[:160]
+            adds = mine.setdefault("adds", {})
+            lst = [a for a in adds.get(pl) or [] if not (norm(a.get("artist")) == norm(artist) and norm(a.get("title")) == norm(title))]
+            if not body.get("remove") and title:
+                lst.append({"artist": artist, "title": title, "at": now})
+            lst = [a for a in lst if now - (a.get("at") or now) < 60 * 86400][-50:]
+            if lst:
+                adds[pl] = lst
+            else:
+                adds.pop(pl, None)
+        elif path == "/api/music/me/noartist":
+            # Don't play this artist in my mixes (Music redesign 3): Made for you leaves them out from now on
+            name = " ".join(str(body.get("name") or "").split())[:120]
+            if not name:
+                raise MusicError(400, "Which artist?")
+            rest = [n for n in mine.get("noartists") or [] if norm(n) != norm(name)]
+            mine["noartists"] = (rest + [name]) if body.get("on", True) else rest
+            with _mix_lock:
+                _mixes.pop(user_id, None)
         else:
             raise MusicError(404, "Not here.")
         _write("music-me.json", everyone)
     return me_get(user_id)
+
+
+# ---------- Artist pages (Music redesign 3): the artist in the music catalogue, found by name ----------
+
+
+def _artist_id(name):
+    """The catalogue's id for an artist on Benflix (None when it can't be found). Kept for 30 days."""
+    if not name:
+        return None
+
+    def load():
+        try:
+            found = deezer("/search/artist", q=name, limit=10).get("data") or []
+        except MusicError:
+            return None
+        for a in found:
+            if same(a.get("name"), name):
+                return a.get("id")
+        return 0
+
+    key = f"artistid-{norm(name)}"
+    got = _cached(key, load, keep=30 * 24 * 3600)
+    if got is None:
+        with _lock:
+            _found_cache.pop(key, None)
+    return got or None
+
+
+def artist_find(name):
+    """Popular (their top 5 songs worldwide, the ones not in Music marked), every album and single newest first
+    (the ones not in Music marked "missing") and Fans also like, for the artist page. Empty when not found."""
+    aid = _artist_id(name)
+    if not aid:
+        return {"artist": None, "songs": [], "albums": [], "related": []}
+    out = artist_page(aid)
+    out["songs"] = out["songs"][:5]
+    try:
+        _have_songs()
+        have_albums = set(_have["albums"])
+    except OSError:
+        have_albums = set()
+    for al in out["albums"]:
+        al["have"] = _album_owned(al, have_albums)
+    try:
+        related = deezer(f"/artist/{aid}/related", limit=12).get("data") or []
+    except MusicError:
+        related = []
+    out["related"] = [_artist(a) for a in related]
+    return out
+
+
+# ---------- Artist photos (Music redesign 3): artists with no picture get one from the catalogue overnight ----------
+
+
+def _artist_photos_nightly():
+    """Once a night (1 to 5 in the morning), artists in Jellyfin with no picture get the catalogue's photo"""
+    hour = time.localtime().tm_hour
+    last = (_read("artist-photos.json") or {}).get("at", 0)
+    if not (1 <= hour < 5) or time.time() - last < 20 * 3600:
+        return
+    _write("artist-photos.json", {"at": time.time(), "added": 0})
+    j = _jellyfin("GET", "/Artists?Recursive=true&Fields=ImageTags&EnableImages=true&Limit=5000") or {}
+    added = 0
+    for a in j.get("Items") or []:
+        if (a.get("ImageTags") or {}).get("Primary") or not a.get("Id") or not a.get("Name"):
+            continue
+        if a["Name"].lower() in ("various artists", "unknown", "unknown artist"):
+            continue
+        try:
+            aid = _artist_id(a["Name"])
+            if not aid:
+                continue
+            info = deezer(f"/artist/{aid}")
+            url = info.get("picture_xl") or info.get("picture_big") or ""
+            if not url or "/artist//" in url:
+                continue
+            pic = _http(url, raw=True, timeout=30)
+            if not pic or len(pic) < 2000:
+                continue
+            status, _, _ = _jf("POST", f"/Items/{a['Id']}/Images/Primary", token=_state["admin"].get("token"), body=base64.b64encode(pic), device_id="benflix-music", content_type="image/jpeg")
+            if status < 300:
+                added += 1
+            time.sleep(0.5)
+        except Exception as e:
+            log(f"artist photo for {a.get('Name')}: {e!r}")
+        if added >= 300:
+            break
+    _write("artist-photos.json", {"at": time.time(), "added": added})
+    if added:
+        log(f"added {added} artist photos from the music catalogue")
 
 
 # ---------- Themed playlists: holidays in season, decades, genres, moods, activities, throwbacks, seasons ----------

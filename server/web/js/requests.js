@@ -716,6 +716,9 @@ B.musicTab = async (nav) => {
   drawDiscover();
   loadStatus();
   if (B.q("q")) search(B.q("q"));
+  // Music redesign 3: an album or artist that isn't on Benflix, opened from an artist page (?mopen=album:123)
+  const mo = /^(album|artist):(\d+)$/.exec(B.q("mopen") || "");
+  if (mo) openPage(mo[1], mo[2]);
 };
 
 // ---------- Anime tab (Ben's anime Requests design, 2026-11-12) ----------

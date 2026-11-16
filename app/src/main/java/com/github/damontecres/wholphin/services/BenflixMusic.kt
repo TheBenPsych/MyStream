@@ -31,6 +31,19 @@ data class MusicAlbum(
     val type: String,
     val songs: Int,
     val asked: String?,
+    /** Already in the Music folder (artist pages' Discography) */
+    val have: Boolean = false,
+)
+
+/** An artist in the music catalogue, for the artist page (Music redesign 3) */
+data class MusicArtistFind(
+    val artist: MusicArtist,
+    /** Their top 5 songs worldwide */
+    val popular: List<MusicSong>,
+    /** Every album and single, newest first */
+    val albums: List<MusicAlbum>,
+    /** Fans also like */
+    val related: List<MusicArtist>,
 )
 
 data class MusicArtist(
@@ -238,6 +251,18 @@ class BenflixMusic
                 )
         }
 
+        /** The artist page's catalogue parts: Popular worldwide, every album, Fans also like (null when not found) */
+        suspend fun artistFind(name: String): MusicArtistFind? {
+            val j = helper.getJson("/api/music/artistfind?name=" + Uri.encode(name))
+            val a = j.optJSONObject("artist") ?: return null
+            return MusicArtistFind(
+                artist = artist(a),
+                popular = j.optJSONArray("songs").objects().map(::song),
+                albums = j.optJSONArray("albums").objects().map(::album),
+                related = j.optJSONArray("related").objects().map(::artist),
+            )
+        }
+
         /** An album and its songs */
         suspend fun album(id: Long): Pair<MusicAlbum, List<MusicSong>> {
             val j = helper.getJson("/api/music/album?id=$id")
@@ -347,6 +372,7 @@ class BenflixMusic
                 type = j.optString("type", "album"),
                 songs = j.optInt("songs"),
                 asked = j.text("asked"),
+                have = j.optBoolean("have"),
             )
 
         private fun artist(j: JSONObject) = MusicArtist(id = j.optLong("id"), name = j.optString("name"), picture = j.text("picture"))

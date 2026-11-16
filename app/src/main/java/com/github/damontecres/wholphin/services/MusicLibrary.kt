@@ -167,7 +167,8 @@ class MusicLibrary
                     filters = listOf(ItemFilter.IS_FAVORITE),
                     sortBy = listOf(ItemSortBy.DATE_CREATED),
                     sortOrder = listOf(SortOrder.DESCENDING),
-                    fields = SongListFields,
+                    // Genres for the style chips (Rap, Rock, Pop...) on Liked songs
+                    fields = SongListFields + ItemFields.GENRES,
                     limit = 2000,
                 ),
             )

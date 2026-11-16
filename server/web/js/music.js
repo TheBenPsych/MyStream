@@ -607,14 +607,63 @@
       });
     } catch (e) { B.toast(e.message); }
   };
+  // ---------- Music redesign 3: songs Benflix doesn't have yet (greyed, with a 30-second preview and Ask) ----------
+  const songKey = (t) => String(t || "").toLowerCase().replace(/\s*[([].*?[)\]]/g, "").replace(/\s+-\s+.*(remaster|version|edit|mix|live|mono|stereo).*$/, "").replace(/[^\p{L}\p{N}]/gu, "");
+  const secs = (n) => (n ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}` : "");
+  const ghostRow = (c, n, withCover) => `<div class="srow ghost" data-ghost="${esc(String(c.id))}">
+      <span class="sn">${withCover ? (c.cover ? `<img class="sc" src="${esc(c.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`) : esc(n != null ? n : "")}</span>
+      <span class="st"><b>${esc(c.title)}</b><small>${withCover ? esc(c.artist) + " · " : ""}Not on Benflix</small></span>
+      ${B.previewBtn(c.id)}<span class="sl">${secs(c.seconds)}</span>
+      <button class="btn small mask ${c.asked ? "done" : ""}" data-askghost="${esc(String(c.id))}" ${c.asked ? "disabled" : ""}>${esc(c.asked || "Ask")}</button></div>`;
+  const wireGhosts = (root, onAsked) => root.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-askghost]");
+    if (!b) {
+      // Pressing a greyed song plays its 30-second preview
+      const g = e.target.closest(".ghost");
+      if (g && !e.target.closest("[data-pv]")) { const pv = g.querySelector("[data-pv]"); if (pv) pv.click(); }
+      return;
+    }
+    e.stopPropagation();
+    if (b.disabled) return;
+    b.disabled = true; b.textContent = "Asking...";
+    try {
+      const r = await B.call("POST", "api/music/request", { kind: "song", id: +b.dataset.askghost });
+      B.previewStop();
+      b.textContent = (r && r.words) || "Asked ✓"; b.classList.add("done");
+      if (onAsked) onAsked(+b.dataset.askghost, r);
+    } catch (err) {
+      b.disabled = false; b.textContent = "Ask";
+      B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute.");
+    }
+  });
+  // A little of the cover's own colour at the top of the page (Ben 2026-11-16: page tops only)
+  const tintTop = (url, el) => {
+    if (!url || !el) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas"); c.width = c.height = 12;
+        const x = c.getContext("2d"); x.drawImage(img, 0, 0, 12, 12);
+        const d = x.getImageData(0, 0, 12, 12).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { const v = Math.max(d[i], d[i + 1], d[i + 2]); if (v < 25 || v > 245) continue; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+        if (!n) return;
+        r /= n; g /= n; b /= n;
+        const k = Math.min(1, 140 / Math.max(r, g, b));
+        el.style.backgroundImage = `linear-gradient(rgba(${Math.round(r * k)},${Math.round(g * k)},${Math.round(b * k)},.55), transparent 460px)`;
+      } catch (e) { /* a picture from another site can't be read: no colour */ }
+    };
+    img.src = url;
+  };
   const wireSongs = (root, songs, title, sourceId, extra, place) => {
     root.addEventListener("click", (e) => {
       const h = e.target.closest("[data-heart]");
       if (h) { e.stopPropagation(); const s = songs.find((x) => x.Id === h.dataset.heart); const on = !h.classList.contains("on"); M.like(h.dataset.heart, on).then(() => { if (s) s.UserData = Object.assign(s.UserData || {}, { IsFavorite: on }); }); return; }
       const m = e.target.closest("[data-more]");
       if (m) { e.stopPropagation(); return songMenu(m, songs[+m.dataset.more], extra && extra(+m.dataset.more)); }
-      const r = e.target.closest(".srow");
-      if (r) { M.playList(songs, +r.dataset.i, false, title, place); M.sourceId = sourceId; refreshRows(root, songs); }
+      const r = e.target.closest(".srow:not(.ghost)");
+      if (r && r.dataset.i != null) { M.playList(songs, +r.dataset.i, false, title, place); M.sourceId = sourceId; refreshRows(root, songs); }
     });
   };
   const refreshRows = (root, songs) => setTimeout(() => $$(".srow", root).forEach((r) => r.classList.toggle("now", M.current() && songs[+r.dataset.i] && M.current().Id === songs[+r.dataset.i].Id)), 50);
@@ -925,9 +974,17 @@
       const mine = await B.musicMe();
       const list = mine.searches || [];
       if (!B.alive(nav) || box.value.trim().length >= 2) return;
-      res.innerHTML = list.length ? `<div class="mlib-head"><h3 class="msub">Recent searches</h3><button class="btn small" data-rs="clear">Clear all</button></div>
+      res.innerHTML = (list.length ? `<div class="mlib-head"><h3 class="msub">Recent searches</h3><button class="btn small" data-rs="clear">Clear all</button></div>
         <div class="mlib-list">${list.map((s) => `<div class="mrs"><button class="mrs-q" data-rq="${esc(s.q)}">${I("search")} ${esc(s.q)}</button><button class="circle" data-rx="${esc(s.q)}" title="Remove">${I("x")}</button></div>`).join("")}</div>`
-        : `<p class="dim">Your recent searches show here.</p>`;
+        : `<p class="dim">Your recent searches show here.</p>`) + `<div id="mbrowse"></div>`;
+      // Browse all: In season, moods, genres and decades as colour tiles
+      const th = ((await B.musicThemes().catch(() => ({}))).themes || []).slice();
+      if (!B.alive(nav) || box.value.trim().length >= 2 || !$("#mbrowse")) return;
+      const order = ["season", "mood", "genre", "decade", "throwback"];
+      th.sort((p, q) => (order.indexOf(p.group) + 1 || 99) - (order.indexOf(q.group) + 1 || 99));
+      const COLS = ["#b83b5e", "#2e86ab", "#e07a1f", "#6a4c93", "#1b998b", "#c0392b", "#3d5a80", "#8e7d2b", "#9b2c6e", "#2d6a4f"];
+      const hue = (k) => COLS[[...String(k)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLS.length];
+      if (th.length) $("#mbrowse").innerHTML = `<h3 class="msub">Browse all</h3><div class="mbrowse">${th.map((t) => `<a class="mbtile" style="background:${hue(t.key)}" href="#/mix/${enc(t.key)}">${esc(t.name)}</a>`).join("")}</div>`;
     };
     const run = async () => {
       const q = box.value.trim();
@@ -941,10 +998,26 @@
         items(`${st}&IncludeItemTypes=Playlist&MediaTypes=Audio&Limit=8&Fields=ChildCount`).catch(() => []),
       ]);
       if (mine !== ticket || !B.alive(nav)) return;
-      if (!songs.length && !artists.length && !albums.length && !pls.length) { res.innerHTML = `<p class="dim">Nothing on Benflix by that name. <a href="#/requests?tab=music">Ask for music</a> to get it.</p>`; return; }
-      res.innerHTML = (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
-        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard));
+      const none = !songs.length && !artists.length && !albums.length && !pls.length;
+      // The one big Top result: an artist whose name fits, else the first song, album or playlist
+      const starts = (x) => (x.Name || "").toLowerCase().startsWith(q.toLowerCase());
+      const top = artists.find(starts) || songs.find(starts) || artists[0] || songs[0] || albums[0] || pls[0];
+      const topTag = top && top.Type === "Audio" ? "button" : "a";
+      const topHtml = top ? `<h3 class="msub">Top result</h3><${topTag} class="mtop" ${top.Type === "Audio" ? `type="button" data-topsong` : `href="#/${top.Type === "MusicArtist" ? "artist" : top.Type === "MusicAlbum" ? "album" : "playlist"}/${top.Id}"`}>
+          <span class="mtop-art ${top.Type === "MusicArtist" ? "round" : ""}" style="${cover(top, 200) ? `background-image:url('${cover(top, 200)}')` : ""}"></span>
+          <span><b>${esc(top.Name)}</b><small>${esc(top.Type === "MusicArtist" ? "Artist" : top.Type === "MusicAlbum" ? `Album · ${top.AlbumArtist || ""}` : top.Type === "Playlist" ? "Playlist" : `Song · ${artistOf(top)}`)}</small></span></${topTag}>` : "";
+      res.innerHTML = (none ? `<p class="dim">Nothing on Benflix by that name yet.</p>` : topHtml + (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
+        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard))) + `<div id="mnothere"></div>`;
       if (songs.length) wireSongs($("#ms"), songs, "Search", null);
+      const tp = $("[data-topsong]"); if (tp) tp.addEventListener("click", () => { keep(); M.playList([top], 0, false, "Search"); M.sourceId = null; });
+      // Not on Benflix yet: songs from the music catalogue for these words, with a preview and Ask
+      const cat = await B.call("GET", `api/music/search?q=${enc(q)}`).catch(() => null);
+      if (mine !== ticket || !B.alive(nav) || !$("#mnothere")) return;
+      const out = ((cat && cat.songs) || []).filter((c) => !c.have).slice(0, 6);
+      if (out.length) {
+        $("#mnothere").innerHTML = `<h3 class="msub mask-h">Not on Benflix yet</h3><div class="msongs" id="mnh">${out.map((c) => ghostRow(c, null, true)).join("")}</div>`;
+        wireGhosts($("#mnh"), () => keep());
+      } else if (none) $("#mnothere").innerHTML = `<p class="dim"><a href="#/requests?tab=music&q=${enc(q)}">Ask for music</a> to look further.</p>`;
     };
     box.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 300); });
     box.addEventListener("keydown", (e) => { if (e.key === "Enter") keep(); });
@@ -1017,32 +1090,98 @@
       <div class="mhero-words"><div class="mkick">${esc(o.kick)}</div><h1>${esc(o.title)}</h1><div class="dim">${o.line}</div>
         <div class="mhero-btns"><button class="btn white" data-h="play">${I("play")} Play</button><button class="btn" data-h="shuffle">${icon("shuffle")} Shuffle</button>${o.heart != null ? `<button class="btn mheart ${o.heart ? "on" : ""}" data-h="heart">${I("heart")}</button>` : ""}<button class="btn" data-h="more">${I("more")}</button></div>
       </div></div>`;
+  // Music redesign 3: Find and Sort on playlists and Liked songs, style chips on Liked songs
+  const SORTS = ["Custom order", "Title", "Artist", "Album", "Recently added"];
+  const STYLE_WORDS = [["Rap", ["hip hop", "hip-hop", "rap", "trap", "drill"]], ["R&B", ["r&b", "rnb", "soul", "funk"]], ["Metal", ["metal", "metalcore", "hardcore"]],
+    ["Rock", ["rock", "grunge", "alternative", "punk"]], ["Country", ["country", "americana", "bluegrass"]], ["Dance", ["electronic", "edm", "dance", "house", "techno", "trance", "dubstep"]],
+    ["Latin", ["latin", "reggaeton", "salsa"]], ["Indie", ["indie", "folk", "acoustic", "singer-songwriter"]], ["Pop", ["pop", "k-pop", "j-pop", "synthpop"]],
+    ["Jazz", ["jazz", "blues", "swing"]], ["Classical", ["classical", "soundtrack", "score", "orchestral"]]]
+    .map(([n, w]) => [n, new RegExp("(?<![a-z0-9])(" + w.map((x) => x.replace(/[&+-]/g, (c) => "\\" + c)).join("|") + ")(?![a-z0-9])")]);
+  const styleOf = (x) => { const g = (x.Genres || []).join(" | ").toLowerCase(); if (!g) return null; const hit = STYLE_WORDS.find(([, rx]) => rx.test(g)); return hit ? hit[0] : null; };
+  const likedStyles = (songs) => {
+    const n = {}; songs.forEach((x) => { const st = styleOf(x); if (st) n[st] = (n[st] || 0) + 1; });
+    return Object.keys(n).filter((k) => n[k] >= 3).sort((p, q) => n[q] - n[p]).slice(0, 6);
+  };
   const collection = async (nav, o) => {
     const songs = o.songs;
     const mins = Math.round(songs.reduce((t, s) => t + (s.RunTimeTicks || 0), 0) / B.TICKS / 60);
     const discs = new Set(songs.map((s) => s.ParentIndexNumber || 1));
-    let body = "", lastDisc = null;
-    songs.forEach((s, i) => {
-      if (discs.size > 1 && o.album && s.ParentIndexNumber !== lastDisc) { lastDisc = s.ParentIndexNumber; body += `<div class="mdisc">Disc ${esc(lastDisc || 1)}</div>`; }
-      body += songRow(s, i, { number: o.album ? s.IndexNumber || i + 1 : null, cover: !o.album, artist: !o.album });
-    });
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage">${hero(Object.assign({}, o, { line: `${o.line ? esc(o.line) + " · " : ""}${o.total > songs.length ? `${songs.length} of ${o.total}` : songs.length} songs · ${B.len(mins)}` }))}
-      <div class="msongs" id="ms">${body || `<p class="dim">No songs here yet.</p>`}</div><div id="mbelow"></div></div>`;
+    const liked = o.title === "Liked songs";
+    const tools = !o.album && songs.length > 1;
+    const styles = liked ? likedStyles(songs) : [];
+    let find = "", sortAt = 0, style = "", shown = songs;
+    const toolsHtml = tools ? `<div class="mtools">
+        ${styles.length ? `<div class="mchips mstyles">${["", ...styles].map((st) => `<button class="chip ${st === "" ? "on" : ""}" style="--accent:var(--music)" data-style="${esc(st)}">${esc(st || "All")}</button>`).join("")}</div>` : ""}
+        <div class="mtools-row"><input class="field mfind" id="mfind" type="search" placeholder="${liked ? "Find in Liked songs" : "Find in playlist"}" autocomplete="off">
+        <button class="btn small" id="msort">${I("list")} Sort: Custom order</button></div></div>` : "";
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg">
+      <div class="mstick-wrap"><div class="mstick" hidden><b>${esc(o.title)}</b><button class="btn white small" data-stick="play">${I("play")} Play</button></div></div>
+      ${hero(Object.assign({}, o, { line: `${o.line ? esc(o.line) + " · " : ""}${o.total > songs.length ? `${songs.length} of ${o.total}` : songs.length} songs · ${B.len(mins)}` }))}
+      ${toolsHtml}<div class="msongs" id="ms"></div><div id="mbelow"></div></div>`;
     B.wireTop();
-    const root = $("#ms");
-    wireSongs(root, songs, o.title, o.sourceId, o.extra, o.place);
+    const pick = () => {
+      const words = find.trim().toLowerCase();
+      const idx = songs.map((x, i) => i).filter((i) => {
+        const x = songs[i];
+        return (!words || (x.Name || "").toLowerCase().includes(words) || (x.Artists || []).some((a) => a.toLowerCase().includes(words)) || (x.Album || "").toLowerCase().includes(words)) && (!style || styleOf(x) === style);
+      });
+      const by = (f) => (p, q) => (f(songs[p]) < f(songs[q]) ? -1 : f(songs[p]) > f(songs[q]) ? 1 : 0);
+      const sort = SORTS[sortAt];
+      if (sort === "Title") idx.sort(by((x) => (x.Name || "").toLowerCase()));
+      if (sort === "Artist") idx.sort(by((x) => (x.AlbumArtist || (x.Artists || [])[0] || "").toLowerCase()));
+      if (sort === "Album") idx.sort(by((x) => (x.Album || "").toLowerCase() + String(x.IndexNumber || 0).padStart(4, "0")));
+      if (sort === "Recently added") idx.sort(by((x) => x.DateCreated || "")).reverse();
+      return idx;
+    };
+    const drawSongs = () => {
+      const plain = !find.trim() && !sortAt && !style;
+      shown = pick().map((i) => songs[i]);
+      let body = "", lastDisc = null;
+      shown.forEach((s, i) => {
+        if (plain && discs.size > 1 && o.album && s.ParentIndexNumber !== lastDisc) { lastDisc = s.ParentIndexNumber; body += `<div class="mdisc">Disc ${esc(lastDisc || 1)}</div>`; }
+        body += songRow(s, i, { number: o.album ? s.IndexNumber || i + 1 : null, cover: !o.album, artist: !o.album });
+      });
+      const old = $("#ms"), fresh = document.createElement("div");
+      fresh.className = "msongs"; fresh.id = "ms";
+      fresh.innerHTML = body || (songs.length ? `<p class="dim">${find.trim() ? `No songs here match "${esc(find.trim())}".` : "No songs in this style here yet."}</p>` : `<p class="dim">No songs here yet.</p>`);
+      old.replaceWith(fresh);
+      // Moving and removing songs only make sense in the playlist's own order
+      wireSongs(fresh, shown, o.title, o.sourceId, plain ? o.extra : null, o.place);
+    };
+    drawSongs();
+    if (tools) {
+      let t = 0;
+      $("#mfind").addEventListener("input", (e) => { clearTimeout(t); t = setTimeout(() => { find = e.target.value; drawSongs(); }, 200); });
+      $("#msort").addEventListener("click", (e) => { sortAt = (sortAt + 1) % SORTS.length; e.currentTarget.innerHTML = `${I("list")} Sort: ${SORTS[sortAt]}`; drawSongs(); });
+      const chips = $(".mstyles");
+      if (chips) chips.addEventListener("click", (e) => {
+        const c = e.target.closest("[data-style]"); if (!c) return;
+        style = c.dataset.style; $$("[data-style]", chips).forEach((x) => x.classList.toggle("on", x === c)); drawSongs();
+      });
+    }
+    const playShown = (shuffle) => { M.playList(shown, 0, shuffle, o.title, o.place); M.sourceId = o.sourceId; refreshRows($("#ms"), shown); openNow(); };
+    // Once the top has scrolled away, a slim bar with the name and Play sticks to the top
+    const stick = $(".mstick"), heroEl = $(".mhero");
+    if (stick && heroEl && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver((es) => { stick.hidden = es[0].isIntersecting || !shown.length; });
+      io.observe(heroEl);
+      B.onLeave(() => io.disconnect());
+      stick.addEventListener("click", (e) => { if (e.target.closest("[data-stick]")) playShown(false); });
+    }
+    if (o.art || (o.collage && o.collage[0])) tintTop(o.art || o.collage[0], $("#mpg"));
+    else if (liked) $("#mpg").style.backgroundImage = "linear-gradient(rgba(108,74,190,.45), transparent 460px)";
     $(".mhero-btns").addEventListener("click", (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
-      if ((b.dataset.h === "play" || b.dataset.h === "shuffle") && !songs.length) return B.toast(o.title === "Liked songs" ? "No liked songs yet. Press the heart on a song to add it here." : "There are no songs here yet.");
+      if ((b.dataset.h === "play" || b.dataset.h === "shuffle") && !shown.length) return B.toast(liked ? "No liked songs yet. Press the heart on a song to add it here." : "There are no songs here yet.");
       // Ben: Play or Shuffle goes straight to Now playing
-      if (b.dataset.h === "play") { M.playList(songs, 0, false, o.title, o.place); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
-      if (b.dataset.h === "shuffle") { M.playList(songs, 0, true, o.title, o.place); M.sourceId = o.sourceId; refreshRows(root, songs); openNow(); }
+      if (b.dataset.h === "play") playShown(false);
+      if (b.dataset.h === "shuffle") playShown(true);
       if (b.dataset.h === "heart") { const on = !b.classList.contains("on"); M.like(o.sourceId, on).then(() => b.classList.toggle("on", on)); }
       if (b.dataset.h === "more") {
         const menu = [{ label: "Add all to Up next", value: "all" }, { label: "Add all to a playlist", value: "pl" }].concat(o.menu || []);
         B.dropdown(b, menu, null, (v) => {
-          if (v === "all") songs.forEach((s) => M.addToUpNext(s));
-          else if (v === "pl") addToPlaylist(b, songs);
+          if (v === "all") shown.forEach((s) => M.addToUpNext(s));
+          else if (v === "pl") addToPlaylist(b, shown);
           else (o.menu || []).forEach((x) => { if (x.value === v && x.run) x.run(); });
         });
       }
@@ -1061,8 +1200,21 @@
       new Promise((r) => setTimeout(() => r({}), 1500)),
     ]);
     const total = size.songs || 0;
+    // Music redesign 3: the whole album in its real order, the songs Benflix doesn't have greyed with a preview and Ask
+    const cat = total > songs.length && size.id ? await B.call("GET", `api/music/album?id=${enc(size.id)}`).then((j) => (j && j.songs) || []).catch(() => []) : [];
+    const lines = [];
+    if (cat.length) {
+      const used = new Set(), byKey = {};
+      songs.forEach((x, i) => { (byKey[songKey(x.Name)] = byKey[songKey(x.Name)] || []).push(i); });
+      cat.forEach((c, n) => {
+        const i = (byKey[songKey(c.title)] || []).find((k) => !used.has(k));
+        if (i != null) { used.add(i); lines.push({ i }); } else if (!c.have) lines.push({ c, n: n + 1 });
+      });
+      songs.forEach((x, i) => { if (!used.has(i)) lines.push({ i }); });
+    }
+    const missing = lines.filter((l) => l.c).length;
     // Ben 2026-11-16: an album you only have some songs from can ask for the rest (Ben okays other profiles' asks)
-    const rest = total > songs.length && size.id ? { label: B.me.admin ? "Ask for the rest" : "Ask Ben for the rest", icon: "plus", onClick: (e, el) => B.busy(el, async () => {
+    const rest = total > songs.length && size.id ? { label: missing ? `Ask for the other ${missing}` : B.me.admin ? "Ask for the rest" : "Ask Ben for the rest", icon: "plus", onClick: (e, el) => B.busy(el, async () => {
       await B.call("POST", "api/music/request", { kind: "album", id: +size.id });
       el.disabled = true;
       return B.me.admin ? `Asked for the rest of ${al.Name}.` : `Asked Ben for the rest of ${al.Name}.`;
@@ -1072,7 +1224,8 @@
     const mins = Math.round(songs.reduce((t, s) => t + (s.RunTimeTicks || 0), 0) / B.TICKS / 60);
     const discs = new Set(songs.map((s) => s.ParentIndexNumber || 1));
     let body = "", lastDisc = null;
-    songs.forEach((s, i) => {
+    if (missing) lines.forEach((l) => { body += l.c ? ghostRow(l.c, l.n, false) : songRow(songs[l.i], l.i, { number: songs[l.i].IndexNumber || l.i + 1, cover: false, artist: false }); });
+    else songs.forEach((s, i) => {
       if (discs.size > 1 && s.ParentIndexNumber !== lastDisc) { lastDisc = s.ParentIndexNumber; body += `<div class="mdisc">Disc ${esc(lastDisc || 1)}</div>`; }
       body += songRow(s, i, { number: s.IndexNumber || i + 1, cover: false, artist: false });
     });
@@ -1084,7 +1237,7 @@
       title: al.Name,
       color: MUSIC,
       cover: { url: cover(al, 900), ratio: 1 },
-      info: [songs.length === 1 ? "Single" : "Album", al.AlbumArtist, al.ProductionYear, `${total > songs.length ? `${songs.length} of ${total}` : songs.length} songs`, songs.length ? B.len(mins) : ""],
+      info: [songs.length === 1 ? "Single" : "Album", al.AlbumArtist, al.ProductionYear, total > songs.length ? `You have ${songs.length} of ${total} songs` : `${songs.length} songs`, songs.length ? B.len(mins) : ""],
       buttons: [
         { label: "Play", icon: "play", off: none, onClick: () => playAll(false) },
         { label: "Shuffle", icon: "shuffle", off: none, onClick: () => playAll(true) },
@@ -1107,6 +1260,8 @@
     // An album has no story: the Overview tab isn't used
     const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
     wireSongs($("#ms"), songs, al.Name, al.Id, null, alPlace);
+    wireGhosts($("#ms"));
+    tintTop(cover(al, 120), $(".details.tp"));
     if (artist) {
       const more = (await items(`IncludeItemTypes=MusicAlbum&AlbumArtistIds=${enc(artist.Id)}&SortBy=ProductionYear&SortOrder=Descending&Limit=20`).catch(() => [])).filter((a) => a.Id !== al.Id);
       if (more.length && B.alive(nav)) tp.pane("tpMoreBy").innerHTML = `<div class="grid tp-grid">${more.map(albumCard).join("")}</div>`;
@@ -1136,7 +1291,41 @@
         { label: "Remove from this playlist", value: "rm", run: async () => { await B.jf("DELETE", `/Playlists/${enc(pl.Id)}/Items?EntryIds=${enc(songs[i].PlaylistItemId)}`); B.render(); } },
       ] : null,
     });
+    if (canEdit) ownAdds(nav, pl, songs);
   });
+
+  // Music redesign 3: your own playlists end with Songs to add (songs like the ones in it that aren't on Benflix).
+  // Asking for one keeps a note on Tower, and the next time the playlist opens after it's in, it joins by itself.
+  const ownAdds = async (nav, pl, songs) => {
+    const key = String(pl.Id).replace(/-/g, "");
+    try {
+      const mine = await B.musicMe(true);
+      const waiting = ((mine.adds || {})[key]) || [];
+      let joined = 0;
+      for (const w of waiting) {
+        const found = (await items(`searchTerm=${enc(w.title)}&IncludeItemTypes=Audio&Limit=10`).catch(() => [])).find((x) => songKey(x.Name) === songKey(w.title)
+          && (!w.artist || (x.Artists || []).some((a) => a.toLowerCase().includes(w.artist.toLowerCase()) || w.artist.toLowerCase().includes(a.toLowerCase()))));
+        if (!found) continue;
+        if (!songs.some((x) => x.Id === found.Id)) { await B.jf("POST", `/Playlists/${enc(pl.Id)}/Items?Ids=${enc(found.Id)}&UserId=${B.uid()}`); joined++; }
+        await meSave("api/music/me/add", { playlist: key, artist: w.artist, title: w.title, remove: true });
+      }
+      if (joined && B.alive(nav)) { B.toast(joined === 1 ? "A song you asked for joined this playlist" : `${joined} songs you asked for joined this playlist`); return B.render(); }
+    } catch (e) { /* older Tower: no Songs to add yet */ }
+    const box = $("#mbelow"); if (!box || !songs.length) return;
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Looking for songs like these...</p>`;
+    const seeds = songs.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+    const found = new Map();
+    for (const x of seeds) {
+      const got = await B.call("GET", `api/music/similar?artist=${enc(x.AlbumArtist || (x.Artists || [])[0] || "")}&title=${enc(x.Name || "")}`).catch(() => null);
+      ((got && got.songs) || []).filter((c) => !c.have).forEach((c) => { if (!found.has(c.id)) found.set(c.id, c); });
+    }
+    if (!B.alive(nav)) return;
+    const list = [...found.values()].slice(0, 10);
+    if (!list.length) { box.innerHTML = ""; return; }
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs like the ones here. Ask for one and it joins this playlist once it's in.${B.me.admin ? "" : " Ben okays asks first."}</p>
+      <div class="msongs" id="madds">${list.map((c) => ghostRow(c, null, true)).join("")}</div>`;
+    wireGhosts($("#madds"), (id) => { const c = found.get(id); if (c) meSave("api/music/me/add", { playlist: key, artist: c.artist, title: c.title }); });
+  };
   // Browse by > Songs: every song, A to Z
   B.route(/^\/songs$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
@@ -1158,7 +1347,7 @@
   });
   B.route(/^\/liked$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
-    const songs = await items(`IncludeItemTypes=Audio&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=3000&${SONG_FIELDS}`);
+    const songs = await items(`IncludeItemTypes=Audio&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=3000&${SONG_FIELDS.replace("ChildCount", "ChildCount,Genres")}`);
     if (!B.alive(nav)) return;
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
     await collection(nav, { kick: "PLAYLIST", title: "Liked songs", line: "Every song you gave a heart", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null, place: { kind: "liked", id: "", name: "Liked songs" } });
@@ -1214,42 +1403,126 @@
     });
   };
 
-  // ---------- artist page ----------
+  // ---------- artist page (Music redesign 3, p3-artist) ----------
+  // Big photo with the name across it and how many of their songs you have. Play, Shuffle, Follow, Artist radio,
+  // More (Don't play this artist in my mixes). Popular = their top 5 worldwide (missing greyed with preview + Ask),
+  // Your songs by them, Discography newest first (Albums / Singles, Not on Benflix tags), Fans also like.
   B.route(/^\/artist\/([\w-]+)/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const u = B.uid();
-    const [ar, top, albums] = await Promise.all([
+    const [ar, top, albums, count] = await Promise.all([
       B.get(`/Users/${u}/Items/${m[1]}`),
       items(`IncludeItemTypes=Audio&ArtistIds=${enc(m[1])}&SortBy=PlayCount,CommunityRating,SortName&SortOrder=Descending&Limit=10&${SONG_FIELDS}`),
       items(`IncludeItemTypes=MusicAlbum&AlbumArtistIds=${enc(m[1])}&SortBy=ProductionYear,SortName&SortOrder=Descending&Fields=ChildCount`),
+      B.get(`/Items?UserId=${u}&IncludeItemTypes=Audio&Recursive=true&ArtistIds=${enc(m[1])}&Limit=0&EnableTotalRecordCount=true`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
     ]);
     if (!B.alive(nav)) return;
     const full = albums.filter((a) => (a.ChildCount || 3) > 2), singles = albums.filter((a) => (a.ChildCount || 3) <= 2);
-    const follow = !!(ar.UserData || {}).IsFavorite;
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mhero artist"><div class="mhero-art round" style="${cover(ar, 600) ? `background-image:url('${cover(ar, 600)}')` : ""}"></div>
-      <div class="mhero-words"><div class="mkick">ARTIST</div><h1>${esc(ar.Name)}</h1><div class="dim">${albums.length} albums and singles</div>
-      <div class="mhero-btns"><button class="btn white" data-h="top">${I("play")} Play top songs</button><button class="btn" data-h="shuffle">${icon("shuffle")} Shuffle</button><button class="btn ${follow ? "on" : ""}" data-h="follow">${follow ? I("check") + " Following" : I("plus") + " Follow"}</button></div></div></div>
-      <h3 class="msub">Top songs</h3><div class="msongs" id="ms">${top.map((s, i) => songRow(s, i, { cover: true })).join("")}</div>
-      ${B.row("Albums", full.map(albumCard))}${B.row("Singles and EPs", singles.map(albumCard))}</div>`;
-    B.wireTop();
+    let follow = !!(ar.UserData || {}).IsFavorite;
+    const mine = await B.musicMe();
+    let noMix = (mine.noartists || []).some((n) => n.toLowerCase() === (ar.Name || "").toLowerCase());
     const arPlace = { kind: "artist", id: ar.Id, name: ar.Name };
-    wireSongs($("#ms"), top, `${ar.Name}: top songs`, ar.Id, null, arPlace);
+    const pic = cover(ar, 900);
+    const counts = () => [count ? `${count} ${count === 1 ? "song" : "songs"} on Benflix` : "", follow ? "Following" : ""].filter(Boolean).join(" · ");
+    const yours = top.filter((x) => ((x.UserData || {}).PlayCount || 0) > 0).slice(0, 5);
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg">
+      <div class="martist" style="${pic ? `background-image:url('${pic}')` : ""}"><div class="martist-words"><div class="dim" id="mcounts">${esc(counts())}</div><h1>${esc(ar.Name)}</h1></div></div>
+      <div class="mhero-btns"><button class="btn white" data-h="play">${I("play")} Play</button><button class="btn" data-h="shuffle">${icon("shuffle")} Shuffle</button>
+        <button class="btn ${follow ? "on" : ""}" data-h="follow">${follow ? I("check") + " Following" : I("plus") + " Follow"}</button>
+        <button class="btn" data-h="radio">${I("note")} Artist radio</button><button class="btn" data-h="more">${I("more")}</button></div>
+      <h3 class="msub">Popular</h3><div class="msongs" id="ms">${top.slice(0, 5).map((s, i) => songRow(s, i, { cover: true })).join("")}</div>
+      <div id="myours"></div><div id="mdisc"></div><div id="mfans"></div></div>`;
+    B.wireTop();
+    tintTop(cover(ar, 120), $("#mpg"));
+    let popular = top.slice(0, 5);
+    let cat = null;
+    wireSongs($("#ms"), popular, `${ar.Name}: popular`, ar.Id, null, arPlace);
+    const allSongs = () => items(`IncludeItemTypes=Audio&ArtistIds=${enc(ar.Id)}&Limit=5000&${SONG_FIELDS}`);
     $(".mhero-btns").addEventListener("click", async (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
-      if (b.dataset.h === "top") { M.playList(top, 0, false, `${ar.Name}: top songs`, arPlace); M.sourceId = ar.Id; openNow(); }
-      if (b.dataset.h === "shuffle") {
-        const all = await items(`IncludeItemTypes=Audio&ArtistIds=${enc(ar.Id)}&Limit=5000&${SONG_FIELDS}`);
-        M.playList(all, 0, true, ar.Name, arPlace); M.sourceId = ar.Id; openNow();
+      if (b.dataset.h === "play" || b.dataset.h === "shuffle") {
+        const all = await allSongs().catch(() => top);
+        if (!all.length) return B.toast(`No songs by ${ar.Name} on Benflix yet.`);
+        M.playList(all, 0, b.dataset.h === "shuffle", ar.Name, arPlace); M.sourceId = ar.Id; openNow();
+      }
+      if (b.dataset.h === "radio") {
+        try {
+          const j = await B.get(`/Items/${enc(ar.Id)}/InstantMix?UserId=${u}&Limit=60&${SONG_FIELDS}`);
+          const list = ((j && j.Items) || []).filter((x) => x.Type === "Audio");
+          if (!list.length) return B.toast("Couldn't start a radio for this artist yet.");
+          M.playList(list, 0, false, `${ar.Name} radio`); M.sourceId = null; openNow();
+        } catch (err) { B.toast("Couldn't start a radio for this artist. Try again in a minute."); }
       }
       if (b.dataset.h === "follow") {
-        const on = !b.classList.contains("on");
-        await B.jf(on ? "POST" : "DELETE", `/Users/${u}/FavoriteItems/${enc(ar.Id)}`);
-        b.classList.toggle("on", on);
-        b.innerHTML = on ? I("check") + " Following" : I("plus") + " Follow";
-        B.toast(on ? `Following ${ar.Name}: new music shows up on Home` : `Stopped following ${ar.Name}`);
+        follow = !follow;
+        await B.jf(follow ? "POST" : "DELETE", `/Users/${u}/FavoriteItems/${enc(ar.Id)}`);
+        b.classList.toggle("on", follow);
+        b.innerHTML = follow ? I("check") + " Following" : I("plus") + " Follow";
+        $("#mcounts").textContent = counts();
+        B.toast(follow ? `Following ${ar.Name}: new music shows up on Home` : `Stopped following ${ar.Name}`);
+      }
+      if (b.dataset.h === "more") {
+        const menu = [{ label: noMix ? `Play ${ar.Name} in my mixes again` : "Don't play this artist in my mixes", value: "nomix" }, { label: "Add all to Up next", value: "all" }];
+        if (cat && cat.artist) menu.push({ label: `Ask for more by ${ar.Name}`, value: "ask" });
+        B.dropdown(b, menu, null, async (v) => {
+          if (v === "nomix") {
+            noMix = !noMix;
+            await meSave("api/music/me/noartist", { name: ar.Name, on: noMix });
+            B.toast(noMix ? `${ar.Name} won't play in your mixes any more` : `${ar.Name} can play in your mixes again`);
+          }
+          if (v === "all") (await allSongs().catch(() => [])).forEach((x) => M.addToUpNext(x));
+          if (v === "ask") B.go(`#/requests?tab=music&mopen=artist:${cat.artist.id}`);
+        });
       }
     });
-    setTimeout(() => { const p = $("[data-h=top]"); if (p) p.focus({ preventScroll: true }); }, 30);
+    setTimeout(() => { const p = $("[data-h=play]"); if (p) p.focus({ preventScroll: true }); }, 30);
+    if (yours.length) {
+      $("#myours").innerHTML = `<h3 class="msub">Your songs by ${esc(ar.Name)}</h3><div class="msongs" id="myrs">${yours.map((s, i) => songRow(s, i, { cover: true })).join("")}</div>`;
+      wireSongs($("#myrs"), yours, `${ar.Name}: your songs`, ar.Id, null, arPlace);
+    }
+    // Discography, Benflix's albums first while the catalogue answers
+    const discHtml = (albumsHere, singlesHere, missA, missS, on) => {
+      const card = (x) => x.Id ? albumCard(x) : `<a class="poster mnot" href="#/requests?tab=music&mopen=album:${esc(String(x.id))}" title="${esc(x.title)}"><div class="im" style="aspect-ratio:1;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"><span class="mnot-tag">Not on Benflix</span></div><div class="cap">${esc(x.title)}</div><div class="cap2">${esc(x.year || "")}</div></a>`;
+      const year = (x) => +(x.ProductionYear || x.year || 0);
+      const listA = albumsHere.concat(missA).sort((p, q) => year(q) - year(p)), listS = singlesHere.concat(missS).sort((p, q) => year(q) - year(p));
+      if (!listA.length && !listS.length) return "";
+      const showS = on === "singles" && listS.length || !listA.length;
+      return `<h3 class="msub">Discography</h3>${listA.length && listS.length ? `<div class="mchips" id="mdchips"><button class="chip ${showS ? "" : "on"}" style="--accent:var(--music)" data-d="albums">Albums</button><button class="chip ${showS ? "on" : ""}" style="--accent:var(--music)" data-d="singles">Singles</button></div>` : ""}
+        <div class="grid tp-grid">${(showS ? listS : listA).map(card).join("")}</div>`;
+    };
+    let missA = [], missS = [], dOn = "albums";
+    const drawDisc = () => { $("#mdisc").innerHTML = discHtml(full, singles, missA, missS, dOn); };
+    drawDisc();
+    $("#mdisc").addEventListener("click", (e) => { const c = e.target.closest("[data-d]"); if (c) { dOn = c.dataset.d; drawDisc(); } });
+    // The music catalogue (through Tower): Popular worldwide, the whole discography, Fans also like
+    cat = await B.call("GET", `api/music/artistfind?name=${enc(ar.Name || "")}`).catch(() => null);
+    if (!cat || !cat.artist || !B.alive(nav)) return;
+    const all = await allSongs().catch(() => []);
+    if (!B.alive(nav)) return;
+    const byKey = {}; all.forEach((x) => { const k = songKey(x.Name); if (!byKey[k]) byKey[k] = x; });
+    popular = [];
+    const lines = (cat.songs || []).map((c) => { const have = byKey[songKey(c.title)]; if (have) popular.push(have); return have ? { have } : { c }; });
+    if (lines.length) {
+      const old = $("#ms"), fresh = document.createElement("div");
+      fresh.className = "msongs"; fresh.id = "ms";
+      fresh.innerHTML = lines.map((l, n) => (l.have ? songRow(l.have, popular.indexOf(l.have), { cover: true }) : ghostRow(l.c, n + 1, true))).join("");
+      old.replaceWith(fresh);
+      wireSongs(fresh, popular, `${ar.Name}: popular`, ar.Id, null, arPlace);
+      wireGhosts(fresh);
+    }
+    const here = new Set(albums.map((a) => songKey(a.Name)));
+    const miss = (cat.albums || []).filter((a) => !a.have && !here.has(songKey(a.title)));
+    missS = miss.filter((a) => a.type === "single" || a.type === "ep" || (a.songs > 0 && a.songs <= 2));
+    missA = miss.filter((a) => !missS.includes(a));
+    drawDisc();
+    const fans = cat.related || [];
+    if (fans.length) {
+      const local = await Promise.all(fans.slice(0, 12).map((a) => items(`searchTerm=${enc(a.name)}&IncludeItemTypes=MusicArtist&Limit=5`).then((l) => l.find((x) => (x.Name || "").toLowerCase() === a.name.toLowerCase())).catch(() => null)));
+      if (!B.alive(nav)) return;
+      const cards = fans.slice(0, 12).map((a, i) => ({ a, l: local[i] })).sort((p, q) => (p.l ? 0 : 1) - (q.l ? 0 : 1))
+        .map(({ a, l }) => `<a class="poster" href="${l ? `#/artist/${l.Id}` : `#/requests?tab=music&mopen=artist:${esc(String(a.id))}`}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div><div class="cap2">${l ? "On Benflix" : "None yet"}</div></a>`);
+      $("#mfans").innerHTML = B.row("Fans also like", cards);
+    }
   });
 
   // ---------- Up next (approved q-full) ----------

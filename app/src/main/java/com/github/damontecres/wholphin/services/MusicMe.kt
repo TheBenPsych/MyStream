@@ -32,6 +32,10 @@ data class MusicMeState(
     val recents: List<MusicPlace> = emptyList(),
     val searches: List<MusicSearchWords> = emptyList(),
     val pins: List<MusicPlace> = emptyList(),
+    /** Don't play this artist in my mixes */
+    val noArtists: List<String> = emptyList(),
+    /** Songs asked for from Songs to add on your own playlists: playlist id to (artist, title) */
+    val adds: Map<String, List<Pair<String, String>>> = emptyMap(),
     val loaded: Boolean = false,
 )
 
@@ -121,6 +125,42 @@ class MusicMe
             return null
         }
 
+        fun isNoArtist(name: String): Boolean = _state.value.noArtists.any { it.equals(name.trim(), true) }
+
+        /** Don't play this artist in my mixes (Made for you leaves them out from tomorrow's mixes, or now) */
+        suspend fun noArtist(
+            name: String,
+            on: Boolean,
+        ) {
+            _state.update { st ->
+                val rest = st.noArtists.filterNot { it.equals(name.trim(), true) }
+                st.copy(noArtists = if (on) rest + name.trim() else rest)
+            }
+            post("/api/music/me/noartist", JSONObject().put("name", name).put("on", on))
+        }
+
+        /** A song asked for from Songs to add on your own playlist: it joins [playlistId] once it's on Benflix */
+        suspend fun addLater(
+            playlistId: String,
+            artist: String,
+            title: String,
+            remove: Boolean = false,
+        ) {
+            _state.update { st ->
+                val rest = st.adds[playlistId].orEmpty().filterNot { it.first.equals(artist, true) && it.second.equals(title, true) }
+                val now = if (remove) rest else rest + (artist to title)
+                st.copy(adds = if (now.isEmpty()) st.adds - playlistId else st.adds + (playlistId to now))
+            }
+            post(
+                "/api/music/me/add",
+                JSONObject()
+                    .put("playlist", playlistId)
+                    .put("artist", artist)
+                    .put("title", title)
+                    .put("remove", remove),
+            )
+        }
+
         private suspend fun post(
             path: String,
             body: JSONObject,
@@ -143,6 +183,18 @@ class MusicMe
                             s.optString("q").takeIf { it.isNotBlank() }?.let { MusicSearchWords(it, s.optDouble("at", 0.0)) }
                         },
                     pins = places(j.optJSONArray("pins")),
+                    noArtists =
+                        j.optJSONArray("noartists").let { a ->
+                            if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+                        },
+                    adds =
+                        j
+                            .optJSONObject("adds")
+                            ?.let { o ->
+                                o.keys().asSequence().associateWith { k ->
+                                    o.optJSONArray(k).objects().map { it.optString("artist") to it.optString("title") }
+                                }
+                            }.orEmpty(),
                     loaded = true,
                 )
         }
