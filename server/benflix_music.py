@@ -89,10 +89,22 @@ _log_lines = []
 
 
 class MusicError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, busy=False):
         super().__init__(message)
         self.status = status
         self.message = message
+        # busy = the other app is only busy or restarting (Lidarr's 503 when its music list server is
+        # overloaded), so the ask waits and tries again by itself instead of failing
+        self.busy = busy
+
+
+# Lidarr answers with these when it (or its online music list) is busy, not when the ask is wrong
+LIDARR_BUSY_CODES = (429, 500, 502, 503, 504)
+BUSY_WORDS = "Lidarr's music list is busy, trying again by itself"
+# Waits between tries while Lidarr is busy (minutes), then every hour; gives up after two days
+BUSY_WAITS = (2, 5, 10, 20, 30, 60)
+BUSY_GIVE_UP = 2 * 86400
+_lidarr_rest = [0.0]  # When Lidarr was last busy, nothing else is sent to it until this time
 
 
 def log(text):
@@ -127,6 +139,10 @@ def start(jellyfin_call):
     saved = _read("music.json") or {}
     for k in ("requests", "playlists"):
         _state[k] = saved.get(k) or []
+    # Asks that failed only because Lidarr was busy (before Benflix waited by itself) go back in line
+    for r in _state["requests"]:
+        if r.get("state") == "problem" and re.search(r"Lidarr answered with an error \((429|50[0234])\)|Couldn't reach Lidarr", r.get("note") or ""):
+            _retry(r)
     _state["admin"] = _read("admin.json") or {}
     if os.path.isdir(MEDIA):
         for d in (MUSIC, DROP, LEFT):
@@ -239,9 +255,11 @@ def lidarr(method, path, body=None, **params):
             detail = ""
         if e.code == 401:
             raise MusicError(502, "Lidarr didn't accept the key. Run the Benflix setup command again.")
+        if e.code in LIDARR_BUSY_CODES:
+            raise MusicError(503, f"Lidarr is busy right now ({e.code}). {_lidarr_reason(detail)}".strip(), busy=True)
         raise MusicError(502, f"Lidarr answered with an error ({e.code}). {_lidarr_reason(detail)}".strip())
     except (urllib.error.URLError, OSError):
-        raise MusicError(502, "Couldn't reach Lidarr. Check it's running on Tower.")
+        raise MusicError(502, "Couldn't reach Lidarr. Check it's running on Tower.", busy=True)
     except ValueError:
         raise MusicError(502, "Lidarr's answer didn't make sense.")
 
@@ -1095,7 +1113,8 @@ def _find(rid):
 
 
 def _retry(r):
-    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time(), "slsk_tried": False})
+    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time(), "slsk_tried": False, "fails": 0})
+    _not_busy(r)
     if not LIDARR_URL and _slsk_on() and r["kind"] == "song":
         r["state"] = "slsk_search"
 
@@ -1151,6 +1170,8 @@ def _words(r):
         if not pct and r.get("queued"):
             return "Waiting in someone's Soulseek queue", 0.35, False
         return f"Downloading, {pct}%", 0.4 + 0.55 * pct / 100, False
+    if r.get("busy_until") and s not in ("downloading", "slsk_downloading", "tidying"):
+        return BUSY_WORDS, 0.1, False
     if s in ("searching", "search_now"):
         if len(r.get("tries") or []) > 1:
             return "Still looking (tries again by itself)", 0.3, False
@@ -1414,7 +1435,13 @@ def _tick():
         return
     lidarr_ok = bool(LIDARR_URL) and _ensure_lidarr()
     queue = _queue() if lidarr_ok else {}
+    lidarr_busy = False  # Once Lidarr says it's busy, the rest wait for the next round instead of piling on
+    now = time.time()
     for r in todo:
+        uses_lidarr = not r["state"].startswith("slsk_") and lidarr_ok
+        if uses_lidarr and (lidarr_busy or _lidarr_rest[0] > now or r.get("busy_until", 0) > now):
+            continue
+        adding = r["state"] == "adding"
         try:
             if r["state"].startswith("slsk_"):
                 _slsk_step(r)
@@ -1424,13 +1451,41 @@ def _tick():
             elif r["kind"] == "song" and _slsk_on() and not r.get("slsk_tried"):
                 r["state"] = "slsk_search"
                 _slsk_step(r)
+            if uses_lidarr:
+                _not_busy(r)
         except MusicError as e:
-            r["fails"] = r.get("fails", 0) + 1
-            if r["fails"] >= 5:
-                r.update({"state": "problem", "note": e.message})
-                log(f"gave up on {r['artist']} - {r['title']}: {e.message}")
+            if e.busy and uses_lidarr:
+                lidarr_busy = True
+                _lidarr_rest[0] = time.time() + 90
+                _busy(r, e)
+            else:
+                r["fails"] = r.get("fails", 0) + 1
+                if r["fails"] >= 5:
+                    r.update({"state": "problem", "note": e.message})
+                    log(f"gave up on {r['artist']} - {r['title']}: {e.message}")
         with _lock:
             _save()
+        if adding and uses_lidarr:
+            time.sleep(1.5)  # Lidarr looks each new ask up online; many at once makes that list say "busy"
+
+
+def _busy(r, e):
+    """Lidarr (or its online music list) is busy: wait a bit longer each time, then try again by itself"""
+    first = r.setdefault("busy_since", time.time())
+    if time.time() - first > BUSY_GIVE_UP:
+        r.update({"state": "problem", "note": "Lidarr's music list was busy for two days. Press Try again later."})
+        _not_busy(r)
+        log(f"gave up on {r['artist']} - {r['title']}: Lidarr busy for two days ({e.message})")
+        return
+    n = r.get("busy_tries", 0)
+    r["busy_tries"] = n + 1
+    r["busy_until"] = time.time() + 60 * BUSY_WAITS[min(n, len(BUSY_WAITS) - 1)]
+    log(f"Lidarr busy for {r['artist']} - {r['title']} ({e.message}); trying again in {BUSY_WAITS[min(n, len(BUSY_WAITS) - 1)]} min")
+
+
+def _not_busy(r):
+    for k in ("busy_until", "busy_since", "busy_tries"):
+        r.pop(k, None)
 
 
 def _queue():
