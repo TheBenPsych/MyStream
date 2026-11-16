@@ -257,6 +257,7 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .poster .tick { position: absolute; right: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--dark); display: grid; place-items: center; }
 .poster .tick svg { width: 15px; height: 15px; stroke-width: 3; }
 .poster .newp { position: absolute; left: 8px; top: 8px; background: var(--ink); color: var(--dark); font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 99px; }
+.poster .newp.miss { background: #15803d; color: #fff; }
 .poster .cap { padding: 8px 4px 2px; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .poster .cap small { display: block; color: var(--ink3); font-weight: 500; font-size: 13px; }
 .poster.see { display: grid; place-items: center; aspect-ratio: 2/3; background: var(--pg2); font-weight: 700; color: var(--ink2); align-self: flex-start; }

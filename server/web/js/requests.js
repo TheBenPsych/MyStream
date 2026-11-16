@@ -7,8 +7,57 @@ B.seerr = seerr;
 const tmdbImg = (p, w) => (p ? `https://image.tmdb.org/t/p/${w || "w342"}${p}` : "");
 B.tmdbImg = tmdbImg;
 B.seerrMe = () => B.cached("seerr-me", 600000, () => seerr("/user-status").catch(() => null));
-const onBenflix = (r) => r.mediaInfo && (r.mediaInfo.status === 5 || r.mediaInfo.status === 4);
+// Benflix (Ben, 2026-11-16): what's really on Benflix, straight from Jellyfin ("movie:123" / "tv:456" -> Jellyfin id),
+// because Seerr's own "available" often runs behind. A show that's here but missing aired episodes gets
+// r._missing = true and shows again, tagged "Missing episodes".
+let libTmdb = new Map();
+B.libTmdb = () => B.cached("lib-tmdb", 600000, async () => {
+  const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Movie,Series&Recursive=true&Fields=ProviderIds&EnableImages=false&EnableUserData=false&EnableTotalRecordCount=false`).catch(() => ({}));
+  const m = new Map();
+  (r.Items || []).forEach((x) => { const t = (x.ProviderIds || {}).Tmdb; if (t) m.set((x.Type === "Movie" ? "movie:" : "tv:") + t, x.Id); });
+  libTmdb = m;
+  return m;
+}).then((m) => { libTmdb = m; return m; });
+const onBenflix = (r) => !r._missing && ((r.mediaInfo && (r.mediaInfo.status === 5 || r.mediaInfo.status === 4)) || libTmdb.has(r.mediaType + ":" + r.id));
 B.onBenflix = onBenflix;
+// Aired episodes per season from Seerr's /tv/{id} (no specials, nothing unaired), like the app's ShowArrival
+const airedEpisodes = (tv) => {
+  const last = tv.lastEpisodeToAir || null, ls = last && last.seasonNumber >= 1 ? last.seasonNumber : null, today = new Date().toISOString().slice(0, 10);
+  const out = {};
+  (tv.seasons || []).forEach((s) => {
+    const n = s.seasonNumber;
+    if (!(n >= 1)) return;
+    const listed = s.episodeCount || 0;
+    const c = ls != null ? (n < ls ? listed : n === ls ? (last.episodeNumber || listed) : 0) : (s.airDate && s.airDate.slice(0, 10) <= today ? listed : 0);
+    if (c > 0) out[n] = c;
+  });
+  return out;
+};
+// true = the whole show is here, false = here but missing aired episodes (cached per show for 10 minutes)
+B.showComplete = (tmdbId) => B.cached("show-here-" + tmdbId, 600000, async () => {
+  const tv = await seerr("/tv/" + tmdbId).catch(() => null);
+  if (!tv) return true;
+  const mi = tv.mediaInfo || {};
+  const jf = libTmdb.get("tv:" + tmdbId) || mi.jellyfinMediaId;
+  const aired = airedEpisodes(tv);
+  if (!Object.keys(aired).length) return true;
+  if (!jf) return mi.status === 5;
+  const r = await B.get(`/Items?userId=${B.uid()}&ParentId=${jf}&IncludeItemTypes=Episode&Recursive=true&IsMissing=false&EnableImages=false&EnableUserData=false`).catch(() => null);
+  if (!r) return mi.status === 5;
+  const have = {};
+  (r.Items || []).forEach((e) => {
+    if (e.LocationType === "Virtual") return;
+    const sn = e.ParentIndexNumber == null ? 1 : e.ParentIndexNumber;
+    if (sn < 1 || e.IndexNumber == null) return;
+    const set = have[sn] || (have[sn] = new Set());
+    for (let i = e.IndexNumber; i <= Math.max(e.IndexNumber, e.IndexNumberEnd || e.IndexNumber); i++) set.add(i);
+  });
+  const seasonOk = Object.entries(aired).every(([n, c]) => ((have[n] && have[n].size) || 0) >= c);
+  if (seasonOk) return true;
+  // Anime filed with different season splits: count every episode together
+  const total = (o) => Object.values(o).reduce((a, b) => a + (typeof b === "number" ? b : b.size), 0);
+  return total(have) >= total(aired);
+});
 const asked = (r) => r.mediaInfo && (r.mediaInfo.status === 2 || r.mediaInfo.status === 3 || (r.mediaInfo.requests || []).length);
 const isAnime = (r) => (r.genreIds || []).includes(16) && (r.originalLanguage === "ja" || r.mediaType === "tv");
 B.askCard = (r) => {
@@ -17,7 +66,7 @@ B.askCard = (r) => {
   const img = tmdbImg(r.posterPath);
   B.items["s" + r.mediaType + r.id] = r;
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
-    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${asked(r) ? '<span class="newp">Asked</span>' : ""}</div>
+    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${asked(r) ? '<span class="newp">Asked</span>' : r._missing ? '<span class="newp miss">Missing episodes</span>' : ""}</div>
     <div class="cap">${esc(t)}<small>${esc(year)}</small></div></button>`;
 };
 
@@ -159,7 +208,7 @@ B.route(/^\/requests/, async (m, nav) => {
   const search = async (text) => {
     if (!text.trim()) return drawRows();
     $("#rows").innerHTML = B.spinner();
-    const r = await seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] }));
+    const [r] = await Promise.all([seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] })), B.libTmdb().catch(() => null)]);
     if (!B.alive(nav)) return;
     const res = (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !onBenflix(x));
     const mv = res.filter((x) => x.mediaType === "movie" && !isAnime(x)), tv = res.filter((x) => x.mediaType === "tv" && !isAnime(x)), an = res.filter(isAnime);
@@ -276,7 +325,7 @@ B.route(/^\/requests/, async (m, nav) => {
       : genre
         ? [pg(`/discover/${kindPath}/genre/${genre[1]}`, [1, 2, 3, 4])]
         : [pg(`/discover/${kindPath}`, [1, 2, 3, 4, 5, 6]), pg(`/discover/${kindPath}/upcoming`, [1, 2, 3])];
-    const got = await Promise.all(groups.map((g) => Promise.all(g)));
+    const got = await Promise.all(groups.map((g) => Promise.all(g)).concat([B.libTmdb()]));
     if (!B.alive(nav)) return;
     const mt = tab === "movies" ? "movie" : "tv";
     const kindOk = (x) => (tab === "anime" ? x.originalLanguage === "ja" : !isAnime(x));
@@ -300,6 +349,25 @@ B.route(/^\/requests/, async (m, nav) => {
     }
     walls = walls.filter((w) => w.items.length || w.owned.length);
     drawWall();
+    checkMissing(nav);
+  };
+  // Shows already on Benflix: look each one up, and bring back the ones missing aired episodes
+  const checkMissing = async (myNav) => {
+    const shows = walls.flatMap((w) => w.owned.filter((x) => x.mediaType === "tv").map((x) => [w, x]));
+    let i = 0, redraw = null;
+    const next = async () => {
+      while (i < shows.length) {
+        const [w, x] = shows[i++];
+        const whole = await B.showComplete(x.id).catch(() => true);
+        if (!B.alive(myNav) || whole) continue;
+        x._missing = true;
+        w.owned = w.owned.filter((o) => o !== x);
+        if (!w.items.includes(x)) w.items.push(x);
+        clearTimeout(redraw);
+        redraw = setTimeout(() => { if (B.alive(myNav)) drawWall(); }, 400);
+      }
+    };
+    await Promise.all([next(), next(), next(), next()]);
   };
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 350); };
