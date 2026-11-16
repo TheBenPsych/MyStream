@@ -33,11 +33,13 @@ B.route(/^\/who$/, async () => {
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
   const last = load("benflix.last");
+  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 December to 1 January
+  const xmas = B.xmasOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    <div class="wall" aria-hidden="true"></div>
+    ${xmas ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    <h1>Who's watching?</h1>
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -55,7 +57,14 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  whoWall(list);
+  if (xmas) {
+    const svg = $(".who .xroom");
+    const tall = () => innerWidth < innerHeight * 0.8;
+    const draw = () => { if (!svg.isConnected) return; const scene = B.xmas.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; B.xmas.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
+    draw();
+    const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
+    addEventListener("resize", onResize);
+  } else whoWall(list);
 });
 
 // 12 still posters (PG-13 or lower), picked once a day and kept, so the wall costs nothing most days
@@ -647,6 +656,13 @@ const fitRows = (list) => {
   while (s > 0.62 && over()) { s -= 0.04; panel.style.setProperty("--fs", s.toFixed(2)); }
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
+
+// Christmas look: on from 1 December to 1 January unless switched off in Settings › Look (this browser)
+B.xmas = window.BenflixXmas;
+B.xmasOff = () => { try { return localStorage.getItem("benflix.xmasOff") === "1"; } catch (e) { return false; } };
+B.setXmasOff = (off) => { try { localStorage.setItem("benflix.xmasOff", off ? "1" : "0"); } catch (e) {} };
+B.xmasOn = () => !!B.xmas && B.xmas.season(new Date()) && !B.xmasOff();
+B.xmasGreeting = () => { const d = new Date(); if (d.getMonth() === 0) return "Happy New Year"; if (d.getDate() === 31) return "Happy New Year's Eve"; return d.getDate() === 24 ? "Merry Christmas Eve" : "Merry Christmas"; };
 
 // Big holidays only, clean and simple
 B.holiday = () => {

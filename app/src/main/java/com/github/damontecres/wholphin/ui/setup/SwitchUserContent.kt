@@ -17,15 +17,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -45,6 +52,7 @@ import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -153,7 +161,14 @@ fun SwitchUserContent(
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
                 // The profiles show first; the wall fills in behind them once its pictures are ready
-                PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
+                // Christmas (1 Dec to 1 Jan, unless switched off in Settings): the cosy room with the tree,
+                // the train and the parade past the window, instead of the wall
+                val christmas = ChristmasSeason.on()
+                if (christmas) {
+                    ChristmasRoom(modifier = Modifier.fillMaxSize())
+                } else {
+                    PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
+                }
                 // Ben: the logo sits top left, exactly where the top bar's logo is, so after you pick a
                 // profile the doors grow out of it in place. The intro's logo glides into this spot,
                 // so it stays hidden until it lands
@@ -178,13 +193,36 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
-                    Text(
-                        text = holiday?.text ?: stringResource(R.string.select_user),
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = BenflixColors.Text,
-                        textAlign = TextAlign.Center,
-                    )
+                    if (christmas) {
+                        val today = remember { LocalDate.now() }
+                        Text(
+                            text = ChristmasSeason.greeting(today),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        ChristmasSeason.countdown(today)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF2D27E),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = holiday?.text ?: stringResource(R.string.select_user),
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.height(36.dp))
                     androidx.compose.runtime.CompositionLocalProvider(
@@ -301,3 +339,6 @@ private const val SHORT_SCREEN_DP = 600
 
 /** The smallest the Who's watching tiles get */
 private const val MIN_TILE_DP = 72f
+
+/** Benflix Christmas greeting font (Berkshire Swash, OFL) */
+private val XmasFont = FontFamily(Font(R.font.holiday_berkshireswash))

@@ -166,10 +166,12 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (g.id === "look") {
     const size = ws.textSize || (ws.easy && !B.me.kids ? 125 : 100);
     sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
-      + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")));
+      + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
+      + (B.me.kids ? "" : setRow("Christmas look", "From 1 December to 1 January: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
+      if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
   }
