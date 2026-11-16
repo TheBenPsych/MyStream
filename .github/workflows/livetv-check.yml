@@ -1,0 +1,27 @@
+name: Live TV deep check
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['server/benflix_livetv*.py', 'server/tools/livetv_deep_check.py', '.github/workflows/livetv-check.yml']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: How the redirect answers
+        run: |
+          for u in https://jmp2.uk/plu-5ca525b650be2571e3943c63.m3u8 https://jmp2.uk/stvp-US2900006IV https://jmp2.uk/rok-fb29ccf15bc8583ca1db8c42902eeae8.m3u8; do
+            echo "== $u"; curl -sS -D - -o body.txt -A "ExoPlayerLib/2.19.1" --max-time 15 "$u" | head -15; head -c 400 body.txt; echo
+            curl -sSL -o body2.txt -w "final %{http_code} %{url_effective}\n" -A "ExoPlayerLib/2.19.1" --max-time 15 "$u"; head -c 600 body2.txt; echo
+          done
+      - name: Try every channel
+        run: python3 server/tools/livetv_deep_check.py report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: livetv-report
+          path: report.json
