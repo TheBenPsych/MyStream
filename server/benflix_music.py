@@ -154,6 +154,7 @@ def start(jellyfin_call):
     threading.Thread(target=_worker, name="music-worker", daemon=True).start()
     threading.Thread(target=_drop_worker, name="music-drop", daemon=True).start()
     threading.Thread(target=_lyrics_worker, name="music-lyrics", daemon=True).start()
+    threading.Thread(target=_info_worker, name="music-song-info", daemon=True).start()
     log(f"ready (Lidarr {'set up' if LIDARR_URL else 'NOT set up yet'}, ffmpeg {'found' if _has_ffmpeg() else 'missing'})")
 
 
@@ -425,11 +426,18 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             log(f"themed playlists problem: {e!r}")
             return 200, {"themes": []}
     if method == "GET" and path == "/api/music/albumsize":
-        # How many songs the whole album has, for the "3 of 12 songs" note (everyone but Kids)
+        # How many songs the whole album has, for the "3 of 12 songs" note and its Ask for the rest (everyone but Kids)
         if is_kids:
             return 403, {"error": "No music on the Kids profile."}
         one = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
-        return 200, {"songs": album_size(one("artist"), one("album"))}
+        found = album_find(one("artist"), one("album"))
+        return 200, {"songs": found["songs"], "id": found["id"]}
+    if method == "POST" and path == "/api/music/mixes/hide":
+        # Not for this playlist (Ben 2026-11-16): the song leaves this made-for-you or themed playlist for this profile
+        if is_kids:
+            return 403, {"error": "No music on the Kids profile."}
+        body = read_json()
+        return 200, mix_hide(user_id, str(body.get("key") or ""), str(body.get("id") or ""))
     if is_kids:
         return 403, {"error": "No music requests on the Kids profile."}
     if not is_admin:
@@ -444,7 +452,7 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         if method == "GET" and path == "/api/music/search":
             return 200, search(q("q"))
         if method == "GET" and path == "/api/music/discover":
-            return 200, discover()
+            return 200, discover(token, user_id)
         if method == "GET" and path == "/api/music/similar":
             return 200, similar(q("artist"), q("title"))
         if method == "GET" and path == "/api/music/genre":
@@ -765,20 +773,44 @@ def _seed_row(seed):
 SKIP_SEEDS = re.compile(r"\b(intro|outro|skit|interlude|prelude|untitled|track \d+)\b", re.I)
 
 
-def _because():
-    """Several 'Because you have <song>' lists, from songs picked at random in Music: different every time the page opens"""
+def _seeds_for(token, user_id):
+    """(artist, song) pairs this person plays most or liked, most played first (Ben 2026-11-16: Because you have
+    starts from what you actually listen to)"""
+    if not token or not user_id:
+        return []
+    out, seen = [], set()
+    for s in _songs(token, user_id, "Filters=IsPlayed&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Limit=150") + _songs(token, user_id, "Filters=IsFavorite&SortBy=Random&Limit=100"):
+        who = s.get("AlbumArtist") or (s.get("Artists") or [""])[0] or ""
+        if not who or who.lower() in ("various artists", "unknown") or not s.get("Name"):
+            continue
+        k = (norm(who), norm(s["Name"]))
+        if k not in seen:
+            seen.add(k)
+            out.append((main_artist(who) or who, s["Name"]))
+    return out
+
+
+def _because(seeds=None):
+    """Several 'Because you have <song>' lists: from the songs this person plays most and liked (picked again every
+    time the page opens), topped up with random songs from Music when they haven't played much yet"""
     import random
 
     try:
         _have_songs()
-        mine = list(_have["named"])
+        anyone = list(_have["named"])
     except OSError:
-        return []
+        anyone = []
+    random.shuffle(anyone)
+    own = list(seeds or [])
+    # Mostly their top songs, with some of the rest so it isn't the same few lists every time
+    top, rest = own[:40], own[40:]
+    random.shuffle(top)
+    random.shuffle(rest)
+    mine = top + rest + anyone
     mine = [x for x in mine if len(x[1]) > 1 and not SKIP_SEEDS.search(x[1])]
     if not _christmas_time():
         xre = THEME_BY_KEY["christmas"]["_re"]
         mine = [x for x in mine if not xre.search(norm(x[1]))]
-    random.shuffle(mine)
     # One song per artist, so two lists are never the same artist's radio
     picked, artists = [], set()
     for who, title in mine:
@@ -819,12 +851,16 @@ def _hide_owned_albums(out):
             out[key] = [a for a in out[key] if not _album_owned(a, have_albums)]
 
 
-def discover():
+def discover(token=None, user_id=None):
     out = _chart(0, songs=100)
     top_ids = [x["id"] for x in out["songs"][:100]]
     out["genres"] = _genres()
     out["picks"] = _picks()
-    trending, because = _each([(lambda _x: _trending(top_ids), None), (lambda _x: _because(), None)], wait=40)
+    try:
+        seeds = _seeds_for(token, user_id)
+    except Exception:  # noqa: BLE001 - no plays to start from: random songs from Music instead
+        seeds = []
+    trending, because = _each([(lambda _x: _trending(top_ids), None), (lambda _x: _because(seeds), None)], wait=40)
     out["trending"] = trending or []
     out["because"] = because or []
     _mark_asked(out)
@@ -893,6 +929,32 @@ def album_size(artist, album):
             _found_cache.pop(key, None)  # The catalogue was out of reach: ask again next time
         return 0
     return n
+
+
+def album_find(artist, album):
+    """The album in the music catalogue: how many songs it has and its id, for Ask for the rest. Kept for 30 days."""
+    if not artist or not album:
+        return {"songs": 0, "id": None}
+
+    def load():
+        try:
+            found = deezer("/search/album", q=f'artist:"{artist}" album:"{album}"', limit=10).get("data") or []
+            if not found:
+                found = deezer("/search/album", q=f"{artist} {album}", limit=10).get("data") or []
+        except MusicError:
+            return None
+        for a in found:
+            if same(a.get("title"), album) and same((a.get("artist") or {}).get("name"), artist):
+                return {"songs": int(a.get("nb_tracks") or 0), "id": a.get("id")}
+        return {"songs": 0, "id": None}
+
+    key = f"albumfind-{norm(artist)}-{norm(album)}"
+    got = _cached(key, load, keep=30 * 24 * 3600)
+    if got is None:
+        with _lock:
+            _found_cache.pop(key, None)  # The catalogue was out of reach: ask again next time
+        return {"songs": 0, "id": None}
+    return got
 
 
 _have = {"at": 0, "songs": set(), "albums": set(), "named": []}
@@ -999,7 +1061,7 @@ def _family_route(method, path, query, user_id, user_name, read_json, token=None
             if path == "/api/music/search":
                 return 200, search(q("q"))
             if path == "/api/music/discover":
-                return 200, discover()
+                return 200, discover(token, user_id)
             if path == "/api/music/similar":
                 return 200, similar(q("artist"), q("title"))
             if path == "/api/music/genre":
@@ -3440,22 +3502,62 @@ def _mix(key, name, line, songs, limit=30):
     return {"key": key, "name": name, "line": line, "songs": ids, "covers": covers[:4]}
 
 
+# Daily mixes by style (Ben 2026-11-16): each Daily mix keeps to one kind of music. A song's style is the first of
+# these its genres fit (whole words), or else its own first genre.
+STYLES = [
+    ("Metal", ["metal", "metalcore", "deathcore", "djent", "hardcore"]),
+    ("Rap and hip hop", ["hip hop", "hip-hop", "rap", "trap", "drill", "grime"]),
+    ("R&B and soul", ["r&b", "rnb", "soul", "neo soul", "funk", "motown"]),
+    ("Country", ["country", "americana", "bluegrass"]),
+    ("Electronic and dance", ["electronic", "electronica", "edm", "dance", "house", "techno", "trance", "dubstep", "drum and bass", "drum & bass", "electro", "synthwave"]),
+    ("K-pop and J-pop", ["k-pop", "kpop", "j-pop", "jpop", "j-rock", "anime"]),
+    ("Latin", ["latin", "reggaeton", "salsa", "bachata", "cumbia"]),
+    ("Punk and emo", ["punk", "pop punk", "emo", "post-hardcore"]),
+    ("Rock", ["rock", "grunge", "alternative", "indie rock", "classic rock", "hard rock"]),
+    ("Indie and folk", ["indie", "folk", "acoustic", "singer-songwriter", "singer songwriter"]),
+    ("Pop", ["pop", "dance pop", "synthpop", "electropop"]),
+    ("Jazz and blues", ["jazz", "blues", "swing"]),
+    ("Classical and soundtracks", ["classical", "soundtrack", "score", "orchestral", "piano", "game", "film"]),
+    ("Reggae", ["reggae", "ska", "dancehall"]),
+]
+STYLES = [(n, w, re.compile(r"(?<![a-z0-9])(" + "|".join(re.escape(x) for x in w) + r")(?![a-z0-9])")) for n, w in STYLES]
+DAILY_MIXES = 4
+
+
+def _style(song):
+    gs = [g.strip().lower() for g in song.get("Genres") or [] if g.strip()]
+    if not gs:
+        return None
+    joined = " | ".join(gs)
+    for name, _w, rx in STYLES:
+        if rx.search(joined):
+            return name
+    return (song.get("Genres") or [""])[0].strip() or None
+
+
+def _slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-") or "mix"
+
+
 def mixes_for(token, user_id):
     day = time.strftime("%Y-%m-%d")
     with _mix_lock:
         cached = _mixes.get(user_id)
         if cached and cached[0] == day:
             return cached[1]
+    import datetime
     import random
 
     rnd = random.Random(f"{user_id}-{day}")
+    now = datetime.datetime.now(datetime.timezone.utc)
     played = _songs(token, user_id, "Filters=IsPlayed&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Limit=400")
     liked = _songs(token, user_id, "Filters=IsFavorite&Limit=300")
     fresh = _songs(token, user_id, "SortBy=Random&Limit=200")
+    lately = _songs(token, user_id, "Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=300")
     # Christmas songs only mix in from Thanksgiving to Boxing Day (they have their own In season playlist)
     xmas_ok = _christmas_time()
     if not xmas_ok:
-        played, liked, fresh = ([x for x in lst if not _is_christmas(x)] for lst in (played, liked, fresh))
+        played, liked, fresh, lately = ([x for x in lst if not _is_christmas(x)] for lst in (played, liked, fresh, lately))
     pool = {s["Id"]: s for s in played + liked + fresh}
     count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
     # The artists each person plays most (likes count a little too)
@@ -3471,7 +3573,7 @@ def mixes_for(token, user_id):
     top = [a for a, _ in sorted(weight.items(), key=lambda x: -x[1])]
     mixes = []
 
-    def daily(n, artists):
+    def daily(n, artists, style=None, extra=()):
         names = {a[0] for a in artists}
         # All of these artists' songs, not only the ones already played, so the "few you've barely played" are real
         ids = [a[1] for a in artists if a[1]]
@@ -3479,8 +3581,10 @@ def mixes_for(token, user_id):
         if not xmas_ok:
             more = [x for x in more if not _is_christmas(x)]
         both = dict(pool)
-        both.update({x["Id"]: x for x in more if x["Id"] not in both})
-        mine = [s for s in both.values() if _mix_artist(s)[0] in names]
+        both.update({x["Id"]: x for x in list(more) + list(extra) if x["Id"] not in both})
+        mine = [s for s in both.values() if _mix_artist(s)[0] in names or (style and s["Id"] in {e["Id"] for e in extra})]
+        if style:
+            mine = [s for s in mine if _style(s) == style]
         rnd.shuffle(mine)
         # Mostly songs they know, plus a few they've barely played
         known = [s for s in mine if count(s) > 0][:22]
@@ -3488,48 +3592,115 @@ def mixes_for(token, user_id):
         songs = known + rare
         rnd.shuffle(songs)
         who = ", ".join(a[0] for a in artists[:3])
-        return _mix(f"daily-{n}", f"Daily mix {n}", who or "A bit of everything", songs)
+        line = f"{style} · {who}" if style and who else (who or style or "A bit of everything")
+        return _mix(f"daily-{_slug(style)}" if style else f"daily-{n}", f"Daily mix {n}", line, songs)
 
-    if top:
-        half = max(1, min(len(top), 8) // 2)
-        mixes.append(daily(1, top[:half]))
-        # Only one or two artists played so far: a second Daily mix would be the same songs again
-        if top[half : half * 2]:
-            mixes.append(daily(2, top[half : half * 2]))
-    else:
-        songs = list(fresh)
-        rnd.shuffle(songs)
-        mixes.append(_mix("daily-1", "Daily mix 1", "A bit of everything", songs))
-    repeat = [s for s in played if count(s) >= 2][:30]
-    mixes.append(_mix("repeat", "On repeat", "The songs you play most", repeat, limit=30))
+    # One Daily mix per style they play most (up to 4), each with that style's top artists
+    style_weight, style_artists = {}, {}
+    liked_ids = {x["Id"] for x in liked}
+    for s in played + liked:
+        st = _style(s)
+        if not st:
+            continue
+        w = count(s) + (3 if s["Id"] in liked_ids else 0)
+        style_weight[st] = style_weight.get(st, 0) + w
+        a = _mix_artist(s)
+        if a[0]:
+            style_artists.setdefault(st, {})
+            style_artists[st][a] = style_artists[st].get(a, 0) + w
+    for st in sorted(style_weight, key=lambda k: -style_weight[k]):
+        if len(mixes) >= DAILY_MIXES:
+            break
+        artists = [a for a, _ in sorted(style_artists.get(st, {}).items(), key=lambda x: -x[1])][:6]
+        m = daily(len(mixes) + 1, artists, st, extra=[x for x in fresh if _style(x) == st])
+        if m:
+            mixes.append(m)
+    if not mixes:
+        # Not enough genres on the songs to tell styles apart: the top artists, split in two
+        if top:
+            half = max(1, min(len(top), 8) // 2)
+            mixes.append(daily(1, top[:half]))
+            # Only one or two artists played so far: a second Daily mix would be the same songs again
+            if top[half : half * 2]:
+                mixes.append(daily(2, top[half : half * 2]))
+        else:
+            songs = list(fresh)
+            rnd.shuffle(songs)
+            mixes.append(_mix("daily-1", "Daily mix 1", "A bit of everything", songs))
+    mixes = [m for m in mixes if m]
+    # On repeat (Ben 2026-11-16): the songs played most in the last 30 days, not most ever
+    recent = [s for s in lately if (_played_days_ago(s, now) or 999) <= 30 and count(s) >= 2]
+    recent.sort(key=lambda s: -count(s))
+    repeat = _mix("repeat", "On repeat", "Your most played songs lately", recent[:30], limit=30)
+    if not repeat:
+        repeat = _mix("repeat", "On repeat", "The songs you play most", [s for s in played if count(s) >= 2][:30], limit=30)
+    mixes.append(repeat)
     for i, (name, aid) in enumerate([a for a in top if a[1]][:2]):
         j = _as_user(token, f"/Items/{aid}/InstantMix?UserId={user_id}&Limit=40&{SONG_FIELDS}") or {}
         radio = [x for x in j.get("Items") or [] if x.get("Id") and (xmas_ok or not _is_christmas(x))]
         mixes.append(_mix(f"radio-{i + 1}", f"{name} radio", f"{name} and music like it", radio))
-    # The decade they play most
+    # The decade they play most (by the year each song first came out, when Tower knows it)
     decades = {}
     for s in played:
-        y = s.get("ProductionYear")
+        y = _song_year(s)
         if y:
             decades[y // 10 * 10] = decades.get(y // 10 * 10, 0) + count(s)
     if decades:
         d = max(decades, key=decades.get)
         # The songs they play most from that decade (the Decades row already has a mix of every song from it)
-        theirs = [s for s in played if s.get("ProductionYear") and s["ProductionYear"] // 10 * 10 == d][:30]
+        theirs = [s for s in played if (_song_year(s) or 0) // 10 * 10 == d][:30]
         if len(theirs) < 15:
-            years = ",".join(str(y) for y in range(d, d + 10))
-            extra = _songs(token, user_id, f"Years={years}&SortBy=Random&Limit=40")
-            theirs += [x for x in extra if xmas_ok or not _is_christmas(x)]
+            theirs += [x for x in fresh if (_song_year(x) or 0) // 10 * 10 == d]
         mixes.append(_mix(f"decade-{d}", f"Your {d}s", f"Your most played songs from the {d}s", theirs))
     else:
         songs = list(fresh)
         rnd.shuffle(songs)
         mixes.append(_mix("discover", "Something new", "Songs you haven't played yet", [s for s in songs if count(s) == 0]))
-    answer = {"mixes": [m for m in mixes if m][:6]}
+    out = [m for m in mixes if m]
+    # Songs this person said aren't for a playlist (Not for this playlist) stay out of it
+    out = [m for m in (_apply_hides(user_id, m) for m in out) if m]
+    answer = {"mixes": out[: DAILY_MIXES + 5]}
     if answer["mixes"]:  # an empty answer (server busy, no plays yet) is tried again next time
         with _mix_lock:
             _mixes[user_id] = (day, answer)
     return answer
+
+
+# ---------- Not for this playlist: songs a person took out of a made-for-you or themed playlist ----------
+
+
+def _hides(user_id):
+    return ((_read("mix-hides.json") or {}).get(user_id) or {}) if _dir else {}
+
+
+def _apply_hides(user_id, m, need=8):
+    gone = set(_hides(user_id).get(m["key"]) or [])
+    if not gone:
+        return m
+    m = dict(m)
+    m["songs"] = [i for i in m["songs"] if i not in gone]
+    return m if len(m["songs"]) >= min(need, 1) else None
+
+
+def mix_hide(user_id, key, song_id):
+    if not _dir:
+        raise MusicError(503, "Music is off on Tower right now.")
+    if not key or not song_id or not re.fullmatch(r"[\w-]{1,80}", key) or not re.fullmatch(r"[\w-]{1,64}", song_id):
+        raise MusicError(400, "Which song and playlist?")
+    with _lock:
+        all_hides = _read("mix-hides.json") or {}
+        mine = all_hides.setdefault(user_id, {})
+        lst = mine.setdefault(key, [])
+        if song_id not in lst:
+            lst.append(song_id)
+            del lst[:-500]
+        _write("mix-hides.json", all_hides)
+    # Make this person's playlists again next time they look
+    with _mix_lock:
+        _mixes.pop(user_id, None)
+    with _theme_lock:
+        _themes.pop(user_id, None)
+    return {"ok": True}
 
 
 # ---------- Themed playlists: holidays in season, decades, genres, moods, activities, throwbacks, seasons ----------
@@ -3888,7 +4059,7 @@ def themes_for(token, user_id, is_admin):
     # Decades: every decade with enough songs, oldest first
     decades = {}
     for s in songs:
-        y = s.get("ProductionYear")
+        y = _song_year(s)
         if y and 1940 <= y <= today.year:
             decades.setdefault(y // 10 * 10, []).append(s)
     for d in sorted(decades):
@@ -3923,7 +4094,7 @@ def themes_for(token, user_id, is_admin):
     for t in THEMES:
         if t["group"] != "mood":
             continue
-        mine = [s for s in songs if _theme_genre(t, s["_genres"]) or (t["_re"] and t["_re"].search(s["_name"]))]
+        mine = [s for s in songs if _mood_fits(t, s)]
         mine += from_catalogue(t["key"]) + pinned(t["key"])
         m = _theme_out(t["key"], "mood", t["name"], t["line"], mine, rnd, need, adds=True)
         if m:
@@ -3954,7 +4125,7 @@ def themes_for(token, user_id, is_admin):
                     continue
                 m["covers"] = list(dict.fromkeys(album_of[i] for i in m["songs"] if album_of.get(i)))[:4]
         kept.append(m)
-    out = kept
+    out = [m for m in (_apply_hides(user_id, m) for m in kept) if m]
     for s in songs:
         s.pop("_name", None)
         s.pop("_names", None)
@@ -3985,6 +4156,150 @@ def theme_adds(token, user_id, key):
     _mark_asked(out, extra_have=have)
     out["songs"] = [s for s in out["songs"] if not s.get("have")][:40]
     return out
+
+
+# Moods by how songs sound (Ben 2026-11-16): the song's speed in beats per minute, when Tower knows it.
+# (slowest, fastest, add): a song outside slowest..fastest leaves the mood; a song at least "add" joins it even
+# without a matching genre. Unknown speeds keep the genre guess.
+MOOD_BPM = {
+    "workout": (115, None, 128),
+    "hype": (105, None, None),
+    "chill": (None, 110, None),
+    "sleep": (None, 95, None),
+    "dinner": (None, 125, None),
+    "focus": (None, 130, None),
+    "feelgood": (90, None, None),
+    "sad": (None, 120, None),
+}
+SLOW_GENRES = re.compile(r"(?<![a-z0-9])(classical|ambient|piano|new age|sleep|meditation|soundtrack|score)(?![a-z0-9])")
+
+
+def _mood_fits(t, s):
+    fits = _theme_genre(t, s["_genres"]) or bool(t["_re"] and t["_re"].search(s["_name"]))
+    bpm = _song_bpm(s)
+    lo, hi, add = MOOD_BPM.get(t["key"], (None, None, None))
+    if not bpm:
+        return fits
+    if fits and ((lo and bpm < lo) or (hi and bpm > hi)):
+        return False
+    if not fits and add and bpm >= add and not SLOW_GENRES.search(s["_genres"]):
+        return True
+    return fits
+
+
+# ---------- Song facts Tower looks up at night: the year a song first came out, and its speed ----------
+# Ben 2026-11-16: songs from a 2015 Greatest Hits or a remaster counted as 2010s songs. MusicBrainz knows when each
+# recording first came out; the music catalogue (Deezer) knows its beats per minute. Nothing changes in the files.
+
+MUSICBRAINZ = "https://musicbrainz.org/ws/2/recording"
+INFO_PER_RUN = 1500
+_info = {"at": 0, "data": {}}
+
+
+def _info_data():
+    if not _dir:
+        return {}
+    if time.time() - _info["at"] > 600:
+        _info.update({"at": time.time(), "data": _read("song-info.json") or {}})
+    return _info["data"]
+
+
+def _song_year(song):
+    """The year the song first came out (Tower's look-up), else the album's year"""
+    y = song.get("ProductionYear")
+    first = (_info_data().get(song.get("Id") or "") or {}).get("y")
+    if first and (not y or first < y):
+        return first
+    return y
+
+
+def _song_bpm(song):
+    return (_info_data().get(song.get("Id") or "") or {}).get("bpm") or 0
+
+
+def _first_year(artist, title):
+    q = f'recording:"{title}" AND artist:"{artist}"'
+    try:
+        got = _http(MUSICBRAINZ + "?" + urllib.parse.urlencode({"query": q, "fmt": "json", "limit": 15}),
+                    headers={"User-Agent": "Benflix/1.0 (https://github.com/TheBenPsych/MyStream)"}, timeout=20) or {}
+    except Exception:  # noqa: BLE001 - one song not found never stops the rest
+        return None
+    years = []
+    for r in got.get("recordings") or []:
+        if (r.get("score") or 0) < 85 or not same(r.get("title"), title):
+            continue
+        who = " ".join(c.get("name", "") for c in r.get("artist-credit") or [] if isinstance(c, dict))
+        if not (same(who, artist) or norm(main_artist(artist)) in norm(who)):
+            continue
+        d = (r.get("first-release-date") or "")[:4]
+        if d.isdigit() and int(d) > 1900:
+            years.append(int(d))
+    return min(years) if years else None
+
+
+def _bpm(artist, title):
+    try:
+        found = deezer("/search/track", q=f'artist:"{artist}" track:"{title}"', limit=5).get("data") or []
+        t = next((x for x in found if same(x.get("title"), title)), None)
+        if not t:
+            return None
+        bpm = deezer(f"/track/{t['id']}").get("bpm") or 0
+        return round(float(bpm)) if bpm and 40 <= float(bpm) <= 250 else None
+    except (MusicError, ValueError, TypeError):
+        return None
+
+
+def _info_worker():
+    time.sleep(900)
+    while True:
+        try:
+            _info_tick()
+        except Exception as e:
+            log(f"song facts problem: {e!r}")
+        # Then once a night, around 2am
+        import datetime
+
+        now = datetime.datetime.now()
+        nxt = now.replace(hour=2, minute=0, second=0, microsecond=0)
+        if nxt <= now:
+            nxt += datetime.timedelta(days=1)
+        time.sleep(max(600, (nxt - now).total_seconds()))
+
+
+def _info_tick():
+    if not _dir:
+        return
+    j = _jellyfin("GET", "/Items?IncludeItemTypes=Audio&Recursive=true&Fields=Genres&EnableImages=false&Limit=20000")
+    if not j:
+        return
+    data = _read("song-info.json") or {}
+    now, done = time.time(), 0
+    for s in j.get("Items") or []:
+        sid = s.get("Id")
+        artist = (s.get("AlbumArtist") or (s.get("Artists") or [""])[0] or "").strip()
+        title = clean_title(s.get("Name") or "", artist) if s.get("Name") else ""
+        if not sid or not artist or not title or artist.lower() in ("various artists", "unknown"):
+            continue
+        old = data.get(sid)
+        # Looked up already: try again after a month only when nothing was found
+        if old and (old.get("y") or old.get("bpm") or now - old.get("t", 0) < 30 * 86400):
+            continue
+        if done >= INFO_PER_RUN:
+            break
+        done += 1
+        y = _first_year(main_artist(artist) or artist, title)
+        time.sleep(1.1)  # MusicBrainz asks for one call a second
+        data[sid] = {"y": y or 0, "bpm": _bpm(main_artist(artist) or artist, title) or 0, "t": now}
+        if done % 100 == 0:
+            _write("song-info.json", data)
+    if done:
+        _write("song-info.json", data)
+        _info.update({"at": 0})
+        with _mix_lock:
+            _mixes.clear()
+        with _theme_lock:
+            _themes.clear()
+        log(f"song facts: looked up {done} songs")
 
 
 # ---------- Lyrics: Tower fetches missing ones from LRCLIB each night ----------

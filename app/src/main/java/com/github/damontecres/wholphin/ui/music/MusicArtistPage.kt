@@ -142,7 +142,7 @@ class MusicArtistViewModel
         ) = _state.update { if (liked) it.copy(liked = it.liked + id) else it.copy(liked = it.liked - id) }
 
         /** Everything by them, for Play top songs and Shuffle */
-        suspend fun allSongs(id: UUID): List<BaseItem> = library.artistSongs(id, 500)
+        suspend fun allSongs(id: UUID): List<BaseItem> = library.artistSongs(id, 5000)
 
         companion object {
             const val TOP = 5

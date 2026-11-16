@@ -592,22 +592,27 @@ B.musicTab = async (nav) => {
   const fromPage = (el) => { const sd = el.closest(".side"); return sd && page ? { ...page, scroll: sd.scrollTop } : null; };
   const reopen = async (bk) => {
     if (!bk || !B.alive(nav)) return;
-    const p = bk.kind === "genre" ? await openGenre(bk.id) : await openPage(bk.kind, bk.id);
+    const p = bk.kind === "genre" ? await openGenre(bk.id) : await openPage(bk.kind, bk.id, bk.back);
     if (p && p.isConnected) p.scrollTop = bk.scroll || 0;
   };
-  const openPage = async (kind, id) => {
+  // Ben 2026-11-16: an album opened from an artist's panel has a Back button to that artist
+  let shownArtist = null;
+  const openPage = async (kind, id, back) => {
     const p = B.side(B.spinner(), closed);
-    page = { kind, id };
+    page = { kind, id, back };
+    if (kind !== "album") shownArtist = null;
     try {
       if (kind === "album") {
         const d = await music("GET", "/album?id=" + id);
         p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>
+          ${back ? `<button class="btn small" data-mback="${esc(back.id)}" style="margin-bottom:12px">${I("left")} ${esc(back.name)}</button>` : ""}
           <div style="width:180px;aspect-ratio:1;border-radius:12px;margin-bottom:14px;background:var(--pg3) center/cover url('${esc(d.album.cover || "")}')"></div>
           <h3>${esc(d.album.title)}</h3><p class="dim">${esc([d.album.artist, d.album.year].filter(Boolean).join(" · "))}</p>
           <div class="acts" style="justify-content:flex-start;margin:12px 0">${d.album.asked ? B.rqPillHtml(B.musicPill({ words: d.album.asked })) : `<button class="btn white" data-malbumonly="${d.album.id}" data-maname="${esc(d.album.title)}">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`}</div>
           <p class="dim">Or pick a song to ask for just that one.</p><div class="list">${d.songs.map((x) => songLine(x)).join("")}</div>`;
       } else {
         const d = await music("GET", "/artist?id=" + id);
+        shownArtist = { id, name: d.artist.name };
         p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>${esc(d.artist.name)}</h3>
           ${d.songs.length ? `<h4 class="dim" style="margin:12px 0 8px">Best songs</h4><div class="list">${d.songs.map((x) => songLine(x)).join("")}</div>` : ""}
           <h4 class="dim" style="margin:12px 0 8px">Albums, EPs and singles</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.albums.map(albumCard).join("")}</div>`;
@@ -654,7 +659,7 @@ B.musicTab = async (nav) => {
       ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
       return draw();
     }
-    const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mgenre],[data-mretry],[data-mremove],[data-myes],[data-mno],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
+    const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mback],[data-mgenre],[data-mretry],[data-mremove],[data-myes],[data-mno],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
     if (!b) return;
     const d = b.dataset;
     if (d.msong) {
@@ -670,7 +675,8 @@ B.musicTab = async (nav) => {
         if (one) B.busy(one, () => (one.dataset.pick === "song" ? ask("song", d.msong, d.mname, bk) : ask("album", d.malbum, d.maname, bk)));
       });
     } else if (d.malbumonly) { const bk = fromPage(b); B.busy(b, () => ask("album", d.malbumonly, d.maname, bk)); }
-    else if (d.mopen) { const [k, id] = d.mopen.split(":"); openPage(k, id); }
+    else if (d.mopen) { const [k, id] = d.mopen.split(":"); openPage(k, id, k === "album" && b.closest(".side") && shownArtist ? shownArtist : null); }
+    else if (d.mback) openPage("artist", d.mback);
     else if (d.mgenre) openGenre(d.mgenre);
     else if (d.mretry) B.busy(b, async () => { await music("POST", `/request/${d.mretry}/retry`); loadStatus(); return "Looking again."; });
     else if (d.mremove) B.busy(b, async () => { await music("POST", `/request/${d.mremove}/remove`); loadStatus(); });

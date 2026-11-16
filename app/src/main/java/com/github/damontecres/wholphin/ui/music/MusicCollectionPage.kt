@@ -83,6 +83,8 @@ fun MusicCollectionPage(
     actions: MusicActionsViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(kind, id) { viewModel.load(kind, id, title) }
+    // A 30-second taste of a Song to add stops when the page closes
+    androidx.lifecycle.compose.LifecycleResumeEffect(viewModel.preview) { onPauseOrDispose { viewModel.preview.stop() } }
     val state by viewModel.state.collectAsState()
     val music by actions.musicService.state.collectAsState()
     val easy = preferences.appPreferences.benflixPreferences.easyRead
@@ -161,6 +163,18 @@ fun MusicCollectionPage(
         }
     }
     var menuFor by remember { mutableStateOf<Int?>(null) }
+    // After a song is taken out (Remove, or Not for this playlist), focus goes to the song that took its place
+    // instead of jumping away (a leftover from the music build)
+    // (index, how many songs there were): waits until the song has really gone
+    var refocus by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val refocusAt = refocus?.let { (at, before) -> if (songs.size < before) at.coerceAtMost(songs.lastIndex) else null }
+    val rowFocus = remember { FocusRequester() }
+    LaunchedEffect(refocusAt, songs.size) {
+        if (refocus == null || refocusAt == null) return@LaunchedEffect
+        delay(80)
+        if (songs.isEmpty()) playFocus.tryRequestFocus() else rowFocus.tryRequestFocus()
+        refocus = null
+    }
     var pageMenu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
@@ -184,6 +198,7 @@ fun MusicCollectionPage(
             onMore = { pageMenu = true },
             onSong = { play(it, false) },
             onSongMore = { menuFor = it },
+            onAskRest = viewModel::askForRest,
             onAlbum = { actions.navigationManager.navigateTo(it.destination()) },
             modifier = modifier.fillMaxSize().padding(top = overlap),
         )
@@ -277,7 +292,10 @@ fun MusicCollectionPage(
                                 big = easy,
                                 onClick = { if (!editing) play(index, false) },
                                 onMore = { if (!editing) menuFor = index },
-                                modifier = Modifier.weight(1f),
+                                modifier =
+                                    Modifier
+                                        .weight(1f)
+                                        .then(if (index == refocusAt) Modifier.focusRequester(rowFocus) else Modifier),
                             )
                             if (editing) {
                                 MusicButton(null, BenflixIcon.DOWN, onClick = { viewModel.move(index, 1) })
@@ -287,7 +305,10 @@ fun MusicCollectionPage(
                                     onClick = { viewModel.move(index, -1) },
                                     modifier = Modifier.rotate(180f),
                                 )
-                                MusicButton(null, BenflixIcon.CLOSE, onClick = { viewModel.removeFromPlaylist(index) })
+                                MusicButton(null, BenflixIcon.CLOSE, onClick = {
+                                    refocus = index to songs.size
+                                    viewModel.removeFromPlaylist(index)
+                                })
                             } else if (!isTv) {
                                 MusicButton(null, BenflixIcon.MORE_VERT, onClick = { menuFor = index })
                             }
@@ -322,11 +343,16 @@ fun MusicCollectionPage(
                         }
                     }
                     items(state.adds, key = { "add-${it.id}" }) { song ->
+                        // Ben 2026-11-16: each one has a 30-second taste beside it
                         Box(Modifier.padding(start = side - 16.dp, bottom = 6.dp)) {
-                            com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
-                                song = song,
-                                onClick = { viewModel.askToAdd(song) },
-                            )
+                            androidx.compose.runtime.CompositionLocalProvider(
+                                com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
+                            ) {
+                                com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
+                                    song = song,
+                                    onClick = { viewModel.askToAdd(song) },
+                                )
+                            }
                         }
                     }
                 }
@@ -363,7 +389,24 @@ fun MusicCollectionPage(
                 liked = song.id in state.liked,
                 onDismiss = { menuFor = null },
                 onLikedChanged = { viewModel.likedChanged(song.id, it) },
-                onRemoveFromPlaylist = if (state.canEdit) ({ viewModel.removeFromPlaylist(index) }) else null,
+                onRemoveFromPlaylist =
+                    if (state.canEdit) {
+                        {
+                            refocus = index to songs.size
+                            viewModel.removeFromPlaylist(index)
+                        }
+                    } else {
+                        null
+                    },
+                onNotForThisPlaylist =
+                    if (kind == CollectionKind.MIX) {
+                        {
+                            refocus = index to songs.size
+                            viewModel.notForThisPlaylist(index)
+                        }
+                    } else {
+                        null
+                    },
                 actions = actions,
             )
         }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -573,6 +574,9 @@ fun MusicButton(
     filledHeart: Boolean = false,
 ) {
     val shape = RoundedCornerShape(50)
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
     val bg = if (primary) BenflixColors.Text else BenflixColors.Raised
     val fg = if (primary) BenflixColors.Tray else BenflixColors.Text
     Surface(
@@ -594,12 +598,15 @@ fun MusicButton(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             modifier =
-                Modifier.padding(
-                    horizontal = if (label == null) (if (big) 14.dp else 11.dp) else (if (big) 26.dp else 20.dp),
-                    vertical = if (big) 14.dp else 10.dp,
-                ),
+                Modifier
+                    // On phones at least 48 x 48 so a finger can't miss it (a leftover from the music build)
+                    .then(if (isTv) Modifier else Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp))
+                    .padding(
+                        horizontal = if (label == null) (if (big) 14.dp else 11.dp) else (if (big) 26.dp else 20.dp),
+                        vertical = if (big) 14.dp else 10.dp,
+                    ),
         ) {
             val iconSize = if (big) 24.dp else 20.dp
             when {

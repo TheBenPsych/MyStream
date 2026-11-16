@@ -285,9 +285,10 @@
     try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
     const songs = (found && found.songs) || [];
     const draw = () => {
-      $("#msim", panel).innerHTML = songs.length ? songs.map((x, i) => `<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="display:flex;align-items:center;gap:12px;text-align:left">
+      // Ben 2026-11-16: a 30-second taste of each one (Now playing pauses while it plays)
+      $("#msim", panel).innerHTML = songs.length ? songs.map((x, i) => `<div style="display:flex;align-items:center;gap:8px">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:left;margin:0">
         <span style="flex:none;width:44px;height:44px;border-radius:6px;background:var(--pg3) center/cover;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
-        <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button>`).join("")
+        <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button></div>`).join("")
         : `<p class="dim">Nothing new like this one right now.</p>`;
     };
     draw();
@@ -297,6 +298,7 @@
       const x = songs[+one.dataset.sim];
       const ask = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
         ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
+        <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(x.id)}<span class="dim">Hear 30 seconds</span></div>
         <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`);
       ask.addEventListener("click", (e2) => {
         const p = e2.target.closest("[data-pick]");
@@ -304,6 +306,7 @@
         const album = p.dataset.pick === "album";
         B.busy(p, async () => {
           await B.call("POST", "api/music/request", { kind: album ? "album" : "song", id: +(album ? x.album_id : x.id) });
+          B.previewStop();
           B.closeAll();
           return admin ? `Asked for ${album ? x.album : x.title}.` : `Asked Ben for ${album ? x.album : x.title}.`;
         });
@@ -532,6 +535,7 @@
   };
   const songMenu = (anchor, s, extra) => {
     const opts = [{ label: "Play next", value: "next" }, { label: "Add to Up next", value: "add" }, { label: "Add to a playlist", value: "pl" }, { label: M.liked.has(s.Id) || (s.UserData || {}).IsFavorite ? "Unlike" : "Like", value: "like" }];
+    opts.push({ label: "Start a radio", value: "radio" });
     if (s.AlbumArtists && s.AlbumArtists[0]) opts.push({ label: "Go to artist", value: "artist" });
     if (s.AlbumId) opts.push({ label: "Go to album", value: "album" });
     (extra || []).forEach((o) => opts.push(o));
@@ -545,8 +549,17 @@
       else if (v === "album") B.go(`#/album/${s.AlbumId}`);
       else if (v === "pl") addToPlaylist(anchor, [s]);
       else if (v === "redo") redoSong(s);
+      else if (v === "radio") startRadio(s);
       else (extra || []).forEach((o) => { if (o.value === v && o.run) o.run(); });
     });
+  };
+  // Ben 2026-11-16: this song, then songs like it from your music
+  const startRadio = async (s) => {
+    try {
+      const j = await B.get(`/Items/${enc(s.Id)}/InstantMix?UserId=${B.uid()}&Limit=50&${SONG_FIELDS}`);
+      const list = [s].concat(((j && j.Items) || []).filter((x) => x.Id !== s.Id && x.Type === "Audio"));
+      M.playList(list, 0, false, `${s.Name} radio`); M.sourceId = null; openNow();
+    } catch (e) { B.toast("Couldn't start a radio from that song. Try again in a minute."); }
   };
   const redoSong = async (s) => {
     const yes = await B.ask("Delete and find again?", `This deletes "${s.Name}" from Tower and finds a new copy. The bad copy won't be picked again. It shows up again in a few minutes (Requests > Music shows how it's going).`, "Delete", "Cancel");
@@ -680,10 +693,17 @@
     if (!B.alive(nav)) return;
     const artist = (al.AlbumArtists || [])[0];
     // Only some songs of the album (asked for one by one): "3 of 12 songs" (waits at most 1.5 s)
-    const total = await Promise.race([
-      B.call("GET", `api/music/albumsize?artist=${enc(al.AlbumArtist || "")}&album=${enc(al.Name || "")}`).then((j) => (j && j.songs) || 0).catch(() => 0),
-      new Promise((r) => setTimeout(() => r(0), 1500)),
+    const size = await Promise.race([
+      B.call("GET", `api/music/albumsize?artist=${enc(al.AlbumArtist || "")}&album=${enc(al.Name || "")}`).then((j) => j || {}).catch(() => ({})),
+      new Promise((r) => setTimeout(() => r({}), 1500)),
     ]);
+    const total = size.songs || 0;
+    // Ben 2026-11-16: an album you only have some songs from can ask for the rest (Ben okays other profiles' asks)
+    const rest = total > songs.length && size.id ? { label: B.me.admin ? "Ask for the rest" : "Ask Ben for the rest", icon: "plus", onClick: (e, el) => B.busy(el, async () => {
+      await B.call("POST", "api/music/request", { kind: "album", id: +size.id });
+      el.disabled = true;
+      return B.me.admin ? `Asked for the rest of ${al.Name}.` : `Asked Ben for the rest of ${al.Name}.`;
+    }) } : null;
     if (!B.alive(nav)) return;
     // Redesign 2: albums use the shared title page (square cover; opens on Songs)
     const mins = Math.round(songs.reduce((t, s) => t + (s.RunTimeTicks || 0), 0) / B.TICKS / 60);
@@ -704,6 +724,7 @@
       buttons: [
         { label: "Play", icon: "play", off: none, onClick: () => playAll(false) },
         { label: "Shuffle", icon: "shuffle", off: none, onClick: () => playAll(true) },
+        rest,
         { label: liked ? "Liked" : "Like", icon: "heart", onClick: (e, el) => { liked = !liked; M.like(al.Id, liked).then(() => { el.querySelector("span").textContent = liked ? "Liked" : "Like"; }); } },
         { label: "More", icon: "more", onClick: (e, el) => B.tpMore(al.Name, [
           { label: "Add all to Up next", icon: "list", onClick: () => songs.forEach((x) => M.addToUpNext(x)) },
@@ -790,7 +811,17 @@
     const cv = B.mixCovers(mix.covers);
     const covers = cv.length > 1 ? cv.map((c) => B.img(c, "Primary", { h: 300 })) : null;
     const art = cv.length === 1 ? B.img(cv[0], "Primary", { h: 600 }) : "";
-    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null });
+    // Ben 2026-11-16: Not for this playlist takes a song out of this made-for-you or themed playlist for good (this profile)
+    const notHere = (i) => [{ label: "Not for this playlist", value: "nothere", run: async () => {
+      const s = songs[i]; if (!s) return;
+      try {
+        await B.call("POST", "api/music/mixes/hide", { key: mix.key, id: s.Id });
+        Object.keys(B.cache).filter((k) => k.startsWith("music-mixes-") || k.startsWith("music-themes-")).forEach((k) => delete B.cache[k]);
+        B.toast(`Took ${s.Name} out of ${mix.name}`);
+        B.render();
+      } catch (e) { B.toast(e.message || "Couldn't take that song out. Try again in a minute."); }
+    } }];
+    await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null, extra: notHere });
     if (mix.adds) themeAdds(nav, mix);
   });
 
@@ -804,12 +835,13 @@
     if (!list.length) { box.innerHTML = ""; return; }
     const btn = (s) => s.asked ? `<span class="sl">${esc(s.asked)}</span>` : `<button class="btn small white" data-addsong="${esc(s.id)}">${I("plus")} Ask for it</button>`;
     box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs that fit ${esc(mix.name)}. Ask for one and it joins this playlist once it's in.${B.me.admin ? "" : " Ben okays asks first."}</p>
-      <div class="msongs">${list.map((s) => `<div class="srow"><span class="sn">${s.cover ? `<img class="sc" src="${esc(s.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span><span data-slot="${esc(s.id)}">${btn(s)}</span></div>`).join("")}</div>`;
+      <div class="msongs">${list.map((s) => `<div class="srow"><span class="sn">${s.cover ? `<img class="sc" src="${esc(s.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>${B.previewBtn(s.id)}<span data-slot="${esc(s.id)}">${btn(s)}</span></div>`).join("")}</div>`;
     box.addEventListener("click", async (e) => {
       const b = e.target.closest("[data-addsong]"); if (!b) return;
       b.disabled = true;
       try {
         const r = await B.call("POST", "api/music/request", { kind: "song", id: +b.dataset.addsong, theme: mix.key });
+        B.previewStop();
         b.parentNode.innerHTML = `<span class="sl">${esc((r && r.words) || "Asked for")}</span>`;
       } catch (err) {
         b.disabled = false;
@@ -841,7 +873,7 @@
       const b = e.target.closest("[data-h]"); if (!b) return;
       if (b.dataset.h === "top") { M.playList(top, 0, false, `${ar.Name}: top songs`); M.sourceId = ar.Id; openNow(); }
       if (b.dataset.h === "shuffle") {
-        const all = await items(`IncludeItemTypes=Audio&ArtistIds=${enc(ar.Id)}&Limit=500&${SONG_FIELDS}`);
+        const all = await items(`IncludeItemTypes=Audio&ArtistIds=${enc(ar.Id)}&Limit=5000&${SONG_FIELDS}`);
         M.playList(all, 0, true, ar.Name); M.sourceId = ar.Id; openNow();
       }
       if (b.dataset.h === "follow") {

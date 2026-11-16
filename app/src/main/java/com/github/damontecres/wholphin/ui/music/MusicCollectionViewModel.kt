@@ -65,6 +65,10 @@ data class MusicCollectionState(
     val stillLoadingTotal: Int? = null,
     /** Album pages: how many songs the whole album has, when Benflix only has some of them ("3 of 12 songs") */
     val albumTotal: Int? = null,
+    /** The catalogue's id for that album, so Ask for the rest can ask for it (null when unknown) */
+    val albumAskId: Long? = null,
+    /** Words after Ask for the rest was pressed, like "Asked for the rest" */
+    val albumAsked: String? = null,
 )
 
 @HiltViewModel
@@ -76,6 +80,8 @@ class MusicCollectionViewModel
         private val serverRepository: ServerRepository,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val benflixMusic: com.github.damontecres.wholphin.services.BenflixMusic,
+        /** 30-second tastes of Songs to add (Ben 2026-11-16) */
+        val preview: com.github.damontecres.wholphin.services.SongPreview,
     ) : ViewModel() {
         private val _state = MutableStateFlow(MusicCollectionState())
         val state: StateFlow<MusicCollectionState> = _state
@@ -136,8 +142,8 @@ class MusicCollectionViewModel
             val albumArtist = album.data.albumArtist ?: album.data.artists?.firstOrNull()
             if (!albumArtist.isNullOrBlank() && !album.title.isNullOrBlank() && songs.isNotEmpty()) {
                 try {
-                    val total = benflixMusic.albumSize(albumArtist, album.title.orEmpty())
-                    if (total > songs.size) _state.update { it.copy(albumTotal = total) }
+                    val (total, askId) = benflixMusic.albumFind(albumArtist, album.title.orEmpty())
+                    if (total > songs.size) _state.update { it.copy(albumTotal = total, albumAskId = askId) }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -304,9 +310,53 @@ class MusicCollectionViewModel
             }
         }
 
+        /** Ben 2026-11-16: an album Benflix only has some songs of asks for the whole album (songs you have are kept) */
+        fun askForRest() {
+            val id = _state.value.albumAskId ?: return
+            if (_state.value.albumAsked != null) return
+            _state.update { it.copy(albumAsked = "Asking...") }
+            viewModelScope.launchIO {
+                val words =
+                    try {
+                        benflixMusic.ask("album", id)
+                        if (serverRepository.currentUserDto?.policy?.isAdministrator ==
+                            true
+                        ) {
+                            "Asked for the rest"
+                        } else {
+                            "Asked Ben for the rest"
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Ask for the rest")
+                        null
+                    }
+                _state.update { it.copy(albumAsked = words) }
+            }
+        }
+
+        /** Not for this playlist (Ben 2026-11-16): the song leaves this made-for-you or themed playlist for good */
+        fun notForThisPlaylist(index: Int) {
+            if (_state.value.kind != CollectionKind.MIX) return
+            val key = loadedFor?.substringAfter("-") ?: return
+            val song = _state.value.songs.getOrNull(index) ?: return
+            _state.update { it.copy(songs = it.songs.filterNot { s -> s.id == song.id }) }
+            viewModelScope.launchIO {
+                try {
+                    benflixMusic.hideFromMix(key, song.id.toString().replace("-", ""))
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Not for this playlist")
+                }
+            }
+        }
+
         /** Songs to add: asks for the song; once it's downloaded it joins this themed playlist by itself */
         fun askToAdd(song: com.github.damontecres.wholphin.services.MusicSong) {
             if (song.asked != null || song.have) return
+            preview.stop()
             val key = loadedFor?.substringAfter("-") ?: return
             _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = "Asking...") else it }) }
             viewModelScope.launchIO {
