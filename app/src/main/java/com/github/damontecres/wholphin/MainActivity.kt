@@ -353,6 +353,8 @@ class MainActivity : AppCompatActivity() {
                                             !appPreferences.benflixPreferences.hapticsOff
                                         com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter.englishOnly =
                                             !appPreferences.benflixPreferences.allSubtitleLanguages
+                                        com.github.damontecres.wholphin.ui.theme.ChristmasSeason.lookOff =
+                                            appPreferences.benflixPreferences.christmasLookOff
                                         ProvideLocalClock {
                                             Box(modifier = Modifier.fillMaxSize()) {
                                                 MainContent(
