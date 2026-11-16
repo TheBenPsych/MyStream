@@ -275,12 +275,71 @@ B.nav = 0;
 const spots = {};
 let shownHash = "";
 const KEEPS_PLACE = /^#\/(home|movies|shows|music|books|live|games|requests|search|grid|mgrid|browse|songs|liked|mine)\b/;
-B.render = async () => {
-  if (shownHash && KEEPS_PLACE.test(shownHash)) spots[shownHash] = { y: window.scrollY, at: Date.now() };
-  shownHash = location.hash || "#/who";
+// Pop-out player (picture in picture): leaving the player while the video is popped out keeps the
+// player page alive but hidden (nothing is removed, so the small window keeps playing, like YouTube).
+// B.kept = { el, hash, stop(), back(), pause() } while that is happening.
+B.kept = null;
+const runLeaving = () => {
   timers.forEach(clearInterval); timers = [];
   const l = leaving; leaving = [];
   l.forEach((f) => { try { f(); } catch (e) {} });
+};
+const keptPill = () => {
+  let pill = $("#keptPill");
+  if (!B.kept) return pill && pill.remove();
+  if (!pill) {
+    pill = document.createElement("button");
+    pill.id = "keptPill"; pill.className = "kept-pill";
+    pill.title = "The video is playing in the pop-out window. Click to go back to the full player.";
+    pill.onclick = () => B.restoreKept();
+    document.body.appendChild(pill);
+  }
+  pill.innerHTML = `${I("pip")}<span>Back to the video</span>`;
+};
+B.keepPage = (hash, hooks) => {
+  if (B.kept) B.dropKept();
+  const el = $("#page");
+  el.id = "keptPage";
+  el.classList.add("kept-page");
+  const fresh = document.createElement("div");
+  fresh.id = "page";
+  el.parentNode.insertBefore(fresh, el);
+  B.kept = Object.assign({ el, hash }, hooks);
+  keptPill();
+};
+// The pop-out was closed (or something else started playing): stop the video and throw the page away
+B.dropKept = () => {
+  const k = B.kept;
+  if (!k) return;
+  B.kept = null;
+  try { k.stop && k.stop(); } catch (e) {}
+  k.el.remove();
+  keptPill();
+};
+// "Back to tab" in the pop-out, the pill, or Back/Forward to the player: show the full player again
+B.restoreKept = (onHashAlready) => {
+  const k = B.kept;
+  if (!k) return;
+  B.kept = null;
+  keptPill();
+  if (spots && shownHash && KEEPS_PLACE.test(shownHash)) spots[shownHash] = { y: window.scrollY, at: Date.now() };
+  runLeaving();
+  B.closeAll();
+  const now = $("#page");
+  if (now) now.remove();
+  k.el.id = "page";
+  k.el.classList.remove("kept-page");
+  ++B.nav;
+  if (!onHashAlready && location.hash !== k.hash) history.pushState(null, "", k.hash);
+  shownHash = k.hash;
+  try { k.back && k.back(); } catch (e) {}
+  if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+};
+B.render = async () => {
+  if (B.kept && location.hash === B.kept.hash) return B.restoreKept(true);
+  if (shownHash && KEEPS_PLACE.test(shownHash)) spots[shownHash] = { y: window.scrollY, at: Date.now() };
+  shownHash = location.hash || "#/who";
+  runLeaving();
   B.closeAll();
   const hash = location.hash || "#/who";
   const nav = ++B.nav;

@@ -7,6 +7,8 @@
 # Silent (Ben 2026-11-15): it never updates while anyone is watching or using Benflix. It waits until Jellyfin
 # is playing nothing and the helper hasn't been used for 15 minutes, checking again every hour.
 #
+# It also keeps Recyclarr's settings (Sonarr/Radarr scoring) in step with GitHub and syncs them.
+#
 # What it did last: /mnt/user/appdata/benflix-games/autosetup.log (and autosetup-last.txt, the full output).
 # To turn it off: delete /boot/config/plugins/dynamix/benflix-autosetup.cron and run update_cron.
 
@@ -29,6 +31,22 @@ note() {
 
 rm -rf "$TMP"
 mkdir -p "$TMP"
+
+# Recyclarr (Sonarr and Radarr scoring, Ben 2026-11-16): new settings on GitHub are synced straight away.
+# A sync only changes download scores, so it never bothers anyone watching and doesn't wait.
+RC=/mnt/user/appdata/recyclarr
+if [ -f "$RC/recyclarr.yml" ] && docker ps --format '{{.Names}}' | grep -qx recyclarr; then
+  if curl -fsSL -m 60 "$RAW/recyclarr/recyclarr.yml" -o "$TMP/recyclarr.yml" && grep -q "^radarr:" "$TMP/recyclarr.yml" &&
+    ! cmp -s "$TMP/recyclarr.yml" "$RC/recyclarr.yml"; then
+    cp "$TMP/recyclarr.yml" "$RC/recyclarr.yml" && chown 99:100 "$RC/recyclarr.yml"
+    if docker exec recyclarr recyclarr sync >"$RC/sync-last.txt" 2>&1; then
+      note "Recyclarr: new settings from GitHub synced to Sonarr and Radarr"
+    else
+      note "Recyclarr: PROBLEM syncing the new settings. See $RC/sync-last.txt"
+    fi
+  fi
+fi
+
 # No internet or GitHub is down: try again next hour
 curl -fsSL -m 60 "$RAW/benflix-games-helper-setup.sh" -o "$TMP/setup.sh" || exit 0
 grep -q "All done" "$TMP/setup.sh" || exit 0

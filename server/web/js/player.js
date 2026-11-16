@@ -59,6 +59,7 @@ const WT = {
 B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   // Starting a movie, show, channel or game stops the music
   if (B.music) B.music.stop();
+  if (B.kept) B.dropKept(); // a video still playing in the pop-out window stops
   const u = B.uid();
   const it = await B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},Chapters,MediaSources,People,Trickplay`);
   if (!B.alive(nav)) return;
@@ -115,6 +116,11 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     </div>
   </div>`;
   const pl = $("#pl"), v = $("#v");
+  // Still this player? (true while it plays on in the pop-out window and you browse other pages)
+  let myNav = nav;
+  const myHash = location.hash;
+  const away = () => !!(B.kept && B.kept.el.contains(v));
+  const here = () => B.alive(myNav) || away();
   v.volume = settings.volume != null ? settings.volume : 1;
   let hls = null, info = null, source = null, playSession = null, method = "DirectPlay", stopped = false;
   let lastTick = 0, uiTimer, pausedTimer, nextShown = false, skipped = new Set();
@@ -137,7 +143,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       MaxStreamingBitrate: QUALITY[settings.quality || "auto"] || QUALITY.auto,
       EnableDirectPlay: !forceStream && (settings.quality || "auto") === "auto", EnableDirectStream: true, EnableTranscoding: true, AutoOpenLiveStream: true,
     });
-    if (!B.alive(nav)) return;
+    if (!here()) return;
     source = (info.MediaSources || [])[0];
     if (!source) throw new Error("Jellyfin couldn't find a way to play this.");
     playSession = info.PlaySessionId;
@@ -361,7 +367,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const fromTower = () => B.call("GET", `api/skips/${plain(it.Id)}`).then((r) => {
     useTower(r);
     // Tower is still checking this season: ask again in a minute (for up to 10 minutes)
-    if (r && r.ready === false && ++towerTries <= 10) setTimeout(() => { if (B.alive(nav)) fromTower(); }, 60000);
+    if (r && r.ready === false && ++towerTries <= 10) setTimeout(() => { if (here()) fromTower(); }, 60000);
   }).catch(() => { if (!segments.tower) fromServer(); });
   fromServer();
   fromTower();
@@ -387,7 +393,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const showUpNext = async () => {
     nextShown = true;
     const n = await findNext();
-    if (!n || !B.alive(nav)) return;
+    if (!n || !here() || away()) return;
     const box = $("#pNext");
     const wait = isEp ? 10 : 20;
     box.classList.remove("hidden");
@@ -405,7 +411,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     }
   };
   // Swap this episode for the next one in the browser history, so Back never lands on the one before
-  const goNext = (n) => { finish(); B.go(`#/play/${n.Id}`, { replace: true }); };
+  const goNext = (n) => { if (away()) return B.dropKept(); finish(); B.go(`#/play/${n.Id}`, { replace: true }); };
   $("#pNx") && ($("#pNx").onclick = async () => { const n = await findNext(); if (n) goNext(n); else B.toast("That was the last episode."); });
 
   v.addEventListener("timeupdate", () => {
@@ -428,8 +434,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const T = total();
     if (!nextShown && T > 60 && ((outro && t >= outro.start) || (!outro && T - t < (isEp ? 25 : 60)))) showUpNext();
   });
-  v.addEventListener("ended", async () => { const n = await findNext(); if (n && autoNext) goNext(n); else leave(); });
-  B.every(10000, () => { if (!v.paused) report("/Progress"); });
+  v.addEventListener("ended", async () => { if (away()) return B.dropKept(); const n = await findNext(); if (n && autoNext) goNext(n); else leave(); });
+  const progress = () => { if (!v.paused) report("/Progress"); };
+  B.every(10000, progress);
 
   // ---------- the one settings panel (Redesign 2 pl-family, same as the TV and phone) ----------
   // Subtitles, Audio, Subtitle timing and Quality first, then the "Fix a problem" list.
@@ -556,12 +563,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     let job;
     try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex, better: !!better }); } catch (err) { return B.toast(err.message); }
     B.toast(job.message || "Tower is lining the subtitles up. It takes a minute or two.");
-    for (let i = 0; i < 90 && B.alive(nav); i++) {
+    for (let i = 0; i < 90 && here(); i++) {
       await new Promise((r) => setTimeout(r, 4000));
       try { job = await B.call("GET", `api/subsync/${enc(it.Id)}`); } catch (e) { continue; }
       if (job.state === "done" || job.state === "failed") break;
     }
-    if (!B.alive(nav)) return;
+    if (!here()) return;
     B.toast(job.message || "Done.");
     if (job.state !== "done" || !job.changed) return;
     const before = new Set(((source && source.MediaStreams) || []).map((x) => x.Index));
@@ -638,6 +645,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   document.addEventListener("keydown", keys);
 
   // ---------- stopping ----------
+  const popped = () => !stopped && document.pictureInPictureElement === v;
   const finish = () => {
     if (stopped) return;
     stopped = true;
@@ -649,14 +657,46 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (hls) hls.destroy();
     v.removeAttribute("src"); try { v.load(); } catch (e) {}
   };
-  const leave = () => { finish(); B.alsoFor = []; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
+  const leave = () => { if (!popped()) finish(); B.alsoFor = []; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); B.back(); };
   const unload = () => {
     if (stopped || !B.me) return;
     fetch("api/web/jf/Sessions/Playing/Stopped", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device || "" },
       body: JSON.stringify({ ItemId: it.Id, MediaSourceId: source && source.Id, PlaySessionId: playSession, PositionTicks: Math.round(v.currentTime * B.TICKS) }) }).catch(() => {});
   };
   window.addEventListener("pagehide", unload);
-  B.onLeave(() => { finish(); document.removeEventListener("keydown", keys); window.removeEventListener("pagehide", unload); clearTimeout(uiTimer); clearTimeout(pausedTimer); });
+  const quiet = () => { document.removeEventListener("keydown", keys); clearTimeout(uiTimer); clearTimeout(pausedTimer); };
+  const onLeave = () => {
+    quiet();
+    if (popped()) return keepPlaying();
+    finish(); window.removeEventListener("pagehide", unload);
+  };
+  B.onLeave(onLeave);
+
+  // ---------- popped out: keep playing while you browse (like YouTube) ----------
+  // Leaving the player while the video is in the pop-out window keeps this page alive but hidden.
+  // Closing the pop-out stops it; "Back to tab" (or the "Back to the video" pill) brings the player back.
+  const keepPlaying = () => {
+    const tick = setInterval(progress, 10000);
+    B.keepPage(myHash, {
+      stop: () => {
+        clearInterval(tick); finish(); window.removeEventListener("pagehide", unload);
+        if (document.pictureInPictureElement === v) document.exitPictureInPicture().catch(() => {});
+      },
+      back: () => {
+        clearInterval(tick);
+        myNav = B.nav;
+        B.every(10000, progress);
+        B.onLeave(onLeave);
+        document.addEventListener("keydown", keys);
+        poke();
+      },
+      pause: () => v.pause(),
+    });
+  };
+  v.addEventListener("leavepictureinpicture", () => {
+    // The pop-out's X pauses the video first; "Back to tab" keeps it playing
+    setTimeout(() => { if (away()) (v.paused ? B.dropKept() : B.restoreKept()); }, 250);
+  });
 
   try { await load(startTicks / B.TICKS); } catch (e) { msg(""); $("#msg").innerHTML = `<div><div class="h1" style="font-size:24px">${esc(e.message)}</div></div>`; }
   poke();

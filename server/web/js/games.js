@@ -165,6 +165,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
 B.route(/^\/playgame\/(\d+)/, async (m, nav) => {
   // Starting a movie, show, channel or game stops the music
   if (B.music) B.music.stop();
+  if (B.kept) B.dropKept(); // a video still playing in the pop-out window stops
   const id = +m[1];
   const [data, files, saves, bios] = await Promise.all([B.gamesList(), B.call("GET", `api/rom/${id}`), B.call("GET", `api/save/${id}`).catch(() => ({})), B.call("GET", "api/bios").catch(() => ({ files: [] }))]);
   if (!B.alive(nav)) return;
