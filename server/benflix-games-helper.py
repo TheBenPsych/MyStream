@@ -23,6 +23,8 @@ Started by benflix-games-helper-setup.sh. Only uses the Python standard library.
 """
 
 import base64
+import gzip
+import hashlib
 import json
 import os
 import re
@@ -1139,18 +1141,43 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Security-Policy", self._page_rules)
         super().end_headers()
 
-    def send(self, status, body, content_type="application/json"):
+    def send(self, status, body, content_type="application/json", etag=None):
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
+        ctype = content_type or ""
+        if etag and status == 200 and etag in (self.headers.get("If-None-Match") or ""):
+            # The browser already has this exact file: say so instead of sending it again (much faster away from home)
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            return
+        # Text (pages, JavaScript, lists from Jellyfin) shrinks to about a quarter when packed, so it loads much faster
+        # over the internet. Pictures, video and sound are already packed.
+        packed = False
+        if (
+            len(body) > 1024
+            and "gzip" in (self.headers.get("Accept-Encoding") or "")
+            and (ctype.startswith("text/") or "json" in ctype or "javascript" in ctype or "svg" in ctype or "font/ttf" in ctype)
+        ):
+            body = gzip.compress(body, 5)
+            packed = True
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        if content_type.startswith("image/"):
+        if packed:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
+        if etag:
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "no-cache")
+        elif ctype.startswith("image/"):
             self.send_header("Cache-Control", "max-age=86400")
-        elif content_type.startswith("text/"):
+        elif ctype.startswith("text/"):
             self.send_header("Cache-Control", "no-cache")
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def send_file(self, path):
         size = os.path.getsize(path)
@@ -1378,7 +1405,9 @@ class Handler(BaseHTTPRequestHandler):
                 found = web.file_for(rel)
                 if found:
                     with open(found[0], "rb") as f:
-                        return self.send(200, f.read(), found[1])
+                        data = f.read()
+                    # A fingerprint of the file, so a browser that already has it doesn't download it again
+                    return self.send(200, data, found[1], etag='"' + hashlib.sha1(data).hexdigest()[:20] + '"')
                 if path.startswith("/web/"):
                     raise HelperError(404, "Not found")
             if method == "GET" and path in ("/", "/web", "/index.html"):

@@ -297,12 +297,22 @@ find_slskd
 mkdir -p "$SLSK_DL"
 
 say "Starting the helper (benflix-games on port 8097)"
+# The helper's tools (ffmpeg and friends) are baked into a small image once, so a restart takes seconds instead of
+# downloading them again for a minute or two while Benflix in the browser can't load. If that can't be made
+# (no internet), the plain image installs them on start like before.
+HELPER_IMAGE=benflix-helper:2
+HELPER_TOOLS="mkvtoolnix ffmpeg chromaprint 7zip"
+if ! docker image inspect "$HELPER_IMAGE" >/dev/null 2>&1; then
+  printf 'FROM python:3.12-alpine\nRUN apk add --no-cache %s\n' "$HELPER_TOOLS" | docker build -q -t "$HELPER_IMAGE" - >/dev/null 2>&1 \
+    && echo "  ok  made the helper's image (only needed once)"
+fi
+docker image inspect "$HELPER_IMAGE" >/dev/null 2>&1 || HELPER_IMAGE=python:3.12-alpine
 docker rm -f benflix-games >/dev/null 2>&1
 docker run -d --name benflix-games --restart unless-stopped --network host \
   --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
   -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
   -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" \
-  python:3.12-alpine sh -c 'apk add --no-cache mkvtoolnix ffmpeg chromaprint 7zip >/dev/null 2>&1 || echo "Track or skip tools missing (no internet?)"; exec python -u /app/benflix-games-helper.py' \
+  "$HELPER_IMAGE" sh -c "command -v ffmpeg >/dev/null || apk add --no-cache $HELPER_TOOLS >/dev/null 2>&1 || echo 'Track or skip tools missing (no internet?)'; exec python -u /app/benflix-games-helper.py" \
   >/dev/null && sleep 5
 # The first start also installs ffmpeg for the skip times, which can take a minute or two
 for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
