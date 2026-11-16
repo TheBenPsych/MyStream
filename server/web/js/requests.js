@@ -176,7 +176,8 @@ B.rqLines = (lines, grouped, empty) => {
 // The side list every tab uses: Yours first (Your requests, Waiting for you in amber for Ben), then the lists
 B.rqSide = (lists, picked, mine, waiting) => `<h4>Yours</h4><button class="${picked === "yours" ? "on" : ""}" data-rqpick="yours">Your requests<span class="n">${mine}</span></button>`
   + (waiting == null ? "" : `<button class="${picked === "waiting" ? "on" : ""}" data-rqpick="waiting">Waiting for you<span class="n ${waiting ? "amber" : ""}">${waiting}</span></button>`)
-  + `<h4>Lists</h4>` + lists.map((l) => `<button class="${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}">${esc(l.title)}</button>`).join("");
+  + `<h4>Lists</h4>` + lists.map((l, i) => (l.heading && (lists[i - 1] || {}).heading !== l.heading ? `<h4>${esc(l.heading)}</h4>` : "")
+    + `<button class="${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}" title="${esc(l.title)}">${l.heading ? `<span class="rqshort">${esc(l.short || l.title)}</span><span class="rqlong">${esc(l.title)}</span>` : esc(l.title)}</button>`).join("");
 // The end of a list: titles already on Benflix never show in the lists, but can be opened here
 B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Benflix" : `${n} more ${n === 1 ? "is" : "are"} already on Benflix ›`}</button></p>` : "");
 B.yearsOf = (r) => (r.releaseDate || r.firstAirDate || "").slice(0, 4);
@@ -475,18 +476,22 @@ B.musicTab = async (nav) => {
   const rows = $("#rows");
   rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner()}</div></div>`;
   let searching = false, tidyFolder = null, disc = null, st = null, picked = null, ownedOpen = null;
+  // Ben 2026-11-15: Top 100, then Trending (one list per genre), then a few "Because you have <song>" lists that
+  // Tower picks again every time the page opens, then More.
   const lists = () => {
     const d = disc || {};
-    const because = [];
-    const seen = new Set();
-    (d.because || []).forEach((b) => (b.songs || []).forEach((x) => { if (!seen.has(x.id)) { seen.add(x.id); because.push(x); } }));
+    const songs = d.songs || [];
+    const trend = (d.trending || []).map((t) => ({ id: "trend-" + t.id, title: "Trending in " + t.genre, short: t.genre, heading: "Trending", songs: t.songs || [] }));
+    const because = (d.because || []).map((b, i) => ({ id: "because-" + i, title: "Because you have " + (b.song || b.artist), short: b.song || b.artist, heading: "Because you have", songs: b.songs || [] }));
+    const more = trend.length || because.length ? "More" : null;
     return [
-      (d.songs || []).length && { id: "top", title: "Top 10 songs", songs: d.songs.slice(0, 10), ranked: true },
-      (d.songs || []).length > 10 && { id: "trending", title: "Trending", songs: d.songs.slice(10) },
-      because.length && { id: "because", title: "Because you have", songs: because },
-      (d.new || []).length && { id: "new", title: "New this week", albums: d.new },
-      (d.genres || []).length && { id: "genres", title: "Genres", genres: d.genres },
-      admin && { id: "playlist", title: "Import a playlist" },
+      songs.length && { id: "top", title: "Top 100 songs", songs: songs.filter((x) => !x.have).slice(0, 100).concat(songs.filter((x) => x.have)), ranked: true },
+      !trend.length && songs.length > 10 && { id: "trending", title: "Trending", songs: songs.slice(10) },
+      ...trend,
+      ...because.filter((b) => b.songs.length),
+      (d.new || []).length && { id: "new", title: "New this week", albums: d.new, heading: more },
+      (d.genres || []).length && { id: "genres", title: "Genres", genres: d.genres, heading: more },
+      admin && { id: "playlist", title: "Import a playlist", heading: more },
     ].filter(Boolean);
   };
   const reqLine = (r, answer) => ({

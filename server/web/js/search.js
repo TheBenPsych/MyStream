@@ -48,7 +48,7 @@ B.route(/^\/search/, async (m, nav) => {
       })).catch(() => []),
       kids ? [] : Promise.all([B.seerr(`/search?query=${enc(t)}&page=1`), B.libTmdb().catch(() => null)]).then(([r]) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
       kids ? [] : B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Audio,MusicAlbum,MusicArtist,Playlist&Recursive=true&Limit=40&Fields=ChildCount,ProductionYear`).then((r) => (r.Items || []).filter((x) => x.Type !== "Playlist" || x.MediaType !== "Video")).catch(() => []),
-      kids || !B.me.admin || t.length < 2 ? null : B.call("GET", `api/music/search?q=${enc(t)}`).catch(() => null),
+      kids || t.length < 2 ? null : B.call("GET", `api/music/search?q=${enc(t)}`).catch(() => null),
       kids ? [] : B.cached("books-lib", 15000, () => B.call("GET", "api/books/library")).then((l) => (l.titles || []).filter((b) => !b.notHere)).catch(() => []),
     ]);
     // Songs and albums to ask for: not already in your music
@@ -162,7 +162,7 @@ B.route(/^\/search/, async (m, nav) => {
       const x = lastAsk.find((y) => y.kind === kind && String(y.id) === id);
       if (!x) return;
       remember();
-      const ask = async (k, aid, name) => { await B.call("POST", "api/music/request", { kind: k, id: +aid }); run(box.value); return `Asked for ${name}. Tower is getting it.`; };
+      const ask = async (k, aid, name) => { await B.call("POST", "api/music/request", { kind: k, id: +aid }); run(box.value); return B.me.admin ? `Asked for ${name}. Tower is getting it.` : `Asked Ben for ${name}. He says yes before it downloads.`; };
       const s = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc(x.artist)}${x.asked ? ` · Already asked for: ${esc(x.asked)}` : ""}</p>
         ${kind === "song" ? `<div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(x.id)}<span class="dim">Hear 30 seconds</span></div>` : ""}
         ${kind === "song" ? `<button class="opt" data-pick="song">Ask for this song</button>${x.album_id && plain(x.album) !== plain(x.title) ? `<button class="opt" data-pick="album">Ask for the whole album (${esc(x.album)})</button>` : ""}` : `<button class="opt" data-pick="album">Ask for this album</button>`}`);
