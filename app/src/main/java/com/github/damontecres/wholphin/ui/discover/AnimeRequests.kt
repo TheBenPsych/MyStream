@@ -57,6 +57,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.services.ANIME_FEELS
+import com.github.damontecres.wholphin.services.AniListBrowseItem
 import com.github.damontecres.wholphin.services.AniListLibraries
 import com.github.damontecres.wholphin.services.AniListService
 import com.github.damontecres.wholphin.services.AniListTagChoice
@@ -82,6 +83,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
@@ -93,6 +96,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /** One list on the anime tab: null items while it loads */
 data class AnimeListState(
@@ -114,7 +118,78 @@ data class OwnedAnime(
         // A new season of a show that's here ("Show Season 2") counts as here
         return card.later && cleaned.any { t -> names.any { n -> n.length >= 5 && t.startsWith(n) } }
     }
+
+    /** The same check for a Mix and match tags poster (later seasons are already folded into their first) */
+    fun has(item: AniListBrowseItem): Boolean {
+        if (item.id > 0 && item.id in ids) return true
+        return item.titles.map { AniListService.clean(it) }.any { it.isNotEmpty() && it in names }
+    }
 }
+
+/**
+ * Benflix (Ben, 2026-11-16): what anime is already on Benflix, shared by the Anime tab and the Mix and match
+ * tags page so neither shows what you already have. Looked up again after 10 minutes.
+ */
+@Singleton
+class OwnedAnimeIndex
+    @Inject
+    constructor(
+        private val api: ApiClient,
+        private val serverRepository: ServerRepository,
+        private val aniList: AniListService,
+        private val aniListLibraries: AniListLibraries,
+    ) {
+        private val lock = Mutex()
+        private var cached: Pair<Long, OwnedAnime>? = null
+
+        suspend fun get(): OwnedAnime =
+            lock.withLock {
+                cached?.takeIf { System.currentTimeMillis() - it.first < 10 * 60_000 }?.let { return@withLock it.second }
+                val found = load() ?: return@withLock cached?.second ?: OwnedAnime(emptySet(), emptySet(), emptySet())
+                cached = System.currentTimeMillis() to found
+                found
+            }
+
+        private suspend fun load(): OwnedAnime? =
+            try {
+                val userId = serverRepository.currentUser?.id ?: return null
+                val libraries =
+                    api.userViewsApi
+                        .getUserViews(userId = userId)
+                        .content.items
+                        .filter { it.name?.contains("anime", ignoreCase = true) == true }
+                        .map { it.id }
+                val ids = mutableSetOf<Int>()
+                val malIds = mutableSetOf<Int>()
+                val names = mutableSetOf<String>()
+                libraries.forEach { lib ->
+                    aniList.knownIndex(lib).values.forEach { e ->
+                        if (e.id > 0) ids += e.id
+                        e.malId?.takeIf { it > 0 }?.let { malIds += it }
+                    }
+                    aniListLibraries.titlesIn(lib, userId).forEach { dto ->
+                        listOfNotNull(dto.name, dto.originalTitle)
+                            .map { AniListService.clean(it) }
+                            .filter { it.isNotEmpty() }
+                            .forEach { names += it }
+                        dto.providerIds
+                            ?.get("AniList")
+                            ?.toIntOrNull()
+                            ?.let { ids += it }
+                        dto.providerIds
+                            ?.get("MyAnimeList")
+                            ?.toIntOrNull()
+                            ?.let { malIds += it }
+                    }
+                }
+                OwnedAnime(ids, malIds, names)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Anime Requests: couldn't list what's already on Benflix")
+                null
+            }
+    }
 
 /** The lists in the anime side list, in order */
 enum class AnimePick(
@@ -139,10 +214,8 @@ class AnimeRequestsViewModel
         @param:ApplicationContext private val context: Context,
         private val discover: AnimeDiscover,
         private val aniList: AniListService,
-        private val aniListLibraries: AniListLibraries,
+        private val ownedIndex: OwnedAnimeIndex,
         private val seerrService: SeerrService,
-        private val api: ApiClient,
-        private val serverRepository: ServerRepository,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _lists = MutableStateFlow<Map<String, AnimeListState>>(emptyMap())
@@ -176,43 +249,7 @@ class AnimeRequestsViewModel
         }
 
         private suspend fun loadOwned() {
-            try {
-                val userId = serverRepository.currentUser?.id ?: return
-                val libraries =
-                    api.userViewsApi
-                        .getUserViews(userId = userId)
-                        .content.items
-                        .filter { it.name?.contains("anime", ignoreCase = true) == true }
-                        .map { it.id }
-                val ids = mutableSetOf<Int>()
-                val malIds = mutableSetOf<Int>()
-                val names = mutableSetOf<String>()
-                libraries.forEach { lib ->
-                    aniList.knownIndex(lib).values.forEach { e ->
-                        if (e.id > 0) ids += e.id
-                        e.malId?.takeIf { it > 0 }?.let { malIds += it }
-                    }
-                    aniListLibraries.titlesIn(lib, userId).forEach { dto ->
-                        listOfNotNull(dto.name, dto.originalTitle)
-                            .map { AniListService.clean(it) }
-                            .filter { it.isNotEmpty() }
-                            .forEach { names += it }
-                        dto.providerIds
-                            ?.get("AniList")
-                            ?.toIntOrNull()
-                            ?.let { ids += it }
-                        dto.providerIds
-                            ?.get("MyAnimeList")
-                            ?.toIntOrNull()
-                            ?.let { malIds += it }
-                    }
-                }
-                _owned.value = OwnedAnime(ids, malIds, names)
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Anime Requests: couldn't list what's already on Benflix")
-            }
+            _owned.value = ownedIndex.get()
         }
 
         fun load(

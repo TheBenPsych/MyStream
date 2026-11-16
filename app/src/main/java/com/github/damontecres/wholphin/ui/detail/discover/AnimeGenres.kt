@@ -316,8 +316,17 @@ class AnimeGenrePageViewModel
         private val seerrService: SeerrService,
         private val aniList: AniListService,
         private val malBrowse: MalBrowse,
+        private val ownedIndex: com.github.damontecres.wholphin.ui.discover.OwnedAnimeIndex,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** Benflix (Ben, 2026-11-16): anime already on Benflix is left out of the list */
+        private val _owned = MutableStateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?>(null)
+        val owned: StateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?> = _owned
+
+        init {
+            viewModelScope.launch(WholphinDispatchers.IO) { _owned.value = ownedIndex.get() }
+        }
+
         private val _picked = MutableStateFlow<List<String>>(emptyList())
         val picked: StateFlow<List<String>> = _picked
 
@@ -603,6 +612,14 @@ fun AnimeGenrePage(
     val items by viewModel.items.collectAsState()
     val failed by viewModel.failed.collectAsState()
     val opening by viewModel.opening.collectAsState()
+    val owned by viewModel.owned.collectAsState()
+    // Benflix (Ben, 2026-11-16): leave out anime already on Benflix
+    val shownItems = remember(items, owned) { items?.filterNot { owned?.has(it) == true } }
+    val hereCount = (items?.size ?: 0) - (shownItems?.size ?: 0)
+    // Most of a page already here: fetch on so the wall still fills up
+    LaunchedEffect(items?.size, shownItems?.size) {
+        if (items.orEmpty().isNotEmpty() && (shownItems?.size ?: 0) < 24) viewModel.loadMore()
+    }
     val isTv = rememberIsTv()
     val context = LocalContext.current
     // Opened from "Deep search" with nothing picked yet: start on the picker
@@ -685,6 +702,7 @@ fun AnimeGenrePage(
                             },
                             sort.label,
                             kind.label,
+                            if (hereCount > 0) "$hereCount already on Benflix (hidden)" else null,
                         ).joinToString(" · "),
                     color = LABEL_GREY,
                     fontSize = BenflixType.small,
@@ -711,7 +729,7 @@ fun AnimeGenrePage(
                 if (picked.size + leftOut.size > 1) RequestsChip("Clear all", false, { viewModel.clearAll() })
             }
         }
-        val list = items
+        val list = shownItems
         when {
             list == null -> {
                 item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
@@ -737,6 +755,10 @@ fun AnimeGenrePage(
 
                                     picked.isEmpty() -> {
                                         "Press \"+ Genres and tags\" to pick what you're looking for."
+                                    }
+
+                                    hereCount > 0 -> {
+                                        "You already have every one of these on Benflix."
                                     }
 
                                     else -> {

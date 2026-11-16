@@ -208,6 +208,7 @@ class BenflixRequestsViewModel
         private val cantFindList: BenflixCantFind,
         private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
         private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
+        private val libraryTmdb: com.github.damontecres.wholphin.services.BenflixLibraryTmdb,
     ) : ViewModel() {
         val active = seerrService.active
 
@@ -839,32 +840,7 @@ class BenflixRequestsViewModel
          */
         private val library =
             viewModelScope.async(WholphinDispatchers.IO) {
-                try {
-                    val userId = serverRepository.currentUser?.id ?: return@async emptyMap<String, UUID>()
-                    api.itemsApi
-                        .getItems(
-                            GetItemsRequest(
-                                userId = userId,
-                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                recursive = true,
-                                fields = listOf(ItemFields.PROVIDER_IDS),
-                                enableImages = false,
-                                enableUserData = false,
-                                enableTotalRecordCount = false,
-                            ),
-                        ).content.items
-                        .mapNotNull { dto ->
-                            val tmdb = dto.providerIds?.get("Tmdb")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                            val kind = if (dto.type == BaseItemKind.MOVIE) SeerrItemType.MOVIE else SeerrItemType.TV
-                            "${kind.name}-$tmdb" to dto.id
-                        }.toMap()
-                        .also { _libraryKeys.value = it.keys }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Requests: couldn't list what's already on Benflix")
-                    emptyMap()
-                }
+                libraryTmdb.keys().also { _libraryKeys.value = it.keys }
             }
 
         /** Titles found in Jellyfin, so they stay hidden while the show is still being checked */

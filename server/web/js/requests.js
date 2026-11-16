@@ -208,7 +208,7 @@ B.route(/^\/requests/, async (m, nav) => {
   const search = async (text) => {
     if (!text.trim()) return drawRows();
     $("#rows").innerHTML = B.spinner();
-    const r = await seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] }));
+    const [r] = await Promise.all([seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] })), B.libTmdb().catch(() => null)]);
     if (!B.alive(nav)) return;
     const res = (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !onBenflix(x));
     const mv = res.filter((x) => x.mediaType === "movie" && !isAnime(x)), tv = res.filter((x) => x.mediaType === "tv" && !isAnime(x)), an = res.filter(isAnime);
