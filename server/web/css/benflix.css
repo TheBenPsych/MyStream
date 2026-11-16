@@ -332,7 +332,7 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .letters { position: sticky; top: calc(var(--bar) + 60px); align-self: flex-start; display: flex; flex-direction: column; gap: 1px; }
 .letters button { background: none; border: 0; color: var(--ink3); font-weight: 700; font-size: 12px; cursor: pointer; padding: 1px 6px; }
 .letters button:hover { color: var(--ink); }
-.dropdown { position: absolute; z-index: 40; background: var(--pg2); border: 1px solid var(--line); border-radius: 12px; padding: 8px; max-height: 60vh; overflow: auto; min-width: 220px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.dropdown { position: fixed; z-index: 85; background: var(--pg2); border: 1px solid var(--line); border-radius: 12px; padding: 8px; max-height: 60vh; overflow: auto; min-width: 220px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
 .dropdown button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; background: none; border: 0; color: var(--ink); cursor: pointer; font-weight: 600; }
 .dropdown button:hover { background: var(--pg4); }
 .dropdown button.on { box-shadow: inset 0 0 0 2px var(--ink); }

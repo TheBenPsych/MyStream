@@ -430,21 +430,33 @@ B.side = (html, onClose) => {
   if (f) f.focus();
   return s;
 };
-// Small list that pops out beside a button
+// Small list that pops out beside a button. It sits above Now playing and side panels, opens upwards when
+// there's no room below, and closes with a click anywhere else, Esc, or a second click on the same button.
+let dropFrom = null;
 B.dropdown = (anchor, options, current, onPick) => {
+  const again = dropFrom === anchor && $(".dropdown");
   B.closeAll();
+  dropFrom = null;
+  if (again) return;
   const d = document.createElement("div");
   d.className = "dropdown";
   d.innerHTML = options.map((o, i) => `<button data-i="${i}" class="${o.value === current ? "on" : ""}">${esc(o.label)}</button>`).join("");
   const r = anchor.getBoundingClientRect();
-  d.style.left = Math.min(r.left + window.scrollX, window.innerWidth - 240) + "px";
-  d.style.top = r.bottom + window.scrollY + 6 + "px";
+  d.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + "px";
+  d.style.visibility = "hidden";
   document.body.appendChild(d);
-  setTimeout(() => {
-    const away = (e) => { if (!d.contains(e.target)) { d.remove(); document.removeEventListener("click", away, true); } };
-    document.addEventListener("click", away, true);
-  });
-  d.onclick = (e) => { const b = e.target.closest("[data-i]"); if (!b) return; d.remove(); onPick(options[+b.dataset.i].value); };
+  const h = d.offsetHeight, below = window.innerHeight - r.bottom - 12;
+  d.style.top = (h > below && r.top > below ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  d.style.visibility = "";
+  dropFrom = anchor;
+  const done = () => { d.remove(); dropFrom = null; document.removeEventListener("click", away, true); document.removeEventListener("keydown", esc_, true); window.removeEventListener("scroll", done); };
+  const away = (e) => { if (!d.isConnected) return done(); if (!d.contains(e.target) && !anchor.contains(e.target)) done(); };
+  const esc_ = (e) => { if (e.key === "Escape" && d.isConnected) { e.preventDefault(); e.stopPropagation(); done(); anchor.focus && anchor.focus(); } else if (!d.isConnected) done(); };
+  setTimeout(() => document.addEventListener("click", away, true));
+  document.addEventListener("keydown", esc_, true);
+  // It stays put on the screen, so scrolling the page closes it (it would float away from its button)
+  window.addEventListener("scroll", done, { passive: true });
+  d.onclick = (e) => { const b = e.target.closest("[data-i]"); if (!b) return; done(); onPick(options[+b.dataset.i].value); };
   const on = d.querySelector(".on") || d.querySelector("button");
   if (on) on.focus();
 };

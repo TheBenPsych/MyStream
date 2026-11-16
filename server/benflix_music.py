@@ -757,6 +757,9 @@ def _because():
     except OSError:
         return []
     mine = [x for x in mine if len(x[1]) > 1 and not SKIP_SEEDS.search(x[1])]
+    if not _christmas_time():
+        xre = THEME_BY_KEY["christmas"]["_re"]
+        mine = [x for x in mine if not xre.search(norm(x[1]))]
     random.shuffle(mine)
     # One song per artist, so two lists are never the same artist's radio
     picked, artists = [], set()
@@ -766,11 +769,16 @@ def _because():
             picked.append((who, title))
         if len(picked) >= SEED_ROWS * 2:
             break
-    rows = []
+    rows, shown = [], set()
     for row in _each([(_seed_row, x) for x in picked]):
         if row and len(row["songs"]) >= 8:
             row = dict(row)
-            row["songs"] = random.sample(row["songs"], len(row["songs"]))
+            # Two artists' radios often share songs: each song shows in one list only
+            fresh = [x for x in row["songs"] if x["id"] not in shown]
+            if len(fresh) < 8:
+                continue
+            row["songs"] = random.sample(fresh, len(fresh))
+            shown.update(x["id"] for x in fresh)
             rows.append(row)
     return rows
 
@@ -3389,6 +3397,10 @@ def mixes_for(token, user_id):
     played = _songs(token, user_id, "Filters=IsPlayed&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Limit=400")
     liked = _songs(token, user_id, "Filters=IsFavorite&Limit=300")
     fresh = _songs(token, user_id, "SortBy=Random&Limit=200")
+    # Christmas songs only mix in from Thanksgiving to Boxing Day (they have their own In season playlist)
+    xmas_ok = _christmas_time()
+    if not xmas_ok:
+        played, liked, fresh = ([x for x in lst if not _is_christmas(x)] for lst in (played, liked, fresh))
     pool = {s["Id"]: s for s in played + liked + fresh}
     count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
     # The artists each person plays most (likes count a little too)
@@ -3406,7 +3418,14 @@ def mixes_for(token, user_id):
 
     def daily(n, artists):
         names = {a[0] for a in artists}
-        mine = [s for s in pool.values() if _mix_artist(s)[0] in names]
+        # All of these artists' songs, not only the ones already played, so the "few you've barely played" are real
+        ids = [a[1] for a in artists if a[1]]
+        more = _songs(token, user_id, f"ArtistIds={','.join(ids)}&SortBy=Random&Limit=200") if ids else []
+        if not xmas_ok:
+            more = [x for x in more if not _is_christmas(x)]
+        both = dict(pool)
+        both.update({x["Id"]: x for x in more if x["Id"] not in both})
+        mine = [s for s in both.values() if _mix_artist(s)[0] in names]
         rnd.shuffle(mine)
         # Mostly songs they know, plus a few they've barely played
         known = [s for s in mine if count(s) > 0][:22]
@@ -3419,7 +3438,9 @@ def mixes_for(token, user_id):
     if top:
         half = max(1, min(len(top), 8) // 2)
         mixes.append(daily(1, top[:half]))
-        mixes.append(daily(2, top[half : half * 2] or top[:half]))
+        # Only one or two artists played so far: a second Daily mix would be the same songs again
+        if top[half : half * 2]:
+            mixes.append(daily(2, top[half : half * 2]))
     else:
         songs = list(fresh)
         rnd.shuffle(songs)
@@ -3427,8 +3448,9 @@ def mixes_for(token, user_id):
     repeat = [s for s in played if count(s) >= 2][:30]
     mixes.append(_mix("repeat", "On repeat", "The songs you play most", repeat, limit=30))
     for i, (name, aid) in enumerate([a for a in top if a[1]][:2]):
-        j = _as_user(token, f"/Items/{aid}/InstantMix?UserId={user_id}&Limit=30&{SONG_FIELDS}") or {}
-        mixes.append(_mix(f"radio-{i + 1}", f"{name} radio", f"{name} and music like it", j.get("Items") or []))
+        j = _as_user(token, f"/Items/{aid}/InstantMix?UserId={user_id}&Limit=40&{SONG_FIELDS}") or {}
+        radio = [x for x in j.get("Items") or [] if x.get("Id") and (xmas_ok or not _is_christmas(x))]
+        mixes.append(_mix(f"radio-{i + 1}", f"{name} radio", f"{name} and music like it", radio))
     # The decade they play most
     decades = {}
     for s in played:
@@ -3437,9 +3459,13 @@ def mixes_for(token, user_id):
             decades[y // 10 * 10] = decades.get(y // 10 * 10, 0) + count(s)
     if decades:
         d = max(decades, key=decades.get)
-        years = ",".join(str(y) for y in range(d, d + 10))
-        songs = _songs(token, user_id, f"Years={years}&SortBy=Random&Limit=40")
-        mixes.append(_mix(f"decade-{d}", f"Your {d}s", f"Songs from the {d}s", songs))
+        # The songs they play most from that decade (the Decades row already has a mix of every song from it)
+        theirs = [s for s in played if s.get("ProductionYear") and s["ProductionYear"] // 10 * 10 == d][:30]
+        if len(theirs) < 15:
+            years = ",".join(str(y) for y in range(d, d + 10))
+            extra = _songs(token, user_id, f"Years={years}&SortBy=Random&Limit=40")
+            theirs += [x for x in extra if xmas_ok or not _is_christmas(x)]
+        mixes.append(_mix(f"decade-{d}", f"Your {d}s", f"Your most played songs from the {d}s", theirs))
     else:
         songs = list(fresh)
         rnd.shuffle(songs)
@@ -3515,10 +3541,10 @@ def _holiday_dates(key, today):
 THEMES = [
     {"key": "christmas", "group": "season", "name": "Christmas", "line": "Christmas songs from your music", "dz": "christmas hits",
      "genres": ["christmas", "holiday"],
-     "words": ["christmas", "xmas", "santa", "sleigh", "jingle", "mistletoe", "reindeer", "rudolph", "frosty", "noel", "navidad", "silent night", "holly", "let it snow", "winter wonderland", "north pole", "feliz", "carol of", "little drummer", "deck the halls", "o holy night", "chestnuts", "snowman"]},
+     "words": ["christmas", "xmas", "santa claus", "santa baby", "dear santa", "santa tell me", "sleigh", "jingle", "mistletoe", "reindeer", "rudolph", "frosty", "noel", "navidad", "silent night", "holly jolly", "let it snow", "winter wonderland", "north pole", "feliz", "carol of", "little drummer", "deck the halls", "o holy night", "chestnuts", "snowman"]},
     {"key": "halloween", "group": "season", "name": "Halloween", "line": "Spooky songs from your music", "dz": "halloween party",
      "genres": ["horror"],
-     "words": ["halloween", "monster", "monsters", "ghost", "ghosts", "ghostbusters", "zombie", "zombies", "witch", "witchy", "spooky", "haunted", "thriller", "vampire", "werewolf", "skeleton", "skeletons", "pumpkin", "boo", "nightmare", "graveyard", "grave", "creep", "scream", "black magic", "evil", "demon", "demons", "bat", "devil", "superstition", "psycho", "horror"]},
+     "words": ["halloween", "monster mash", "ghost", "ghosts", "ghostbusters", "zombie", "zombies", "witch", "witchy", "spooky", "haunted", "thriller", "vampire", "werewolf", "skeleton", "skeletons", "pumpkin", "nightmare", "graveyard", "black magic", "superstition", "psycho killer", "horror", "this is halloween", "time warp", "somebody s watching me"]},
     {"key": "newyear", "group": "season", "name": "New Year's Eve party", "line": "Count down to midnight", "dz": "new year's eve party",
      "genres": [],
      "words": ["new year", "new years", "auld lang syne", "midnight", "countdown", "celebrate", "celebration", "champagne", "1999", "tonight", "party", "fireworks", "firework"]},
@@ -3533,20 +3559,20 @@ THEMES = [
      "words": ["irish", "ireland", "dublin", "galway", "shamrock", "whiskey", "whisky", "shipping up to boston", "danny boy"]},
     {"key": "summer", "group": "season", "name": "Summer hits", "line": "Sunny songs for June to August", "dz": "summer hits",
      "genres": ["reggae", "tropical", "surf"],
-     "words": ["summer", "summertime", "sun", "sunshine", "beach", "california", "hot", "heat", "july", "august", "vacation", "island", "surf", "ocean", "waves", "pool", "tan"]},
+     "words": ["summer", "summertime", "sun", "sunshine", "beach", "california", "heat", "heatwave", "july", "august", "vacation", "island", "surf", "ocean", "waves", "pool"]},
     {"key": "fall", "group": "season", "name": "Cozy fall", "line": "Warm songs for cooler days", "dz": "cozy fall",
      "genres": ["folk", "acoustic", "singer-songwriter", "singer songwriter"],
-     "words": ["autumn", "fall", "october", "september", "november", "leaves", "harvest", "rain", "sweater", "cozy"]},
+     "words": ["autumn", "falling leaves", "october", "september", "november", "leaves", "harvest", "rain", "rainy", "sweater", "cozy"]},
     {"key": "winter", "group": "season", "name": "Winter", "line": "Songs for cold days", "dz": "winter songs",
      "genres": [],
-     "words": ["winter", "snow", "snowfall", "cold", "ice", "frozen", "freeze", "december", "january", "fire", "fireplace", "blizzard"]},
+     "words": ["winter", "snow", "snowfall", "cold", "frozen", "freeze", "december", "january", "fireplace", "blizzard"]},
     # Moods
     {"key": "chill", "group": "mood", "name": "Chill", "line": "Easy, laid-back songs", "dz": "chill hits",
      "genres": ["chill", "lo-fi", "lofi", "ambient", "downtempo", "acoustic", "soul", "r&b", "rnb", "bossa", "trip hop", "trip-hop", "dream pop", "neo soul", "indie folk"],
      "words": ["chill", "slow", "easy", "calm", "breeze", "lazy", "sunday"]},
     {"key": "feelgood", "group": "mood", "name": "Feel-good", "line": "Songs to lift you up", "dz": "feel good hits",
      "genres": ["funk", "disco", "motown", "reggae", "ska", "dance pop", "k-pop", "kpop"],
-     "words": ["happy", "good", "sunshine", "dance", "dancing", "smile", "celebrate", "fun", "feel good", "walking on", "best day", "shake"]},
+     "words": ["happy", "good day", "good vibes", "good times", "sunshine", "dance", "dancing", "smile", "celebrate", "fun", "feel good", "walking on", "best day", "shake"]},
     {"key": "sad", "group": "mood", "name": "Sad songs", "line": "For when you need a good cry", "dz": "sad songs",
      "genres": ["emo", "blues", "slowcore", "sad"],
      "words": ["cry", "crying", "tears", "sad", "alone", "lonely", "goodbye", "broken", "hurt", "sorry", "miss you", "without you", "gone", "lost", "heartbreak", "say something", "someone like you"]},
@@ -3581,6 +3607,29 @@ def _theme_words_re(words):
 
 for _t in THEMES:
     _t["_re"] = _theme_words_re(_t["words"])
+    _t["_gre"] = re.compile(r"(?<![a-z0-9])(" + "|".join(re.escape(g) for g in _t["genres"]) + r")(?![a-z0-9])") if _t["genres"] else None
+
+
+def _theme_genre(t, genres):
+    """Does the song's genre fit the theme? Whole genre words only, so "electro" isn't every Electronic song"""
+    return bool(t["_gre"] and t["_gre"].search(genres))
+
+
+def _is_christmas(song):
+    """A Christmas song: Christmas words in its name or album, or a Christmas/holiday genre"""
+    t = THEME_BY_KEY["christmas"]
+    names = norm(song.get("Name")) + " | " + norm(song.get("Album"))
+    genres = " | ".join(g.lower() for g in song.get("Genres") or [])
+    return bool(t["_re"].search(names)) or _theme_genre(t, genres)
+
+
+def _christmas_time(today=None):
+    """Thanksgiving to Boxing Day: the only time Christmas songs mix in with the rest"""
+    import datetime
+
+    today = today or datetime.date.today()
+    span = _holiday_dates("christmas", today)
+    return bool(span and span[0] <= today <= span[1])
 
 
 def _theme_song_key(song):
@@ -3729,12 +3778,14 @@ def themes_for(token, user_id, is_admin):
     today = datetime.date.today()
     now = datetime.datetime.now(datetime.timezone.utc)
     need = THEME_MIN_ADMIN if is_admin else THEME_MIN
+    xmas_time = _christmas_time(today)
     pins = _theme_pins()
     by_key = {}
     for s in songs:
         by_key.setdefault(_theme_song_key(s), []).append(s)
     for s in songs:
-        s["_names"] = norm(s.get("Name")) + " | " + norm(s.get("Album"))
+        s["_name"] = norm(s.get("Name"))
+        s["_names"] = s["_name"] + " | " + norm(s.get("Album"))
         s["_genres"] = " | ".join(g.lower() for g in s.get("Genres") or [])
     out, warm = [], []
 
@@ -3767,7 +3818,8 @@ def themes_for(token, user_id, is_admin):
         early = is_admin and not live and 0 < (start - today).days <= 21
         if not live and not early:
             continue
-        mine = [s for s in songs if (t["_re"] and t["_re"].search(s["_names"])) or any(g in s["_genres"] for g in t["genres"])]
+        where = "_names" if t["key"] == "christmas" else "_name"
+        mine = [s for s in songs if (t["_re"] and t["_re"].search(s[where])) or _theme_genre(t, s["_genres"])]
         mine += from_catalogue(t["key"]) + pinned(t["key"])
         note = f"Shows for everyone from {start.strftime('%b')} {start.day}" if early else ""
         # A holiday Ben is filling shows on his profile even before it has songs
@@ -3801,6 +3853,8 @@ def themes_for(token, user_id, is_admin):
     for g in sorted(counts, key=lambda k: -counts[k])[:10]:
         if counts[g] < need:
             break
+        if re.search(r"christmas|holiday|xmas", g) and not xmas_time:
+            continue
         key = "genre-" + re.sub(r"[^a-z0-9]+", "_", g).strip("_")
         mine = [s for s in songs if g in [x.strip().lower() for x in s.get("Genres") or []]] + pinned(key)
         m = _theme_out(key, "genre", f"{names[g]} mix", f"{names[g]} from your music", mine, rnd, need, adds=True)
@@ -3811,7 +3865,7 @@ def themes_for(token, user_id, is_admin):
     for t in THEMES:
         if t["group"] != "mood":
             continue
-        mine = [s for s in songs if any(g in s["_genres"] for g in t["genres"]) or (t["_re"] and t["_re"].search(norm(s.get("Name"))))]
+        mine = [s for s in songs if _theme_genre(t, s["_genres"]) or (t["_re"] and t["_re"].search(s["_name"]))]
         mine += from_catalogue(t["key"]) + pinned(t["key"])
         m = _theme_out(t["key"], "mood", t["name"], t["line"], mine, rnd, need, adds=True)
         if m:
@@ -3828,7 +3882,23 @@ def themes_for(token, user_id, is_admin):
     if m:
         out.append(m)
 
+    # Christmas songs stay in the Christmas playlist: never in Winter (it was mostly Christmas songs again),
+    # and outside Thanksgiving to Boxing Day not in any decade, genre, mood or throwback playlist either
+    xmas = {s["Id"] for s in songs if _is_christmas(s)} | {s["Id"] for s in from_catalogue("christmas")}
+    album_of = {s["Id"]: s.get("AlbumId") for s in songs}
+    kept = []
+    for m in out:
+        if m["key"] != "christmas" and xmas and (m["key"] == "winter" or not xmas_time):
+            before = len(m["songs"])
+            m["songs"] = [i for i in m["songs"] if i not in xmas]
+            if len(m["songs"]) < before:
+                if len(m["songs"]) < (need if m["group"] != "throwback" else max(8, need)) and not (is_admin and m["group"] == "season"):
+                    continue
+                m["covers"] = list(dict.fromkeys(album_of[i] for i in m["songs"] if album_of.get(i)))[:4]
+        kept.append(m)
+    out = kept
     for s in songs:
+        s.pop("_name", None)
         s.pop("_names", None)
         s.pop("_genres", None)
     if warm:

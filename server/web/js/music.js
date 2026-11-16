@@ -360,6 +360,9 @@
     cancelAnimationFrame(raf);
   }
   M.openNow = openNow;
+  // Going to another page (Go to artist or Go to album in More, a link, or the browser's Back) closes Now playing,
+  // which used to stay on top of the new page
+  window.addEventListener("hashchange", () => closeNow());
   let lastLyric = -2;
   function drawNow(full, tick) {
     if (!np || !np.classList.contains("on")) return;

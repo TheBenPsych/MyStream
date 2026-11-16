@@ -176,10 +176,29 @@ class MusicRequestsViewModel
                 }
         }
 
-        fun loadDiscover() {
+        /**
+         * [keepBecause]: after an ask, keep the "Because you have" lists as they are on screen (Tower picks new
+         * ones on every look, so the list you were in used to change under you), with the asked song marked.
+         */
+        fun loadDiscover(
+            keepBecause: Boolean = false,
+            asked: Long? = null,
+        ) {
             viewModelScope.launch {
                 try {
-                    discover.value = music.discover()
+                    val old = discover.value
+                    val fresh = music.discover()
+                    discover.value =
+                        if (keepBecause && old != null) {
+                            fresh.copy(
+                                because =
+                                    old.because.map { b ->
+                                        b.copy(songs = b.songs.map { x -> if (x.id == asked) x.copy(asked = "Asked for") else x })
+                                    },
+                            )
+                        } else {
+                            fresh
+                        }
                     discoverProblem.value = false
                 } catch (ex: CancellationException) {
                     throw ex
@@ -258,7 +277,7 @@ class MusicRequestsViewModel
 
                         null -> {}
                     }
-                    loadDiscover()
+                    loadDiscover(keepBecause = true, asked = if (kind == "song") id else null)
                     if (query.value.trim().length >= 2) results.value = safely { music.search(query.value.trim()) } ?: results.value
                 }
             }
@@ -393,12 +412,15 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
                 askSong = null
                 viewModel.preview.stop()
             },
+            // Asking stops the 30-second taste (it used to keep playing after the panel closed)
             onSong = {
                 askSong = null
+                viewModel.preview.stop()
                 viewModel.ask("song", song.id, song.title)
             },
             onAlbum = {
                 askSong = null
+                viewModel.preview.stop()
                 viewModel.ask("album", song.albumId, song.album)
             },
         )

@@ -537,7 +537,11 @@ B.musicTab = async (nav) => {
   };
   const drawDiscover = async (again) => {
     if (!disc || again) {
+      const old = disc;
       try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mwall").innerHTML = `<p class="dim">Couldn't load what's popular right now. ${esc(e.message)}</p>`; return; }
+      // Tower picks new "Because you have" songs on every look: after an ask keep the lists on screen as they were
+      // (the list you were in used to change under you), with the song just asked for marked
+      if (again && old && old.because) disc.because = old.because;
     }
     if (B.alive(nav) && !searching) draw();
   };
@@ -615,6 +619,8 @@ B.musicTab = async (nav) => {
   };
   const ask = async (kind, id, name) => {
     await music("POST", "/request", { kind, id: +id });
+    B.previewStop();
+    if (kind === "song" && disc) (disc.because || []).forEach((r) => (r.songs || []).forEach((x) => { if (String(x.id) === String(id)) x.asked = "Asked for"; }));
     B.closeAll();
     const q = $("#rq").value;
     if (q.trim().length >= 2) search(q);
