@@ -40,6 +40,8 @@
   const audio = new Audio();
   audio.preload = "auto";
   M.audio = audio;
+  // Music starting pauses a video that is still playing in the pop-out window
+  audio.addEventListener("play", () => { if (B.kept && B.kept.pause) B.kept.pause(); });
   let session = "";
   // When the server converts a song on the fly the browser can't tell how long it is (duration = Infinity)
   // and can't jump inside it, so the length comes from Jellyfin and a jump restarts the stream at that point.
