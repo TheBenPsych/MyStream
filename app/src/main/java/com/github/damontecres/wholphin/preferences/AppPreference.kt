@@ -1246,6 +1246,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_late_night_look_off,
             )
 
+        val ChristmasLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_christmas_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.christmasLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { christmasLookOff = !value }
+                },
+                summaryOn = R.string.benflix_christmas_look_on,
+                summaryOff = R.string.benflix_christmas_look_off,
+            )
+
         val AutoMpvStyledSubs =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_auto_mpv,
@@ -1469,6 +1481,7 @@ val basicPreferences =
                 listOf(
                     AppPreference.EasyRead,
                     AppPreference.LateNightLook,
+                    AppPreference.ChristmasLook,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,
                 ),

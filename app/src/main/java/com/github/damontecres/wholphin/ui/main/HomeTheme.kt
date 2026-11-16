@@ -205,7 +205,7 @@ data class HomeTheme(
 
         val CHRISTMAS =
             HomeTheme(
-                R.string.theme_holiday,
+                R.string.theme_christmas,
                 tags = listOf("christmas", "christmas eve", "santa claus", "christmas party", "christmas tree", "hanukkah"),
                 nameWords = listOf("Christmas", "Xmas", "Santa", "Grinch", "Noel", "Hanukkah"),
                 titles =
@@ -1521,7 +1521,8 @@ data class HomeTheme(
 
                 month == 7 && day <= 7 -> TANABATA
 
-                month == 12 || (month == 11 && day >= 25) -> CHRISTMAS
+                // Benflix Christmas look: the row stays up until New Year's Day
+                month == 12 || (month == 11 && day >= 25) || (month == 1 && day == 1) -> CHRISTMAS
 
                 month == 2 && day <= 14 -> VALENTINES
 

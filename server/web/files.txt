@@ -5,9 +5,11 @@ fonts/kids_fredoka_bold.ttf
 fonts/kids_fredoka_medium.ttf
 fonts/kids_fredoka_regular.ttf
 fonts/kids_fredoka_semibold.ttf
+fonts/berkshire_swash.LICENSE.txt
 fonts/opendyslexic.LICENSE.txt
 fonts/opendyslexic_regular.woff2
 fonts/outfit_bold.ttf
+fonts/xmas_berkshire_swash.ttf
 fonts/outfit_medium.ttf
 fonts/outfit_regular.ttf
 fonts/outfit_semibold.ttf
@@ -34,6 +36,7 @@ js/search.js
 js/server.js
 js/start.js
 js/title.js
+js/xmas.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav

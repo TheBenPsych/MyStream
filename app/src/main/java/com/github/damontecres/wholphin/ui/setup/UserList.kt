@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -406,6 +408,12 @@ private fun UserIconCard(
 
     // Card dimensions - circular card
     val cardSize = LocalProfileTileSize.current
+    // Christmas (1 Dec to 1 Jan): the focused profile gets a soft warm glow around its white ring
+    val focused by interactionSource.collectIsFocusedAsState()
+    val xmasGlow =
+        focused &&
+            com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+                .on()
 
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
@@ -423,7 +431,8 @@ private fun UserIconCard(
             interactionSource = interactionSource,
             modifier =
                 Modifier
-                    .size(cardSize),
+                    .size(cardSize)
+                    .then(if (xmasGlow) Modifier.drawBehind { drawXmasGlow() } else Modifier),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -807,3 +816,20 @@ val ReadableTextShadow =
                 .Offset(0f, 2f),
         blurRadius = 16f,
     )
+
+/** Benflix Christmas: a soft warm glow behind the focused profile */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawXmasGlow() {
+    val r = size.minDimension * 0.82f
+    drawCircle(
+        brush =
+            androidx.compose.ui.graphics.Brush.radialGradient(
+                0.55f to
+                    androidx.compose.ui.graphics
+                        .Color(0x52FFE3B0),
+                1f to androidx.compose.ui.graphics.Color.Transparent,
+                center = center,
+                radius = r,
+            ),
+        radius = r,
+    )
+}

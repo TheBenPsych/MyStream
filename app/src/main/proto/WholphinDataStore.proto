@@ -289,6 +289,8 @@ message BenflixPreferences {
   bool all_subtitle_languages = 11;
   // Benflix music: the bouncing towers on Now playing are on unless this is set
   bool music_bars_off = 12;
+  // Benflix Christmas look (1 Dec to 1 Jan) is on unless this is set
+  bool christmas_look_off = 13;
 }
 
 enum BenflixAccent {
