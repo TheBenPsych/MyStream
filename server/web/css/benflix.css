@@ -1441,3 +1441,69 @@ html.kids .chip.on:hover, html.kids .chip.on:focus-visible, html.kids .btn.white
 .reqfor select option { color: #000; }
 .reqfor.on { background: var(--accent, var(--ink)); border-color: var(--accent, var(--ink)); color: var(--dark); }
 .reqfor.on select { color: var(--dark); }
+
+/* ---------- Music redesign 3 (Ben 2026-11-16): Home with quick picks, Your library, Search, the left side's
+   short library list and the Now playing panel on the right of wide windows ---------- */
+.mhello { font-size: 34px; font-weight: 800; letter-spacing: -.02em; margin: 10px 0 12px; }
+.mchips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+.mquickgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 26px; }
+.mquickgrid[hidden] { display: none; }
+.mquick { display: flex; align-items: center; gap: 12px; height: 60px; background: #1D2027; border-radius: 8px; overflow: hidden; padding-right: 10px; }
+.mquick:hover, .mquick:focus-visible { background: #262932; box-shadow: 0 0 0 2.5px #fff; }
+.mquick b { font-size: 15px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.qa { flex: none; width: 60px; height: 60px; background: var(--pg4) center/cover no-repeat; display: grid; place-items: center; color: var(--music); }
+.qa svg.i { width: 26px; height: 26px; }
+.qa.liked { background: linear-gradient(135deg, #5B3FB8, var(--music)); color: #fff; }
+.qa.liked svg.i { fill: #fff; }
+.qa.round { border-radius: 50%; }
+.qa.mixq { background: linear-gradient(135deg, #5B3FB8, #A78BFA); color: #fff; }
+.mlib-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mlib-head h1, .mlib-head h3 { flex: 1; min-width: 0; }
+.mlib-sort { display: flex; align-items: center; gap: 12px; margin: -4px 0 10px; font-size: 13px; }
+.mlib-sort[hidden] { display: none; }
+.mlib-list { display: flex; flex-direction: column; gap: 2px; }
+.mlib-row { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: 10px; }
+.mlib-row:hover, .mlib-row:focus-visible { background: #1D2027; }
+.mlib-row .qa { width: 56px; height: 56px; border-radius: 6px; }
+.mlib-row .qa.round { border-radius: 50%; }
+.mlib-row > span:last-child { min-width: 0; display: flex; flex-direction: column; }
+.mlib-row b, .mlib-row small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mlib-row small { color: var(--ink2); font-size: 13px; }
+.mlib-row .pin { color: var(--music); font-style: normal; }
+.msearch-box { width: 100%; max-width: 640px; font-size: 18px; padding: 14px 18px; border-radius: 12px; margin: 4px 0 18px; }
+.mrs { display: flex; align-items: center; gap: 8px; }
+.mrs-q { flex: 1; display: flex; align-items: center; gap: 12px; text-align: left; background: none; border: 0; color: var(--ink); font: inherit; font-weight: 600; padding: 12px; border-radius: 10px; cursor: pointer; }
+.mrs-q:hover, .mrs-q:focus-visible { background: #1D2027; }
+.mrs-q svg.i { width: 18px; height: 18px; color: var(--ink3); }
+.drail .mside { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.drail .mside a { padding: 6px 8px; border-radius: 10px; gap: 10px; }
+.drail .mside .mside-h { font-weight: 800; color: var(--ink); padding: 8px 10px; }
+.drail .mside .qa { width: 40px; height: 40px; border-radius: 6px; }
+.drail .mside .qa.round { border-radius: 50%; }
+.drail .mside .qa svg.i { width: 18px; height: 18px; }
+.drail .mside-i > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.drail .mside-i b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+.drail .mside-i small { font-size: 12px; color: var(--ink3); }
+.mnp { position: fixed; z-index: 24; right: 0; top: var(--bar); bottom: 92px; width: 320px; padding: 14px 18px 18px; overflow-y: auto; scrollbar-width: none; background: #111318; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.mnp[hidden] { display: none; }
+.mnp-top, .mnp-words, .mnp-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mnp-cover { width: 100%; aspect-ratio: 1; border-radius: 12px; border: 0; background: var(--pg3) center/cover no-repeat; cursor: pointer; }
+.mnp-cover:hover, .mnp-cover:focus-visible { box-shadow: 0 0 0 3px #fff; }
+.mnp-words > span, .mnp-n > span:last-child { min-width: 0; display: flex; flex-direction: column; }
+.mnp-words b { font-size: 20px; }
+.mnp-words small, .mnp-n small { color: var(--ink2); font-size: 13px; }
+.mnp-words b, .mnp-n b, .mnp-n small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mnp-card { background: #1D2027; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.mnp-n { display: flex; align-items: center; gap: 10px; }
+.mnp-n .qa { width: 40px; height: 40px; border-radius: 6px; }
+body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
+@media (max-width: 900px) {
+  .mquickgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mhello { font-size: 26px; }
+}
+@media (max-width: 700px) {
+  /* Phone-sized windows: the four places are chips under the top bar, so the short library list stays out */
+  .drail .mside { display: none; }
+  .mquick { height: 52px; }
+  .mquick .qa { width: 52px; height: 52px; }
+}
