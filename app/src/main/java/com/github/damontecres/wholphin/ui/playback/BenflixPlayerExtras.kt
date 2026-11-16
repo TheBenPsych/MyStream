@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.ui.detail.series.NextSeasonAsk
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -242,14 +243,12 @@ fun ShowDoneCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp)) {
                     done.similar.forEachIndexed { index, item ->
                         Surface(
-                            border =
-                                com.github.damontecres.wholphin.ui.theme
-                                    .benflixFocusBorder(RoundedCornerShape(10.dp)),
                             onClick = { onOpen(item) },
                             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             modifier =
                                 Modifier
+                                    .benflixOuterFocusRing(RoundedCornerShape(10.dp), width = 4.dp)
                                     .width(if (isTv) 150.dp else 100.dp)
                                     .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
                         ) {
@@ -272,7 +271,10 @@ fun ShowDoneCard(
             }
             Button(
                 onClick = onClose,
-                modifier = if (done.similar.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier,
+                modifier =
+                    Modifier
+                        .benflixOuterFocusRing(androidx.compose.foundation.shape.CircleShape)
+                        .then(if (done.similar.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text("Done")
