@@ -745,14 +745,15 @@ B.webSettings = () => loadJson("benflix.web." + (B.me ? B.me.id : ""), {});
 B.setWebSetting = (k, v) => { const s = B.webSettings(); s[k] = v; store("benflix.web." + B.me.id, JSON.stringify(s)); };
 
 // ---------- volume button + slider (web players) ----------
-// With a mouse the slider slides out when you hover the speaker, and clicking the speaker mutes.
+// On computers (a mouse and a wide window) the slider and its % number are always showing.
+// Narrow windows with a mouse slide it out when you hover the speaker; clicking the speaker mutes.
 // On touch screens (no hover) the first tap opens the slider and a tap anywhere else closes it.
 // The level is remembered per profile under `key`, so it is the same next visit.
-B.volume = (id, cls) => `<span class="volw"><button class="${cls || "pbtn"} vbtn"${id ? ` id="${id}"` : ""} title="Sound (click to mute, M)">${I("vol")}</button><span class="vslide"><input type="range" min="0" max="100" step="1" aria-label="Volume"></span></span>`;
+B.volume = (id, cls) => `<span class="volw"><button class="${cls || "pbtn"} vbtn"${id ? ` id="${id}"` : ""} title="Sound (click to mute, M)">${I("vol")}</button><span class="vslide"><input type="range" min="0" max="100" step="1" aria-label="Volume"><b class="vnum"></b></span></span>`;
 B.wireVolume = (wrap, media, key) => {
   if (!wrap || !media || wrap.dataset.wired) return;
   wrap.dataset.wired = "1";
-  const btn = wrap.querySelector(".vbtn"), r = wrap.querySelector("input");
+  const btn = wrap.querySelector(".vbtn"), r = wrap.querySelector("input"), num = wrap.querySelector(".vnum");
   const saved = B.me ? B.webSettings()[key] : null;
   if (saved != null && isFinite(+saved)) media.volume = Math.max(0, Math.min(1, +saved));
   let shown = "";
@@ -760,6 +761,7 @@ B.wireVolume = (wrap, media, key) => {
     const v = media.muted ? 0 : media.volume;
     r.value = Math.round(v * 100);
     r.style.setProperty("--v", r.value + "%");
+    if (num) num.textContent = r.value + "%";
     const ic = v === 0 ? "mute" : "vol";
     if (ic !== shown) { btn.innerHTML = I(ic); shown = ic; }
     btn.title = (v === 0 ? "Sound is off" : `Sound ${r.value}%`) + " (click to " + (v === 0 ? "turn on" : "mute") + ", M)";
