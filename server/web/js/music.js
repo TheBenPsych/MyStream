@@ -280,38 +280,54 @@
     const artist = (artistOf(s) || "").split(",")[0].trim();
     closeNow();
     const admin = B.me.admin;
-    const panel = B.side(`<h3>Similar songs</h3><p class="dim">Like ${esc(title)}, and not in your music yet. Pick one to ask for it.</p><div id="msim">${B.spinner()}</div>`);
+    const head = `<h3>Similar songs</h3><p class="dim">Like ${esc(title)}, and not in your music yet. Pick one to ask for it.</p>`;
+    let panel = B.side(head + `<div id="msim">${B.spinner()}</div>`);
     let found;
     try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+    if (!document.contains(panel)) return; // closed while it was looking
     const songs = (found && found.songs) || [];
-    const draw = () => {
-      // Ben 2026-11-16: a 30-second taste of each one (Now playing pauses while it plays)
-      $("#msim", panel).innerHTML = songs.length ? songs.map((x, i) => `<div style="display:flex;align-items:center;gap:8px">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:left;margin:0">
+    const rows = () => songs.length ? songs.map((x, i) => `<div style="display:flex;align-items:center;gap:8px">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:left;margin:0">
         <span style="flex:none;width:44px;height:44px;border-radius:6px;background:var(--pg3) center/cover;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
         <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button></div>`).join("")
-        : `<p class="dim">Nothing new like this one right now.</p>`;
+      : `<p class="dim">Nothing new like this one right now.</p>`;
+    // Ben 2026-11-16: the list stays put. Asking for a song opens its ask panel with a Back button, and once it's
+    // asked for you land back on the same list (scrolled where you were) with that song marked, ready for the next one.
+    let scroll = 0;
+    const showList = (focusI) => {
+      if (!panel) panel = B.side(head + `<div id="msim"></div>`);
+      $("#msim", panel).innerHTML = rows();
+      panel.scrollTop = scroll;
+      const f = focusI != null && panel.querySelectorAll("#msim .opt")[focusI];
+      if (f) f.focus({ preventScroll: true });
+      panel.addEventListener("click", (ev) => {
+        const one = ev.target.closest("[data-sim]");
+        if (one) showAsk(+one.dataset.sim);
+      });
     };
-    draw();
-    panel.addEventListener("click", (ev) => {
-      const one = ev.target.closest("[data-sim]");
-      if (!one) return;
-      const x = songs[+one.dataset.sim];
-      const ask = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
+    const showAsk = (i) => {
+      const x = songs[i];
+      scroll = panel ? panel.scrollTop : 0;
+      panel = null;
+      const ask = B.side(`<button class="btn small" data-simback style="margin-bottom:12px">${I("left")} Similar songs</button><h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
         ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
         <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(x.id)}<span class="dim">Hear 30 seconds</span></div>
-        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`);
+        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button>${x.album_id ? `<button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>` : ""}`);
       ask.addEventListener("click", (e2) => {
+        if (e2.target.closest("[data-simback]")) { showList(i); return; }
         const p = e2.target.closest("[data-pick]");
         if (!p) return;
         const album = p.dataset.pick === "album";
         B.busy(p, async () => {
           await B.call("POST", "api/music/request", { kind: album ? "album" : "song", id: +(album ? x.album_id : x.id) });
           B.previewStop();
-          B.closeAll();
+          const words = admin ? "Asked for" : "Asked Ben";
+          songs.forEach((y) => { if (y === x || (album && y.album_id && String(y.album_id) === String(x.album_id))) y.asked = words; });
+          showList(i);
           return admin ? `Asked for ${album ? x.album : x.title}.` : `Asked Ben for ${album ? x.album : x.title}.`;
         });
       });
-    });
+    };
+    showList();
   }
   setInterval(() => {
     if (!bar || !M.current()) return;
