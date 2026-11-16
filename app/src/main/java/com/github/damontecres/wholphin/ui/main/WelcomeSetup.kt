@@ -772,7 +772,9 @@ private fun StepButtons(
         extra()
         if (viewModel.single == null && step in FlowSteps && step != WelcomeStep.FINISH) {
             androidx.tv.material3.Surface(
-                border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(50)),
+                border =
+                    com.github.damontecres.wholphin.ui.theme
+                        .benflixFocusBorder(RoundedCornerShape(50)),
                 onClick = viewModel::next,
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
                 colors =

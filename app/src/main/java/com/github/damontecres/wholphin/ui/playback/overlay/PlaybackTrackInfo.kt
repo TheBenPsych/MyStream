@@ -170,7 +170,9 @@ fun TrackSupportRow(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(androidx.compose.ui.graphics.RectangleShape),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(androidx.compose.ui.graphics.RectangleShape),
         onClick = {},
         modifier = modifier,
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

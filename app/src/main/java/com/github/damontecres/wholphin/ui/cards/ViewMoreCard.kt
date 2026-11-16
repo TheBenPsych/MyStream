@@ -81,7 +81,9 @@ fun ViewMoreCard(
         modifier = modifier,
     ) {
         Card(
-            border = com.github.damontecres.wholphin.ui.theme.benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
+            border =
+                com.github.damontecres.wholphin.ui.theme
+                    .benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
             modifier =
                 Modifier
                     .size(width, height)

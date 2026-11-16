@@ -196,7 +196,9 @@ fun FixMatchDialog(
                     ) {
                         items(list) { result ->
                             Surface(
-                                border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(10.dp)),
+                                border =
+                                    com.github.damontecres.wholphin.ui.theme
+                                        .benflixFocusBorder(RoundedCornerShape(10.dp)),
                                 onClick = { viewModel.apply(item, result, onFixed) },
                                 enabled = !working,
                                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),

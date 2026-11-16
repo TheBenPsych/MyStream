@@ -739,7 +739,9 @@ private fun PhoneIconButton(
     val shape = RoundedCornerShape(10.dp)
     val off = button.off
     Surface(
-        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(shape),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(shape),
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =

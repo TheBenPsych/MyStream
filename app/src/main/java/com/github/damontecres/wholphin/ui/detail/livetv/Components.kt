@@ -151,7 +151,9 @@ fun Channel(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(10.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(RoundedCornerShape(10.dp)),
         onClick = onClick,
         onLongClick = onLongClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
