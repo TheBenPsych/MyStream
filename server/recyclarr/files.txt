@@ -1,0 +1,6 @@
+recyclarr.yml
+settings.yml
+custom-formats/sonarr/extra-language.json
+custom-formats/sonarr/no-english-or-original.json
+custom-formats/radarr/extra-language.json
+custom-formats/radarr/no-english-or-original.json

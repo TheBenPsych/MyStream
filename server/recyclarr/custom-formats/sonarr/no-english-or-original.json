@@ -1,0 +1,31 @@
+{
+  "trash_id": "c4a2b1d3e5f6071829304a5b6c7d8e9f",
+  "trash_scores": {
+    "default": -10000
+  },
+  "trash_description": "Has neither English nor the original language (a foreign dub only)",
+  "name": "Benflix: No English Or Original",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "No English",
+      "implementation": "LanguageSpecification",
+      "negate": true,
+      "required": true,
+      "fields": {
+        "value": 1,
+        "exceptLanguage": false
+      }
+    },
+    {
+      "name": "No original",
+      "implementation": "LanguageSpecification",
+      "negate": true,
+      "required": true,
+      "fields": {
+        "value": -2,
+        "exceptLanguage": false
+      }
+    }
+  ]
+}

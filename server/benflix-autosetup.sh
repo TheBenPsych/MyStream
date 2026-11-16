@@ -35,10 +35,19 @@ mkdir -p "$TMP"
 # Recyclarr (Sonarr and Radarr scoring, Ben 2026-11-16): new settings on GitHub are synced straight away.
 # A sync only changes download scores, so it never bothers anyone watching and doesn't wait.
 RC=/mnt/user/appdata/recyclarr
-if [ -f "$RC/recyclarr.yml" ] && docker ps --format '{{.Names}}' | grep -qx recyclarr; then
-  if curl -fsSL -m 60 "$RAW/recyclarr/recyclarr.yml" -o "$TMP/recyclarr.yml" && grep -q "^radarr:" "$TMP/recyclarr.yml" &&
-    ! cmp -s "$TMP/recyclarr.yml" "$RC/recyclarr.yml"; then
-    cp "$TMP/recyclarr.yml" "$RC/recyclarr.yml" && chown 99:100 "$RC/recyclarr.yml"
+if [ -f "$RC/recyclarr.yml" ] && docker ps --format '{{.Names}}' | grep -qx recyclarr &&
+  curl -fsSL -m 60 "$RAW/recyclarr/files.txt" -o "$TMP/recyclarr-files.txt"; then
+  changed=""
+  while read -r f; do
+    [ -n "$f" ] || continue
+    dest="$RC/${f/#custom-formats\//benflix-cfs/}"
+    curl -fsSL -m 60 "$RAW/recyclarr/$f" -o "$TMP/rc-file" || { changed=""; break; }
+    if ! cmp -s "$TMP/rc-file" "$dest"; then
+      mkdir -p "$(dirname "$dest")" && cp "$TMP/rc-file" "$dest" && changed="yes"
+    fi
+  done <"$TMP/recyclarr-files.txt"
+  if [ -n "$changed" ]; then
+    chown -R 99:100 "$RC"
     if docker exec recyclarr recyclarr sync >"$RC/sync-last.txt" 2>&1; then
       note "Recyclarr: new settings from GitHub synced to Sonarr and Radarr"
     else

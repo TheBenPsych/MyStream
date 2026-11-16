@@ -1,6 +1,7 @@
 # Benflix: Recyclarr settings for Ben's Sonarr and Radarr (Recyclarr 8).
 # Keeps the existing profile names and scores, and fixes these:
-#  - German and other non-English copies of normal shows and movies are blocked (Language: Not English = -10000)
+#  - Audio: only English or the show's own original language. Releases with an extra dub (ITA-ENG, MULTi)
+#    or only a foreign dub are blocked (Benflix's own formats, in custom-formats/)
 #  - Sonarr LQ and LQ (Release Title) are -10000 (they were +100 in places)
 #  - min score is 0, so ordinary releases are no longer skipped
 #  - Radarr: YTS is kept but scores 0, so it is only grabbed when no better release exists
@@ -176,7 +177,7 @@ sonarr:
       - trash_ids: [69aa1e159f97d860440b04cd6d590c4f]  # Language: Not English
         assign_scores_to:
           - name: HD - 720p/1080p
-            score: -10000
+            score: 0  # replaced by the Benflix language formats below (original language is fine)
       # Anime HD - 720p/1080p
       - trash_ids: [418f50b10f1907201b6cfdf881f467b7]  # Anime Dual Audio
         assign_scores_to:
@@ -306,6 +307,19 @@ sonarr:
         assign_scores_to:
           - name: Anime HD - 720p/1080p
             score: -10000
+      # Audio (Ben 2026-11-16): only English or the original language, never an extra dub like ITA-ENG
+      - trash_ids: [b3f1a0c2d4e5f60718293a4b5c6d7e8f]  # Benflix: Extra Language (ITA-ENG etc.)
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [c4a2b1d3e5f6071829304a5b6c7d8e9f]  # Benflix: No English Or Original
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [7ba05c6e0e14e793538174c679126996]  # MULTi
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
 
 radarr:
   radarr-main:
@@ -360,7 +374,7 @@ radarr:
       - trash_ids: [0dc8aec3bd1c47cd6c40c46ecd27e846]  # Language: Not English
         assign_scores_to:
           - name: HD - 720p/1080p
-            score: -10000
+            score: 0  # replaced by the Benflix language formats below (original language is fine)
       # Anime HD - 720p/1080p
       - trash_ids: [4a3b087eea2ce012fcc1ce319259a3be]  # Anime Dual Audio
         assign_scores_to:
@@ -512,6 +526,19 @@ radarr:
           - name: HD - 720p/1080p
             score: -10000
       - trash_ids: [f537cf427b64c38c8e36298f657e4828]  # Scene
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      # Audio (Ben 2026-11-16): only English or the original language, never an extra dub like ITA-ENG
+      - trash_ids: [b3f1a0c2d4e5f60718293a4b5c6d7e8f]  # Benflix: Extra Language (ITA-ENG etc.)
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [c4a2b1d3e5f6071829304a5b6c7d8e9f]  # Benflix: No English Or Original
+        assign_scores_to:
+          - name: HD - 720p/1080p
+            score: -10000
+      - trash_ids: [4b900e171accbfb172729b63323ea8ca]  # MULTi
         assign_scores_to:
           - name: HD - 720p/1080p
             score: -10000
