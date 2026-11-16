@@ -2,7 +2,7 @@
  *
  * A dim, cosy room. A decorated tree twinkles in the bottom-left corner, and a toy train runs round it
  * in 3D. A snowy window on the right shows a parade passing: a snowman, a red-nosed reindeer, Santa,
- * two little elves and one very tall elf. It shows from 1 to 30 December (New Year's has the 31st and the 1st).
+ * two little elves and one very tall elf. It shows from 1 to 26 December (New Year's has 27 December to 1 January).
  *   - Presents pile up under the tree through December.
  *   - On Christmas Eve and Christmas Day, Santa's sleigh flies past the window.
  *   - From Christmas Day the presents are opened.
@@ -24,7 +24,7 @@
 
   // ---------- dates ----------
   /** The last day of the Christmas look (the app's ChristmasSeason.LAST_DAY too), so it never overlaps New Year's */
-  const LAST_DAY = 30;
+  const LAST_DAY = 26;
   /** 1 December to LAST_DAY */
   const season = (d) => d.getMonth() === 11 && d.getDate() <= LAST_DAY;
   /** Sleeps until Christmas (1 Dec to 23 Dec), 0 on Christmas Eve, else null */

@@ -33,7 +33,7 @@ B.route(/^\/who$/, async () => {
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
   const last = load("benflix.last");
-  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 to 30 December
+  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 to 26 December
   const xmas = B.xmasOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
@@ -657,7 +657,7 @@ const fitRows = (list) => {
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 
-// Christmas look: on from 1 to 30 December (New Year's has the 31st) unless switched off in Settings › Look (this browser)
+// Christmas look: on from 1 to 26 December (New Year's has the 27th on) unless switched off in Settings › Look (this browser)
 B.xmas = window.BenflixXmas;
 B.xmasOff = () => { try { return localStorage.getItem("benflix.xmasOff") === "1"; } catch (e) { return false; } };
 B.setXmasOff = (off) => { try { localStorage.setItem("benflix.xmasOff", off ? "1" : "0"); } catch (e) {} };

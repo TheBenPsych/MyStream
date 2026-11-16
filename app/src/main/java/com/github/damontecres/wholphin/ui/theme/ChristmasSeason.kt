@@ -20,14 +20,14 @@ import java.time.Month
 
 /**
  * Benflix Christmas look: on from 1 December to 30 December on TV, phone and web, unless it's switched off
- * in Settings > Look. The same dates as the web's xmas.js, so every screen matches. It ends on the 30th so it never overlaps the New Year's look (31 Dec and 1 Jan).
+ * in Settings > Look. The same dates as the web's xmas.js, so every screen matches. It ends on the 26th so it never overlaps the New Year's look (27 Dec to 1 Jan).
  */
 object ChristmasSeason {
     /** Settings > Look > Christmas look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    /** The last day of the Christmas look; New Year's has 31 December and 1 January */
-    const val LAST_DAY = 30
+    /** The last day of the Christmas look; New Year's runs 27 December to 1 January */
+    const val LAST_DAY = 26
 
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.DECEMBER && date.dayOfMonth <= LAST_DAY
 
