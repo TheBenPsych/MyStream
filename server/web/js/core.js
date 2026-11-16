@@ -662,6 +662,16 @@ const pvDraw = () => $$("[data-pv]").forEach((b) => {
   b.title = on ? "Stop the preview" : "Hear 30 seconds";
   b.setAttribute("aria-label", b.title);
 });
+// Previews follow the music volume slider (the one on the music bar and Now playing), so a taste is never
+// louder or quieter than the music you were just listening to. Moving the slider while one plays changes it too.
+B.previewLevel = (a, now) => {
+  a = a || PV.audio;
+  if (!a) return;
+  let v = now;
+  if (v == null) { const saved = B.me ? B.webSettings().musicVolume : null; if (saved != null && isFinite(+saved)) v = +saved; }
+  if (v == null) { const m = B.music && B.music.audio; v = m ? (m.muted ? 0 : m.volume) : 1; }
+  a.volume = Math.max(0, Math.min(1, v));
+};
 const pvQuiet = () => { if (PV.audio) { PV.audio.pause(); PV.audio.src = ""; PV.audio = null; } };
 B.previewStop = () => {
   PV.n++;
@@ -691,7 +701,7 @@ B.previewToggle = async (id, btn) => {
   const m = B.music && B.music.audio;
   if (m && !m.paused) { m.pause(); PV.paused = true; }
   const a = new Audio(url);
-  a.volume = 0.9;
+  B.previewLevel(a);
   a.onended = () => { if (PV.audio === a) B.previewStop(); };
   a.onerror = () => { if (PV.audio === a) B.previewStop(); };
   PV.audio = a;
@@ -781,6 +791,7 @@ B.wireVolume = (wrap, media, key) => {
   let saveT;
   media.addEventListener("volumechange", () => {
     draw();
+    if (key === "musicVolume") B.previewLevel(null, media.muted ? 0 : media.volume);
     clearTimeout(saveT);
     saveT = setTimeout(() => { if (B.me) B.setWebSetting(key, media.volume); }, 300);
   });
