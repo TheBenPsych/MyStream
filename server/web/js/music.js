@@ -731,7 +731,7 @@
     if (mix.adds) themeAdds(nav, mix);
   });
 
-  // Ben's profile: Songs to add under a themed playlist. Asking for one downloads it, and Tower puts it in this theme.
+  // Every profile but Kids (Ben okays the others' asks): Songs to add under a themed playlist. Asking for one downloads it, and Tower puts it in this theme.
   const themeAdds = async (nav, mix) => {
     const box = $("#mbelow"); if (!box) return;
     box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Looking for songs that fit...</p>`;
@@ -740,7 +740,7 @@
     const list = (got && got.songs) || [];
     if (!list.length) { box.innerHTML = ""; return; }
     const btn = (s) => s.asked ? `<span class="sl">${esc(s.asked)}</span>` : `<button class="btn small white" data-addsong="${esc(s.id)}">${I("plus")} Ask for it</button>`;
-    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs that fit ${esc(mix.name)}. Ask for one and it joins this playlist once it's in.</p>
+    box.innerHTML = `<h3 class="msub">Songs to add</h3><p class="dim">Songs that fit ${esc(mix.name)}. Ask for one and it joins this playlist once it's in.${B.me.admin ? "" : " Ben okays asks first."}</p>
       <div class="msongs">${list.map((s) => `<div class="srow"><span class="sn">${s.cover ? `<img class="sc" src="${esc(s.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span><span data-slot="${esc(s.id)}">${btn(s)}</span></div>`).join("")}</div>`;
     box.addEventListener("click", async (e) => {
       const b = e.target.closest("[data-addsong]"); if (!b) return;

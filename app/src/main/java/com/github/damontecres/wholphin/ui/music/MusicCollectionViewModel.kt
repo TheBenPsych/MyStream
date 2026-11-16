@@ -52,6 +52,8 @@ data class MusicCollectionState(
     /** Ben's Songs to add under a themed playlist, and whether they're still coming */
     val adds: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
     val addsLoading: Boolean = false,
+    /** Not Ben's profile: an ask waits for Ben to okay it */
+    val askNeedsOk: Boolean = false,
     val liked: Set<UUID> = emptySet(),
     val loaded: Boolean = false,
     val failed: Boolean = false,
@@ -284,6 +286,7 @@ class MusicCollectionViewModel
                     mixLine = mix.line,
                     themed = mix.group.isNotBlank(),
                     addsLoading = mix.adds,
+                    askNeedsOk = serverRepository.currentUserDto?.policy?.isAdministrator != true,
                     loaded = true,
                 )
             }

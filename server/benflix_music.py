@@ -415,7 +415,7 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
     if is_kids:
         return 403, {"error": "No music requests on the Kids profile."}
     if not is_admin:
-        return _family_route(method, path, query, user_id, user_name, read_json)
+        return _family_route(method, path, query, user_id, user_name, read_json, token=token)
     if not _dir:
         return 503, {"error": "Music is off: the helper has no folder to save requests in. Run the Benflix setup command again."}
     remember_admin(token, user_id)
@@ -799,7 +799,7 @@ def _mark_asked(out, extra_have=None):
 FAMILY_READ = ("/api/music/search", "/api/music/discover", "/api/music/genre", "/api/music/preview", "/api/music/artist", "/api/music/album")
 
 
-def _family_route(method, path, query, user_id, user_name, read_json):
+def _family_route(method, path, query, user_id, user_name, read_json, token=None):
     """A grown-up family profile: look, hear previews and ask. Asks wait for Ben (state waiting_ben)."""
     if not _dir:
         return 503, {"error": "Music requests aren't set up on Tower yet. Ask Ben."}
@@ -817,6 +817,9 @@ def _family_route(method, path, query, user_id, user_name, read_json):
             if path == "/api/music/artist":
                 return 200, artist_page(q("id"))
             return 200, album_page(q("id"))
+        if method == "GET" and path == "/api/music/theme":
+            # Songs to add under a themed playlist (Ben 2026-11-16: every profile but Kids can ask, Ben okays it)
+            return 200, theme_adds(token, user_id, q("key"))
         if method == "GET" and path == "/api/music/status":
             with _lock:
                 reqs = [_public(r) for r in _state["requests"] if r.get("user") == user_id]
@@ -824,7 +827,10 @@ def _family_route(method, path, query, user_id, user_name, read_json):
                          "drop_folder": "", "music_folder": "", "drop_lines": [], "drop_last": None, "tidy": None}
         if method == "POST" and path == "/api/music/request":
             body = read_json()
-            return 200, ask(str(body.get("kind") or ""), body.get("id"), who=user_name or "Someone", user=user_id)
+            answer = ask(str(body.get("kind") or ""), body.get("id"), who=user_name or "Someone", user=user_id)
+            if body.get("theme") and answer.get("kind") == "song":
+                _theme_pin(str(body["theme"]), answer)
+            return 200, answer
         m = re.fullmatch(r"/api/music/request/([\w-]+)/remove", path)
         if method == "POST" and m:
             with _lock:
@@ -3279,7 +3285,8 @@ def mixes_for(token, user_id):
 # Ben 2026-11-16 ("like Spotify does"). Tower makes them each morning from the person's own music, the same way as
 # Made for you. A song joins a theme when its name or album has the theme's words (Christmas, ghost, summer...),
 # its genre fits, it is on the music catalogue's own playlists for that theme, or Ben asked for it from that theme's
-# "Songs to add" row. Everyone sees a theme once it has 15 songs; Ben sees it sooner, with Songs to add under it.
+# "Songs to add" row. Everyone sees a theme once it has 15 songs (Ben sooner). Every profile but Kids gets Songs to add;
+# asks from other profiles wait for Ben's Approve, like the rest of music requests (Ben 2026-11-16).
 
 THEME_MIN = 15
 THEME_MIN_ADMIN = 3
@@ -3594,7 +3601,7 @@ def themes_for(token, user_id, is_admin):
         mine += from_catalogue(t["key"]) + pinned(t["key"])
         note = f"Shows for everyone from {start.strftime('%b')} {start.day}" if early else ""
         # A holiday Ben is filling shows on his profile even before it has songs
-        m = _theme_out(t["key"], "season", t["name"], t["line"], mine, rnd, 0 if is_admin else need, limit=100, adds=is_admin, note=note)
+        m = _theme_out(t["key"], "season", t["name"], t["line"], mine, rnd, 0 if is_admin else need, limit=100, adds=True, note=note)
         if m:
             out.append(m)
 
@@ -3608,7 +3615,7 @@ def themes_for(token, user_id, is_admin):
         key = f"decade-{d}"
         short = f"{str(d)[2:]}s" if d < 2000 else f"{d}s"
         mine = decades[d] + pinned(key)
-        m = _theme_out(key, "decade", f"{short} mix", f"Songs from the {d}s", mine, rnd, need, adds=is_admin)
+        m = _theme_out(key, "decade", f"{short} mix", f"Songs from the {d}s", mine, rnd, need, adds=True)
         if m:
             out.append(m)
 
@@ -3626,7 +3633,7 @@ def themes_for(token, user_id, is_admin):
             break
         key = "genre-" + re.sub(r"[^a-z0-9]+", "_", g).strip("_")
         mine = [s for s in songs if g in [x.strip().lower() for x in s.get("Genres") or []]] + pinned(key)
-        m = _theme_out(key, "genre", f"{names[g]} mix", f"{names[g]} from your music", mine, rnd, need, adds=is_admin)
+        m = _theme_out(key, "genre", f"{names[g]} mix", f"{names[g]} from your music", mine, rnd, need, adds=True)
         if m:
             out.append(m)
 
@@ -3636,7 +3643,7 @@ def themes_for(token, user_id, is_admin):
             continue
         mine = [s for s in songs if any(g in s["_genres"] for g in t["genres"]) or (t["_re"] and t["_re"].search(norm(s.get("Name"))))]
         mine += from_catalogue(t["key"]) + pinned(t["key"])
-        m = _theme_out(t["key"], "mood", t["name"], t["line"], mine, rnd, need, adds=is_admin)
+        m = _theme_out(t["key"], "mood", t["name"], t["line"], mine, rnd, need, adds=True)
         if m:
             out.append(m)
 
@@ -3663,7 +3670,7 @@ def themes_for(token, user_id, is_admin):
 
 
 def theme_adds(token, user_id, key):
-    """Ben's Songs to add for one theme: catalogue songs that fit it and aren't in the music yet"""
+    """Songs to add for one theme: catalogue songs that fit it and aren't in the music yet"""
     if not _theme_query(key):
         raise MusicError(404, "That theme isn't there any more.")
     dz = _theme_dz(key)

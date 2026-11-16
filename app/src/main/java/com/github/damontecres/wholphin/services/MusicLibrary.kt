@@ -44,7 +44,7 @@ data class MusicMix(
     val coverAlbumIds: List<UUID>,
     /** Themed playlists only: season, decade, genre, mood or throwback (which row it sits in) */
     val group: String = "",
-    /** Ben's profile: the page ends with Songs to add (catalogue songs for this theme he can ask for) */
+    /** The page ends with Songs to add (catalogue songs for this theme; every profile but Kids, Ben okays others) */
     val adds: Boolean = false,
 )
 

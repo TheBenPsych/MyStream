@@ -284,7 +284,7 @@ fun MusicCollectionPage(
                         }
                     }
                 }
-                // Ben's profile: songs that fit this themed playlist and aren't in Music yet. Asking for one
+                // Every profile but Kids (Ben okays the others' asks): songs that fit this themed playlist and aren't in Music yet. Asking for one
                 // downloads it, and it joins this playlist by itself (Tower remembers which theme it was for)
                 if (state.addsLoading || state.adds.isNotEmpty()) {
                     item(key = "adds-head") {
@@ -303,7 +303,8 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else {
-                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in."
+                                        "Songs that fit ${state.title}. Ask for one and it joins this playlist once it's in." +
+                                            if (state.askNeedsOk) " Ben okays asks first." else ""
                                     },
                                 color = BenflixColors.Soft,
                                 fontSize = BenflixType.small,
