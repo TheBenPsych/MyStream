@@ -581,8 +581,19 @@ B.musicTab = async (nav) => {
       + B.row("Albums", r.albums.map(albumCard)) + B.row("Artists", r.artists.map(artistCard))
       + (none ? `<div class="wrap empty">Nothing found. Try fewer words, or the artist's name.</div>` : "");
   };
+  // Ben 2026-11-16: asking for a song from a Genres, album or artist panel used to close it, so he had to open it
+  // again for every song. Now the panel he came from opens again, scrolled back to the same spot.
+  let page = null;
+  const closed = () => { page = null; };
+  const fromPage = (el) => { const sd = el.closest(".side"); return sd && page ? { ...page, scroll: sd.scrollTop } : null; };
+  const reopen = async (bk) => {
+    if (!bk || !B.alive(nav)) return;
+    const p = bk.kind === "genre" ? await openGenre(bk.id) : await openPage(bk.kind, bk.id);
+    if (p && p.isConnected) p.scrollTop = bk.scroll || 0;
+  };
   const openPage = async (kind, id) => {
-    const p = B.side(B.spinner());
+    const p = B.side(B.spinner(), closed);
+    page = { kind, id };
     try {
       if (kind === "album") {
         const d = await music("GET", "/album?id=" + id);
@@ -600,9 +611,11 @@ B.musicTab = async (nav) => {
     } catch (e) {
       p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
     }
+    return p;
   };
   const openGenre = async (id) => {
-    const p = B.side(B.spinner());
+    const p = B.side(B.spinner(), closed);
+    page = { kind: "genre", id };
     try {
       const d = await music("GET", "/genre?id=" + id);
       p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>${esc(d.genre.name)}</h3>
@@ -612,10 +625,13 @@ B.musicTab = async (nav) => {
     } catch (e) {
       p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
     }
+    return p;
   };
-  const ask = async (kind, id, name) => {
+  const ask = async (kind, id, name, bk) => {
     await music("POST", "/request", { kind, id: +id });
     B.closeAll();
+    page = null;
+    reopen(bk);
     const q = $("#rq").value;
     if (q.trim().length >= 2) search(q);
     loadStatus();
@@ -636,16 +652,18 @@ B.musicTab = async (nav) => {
     if (!b) return;
     const d = b.dataset;
     if (d.msong) {
-      // The one Ask for it panel: hear 30 seconds, then ask for the song or the whole album
+      // The one Ask for it panel: hear 30 seconds, then ask for the song or the whole album.
+      // Closing it, or asking, goes back to the Genres/album/artist panel it was opened from.
+      const bk = fromPage(b);
       const s = B.side(`<h3>${esc(d.mname)}</h3><p class="dim">${esc(d.maname)}</p><h4 style="margin:14px 0 8px">Ask for ${esc(d.mname)}</h4>
         ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
         <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(d.msong)}<span class="dim">Hear 30 seconds</span></div>
-        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`);
+        <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button><button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>`, () => reopen(bk));
       s.addEventListener("click", (ev) => {
         const one = ev.target.closest("[data-pick]");
-        if (one) B.busy(one, () => (one.dataset.pick === "song" ? ask("song", d.msong, d.mname) : ask("album", d.malbum, d.maname)));
+        if (one) B.busy(one, () => (one.dataset.pick === "song" ? ask("song", d.msong, d.mname, bk) : ask("album", d.malbum, d.maname, bk)));
       });
-    } else if (d.malbumonly) B.busy(b, () => ask("album", d.malbumonly, d.maname));
+    } else if (d.malbumonly) { const bk = fromPage(b); B.busy(b, () => ask("album", d.malbumonly, d.maname, bk)); }
     else if (d.mopen) { const [k, id] = d.mopen.split(":"); openPage(k, id); }
     else if (d.mgenre) openGenre(d.mgenre);
     else if (d.mretry) B.busy(b, async () => { await music("POST", `/request/${d.mretry}/retry`); loadStatus(); return "Looking again."; });
