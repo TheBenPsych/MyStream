@@ -1383,3 +1383,25 @@ html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 6
   .rowx h3 .more, .tp .tp-more { position: relative; }
   .rowx h3 .more::after, .tp .tp-more::after { content: ""; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
 }
+/* One clear "you are here" look (2026-11-16, Ben: the highlight was barely visible). Every button, pill, chip
+   and list card gets a solid ring on mouse hover and keyboard focus, so you always see where you are. */
+.btn:hover, .pill:hover, .chip:hover, .circle:hover, .opt:hover, .dropdown button:hover, .setrow button.valbtn:hover,
+.sideguide button:hover, .mbrowse a:hover, .mgenre:hover, .mbar-open:hover, .np-up:hover, .srv-watch:hover, .srv-tile:hover,
+.lb-card:hover, .lb-btn:hover, .menu-card .list a:hover, .menu-card .list button:hover, .anep-open:hover, .fix-pic:hover,
+.btn:focus-visible, .pill:focus-visible, .chip:focus-visible, .circle:focus-visible, .opt:focus-visible, .anep-open:focus-visible {
+  box-shadow: 0 0 0 2.5px var(--ink); outline: none;
+}
+.chip:hover, .chip:focus-visible { color: var(--ink); border-color: var(--ink); }
+/* A picked chip or a white button is already white, so the ring sits a little outside it with a dark gap */
+.chip.on:hover, .chip.on:focus-visible, .btn.white:hover, .btn.red:hover, .btn.white:focus-visible, .btn.red:focus-visible,
+.circle.white:hover, .circle.white:focus-visible {
+  box-shadow: 0 0 0 3px var(--tray), 0 0 0 5.5px var(--ink); outline: none;
+}
+.anep-open { border-radius: 8px; }
+html.kids .btn:hover, html.kids .pill:hover, html.kids .chip:hover, html.kids .circle:hover, html.kids .opt:hover,
+html.kids .btn:focus-visible, html.kids .pill:focus-visible, html.kids .chip:focus-visible, html.kids .anep-open:hover {
+  box-shadow: 0 0 0 3px var(--kacc);
+}
+html.kids .chip.on:hover, html.kids .chip.on:focus-visible, html.kids .btn.white:hover, html.kids .btn.white:focus-visible {
+  box-shadow: 0 0 0 3px var(--tray), 0 0 0 6px var(--kacc);
+}

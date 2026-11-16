@@ -129,6 +129,7 @@ fun MusicMiniBar(
     }
     val shape = RoundedCornerShape(12.dp)
     Surface(
+        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(shape),
         onClick = viewModel::open,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =

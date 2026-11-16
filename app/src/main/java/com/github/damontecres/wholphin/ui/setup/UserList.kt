@@ -247,6 +247,7 @@ private fun WhoLink(
     onClick: () -> Unit,
 ) {
     Surface(
+        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(50)),
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
         colors =

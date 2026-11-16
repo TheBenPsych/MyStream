@@ -559,6 +559,7 @@ private fun CharacterCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
+        border = com.github.damontecres.wholphin.ui.theme.benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
         onClick = onClick,
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),
@@ -628,6 +629,7 @@ private fun MovieOrderCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
+        border = com.github.damontecres.wholphin.ui.theme.benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
         onClick = onClick,
         onLongClick = onLongClick,
         colors = CardDefaults.colors(containerColor = Color.White.copy(alpha = .06f)),

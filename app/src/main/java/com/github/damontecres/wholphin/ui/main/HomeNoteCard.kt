@@ -234,6 +234,7 @@ private fun ServerHeadsUp(
     onClick: () -> Unit,
 ) {
     androidx.tv.material3.Surface(
+        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(10.dp)),
         onClick = onClick,
         shape =
             androidx.tv.material3.ClickableSurfaceDefaults

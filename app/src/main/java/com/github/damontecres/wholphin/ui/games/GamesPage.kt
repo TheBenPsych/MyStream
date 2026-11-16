@@ -782,6 +782,7 @@ private fun KeepPlayingCard(
     val shape = RoundedCornerShape(16.dp)
     val context = LocalContext.current
     Surface(
+        border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(shape),
         onClick = onOpen,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
@@ -841,6 +842,7 @@ private fun KeepPlayingCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Surface(
+                    border = com.github.damontecres.wholphin.ui.theme.benflixFocusBorder(RoundedCornerShape(50)),
                     onClick = onPlay,
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
                     colors =

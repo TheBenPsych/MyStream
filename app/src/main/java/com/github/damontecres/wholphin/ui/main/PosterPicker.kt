@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -361,7 +362,7 @@ fun PosterPickerPage(
                         focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
                     ),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-                modifier = Modifier.focusRequester(useFocus),
+                modifier = Modifier.benflixOuterFocusRing(BenflixShapes.Pill).focusRequester(useFocus),
             ) {
                 Text(
                     text = if (state.saving) "Saving…" else "Use this ${state.pictureWord}",
