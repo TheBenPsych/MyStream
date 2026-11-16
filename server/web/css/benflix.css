@@ -1045,6 +1045,12 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .rqline.bq-line .grow { min-width: 0; }
 .rqsplit .grid.sq { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .rqsplit .grid.sq .pvcard { position: relative; }
+/* Ben 2026-11-16: song cards in the Requests wall were sized by their name (a button inside the wrapper shrinks to its
+   text), so long names made huge covers that spilled over the next card and the play button floated beside them.
+   Every song card now fills its grid column, and the play button sits on the cover's bottom-right corner. */
+.grid .pvcard { min-width: 0; container-type: inline-size; }
+.grid .pvcard > .poster { width: 100%; display: block; }
+.grid .pvcard .circle.pv.on-card { top: calc(100cqw - 46px); }
 .rqthumb { width: 48px; height: 72px; flex: none; border-radius: 6px; background: var(--pg3) center/cover no-repeat; }
 .rqthumb.sq { height: 48px; }
 @media (max-width: 900px) {
