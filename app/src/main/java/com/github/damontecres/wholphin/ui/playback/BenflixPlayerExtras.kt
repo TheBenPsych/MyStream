@@ -243,6 +243,9 @@ fun ShowDoneCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp)) {
                     done.similar.forEachIndexed { index, item ->
                         Surface(
+                            border =
+                                com.github.damontecres.wholphin.ui.theme
+                                    .benflixFocusBorder(RoundedCornerShape(10.dp)),
                             onClick = { onOpen(item) },
                             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
