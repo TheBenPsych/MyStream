@@ -165,7 +165,7 @@ class DoorDataService
             )
 
         /**
-         * Christmas favourites (Christmas look, 1 to 30 Dec): the hand-picked Christmas films, titles with a
+         * Christmas favourites (Christmas look, 1 to 26 Dec): the hand-picked Christmas films, titles with a
          * Christmas word in the name and titles tagged Christmas, of this kind.
          */
         suspend fun christmas(

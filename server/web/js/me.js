@@ -211,7 +211,7 @@ B.kidsLook = () => {
   const root = document.documentElement;
   root.classList.toggle("kids", kids);
   root.classList.toggle("night", kids && (h >= 20 || h < 6));
-  // Christmas look (1 to 30 December, unless switched off): red, pine green and the hanging ornaments
+  // Christmas look (1 to 26 December, unless switched off): red, pine green and the hanging ornaments
   root.classList.toggle("xmas", !!(B.me && !kids && B.xmasOn && B.xmasOn()));
 };
 setInterval(() => B.kidsLook(), 60000);

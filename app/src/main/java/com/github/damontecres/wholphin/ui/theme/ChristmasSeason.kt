@@ -19,7 +19,7 @@ import java.time.LocalDate
 import java.time.Month
 
 /**
- * Benflix Christmas look: on from 1 December to 30 December on TV, phone and web, unless it's switched off
+ * Benflix Christmas look: on from 1 December to 26 December on TV, phone and web, unless it's switched off
  * in Settings > Look. The same dates as the web's xmas.js, so every screen matches. It ends on the 26th so it never overlaps the New Year's look (27 Dec to 1 Jan).
  */
 object ChristmasSeason {

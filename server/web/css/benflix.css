@@ -150,7 +150,7 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .who { position: relative; isolation: isolate; }
 .who .wall { position: absolute; inset: 0; z-index: -1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 1fr); overflow: hidden; opacity: 0; transition: opacity .6s; }
 .who .wall.on { opacity: 1; }
-/* Christmas: the cosy room behind Who's watching (1 to 30 Dec) */
+/* Christmas: the cosy room behind Who's watching (1 to 26 Dec) */
 .who .xroom { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; background: #0D0A0A; }
 .who h1.xmas { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; font-size: 54px; margin: 0 0 6px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
 .who .xcount { margin: 0 0 30px; font-size: 20px; font-weight: 600; color: #F2D27E; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
@@ -1578,7 +1578,7 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
 .srow.dragging { opacity: .45; }
 .srow.dropto { box-shadow: inset 0 -2px 0 var(--music); }
 
-/* ---------- Christmas look (approved 2026-11-16, 1 to 30 December, not on Kids) ----------
+/* ---------- Christmas look (approved 2026-11-16, 1 to 26 December, not on Kids) ----------
    Red highlights, pine green buttons and panels, white words on every door, and one decoration used one way:
    a glass ornament hanging from a gold pin on a top edge (the doors, Play, notices and the poster you're on).
    Settings › Look › Christmas look turns it off (js/start.js B.xmasOn). */
