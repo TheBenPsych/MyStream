@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.Clock
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -187,6 +188,7 @@ fun NextUpEpisode(
                     modifier =
                         Modifier
                             .weight(1f, fill = false)
+                            .benflixOuterFocusRing(RoundedCornerShape(6.dp))
                             .height(44.dp)
                             .focusRequester(focusRequester),
                     scale = ButtonDefaults.scale(focusedScale = 1f),

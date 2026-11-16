@@ -12,6 +12,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -45,12 +46,14 @@ fun benflixCardFocusBorder(shape: Shape) = CardDefaults.border(focusedBorder = r
 fun benflixButtonFocusBorder(shape: Shape) = ButtonDefaults.border(focusedBorder = ring(shape))
 
 /**
- * A ring drawn a little outside, with a dark gap, for things that are already white before the remote is on
- * them (picked chips, white buttons). Without it a white thing turning white on focus shows no change at all.
+ * A ring drawn a little outside, with a dark band between, for things that are already white before the remote
+ * is on them (picked chips, white buttons) or pictures shown over a bright background (the "all caught up"
+ * screen over a paused show). The dark band keeps the white ring readable whatever is behind it.
  */
 fun Modifier.benflixOuterFocusRing(
     shape: Shape,
     gap: Dp = 3.dp,
+    width: Dp = FocusRingWidth,
 ): Modifier =
     composed {
         var focused by remember { mutableStateOf(false) }
@@ -60,14 +63,26 @@ fun Modifier.benflixOuterFocusRing(
             .drawWithContent {
                 drawContent()
                 if (focused) {
-                    val w = FocusRingWidth.toPx()
-                    val out = gap.toPx() + w / 2f
-                    val outline =
-                        shape.createOutline(Size(size.width + out * 2, size.height + out * 2), layoutDirection, this)
-                    translate(-out, -out) { drawOutline(outline, color, style = Stroke(width = w)) }
+                    val g = gap.toPx()
+                    val w = width.toPx()
+
+                    fun ring(
+                        out: Float,
+                        stroke: Float,
+                        c: Color,
+                    ) {
+                        val outline =
+                            shape.createOutline(Size(size.width + out * 2, size.height + out * 2), layoutDirection, this)
+                        translate(-out, -out) { drawOutline(outline, c, style = Stroke(width = stroke)) }
+                    }
+                    ring(g / 2f, g + 1f, FocusHalo)
+                    ring(g + w / 2f, w, color)
                 }
             }
     }
+
+/** The dark band between a thing and its outer focus ring */
+private val FocusHalo = Color(0xE6000000)
 
 /** The shape of a tv Card's corners, for [benflixCardFocusBorder] */
 val CardRing = RoundedCornerShape(8.dp)

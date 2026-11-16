@@ -272,18 +272,11 @@ private fun EpisodePanelCard(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .08f),
-                focusedContainerColor = Color.White.copy(alpha = .22f),
+                focusedContainerColor = Color.White.copy(alpha = .3f),
             ),
         border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder =
-                    androidx.tv.material3.Border(
-                        border =
-                            androidx.compose.foundation
-                                .BorderStroke(2.dp, Color.White),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-            ),
+            com.github.damontecres.wholphin.ui.theme
+                .benflixFocusBorder(RoundedCornerShape(10.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
