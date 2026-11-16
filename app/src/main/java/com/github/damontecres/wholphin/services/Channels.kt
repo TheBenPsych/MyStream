@@ -265,6 +265,7 @@ object ChannelSession {
         currentNumber = null
         currentItemId = null
         ownWatching = false
+        _banner.value = null
     }
 
     val lastNumber: Int? get() = currentNumber
