@@ -1206,6 +1206,28 @@ class Handler(BaseHTTPRequestHandler):
                         "setup": SETUP_VERSION,
                     },
                 )
+            if livetv is not None and method in ("GET", "HEAD") and path.startswith("/livetv/play/"):
+                # One live channel: the first of its copies that plays right now (works away from home too,
+                # since it only hands out the free services' own public streams)
+                key = path[len("/livetv/play/"):].split(".")[0]
+                try:
+                    skip = max(0, min(5, int((query.get("skip") or ["0"])[0])))
+                except ValueError:
+                    skip = 0
+                found = livetv.play(key, skip)
+                if not found:
+                    raise HelperError(503, "This channel isn't working right now. Try another one.")
+                if found[0] == "go":
+                    self.send_response(302)
+                    self.send_header("Location", found[1])
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                return self.send(200, found[1], "application/vnd.apple.mpegurl")
+            if livetv is not None and method == "GET" and path == "/livetv/channels.m3u" and not via_internet:
+                if not os.path.isfile(livetv.M3U_FILE):
+                    raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
+                return self.send(200, livetv.m3u(self.headers.get("Host")), "audio/x-mpegurl")
             if livetv is not None and method == "GET" and path.startswith("/livetv/"):
                 # Jellyfin reads the channel list and guide from here (at home only, no sign-in needed)
                 if via_internet:

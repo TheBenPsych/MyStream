@@ -233,7 +233,11 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
       else msg("This channel isn't working right now. Try another one.");
     };
     // The channel's own stream first (quick, like the TV app), then through Jellyfin if the browser can't reach it
-    if (src.Path && /^https?:\/\/.*\.m3u8/i.test(src.Path) && location.protocol === "http:") tryUrl(src.Path, viaJellyfin);
+    // Tower's own channel address (it picks a copy of the channel that plays right now): asked from this page's
+    // own address, so it works at home and away. If that copy won't play, the next one, then through Jellyfin
+    const tower = (src.Path || "").match(/\/livetv\/play\/[a-z0-9]+\.m3u8/);
+    if (tower) tryUrl(tower[0].slice(1), () => tryUrl(tower[0].slice(1) + "?skip=1", viaJellyfin));
+    else if (src.Path && /^https?:\/\/.*\.m3u8/i.test(src.Path) && location.protocol === "http:") tryUrl(src.Path, viaJellyfin);
     else viaJellyfin();
   } catch (e) { msg(e.message); }
   v.addEventListener("playing", () => msg(""));

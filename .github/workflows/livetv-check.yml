@@ -18,20 +18,10 @@ jobs:
             echo "== $u"; curl -sS -D - -o body.txt -A "ExoPlayerLib/2.19.1" --max-time 15 "$u" | head -15; head -c 400 body.txt; echo
             curl -sSL -o body2.txt -w "final %{http_code} %{url_effective}\n" -A "ExoPlayerLib/2.19.1" --max-time 15 "$u"; head -c 600 body2.txt; echo
           done
-      - name: Try every channel
-        run: python3 server/tools/livetv_deep_check.py report.json
+      - name: Build the list and play every channel through Tower's address
+        run: python3 server/tools/livetv_pipeline_check.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: livetv-report
-          path: report.json
-      - name: A Pluto channel's video list
-        if: always()
-        run: |
-          m=$(curl -sSL -A "ExoPlayerLib/2.19.1" https://jmp2.uk/plu-5ca525b650be2571e3943c63.m3u8 -w '\n%{url_effective}')
-          echo "$m" | head -30
-          base=$(echo "$m" | tail -1); v=$(echo "$m" | grep -v '^#' | grep -m1 m3u8)
-          python3 -c "import sys,urllib.parse;print(urllib.parse.urljoin(sys.argv[1],sys.argv[2]))" "$base" "$v" > v.txt
-          curl -sS -A "ExoPlayerLib/2.19.1" "$(cat v.txt)" | head -40
-          echo "== with a Jellyfin sign-in header"
-          curl -sS -o /dev/null -w "%{http_code}\n" -H 'Authorization: MediaBrowser Client="Benflix", Device="TV", DeviceId="x", Version="1", Token="abc"' -A "Dalvik/2.1.0" "$(cat v.txt)"
+          path: /tmp/benflix-livetv/status.json

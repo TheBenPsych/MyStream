@@ -127,7 +127,15 @@ class PlayerFactory
                                 MediaExtensionStatus.MES_DISABLED -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
                                 else -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
                             }
-                        val dataSourceFactory = DefaultDataSource.Factory(context)
+                        // Benflix Live TV: Tower's channel address (http at home) can send the player on to the
+                        // free service's https stream, which the player refuses unless told it's fine
+                        val dataSourceFactory =
+                            DefaultDataSource.Factory(
+                                context,
+                                androidx.media3.datasource.DefaultHttpDataSource
+                                    .Factory()
+                                    .setAllowCrossProtocolRedirects(true),
+                            )
                         val extractorsFactory = createExtractorsFactory()
 
                         // Applied outermost so that a profile 7 track is advertised as 8.1 whichever

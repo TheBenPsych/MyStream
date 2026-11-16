@@ -29,6 +29,7 @@ import os
 import re
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -40,6 +41,10 @@ DIR = "/livetv" if os.path.isdir("/livetv") else "/tmp/benflix-livetv"
 M3U_FILE = os.path.join(DIR, "channels.m3u")
 GUIDE_FILE = os.path.join(DIR, "guide.xml")
 STATUS_FILE = os.path.join(DIR, "status.json")
+# Every working copy of each channel, best first: /livetv/play/<channel> plays the first one that answers
+COPIES_FILE = os.path.join(DIR, "copies.json")
+# channels.m3u is saved with this in place of Tower's address and filled in from the address Jellyfin asked on
+HOST_MARK = "__BENFLIX_HOST__"
 # Benflix "This channel is broken": copies people reported from the app, kept out for a month
 BROKEN_FILE = os.path.join(DIR, "broken.json")
 BROKEN_DAYS = 30
@@ -89,6 +94,12 @@ NOT_WANTED_GROUPS = re.compile(r"shop|religio", re.I)
 
 _lock = threading.Lock()
 _state = {"running": False}
+_copies = {}  # channel -> addresses of its working copies, best first (from COPIES_FILE)
+_good = {}  # channel -> (address, when): the copy that played last, tried first for a few minutes
+_bad = {}  # address -> when it last failed to answer: skipped for a while
+GOOD_FOR = 180
+BAD_FOR = 600
+_admin = {"token": None}  # a Jellyfin admin's sign-in, only in memory, to ask Jellyfin to re-read the list
 
 
 def _get(url, limit=None, timeout=30):
@@ -145,7 +156,7 @@ def wanted(ch):
 
 
 def alive(url):
-    """True when the channel answers with a playable stream."""
+    """True when the channel answers with a playable stream, None when the service said "too many at once"."""
     try:
         status, final, data = _get(url, limit=256 * 1024, timeout=12)
         if status != 200 or not data:
@@ -165,8 +176,22 @@ def alive(url):
                     status, _, sub = _get(urllib.parse.urljoin(final, nxt), limit=256 * 1024, timeout=12)
                     return status == 200 and (b"#EXTINF" in sub or b"#EXT-X-TARGETDURATION" in sub)
         return "#EXTINF" in text or "#EXT-X-TARGETDURATION" in text
+    except urllib.error.HTTPError as e:
+        return None if e.code == 429 else False
     except Exception:
         return False
+
+
+def _check_all(urls):
+    """alive() for every address. Services that answer "too many at once" (Plex, Tubi) are asked again
+    slowly afterwards, so their channels aren't dropped just because the check was quick."""
+    with ThreadPoolExecutor(max_workers=24) as pool:
+        results = list(pool.map(alive, urls))
+    for i, ok in enumerate(results):
+        if ok is None:
+            time.sleep(0.5)
+            results[i] = bool(alive(urls[i]))
+    return results
 
 
 def _key(name):
@@ -205,8 +230,7 @@ def build():
     report["reported_broken"] = len(broken)
     candidates = [c for c in candidates if c["url"] not in broken]
 
-    with ThreadPoolExecutor(max_workers=24) as pool:
-        results = list(pool.map(lambda c: alive(c["url"]), candidates))
+    results = _check_all([c["url"] for c in candidates])
     working = [c for c, ok in zip(candidates, results) if ok]
     report["checked"] = len(candidates)
     report["dead"] = len(candidates) - len(working)
@@ -218,10 +242,11 @@ def build():
         enumerate(working),
         key=lambda ic: (0 if ic[1]["id"] in with_guide.get(ic[1]["source"], ()) else 1, 1 if ic[1]["source"] == "iptv" else 0, ic[0]),
     )
-    # One copy of each channel: the best working one
-    best = {}
+    # One copy of each channel: the best working one. The others are kept as spares for /livetv/play
+    best, spares = {}, {}
     for _, c in ranked:
         best.setdefault(_key(c["name"]), c)
+        spares.setdefault(_key(c["name"]), []).append(c["url"])
 
     # Number them in blocks by type, in the line-up's order
     bases = dict(CATEGORIES)
@@ -238,9 +263,23 @@ def build():
     report["kept"] = len(final)
     report["types"] = {name: len(per_cat.get(name, [])) for name, _ in CATEGORIES}
 
+    # Each channel's address in the list is Tower's own /livetv/play/<channel>, never the free service's
+    # address. Jellyfin names its channels after their address, so when tonight's check swaps a dead copy
+    # for another one, Jellyfin's channel stays the same and keeps playing (before, it pointed at a copy
+    # that was gone until Jellyfin's next guide refresh, so the channel wouldn't play).
     for c in final:
-        c["tvg"] = f"{c['source']}.{c['id']}" if c["id"] else f"{c['source']}.n{c['number']}"
+        c["key"] = _key(c["name"])
+        c["tvg"] = "benflix." + c["key"]
     os.makedirs(DIR, exist_ok=True)
+    copies = {c["key"]: spares.get(c["key"], [c["url"]]) for c in final}
+    tmp = COPIES_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(copies, f)
+    os.replace(tmp, COPIES_FILE)
+    with _lock:
+        _copies.clear()
+        _copies.update(copies)
+        _good.clear()
     tmp = M3U_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
@@ -248,11 +287,12 @@ def build():
             name = tidy_name(c["name"]).replace(",", " ")
             f.write(
                 f'#EXTINF:-1 tvg-id="{c["tvg"]}" tvg-chno="{c["number"]}" tvg-name="{name}" '
-                f'tvg-logo="{c["logo"]}" group-title="{c["category"]}",{name}\n{c["url"]}\n'
+                f'tvg-logo="{c["logo"]}" group-title="{c["category"]}",{name}\n{HOST_MARK}/livetv/play/{c["key"]}.m3u8\n'
             )
     os.replace(tmp, M3U_FILE)
 
     report["guide"] = write_guide(final, guide_data)
+    report["channels_key"] = hashlib.sha1(" ".join(sorted(copies)).encode()).hexdigest()[:12]
     report["finished"] = int(time.time())
     report["minutes"] = round((time.time() - started) / 60, 1)
     with open(STATUS_FILE, "w") as f:
@@ -343,6 +383,15 @@ def report_broken(body, user_id):
                     break
         except OSError:
             pass
+    m = re.search(r"/livetv/play/([a-z0-9]+)", url)
+    if m:
+        # Tower's own address for the channel: the copy that was playing is the broken one
+        bad = playing_copy(m.group(1))
+        url = bad
+        with _lock:
+            _good.pop(m.group(1), None)
+            if bad:
+                _bad[bad] = time.time()
     if not url.startswith("http"):
         return {"ok": False, "message": "Couldn't tell which channel that was."}
     with _lock:
@@ -353,7 +402,159 @@ def report_broken(body, user_id):
         with open(tmp, "w") as f:
             json.dump(data, f, indent=1)
         os.replace(tmp, BROKEN_FILE)
-    return {"ok": True, "message": "Thanks! Tonight's channel check swaps it for a working one."}
+    return {"ok": True, "message": "Thanks! Benflix uses another copy of this channel from now on."}
+
+
+def _copies_for(key):
+    with _lock:
+        if not _copies:
+            try:
+                with open(COPIES_FILE) as f:
+                    _copies.update(json.load(f))
+            except (OSError, ValueError):
+                pass
+        return list(_copies.get(key, []))
+
+
+def _absolute(text, base):
+    """A playlist with every address in it made complete, so the player fetches the pieces straight from
+    the free service (only the first list goes through Tower)."""
+    out = []
+    for line in text.splitlines():
+        s = line.strip()
+        if s and not s.startswith("#"):
+            out.append(urllib.parse.urljoin(base, s))
+        elif s.startswith("#") and 'URI="' in s:
+            out.append(re.sub(r'URI="([^"]+)"', lambda m: f'URI="{urllib.parse.urljoin(base, m.group(1))}"', s))
+        else:
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+def _answer(url):
+    """("list", playlist bytes) or ("go", address) when this copy plays right now, else None."""
+    try:
+        status, final, data = _get(url, limit=1024 * 1024, timeout=8)
+        if status != 200 or not data:
+            return None
+        if data[:7] != b"#EXTM3U":
+            return ("go", final) if data[:1] == b"\x47" else None  # a plain video stream
+        text = data.decode("utf-8", "replace")
+        if "#EXT-X-STREAM-INF" in text:
+            # A list of picture sizes: the first one must answer too
+            lines = text.splitlines()
+            i = next(i for i, x in enumerate(lines) if x.startswith("#EXT-X-STREAM-INF"))
+            nxt = next((x.strip() for x in lines[i + 1:] if x.strip() and not x.startswith("#")), "")
+            if not nxt:
+                return None
+            st, _, sub = _get(urllib.parse.urljoin(final, nxt), limit=256 * 1024, timeout=8)
+            if st != 200 or not (b"#EXTINF" in sub or b"#EXT-X-TARGETDURATION" in sub):
+                return None
+        elif "#EXTINF" not in text and "#EXT-X-TARGETDURATION" not in text:
+            return None
+        return ("list", _absolute(text, final).encode())
+    except Exception:
+        return None
+
+
+def play(key, skip=0):
+    """/livetv/play/<channel>.m3u8: the first copy of the channel that plays right now. A copy that
+    doesn't answer is skipped for 10 minutes and the next one is tried, so a channel keeps playing
+    when one free service has a bad night. skip=N passes over N working copies (the TV asks for the
+    next one when the first one won't play)."""
+    key = re.sub(r"[^a-z0-9]", "", key.lower())
+    urls = _copies_for(key)
+    if not urls:
+        return None
+    now = time.time()
+    with _lock:
+        good = _good.get(key)
+        broken = load_broken()
+        bad = {u for u, t in _bad.items() if now - t < BAD_FOR}
+    # Copies that answered lately first, then ones that didn't, then ones someone said were broken
+    order = (
+        [u for u in urls if u not in broken and u not in bad]
+        + [u for u in urls if u in bad and u not in broken]
+        + [u for u in urls if u in broken]
+    )
+    if good and now - good[1] < GOOD_FOR and good[0] in order and not skip:
+        order.remove(good[0])
+        order.insert(0, good[0])
+    for url in order[:8]:
+        found = _answer(url)
+        with _lock:
+            if found is None:
+                _bad[url] = time.time()
+                continue
+            _bad.pop(url, None)
+        if skip > 0:
+            skip -= 1
+            continue
+        with _lock:
+            _good[key] = (url, time.time())
+        return found
+    return None
+
+
+def playing_copy(key):
+    """The free service's address the channel played from last (for "This channel is broken")."""
+    key = re.sub(r"[^a-z0-9]", "", key.lower())
+    with _lock:
+        good = _good.get(key)
+    if good:
+        return good[0]
+    urls = _copies_for(key)
+    return urls[0] if urls else ""
+
+
+def m3u(host):
+    """channels.m3u with Tower's address (as Jellyfin asked for it) filled in"""
+    with open(M3U_FILE, encoding="utf-8") as f:
+        text = f.read()
+    host = re.sub(r"[^A-Za-z0-9.:\[\]-]", "", host or "") or "127.0.0.1:8097"
+    return text.replace(HOST_MARK, "http://" + host).encode()
+
+
+def _jellyfin(path, token, method="GET"):
+    url = os.environ.get("JELLYFIN_URL", "http://127.0.0.1:8096").rstrip("/") + path
+    req = urllib.request.Request(url, method=method, data=b"" if method == "POST" else None,
+                                 headers={"Authorization": f'MediaBrowser Token="{token}"', "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return r.read()
+
+
+def sync_jellyfin(token=None):
+    """When the channel list changed since Jellyfin last read it, ask Jellyfin to read it again now
+    ("Refresh Guide" in Jellyfin), so new and removed channels show up straight away. Uses the sign-in
+    of an admin who used Benflix since the helper started (kept in memory only)."""
+    if token:
+        _admin["token"] = token
+    token = _admin["token"]
+    if not token:
+        return
+    st = status()
+    want = st.get("channels_key")
+    if not want or st.get("jellyfin_synced") == want or st.get("running"):
+        return
+    try:
+        tasks = json.loads(_jellyfin("/ScheduledTasks?isHidden=false", token))
+        task = next((t for t in tasks if t.get("Key") == "RefreshGuide"), None)
+        if not task:
+            return
+        if task.get("State") != "Running":
+            _jellyfin(f"/ScheduledTasks/Running/{task['Id']}", token, "POST")
+        st_file = {}
+        try:
+            with open(STATUS_FILE) as f:
+                st_file = json.load(f)
+        except (OSError, ValueError):
+            pass
+        st_file["jellyfin_synced"] = want
+        with open(STATUS_FILE, "w") as f:
+            json.dump(st_file, f, indent=1)
+        print("Live TV: asked Jellyfin to read the new channel list", flush=True)
+    except Exception as e:
+        print(f"Live TV: couldn't ask Jellyfin to read the channel list ({e})", flush=True)
 
 
 def refresh():
@@ -366,6 +567,8 @@ def refresh():
     def run():
         try:
             build()
+            _state["running"] = False
+            sync_jellyfin()
         except Exception as e:
             print(f"Live TV update failed: {e!r}", flush=True)
         finally:
@@ -399,7 +602,7 @@ def start():
                 age = time.time() - os.path.getmtime(M3U_FILE)
             except OSError:
                 age = EVERY
-            if status().get("lists") != _lists_key():
+            if status().get("lists") != _lists_key() or not os.path.isfile(COPIES_FILE):
                 age = EVERY  # Benflix was updated with different lists: make it again now
             if age >= EVERY - 600:
                 refresh()
