@@ -1420,6 +1420,24 @@ fun BenflixRequestsPage(
         modifier = modifier,
         viewModel = tabViewModel,
     ) { index, _ ->
+        // Ben 2026-11-16: "Request for" someone in the family, at the top of every asking tab
+        val canFor = rememberCanRequestFor(admin) && index < 5
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (canFor) RequestForBar()
+            Box(modifier = Modifier.weight(1f)) {
+                RequestTab(index, viewModel, admin)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RequestTab(
+    index: Int,
+    viewModel: BenflixRequestsViewModel,
+    admin: Boolean,
+) {
+    run {
         when (index) {
             0 -> FindShelf(FindSection.MOVIES, viewModel)
 

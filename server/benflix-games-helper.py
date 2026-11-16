@@ -275,6 +275,104 @@ def check_signed_in(token):
     return user_id, is_admin, is_kids
 
 
+_family = [0.0, []]  # (when, people) for Ben's "Request for" picker
+
+
+def family_people(token):
+    """Everyone on Benflix who can be asked for (Ben's "Request for" picker): grown-up profiles only, never Kids.
+    Needs the admin's sign-in. Kept for 5 minutes."""
+    with _lock:
+        if time.time() - _family[0] < 300 and _family[1]:
+            return _family[1]
+    status, data, _ = jellyfin_call("GET", "/Users", token=token, device_id="benflix-helper")
+    if status != 200:
+        raise HelperError(502, "Jellyfin didn't hand over the list of profiles.")
+    people = []
+    for u in json.loads(data or b"[]"):
+        policy = u.get("Policy") or {}
+        name = str(u.get("Name") or "")
+        if policy.get("IsDisabled") or policy.get("MaxParentalRating") is not None or name.lower() == "kids":
+            continue
+        uid = re.sub(r"[^0-9a-fA-F-]", "", str(u.get("Id", "")))
+        if uid and name:
+            people.append({"id": uid, "name": name, "admin": bool(policy.get("IsAdministrator"))})
+    people.sort(key=lambda p: (not p["admin"], p["name"].lower()))
+    try:
+        _add_seerr_ids(token, people)
+    except Exception as e:  # Seerr can be down: music and books still work, movies and shows say so
+        print(f"Request for: couldn't match Seerr accounts ({e!r})", flush=True)
+    with _lock:
+        _family[0], _family[1] = time.time(), people
+    return people
+
+
+def _seerr_link(token):
+    """Seerr's address and key, read from the Jellyfin Enhanced plugin's settings (admin sign-in), or None"""
+    status, data, _ = jellyfin_call("GET", "/Plugins", token=token, device_id="benflix-helper")
+    if status != 200:
+        return None
+    plugin = next((x for x in json.loads(data or b"[]") if "enhanced" in str(x.get("Name", "")).lower()), None)
+    if not plugin:
+        return None
+    status, data, _ = jellyfin_call("GET", f"/Plugins/{plugin.get('Id')}/Configuration", token=token, device_id="benflix-helper")
+    if status != 200:
+        return None
+    conf = json.loads(data or b"{}")
+    key = str(conf.get("JellyseerrApiKey") or "").strip()
+    urls = [u.strip().rstrip("/") for u in re.split(r"[\s,;]+", str(conf.get("JellyseerrUrls") or conf.get("JellyseerrUrl") or "")) if u.strip()]
+    return (urls, key) if urls and key else None
+
+
+def _seerr(link, method, path, body=None):
+    urls, key = link
+    last = None
+    for base in urls:
+        req = urllib.request.Request(
+            base + "/api/v1" + path, method=method, data=json.dumps(body).encode() if body is not None else None,
+            headers={"X-Api-Key": key, "Accept": "application/json", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.loads(r.read() or b"null")
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            last = e
+    raise last or OSError("no Seerr address")
+
+
+def _add_seerr_ids(token, people):
+    """Puts each person's Seerr account number on them ("seerr"), so movies and shows can be asked for them.
+    Anyone who isn't in Seerr yet gets brought in from Jellyfin (Seerr's own "Import Jellyfin users")."""
+    link = _seerr_link(token)
+    if not link:
+        return
+    def match():
+        got = _seerr(link, "GET", "/user?take=1000") or {}
+        return {str(u.get("jellyfinUserId") or "").replace("-", "").lower(): u.get("id") for u in got.get("results") or []}
+    ids = match()
+    missing = [p["id"] for p in people if p["id"].replace("-", "").lower() not in ids]
+    if missing:
+        try:
+            _seerr(link, "POST", "/user/import-from-jellyfin", {"jellyfinUserIds": [m.replace("-", "") for m in missing]})
+            ids = match()
+        except Exception as e:
+            print(f"Request for: couldn't bring {len(missing)} profile(s) into Seerr ({e!r})", flush=True)
+    for p in people:
+        sid = ids.get(p["id"].replace("-", "").lower())
+        if sid:
+            p["seerr"] = sid
+
+
+def asking_for(token, body):
+    """Ben asked for someone else ("for": their Jellyfin id): (their id, their name), or None for himself"""
+    want = re.sub(r"[^0-9a-fA-F]", "", str(body.get("for") or "")).lower()
+    if not want:
+        return None
+    for p in family_people(token):
+        if p["id"].replace("-", "").lower() == want:
+            return p["id"], p["name"]
+    raise HelperError(400, "That person can't be asked for (they're not on Benflix, or it's the Kids profile).")
+
+
 # Ratings that mean "fine for kids" (ESRB, PEGI, CERO, USK) and ones that mean "not for kids"
 KIDS_OK = {"E", "EC", "E10", "E10+", "EVERYONE", "EVERYONE10+", "3", "7", "A", "CEROA", "0", "6", "USK0", "USK6", "G", "ALL"}
 KIDS_NO = {"T", "M", "AO", "TEEN", "MATURE", "ADULTSONLY", "12", "16", "18", "B", "C", "D", "Z", "USK12", "USK16", "USK18", "RP"}
@@ -1323,17 +1421,30 @@ class Handler(BaseHTTPRequestHandler):
                 except lobby.LobbyError as e:
                     raise HelperError(e.status, e.message)
                 return self.send(status, answer)
+            if method == "GET" and path == "/api/family":
+                # Ben's "Request for" picker: who he can ask for (grown-ups only, never Kids)
+                if not is_admin:
+                    raise HelperError(403, "Only Ben can ask for someone else.")
+                return self.send(200, {"people": family_people(token), "me": user_id})
+            read_json, for_person = self.read_json, None
+            if method == "POST" and is_admin and path in ("/api/music/request", "/api/books/request"):
+                # Ben asking on behalf of someone in the family: it's theirs (their list, their "it's ready" news)
+                body = self.read_json()
+                for_person = asking_for(token, body)
+                read_json = lambda: body  # noqa: E731
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
                     raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
-                status, answer = music.route(method, path, query, token, user_id, is_admin, self.read_json, is_kids=is_kids, user_name=_names.get(user_id, ""))
+                status, answer = music.route(
+                    method, path, query, token, user_id, is_admin, read_json, is_kids=is_kids, user_name=_names.get(user_id, ""), for_person=for_person
+                )
                 return self.send(status, answer)
             if path.startswith("/api/books/"):
                 # Books: manga, ebooks and audiobooks (everyone; Kids only see kids' books)
                 if books is None:
                     raise HelperError(503, "Books aren't on the server yet. Run the Benflix setup command again.")
-                answer = books.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json, user_name=_names.get(user_id, ""))
+                answer = books.route(method, path, query, token, user_id, is_admin, is_kids, read_json, user_name=_names.get(user_id, ""), for_person=for_person)
                 if answer[0] == "file":
                     return self.send_range(answer[1], answer[2], head=(method == "HEAD"))
                 if len(answer) == 3:

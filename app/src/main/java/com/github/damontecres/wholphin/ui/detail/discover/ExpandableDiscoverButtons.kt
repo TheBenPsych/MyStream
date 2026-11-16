@@ -50,6 +50,7 @@ fun ExpandableDiscoverButtons(
     val kids by KidsMode.active.collectAsState()
     val noAsking = kids && availability == SeerrAvailability.UNKNOWN && !blocked
     val firstFocus = remember { FocusRequester() }
+    val canRequestFor = com.github.damontecres.wholphin.ui.discover.rememberCanRequestFor(isAdmin)
     // Benflix look A: flat buttons on the request pages too
     androidx.compose.runtime.CompositionLocalProvider(
         com.github.damontecres.wholphin.ui.components.LocalFlatButtons provides true,
@@ -165,6 +166,17 @@ fun ExpandableDiscoverButtons(
                             .focusRequester(firstFocus)
                             .onFocusChanged(buttonOnFocusChanged),
                 )
+            }
+            // Ben 2026-11-16: "For: Me" picks who in the family this ask is for (admins only)
+            val askable =
+                !blocked && canRequest &&
+                    (availability == SeerrAvailability.UNKNOWN || availability == SeerrAvailability.PARTIALLY_AVAILABLE)
+            if (canRequestFor && askable) {
+                item("request_for") {
+                    com.github.damontecres.wholphin.ui.discover.RequestForButton(
+                        modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    )
+                }
             }
             // Benflix: no asking for the missing seasons once Ben couldn't find them
             if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {

@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.api.seerr
 
 import com.github.damontecres.wholphin.api.seerr.infrastructure.ApiClient
 import com.github.damontecres.wholphin.services.CantFindBlocked
+import com.github.damontecres.wholphin.services.RequestFor
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import okhttp3.Call
 import okhttp3.Cookie
@@ -46,11 +47,26 @@ class SeerrApiClient(
                         .body("{\"message\":\"Couldn't find it\"}".toResponseBody("application/json".toMediaType()))
                         .build()
                 }
+                // Benflix "Request for": Ben asking in someone else's name (Seerr lets admins set the requester)
+                val forWho = if (isNewRequest(it.request())) RequestFor.current() else null
+                if (forWho != null && forWho.seerr == null) {
+                    return@addInterceptor okhttp3.Response
+                        .Builder()
+                        .request(it.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(409)
+                        .message("Not in Seerr")
+                        .body(
+                            "{\"message\":\"${forWho.name.replace("\"", "")} isn't set up in Seerr yet. Open Seerr > Users > Import Jellyfin users, or pick Me.\"}"
+                                .toResponseBody("application/json".toMediaType()),
+                        ).build()
+                }
                 it.proceed(
                     it
                         .request()
                         .newBuilder()
                         .apply {
+                            if (forWho?.seerr != null) withRequester(it.request(), forWho.seerr)?.let { body -> post(body) }
                             if (apiKey.isNotNullOrBlank()) header("X-Api-Key", apiKey)
                             if (jellyfinToken.isNotNullOrBlank()) {
                                 header("Authorization", "MediaBrowser Client=\"Benflix\", Token=\"$jellyfinToken\"")
@@ -155,6 +171,36 @@ private fun jellyfinEnhancedUrl(url: HttpUrl): HttpUrl? {
     }
     return null
 }
+
+/** Benflix: a POST that makes a new Seerr request */
+private fun isNewRequest(request: okhttp3.Request): Boolean =
+    request.method == "POST" &&
+        request.url.encodedPath
+            .trimEnd('/')
+            .endsWith("/request")
+
+/** Benflix "Request for": the request body with "userId" set to [seerrUserId], or null if it can't be read */
+private fun withRequester(
+    request: okhttp3.Request,
+    seerrUserId: Int,
+): okhttp3.RequestBody? =
+    try {
+        val buffer = okio.Buffer()
+        request.body?.writeTo(buffer)
+        val json =
+            kotlinx.serialization.json.Json
+                .parseToJsonElement(buffer.readUtf8().ifBlank { "{}" }) as? kotlinx.serialization.json.JsonObject
+        json?.let {
+            val out =
+                kotlinx.serialization.json.JsonObject(
+                    it + ("userId" to kotlinx.serialization.json.JsonPrimitive(seerrUserId)),
+                )
+            out.toString().toRequestBody("application/json".toMediaType())
+        }
+    } catch (ex: Exception) {
+        Timber.w(ex, "Request for: couldn't add the requester")
+        null
+    }
 
 /** Benflix: the "Couldn't find it" key when this is a new request for a blocked title */
 private fun blockedRequestFor(request: okhttp3.Request): String? {

@@ -385,7 +385,7 @@ def _artist(a):
 # ---------- What the app and web page can ask ----------
 
 
-def route(method, path, query, token, user_id, is_admin, read_json, is_kids=False, user_name=""):
+def route(method, path, query, token, user_id, is_admin, read_json, is_kids=False, user_name="", for_person=None):
     """The helper sends /api/music/... here. Returns (status, answer). Made for you is for everyone but Kids.
     Grown-up family profiles can look and ask too (Redesign 2, Ben 2026-11-10), but their asks wait for Ben's
     Approve before anything downloads. Playlists, the Drop folder and the tidy-up stay Ben's only."""
@@ -441,7 +441,11 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
             return 200, theme_adds(token, user_id, q("key"))
         if method == "POST" and path == "/api/music/request":
             body = read_json()
-            answer = ask(str(body.get("kind") or ""), body.get("id"))
+            if for_person:
+                # Ben asking for someone in the family: theirs, but no waiting for Ben's yes
+                answer = ask(str(body.get("kind") or ""), body.get("id"), who=for_person[1], user=for_person[0], wait=False)
+            else:
+                answer = ask(str(body.get("kind") or ""), body.get("id"))
             if body.get("theme") and answer.get("kind") == "song":
                 _theme_pin(str(body["theme"]), answer)
             return 200, answer
@@ -1017,15 +1021,19 @@ def approve(rid):
     return _public(r)
 
 
-def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None):
+def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None, wait=True):
     """Asks for one song or album. Returns the request (an existing one if it was already asked for).
-    [who] set = a family profile asking: it waits (waiting_ben) until Ben presses Approve."""
+    [who] set = a family profile asking: it waits (waiting_ben) until Ben presses Approve, unless [wait] is False
+    (Ben asked for them with "Request for")."""
     if kind not in ("song", "album") or not str(deezer_id).isdigit():
         raise MusicError(400, "Pick a song or an album to ask for.")
     deezer_id = int(deezer_id)
     with _lock:
         for r in _state["requests"]:
             if r["kind"] == kind and r.get("deezer") == deezer_id:
+                if who and not wait and not r.get("user"):
+                    # Ben asked for someone who wanted it too: now it's on their list as well
+                    r.update({"who": who, "user": user})
                 if r["state"] in ("not_found", "problem") and not quiet:
                     _retry(r)
                     _save()
@@ -1065,7 +1073,7 @@ def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None):
             "cover_big": a.get("cover_xl") or a.get("cover_big") or "",
             "year": (a.get("release_date") or "")[:4],
         }
-    r.update({"id": uuid.uuid4().hex[:12], "kind": kind, "deezer": deezer_id, "state": "waiting_ben" if who else "adding", "created": time.time(), "tries": []})
+    r.update({"id": uuid.uuid4().hex[:12], "kind": kind, "deezer": deezer_id, "state": "waiting_ben" if who and wait else "adding", "created": time.time(), "tries": []})
     if who:
         r.update({"who": who, "user": user})
     if playlist:

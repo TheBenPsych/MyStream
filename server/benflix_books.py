@@ -2190,7 +2190,10 @@ def request_view(r, is_admin):
     return out
 
 
-def ask(user_id, user_name, is_admin, body):
+def ask(user_id, user_name, is_admin, body, for_person=None):
+    """[for_person] = (id, name) when Ben asked for someone in the family: it's theirs (their list and news)."""
+    if is_admin and for_person:
+        user_id, user_name = for_person
     key = str(body.get("key") or "")[:60]
     if not key:
         raise BooksError(400, "Which book?")
@@ -2220,7 +2223,7 @@ def ask(user_id, user_name, is_admin, body):
     _save_state()
     if r["state"] == "searching":
         threading.Thread(target=_send, args=(r,), daemon=True).start()
-        words = "Asked for. Tower is looking for it."
+        words = f"Asked for {user_name}. Tower is looking for it." if for_person else "Asked for. Tower is looking for it."
     elif r["state"] == "manga":
         words = "Added to your manga list."
     else:
@@ -2738,7 +2741,7 @@ def status():
     }
 
 
-def route(method, path, query, token, user_id, is_admin, is_kids, read_json, user_name=""):
+def route(method, path, query, token, user_id, is_admin, is_kids, read_json, user_name="", for_person=None):
     """The helper sends /api/books/... here. Returns (status, answer) for JSON, or (status, bytes, content type),
     or ("file", path, content type) for big files the helper streams (with Range for seeking)."""
     q = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
@@ -2816,7 +2819,7 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         if method == "POST" and path == "/api/books/request":
             if is_kids:
                 return 403, {"error": "Ask a grown-up to get this book."}
-            return 200, ask(user_id, user_name, is_admin, read_json())
+            return 200, ask(user_id, user_name, is_admin, read_json(), for_person=for_person)
         m = re.fullmatch(r"/api/books/request/(\w+)", path)
         if method == "DELETE" and m:
             return 200, forget(m.group(1), user_id, is_admin)

@@ -74,6 +74,7 @@ B.saveProfiles = (list) => store("benflix.profiles", JSON.stringify(list));
 B.me = null;
 B.pick = (id) => {
   B.me = B.profiles().find((p) => p.id === id) || null;
+  B.reqFor = null;
   if (B.me) store("benflix.last", B.me.id);
   if (B.kidsLook) B.kidsLook();
   B.cache = {};
@@ -129,7 +130,48 @@ B.picHtml = (p, cls, size) => {
 };
 
 // ---------- talking to the helper ----------
+// ---------- Ben's "Request for" (2026-11-16): ask for something in someone else's name ----------
+// Admins only, never Kids. It's theirs: their Your requests, their "it's ready" news. Starts on Me again
+// after 20 minutes without asking, or when the profile changes.
+B.reqFor = null; // { id, name, seerr, owner, at }
+B.reqForNow = () => {
+  const r = B.reqFor;
+  if (!r || !B.me || !B.me.admin || B.me.kids || r.owner !== B.me.id || Date.now() - r.at > 20 * 60000) { B.reqFor = null; return null; }
+  r.at = Date.now();
+  return r;
+};
+B.family = () => B.cached("family", 300000, () => B.call("GET", "api/family").then((d) => (d.people || []).filter((p) => p.id.replace(/-/g, "").toLowerCase() !== String(d.me || "").replace(/-/g, "").toLowerCase())));
+// A "For: Me" picker; put B.reqForHtml() in a page, then call B.reqForFill(root)
+B.reqForHtml = () => (B.me && B.me.admin && !B.me.kids ? `<label class="reqfor" title="Who is this request for?">For <select data-reqfor><option value="">Me</option></select></label>` : "");
+B.reqForFill = async (root) => {
+  const sels = $$("[data-reqfor]", root || document);
+  if (!sels.length) return;
+  const people = await B.family().catch(() => []);
+  const cur = B.reqForNow();
+  sels.forEach((sel) => {
+    sel.innerHTML = `<option value="">Me</option>` + people.map((p) => `<option value="${esc(p.id)}" ${cur && cur.id === p.id ? "selected" : ""}>${esc(p.name)}${p.seerr ? "" : " (music and books only)"}</option>`).join("");
+    sel.closest(".reqfor").classList.toggle("on", !!cur);
+    sel.onchange = () => {
+      const p = people.find((x) => x.id === sel.value);
+      B.reqFor = p ? { id: p.id, name: p.name, seerr: p.seerr || null, owner: B.me.id, at: Date.now() } : null;
+      $$("[data-reqfor]").forEach((o) => { o.value = sel.value; o.closest(".reqfor").classList.toggle("on", !!p); });
+      if (p) B.toast(`Anything you ask for now is ${p.name}'s. They'll be told when it's ready.`);
+    };
+  });
+};
+const reqForBody = (method, path, body) => {
+  if (method !== "POST" || !body || typeof body !== "object") return body;
+  const isSeerr = path === "api/web/jf/JellyfinEnhanced/jellyseerr/request";
+  if (!isSeerr && path !== "api/music/request" && path !== "api/books/request") return body;
+  const r = B.reqForNow();
+  if (!r) return body;
+  if (!isSeerr) return Object.assign({}, body, { for: r.id });
+  if (!r.seerr) throw new Error(`${r.name} isn't set up in Seerr yet. Pick Me, or bring them into Seerr (Seerr > Users > Import Jellyfin users).`);
+  return Object.assign({}, body, { userId: r.seerr });
+};
+
 B.call = async (method, path, body, opts) => {
+  body = reqForBody(method, path, body);
   const who = (opts && opts.profile) || B.me;
   const headers = { Accept: "application/json" };
   if (who) { headers["X-Benflix-Token"] = who.token; headers["X-Benflix-Device"] = who.device || ""; }
