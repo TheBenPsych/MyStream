@@ -31,7 +31,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.QrCode
-import com.github.damontecres.wholphin.ui.detail.AskShelf
+import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
 import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
@@ -168,7 +168,7 @@ fun MovieHeroContent(
             )
             val hasMore =
                 state.similar.isNotEmpty() || collection != null ||
-                    (!easy && (state.discovered.isNotEmpty() || state.fromDirector.isNotEmpty()))
+                    (!easy && state.fromDirector.isNotEmpty())
             if (hasMore) {
                 add(
                     TitleTab("More like this") { scope ->
@@ -176,7 +176,6 @@ fun MovieHeroContent(
                             listOf(
                                 state.similar.isNotEmpty(),
                                 collection != null,
-                                !easy && state.discovered.isNotEmpty(),
                                 !easy && state.fromDirector.isNotEmpty(),
                             ).count { it } > 1
                         TitlePosterRow(
@@ -194,15 +193,6 @@ fun MovieHeroContent(
                                 current = movie,
                             )
                         }
-                        if (!easy && state.discovered.isNotEmpty()) {
-                            AskShelf(
-                                items = state.discovered,
-                                side = scope.side,
-                                showName = !scope.wide,
-                                onClick = actions.openAsk,
-                                modifier = Modifier.padding(bottom = 16.dp),
-                            )
-                        }
                         if (!easy) {
                             TitlePosterRow(
                                 scope = scope,
@@ -211,6 +201,20 @@ fun MovieHeroContent(
                                 name = "More from ${state.directorName ?: "the director"}",
                             )
                         }
+                    },
+                )
+            }
+            if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
+                add(
+                    TitleTab("Ask for similar") { scope ->
+                        AskForSimilarTab(
+                            kind = state.askKind,
+                            best = state.discovered,
+                            more = state.discoveredMore,
+                            side = scope.side,
+                            showName = !scope.wide,
+                            onClick = actions.openAsk,
+                        )
                     },
                 )
             }

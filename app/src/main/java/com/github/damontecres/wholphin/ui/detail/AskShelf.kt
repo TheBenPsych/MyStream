@@ -16,15 +16,50 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.DiscoverItem
+import com.github.damontecres.wholphin.services.AskKind
 import com.github.damontecres.wholphin.ui.discover.RequestPoster
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
- * Benflix: the row under "More like this" on a movie or show page. Titles like this one that
- * aren't on Benflix yet; pressing one opens its Requests page with Ask for it. Hidden for Kids,
- * Guest and when Requests isn't connected (the list is empty then).
+ * Benflix (Ben, 2026-11-16): the "Ask for similar" tab on a movie or show page. Only titles of the same kind
+ * (anime / cartoons / live action) that aren't on Benflix yet: the closest matches first, then more popular
+ * ones sharing its genres. Pressing one opens its Requests page with Ask for it. Hidden for Kids, Guest,
+ * Easy and when Requests isn't connected (both lists are empty then).
  */
+@Composable
+fun AskForSimilarTab(
+    kind: AskKind,
+    best: List<DiscoverItem>,
+    more: List<DiscoverItem>,
+    side: Dp,
+    showName: Boolean,
+    onClick: (DiscoverItem) -> Unit,
+) {
+    val note = "Only ${kind.label} · not on Benflix yet"
+    Column(Modifier.fillMaxWidth()) {
+        AskShelf(
+            items = best,
+            side = side,
+            showName = showName,
+            onClick = onClick,
+            name = "Closest matches",
+            note = note,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+        AskShelf(
+            items = more,
+            side = side,
+            showName = showName,
+            onClick = onClick,
+            name = "More ${kind.label} to ask for",
+            note = if (best.isEmpty()) note else null,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+    }
+}
+
+/** One row of titles to ask for, with its name and an optional grey note beside it */
 @Composable
 fun AskShelf(
     items: List<DiscoverItem>,
@@ -32,6 +67,8 @@ fun AskShelf(
     showName: Boolean,
     onClick: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    name: String = "Ask for more like this",
+    note: String? = "Not on Benflix yet",
 ) {
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {
@@ -41,17 +78,19 @@ fun AskShelf(
             modifier = Modifier.padding(start = side, end = side, bottom = 8.dp),
         ) {
             Text(
-                text = "Ask for more like this",
+                text = name,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.lead,
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                text = "Not on Benflix yet",
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.SemiBold,
-            )
+            if (note != null) {
+                Text(
+                    text = note,
+                    color = BenflixColors.Muted,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
         LazyRow(
             contentPadding = PaddingValues(horizontal = side),

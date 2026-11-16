@@ -479,6 +479,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
+      { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
       { name: "Did you know", id: "tpFacts" },
@@ -487,8 +488,8 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   // Details (studio, release date, the file for you) under the whole story
   B.facts(it).then((html) => tp.setStoryExtra(html));
   B.tpFacts(it, tp.pane("tpFacts"), nav);
-  // In this collection, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
+  // In this collection, Ask for similar, anime extras and the parents' guide (extras.js)
+  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
 });
 // The Did you know tab: every fact about this title from Tower
 B.tpFacts = async (it, pane, nav) => {
@@ -580,6 +581,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
+      { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
       { name: "Did you know", id: "tpFacts" },
@@ -637,8 +639,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
-  // Newer seasons to ask for, Ask for more like this, anime extras and the parents' guide (extras.js)
-  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
+  // Newer seasons to ask for, Ask for similar, anime extras and the parents' guide (extras.js)
+  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
 });
 
 // ---------- collection page ----------

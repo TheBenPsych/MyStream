@@ -14,8 +14,11 @@ import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.services.AskKind
+import com.github.damontecres.wholphin.services.AskMore
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.BenflixAnimeTracks
+import com.github.damontecres.wholphin.services.BenflixLibraryTmdb
 import com.github.damontecres.wholphin.services.DetailsPrefetch
 import com.github.damontecres.wholphin.services.EpisodeFacts
 import com.github.damontecres.wholphin.services.ExtrasService
@@ -111,6 +114,7 @@ class SeriesViewModel
         private val userPreferencesService: UserPreferencesService,
         private val backdropService: BackdropService,
         private val seerrService: SeerrService,
+        private val libraryTmdb: BenflixLibraryTmdb,
         private val mediaManagementService: MediaManagementService,
         private val detailsPrefetch: DetailsPrefetch,
         private val fillerService: FillerService,
@@ -328,8 +332,11 @@ class SeriesViewModel
                         }
                     }
                     viewModelScope.launchIO {
-                        val results = seerrService.moreToAsk(series).orEmpty()
-                        _state.update { it.copy(discovered = results) }
+                        val ask = seerrService.moreToAsk(series) ?: AskMore.EMPTY
+                        // Benflix: the real library check (Seerr's own "available" runs behind)
+                        val best = libraryTmdb.notOnBenflix(ask.best)
+                        val more = libraryTmdb.notOnBenflix(ask.more)
+                        _state.update { it.copy(discovered = best, discoveredMore = more, askKind = ask.kind) }
                     }
                     viewModelScope.launchIO {
                         seerrService.active.collectLatest { active ->
@@ -1132,6 +1139,9 @@ data class SeriesState(
     val canDeleteSeries: Boolean = false,
     val peopleInEpisode: PeopleInItem = PeopleInItem(),
     val discovered: List<DiscoverItem> = emptyList(),
+    /** Benflix "Ask for similar" tab: popular titles of the same kind, after [discovered]'s closest matches */
+    val discoveredMore: List<DiscoverItem> = emptyList(),
+    val askKind: AskKind = AskKind.LIVE,
     val discoverSeries: DiscoverItem? = null,
     val chosenStreams: ChosenStreams? = null,
     val inlineSeasonIndex: Int = -1,
