@@ -314,6 +314,9 @@ private fun AskForTheRestDialog(
                 items(missing, key = { "${it.isTv}-${it.tmdbId}" }) { credit ->
                     val ticked = credit in picked
                     Surface(
+                        border =
+                            com.github.damontecres.wholphin.ui.theme
+                                .benflixFocusBorder(RoundedCornerShape(10.dp)),
                         onClick = { picked = if (ticked) picked - credit else picked + credit },
                         colors =
                             ClickableSurfaceDefaults.colors(

@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -382,7 +383,7 @@ private fun FixButton(
                 focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.benflixOuterFocusRing(BenflixShapes.Pill).fillMaxWidth(),
     ) {
         Text(text, fontWeight = FontWeight.Bold, fontSize = BenflixType.body)
     }

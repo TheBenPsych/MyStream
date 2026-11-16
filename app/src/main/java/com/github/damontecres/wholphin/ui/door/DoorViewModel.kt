@@ -258,6 +258,11 @@ class DoorViewModel
             navDrawerService.state.value.allLibraries
                 .takeIf { it.isNotEmpty() }
                 ?: withTimeoutOrNull(LIBRARY_WAIT_MS) { navDrawerService.state.first { it.allLibraries.isNotEmpty() }.allLibraries }
+                // The menu hasn't filled in yet (slow or just-started server): ask the server itself rather than
+                // showing "Nothing in Movies yet" over a full library
+                ?: serverRepository.currentUser?.id?.let { userId ->
+                    runCatching { navDrawerService.getAllUserLibraries(userId, tvAccess = false) }.getOrNull()
+                }
                 ?: emptyList()
 
         private fun List<Library>.ofKind(vararg kinds: LibraryKind) =
