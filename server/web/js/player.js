@@ -340,6 +340,23 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     segments = list;
     segments.tower = true;
   };
+  // An intro is never "Skip credits": credits only count in the last quarter. Credits near the start
+  // (an anime opening shows staff names, or the sources mixed up opening and ending) become the intro
+  // when they're intro length, else they're dropped. Intro and recap win when kinds overlap.
+  const tidySegments = (list, T) => {
+    if (!list.some((s) => s.type === "Outro")) return list;
+    const out = [];
+    list.forEach((s) => {
+      if (s.type !== "Outro") return out.push(s);
+      if (T > 0 && s.start >= T * 0.75) return out.push(s);
+      if (!(T > 0)) return;
+      const len = s.end - s.start;
+      const hasIntro = list.some((o) => o.type === "Intro" && o.start < s.end && s.start < o.end);
+      if (s.start <= T * 0.35 && len >= 12 && len <= 300 && !hasIntro) out.push({ ...s, type: "Intro", sure: false });
+    });
+    const rank = (s) => (s.type === "Intro" || s.type === "Recap" ? 0 : s.type === "Outro" ? 2 : 1);
+    return out.sort((a, b) => rank(a) - rank(b));
+  };
   let towerTries = 0;
   const fromTower = () => B.call("GET", `api/skips/${plain(it.Id)}`).then((r) => {
     useTower(r);
@@ -399,7 +416,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const now = performance.now();
     if (!v.paused && lastTick) WT.add(Math.min(5000, now - lastTick));
     lastTick = now;
-    const seg = segments.find((s) => t >= s.start && t < s.end - 1 && words[s.type]);
+    const seg = tidySegments(segments, total()).find((s) => t >= s.start && t < s.end - 1 && words[s.type]);
     const sk = $("#pSkip");
     if (seg) {
       const auto = (seg.type === "Intro" || seg.type === "Recap") && series && alwaysSkip.intro.has(plain(series)) || seg.type === "Outro" && series && alwaysSkip.outro.has(plain(series));
@@ -407,7 +424,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if ((auto || settings.autoskip) && seg.sure !== false && !skipped.has(seg.type)) { skipped.add(seg.type); v.currentTime = seg.end; B.toast(words[seg.type].replace("Skip", "Skipped")); return; }
       sk.textContent = words[seg.type]; sk.classList.remove("hidden"); sk.onclick = () => { skipped.add(seg.type); v.currentTime = seg.end; sk.classList.add("hidden"); };
     } else sk.classList.add("hidden");
-    const outro = segments.find((s) => s.type === "Outro");
+    const outro = tidySegments(segments, total()).find((s) => s.type === "Outro");
     const T = total();
     if (!nextShown && T > 60 && ((outro && t >= outro.start) || (!outro && T - t < (isEp ? 25 : 60)))) showUpNext();
   });
