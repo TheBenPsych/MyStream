@@ -43,7 +43,7 @@ import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 /**
- * Benflix Christmas: the cosy room behind Who's watching (1 December to 1 January). The tree with the train
+ * Benflix Christmas: the cosy room behind Who's watching (1 to 30 December). The tree with the train
  * going round it, the parade past the window, and the presents that pile up through December.
  *
  * The room is drawn by the web version (server/web/js/xmas.js) and recorded as 30-second loops

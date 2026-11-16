@@ -325,7 +325,7 @@ class DoorViewModel
                 } else {
                     listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
                 }.let { rows ->
-                    // Christmas look (1 Dec to 1 Jan): Christmas favourites right after Keep watching
+                    // Christmas look (1 to 30 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }
             startRows(order)

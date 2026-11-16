@@ -161,7 +161,7 @@ fun SwitchUserContent(
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
                 // The profiles show first; the wall fills in behind them once its pictures are ready
-                // Christmas (1 Dec to 1 Jan, unless switched off in Settings): the cosy room with the tree,
+                // Christmas (December until New Year's, unless switched off in Settings): the cosy room with the tree,
                 // the train and the parade past the window, instead of the wall
                 val christmas = ChristmasSeason.on()
                 if (christmas) {

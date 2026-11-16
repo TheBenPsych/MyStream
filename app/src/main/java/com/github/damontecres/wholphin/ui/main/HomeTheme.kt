@@ -1521,8 +1521,8 @@ data class HomeTheme(
 
                 month == 7 && day <= 7 -> TANABATA
 
-                // Benflix Christmas look: the row stays up until New Year's Day
-                month == 12 || (month == 11 && day >= 25) || (month == 1 && day == 1) -> CHRISTMAS
+                // Benflix Christmas look: the row stays up until the look's last day (never overlapping New Year's)
+                (month == 12 && day <= com.github.damontecres.wholphin.ui.theme.ChristmasSeason.LAST_DAY) || (month == 11 && day >= 25) -> CHRISTMAS
 
                 month == 2 && day <= 14 -> VALENTINES
 

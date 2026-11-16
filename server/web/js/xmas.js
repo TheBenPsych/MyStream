@@ -2,7 +2,7 @@
  *
  * A dim, cosy room. A decorated tree twinkles in the bottom-left corner, and a toy train runs round it
  * in 3D. A snowy window on the right shows a parade passing: a snowman, a red-nosed reindeer, Santa,
- * two little elves and one very tall elf. It shows from 1 December to 1 January.
+ * two little elves and one very tall elf. It shows from 1 to 30 December (New Year's has the 31st and the 1st).
  *   - Presents pile up under the tree through December.
  *   - On Christmas Eve and Christmas Day, Santa's sleigh flies past the window.
  *   - From Christmas Day the presents are opened.
@@ -23,8 +23,10 @@
   let OID = 0;
 
   // ---------- dates ----------
-  /** 1 December to 1 January */
-  const season = (d) => (d.getMonth() === 11) || (d.getMonth() === 0 && d.getDate() === 1);
+  /** The last day of the Christmas look (the app's ChristmasSeason.LAST_DAY too), so it never overlaps New Year's */
+  const LAST_DAY = 30;
+  /** 1 December to LAST_DAY */
+  const season = (d) => d.getMonth() === 11 && d.getDate() <= LAST_DAY;
   /** Sleeps until Christmas (1 Dec to 23 Dec), 0 on Christmas Eve, else null */
   const sleeps = (d) => (d.getMonth() === 11 && d.getDate() <= 24 ? 25 - d.getDate() - 1 : null);
   /** Which version of the room today is. L1 to L3: presents pile up. EVE: plus the sleigh. DAY: opened, plus the sleigh. AFTER: opened */
@@ -452,5 +454,5 @@
     requestAnimationFrame(tick);
   }
 
-  G.BenflixXmas = { LOOP, season, sleeps, variant, countdown, build, play, pose, LAYOUTS };
+  G.BenflixXmas = { LOOP, LAST_DAY, season, sleeps, variant, countdown, build, play, pose, LAYOUTS };
 })(typeof window !== "undefined" ? window : globalThis);
