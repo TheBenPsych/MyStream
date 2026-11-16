@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import java.time.LocalDate
 import java.time.Year
@@ -171,7 +172,7 @@ fun RequestsChip(
                 focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
                 focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
-        modifier = modifier.height(40.dp),
+        modifier = modifier.benflixOuterFocusRing(RoundedCornerShape(20.dp)).height(40.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = label, fontSize = BenflixType.body, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
@@ -196,7 +197,7 @@ fun ActiveFilterChip(
                 focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
                 focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
             ),
-        modifier = Modifier.height(36.dp),
+        modifier = Modifier.benflixOuterFocusRing(RoundedCornerShape(20.dp)).height(36.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
         Text(text = "$label  ✕", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)

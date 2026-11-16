@@ -62,6 +62,7 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -230,7 +231,7 @@ fun GameInfoPage(
             Button(
                 onClick = { viewModel.play(info) },
                 colors = ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
-                modifier = Modifier.focusRequester(playFocus),
+                modifier = Modifier.benflixOuterFocusRing(androidx.compose.foundation.shape.CircleShape).focusRequester(playFocus),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
                 Text(

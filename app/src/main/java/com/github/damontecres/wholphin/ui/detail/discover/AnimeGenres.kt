@@ -783,6 +783,9 @@ private fun AnimePoster(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Surface(
+            border =
+                com.github.damontecres.wholphin.ui.theme
+                    .benflixFocusBorder(RoundedCornerShape(10.dp)),
             onClick = onClick,
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
