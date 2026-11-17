@@ -114,6 +114,21 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// 4th of July favourites: movies tagged for the Fourth or with an Independence Day word in the name (cached 30 minutes)
+B.july4Movies = () => B.cached("j4Movies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const tags = encodeURIComponent(["independence day", "fourth of july", "4th of july", "american revolution", "founding fathers"].join("|"));
+  const words = ["Independence Day", "Fourth of July", "4th of July", "Born on the Fourth of July", "Jaws", "The Patriot", "1776", "National Treasure", "Top Gun", "Captain America", "Hamilton", "The Sandlot", "Yankee Doodle Dandy"];
+  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => new RegExp(`\\b${w}\\b`, "i").test(x.Name || "")) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
+    ...words.map(byWord),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Star Wars Day: every Star Wars film on Benflix (tagged "star wars" or with Star Wars in the name), oldest first
 B.starWarsMovies = () => B.cached("swMovies-" + B.uid(), 1800000, async () => {
   const u = B.uid(), F = B.FIELDS;
@@ -200,6 +215,8 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // 4th of July look (1 to 4 July, Kids too): 4th of July favourites right after Keep watching
+  const j4 = B.j4On && B.j4On() ? await B.july4Movies().catch(() => []) : [];
   // Star Wars Day (4 May, Kids too): the saga from this library, in the order the films came out, at the very top
   const saga = B.swOn && B.swOn() ? await B.starWarsMovies().catch(() => []) : [];
   // Valentine's look (1 to 14 February): Date night right after Keep watching (like the TV app)
@@ -214,6 +231,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
     pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
+    j4.length >= 4 ? B.row("4th of July favourites", j4.map((it) => B.posterCard(it))) : "",
     dates.length >= 4 ? B.row("Date night", dates.map((it) => B.posterCard(it))) : "",
     irish.length >= 4 ? B.row("Irish favourites", irish.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),

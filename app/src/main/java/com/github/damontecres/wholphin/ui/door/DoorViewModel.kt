@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
@@ -330,6 +331,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // 4th of July look (1 to 4 Jul, Kids too): 4th of July favourites right after Keep watching
+                    if (J4Look.on) listOf(rows.first(), JULY4) + rows.drop(1) else rows
+                }.let { rows ->
                     // Valentine's look (1 to 14 Feb): Date night right after Keep watching
                     if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
                 }.let { rows ->
@@ -414,6 +418,17 @@ class DoorViewModel
                                 .filter { it.id !in dislikes }
                         // Only when there are at least 4 that fit (Ben)
                         putOrRemove(order, DoorRowData(IRISH, "Irish favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (JULY4 in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.FOURTH_OF_JULY, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(JULY4, "4th of July favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 launch {
@@ -630,6 +645,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val JULY4 = "july4"
             const val STAR_WARS = "starwars"
             const val DATE_NIGHT = "datenight"
             const val POPCORN = "popcorn"

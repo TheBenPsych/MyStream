@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SpLook
@@ -62,6 +63,8 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
+import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
 import com.github.damontecres.wholphin.ui.theme.spProgressCoin
@@ -337,16 +340,19 @@ fun BannerCard(
                                     TgLook.Orange
                                 } else if (NyLook.on) {
                                     NyLook.Gold
+                                } else if (J4Look.on) {
+                                    J4Look.Red
+                                } else if (SpLook.on) {
+                                    SpLook.Clover
                                 } else if (ValLook.on) {
                                     ValLook.Rose
                                 } else if (PcLook.on) {
                                     PcLook.Butter
-                                } else if (SpLook.on) {
-                                    SpLook.Clover
                                 } else {
                                     BenflixRed
                                 },
-                            ).clip(RectangleShape)
+                            ).j4ProgressStripes()
+                            .clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
@@ -403,6 +409,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .spProgressCoin((playPercent / 100).toFloat(), coin = 20.dp),
+                    )
+                }
+                // 4th of July look: red and white stripes, with a big white star at the end of the progress line
+                if (J4Look.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .j4ProgressStar((playPercent / 100).toFloat(), star = 20.dp),
                     )
                 }
             }
