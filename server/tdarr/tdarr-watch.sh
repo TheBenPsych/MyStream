@@ -56,6 +56,8 @@ if [ "$1" = "hourly" ]; then
     [ "$gone" -gt 0 ] && note "Deleted $gone backups older than $BACKUP_DAYS days"
     if [ -f "$BACKUP/shrink-log.txt" ]; then
       tail -n 3000 "$BACKUP/shrink-log.txt" >"$BACKUP/shrink-log.tmp" && mv "$BACKUP/shrink-log.tmp" "$BACKUP/shrink-log.txt"
+      # Tdarr writes the log as "nobody", so it must stay theirs (root made it unwritable, 2026-11-17)
+      chown 99:100 "$BACKUP/shrink-log.txt" && chmod 664 "$BACKUP/shrink-log.txt"
     fi
   fi
 

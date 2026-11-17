@@ -97,6 +97,7 @@ find_arr radarr 7878
 say "Starting Tdarr"
 mkdir -p "$APP/server" "$APP/configs" "$APP/logs" "$CACHE" "$BACKUP"
 chown 99:100 "$BACKUP" "$CACHE" 2>/dev/null
+[ -f "$BACKUP/shrink-log.txt" ] && chown 99:100 "$BACKUP/shrink-log.txt" && chmod 664 "$BACKUP/shrink-log.txt"
 RECIPE="v$SETUP_VERSION gpu=$GPU media=$MEDIA backup=$BACKUP cache=$CACHE"
 running=$(docker inspect -f '{{.State.Running}}' tdarr 2>/dev/null)
 if [ "$running" = "true" ] && [ "$(cat "$APP/benflix-recipe.txt" 2>/dev/null)" = "$RECIPE" ]; then
@@ -215,6 +216,26 @@ for d in "${FOLDERS[@]}"; do
   n=$((n + 1))
 done
 
+say "Removing libraries that aren't Benflix ones (your files are never touched)"
+# Tdarr can make its own library over all of Media with its default rules (it did on Tower, 2026-11-16).
+# Those rules would re-encode everything on the CPU, so only the Benflix libraries may stay.
+others=$(docker exec tdarr node -e '
+const h=require("http");
+const q=h.request({host:"127.0.0.1",port:8265,path:"/api/v2/cruddb",method:"POST",headers:{"content-type":"application/json"}},s=>{
+  let d="";s.on("data",c=>d+=c);s.on("end",()=>{for(const l of JSON.parse(d||"[]")){
+    if(!String(l._id).startsWith("benflix_"))console.log(l._id+"\t"+(l.name||"")+"\t"+(l.folder||""));}});});
+q.end(JSON.stringify({data:{collection:"LibrarySettingsJSONDB",mode:"getAll"}}));' 2>/dev/null)
+if [ -z "$others" ]; then
+  echo "  ok  none"
+else
+  while IFS=$'\t' read -r lid lname lfolder; do
+    [ -n "$lid" ] || continue
+    post remove-library-files "{\"data\":{\"DB\":\"$lid\"}}" >/dev/null
+    db LibrarySettingsJSONDB removeOne "$lid" >/dev/null
+    echo "  ok  removed \"$lname\" ($lfolder)"
+  done <<<"$others"
+fi
+
 say "One GPU worker, nothing on the CPU"
 limits=$(curl -fs -m 10 "$API/get-nodes" | grep -o '"workerLimits":{[^}]*}' | head -1)
 set_limit() { # $1 = worker type, $2 = how many
@@ -230,6 +251,9 @@ set_limit transcodegpu $gpu_workers
 set_limit transcodecpu $((1 - gpu_workers))
 set_limit healthcheckgpu 0
 set_limit healthcheckcpu 0
+# Tdarr counts our flow as a "CPU" job, so the GPU worker must be allowed to take CPU jobs (2026-11-17:
+# without this nothing ran all night)
+post update-node "{\"data\":{\"nodeID\":\"$NODE\",\"nodeUpdates\":{\"allowGpuDoCpu\":true}}}" >/dev/null
 echo "  ok  $(curl -fs -m 10 "$API/get-nodes" | grep -o '"workerLimits":{[^}]*}' | head -1)"
 
 if [ -z "${TDARR_TEST:-}" ]; then
