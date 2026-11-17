@@ -526,7 +526,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .sline.big .pic { width: 46px; height: 69px; }
   .sline.big .pic.sq { width: 60px; height: 60px; }
 }
-.askcard .im { background: var(--pg2); }
+.askcard .im { background-color: var(--pg2); }
 
 /* ---------- my watching ---------- */
 .bigweek { font-size: 72px; font-weight: 800; letter-spacing: -.02em; margin: 0; line-height: 1; }
