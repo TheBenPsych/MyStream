@@ -158,9 +158,22 @@
       if (jump) { e.preventDefault(); B.doorJump ? B.doorJump(door, jump) : B.go("#/" + door); }
     });
     panel.addEventListener("keydown", (e) => {
-      const items = $$("a", panel);
-      const at = items.indexOf(document.activeElement);
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
+      // Jump back in is a row: Left and Right move along it first, and Left only goes back to the rail from its first poster
+      const list = $$(".np-list a", panel);
+      const posters = $$(".np-posters a", panel);
+      const p = posters.indexOf(document.activeElement);
+      if (p >= 0) {
+        if (e.key === "ArrowRight") { e.preventDefault(); if (posters[p + 1]) posters[p + 1].focus(); return; }
+        if (e.key === "ArrowLeft" && p > 0) { e.preventDefault(); posters[p - 1].focus(); return; }
+        if (e.key === "ArrowUp") { e.preventDefault(); if (list.length) list[list.length - 1].focus(); return; }
+        if (e.key === "ArrowDown") { e.preventDefault(); return; }
+      }
+      const at = list.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const n = e.key === "ArrowDown" ? (list[at + 1] || (at >= 0 && posters[0])) : list[at - 1];
+        if (n) n.focus();
+      }
       if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn(door); closePanel(); if (back) back.focus(); }
     });
     if (byKeys) { const first = $("a", panel); if (first) first.focus(); }
