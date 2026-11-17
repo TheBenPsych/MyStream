@@ -22,6 +22,8 @@
      pickTags / pickWords   how to find that pick: Jellyfin tags, and whole words in the title
    The trims below are placeholder (beads in the holiday's colours) and there are no icons yet: each holiday thread
    draws its own.
+   Any art may move (SVG <animate> or a <style> with @keyframes inside it), lite mode too (Ben's rule). In the app,
+   art gets the seconds since it showed and the entry sets moving = true.
    Everything sits in one closure: the web scripts share one scope, so nothing here is a top-level name. */
 
 (() => {

@@ -3,6 +3,11 @@ package com.github.damontecres.wholphin.ui.theme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.FloatState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -12,15 +17,18 @@ import java.time.LocalDateTime
 
 /**
  * A small holiday picture, drawn into whatever box it's given (a few dp for a door's item, the whole width for
- * Home's trims). Each holiday thread swaps the placeholder art below for its real drawing.
+ * Home's trims). Each holiday thread swaps the placeholder art below for its real drawing. It's given the seconds
+ * since it first showed, so it can move (bulbs twinkling, snow falling); set [HolidayNav.moving] so it redraws.
+ * Animations stay on everywhere, lite mode too (Ben's rule).
  */
-typealias HolidayArt = DrawScope.() -> Unit
+typealias HolidayArt = DrawScope.(seconds: Float) -> Unit
 
 /**
  * A holiday's own icon, drawn in place of a usual rail or phone-tab icon. It's given the colour the usual icon would
- * have (soft white, the door's colour when you're in it, or the start-up light), so it behaves like the normal one.
+ * have (soft white, the door's colour when you're in it, or the start-up light), so it behaves like the normal one,
+ * and the seconds since it showed, like [HolidayArt].
  */
-typealias HolidayIconArt = DrawScope.(Color) -> Unit
+typealias HolidayIconArt = DrawScope.(color: Color, seconds: Float) -> Unit
 
 /** The names for [HolidayNav.icons]: the same on the web (js/holidaynav.js) */
 object HolidayIconKey {
@@ -68,6 +76,11 @@ data class HolidayNav(
     val topTrim: HolidayArt? = null,
     /** Along the bottom of Home (Christmas: snow) */
     val bottomTrim: HolidayArt? = null,
+    /**
+     * True when the art above moves (uses its seconds): the icons, mark and trims then redraw every frame on TV and
+     * phone, lite mode included. Leave false for still art so old TVs don't redraw for nothing.
+     */
+    val moving: Boolean = false,
     /** The first Today card on Home ("8 days to Christmas"); null on the day itself or when there's none */
     val countdown: () -> String? = { null },
     /** The small coloured line on that card */
@@ -249,13 +262,31 @@ object HolidayNavKit {
         }
 }
 
-/** Draws a [HolidayArt] into [modifier]'s box */
+/** Draws a [HolidayArt] into [modifier]'s box, moving when the holiday's art moves */
 @Composable
 fun HolidayArtBox(
     art: HolidayArt,
     modifier: Modifier,
 ) {
-    Canvas(modifier) { art() }
+    val clock = holidayClock()
+    Canvas(modifier) { art(clock.floatValue) }
+}
+
+/**
+ * Seconds since the art showed, ticking every frame only while the holiday's art moves ([HolidayNav.moving]). It's
+ * read while drawing, so a tick only redraws the art and never rebuilds the screen.
+ */
+@Composable
+fun holidayClock(): FloatState {
+    val clock = remember { mutableFloatStateOf(0f) }
+    val moving = remember { HolidayNavKit.current()?.moving == true }
+    if (moving) {
+        LaunchedEffect(Unit) {
+            val start = withFrameMillis { it }
+            while (true) withFrameMillis { clock.floatValue = (it - start) / 1000f }
+        }
+    }
+    return clock
 }
 
 /**
@@ -270,10 +301,11 @@ fun HolidayOrUsualIcon(
     size: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
-    val holiday = androidx.compose.runtime.remember { HolidayNavKit.current() }
+    val holiday = remember { HolidayNavKit.current() }
     val art = key?.let { holiday?.icon(it) }
     if (art != null) {
-        Canvas(modifier.then(Modifier.size(size))) { art(color) }
+        val clock = holidayClock()
+        Canvas(modifier.then(Modifier.size(size))) { art(color, clock.floatValue) }
     } else {
         com.github.damontecres.wholphin.ui.components
             .BenflixIconImage(icon, color = color, size = size, contentDescription = null, modifier = modifier)
