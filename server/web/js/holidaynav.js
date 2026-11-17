@@ -347,7 +347,6 @@
         return out;
       },
     }),
-    make("starwars", is("swOn"), true, ["#0B0B14", "#05050A"], ["#FFE81F", "#4FC3F7", "#E53935"], "Star Wars Day pick", { pickWords: ["Star Wars"] }),
     // Star Wars Day (Ben 2026-11-17, sheet starwars-7-icons): the saga drawings replace the rail and tab icons, each
     // in its own colour; a short lit laser sword in the profile's side colour marks where you are; Home stays plain
     // (no trims) with the "May the 4th" card; start-up icons ignite in the side colour. Same drawings as the app's
