@@ -964,10 +964,23 @@ B.animeRequests = (nav, getLists, openList) => {
     const wanted = new Set(c.titles.map(cleanName).filter(Boolean));
     const yearOk = (x, slack) => { const y = +((x.releaseDate || x.firstAirDate || "").slice(0, 4)); return !y || !c.year || Math.abs(y - c.year) <= slack; };
     const nameOf = (x) => cleanName(x.title || x.name || x.originalName || x.originalTitle);
+    // Tower's anime id list first (AniList / MyAnimeList -> TMDB), so it never opens a look-alike like the live-action One Piece
+    const al = c.id > 0 ? c.id : null, mal = c.idMal || (c.id < 0 ? -c.id : null);
+    if (al || mal) {
+      const ids = await B.call("GET", `api/anime/tmdb?${al ? "anilist=" + al : ""}${al && mal ? "&" : ""}${mal ? "mal=" + mal : ""}`).catch(() => null);
+      const key = (ids && ((al && ids.anilist && ids.anilist[al]) || (mal && ids.mal && ids.mal[mal]))) || "";
+      const [kind, tmdb] = key.split(":");
+      if (tmdb && (kind === "movie" || kind === "tv")) {
+        if (btn) btn.classList.remove("busy");
+        if (B.alive(nav)) B.go(`#/ask/${kind}/${tmdb}`);
+        return;
+      }
+    }
     let found = null;
     for (const n of c.titles.filter((t) => /[A-Za-z0-9]/.test(t)).slice(0, 3)) {
       const r = await seerr(`/search?query=${enc(n.replace(/[:!?]/g, " ").trim())}&page=1`).catch(() => null);
-      const res = ((r && r.results) || []).filter((x) => x.mediaType === want);
+      // only cartoons (TMDB genre 16), never a live-action version with the same name
+      const res = ((r && r.results) || []).filter((x) => x.mediaType === want && (x.genreIds || []).includes(16));
       found = res.find((x) => wanted.has(nameOf(x)) && yearOk(x, 1))
         || res.find((x) => { const m = nameOf(x); return m.length >= 4 && [...wanted].some((w) => w.startsWith(m) || m.startsWith(w)) && yearOk(x, 2); })
         || res.find((x) => wanted.has(nameOf(x)));

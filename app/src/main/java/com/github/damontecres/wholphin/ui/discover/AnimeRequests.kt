@@ -216,6 +216,7 @@ class AnimeRequestsViewModel
         private val aniList: AniListService,
         private val ownedIndex: OwnedAnimeIndex,
         private val seerrService: SeerrService,
+        private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _lists = MutableStateFlow<Map<String, AnimeListState>>(emptyMap())
@@ -320,7 +321,15 @@ class AnimeRequestsViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val found =
                     try {
-                        findAnimeInRequests(seerrService, card.titles, card.year, card.isMovie)
+                        findAnimeInRequests(
+                            seerrService,
+                            card.titles,
+                            card.year,
+                            card.isMovie,
+                            anilistId = card.id.takeIf { it > 0 },
+                            malId = card.idMal ?: (-card.id).takeIf { it > 0 },
+                            helper = helper,
+                        )
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
