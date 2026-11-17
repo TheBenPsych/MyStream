@@ -124,66 +124,214 @@ object EarthDayNav {
 
     private val PARTS: Map<String, List<EdPart>> by lazy {
         mapOf(
-            "home" to listOf(
-                EdPart("M3 11l9-7 9 7", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M5 10v10h14V10", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M12 20v-3.75", stroke = 0xFF5DB64E, fill = null, width = 1.6f),
-                EdPart("M12 16.75c-3.25 0 -4.5 -2 -4.5 -4.25 2.75 0 4.5 1.5 4.5 4.25z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
-                EdPart("M12 16.75c3.25 0 4.5 -2 4.5 -4.25 -2.75 0 -4.5 1.5 -4.5 4.25z", stroke = null, fill = 0xFF4FA846, width = 1.8f),
-            ),
-            "movies" to listOf(
-                EdPart("M4.8 9H19.2A1.8 1.8 0 0 1 21 10.8V18.2A1.8 1.8 0 0 1 19.2 20H4.8A1.8 1.8 0 0 1 3 18.2V10.8A1.8 1.8 0 0 1 4.8 9Z", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M3 9l16.5 -4.2 0.8 2.9L4 12", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M8.5 7.6l2 2.6M13.5 6.3l2 2.6", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M12 18.5v-3", stroke = 0xFF5DB64E, fill = null, width = 1.6f),
-                EdPart("M12 15.9c-2.6 0 -3.6 -1.6 -3.6 -3.4 2.2 0 3.6 1.2 3.6 3.4z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
-                EdPart("M12 15.9c2.6 0 3.6 -1.6 3.6 -3.4 -2.2 0 -3.6 1.2 -3.6 3.4z", stroke = null, fill = 0xFF4FA846, width = 1.8f),
-            ),
-            "shows" to listOf(
-                EdPart("M4.5 7H17.5A2 2 0 0 1 19.5 9V17A2 2 0 0 1 17.5 19H4.5A2 2 0 0 1 2.5 17V9A2 2 0 0 1 4.5 7Z", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M7 22h8", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M0 0C-1 -4 -5 -5 -5.5 -2C-5.6 0 -3 1 0 0z", stroke = null, fill = 0xFFF08A24, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
-                EdPart("M0 0C1 -4 5 -5 5.5 -2C5.6 0 3 1 0 0z", stroke = null, fill = 0xFFF08A24, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
-                EdPart("M0 0C-1 2.5 -4 3.4 -4 1.4z", stroke = null, fill = 0xFFE06A10, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
-                EdPart("M0 0C1 2.5 4 3.4 4 1.4z", stroke = null, fill = 0xFFE06A10, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
-                EdPart("M0 -2.5V2", stroke = 0xFF2A1A10, fill = null, width = 1f, rot = 15f, tx = 18.5f, ty = 6.2f),
-            ),
-            "live" to listOf(
-                EdPart("M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M8.8 12A3.2 3.2 0 1 0 15.2 12A3.2 3.2 0 1 0 8.8 12Z", stroke = null, fill = 0xFF2A74AE, width = 1.8f),
-                EdPart("M10.4 10.6c1-.6 2 0 1.6 1-.5 1 .8 1.4 0.2 2.4-1 .2-2.2-.6-2.3-1.7z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
-            ),
-            "games" to listOf(
-                EdPart("M7.2 6.8h9.6c2.4 0 4 1.5 4.6 3.9l1 5c.5 2.6-1.1 4.2-3.1 4.2-1.4 0-2.3-.8-3-1.9l-.9-1.4H8.6l-.9 1.4c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.6-3.1-4.2l1-5c.6-2.4 2.2-3.9 4.6-3.9z", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M7 10.4v4M5 12.4h4", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M13.799999999999999 12.3A2.6 2.6 0 1 0 19 12.3A2.6 2.6 0 1 0 13.799999999999999 12.3Z", stroke = null, fill = 0xFFE0281E, width = 1.8f),
-                EdPart("M16.4 9.8v5", stroke = 0xFF1A1A1A, fill = null, width = 0.8f),
-                EdPart("M14.85 11.6A0.55 0.55 0 1 0 15.950000000000001 11.6A0.55 0.55 0 1 0 14.85 11.6Z", stroke = null, fill = 0xFF1A1A1A, width = 1.8f),
-                EdPart("M16.95 12.9A0.55 0.55 0 1 0 18.05 12.9A0.55 0.55 0 1 0 16.95 12.9Z", stroke = null, fill = 0xFF1A1A1A, width = 1.8f),
-                EdPart("M15.499999999999998 9.9A0.9 0.9 0 1 0 17.299999999999997 9.9A0.9 0.9 0 1 0 15.499999999999998 9.9Z", stroke = null, fill = 0xFF1A1A1A, width = 1.8f),
-            ),
-            "music" to listOf(
-                EdPart("M9 18V5", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M3 18A3 3 0 1 0 9 18A3 3 0 1 0 3 18Z", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M9 5c4-1.6 8-1 11 2.2-3.6 1.6-7.8 1.6-11 0z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
-                EdPart("M9.5 5.6c3 .3 6.2.9 9.6 1.6", stroke = 0xFF2F7A34, fill = null, width = 0.8f),
-            ),
-            "books" to listOf(
-                EdPart("M4 5a2 2 0 0 1 2 -2h13v16H6a2 2 0 0 0 -2 2z", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M4 21V5", stroke = ICON, fill = null, width = 1.8f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 0f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 36f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 72f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 108f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 144f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 180f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 216f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 252f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 288f, px = 12f, py = 10.4f),
-                EdPart("M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z", stroke = null, fill = 0xFFFFF, width = 1.8f, rot = 324f, px = 12f, py = 10.4f),
-                EdPart("M10.7 10.4A1.3 1.3 0 1 0 13.3 10.4A1.3 1.3 0 1 0 10.7 10.4Z", stroke = null, fill = 0xFFF4C542, width = 1.8f),
-                EdPart("M12 11.7v5", stroke = 0xFF4FA846, fill = null, width = 1.1f),
-            ),
+            "home" to
+                listOf(
+                    EdPart("M3 11l9-7 9 7", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M5 10v10h14V10", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M12 20v-3.75", stroke = 0xFF5DB64E, fill = null, width = 1.6f),
+                    EdPart("M12 16.75c-3.25 0 -4.5 -2 -4.5 -4.25 2.75 0 4.5 1.5 4.5 4.25z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
+                    EdPart("M12 16.75c3.25 0 4.5 -2 4.5 -4.25 -2.75 0 -4.5 1.5 -4.5 4.25z", stroke = null, fill = 0xFF4FA846, width = 1.8f),
+                ),
+            "movies" to
+                listOf(
+                    EdPart(
+                        "M4.8 9H19.2A1.8 1.8 0 0 1 21 10.8V18.2A1.8 1.8 0 0 1 19.2 20H4.8A1.8 1.8 0 0 1 3 18.2V10.8A1.8 1.8 0 0 1 4.8 9Z",
+                        stroke = ICON,
+                        fill = null,
+                        width = 1.8f,
+                    ),
+                    EdPart("M3 9l16.5 -4.2 0.8 2.9L4 12", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M8.5 7.6l2 2.6M13.5 6.3l2 2.6", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M12 18.5v-3", stroke = 0xFF5DB64E, fill = null, width = 1.6f),
+                    EdPart("M12 15.9c-2.6 0 -3.6 -1.6 -3.6 -3.4 2.2 0 3.6 1.2 3.6 3.4z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
+                    EdPart("M12 15.9c2.6 0 3.6 -1.6 3.6 -3.4 -2.2 0 -3.6 1.2 -3.6 3.4z", stroke = null, fill = 0xFF4FA846, width = 1.8f),
+                ),
+            "shows" to
+                listOf(
+                    EdPart(
+                        "M4.5 7H17.5A2 2 0 0 1 19.5 9V17A2 2 0 0 1 17.5 19H4.5A2 2 0 0 1 2.5 17V9A2 2 0 0 1 4.5 7Z",
+                        stroke = ICON,
+                        fill = null,
+                        width = 1.8f,
+                    ),
+                    EdPart("M7 22h8", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart(
+                        "M0 0C-1 -4 -5 -5 -5.5 -2C-5.6 0 -3 1 0 0z",
+                        stroke = null,
+                        fill = 0xFFF08A24,
+                        width = 1.8f,
+                        rot = 15f,
+                        tx = 18.5f,
+                        ty = 6.2f,
+                    ),
+                    EdPart(
+                        "M0 0C1 -4 5 -5 5.5 -2C5.6 0 3 1 0 0z",
+                        stroke = null,
+                        fill = 0xFFF08A24,
+                        width = 1.8f,
+                        rot = 15f,
+                        tx = 18.5f,
+                        ty = 6.2f,
+                    ),
+                    EdPart("M0 0C-1 2.5 -4 3.4 -4 1.4z", stroke = null, fill = 0xFFE06A10, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
+                    EdPart("M0 0C1 2.5 4 3.4 4 1.4z", stroke = null, fill = 0xFFE06A10, width = 1.8f, rot = 15f, tx = 18.5f, ty = 6.2f),
+                    EdPart("M0 -2.5V2", stroke = 0xFF2A1A10, fill = null, width = 1f, rot = 15f, tx = 18.5f, ty = 6.2f),
+                ),
+            "live" to
+                listOf(
+                    EdPart(
+                        "M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8",
+                        stroke = ICON,
+                        fill = null,
+                        width = 1.8f,
+                    ),
+                    EdPart("M8.8 12A3.2 3.2 0 1 0 15.2 12A3.2 3.2 0 1 0 8.8 12Z", stroke = null, fill = 0xFF2A74AE, width = 1.8f),
+                    EdPart(
+                        "M10.4 10.6c1-.6 2 0 1.6 1-.5 1 .8 1.4 0.2 2.4-1 .2-2.2-.6-2.3-1.7z",
+                        stroke = null,
+                        fill = 0xFF7CD36B,
+                        width = 1.8f,
+                    ),
+                ),
+            "games" to
+                listOf(
+                    EdPart(
+                        "M7.2 6.8h9.6c2.4 0 4 1.5 4.6 3.9l1 5c.5 2.6-1.1 4.2-3.1 4.2-1.4 0-2.3-.8-3-1.9l-.9-1.4H8.6l-.9 1.4c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.6-3.1-4.2l1-5c.6-2.4 2.2-3.9 4.6-3.9z",
+                        stroke = ICON,
+                        fill = null,
+                        width = 1.8f,
+                    ),
+                    EdPart("M7 10.4v4M5 12.4h4", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart(
+                        "M13.799999999999999 12.3A2.6 2.6 0 1 0 19 12.3A2.6 2.6 0 1 0 13.799999999999999 12.3Z",
+                        stroke = null,
+                        fill = 0xFFE0281E,
+                        width = 1.8f,
+                    ),
+                    EdPart("M16.4 9.8v5", stroke = 0xFF1A1A1A, fill = null, width = 0.8f),
+                    EdPart(
+                        "M14.85 11.6A0.55 0.55 0 1 0 15.950000000000001 11.6A0.55 0.55 0 1 0 14.85 11.6Z",
+                        stroke = null,
+                        fill = 0xFF1A1A1A,
+                        width = 1.8f,
+                    ),
+                    EdPart(
+                        "M16.95 12.9A0.55 0.55 0 1 0 18.05 12.9A0.55 0.55 0 1 0 16.95 12.9Z",
+                        stroke = null,
+                        fill = 0xFF1A1A1A,
+                        width = 1.8f,
+                    ),
+                    EdPart(
+                        "M15.499999999999998 9.9A0.9 0.9 0 1 0 17.299999999999997 9.9A0.9 0.9 0 1 0 15.499999999999998 9.9Z",
+                        stroke = null,
+                        fill = 0xFF1A1A1A,
+                        width = 1.8f,
+                    ),
+                ),
+            "music" to
+                listOf(
+                    EdPart("M9 18V5", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M3 18A3 3 0 1 0 9 18A3 3 0 1 0 3 18Z", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M9 5c4-1.6 8-1 11 2.2-3.6 1.6-7.8 1.6-11 0z", stroke = null, fill = 0xFF7CD36B, width = 1.8f),
+                    EdPart("M9.5 5.6c3 .3 6.2.9 9.6 1.6", stroke = 0xFF2F7A34, fill = null, width = 0.8f),
+                ),
+            "books" to
+                listOf(
+                    EdPart("M4 5a2 2 0 0 1 2 -2h13v16H6a2 2 0 0 0 -2 2z", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart("M4 21V5", stroke = ICON, fill = null, width = 1.8f),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 0f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 36f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 72f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 108f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 144f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 180f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 216f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 252f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 288f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart(
+                        "M11.1 7.6A0.9 2.3 0 1 0 12.9 7.6A0.9 2.3 0 1 0 11.1 7.6Z",
+                        stroke = null,
+                        fill = 0xFFFFFFFF,
+                        width = 1.8f,
+                        rot = 324f,
+                        px = 12f,
+                        py = 10.4f,
+                    ),
+                    EdPart("M10.7 10.4A1.3 1.3 0 1 0 13.3 10.4A1.3 1.3 0 1 0 10.7 10.4Z", stroke = null, fill = 0xFFF4C542, width = 1.8f),
+                    EdPart("M12 11.7v5", stroke = 0xFF4FA846, fill = null, width = 1.1f),
+                ),
         )
     }
 
@@ -321,17 +469,20 @@ object EarthDayNav {
                 }
                 drawCircle(SUN, 2.8f * u, c)
             }
+
             1 -> { // poppy
                 drawCircle(POPPY, 6.5f * u, c)
                 drawCircle(Color(0xFFFF6A55), 4f * u, Offset(x - 1.5f * u, y - 2f * u))
                 drawCircle(Color(0xFF2A1A1A), 2.2f * u, c)
             }
+
             2 -> { // cornflower
                 for (k in 0 until 8) {
                     rotate(k * 45f, pivot = c) { drawLine(CORN, c, Offset(x, y - 6.5f * u), strokeWidth = 2.8f * u, cap = StrokeCap.Round) }
                 }
                 drawCircle(Color(0xFF2B4FA8), 2.2f * u, c)
             }
+
             else -> { // buttercup
                 for (k in 0 until 5) {
                     val a = k * 2 * PI.toFloat() / 5
