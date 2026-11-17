@@ -2382,7 +2382,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .rl-i:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
 .rl-i.on { color: var(--c); }
 .rl-i.on::before { content: ""; position: absolute; left: -10px; top: 11px; bottom: 11px; width: 3px; border-radius: 2px; background: var(--c); }
-.rl-door.open { background: var(--pg3); color: var(--c); }
+.rl-door.open, .rl-me.open { background: var(--pg3); color: var(--c); }
 .rl-gap { flex: 1; min-height: 12px; }
 .rl-me .pic { width: 30px; height: 30px; font-size: 13px; margin-left: -4px; }
 .rl-dot { position: absolute; left: 32px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tray); }
@@ -2415,6 +2415,19 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .np-posters a.sq span { aspect-ratio: 1; }
 .np-posters a small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-posters a:focus-visible { outline: 2.5px solid #fff; outline-offset: 2px; border-radius: 8px; }
+/* Your picture's panel: the profile menu slides out beside the rail like a door's panel, Sign out down by your picture */
+.np-who { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 18px 22px; text-align: center; background: var(--pg3);
+  background-image: radial-gradient(circle at 50% 30%, rgba(255,255,255,.08), transparent 70%); }
+.np-who .pic { width: 96px; height: 96px; font-size: 36px; margin-bottom: 6px; }
+.np-who b { font-size: 22px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-who small { font-size: 13px; color: var(--ink2); }
+.np-who .btn { margin-top: 8px; }
+.np-list button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.np-list button svg.i { color: var(--ink2); width: 20px; height: 20px; }
+.np-list button:hover, .np-list button:focus-visible { background: var(--pg4); }
+.np-list button:focus-visible, .np-who .btn:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
+.np-end { margin-top: auto; border-top: 1px solid var(--line); padding-bottom: 16px; }
+.np-list .np-out { color: var(--ink2); }
 /* The page header: the door's name, or the named Back button and the where-am-I line */
 .top .hstart { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
 .top .place { padding-left: 0; border-left: 0; }
