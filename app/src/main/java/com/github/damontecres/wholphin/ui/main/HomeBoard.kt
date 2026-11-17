@@ -277,8 +277,17 @@ internal fun Greeting(
     greeting: String,
     weather: String?,
     tv: Boolean,
+    /** Ben 2026-11-17: on TV Home the greeting sits on the clock's line, with its line beside it instead of under it */
+    inline: Boolean = false,
 ) {
-    Column {
+    @Composable
+    fun Lay(content: @Composable () -> Unit) =
+        if (inline) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) { content() }
+        } else {
+            Column { content() }
+        }
+    Lay {
         // Video Games Day look: the greeting is in pixel capitals (smaller, as they're very wide)
         val vg = com.github.damontecres.wholphin.ui.theme.VgLook.on
         Text(
@@ -350,7 +359,9 @@ internal fun Greeting(
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 4.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (inline) Modifier else Modifier.padding(top = 4.dp),
             )
         }
     }
