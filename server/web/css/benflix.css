@@ -9,6 +9,8 @@
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+@font-face { font-family: "Benflix Subtitles"; src: url("../fonts/subtitle_atkinson_bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Benflix Subtitles"; src: url("../fonts/subtitle_atkinson_bolditalic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
 
 :root {
   --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #16181E; --pg3: #1D2027; --pg4: #262932; --line: #2A2D35;
@@ -1309,8 +1311,10 @@ body.has-rail .bk-side { display: none; }
   .home.fam .moredoor .n { font-size: 22px; }
   .pbadge { font-size: 13px; padding: 3px 10px; }
 }
-/* Redesign 2 players (pl-family): white subtitles with a soft shadow, and Live TV's red LIVE pill */
-.player video::cue { color: #fff; background: transparent; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55); }
+/* Benflix standard subtitle look (every player, every video): Atkinson Hyperlegible Bold, white with a
+   black outline. Plain subtitle files only; picture subtitles from discs are drawn by Tower and stay as they are. */
+video::cue { color: #fff; background: transparent; font-family: "Benflix Subtitles", "Outfit", sans-serif; font-weight: 700; text-shadow: .075em 0 0 #000, -.075em 0 0 #000, 0 .075em 0 #000, 0 -.075em 0 #000, .053em .053em 0 #000, -.053em .053em 0 #000, .053em -.053em 0 #000, -.053em -.053em 0 #000, 0 2px 4px rgba(0,0,0,.6); }
+/* Live TV's red LIVE pill */
 .player .livepill { border: 0; border-radius: 6px; background: #d93a3a; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .04em; padding: 7px 12px; cursor: pointer; }
 .player .livepill:hover { filter: brightness(1.1); }
 
