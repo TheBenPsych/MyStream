@@ -24,7 +24,8 @@ object BenflixColors {
 
     /** Pills, chips and small raised things */
     val Raised: Color get() =
-        ed(EdLook.Raised) ?: ny(NyLook.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised) ?: vl(ValLook.Raised)
+        ed(EdLook.Raised) ?: ny(NyLook.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised)
+            ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
@@ -34,7 +35,8 @@ object BenflixColors {
 
     /** The lighter side of a panel (profile card picture side) */
     val PanelHigh: Color get() =
-        ed(EdLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh) ?: vl(ValLook.PanelHigh)
+        ed(EdLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh)
+            ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
