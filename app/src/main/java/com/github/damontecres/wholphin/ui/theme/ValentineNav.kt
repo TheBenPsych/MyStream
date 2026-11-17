@@ -21,7 +21,7 @@ import kotlin.math.sin
  * Valentine's Day for the new navigation (Ben 2026-11-17, sheet valentines-3-navigation, "Love tokens"): the six
  * love tokens from the old door tiles become the rail and phone-tab icons (Admit Two ticket, gold heart locket, red
  * foil heart balloon, ace of hearts, heart-shaped record, love letter with a wax seal). Home, Search, Requests and
- * More keep their usual shapes in rose. Home gets paper hearts on twine across the top (gently swaying) and a red
+ * More keep their usual shapes in rose. Home gets a shallow string of paper hearts across the top (gently swaying) and a red
  * satin ribbon tied in a bow along the bottom. Every drawing is the same as the web's (js/holidaynav.js).
  */
 object ValentineNav {
@@ -217,21 +217,22 @@ object ValentineNav {
 
     /** Paper hearts on twine across the top of Home's picture, swaying a little */
     val topTrim: HolidayArt = { t ->
+        // Kept shallow (about 25 dp) so the greeting on the clock's line stays clear (Ben 2026-11-17)
         val d = density
-        val span = 220f * d
-        val sag = 18f * d
-        val top = 3f * d
-        val hs = 24f * d
+        val span = 120f * d
+        val sag = 3f * d
+        val top = 1f * d
+        val hs = 18f * d
         val twine = Color(0xFFC9A47A)
         val spans = (size.width / span).toInt() + 1
         val path = Path().apply { moveTo(0f, top) }
         for (i in 0 until spans) path.quadraticTo(i * span + span / 2, top + sag * 2, (i + 1) * span, top)
-        drawPath(path, twine, style = Stroke(1.6f * d))
+        drawPath(path, twine, style = Stroke(1.4f * d))
         val colors = listOf(ROSE, PALE, BLUSH, DEEP)
         var k = 0
         for (i in 0 until spans) {
-            for (j in 1..5) {
-                val f = j / 6f
+            for (j in 1..3) {
+                val f = j / 4f
                 val x = i * span + span * f
                 val y = top + 2 * (1 - f) * f * sag * 2
                 val c = colors[k % 4]
@@ -239,8 +240,8 @@ object ValentineNav {
                 k++
                 if (x > size.width + hs) continue
                 rotate(tilt, Offset(x, y)) {
-                    drawLine(twine, Offset(x, y), Offset(x, y + 4f * d), 1.2f * d)
-                    heart(x - hs / 2, y + 2f * d, hs, solid(c), Color.Black.copy(alpha = .18f), .8f * d)
+                    drawLine(twine, Offset(x, y), Offset(x, y + 3f * d), 1.2f * d)
+                    heart(x - hs / 2, y + 1.5f * d, hs, solid(c), Color.Black.copy(alpha = .18f), .8f * d)
                 }
             }
         }
