@@ -1660,6 +1660,61 @@ html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: 
 html.tg .corner { overflow: visible; }
 html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }
 
+/* ---------- New Year's look (approved 2026-11-17, 27 December to 1 January, Kids too: Ben 2026-11-17) ----------
+   Champagne gold for selected things (dark words on gold), midnight blue for other buttons and panels, white words
+   on every door, and a different party charm on each door (foil balloons, pocket watch at 11:59, mirror ball, paper
+   rosette, two bells on a velvet bow, folded gold star). Small touches, each for one kind of thing: a glint sweeping
+   across Play, a sparkler at the end of progress, a gold star in switches that are on, a clock-face loading ring,
+   and a different mark for each kind of Home notice. Settings › Look › New Year's look turns it off (js/start.js B.nyOn). */
+html.ny {
+  --pg2: #0F1730; --pg3: #16203F; --pg4: #22335C; --line: #26335A; --accent: #E8B84A; --kacc: #E8B84A;
+  --ngold: #E8B84A; --nmid: #22335C; --nongold: #1A1406;
+}
+html.ny .door { color: #fff; }
+html.ny .door > svg.i, html.ny .door .n, html.ny .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.ny .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -6.7%; top: -1.8%; width: 55%; max-width: 165px; aspect-ratio: 132 / 166; background: center top / contain no-repeat; }
+html.ny .door[data-door="movies"]::after { background-image: url("../img/ny/ny_charm_movies.png"); }
+html.ny .door[data-door="shows"]::after { background-image: url("../img/ny/ny_charm_shows.png"); }
+html.ny .door[data-door="live"]::after { background-image: url("../img/ny/ny_charm_live.png"); }
+html.ny .door[data-door="games"]::after { background-image: url("../img/ny/ny_charm_games.png"); }
+html.ny .door[data-door="music"]::after { background-image: url("../img/ny/ny_charm_music.png"); }
+html.ny .door[data-door="books"]::after { background-image: url("../img/ny/ny_charm_books.png"); }
+html.ny .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.ny .bgreet .wx.nyc { color: #C9D0E0; font-weight: 600; }
+html.ny .btn.white, html.ny .btn.red, html.ny .chip.on { background: var(--ngold); border-color: var(--ngold); color: var(--nongold); }
+html.ny .btn.white:hover, html.ny .btn.red:hover { background: #F0C860; color: var(--nongold); }
+html.ny .btn { background: var(--nmid); }
+html.ny .btn.ghost { background: none; }
+html.ny .poster .prog { background: rgba(34,51,92,.9); }
+html.ny .poster .prog i, html.ny .kwbar .line i, html.ny .player .bar .knob { background: var(--ngold); }
+html.ny .corner .ctime { background: var(--ngold); }
+/* a glint of sparkle sweeping across Play now and then, and a little star twinkling in its corner */
+html.ny .tp .btns .btn.white { position: relative; overflow: hidden; }
+html.ny .tp .btns .btn.white::before { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%); transform: translateX(-120%); animation: nyglint 3.9s ease-in-out infinite; pointer-events: none; }
+html.ny .tp .btns .btn.white::after { content: ""; position: absolute; right: 8px; top: 4px; width: 16px; height: 16px; background: url("../img/ny/ny_glint.png") center / contain no-repeat; animation: nytwinkle 2.2s ease-in-out infinite alternate; pointer-events: none; }
+@keyframes nyglint { 0% { transform: translateX(-120%); } 23%, 100% { transform: translateX(120%); } }
+@keyframes nytwinkle { from { transform: scale(.7); } to { transform: scale(1.15); } }
+/* a lit sparkler at the end of the progress line */
+html.ny .kwbar .line { overflow: visible; background: var(--nmid); }
+html.ny .kwbar .line i { position: relative; border-radius: 2px; }
+html.ny .kwbar .line i::after { content: ""; position: absolute; right: -13px; top: -11px; width: 26px; height: 26px; background: url("../img/ny/ny_sparkler.png") center / contain no-repeat; }
+/* the loading ring is a clock face ticking round to midnight */
+html.ny .spin { position: relative; border: 5px solid var(--nmid); border-top-color: var(--ngold); width: 46px; height: 46px; background: #0F1730; }
+html.ny .spin::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 13px; margin-left: -1.5px; margin-top: -13px; background: #fff; border-radius: 2px; transform-origin: 50% 100%; animation: spin 2.4s linear infinite reverse; }
+html.ny .spin::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--ngold); }
+/* switches that are on get a little gold star */
+html.ny .valbtn.on::before { content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -2px; background: url("../img/ny/ny_star.png") center / contain no-repeat; }
+/* each kind of Home notice gets its own small gold mark */
+html.ny .brow .tx small::before { content: ""; display: inline-block; width: 1.4em; height: 1.4em; margin-right: .4em; vertical-align: -.35em; background: center / contain no-repeat; }
+html.ny .brow .tx small[data-mark="glass"]::before { background-image: url("../img/ny/ny_mark_glass.png"); }
+html.ny .brow .tx small[data-mark="star"]::before { background-image: url("../img/ny/ny_mark_star.png"); }
+html.ny .brow .tx small[data-mark="clock"]::before { background-image: url("../img/ny/ny_mark_clock.png"); }
+html.ny .brow .tx small[data-mark="ball"]::before { background-image: url("../img/ny/ny_mark_ball.png"); }
+html.ny .brow .tx small[data-mark="spark"]::before { background-image: url("../img/ny/ny_mark_spark.png"); }
+/* notices get a gold edge */
+html.ny .corner { box-shadow: inset 4px 0 0 var(--ngold); }
+.who .nycount { color: #C9D0E0; }
+
 /* ---------- Video Games Day look (approved 2026-11-17, 12 September only, Kids too) ----------
    Arcade cyan (with dark words) for selected things, deep purple for other buttons and panels, white words on
    every door, and a different game keepsake on each door, each hung or fixed the way it really would be

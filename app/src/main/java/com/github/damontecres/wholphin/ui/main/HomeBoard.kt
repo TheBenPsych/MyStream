@@ -58,10 +58,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.NewYearSeason
+import com.github.damontecres.wholphin.ui.theme.NyKindMark
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
-import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
+import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -246,16 +250,19 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = if (vg) BenflixType.pageTitle * .6f else BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || vg) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (vg) com.github.damontecres.wholphin.ui.theme.PixelFont else if (TgLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || NyLook.on || vg) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
+            fontFamily = if (vg) com.github.damontecres.wholphin.ui.theme.PixelFont else if (TgLook.on || NyLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (vg) Modifier.padding(vertical = 6.dp) else Modifier,
         )
-        // Video Games Day look: "Player 1 ready" comes before the usual news
+        // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
         val line =
-            if (vg) {
+            if (NyLook.on) {
+                listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (vg) {
+                // Video Games Day look: "Player 1 ready" comes before the usual news
                 listOfNotNull(com.github.damontecres.wholphin.ui.theme.VideoGamesDay.LINE, weather).joinToString(" · ")
             } else {
                 weather
@@ -361,6 +368,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .nyDoorCharm(door)
                 .vgDoorKeepsake(door)
                 .padding(u * 0.85f),
         ) {
@@ -656,6 +664,24 @@ private fun RowDivider(modifier: Modifier = Modifier) {
     )
 }
 
+/** The small coloured line saying what a news row is ("New episode · S3 E12") */
+@Composable
+private fun KindLine(
+    row: HomeRow,
+    words: RowWords,
+) {
+    Text(
+        text = row.kind.uppercase(),
+        color = row.kindColor,
+        fontSize = words.kind,
+        lineHeight = words.kind * 1.3f,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = words.kind * 0.06f,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /**
  * One news row: a small square poster, the small coloured line (what it is), and the name on up to 2 lines.
  * When you land on it, a name too long for 2 lines slides by on one line (not with Lite mode on).
@@ -684,26 +710,21 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                // Video Games Day look: each kind of news gets its own pixel picture before its label
-                val mark = vgKindFor(row)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (mark != null) {
-                        com.github.damontecres.wholphin.ui.theme.VgKindMark(
-                            mark,
-                            size = (words.kind.value * 1.3f).dp,
-                            modifier = Modifier.padding(end = 6.dp),
-                        )
+                // New Year's look: each kind of notice gets its own small gold mark before its kind line
+                if (NyLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
                     }
-                    Text(
-                        text = row.kind.uppercase(),
-                        color = row.kindColor,
-                        fontSize = words.kind,
-                        lineHeight = words.kind * 1.3f,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = words.kind * 0.06f,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                } else if (vgKindFor(row) != null) {
+                    // Video Games Day look: each kind of news gets its own pixel picture before its label
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        com.github.damontecres.wholphin.ui.theme
+                            .VgKindMark(vgKindFor(row)!!, size = with(LocalDensity.current) { (words.kind * 1.3f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else {
+                    KindLine(row, words)
                 }
                 val slide = focused && !look.lite
                 Text(

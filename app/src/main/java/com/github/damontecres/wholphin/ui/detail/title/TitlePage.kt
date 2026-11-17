@@ -70,9 +70,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pixelShape
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.vgPlayPixel
@@ -701,6 +703,8 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
+    val ny = NyLook.on
     val primaryFill =
         if (vg) {
             VgLook.Cyan
@@ -708,13 +712,23 @@ private fun TitleButtonView(
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (ny) {
+            NyLook.Gold
         } else {
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            if (vg) VgLook.OnCyan else if (xmas || tg) Color.White else BenflixColors.Tray
+            if (vg) {
+                VgLook.OnCyan
+            } else if (xmas || tg) {
+                Color.White
+            } else if (ny) {
+                NyLook.OnGold
+            } else {
+                BenflixColors.Tray
+            }
         } else {
             BenflixColors.Text
         }
@@ -738,6 +752,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(if (primary && vg) Modifier.vgPlayPixel() else Modifier)
                 .then(
                     if (primary && xmas) {
