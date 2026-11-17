@@ -64,7 +64,7 @@
   function leaf(x,y,ang,len,wid,c1,c2,o={}){const p=nid('lf');
    let s=`<defs>${lin(p,c1,c2,1,1)}</defs><g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(ang)})"><path d="${leafPath(len,wid,o.kind)}" fill="url(#${p})" stroke="${dk(c2,.35)}" stroke-width="1"/><path d="M${f1(len*.04)} 0Q${f1(len*.5)} ${f1(-wid*.04)} ${f1(len*.92)} 0" stroke="${lt(c1,.4)}" stroke-width="${f1(Math.max(1,wid*.05))}" fill="none" opacity=".8"/></g>`;return s}
   const GR=['#8ED46A','#3A8634'],GRD=['#5FA848','#1F5422'];
-  
+
   /* ---------- the room: a dim spring evening, sage walls, warm lamp ---------- */
   function room(W2,H2,win){const id=nid('rm');const fl=H2*.8;
    let s=`<defs><linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0C1612"/><stop offset="1" stop-color="#16241C"/></linearGradient><linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A1D14"/><stop offset="1" stop-color="#0E0A07"/></linearGradient><radialGradient id="${id}v" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient><radialGradient id="${id}l" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFC982" stop-opacity=".3"/><stop offset="1" stop-color="#FFC982" stop-opacity="0"/></radialGradient></defs>`;
@@ -76,7 +76,7 @@
    s+=`<rect y="${fl}" width="${W2}" height="${H2-fl}" fill="url(#${id}f)"/>`;for(let k=1;k<6;k++)s+=`<path d="M0 ${f1(fl+(H2-fl)*k/6)} H${W2}" stroke="#000" stroke-opacity=".25" stroke-width="2"/>`;
    s+=`<rect y="${fl-10}" width="${W2}" height="10" fill="#0E1712"/>`;
    return {bg:s,vig:`<rect width="${W2}" height="${H2}" fill="url(#${id}v)"/>`,lamp:(x,y,R)=>`<circle class="lampg" cx="${x}" cy="${y}" r="${R}" fill="url(#${id}l)"/>`}}
-  
+
   /* ---------- window: spring dusk, a blossom tree, people passing on the path ---------- */
   function groundY(){return 0}
   function windowSVG([wx,wy,ww,wh]){const id=nid('wn');const r=rnd(77);const gy=wh-46;
@@ -113,7 +113,7 @@
    <g class="curtR"><path d="M${ww+44} -40C${ww+30} ${f1(wh*.3)} ${ww+40} ${f1(wh*.7)} ${ww+50} ${wh+20}H${ww+90}V-40Z" fill="#B9C9A6"/><path d="M${ww+60} -40C${ww+54} ${f1(wh*.4)} ${ww+62} ${f1(wh*.7)} ${ww+70} ${wh+20}" stroke="#8FA27C" stroke-width="3" fill="none"/></g>
    <rect x="-66" y="-50" width="${ww+160}" height="10" rx="5" fill="#6A5236"/>`;
    return s+`</g>`}
-  
+
   /* ---------- people walking past: feet on the path at y=0, facing left, 1.6x size ---------- */
   const skin='#E8B48A',skin2='#A86E48';
   function leg(hx,hy,col,shoe,ph){/* hip at (hx,hy); the leg swings from the hip */return `<g class="lg" data-hx="${hx}" data-hy="${hy}" data-ph="${ph}"><path d="M${hx} ${hy}L${hx} -3" stroke="${col}" stroke-width="7" stroke-linecap="round"/><path d="M${hx+2} -1h-10a3.5 3.5 0 0 1 0 -6h8Z" fill="${shoe}"/></g>`}
@@ -171,7 +171,7 @@
     s+=`<g transform="translate(${f1(x+70)} ${f1(y)}) scale(1.6)">${wKneel()}</g>`;
     for(let k=0;k<6;k++)s+=`<ellipse class="drop" data-k="${k}" rx="1.6" ry="3" fill="#BFE6FF" opacity="0"/>`}
    return s+`</g>`}
-  
+
   /* ---------- the plant corner ---------- */
   function monstera(x,by,sc){/* a big monstera in a woven basket; each leaf has its splits cut with a mask */
    const id=nid('ms');let s=`<defs>${lin(id+'b','#C9A46A','#7A5A30',1,1)}${sh(id+'s',6,.5)}</defs><g transform="translate(${x} ${by}) scale(${sc})">`;

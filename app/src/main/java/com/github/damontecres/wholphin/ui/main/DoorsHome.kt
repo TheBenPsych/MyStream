@@ -1460,8 +1460,10 @@ fun DoorsHomePage(
                 greeting =
                     when (familyKind) {
                         FamilyKind.GUEST -> "Welcome"
+
                         // Earth week: Kids gets the Earth Day greeting too
                         FamilyKind.KIDS -> if (com.github.damontecres.wholphin.ui.theme.EdLook.on) "Happy Earth Day!" else "Hi there!"
+
                         else -> greetingFor(viewModel.userName)
                     },
                 doors = familyDoorSet,
