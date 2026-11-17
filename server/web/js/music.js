@@ -758,6 +758,8 @@
     (extra || []).forEach((o) => opts.push(o));
     // Ben only: a bad copy (wrong song, cut off, bad sound) is deleted on Tower and a new copy is found
     if (B.me.admin) opts.push({ label: "Delete and find again", value: "redo" });
+    // Admins only: a song you just don't want is deleted from Tower, Jellyfin and Lidarr for good
+    if (B.me.admin) opts.push({ label: "Delete song", value: "delete" });
     B.dropdown(anchor, opts, null, async (v) => {
       if (v === "next") M.playNext(s);
       else if (v === "add") M.addToUpNext(s);
@@ -766,6 +768,7 @@
       else if (v === "album") B.go(`#/album/${s.AlbumId}`);
       else if (v === "pl") addToPlaylist(anchor, [s]);
       else if (v === "redo") redoSong(s);
+      else if (v === "delete") deleteSong(s);
       else if (v === "radio") startRadio(s);
       else if (v === "send") sendTo(anchor, { kind: "song", id: s.Id, name: s.Name || "" });
       else (extra || []).forEach((o) => { if (o.value === v && o.run) o.run(); });
@@ -807,6 +810,16 @@
     try {
       const r = await B.call("POST", "api/music/redo", { id: s.Id });
       B.toast((r && r.words) || "Deleted. Tower is finding a new copy.");
+    } catch (e) { B.toast(e.message); }
+  };
+  const deleteSong = async (s) => {
+    const yes = await B.ask("Delete this song?", `This deletes "${s.Name}" from Tower for everyone and tells Lidarr not to get it again. It can't be undone (you can still ask for it again later).`, "Delete", "Cancel");
+    if (!yes) return;
+    try {
+      const r = await B.call("POST", "api/music/delete", { id: s.Id });
+      B.toast((r && r.words) || "Deleted. It won't be downloaded again.");
+      document.querySelectorAll(".srow").forEach((row) => { if (row.querySelector(`[data-heart="${s.Id}"]`)) row.remove(); });
+      if (M.current() && M.current().Id === s.Id && M.next) M.next();
     } catch (e) { B.toast(e.message); }
   };
   const addToPlaylist = async (anchor, songs) => {
