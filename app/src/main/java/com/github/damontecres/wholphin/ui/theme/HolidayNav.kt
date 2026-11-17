@@ -115,14 +115,7 @@ object HolidayNavKit {
                 listOf(0xFFFF6F91, 0xFF3DD6C6, 0xFFFFE14D, 0xFF7AA7FF),
                 "Game Day pick",
             ),
-            holiday(
-                "earthday",
-                { EdLook.on && !EaLook.on },
-                0xFF12261A,
-                0xFF0A160F,
-                listOf(0xFF5BD18B, 0xFF3FA7D6, 0xFF8BC34A),
-                "Earth Day pick",
-            ),
+            EarthDayNav.entry,
             holiday(
                 "halloween",
                 { HwLook.charmsOn },
