@@ -50,6 +50,48 @@
   }, extra || {});
   const is = (name) => () => !!(B[name] && B[name]());
 
+  /* Easter's drawings, made from the approved Easter kit (easter.js loads first) */
+  function easterNav() {
+    const base = { countdown: cd(() => B.ea), pickTags: ["easter", "easter bunny"], pickWords: ["Easter", "Peter Rabbit"] };
+    const K = window.BenflixEaster && window.BenflixEaster.kit;
+    if (!K) return base;
+    const EGGS = [["#FFB8D2", "#7B5BD6", "zig"], ["#BFE6FF", "#3F7FD0", "dots"], ["#FFF1A6", "#F08A24", "stripes"], ["#C9F2C0", "#E8508A", "flowers"], ["#E3D5FF", "#4AA8C8", "waves"], ["#FFD9B8", "#5AAE52", "checks"]];
+    // svg.i draws lines with currentColor and no fill: put the drawing's own defaults back
+    const plain = (s) => `<g fill="#000" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter">${s}</g>`;
+    // the part of each charm (on its 240 x 220 door) that is the thing itself, without the pin and ribbon
+    const CROP = { movies: "144 34 84 102", shows: "140 28 92 106", live: "144 42 84 100", games: "128 18 116 104", music: "136 4 104 140", books: "146 10 80 130" };
+    const icons = {};
+    Object.keys(CROP).forEach((k) => { icons[k] = plain(`<svg x="0" y="0" width="24" height="24" viewBox="${CROP[k]}">${K.CHARM[k]()}</svg>`); });
+    const sway = "<style>.eaSw{transform-box:fill-box;transform-origin:50% 0;animation:eaSw 4.5s ease-in-out infinite}@keyframes eaSw{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}</style>";
+    // A painted egg on a pink ribbon, hanging from a pearl pin (viewBox 0 0 12 18)
+    const mark = plain(`${sway}<g class="eaSw"><path d="M6 1.4V5.6" stroke="#C25A86" stroke-width=".9"/>${K.egg(6, 11.4, 4.6, 6.2, "#FFB8D2", "#7B5BD6", "zig", { nosh: true })}</g><circle cx="6" cy="1.4" r="1.4" fill="#F4F1EA" stroke="#B8B0A0" stroke-width=".3"/>`);
+    // Wide and cut to the screen (slice), so the eggs keep their shape at any width: 2 units = 1 pixel. Ben
+    // 2026-11-17: the greeting now sits top left on the clock's line, so the ribbon stays in a thin band along the
+    // very top with its eggs ending above the greeting's letters, and the grass stays inside its own box so it
+    // never covers the news cards. Phones put the greeting at the top of the picture: eggs there hang only on the
+    // right, past the words
+    const wide = (h, art) => (cls) => `<svg class="${cls || ""}" viewBox="0 0 4800 ${h}" preserveAspectRatio="xMinYMin slice" style="height:${h / 2}px" aria-hidden="true">${plain(art)}</svg>`;
+    let top = sway.replace("</style>", "@media (max-width:700px){.eaL{display:none}}</style>"), rope = "M0 6";
+    const step = 300, pins = [];
+    for (let x = 0; x < 4800; x += step) { rope += `Q${x + step / 2} ${6 + 24} ${x + step} 6`; pins.push(x); }
+    top += `<path d="${rope}" stroke="#C25A86" stroke-width="9" fill="none"/><path d="${rope}" stroke="#F28DB2" stroke-width="6" fill="none"/><path d="${rope}" stroke="#FFD0E2" stroke-width="1.6" fill="none" transform="translate(0 -1.5)"/>`;
+    pins.forEach((x, i) => {
+      const m = x + step / 2, e = EGGS[i % 6];
+      top += `<g class="eaSw${m < 560 ? " eaL" : ""}" style="animation-delay:${(-i * 0.7).toFixed(1)}s"><path d="M${m} 18V25" stroke="#C25A86" stroke-width="2.4"/>${K.egg(m, 39, 11, 15, e[0], e[1], e[2])}</g>`;
+      top += `<circle cx="${x}" cy="6" r="5" fill="#F4F1EA" stroke="#B8B0A0"/><circle cx="${x - 1.6}" cy="4.4" r="1.6" fill="#fff"/>`;
+    });
+    // Spring grass with tulips and eggs half hidden in it
+    let seed = 3;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const grass = (yb, h) => { let s = ""; for (let x = 0; x < 4800; x += 5) { const hh = h * (0.55 + rnd() * 0.6), lean = (rnd() - 0.5) * 18; s += `<path d="M${x} ${yb}q${(lean * 0.3).toFixed(1)} ${(-hh * 0.6).toFixed(1)} ${lean.toFixed(1)} ${(-hh).toFixed(1)}" stroke="${["#3E8A45", "#5AAE52", "#7CCB6A", "#4FA052"][(x / 5) % 4]}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`; } return s; };
+    let bottom = `<rect x="0" y="58" width="4800" height="14" fill="#24502F"/>` + grass(72, 40);
+    for (let i = 0, x = 60; x < 4800; i++, x += 150) {
+      if (i % 2) { const e = EGGS[i % 6]; bottom += K.egg(x, 46, 17, 23, e[0], e[1], e[2]); }
+      else bottom += `<path d="M${x} 32V72" stroke="#3E8A45" stroke-width="3.4"/>` + K.tulip(x, 36, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.2);
+    }
+    bottom += grass(72, 22);
+    return Object.assign(base, { icons, mark, topTrim: wide(56, top), bottomTrim: wide(72, bottom) });
+  }
   // New Year's (Ben 2026-11-17, "Midnight Fringe"): the rail and phone-tab icons are the New Year party charms,
   // a gold and silver foil fringe across the top of Home, confetti along the bottom. At midnight the fringe flashes
   // and fresh confetti falls for half a minute; from New Year's Day the pick is a fresh-start film.
@@ -535,7 +577,11 @@
       };
     })()),
     make("valentine", is("valOn"), false, ["#2A0F1A", "#170810"], ["#FF5C8A", "#D7263D", "#FFB3C6"], "Valentine's pick", { countdown: cd(() => B.val), pickTags: ["valentine's day"], pickWords: ["Valentine"] }),
-    make("easter", is("eaOn"), true, ["#1F2433", "#121522"], ["#F7B2D9", "#B8E0D2", "#FFE29A", "#C3B1E1"], "Easter pick", { countdown: cd(() => B.ea), pickTags: ["easter"], pickWords: ["Easter"] }),
+    // Easter (approved 2026-11-17, thread "Fit Easter theme to new navigation", direction A "Easter tree ribbon"):
+    // meadow-green rail, the door icons become the Easter tree charms, a painted egg on a ribbon hangs by the icon
+    // you're on, a pink satin ribbon swags across the top of Home with painted eggs swaying, and spring grass with
+    // tulips and eggs runs along the bottom. Kids too. The drawings come from easter.js (BenflixEaster.kit).
+    make("easter", is("eaOn"), true, ["#122019", "#0B150F"], ["#FFB8D2", "#BFE6FF", "#FFF1A6", "#C9F2C0", "#E3D5FF", "#FFD9B8"], "Easter pick", easterNav()),
     // Christmas: Classic big bulbs (approved 2026-11-17), art below (XMAS), the same as the app's ChristmasNav.kt
     make("christmas", is("xmasOn"), false, ["#0F2A1D", "#0B1912"], ["#D7263D", "#2E9E5B", "#E8C15A"], "Christmas pick", { countdown: () => { const d = new Date(); return d.getMonth() === 11 && d.getDate() === 25 ? "Merry Christmas!" : cd(() => B.xmas)(); }, pickTags: ["christmas", "santa claus"], pickWords: ["Christmas", "Santa", "Grinch", "Elf", "Home Alone", "Polar Express", "Klaus"], icons: XMAS.icons, mark: XMAS.mark, topTrim: XMAS.topTrim, bottomTrim: XMAS.bottomTrim }),
   ];
