@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
@@ -64,6 +65,7 @@ import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.eaProgressEgg
+import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
@@ -342,6 +344,8 @@ fun BannerCard(
                                     EaLook.Lilac
                                 } else if (NyLook.on) {
                                     NyLook.Gold
+                                } else if (EdLook.on) {
+                                    EdLook.Leaf
                                 } else if (J4Look.on) {
                                     J4Look.Red
                                 } else if (ValLook.on) {
@@ -409,6 +413,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .j4ProgressStar((playPercent / 100).toFloat(), star = 20.dp),
+                    )
+                }
+                // Earth Day look: a little flower opens at the end of the progress line
+                if (EdLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .edProgressBloom((playPercent / 100).toFloat(), flower = 18.dp, leaves = false),
                     )
                 }
                 // Easter look: a painted egg rolls along as the knob at the end of the progress line

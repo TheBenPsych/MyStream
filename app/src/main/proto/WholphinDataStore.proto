@@ -297,6 +297,8 @@ message BenflixPreferences {
   bool new_year_look_off = 15;
   // Benflix Easter look (Monday to Easter Sunday, worked out each year) is on unless this is set
   bool easter_look_off = 21;
+  // Benflix Earth Day look (Earth week, 22 to 28 Apr) is on unless this is set
+  bool earth_day_look_off = 23;
   // Benflix 4th of July look (1 to 4 Jul) is on unless this is set
   bool july_look_off = 17;
   // Benflix Star Wars Day look (4 May) is on unless this is set (numbers 15 to 21 are kept for other holiday looks)

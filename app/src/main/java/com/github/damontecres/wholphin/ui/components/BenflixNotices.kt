@@ -54,11 +54,13 @@ import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.EaKindMark
 import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.J4KindMark
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.swNoticeSaber
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -215,6 +217,8 @@ private fun CornerCard(
                 .then(if (XmasLook.on) Modifier.xmasOrnament(XmasLook.RedBall, ball = 24.dp, string = 6.dp, fromEnd = 34.dp) else Modifier)
                 // Thanksgiving look: the notice is pinned with a brass tack
                 .tgTack()
+                // Earth Day look: a little sprout grows up out of the notice's top edge
+                .then(if (EdLook.on) Modifier.edPlaySprout(tall = 30.dp) else Modifier)
                 // Star Wars Day: a little laser sword lies along the notice's top edge
                 .swNoticeSaber()
                 .clip(shape)
