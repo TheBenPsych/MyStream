@@ -31,6 +31,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,31 @@ fun ChristmasRoom(modifier: Modifier = Modifier) =
 fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
 
 /**
+ * Benflix St. Patrick's Day: the rainy Irish room behind Who's watching (10 to 17 March). Drawn by the web version
+ * (server/web/js/stpatricks.js) and recorded as 30-second loops by tools/stpatricks/record.js: "week" (soft rain in
+ * the window) until the 16th, then "day" on the 17th (rainbow, shamrocks drifting down).
+ */
+@Composable
+fun StPatricksRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        StPatricksVideos,
+        { tall -> "${com.github.damontecres.wholphin.ui.theme.StPatricksSeason.variant(LocalDate.now())}-${if (tall) "tall" else "wide"}" },
+        modifier,
+        bg = listOf(Color(0xFF08110D), Color(0xFF11211A)),
+    )
+
+/**
+ * Benflix Halloween: the spooky room behind Who's watching (1 to 31 October). Drawn by the web version
+ * (server/web/js/halloween.js) and recorded as 30-second loops by tools/halloween/record.js. [stage] is how far
+ * the pumpkins are carved ("whole", "half", "carved") or "night" (31 Oct after 5 PM, with bats).
+ */
+@Composable
+fun HalloweenRoom(
+    stage: String,
+    modifier: Modifier = Modifier,
+) = LoopingRoom(HalloweenVideos, { tall -> "$stage-${if (tall) "tall" else "wide"}" }, modifier)
+
+/**
  * Benflix New Year's: the party room behind Who's watching (27 December to 1 January). Drawn by the web
  * version (server/web/js/newyear.js) and recorded as 60-second loops by tools/newyear/record.js: [variant]
  * "eve" until midnight on New Year's Eve (bottle corked), then "day" (opened, confetti falling all day).
@@ -92,6 +118,20 @@ fun NewYearRoom(
 @Composable
 fun ArcadeRoom(modifier: Modifier = Modifier) =
     LoopingRoom(ArcadeVideos, { tall -> if (tall) "tall" else "wide" }, modifier, bg = listOf(Color(0xFF1A0F30), Color(0xFF07050E)))
+
+/**
+ * Benflix Earth Day: the plant corner room behind Who's watching (Earth week). Drawn by the web version
+ * (server/web/js/earthday.js) and recorded as 30-second loops by tools/earthday/record.js, one for each day of
+ * the week: the seedling on the table grows each day, and on day 1 the new tree is being planted by the path.
+ */
+@Composable
+fun EarthRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        EarthVideos,
+        { tall -> "day${EarthDaySeason.day(LocalDate.now()).coerceIn(1, EarthDaySeason.DAYS)}-${if (tall) "tall" else "wide"}" },
+        modifier,
+        bg = listOf(Color(0xFF0C1612), Color(0xFF16241C)),
+    )
 
 /**
  * Benflix 4th of July: the cookout room behind Who's watching (1 to 4 July). Drawn by the web version
@@ -139,10 +179,12 @@ fun ValentineRoom(modifier: Modifier = Modifier) =
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
 @Composable
-private fun LoopingRoom(
+internal fun LoopingRoom(
     videos: RoomVideos,
     nameFor: (Boolean) -> String,
     modifier: Modifier = Modifier,
+    /** Set: the video plays once (not looping), then this is called */
+    onEnd: (() -> Unit)? = null,
     bg: List<Color> = listOf(Color(0xFF1A110D), Color(0xFF0D0A0A)),
     alsoFetch: ((Boolean) -> String?)? = null,
 ) {
@@ -168,7 +210,16 @@ private fun LoopingRoom(
             remember(video) {
                 ExoPlayer.Builder(context).build().apply {
                     volume = 0f
-                    repeatMode = Player.REPEAT_MODE_ONE
+                    repeatMode = if (onEnd != null) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
+                    if (onEnd != null) {
+                        addListener(
+                            object : Player.Listener {
+                                override fun onPlaybackStateChanged(playbackState: Int) {
+                                    if (playbackState == Player.STATE_ENDED) onEnd()
+                                }
+                            },
+                        )
+                    }
                     setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(video)))
                     prepare()
                     playWhenReady = true
@@ -227,6 +278,9 @@ object XmasVideos : RoomVideos("xmas", version = 1) {
     ) = "$variant-${if (tall) "tall" else "wide"}"
 }
 
+/** Downloads and keeps the Halloween room videos (extras/scenes/halloween in the repo: <stage>-<wide|tall>) */
+object HalloweenVideos : RoomVideos("halloween", version = 1)
+
 /** Downloads and keeps the New Year's party room videos (extras/scenes/newyear in the repo) */
 object NewYearVideos : RoomVideos("newyear", version = 1) {
     /** The recording's name in the repo, like "eve-2027-wide" */
@@ -246,8 +300,14 @@ object FeastVideos : RoomVideos("feast", version = 1)
 /** Downloads and keeps the Video Games Day arcade room videos (extras/scenes/arcade in the repo: wide and tall) */
 object ArcadeVideos : RoomVideos("arcade", version = 1)
 
+/** Downloads and keeps the Earth Day room videos (extras/scenes/earthday in the repo: day1 to day7, wide and tall) */
+object EarthVideos : RoomVideos("earthday", version = 1)
+
 /** Downloads and keeps the Valentine's room videos (extras/scenes/valentine in the repo: c13..c1 and day, wide and tall) */
 object ValentineVideos : RoomVideos("valentine", version = 1)
+
+/** Downloads and keeps the St. Patrick's Day room videos (extras/scenes/stpatricks in the repo: week/day, wide/tall) */
+object StPatricksVideos : RoomVideos("stpatricks", version = 1)
 
 /**
  * Downloads and keeps one holiday room's videos (extras/scenes/[folder] in the repo).

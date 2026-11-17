@@ -70,17 +70,26 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
+import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.eaPlayEars
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
+import com.github.damontecres.wholphin.ui.theme.f13Flicker
+import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
 import com.github.damontecres.wholphin.ui.theme.pixelShape
+import com.github.damontecres.wholphin.ui.theme.spPlayClover
 import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.valRosyGlow
@@ -710,25 +719,42 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // Friday the 13th look: Play is lucky green with dark words, and flickers now and then like an old porch light
+    val f13 = com.github.damontecres.wholphin.ui.theme.F13Look.on
+    // Halloween look: Play is pumpkin orange with dark words, and glows and flickers like a candle in a jack-o'-lantern
+    val hw = HwLook.on
     // Valentine's look: Play is rose red with white words, a soft rosy glow round it and a faint heart in its corner
     val vl = com.github.damontecres.wholphin.ui.theme.ValLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // Earth Day look: Play is leaf green with dark words, and a sprout grows up out of it
+    val ed = EdLook.on
     // 4th of July look: Play is flag red with white words, and three big white stars across its end
     val j4 = J4Look.on
     // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
     val sw = SwLook.on
     // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
     val pc = PcLook.on
+    // St. Patrick's Day look: Play is clover green with dark words, a gold four-leaf clover on its corner and a soft sheen
+    val stp = SpLook.on
     val primaryFill =
         if (vg) {
             VgLook.Cyan
+        } else if (f13) {
+            com.github.damontecres.wholphin.ui.theme.F13Look.Green
         } else if (xmas) {
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (EaLook.on) {
+            // Easter look: Play is soft lilac with dark words, and a bunny's ears peek over its top edge
+            EaLook.Lilac
+        } else if (hw) {
+            HwLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (ed) {
+            EdLook.Leaf
         } else if (j4) {
             J4Look.Red
         } else if (sw) {
@@ -737,6 +763,8 @@ private fun TitleButtonView(
             PcLook.Butter
         } else if (vl) {
             com.github.damontecres.wholphin.ui.theme.ValLook.Rose
+        } else if (stp) {
+            SpLook.Clover
         } else {
             BenflixColors.Text
         }
@@ -745,12 +773,22 @@ private fun TitleButtonView(
         if (primary) {
             if (vg) {
                 VgLook.OnCyan
+            } else if (f13) {
+                com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
             } else if (xmas || tg || j4 || sw || vl) {
                 Color.White
+            } else if (EaLook.on) {
+                EaLook.OnLilac
+            } else if (hw) {
+                HwLook.OnOrange
             } else if (ny) {
                 NyLook.OnGold
+            } else if (ed) {
+                EdLook.OnLeaf
             } else if (pc) {
                 PcLook.OnButter
+            } else if (stp) {
+                SpLook.OnClover
             } else {
                 BenflixColors.Tray
             }
@@ -777,12 +815,17 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary) Modifier.eaPlayEars() else Modifier)
+                .then(if (primary && f13) Modifier.f13Flicker() else Modifier)
+                .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(if (primary && vg) Modifier.vgPlayPixel() else Modifier)
+                .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
                 .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
+                .then(if (primary && stp) Modifier.spPlayClover(corner = 10.dp) else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

@@ -53,7 +53,7 @@ object NewYearSeason {
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean =
         (date.month == Month.DECEMBER && date.dayOfMonth >= 27) || (date.month == Month.JANUARY && date.dayOfMonth == 1)
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** The year being welcomed (on the balloons and in "Happy 2027!") */
     fun year(date: LocalDate = LocalDate.now()): Int = if (date.month == Month.DECEMBER) date.year + 1 else date.year
