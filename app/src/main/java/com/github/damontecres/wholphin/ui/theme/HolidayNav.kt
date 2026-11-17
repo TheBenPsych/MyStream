@@ -125,7 +125,7 @@ object HolidayNavKit {
                 "Halloween pick",
                 countdown = { HalloweenSeason.countdown(LocalDateTime.now()) },
             ),
-            holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
+            PopcornNav.nav,
             // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)
             StarWarsNav.entry,
             holiday(
