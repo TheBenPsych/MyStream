@@ -238,3 +238,6 @@ img/sp/sp_mark_horseshoe.png
 img/sp/sp_mark_pot.png
 img/sp/sp_mark_rainbow.png
 img/sp/sp_play_clover.png
+fonts/subtitle_atkinson_bold.ttf
+fonts/subtitle_atkinson_bolditalic.ttf
+fonts/atkinson_hyperlegible.LICENSE.txt
