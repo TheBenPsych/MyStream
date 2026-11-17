@@ -1705,7 +1705,7 @@
     const box = $("#mcat");
     if (!list.length) { box.innerHTML = `<p class="dim">${mix.key === "release-radar" ? "No new songs from the artists you play this week. Follow a few artists to get more here." : "Play some more music and new picks show up here next Monday."}</p>`; return; }
     // Ben 2026-11-17: a clear Ask for it button (the heart that used to ask read like a Like)
-    const askBtn = (x) => x.asked ? `<span class="sl">${esc(x.asked)}</span>` : `<button class="btn small white" data-ask="${esc(String(x.id))}">${I("plus")} Ask for it</button>`;
+    const askBtn = (x) => x.asked ? `<span class="sl">${esc(x.asked)}</span>` : `<button class="btn small white" data-mixask="${esc(String(x.id))}">${I("plus")} Ask for it</button>`;
     box.innerHTML = list.map((x, i) => `<div class="srow"><span class="sn">${x.cover ? `<img class="sc" src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(x.title)}</b><small>${esc([x.artist, x.album].filter(Boolean).join(" · "))}</small></span>${B.previewBtn(x.id)}<span data-slot>${askBtn(x)}</span></div>`).join("");
     const waiting = () => list.filter((x) => !x.asked).map((x) => x.id);
     $(".mhero-btns").addEventListener("click", (e) => {
@@ -1714,8 +1714,9 @@
       if (b.dataset.h === "stop") B.previewStop();
     });
     box.addEventListener("click", async (e) => {
-      const b = e.target.closest("[data-ask]"); if (!b || b.disabled) return;
-      const x = list.find((y) => String(y.id) === b.dataset.ask); if (!x) return;
+      // data-mixask, not data-ask: data-ask is the movie/show Ask panel's (requests.js), which opened a "(400)" panel here
+      const b = e.target.closest("[data-mixask]"); if (!b || b.disabled) return;
+      const x = list.find((y) => String(y.id) === b.dataset.mixask); if (!x) return;
       b.disabled = true;
       try {
         const r = await B.call("POST", "api/music/request", { kind: "song", id: x.id });
@@ -1723,7 +1724,7 @@
         B.previewStop();
         b.parentNode.innerHTML = `<span class="sl">${esc(x.asked)}</span>`;
         B.toast(`${x.asked}: ${x.title}`);
-      } catch (err) { b.disabled = false; B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute."); }
+      } catch (err) { b.disabled = false; B.toast(/\(\d{3}\)/.test((err && err.message) || "") || !(err && err.message) ? `Couldn't ask for ${x.title} right now. Try again in a minute.` : err.message); }
     });
   };
 
