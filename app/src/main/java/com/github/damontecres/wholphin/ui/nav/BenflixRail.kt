@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +57,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -243,6 +245,7 @@ fun BenflixRail(
             else -> null
         }
     val panels by viewModel.panels.collectAsState()
+    val panelFocus = LocalFocusManager.current
     // Holiday marks: the rail takes the holiday's colours (Christmas: deep pine green)
     val holiday = remember { HolidayNavKit.current() }
 
@@ -510,22 +513,29 @@ fun BenflixRail(
                     .background(BenflixColors.Panel, shape)
                     .clip(shape)
                     .focusProperties {
+                        // Arrow keys never move the focus out of the panel by themselves: Left at the panel's edge closes it (below).
+                        // (Picking something or closing still moves the focus on, since those aren't arrow moves.)
                         onExit = {
                             if (requestedFocusDirection == FocusDirection.Up ||
                                 requestedFocusDirection == FocusDirection.Down ||
+                                requestedFocusDirection == FocusDirection.Left ||
                                 requestedFocusDirection == FocusDirection.Right
                             ) {
                                 cancelFocusChange()
                             }
                         }
-                    }.onPreviewKeyEvent { event ->
+                    }.focusGroup()
+                    .onPreviewKeyEvent { event ->
                         when (event.key) {
+                            // Left and Right move along a row (like Jump back in) first.
+                            // Only when nothing is further left does Left close the panel and go back to the rail.
                             Key.DirectionLeft -> {
-                                if (event.type == KeyEventType.KeyDown) closePanel()
+                                if (event.type == KeyEventType.KeyDown && !panelFocus.moveFocus(FocusDirection.Left)) closePanel()
                                 true
                             }
 
                             Key.DirectionRight -> {
+                                if (event.type == KeyEventType.KeyDown) panelFocus.moveFocus(FocusDirection.Right)
                                 true
                             }
 

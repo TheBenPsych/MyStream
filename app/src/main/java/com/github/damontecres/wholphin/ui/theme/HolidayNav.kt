@@ -115,14 +115,7 @@ object HolidayNavKit {
                 listOf(0xFFFF6F91, 0xFF3DD6C6, 0xFFFFE14D, 0xFF7AA7FF),
                 "Game Day pick",
             ),
-            holiday(
-                "earthday",
-                { EdLook.on && !EaLook.on },
-                0xFF12261A,
-                0xFF0A160F,
-                listOf(0xFF5BD18B, 0xFF3FA7D6, 0xFF8BC34A),
-                "Earth Day pick",
-            ),
+            EarthDayNav.entry,
             holiday(
                 "halloween",
                 { HwLook.charmsOn },
@@ -132,8 +125,9 @@ object HolidayNavKit {
                 "Halloween pick",
                 countdown = { HalloweenSeason.countdown(LocalDateTime.now()) },
             ),
-            holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
-            holiday("starwars", { SwLook.on }, 0xFF0B0B14, 0xFF05050A, listOf(0xFFFFE81F, 0xFF4FC3F7, 0xFFE53935), "Star Wars Day pick"),
+            PopcornNav.nav,
+            // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)
+            StarWarsNav.entry,
             holiday(
                 "stpatricks",
                 { SpLook.on },
@@ -143,15 +137,8 @@ object HolidayNavKit {
                 "St. Patrick's pick",
                 countdown = { StPatricksSeason.countdown(LocalDate.now()) },
             ),
-            holiday(
-                "july4",
-                { J4Look.on },
-                0xFF101A33,
-                0xFF0A0F1F,
-                listOf(0xFFD7263D, 0xFFFFFFFF, 0xFF3F6FD8),
-                "4th of July pick",
-                countdown = { JulySeason.countdown(LocalDateTime.now()) },
-            ),
+            // 4th of July: its own icons, star, bunting and sparklers (ui/theme/July4Nav.kt)
+            July4Nav.nav(),
             holiday(
                 "newyear",
                 { NyLook.on },
