@@ -38,6 +38,7 @@ js/start.js
 js/title.js
 js/xmas.js
 js/feast.js
+js/newyear.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -57,3 +58,17 @@ img/tg/tg_charm_shows.png
 img/tg/tg_leaf_gold.png
 img/tg/tg_leaf_red.png
 img/tg/tg_tack.png
+img/ny/ny_charm_books.png
+img/ny/ny_charm_games.png
+img/ny/ny_charm_live.png
+img/ny/ny_charm_movies.png
+img/ny/ny_charm_music.png
+img/ny/ny_charm_shows.png
+img/ny/ny_glint.png
+img/ny/ny_mark_ball.png
+img/ny/ny_mark_clock.png
+img/ny/ny_mark_glass.png
+img/ny/ny_mark_spark.png
+img/ny/ny_mark_star.png
+img/ny/ny_sparkler.png
+img/ny/ny_star.png
