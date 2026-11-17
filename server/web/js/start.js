@@ -37,11 +37,15 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // Easter (approved 2026-11-17): the spring morning room with the egg tree and the pet rabbit, Monday to Easter Sunday
+  const easter = !xmas && !feast && B.eaOn();
+  const eaNow = new Date(), eaFound = easter && B.ea.isSunday(eaNow) && B.ea.hunt.all(eaNow);
+  const eaCrack = eaFound && !B.ea.hunt.cracked(eaNow);
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || easter ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : easter ? `<h1 class="xmas" id="eaGreet">${esc(eaFound && !eaCrack ? "You found all six!" : B.ea.greeting())}</h1>${B.ea.countdown(eaNow) ? `<p class="xcount ea">${esc(B.ea.countdown(eaNow))}</p>` : ""}` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -59,12 +63,18 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast) {
+  if (xmas || feast || easter) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : B.tg;
-    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
+    const room = xmas ? B.xmas : feast ? B.tg : B.ea;
+    // Easter Sunday: once all six hidden eggs are found, the golden egg cracks open (the first time), then stays open
+    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide", open: eaFound && !eaCrack }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; svg.clock = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
     draw();
+    if (eaCrack) {
+      B.ea.hunt.setCracked(eaNow);
+      setTimeout(() => { if (svg.scene && svg.scene.crack) svg.scene.crack(svg.clock ? svg.clock() : 0); }, 900);
+      setTimeout(() => { const g = $("#eaGreet"); if (g) g.textContent = "You found all six!"; }, 3100);
+    }
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
     addEventListener("resize", onResize);
   } else whoWall(list);
@@ -246,7 +256,9 @@ B.route(/^\/home$/, async (m, nav) => {
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Easter look (Kids too): "Happy Easter, Ben" in the curly holiday font, with the countdown leading the line under it
+  const eaGreet = !tgGreet && B.eaOn();
+  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : eaGreet ? "Happy Easter" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -255,9 +267,9 @@ B.route(/^\/home$/, async (m, nav) => {
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
-    const wx = B.savedWeather();
+    const wx = [eaGreet ? B.ea.countdown(new Date()) : "", B.savedWeather()].filter(Boolean).join(" · ");
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : eaGreet ? " eah" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -471,7 +483,9 @@ B.loadBoard = async (nav) => {
   if (weather) {
     const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
     try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
-    $("#wx").textContent = line;
+    // Easter look: the countdown stays in front of the weather
+    const eaLine = B.eaOn() && !B.me.kids ? B.ea.countdown(new Date()) : "";
+    $("#wx").textContent = [eaLine, line].filter(Boolean).join(" · ");
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
   const c = (prefs && prefs.CustomPrefs) || {};
@@ -673,6 +687,19 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+// Easter look: Monday to Easter Sunday (worked out each year), Kids too, unless switched off in Settings › Look (this browser)
+B.ea = window.BenflixEaster;
+B.eaOff = () => { try { return localStorage.getItem("benflix.eaOff") === "1"; } catch (e) { return false; } };
+B.setEaOff = (off) => { try { localStorage.setItem("benflix.eaOff", off ? "1" : "0"); } catch (e) {} };
+B.eaOn = () => !!B.ea && B.ea.season(new Date()) && !B.eaOff();
+/** Easter look: which small mark a notice gets (egg, chick when something is ready, paw prints on the way, tulip for live) */
+B.eaMark = (title) => {
+  const k = String(title || "").toLowerCase();
+  if (k.includes("ready")) return "ready";
+  if (k.includes("on the way") || k.includes("arrives")) return "way";
+  if (k.includes("live")) return "live";
+  return "ep";
+};
 
 // Big holidays only, clean and simple
 B.holiday = () => {

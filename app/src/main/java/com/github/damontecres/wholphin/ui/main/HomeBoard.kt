@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -57,8 +58,12 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaKindMark
+import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.EasterSeason
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -242,15 +247,22 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || EaLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving and Easter looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || EaLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (weather != null) {
+        // Easter look: the countdown ("5 days to Easter") leads the line under the greeting
+        val line =
+            if (EaLook.on) {
+                listOfNotNull(EasterSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else {
+                weather
+            }
+        if (line != null) {
             Text(
-                text = weather,
+                text = line,
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
@@ -349,6 +361,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .eaDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -656,7 +669,13 @@ private fun ListRow(
             horizontalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = vertical),
         ) {
-            Thumb(row, thumb.coerceAtLeast(20.dp))
+            Box {
+                Thumb(row, thumb.coerceAtLeast(20.dp))
+                // Easter look: each kind of news gets its own small mark on the picture's corner
+                if (EaLook.on) {
+                    EaKindMark(row.kind, size = 22.dp, modifier = Modifier.align(Alignment.TopStart).offset((-6).dp, (-6).dp))
+                }
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 Text(
                     text = row.kind.uppercase(),

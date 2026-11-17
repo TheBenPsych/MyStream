@@ -51,6 +51,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaKindMark
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -228,6 +230,8 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // Easter look: the notice's own small mark (a painted egg, a hatching chick, paw prints or a tulip)
+            if (EaLook.on) EaKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

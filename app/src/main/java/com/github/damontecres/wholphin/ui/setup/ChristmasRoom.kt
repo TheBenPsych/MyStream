@@ -64,10 +64,12 @@ fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
 @Composable
-private fun LoopingRoom(
+internal fun LoopingRoom(
     videos: RoomVideos,
     nameFor: (Boolean) -> String,
     modifier: Modifier = Modifier,
+    /** Set: the video plays once (not looping), then this is called */
+    onEnd: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     BoxWithConstraints(
@@ -88,7 +90,16 @@ private fun LoopingRoom(
             remember(video) {
                 ExoPlayer.Builder(context).build().apply {
                     volume = 0f
-                    repeatMode = Player.REPEAT_MODE_ONE
+                    repeatMode = if (onEnd != null) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
+                    if (onEnd != null) {
+                        addListener(
+                            object : Player.Listener {
+                                override fun onPlaybackStateChanged(playbackState: Int) {
+                                    if (playbackState == Player.STATE_ENDED) onEnd()
+                                }
+                            },
+                        )
+                    }
                     setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(video)))
                     prepare()
                     playWhenReady = true

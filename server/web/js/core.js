@@ -542,6 +542,8 @@ const nextCorner = () => {
   if (!card) return;
   const el = document.createElement("div");
   el.className = "corner";
+  // Easter look: each kind of notice gets its own small mark (html.ea .corner.ea-ready and so on)
+  if (B.eaMark) el.classList.add("ea-" + B.eaMark(card.title));
   el.innerHTML = `${card.img ? `<span class="cimg" style="background-image:url('${esc(card.img)}')"></span>` : ""}<div class="cw"><b>${esc(card.title)}</b><span>${esc(card.line || "")}${card.href ? " · Click to open" : ""}</span></div><i class="ctime"></i>`;
   if (card.href) el.onclick = () => { done(); B.go(card.href); };
   else if (card.run) el.onclick = () => { done(); card.run(); };

@@ -1151,6 +1151,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Easter look (Monday to Easter Sunday): "Happy Easter, Ben" all week
+    if (com.github.damontecres.wholphin.ui.theme.EaLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.EasterSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     val holiday = holidayFor(java.time.LocalDate.now())
     if (holiday != null) return holiday.text + if (name.isNotBlank()) ", $name" else ""
     val part =

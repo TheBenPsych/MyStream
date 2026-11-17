@@ -55,7 +55,8 @@ object KidsLook {
 
     /** The colours to use right now, or null for the normal grown-up look */
     val palette: KidsPalette? get() =
-        if (!on) {
+        // Easter look (Ben: "Kids get easter too"): lilac and meadow green replace Sky and Sunshine that week
+        if (!on || EaLook.on) {
             null
         } else if (night) {
             NightLight

@@ -293,6 +293,8 @@ message BenflixPreferences {
   bool christmas_look_off = 13;
   // Benflix Thanksgiving look (16 to 30 Nov) is on unless this is set
   bool thanksgiving_look_off = 14;
+  // Benflix Easter look (Monday to Easter Sunday, worked out each year) is on unless this is set
+  bool easter_look_off = 20;
 }
 
 enum BenflixAccent {

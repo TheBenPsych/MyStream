@@ -52,9 +52,11 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
@@ -203,8 +205,9 @@ fun FamilyHome(
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
                 // Thanksgiving look (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on) HolidayFont else null,
+                fontWeight = if (TgLook.on || (EaLook.on && kind != FamilyKind.KIDS)) FontWeight.Normal else FontWeight.ExtraBold,
+                // Easter look: the curly font too (Kids keeps its round letters)
+                fontFamily = if (TgLook.on || (EaLook.on && kind != FamilyKind.KIDS)) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -432,6 +435,8 @@ private fun FamilyDoor(
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
                 .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
+                // Easter look: Kids gets the charms too
+                .eaDoorCharm(door)
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

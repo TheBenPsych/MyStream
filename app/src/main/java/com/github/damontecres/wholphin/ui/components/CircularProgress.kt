@@ -38,11 +38,27 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    val ea = !tg && com.github.damontecres.wholphin.ui.theme.EaLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
-            color = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Orange else BenflixColors.Text,
-            trackColor = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Brown else androidx.compose.ui.graphics.Color.Transparent,
+            // Easter look: a lilac ring on meadow green, with a cracked painted egg rocking inside
+            color =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Orange
+                } else if (ea) {
+                    com.github.damontecres.wholphin.ui.theme.EaLook.Lilac
+                } else {
+                    BenflixColors.Text
+                },
+            trackColor =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Brown
+                } else if (ea) {
+                    com.github.damontecres.wholphin.ui.theme.EaLook.Green
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -67,6 +83,28 @@ fun CircularProgress(modifier: Modifier = Modifier) {
                     .fillMaxSize(.62f)
                     .align(Alignment.Center)
                     .rotate(angle),
+            )
+        }
+        if (ea) {
+            val rock =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "eaEgg")
+            val tilt by rock.animateFloat(
+                initialValue = -12f,
+                targetValue = 12f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+                    ),
+                label = "eaEggTilt",
+            )
+            com.github.damontecres.wholphin.ui.theme.EaLoadingEgg(
+                Modifier
+                    .fillMaxSize(.66f)
+                    .align(Alignment.Center)
+                    .rotate(tilt),
             )
         }
     }
