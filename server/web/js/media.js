@@ -608,7 +608,7 @@ B.facts = async (it) => {
     if (v) f.push(["Video", [v.Width && v.Height ? `${v.Width}×${v.Height}` : "", (v.Codec || "").toUpperCase(), v.VideoRangeType && v.VideoRangeType !== "SDR" ? v.VideoRangeType : ""].filter(Boolean).join(" · ")]);
   }
   if (!f.length) return "";
-  return `<section class="rowx"><h3>Details</h3><div class="facts">${f.map(([k, v]) => `<div${k === "File" ? ` class="wide"` : ""}><b>${esc(k)}</b>${esc(v)}</div>`).join("")}</div></section>`;
+  return `<section class="rowx"><h3>Details</h3><div class="facts">${f.map(([k, v]) => `<div${k === "File" ? ` class="fact-file"` : ""}><b>${esc(k)}</b>${esc(v)}</div>`).join("")}</div></section>`;
 };
 B.audioLine = (it) => {
   const ms = (it.MediaSources || [])[0];

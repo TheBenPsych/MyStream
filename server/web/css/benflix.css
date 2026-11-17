@@ -1158,7 +1158,7 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .tp .tp-ovr .facts { padding: 0; max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .tp .tp-ovr .facts div { padding: 10px 14px; overflow-wrap: anywhere; }
 .tp .tp-ovr > p { margin: 0; }
-.tp .tp-ovr .facts .wide { grid-column: 1 / -1; }
+.tp .tp-ovr .facts .fact-file { grid-column: 1 / -1; }
 @media (max-width: 1000px) { .tp .tp-pane > .tp-ov { grid-template-columns: minmax(0, 1fr); } }
 .tp .tp-facts { margin: 0 var(--gutter); max-width: 900px; display: flex; flex-direction: column; gap: 12px; }
 .tp .tp-facts p { margin: 0; padding-left: 12px; border-left: 3px solid var(--door); line-height: 1.5; color: var(--ink2); }
