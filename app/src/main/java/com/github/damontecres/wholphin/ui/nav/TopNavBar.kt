@@ -58,9 +58,10 @@ fun RegisterTopBarDown(target: androidx.compose.ui.focus.FocusRequester) {
     }
 }
 
-/** Door pages draw their picture up behind the top bar (TV) */
+/** Door pages (and Home's carousel) draw their picture up behind the page header (TV) */
 fun Destination.underTopBar(): Boolean =
-    this is Destination.MoviesDoor ||
+    this is Destination.Home ||
+        this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
         this is Destination.MusicDoor ||
         isMusicHero()

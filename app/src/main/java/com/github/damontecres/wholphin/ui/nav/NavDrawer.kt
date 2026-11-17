@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,6 +54,7 @@ import com.github.damontecres.wholphin.services.SetupNavigationManager
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.music.isMusicPage
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
+import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -694,7 +696,57 @@ fun NavDrawer(
         )
     }
 
-    if (!isTv) {
+    // Navigation redesign (Nov 2026): the doors the rail and the phone's bar show for this profile
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        com.github.damontecres.wholphin.ui.door.DoorPlaces
+            .load(context)
+    }
+    val railDoors =
+        remember(kids, guest) {
+            when {
+                kids -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
+                guest -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
+                else -> BenflixDoor.entries.toList()
+            }
+        }
+    val nav = viewModel.navigationManager
+    val stack = nav.backStack.toList()
+    val goPlace: (BenflixDoor, String) -> Unit = { door, key ->
+        val frame =
+            com.github.damontecres.wholphin.ui.door.DoorPlaces
+                .frame(door)
+        if (frame != null && destination.isDoorRoot() && destination.door() == door) {
+            if (frame.section == key && key == com.github.damontecres.wholphin.ui.door.DOOR_HOME) frame.toTop() else frame.pick(key)
+        } else {
+            com.github.damontecres.wholphin.ui.main.DoorUse
+                .opened(context, user.id, door)
+            if (key != com.github.damontecres.wholphin.ui.door.DOOR_HOME) {
+                com.github.damontecres.wholphin.ui.door.DoorPlaces
+                    .openLater(door, key)
+            }
+            nav.navigateToFromDrawer(door.destination())
+        }
+    }
+    val profileItems = if (easy) null else menuItems
+    val minutes by menuViewModel.minutes.collectAsState()
+    val onProfileTap = {
+        if (easy) {
+            viewModel.navigateToSetup(SetupDestination.UserList(server))
+        } else {
+            menuViewModel.load()
+        }
+    }
+    val onSwitchProfile = { viewModel.navigateToSetup(SetupDestination.UserList(server)) }
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    // Phones turned sideways and tablets use the TV layout, with the rail always open (approved ix-sideways)
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
+
+    if (!wide) {
+        var moreOpen by remember { mutableStateOf(false) }
+        var placesFor by remember { mutableStateOf<BenflixDoor?>(null) }
+        val tabs = remember(railDoors) { phoneTabs(railDoors) }
+        val placesDoor = destination.door()?.takeIf { destination.isDoorRoot() }
         Column(modifier = modifier) {
             if (downloadsOpen) {
                 com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
@@ -705,23 +757,18 @@ fun NavDrawer(
                             .fillMaxWidth(),
                 )
             } else {
-                BenflixPhoneHeader(
-                    door = destination.door(),
-                    user = user,
-                    userImageUrl = userImageUrl,
-                    badge = badge,
-                    onClickSearch = onClickSearch,
-                    onClickProfile = onClickProfile,
-                    onHome =
-                        if (destination is Destination.Home) {
-                            null
-                        } else {
-                            { viewModel.navigationManager.goToHome() }
-                        },
-                )
-                WhereAmILine(
-                    stack = viewModel.navigationManager.backStack.toList(),
-                    onPick = { viewModel.navigationManager.goBackTo(it) },
+                BenflixPhonePageHeader(
+                    destination = destination,
+                    stack = stack,
+                    onBack = { nav.goBack() },
+                    onPick = { nav.goBackTo(it) },
+                    onPlaces =
+                        placesDoor
+                            ?.takeIf {
+                                com.github.damontecres.wholphin.ui.door.DoorPlaces
+                                    .of(it)
+                                    .size > 1
+                            }?.let { door -> { placesFor = door } },
                 )
                 DestinationContent(
                     destination = destination,
@@ -741,18 +788,107 @@ fun NavDrawer(
                     com.github.damontecres.wholphin.ui.music
                         .MusicMiniBar()
                 }
-                // Music redesign 3 (approved g2-tabs-b): Home, Search, Your library and Ask along the bottom of
-                // every Music page, under the mini player
-                if (destination.isMusicPage()) {
-                    com.github.damontecres.wholphin.ui.music
-                        .MusicBottomTabs(destination)
-                }
                 // Benflix Books: the same slim bar while an audiobook plays
                 if (destination !is Destination.AudiobookPlayer) {
                     com.github.damontecres.wholphin.ui.books
                         .AudiobookMiniBar()
                 }
+                // Navigation redesign: Home, Movies, Shows, Music and More along the bottom (not over the players)
+                if (destination !is Destination.NowPlaying && destination !is Destination.AudiobookPlayer) {
+                    PhoneBottomBar(
+                        tabs = tabs,
+                        selected = phoneTabFor(destination, tabs),
+                        moreDot = badge,
+                        onTab = { tab ->
+                            when {
+                                tab.key == TAB_HOME -> {
+                                    nav.goToHome()
+                                }
+
+                                tab.key == TAB_MORE -> {
+                                    menuViewModel.load()
+                                    moreOpen = true
+                                }
+
+                                tab.door != null && tab.door == placesDoor -> {
+                                    // Tapping the door's tab again slides up its places (approved rx-phonepanel)
+                                    placesFor = tab.door
+                                }
+
+                                tab.door != null -> {
+                                    goPlace(tab.door, com.github.damontecres.wholphin.ui.door.DOOR_HOME)
+                                }
+                            }
+                        },
+                    )
+                }
             }
+        }
+        if (moreOpen) {
+            val tabDoors = tabs.mapNotNull { it.door }
+            PhoneMoreSheet(
+                doors = railDoors.filter { it !in tabDoors },
+                showSearch = !kids,
+                showRequests = !kids,
+                requestsNote =
+                    when {
+                        requestsWaiting > 0 -> "$requestsWaiting waiting"
+                        readyCount > 0 -> "$readyCount ready"
+                        else -> null
+                    },
+                user = user,
+                userImageUrl = if (kids) null else userImageUrl,
+                userName =
+                    when {
+                        kids -> KidsMode.displayName
+                        guest -> "Guest"
+                        else -> user.name.orEmpty()
+                    },
+                minutesWatched = if (easy) null else minutes,
+                profileItems =
+                    profileItems?.map { item ->
+                        item.copy(
+                            onClick = {
+                                moreOpen = false
+                                item.onClick()
+                            },
+                        )
+                    },
+                onDoor = { door ->
+                    moreOpen = false
+                    goPlace(door, com.github.damontecres.wholphin.ui.door.DOOR_HOME)
+                },
+                onSearch = {
+                    moreOpen = false
+                    onClickSearch()
+                },
+                onRequests = {
+                    moreOpen = false
+                    nav.navigateTo(Destination.Requests)
+                },
+                onMyList = {
+                    moreOpen = false
+                    nav.navigateTo(Destination.Favorites)
+                },
+                onSwitchProfile = {
+                    moreOpen = false
+                    onSwitchProfile()
+                },
+                onDismiss = { moreOpen = false },
+            )
+        }
+        placesFor?.let { door ->
+            PhonePlacesSheet(
+                door = door,
+                places =
+                    com.github.damontecres.wholphin.ui.door.DoorPlaces
+                        .of(door),
+                onPlace = { key ->
+                    placesFor = null
+                    goPlace(door, key)
+                },
+                onDismiss = { placesFor = null },
+            )
         }
         return
     }
@@ -763,12 +899,53 @@ fun NavDrawer(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val shortcutScope = androidx.compose.runtime.rememberCoroutineScope()
     LaunchedEffect(destination) { RemoteShortcuts.focused = null }
-    // The bar's own height: 18 above, 6 below, and the row itself
+    // The header's own height: 18 above, 6 below, and the row itself
     val barHeight = 24.dp + TopNavBarHeight * (if (easy) 1.2f else 1f)
-    Column(
+    val alwaysOpen = !isTv
+    val railWidth = if (alwaysOpen) railOpenWidth(easy) else railTuckedWidth(easy)
+    val contentFocus = remember { FocusRequester() }
+    val railControl = remember { RailControl() }
+    // ☰ Menu: a short press opens the rail, holding it opens your profile panel (approved ix-holdmenu)
+    var menuHeld by remember { mutableStateOf(false) }
+    val railModel =
+        RailModel(
+            destination = destination,
+            doors = railDoors,
+            showSearch = !kids,
+            showRequests = !kids,
+            requestsCount = if (requestsWaiting > 0) requestsWaiting else readyCount,
+            user = user,
+            userImageUrl = userImageUrl,
+            badge = badge,
+            big = easy,
+            alwaysOpen = alwaysOpen,
+            profileItems = profileItems,
+            minutesWatched = minutes,
+            onHome = { nav.goToHome() },
+            onSearch = onClickSearch,
+            onRequests = { nav.navigateTo(Destination.Requests) },
+            onPlace = goPlace,
+            onItem = { nav.navigateTo(it.destination()) },
+            onProfile = onProfileTap,
+            onSwitchProfile = onSwitchProfile,
+        )
+    val header: @Composable () -> Unit = {
+        BenflixPageHeader(
+            destination = destination,
+            stack = stack,
+            onBack = { nav.goBack() },
+            onPick = { nav.goBackTo(it) },
+            showClock = preferences.appPreferences.interfacePreferences.showClock,
+            big = easy,
+            overPicture = underBar,
+            downTarget = if (underBar) LocalTopBarDown.current else null,
+            hideMusicPill = musicStrip,
+            modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
+        )
+    }
+    Box(
         modifier =
             modifier.onPreviewKeyEvent { event ->
-                // Holding the remote's Menu button also opens the profile menu
                 val native = event.nativeKeyEvent
                 if (RemoteShortcuts.onKey(
                         native = native,
@@ -776,7 +953,7 @@ fun NavDrawer(
                         kids = kids,
                         focusManager = focusManager,
                         scope = shortcutScope,
-                        goHome = { viewModel.navigationManager.goToHome() },
+                        goHome = { nav.goToHome() },
                         openSearch = onClickSearch,
                         play = { viewModel.quickPlay(it) },
                         musicHold = { viewModel.musicHold(kids) },
@@ -784,94 +961,90 @@ fun NavDrawer(
                     )
                 ) {
                     true
-                } else if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU &&
-                    native.action == android.view.KeyEvent.ACTION_DOWN &&
-                    native.repeatCount == MENU_HOLD_REPEATS
-                ) {
-                    onClickProfile()
+                } else if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+                    if (native.action == android.view.KeyEvent.ACTION_DOWN) {
+                        if (native.repeatCount == 0) menuHeld = false
+                        if (native.repeatCount == MENU_HOLD_REPEATS) {
+                            menuHeld = true
+                            railControl.openProfile()
+                        }
+                    } else if (native.action == android.view.KeyEvent.ACTION_UP && !menuHeld) {
+                        railControl.open()
+                    }
                     true
                 } else {
                     false
                 }
             },
     ) {
-        if (underBar) {
-            // Door pages: the picture goes up behind the bar, so the bar sits on top of the page
-            val topBarDown = remember(destination) { TopBarDown() }
-            Box(Modifier.fillMaxSize()) {
-                CompositionLocalProvider(LocalTopBarOverlap provides barHeight, LocalTopBarDown provides topBarDown) {
-                    Column(Modifier.fillMaxSize()) {
-                        DestinationContent(
-                            destination = destination,
-                            preferences = preferences,
-                            onClearBackdrop = onClearBackdrop,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(
-                                        start = if (destination.fullBleed()) 0.dp else 40.dp,
-                                        end = if (destination.fullBleed()) 0.dp else 16.dp,
-                                    ),
-                        )
-                        // Music redesign 3 (approved r3-q-tvbar): the slim player strip along the bottom of Music pages
-                        if (musicStrip) {
-                            com.github.damontecres.wholphin.ui.music
-                                .MusicStrip()
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(start = railWidth)
+                .focusRequester(contentFocus)
+                .focusRestorer(),
+        ) {
+            if (downloadsOpen) {
+                com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
+                    onClose = { downloadsOpen = false },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (underBar) {
+                // Door pages: the picture goes up behind the header, so the header sits on top of the page
+                val topBarDown = remember(destination) { TopBarDown() }
+                Box(Modifier.fillMaxSize()) {
+                    CompositionLocalProvider(LocalTopBarOverlap provides barHeight, LocalTopBarDown provides topBarDown) {
+                        Column(Modifier.fillMaxSize()) {
+                            DestinationContent(
+                                destination = destination,
+                                preferences = preferences,
+                                onClearBackdrop = onClearBackdrop,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .padding(
+                                            start = if (destination.fullBleed()) 0.dp else PAGE_START,
+                                            end = if (destination.fullBleed()) 0.dp else 16.dp,
+                                        ),
+                            )
+                            // Music redesign 3 (approved r3-q-tvbar): the slim player strip along the bottom of Music pages
+                            if (musicStrip) {
+                                com.github.damontecres.wholphin.ui.music
+                                    .MusicStrip()
+                            }
                         }
+                        header()
                     }
                 }
-                BenflixTopBar(
-                    door = destination.door(),
-                    user = user,
-                    userImageUrl = userImageUrl,
-                    showClock = preferences.appPreferences.interfacePreferences.showClock,
-                    badge = badge,
-                    searchSelected = destination is Destination.Search,
-                    onClickSearch = onClickSearch,
-                    onClickProfile = onClickProfile,
-                    profileFocusRequester = focusRequester,
-                    big = easy,
-                    overPicture = underBar,
-                    downTarget = topBarDown,
-                    hideMusicPill = musicStrip,
-                    modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
-                )
-            }
-        } else {
-            BenflixTopBar(
-                door = destination.door(),
-                user = user,
-                userImageUrl = userImageUrl,
-                showClock = preferences.appPreferences.interfacePreferences.showClock,
-                badge = badge,
-                searchSelected = destination is Destination.Search,
-                onClickSearch = onClickSearch,
-                onClickProfile = onClickProfile,
-                profileFocusRequester = focusRequester,
-                big = easy,
-                overPicture = underBar,
-                hideMusicPill = musicStrip,
-                modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
-            )
-            DestinationContent(
-                destination = destination,
-                preferences = preferences,
-                onClearBackdrop = onClearBackdrop,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(
-                            start = if (destination.fullBleed()) 0.dp else 40.dp,
-                            end = if (destination.fullBleed()) 0.dp else 16.dp,
-                        ),
-            )
-            if (musicStrip) {
-                com.github.damontecres.wholphin.ui.music
-                    .MusicStrip()
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    header()
+                    DestinationContent(
+                        destination = destination,
+                        preferences = preferences,
+                        onClearBackdrop = onClearBackdrop,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(
+                                    start = if (destination.fullBleed()) 0.dp else PAGE_START,
+                                    end = if (destination.fullBleed()) 0.dp else 16.dp,
+                                ),
+                    )
+                    if (musicStrip) {
+                        com.github.damontecres.wholphin.ui.music
+                            .MusicStrip()
+                    }
+                }
             }
         }
+        BenflixRail(
+            model = railModel,
+            contentFocus = contentFocus,
+            control = railControl,
+        )
     }
 }
 
@@ -893,3 +1066,6 @@ val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
 val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open
 
 private const val LEAVE_AGAIN_MS = 3_000L
+
+/** Pages that don't draw edge to edge start this far right of the rail */
+private val PAGE_START = 24.dp
