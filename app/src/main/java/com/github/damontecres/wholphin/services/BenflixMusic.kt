@@ -307,6 +307,15 @@ class BenflixMusic
                 "Deleted. Tower is finding a new copy."
             }
 
+        /**
+         * Ben's "Delete song" (a song he just doesn't want): Tower deletes the file, Jellyfin drops it, and Lidarr
+         * stops watching its album so it never comes back. Returns Tower's words.
+         */
+        suspend fun deleteSong(itemId: java.util.UUID): String =
+            helper.postJson("/api/music/delete", JSONObject().put("id", itemId.toString())).optString("words").ifBlank {
+                "Deleted. It won't be downloaded again."
+            }
+
         suspend fun retry(request: MusicRequest): MusicRequest = request(helper.postJson("/api/music/request/${request.id}/retry"))
 
         suspend fun remove(request: MusicRequest) {
