@@ -56,10 +56,12 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
+import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.valProgressHeart
 import com.github.damontecres.wholphin.ui.theme.vgProgressBlocks
@@ -324,6 +326,8 @@ fun BannerCard(
                                     ValLook.Rose
                                 } else if (VgLook.on) {
                                     Color.Transparent
+                                } else if (PcLook.on) {
+                                    PcLook.Butter
                                 } else {
                                     BenflixRed
                                 },
@@ -362,6 +366,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .valProgressHeart((playPercent / 100).toFloat(), bead = 18.dp),
+                    )
+                }
+                // Popcorn Day look: a piece of popcorn on the end of the progress line
+                if (PcLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .pcProgressPuff((playPercent / 100).toFloat(), puff = 20.dp),
                     )
                 }
                 // New Year's look: a lit sparkler at the end of the progress line

@@ -55,12 +55,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PixelFont
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
+import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
@@ -212,11 +214,19 @@ fun FamilyHome(
                 // Video Games Day look (Kids too): the greeting is in pixel capitals, smaller as they're very wide
                 fontSize = BenflixType.pageTitle * scale * (if (VgLook.on) .6f else 1f),
                 // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || NyLook.on || ValLook.on || VgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                // Popcorn Day look (Kids too): the curly holiday font as well
+                fontWeight =
+                    if (TgLook.on || NyLook.on || ValLook.on || PcLook.on ||
+                        VgLook.on
+                    ) {
+                        FontWeight.Normal
+                    } else {
+                        FontWeight.ExtraBold
+                    },
                 fontFamily =
                     if (VgLook.on) {
                         PixelFont
-                    } else if (TgLook.on || NyLook.on || ValLook.on) {
+                    } else if (TgLook.on || NyLook.on || ValLook.on || PcLook.on) {
                         HolidayFont
                     } else {
                         null
@@ -448,14 +458,16 @@ private fun FamilyDoor(
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
                 .then(
+                    // Popcorn Day look: a movie snack stands on every door, Kids too
                     if (kids) {
-                        Modifier.nyDoorCharm(door)
+                        Modifier.nyDoorCharm(door).pcDoorSnack(door)
                     } else {
                         Modifier
                             .xmasDoorOrnament(door)
                             .tgDoorCharm(door)
                             .valDoorCharm(door)
                             .nyDoorCharm(door)
+                            .pcDoorSnack(door)
                     },
                 )
                 // Video Games Day look: Kids gets the game keepsakes too

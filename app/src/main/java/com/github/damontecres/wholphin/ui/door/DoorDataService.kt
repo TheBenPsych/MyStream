@@ -172,8 +172,17 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
-            /** The same kind of row for another look, like Video Games Day's Game night */
-            theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+
+        /**
+         * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
+         * titles with its tags (Christmas favourites, Popcorn movies).
+         */
+        suspend fun themed(
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
         ): List<BaseItem> =
             coroutineScope {
                 fun search(term: String) =

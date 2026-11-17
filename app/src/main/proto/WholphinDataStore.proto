@@ -297,6 +297,8 @@ message BenflixPreferences {
   bool new_year_look_off = 15;
   // Benflix Valentine's look (1 to 14 Feb) is on unless this is set
   bool valentines_look_off = 24;
+  // Benflix Popcorn Day look (19 Jan, Kids too) is on unless this is set
+  bool popcorn_look_off = 18;
   // Benflix Video Games Day look (12 Sep) is on unless this is set (31: other theme builds use 15 to 20s)
   bool videogames_look_off = 31;
 }
