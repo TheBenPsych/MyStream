@@ -1147,6 +1147,10 @@ fun greetingFor(
     name: String,
     now: LocalTime = LocalTime.now(),
 ): String {
+    // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
@@ -1464,7 +1468,10 @@ fun DoorsHomePage(
                 greeting =
                     when (familyKind) {
                         FamilyKind.GUEST -> "Welcome"
-                        FamilyKind.KIDS -> "Hi there!"
+
+                        // Popcorn Day (19 Jan): Kids gets the greeting too
+                        FamilyKind.KIDS -> if (com.github.damontecres.wholphin.ui.theme.PcLook.on) "Happy Popcorn Day!" else "Hi there!"
+
                         else -> greetingFor(viewModel.userName)
                     },
                 doors = familyDoorSet,

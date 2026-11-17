@@ -333,6 +333,9 @@ class DoorViewModel
                     // Valentine's look (1 to 14 Feb): Date night right after Keep watching
                     if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers, right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) listOf(rows.first(), POPCORN) + rows.drop(1) else rows
+                }.let { rows ->
                     // St. Patrick's Day look (10 to 17 Mar, Kids too): Irish favourites right after Keep watching
                     if (SpLook.on) listOf(rows.first(), IRISH) + rows.drop(1) else rows
                 }
@@ -383,11 +386,8 @@ class DoorViewModel
                         val dislikes = disliked.await()
                         val items =
                             data
-                                .christmas(
-                                    userId,
-                                    BaseItemKind.MOVIE,
-                                    theme = com.github.damontecres.wholphin.ui.main.HomeTheme.ST_PATRICKS,
-                                ).filter { it.id !in dislikes }
+                                .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.ST_PATRICKS, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
                         // Only when there are at least 4 that fit (Ben)
                         putOrRemove(order, DoorRowData(IRISH, "Irish favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
@@ -607,6 +607,7 @@ class DoorViewModel
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
             const val DATE_NIGHT = "datenight"
+            const val POPCORN = "popcorn"
             const val IRISH = "irish"
             const val MY_LIST = "mylist"
             const val NEW = "new"

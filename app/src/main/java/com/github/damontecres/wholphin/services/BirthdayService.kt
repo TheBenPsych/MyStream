@@ -75,7 +75,6 @@ enum class LogoEffect {
     SPOOKY_CAT,
     GROUNDHOG,
     HARVEST_MOON,
-    POPCORN,
     GAME_BUTTONS,
     CAT_TAIL,
     PAW_PRINTS,
@@ -114,34 +113,64 @@ fun holidayFor(date: LocalDate): Celebration? {
         date.withDayOfMonth(1).with(TemporalAdjusters.dayOfWeekInMonth(4, java.time.DayOfWeek.THURSDAY))
     return when {
         m == 1 && d == 1 -> Celebration("Happy New Year", "🎆", 0xFFFFD54F, LogoEffect.FIREWORKS_GOLD)
+
         m == 2 && d == 14 -> Celebration("Happy Valentine's Day", "❤️", 0xFFFF6B9A, LogoEffect.HEART_FLOAT)
+
         m == 3 && d == 17 -> Celebration("Happy St. Patrick's Day", "☘️", 0xFF4CD964, LogoEffect.GREEN_SHIMMER)
+
         m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFF64B5F6, LogoEffect.FIREWORKS_USA)
+
         m == 10 && d == 31 -> Celebration("Happy Halloween", "🎃", 0xFFFF8C1A, LogoEffect.GHOST_PEEK)
+
         m == 11 && date == thanksgiving -> Celebration("Happy Thanksgiving", "🦃", 0xFFE0A050, LogoEffect.FALLING_LEAVES)
+
         m == 12 && d == 24 -> Celebration("Merry Christmas Eve", "🎄", 0xFF66BB6A, LogoEffect.TWINKLE_LIGHTS)
+
         m == 12 && d == 25 -> Celebration("Merry Christmas", "🎄", 0xFF66BB6A, LogoEffect.TWINKLE_LIGHTS)
+
         m == 12 && d == 31 -> Celebration("Happy New Year's Eve", "🥳", 0xFFFFD54F, LogoEffect.FIREWORKS_GOLD)
+
         m == 11 && (d == 1 || d == 2) -> Celebration("Día de los Muertos", "🌼", 0xFFFF9F1C, LogoEffect.MARIGOLDS)
+
         m == 11 && d == 5 -> Celebration("Happy Bonfire Night", "🔥", 0xFFFF7A1A, LogoEffect.EMBERS)
+
         m == 7 && d == 7 -> Celebration("Happy Tanabata", "🎋", 0xFF9FB8FF, LogoEffect.STAR_PAIR)
+
         date == lunarNewYear(date.year) -> Celebration("Happy Lunar New Year", "🏮", 0xFFFF3B30, LogoEffect.LANTERNS)
+
         date == easter(date.year) -> Celebration("Happy Easter", "🐣", 0xFFFFB3C7, LogoEffect.BLOSSOMS)
+
         date == midAutumn(date.year) -> Celebration("Happy Mid-Autumn Festival", "🥮", 0xFFFFC94D, LogoEffect.HARVEST_MOON)
+
         date == nthSunday(date, 5, 2) -> Celebration("Happy Mother's Day", "💐", 0xFFFF9EC7, LogoEffect.FLOWER_BLOOM)
+
         date == nthSunday(date, 6, 3) -> Celebration("Happy Father's Day", "🎣", 0xFFE0A050, LogoEffect.SUNSET)
-        m == 1 && d == 19 -> Celebration("Happy National Popcorn Day", "🍿", 0xFFFFCF4D, LogoEffect.POPCORN)
+
+        // The Popcorn Day look (ui/theme/PopcornSeason.kt) replaced the old Popcorn Day scene
+        m == 1 && d == 19 -> Celebration("Happy National Popcorn Day", "🍿", 0xFFFFCF4D)
+
         m == 2 && d == 2 -> Celebration("Happy Groundhog Day", "🦫", 0xFFC79A72, LogoEffect.GROUNDHOG)
+
         m == 2 && d == 27 -> Celebration("Happy Pokémon Day", "⚡", 0xFFFFDE00, LogoEffect.ZAPS)
+
         m == 3 && d == 10 -> Celebration("Happy Mario Day", "🍄", 0xFFFBD000, LogoEffect.COIN)
+
         m == 4 && d == 22 -> Celebration("Happy Earth Day", "🌍", 0xFF6CC06A, LogoEffect.SPROUTS)
+
         m == 5 && d == 4 -> Celebration("May the 4th be with you", "✨", 0xFFFFD54F, LogoEffect.HYPERSPACE)
+
         m == 8 && d == 8 -> Celebration("Happy International Cat Day", "🐈", 0xFFF0A35E, LogoEffect.CAT_TAIL)
+
         m == 8 && d == 26 -> Celebration("Happy International Dog Day", "🐕", 0xFFC68642, LogoEffect.PAW_PRINTS)
+
         m == 9 && d == 12 -> Celebration("Happy Video Games Day", "🎮", 0xFF7C4DFF, LogoEffect.GAME_BUTTONS)
+
         m == 9 && d == 19 -> Celebration("Ahoy! Talk Like a Pirate Day", "🏴‍☠️", 0xFFC9A227, LogoEffect.PIRATE_FLAG)
+
         m == 10 && d == 21 -> Celebration("Back to the Future Day", "⚡", 0xFFFF6A00, LogoEffect.FIRE_TRAILS)
+
         d == 13 && date.dayOfWeek == java.time.DayOfWeek.FRIDAY -> Celebration("Friday the 13th", "🔪", 0xFFB71C1C, LogoEffect.SPOOKY_CAT)
+
         else -> null
     }
 }

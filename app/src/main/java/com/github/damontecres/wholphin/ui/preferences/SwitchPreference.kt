@@ -71,6 +71,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .ValKnobHeart()
                 }
+                // Popcorn Day look: a popped piece next to switches that are on, a kernel next to ones that are off
+                if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .PcSwitchMark(value)
+                }
                 // New Year's look: a little gold star next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.NyLook.on) {
                     com.github.damontecres.wholphin.ui.theme
