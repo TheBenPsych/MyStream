@@ -155,15 +155,17 @@ class NavDrawerViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val next =
                     try {
-                        api.tvShowsApi
-                            .getNextUp(
-                                org.jellyfin.sdk.model.api.request.GetNextUpRequest(
-                                    seriesId = item.id,
-                                    limit = 1,
-                                    enableResumable = true,
-                                ),
-                            ).content.items
-                            .firstOrNull()
+                        com.github.damontecres.wholphin.services.NextEpisode
+                            .find(api, item.id)
+                            ?: api.tvShowsApi
+                                .getNextUp(
+                                    org.jellyfin.sdk.model.api.request.GetNextUpRequest(
+                                        seriesId = item.id,
+                                        limit = 1,
+                                        enableResumable = true,
+                                    ),
+                                ).content.items
+                                .firstOrNull()
                             ?: api.tvShowsApi
                                 .getEpisodes(
                                     org.jellyfin.sdk.model.api.request.GetEpisodesRequest(
