@@ -1270,6 +1270,42 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_thanksgiving_look_off,
             )
 
+        val StarWarsLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_star_wars_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.starWarsLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { starWarsLookOff = !value }
+                },
+                summaryOn = R.string.benflix_star_wars_look_on,
+                summaryOff = R.string.benflix_star_wars_look_off,
+            )
+
+        /** Each profile's side on Star Wars Day (kept on this TV or phone, not in the shared settings) */
+        val StarWarsSide =
+            AppChoicePreference<AppPreferences, Boolean>(
+                title = R.string.benflix_star_wars_side,
+                defaultValue = false,
+                getter = {
+                    com.github.damontecres.wholphin.ui.theme.SwSides.isDark(
+                        com.github.damontecres.wholphin.ui.theme.SwSides
+                            .currentUser(),
+                    )
+                },
+                setter = { prefs, value ->
+                    com.github.damontecres.wholphin.ui.theme.SwSides.set(
+                        com.github.damontecres.wholphin.ui.theme.SwSides
+                            .currentUser(),
+                        value,
+                    )
+                    prefs
+                },
+                displayValues = R.array.benflix_star_wars_sides,
+                indexToValue = { it != 0 },
+                valueToIndex = { if (it) 1 else 0 },
+            )
+
         val AutoMpvStyledSubs =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_auto_mpv,
@@ -1495,6 +1531,8 @@ val basicPreferences =
                     AppPreference.LateNightLook,
                     AppPreference.ThanksgivingLook,
                     AppPreference.ChristmasLook,
+                    AppPreference.StarWarsLook,
+                    AppPreference.StarWarsSide,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,
                 ),

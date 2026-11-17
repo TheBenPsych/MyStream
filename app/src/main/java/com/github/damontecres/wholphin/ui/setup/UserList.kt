@@ -416,8 +416,14 @@ private fun UserIconCard(
                 com.github.damontecres.wholphin.ui.theme.ChristmasSeason
                     .on() ||
                     com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
+                        .on() ||
+                    com.github.damontecres.wholphin.ui.theme.StarWarsDay
                         .on()
             )
+    // Star Wars Day: the room's laser sword turns the colour of the side of the profile the remote is on
+    if (focused) {
+        androidx.compose.runtime.SideEffect { SwRoomFocus.user = user.user.id }
+    }
 
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)

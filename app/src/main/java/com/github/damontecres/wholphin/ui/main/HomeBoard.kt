@@ -58,7 +58,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -240,11 +244,26 @@ private fun Greeting(
     Column {
         Text(
             text = greeting,
-            color = BenflixColors.Text,
+            // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering
+            color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            fontWeight =
+                if (TgLook.on) {
+                    FontWeight.Normal
+                } else if (SwLook.on) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.ExtraBold
+                },
             // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontFamily =
+                if (TgLook.on) {
+                    HolidayFont
+                } else if (SwLook.on) {
+                    StarWarsFont
+                } else {
+                    null
+                },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -349,6 +368,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .swDoorMoment(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))

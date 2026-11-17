@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.waitForSettled
@@ -1148,6 +1149,10 @@ fun greetingFor(
     now: LocalTime = LocalTime.now(),
 ): String {
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
+    // Star Wars Day (4 May): "May the 4th be with you, Ben" in yellow crawl lettering
+    if (com.github.damontecres.wholphin.ui.theme.SwLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.StarWarsDay.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
@@ -1452,7 +1457,10 @@ fun DoorsHomePage(
                 greeting =
                     when (familyKind) {
                         FamilyKind.GUEST -> "Welcome"
-                        FamilyKind.KIDS -> "Hi there!"
+
+                        // Star Wars Day: Kids get the greeting too
+                        FamilyKind.KIDS -> if (SwLook.on) "May the 4th be with you!" else "Hi there!"
+
                         else -> greetingFor(viewModel.userName)
                     },
                 doors = familyDoorSet,

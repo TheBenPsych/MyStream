@@ -54,7 +54,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
@@ -200,11 +204,26 @@ fun FamilyHome(
         Column {
             Text(
                 text = greeting,
-                color = BenflixColors.Text,
+                // Star Wars Day: the greeting is in yellow crawl lettering
+                color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
                 // Thanksgiving look (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on) HolidayFont else null,
+                fontWeight =
+                    if (TgLook.on) {
+                        FontWeight.Normal
+                    } else if (SwLook.on) {
+                        FontWeight.Bold
+                    } else {
+                        FontWeight.ExtraBold
+                    },
+                fontFamily =
+                    if (TgLook.on) {
+                        HolidayFont
+                    } else if (SwLook.on) {
+                        StarWarsFont
+                    } else {
+                        null
+                    },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -431,7 +450,7 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
+                .then(if (kids) Modifier.swDoorMoment(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).swDoorMoment(door))
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

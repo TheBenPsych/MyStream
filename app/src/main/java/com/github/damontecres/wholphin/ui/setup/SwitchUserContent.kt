@@ -53,6 +53,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
@@ -167,8 +169,13 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
+                // Star Wars Day (4 May, unless switched off): the desert home, with a laser sword in the colour
+                // of the side of the profile you're on
+                val starWars = !christmas && !feast && StarWarsDay.on()
                 if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
+                } else if (starWars) {
+                    StarWarsRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
                 } else {
@@ -219,6 +226,16 @@ fun SwitchUserContent(
                                 modifier = Modifier.padding(top = 6.dp),
                             )
                         }
+                    } else if (starWars) {
+                        Text(
+                            text = StarWarsDay.GREETING,
+                            fontFamily = StarWarsFont,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isTvLayout) 54.sp else 34.sp,
+                            color = StarWarsDay.CrawlYellow,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
                     } else if (feast) {
                         Text(
                             text = ThanksgivingSeason.GREETING,
