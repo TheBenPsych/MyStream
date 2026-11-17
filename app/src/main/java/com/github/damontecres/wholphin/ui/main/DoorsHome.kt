@@ -1155,6 +1155,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
         return com.github.damontecres.wholphin.ui.theme.NewYearSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Valentine's look (1 to 14 Feb): "Happy Valentine's Day, Ben" all season, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.ValentineSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // St. Patrick's Day look (10 to 17 Mar): "Happy St. Patrick's Day, Ben" all week, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
         return com.github.damontecres.wholphin.ui.theme.StPatricksSeason.GREETING + if (name.isNotBlank()) ", $name" else ""

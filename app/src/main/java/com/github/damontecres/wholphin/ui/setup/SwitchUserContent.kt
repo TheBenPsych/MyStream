@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
+import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -170,6 +171,9 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
+                // Valentine's Day (1 to 14 Feb, unless switched off): the table set for two, one chocolate gone each
+                // day, and rose petals falling all day on the 14th
+                val valentine = !christmas && !feast && ValentineSeason.on()
                 // New Year's (27 Dec to 1 Jan, unless switched off): the party room. The clock is watched so the
                 // countdown runs in the last 10 seconds of the year and the room pops open at midnight
                 val newYear = !christmas && !feast && NewYearSeason.on()
@@ -197,6 +201,8 @@ fun SwitchUserContent(
                         year = NewYearSeason.year(day),
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else if (valentine) {
+                    ValentineRoom(modifier = Modifier.fillMaxSize())
                 } else if (stPatricks) {
                     StPatricksRoom(modifier = Modifier.fillMaxSize())
                 } else {
@@ -299,6 +305,28 @@ fun SwitchUserContent(
                             textAlign = TextAlign.Center,
                             style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
                         )
+                    } else if (valentine) {
+                        // "Who's watching?" in the curly script, then "Happy Valentine's Day" on the 14th, and the countdown
+                        val today = remember { LocalDate.now() }
+                        Text(
+                            text = ValentineSeason.whoGreeting(today) ?: stringResource(R.string.select_user),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        ValentineSeason.countdown(today)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE0C8D0),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
                     } else {
                         Text(
                             text = holiday?.text ?: stringResource(R.string.select_user),

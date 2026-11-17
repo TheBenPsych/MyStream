@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.SpLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -329,6 +330,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Valentine's look (1 to 14 Feb): Date night right after Keep watching
+                    if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
+                }.let { rows ->
                     // St. Patrick's Day look (10 to 17 Mar, Kids too): Irish favourites right after Keep watching
                     if (SpLook.on) listOf(rows.first(), IRISH) + rows.drop(1) else rows
                 }
@@ -357,6 +361,14 @@ class DoorViewModel
                 launch {
                     val items = data.myList(userId, BaseItemKind.MOVIE)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
+                }
+                if (DATE_NIGHT in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.dateNight(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(DATE_NIGHT, "Date night", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
                 }
                 if (CHRISTMAS in order) {
                     launch {
@@ -594,6 +606,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val DATE_NIGHT = "datenight"
             const val IRISH = "irish"
             const val MY_LIST = "mylist"
             const val NEW = "new"

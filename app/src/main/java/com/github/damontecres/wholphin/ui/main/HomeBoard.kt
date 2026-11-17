@@ -65,9 +65,13 @@ import com.github.damontecres.wholphin.ui.theme.SpKindMark
 import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValKindMark
+import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -250,15 +254,17 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || NyLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            fontWeight = if (TgLook.on || NyLook.on || ValLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
             // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || NyLook.on || SpLook.on) HolidayFont else null,
+            fontFamily = if (TgLook.on || NyLook.on || ValLook.on || SpLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
         val line =
-            if (NyLook.on) {
+            if (ValLook.on) {
+                listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (SpLook.on) {
                 // St. Patrick's Day look: "3 days to St. Patrick's Day" leads it the same way
@@ -367,6 +373,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .valDoorCharm(door)
                 .nyDoorCharm(door)
                 .spDoorCharm(door)
                 .padding(u * 0.85f),
@@ -697,7 +704,13 @@ private fun ListRow(
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 // New Year's look: each kind of notice gets its own small gold mark before its kind line
-                if (NyLook.on) {
+                // Valentine's look: each kind of notice gets its own small mark before its kind line
+                if (ValLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ValKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
                         KindLine(row, words)
