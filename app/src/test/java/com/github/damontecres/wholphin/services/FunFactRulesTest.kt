@@ -47,6 +47,11 @@ class FunFactRulesTest {
                 "Prometheus",
             ),
         )
-        assertTrue(FunFactRules.isFun("Prometheus: Sound effects were generated with a variety of sources including Pop Rocks and a parrot.", "Prometheus"))
+        assertTrue(
+            FunFactRules.isFun(
+                "Prometheus: Sound effects were generated with a variety of sources including Pop Rocks and a parrot.",
+                "Prometheus",
+            ),
+        )
     }
 }

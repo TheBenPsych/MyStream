@@ -314,6 +314,7 @@ class BenflixFunFacts
 
         companion object {
             private const val PREFS = "benflix_fun_facts"
+
             // "facts3": facts saved with the older, looser rules are dropped (Ben 2026-11-17)
             private const val KEY = "facts3"
             private const val SEPARATOR = "\u001E"
