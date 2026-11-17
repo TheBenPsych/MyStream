@@ -67,6 +67,21 @@ class MusicActionsViewModel
             }
         }
 
+        /** Admins only: deletes this song from Tower, Jellyfin and Lidarr for good (nothing is found again) */
+        fun deleteSong(
+            song: BaseItem,
+            then: () -> Unit = {},
+        ) = viewModelScope.launchIO {
+            try {
+                val words = benflixMusic.deleteSong(song.id)
+                showToast(context, words)
+                onMain { then() }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Delete song")
+                showToast(context, ex.message ?: "Couldn't delete that song. Try again in a minute.")
+            }
+        }
+
         /** Benflix on phones: save songs for listening with no internet (Wi-Fi only, like movies) */
         fun download(songs: List<BaseItem>) = viewModelScope.launchIO { downloads.startAll(songs) }
 
@@ -181,7 +196,7 @@ class MusicActionsViewModel
 
 /**
  * A song's More menu (approved m3-more): Play next, Add to Up next, Add to a playlist, Like, Go to artist,
- * Go to album, and Song info and "Delete and find again" (only on Ben's profile). Own playlists also get
+ * Go to album, and Song info, "Delete and find again" and "Delete song" (admins only). Own playlists also get
  * "Remove from this playlist". [onDeleted] runs once Tower has deleted a bad copy (so the page can drop the song).
  */
 @Composable
@@ -200,6 +215,7 @@ fun SongMenu(
 ) {
     var pickPlaylist by remember { mutableStateOf(false) }
     var confirmRedo by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     var sendTo by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
     if (sendTo) {
@@ -227,6 +243,25 @@ fun SongMenu(
             onConfirm = {
                 actions.deleteAndFindAgain(song, onDeleted)
                 confirmRedo = false
+                onDismiss()
+            },
+            confirmStringRes = R.string.delete,
+        )
+        return
+    }
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = "Delete this song?",
+            body =
+                "This deletes \"${song.title.orEmpty()}\" from Tower for everyone and tells Lidarr not to get it " +
+                    "again. It can't be undone (you can still ask for it again later).",
+            onCancel = {
+                confirmDelete = false
+                onDismiss()
+            },
+            onConfirm = {
+                actions.deleteSong(song, onDeleted)
+                confirmDelete = false
                 onDismiss()
             },
             confirmStringRes = R.string.delete,
@@ -350,6 +385,8 @@ fun SongMenu(
                 )
                 // A bad copy (wrong song, cut off, bad sound): Tower deletes it and finds another one
                 add(DialogItem(headlineContent = { Text("Delete and find again") }, onClick = { confirmRedo = true }))
+                // A song Ben just doesn't want: gone from Tower, Jellyfin and Lidarr for good
+                add(DialogItem(headlineContent = { Text("Delete song") }, onClick = { confirmDelete = true }))
             }
         }
     DialogPopup(

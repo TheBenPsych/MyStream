@@ -123,6 +123,7 @@ document.addEventListener("click", (e) => {
   const c = e.target.closest("[data-ask]");
   if (!c) return;
   const [type, id] = c.dataset.ask.split(":");
+  if (!/^(movie|tv)$/.test(type) || !id) return; // only movie:123 / tv:123 (never a song button)
   // Movies and shows open their full title page (js/ask.js); "Ask for it" there opens this panel
   if ((type === "movie" || type === "tv") && /^\d+$/.test(id || "")) return B.go(`#/ask/${type}/${id}`);
   B.askPanel(type, id);

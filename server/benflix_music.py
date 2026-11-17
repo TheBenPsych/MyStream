@@ -502,6 +502,9 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         if method == "POST" and path == "/api/music/redo":
             body = read_json()
             return 200, redo_song(str(body.get("id") or ""), token, user_id)
+        if method == "POST" and path == "/api/music/delete":
+            body = read_json()
+            return 200, delete_song(str(body.get("id") or ""), token, user_id)
         m = re.fullmatch(r"/api/music/request/([\w-]+)/(retry|remove|approve|decline)", path)
         if method == "POST" and m:
             act = m.group(2)
@@ -2107,6 +2110,79 @@ def redo_song(item_id, token, user_id):
     words = f"Deleted {title}. Tower is finding a new copy"
     words += " (that copy won't be picked again)." if blocked else "."
     return {"ok": True, "words": words, "request": _public(old) if old else None}
+
+
+def delete_song(item_id, token, user_id):
+    """Ben's "Delete song" (2026-11-17, a song he just doesn't want): deletes the file from Tower, takes it off
+    Jellyfin, and makes sure Lidarr never gets it back (its album is unmonitored, and the artist too when none
+    of their songs are left). Nothing is asked for again."""
+    s = _jf_song(item_id, token, user_id)
+    path = s.get("Path") or ""
+    real = os.path.realpath(path) if path else ""
+    if not real.startswith(os.path.realpath(MUSIC) + os.sep):
+        raise MusicError(400, "Only songs in Tower's Music folder can be deleted from here.")
+    title = s.get("Name") or ""
+    artist = (s.get("AlbumArtist") or (s.get("Artists") or [""])[0] or "").strip()
+    track_file, lartist = (None, None)
+    try:
+        track_file, lartist = _lidarr_file(real)
+    except MusicError as e:
+        log(f"couldn't look the song up in Lidarr: {e.message}")
+    lidarr_done = False
+    if track_file:
+        try:
+            lidarr("DELETE", f"/trackfile/{track_file['id']}")
+        except MusicError as e:
+            log(f"Lidarr couldn't delete the file, so Benflix will: {e.message}")
+        # Lidarr watches whole albums, not single songs: an unwatched album never fetches the missing song again
+        if track_file.get("albumId"):
+            try:
+                lidarr("PUT", "/album/monitor", {"albumIds": [track_file["albumId"]], "monitored": False})
+                lidarr_done = True
+            except MusicError as e:
+                log(f"couldn't stop Lidarr watching that album: {e.message}")
+        # No songs of this artist left: Lidarr stops watching the artist as well
+        if lartist and lartist.get("id"):
+            try:
+                left = lidarr("GET", "/trackfile", artistId=lartist["id"]) or []
+                if not left and lartist.get("monitored"):
+                    a = lidarr("GET", f"/artist/{lartist['id']}") or {}
+                    if a.get("id"):
+                        a["monitored"] = False
+                        lidarr("PUT", f"/artist/{a['id']}", a)
+            except MusicError as e:
+                log(f"couldn't stop Lidarr watching {artist}: {e.message}")
+    if os.path.exists(real):
+        try:
+            os.remove(real)
+        except OSError:
+            raise MusicError(500, "Tower wouldn't let Benflix delete the file. Check the Music folder's permissions.")
+    _quiet_remove(os.path.splitext(real)[0] + ".lrc")
+    # The album folder has no songs left: its cover and extras go too (never a folder that still has music)
+    folder = os.path.dirname(real)
+    try:
+        if os.path.realpath(folder) != os.path.realpath(MUSIC):
+            rest = os.listdir(folder)
+            if not any(os.path.splitext(f)[1].lower() in AUDIO or os.path.isdir(os.path.join(folder, f)) for f in rest):
+                for f in rest:
+                    _quiet_remove(os.path.join(folder, f))
+                os.rmdir(folder)
+    except OSError:
+        pass
+    _tell_jellyfin([path], kind="Deleted")
+    _have_reset()
+    # Benflix's own ask for this song goes away, so it's never retried
+    with _lock:
+        gone = [
+            r
+            for r in _state["requests"]
+            if r["kind"] == "song" and same_song(title, _wanted_title(r)) and same(r.get("artist"), artist)
+        ]
+        for r in gone:
+            _state["requests"].remove(r)
+        _save()
+    log(f"deleted {artist} - {title} for good" + ("" if lidarr_done or not track_file else " (Lidarr may still watch the album)"))
+    return {"ok": True, "words": f"Deleted {title}. It won't be downloaded again."}
 
 
 # ---------- Soulseek (single songs, through slskd) ----------
