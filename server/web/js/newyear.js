@@ -83,7 +83,7 @@
      let wire='';for(let k=0;k<=N;k++){const [x,y]=pt(k);wire+=(k?'L':'M')+f1(x)+' '+f1(y)}s+=`<path d="${wire}" stroke="#1A1A14" stroke-width="${f1(3*Math.max(sc,.5))}" fill="none"/>`;
      for(let k=1;k<N;k++){const [x,y]=pt(k);const r=(W2<600?7:11*sc);s+=`<rect x="${f1(x-r*.35)}" y="${f1(y)}" width="${f1(r*.7)}" height="${f1(r*.6)}" fill="#3A3226"/><circle class="bulbh" data-k="${k}" cx="${f1(x)}" cy="${f1(y+r*1.6)}" r="${f1(r*3.2)}" fill="url(#${id}h)"/><circle cx="${f1(x)}" cy="${f1(y+r*1.6)}" r="${f1(r)}" fill="#FFE8B8"/><circle cx="${f1(x-r*.3)}" cy="${f1(y+r*1.3)}" r="${f1(r*.3)}" fill="#fff"/>`}})}
    return {bg:s,vig:`<rect width="${W2}" height="${H2}" fill="url(#${id}v)"/>`}}
-  
+
   /* ---------- the window: a city on New Year's Eve, snow on the street, fireworks over the roofs ---------- */
   function windowSVG([wx,wy,ww,wh]){const id='wn'+(RID++);const r=rnd(77);
    let s=`<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060A1C"/><stop offset=".7" stop-color="#18234A"/><stop offset="1" stop-color="#2E3C6E"/></linearGradient><radialGradient id="${id}l"><stop offset="0" stop-color="#FFD98A" stop-opacity=".6"/><stop offset="1" stop-color="#FFD98A" stop-opacity="0"/></radialGradient></defs><rect width="${ww}" height="${wh}" fill="url(#${id}s)"/>`;
@@ -100,7 +100,7 @@
    const lx=ww*.86;s+=`<circle cx="${f1(lx)}" cy="${f1(wh-128)}" r="46" fill="url(#${id}l)"/><rect x="${f1(lx-2.5)}" y="${f1(wh-130)}" width="5" height="${f1(90)}" fill="#14182A"/><path d="M${f1(lx-9)} ${f1(wh-134)} h18 l-3 10 h-12Z" fill="#14182A"/><rect x="${f1(lx-6)}" y="${f1(wh-128)}" width="12" height="7" fill="#FFE2A0"/>`;
    let snow='';for(let k=0;k<26;k++)snow+=`<circle class="sn" data-x="${f1(r()*ww)}" data-y="${f1(r()*wh)}" data-v="${f1(10+r()*14)}" data-d="${f1(r()*6)}" data-wh="${wh}" r="${f1(1+r()*1.4)}" fill="#fff" opacity=".8"/>`;
    return `<rect x="${wx-14}" y="${wy-14}" width="${ww+28}" height="${wh+28}" rx="6" fill="#1A1F33"/><svg x="${wx}" y="${wy}" width="${ww}" height="${wh}" overflow="hidden">${s}<g class="walkers" data-w="${ww}" data-h="${wh}">${walkers()}</g>${snow}</svg><rect x="${wx+ww/2-4}" y="${wy}" width="8" height="${wh}" fill="#1A1F33"/><rect x="${wx}" y="${wy+wh/2-4}" width="${ww}" height="8" fill="#1A1F33"/><rect x="${wx-22}" y="${wy+wh+12}" width="${ww+44}" height="10" rx="3" fill="#1A1F33"/>`}
-  
+
   /* ---------- people walking past (feet on the ground at y=0, facing left) ---------- */
   const skin='#E8B48A',skin2='#B97E58';
   function leg(x,hipY,col,shoe,ph){return `<g class="lg" data-x="${x}" data-p="${hipY}" data-ph="${ph}"><path d="M${x} ${hipY} L${x} -3" stroke="${col}" stroke-width="6" stroke-linecap="round"/><path d="M${x+2} -1 h-8 a3 3 0 0 1 0 -5 h6Z" fill="${shoe}" stroke="${shoe}" stroke-width="2" stroke-linejoin="round"/></g>`}
