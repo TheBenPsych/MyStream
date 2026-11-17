@@ -13,8 +13,24 @@ object LastRemoteKey {
     var moveAt: Long = 0L
         private set
 
+    /** When any arrow, OK or Back was last pressed (the ambient art holds still for a moment while you move) */
+    @Volatile
+    var pressAt: Long = 0L
+        private set
+
     fun onKey(event: KeyEvent) {
         if (event.action != KeyEvent.ACTION_DOWN) return
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT,
+            KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_CENTER,
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_MENU,
+            -> pressAt = android.os.SystemClock.uptimeMillis()
+        }
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_DPAD_UP,
@@ -27,5 +43,8 @@ object LastRemoteKey {
     }
 
     /** True if Left/Up/Down was pressed in the last [withinMs] */
+    /** True if any arrow, OK, Back or Menu was pressed in the last [withinMs] */
+    fun pressedRecently(withinMs: Long): Boolean = android.os.SystemClock.uptimeMillis() - pressAt < withinMs
+
     fun movedRecently(withinMs: Long = 900L): Boolean = android.os.SystemClock.uptimeMillis() - moveAt < withinMs
 }

@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -57,11 +58,13 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -229,11 +232,14 @@ fun BenflixRail(
     var profileOpen by remember { mutableStateOf(false) }
     val panelOpen = panelDoor != null || profileOpen
     val open = model.alwaysOpen || railFocused || panelOpen
-    val width by animateDpAsState(
-        if (open) RAIL_OPEN * scale else RAIL_TUCKED * scale,
-        tween(RAIL_MS),
-        label = "benflixRail",
-    )
+    // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
+    // rebuilds every icon and name on each step of it
+    val width =
+        animateDpAsState(
+            if (open) RAIL_OPEN * scale else RAIL_TUCKED * scale,
+            tween(RAIL_MS),
+            label = "benflixRail",
+        )
     val doorFocus = remember(model.doors) { model.doors.associateWith { FocusRequester() } }
     val spotFocus = remember { Spot.entries.associateWith { FocusRequester() } }
     val current = model.destination.door()
@@ -336,7 +342,11 @@ fun BenflixRail(
         androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxHeight()
-                .width(width)
+                .layout { measurable, constraints ->
+                    val w = width.value.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+                    val placeable = measurable.measure(constraints.copy(minWidth = w, maxWidth = w))
+                    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }.clipToBounds()
                 .background(
                     if (open) {
                         Brush.horizontalGradient(
@@ -364,7 +374,13 @@ fun BenflixRail(
                     } else {
                         Modifier
                     },
-                ),
+                ).layout { measurable, constraints ->
+                    // The icons and names are laid out once at the open width and the glide just shows more of
+                    // them, so nothing inside has to be measured again on every step
+                    val full = (RAIL_OPEN * scale).roundToPx().coerceAtLeast(constraints.maxWidth)
+                    val placeable = measurable.measure(constraints.copy(minWidth = full, maxWidth = full))
+                    layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
+                },
         ) {
             // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
             Column(
@@ -503,7 +519,7 @@ fun BenflixRail(
             visible = panelOpen,
             enter = slideInHorizontally(tween(PANEL_MS)) { -it / 3 } + fadeIn(tween(PANEL_MS)),
             exit = slideOutHorizontally(tween(PANEL_OUT_MS)) { -it / 4 } + fadeOut(tween(PANEL_OUT_MS)),
-            modifier = Modifier.offset(x = width),
+            modifier = Modifier.offset { IntOffset(width.value.roundToPx(), 0) },
         ) {
             val shape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
             Box(

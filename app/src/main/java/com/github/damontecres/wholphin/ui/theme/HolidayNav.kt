@@ -4,14 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.FloatState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import com.github.damontecres.wholphin.ui.util.rememberAmbientClock
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -77,10 +77,16 @@ data class HolidayNav(
     /** Along the bottom of Home (Christmas: snow) */
     val bottomTrim: HolidayArt? = null,
     /**
-     * True when the art above moves (uses its seconds): the icons, mark and trims then redraw every frame on TV and
-     * phone, lite mode included. Leave false for still art so old TVs don't redraw for nothing.
+     * True when the mark and trims move (use their seconds): they then redraw about 20 times a second on TV and
+     * phone ([com.github.damontecres.wholphin.ui.util.AmbientClock]), lite mode included. Leave false for still art
+     * so old TVs don't redraw for nothing. Icons only move with [iconsMove] too.
      */
     val moving: Boolean = false,
+    /**
+     * True when the icons themselves move (use their seconds). Off by default: the icons sit in the rail on every
+     * page, so moving ones keep the whole rail drawing. The mark and trims still follow [moving].
+     */
+    val iconsMove: Boolean = false,
     /** The first Today card on Home ("8 days to Christmas"); null on the day itself or when there's none */
     val countdown: () -> String? = { null },
     /** The small coloured line on that card */
@@ -263,31 +269,38 @@ object HolidayNavKit {
         }
 }
 
-/** Draws a [HolidayArt] into [modifier]'s box, moving when the holiday's art moves */
+/**
+ * Draws a [HolidayArt] into [modifier]'s box, moving when the holiday's art moves. It sits on its own drawing layer,
+ * so when it moves only the art itself is drawn again, never the posters and pictures around it.
+ */
 @Composable
 fun HolidayArtBox(
     art: HolidayArt,
     modifier: Modifier,
 ) {
     val clock = holidayClock()
-    Canvas(modifier) { art(clock.floatValue) }
+    Canvas(modifier.graphicsLayer()) { art(clock.seconds()) }
+}
+
+/** Seconds since a piece of holiday art showed (see [holidayClock]) */
+class HolidayClock internal constructor(
+    private val ambient: FloatState?,
+    private val start: Float,
+) {
+    /** Read only while drawing */
+    fun seconds(): Float = ambient?.let { it.floatValue - start } ?: 0f
 }
 
 /**
- * Seconds since the art showed, ticking every frame only while the holiday's art moves ([HolidayNav.moving]). It's
- * read while drawing, so a tick only redraws the art and never rebuilds the screen.
+ * Seconds since the art showed, ticking only while the holiday's art moves ([HolidayNav.moving]). It comes from the
+ * one shared [com.github.damontecres.wholphin.ui.util.AmbientClock] (about 20 frames a second, holding still while
+ * you press the remote), and it's read while drawing, so a tick only redraws the art and never rebuilds the screen.
  */
 @Composable
-fun holidayClock(): FloatState {
-    val clock = remember { mutableFloatStateOf(0f) }
-    val moving = remember { HolidayNavKit.current()?.moving == true }
-    if (moving) {
-        LaunchedEffect(Unit) {
-            val start = withFrameMillis { it }
-            while (true) withFrameMillis { clock.floatValue = (it - start) / 1000f }
-        }
-    }
-    return clock
+fun holidayClock(moving: Boolean = remember { HolidayNavKit.current()?.moving == true }): HolidayClock {
+    if (!moving) return remember { HolidayClock(null, 0f) }
+    val ambient = rememberAmbientClock()
+    return remember(ambient) { HolidayClock(ambient, Snapshot.withoutReadObservation { ambient.floatValue }) }
 }
 
 /**
@@ -305,8 +318,10 @@ fun HolidayOrUsualIcon(
     val holiday = remember { HolidayNavKit.current() }
     val art = key?.let { holiday?.icon(it) }
     if (art != null) {
-        val clock = holidayClock()
-        Canvas(modifier.then(Modifier.size(size))) { art(color, clock.floatValue) }
+        // Holiday icons are still unless the holiday says they move ([HolidayNav.iconsMove]): a rail full of icons
+        // ticking used to redraw every page all day long
+        val clock = holidayClock(moving = remember { holiday?.moving == true && holiday.iconsMove })
+        Canvas(modifier.then(Modifier.size(size)).graphicsLayer()) { art(color, clock.seconds()) }
     } else {
         com.github.damontecres.wholphin.ui.components
             .BenflixIconImage(icon, color = color, size = size, contentDescription = null, modifier = modifier)
