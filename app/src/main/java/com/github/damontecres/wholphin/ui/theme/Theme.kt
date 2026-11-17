@@ -74,6 +74,9 @@ fun WholphinTheme(
             } else if (EdLook.on) {
                 // Earth Day look (Earth week, Kids too): leaf green
                 EdLook.Leaf
+            } else if (PcLook.on) {
+                // Popcorn Day look (19 Jan): butter yellow
+                PcLook.Butter
             } else if (ValLook.on) {
                 // Valentine's look (1 to 14 Feb): rose red
                 ValLook.Rose

@@ -335,6 +335,8 @@ class DoorViewModel
                         listOfNotNull(
                             EARTH.takeIf { com.github.damontecres.wholphin.ui.theme.EdLook.on },
                             DATE_NIGHT.takeIf { ValLook.on && !easy },
+                            // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers
+                            POPCORN.takeIf { com.github.damontecres.wholphin.ui.theme.PcLook.on },
                         )
                     if (extra.isNotEmpty()) listOf(rows.first()) + extra + rows.drop(1) else rows
                 }
@@ -615,6 +617,7 @@ class DoorViewModel
             const val CHRISTMAS = "christmas"
             const val EARTH = "earth"
             const val DATE_NIGHT = "datenight"
+            const val POPCORN = "popcorn"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

@@ -1151,6 +1151,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
         return com.github.damontecres.wholphin.ui.theme.EarthDaySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
@@ -1465,8 +1469,15 @@ fun DoorsHomePage(
                     when (familyKind) {
                         FamilyKind.GUEST -> "Welcome"
 
-                        // Earth week: Kids gets the Earth Day greeting too
-                        FamilyKind.KIDS -> if (com.github.damontecres.wholphin.ui.theme.EdLook.on) "Happy Earth Day!" else "Hi there!"
+                        // Earth week and Popcorn Day: Kids gets the greeting too
+                        FamilyKind.KIDS ->
+                            if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                                "Happy Earth Day!"
+                            } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                                "Happy Popcorn Day!"
+                            } else {
+                                "Hi there!"
+                            }
 
                         else -> greetingFor(viewModel.userName)
                     },

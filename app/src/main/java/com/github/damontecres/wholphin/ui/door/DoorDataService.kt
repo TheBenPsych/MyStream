@@ -176,7 +176,7 @@ class DoorDataService
 
         /**
          * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
-         * titles with its tags (Christmas favourites, Planet Earth picks).
+         * titles with its tags (Christmas favourites, Popcorn movies, Planet Earth picks).
          */
         suspend fun themed(
             theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
