@@ -71,10 +71,12 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
+import com.github.damontecres.wholphin.ui.theme.pcPlayPop
 import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.valRosyGlow
@@ -706,6 +708,8 @@ private fun TitleButtonView(
     val ny = NyLook.on
     // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
     val sw = SwLook.on
+    // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
+    val pc = PcLook.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
@@ -715,6 +719,8 @@ private fun TitleButtonView(
             NyLook.Gold
         } else if (sw) {
             SwLook.Red
+        } else if (pc) {
+            PcLook.Butter
         } else if (vl) {
             com.github.damontecres.wholphin.ui.theme.ValLook.Rose
         } else {
@@ -727,6 +733,8 @@ private fun TitleButtonView(
                 Color.White
             } else if (ny) {
                 NyLook.OnGold
+            } else if (pc) {
+                PcLook.OnButter
             } else {
                 BenflixColors.Tray
             }
@@ -756,6 +764,7 @@ private fun TitleButtonView(
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
+                .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

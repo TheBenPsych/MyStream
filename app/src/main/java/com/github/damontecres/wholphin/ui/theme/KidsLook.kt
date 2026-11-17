@@ -55,8 +55,8 @@ object KidsLook {
 
     /** The colours to use right now, or null for the normal grown-up look */
     val palette: KidsPalette? get() =
-        // Star Wars Day (4 May): Kids gets the dark side red and black look too (Ben 2026-11-17)
-        if (!on || StarWarsDay.on()) {
+        // Popcorn Day (19 Jan) and Star Wars Day (4 May): Kids gets those looks too (Ben), so the Sky and Sunshine colours rest
+        if (!on || PcLook.on || StarWarsDay.on()) {
             null
         } else if (night) {
             NightLight

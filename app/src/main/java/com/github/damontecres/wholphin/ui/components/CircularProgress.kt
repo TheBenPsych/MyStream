@@ -38,6 +38,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Popcorn Day look: loading is a ring of kernels popping one after another
+    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .PcLoadingRing(modifier)
+        return
+    }
     // Valentine's look: instead of a ring, a heart that fills up with rose red from the bottom, over and over
     if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
         val pour =

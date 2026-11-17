@@ -172,8 +172,17 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
-            // Star Wars Day uses the same search with its own titles
-            theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+
+        /**
+         * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
+         * titles with its tags (Christmas favourites, Popcorn movies).
+         */
+        suspend fun themed(
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
         ): List<BaseItem> =
             coroutineScope {
                 fun search(term: String) =
