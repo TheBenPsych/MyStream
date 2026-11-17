@@ -156,7 +156,7 @@
       let k = 0;
       for (let i = 0; i < n; i++) [0.17, 0.5, 0.83].forEach((t) => { out += bulb(i * step + step * t, top + sag * 4 * t * (1 - t) - 1, C9[k % 5], k); k++; });
       for (let i = 0; i <= n; i++) out += `<circle cx="${(i * step).toFixed(1)}" cy="${top}" r="2.2" fill="#2a3b2f"/>`;
-      return `<svg class="${cls || ""}${xday() ? " xday" : ""}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible">${out}</svg>`;
+      return `<svg class="${cls || ""}${xday() ? " xday" : ""}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible;top:var(--bar)">${out}</svg>`;
     };
     // soft snow drifts (fine to stretch)
     const drift = (W, base, amp, seed) => {
@@ -244,7 +244,7 @@
       const LEAF = [["#f0603a", "#9c2414"], ["#ffa040", "#c2561f"], ["#ffd76a", "#c88a26"], ["#c8384e", "#6e1626"], ["#d8742e", "#7a3a14"]];
       const g2 = (id, a, b, x2) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2 || 1}" y2="${x2 ? 0 : 1}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
       const defs = `<defs>${LEAF.map(([a, b], i) => g2("tgl" + i, a, b)).join("")}${g2("tgnut", "#e0a35c", "#6e4020", 1)}${g2("tgcup", "#8a5a32", "#4a2d16")}${g2("tgpk", "#ffa24a", "#a5441a")}${g2("tgpw", "#fbf4e4", "#b5a586")}<radialGradient id="tgbr" cx=".35" cy=".35"><stop offset="0" stop-color="#fff0b0"/><stop offset=".5" stop-color="#d9a940"/><stop offset="1" stop-color="#7a5418"/></radialGradient></defs>`;
-      const css = "<style>.sp-trim.top:has(.tgn){height:auto;aspect-ratio:20/1;overflow:visible}.sp-trim.bottom:has(.tgn){height:auto;aspect-ratio:30/1;overflow:visible}"
+      const css = "<style>.sp-trim.top:has(.tgn){top:var(--bar);height:auto;aspect-ratio:20/1;overflow:visible}.sp-trim.bottom:has(.tgn){height:auto;aspect-ratio:30/1;overflow:visible}"
         + ".tgn .sw{animation:tgsw 4.5s ease-in-out infinite alternate}@keyframes tgsw{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}"
         + ".tgn .fall{animation:tgfall 13s linear infinite}@keyframes tgfall{0%{transform:translate(0,0) rotate(0);opacity:0}5%{opacity:1}30%{transform:translate(40px,90px) rotate(100deg)}60%{transform:translate(-10px,180px) rotate(210deg)}90%{opacity:1}100%{transform:translate(20px,260px) rotate(320deg);opacity:0}}</style>";
       let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -277,9 +277,10 @@
       })();
       // Bottom: only the bottom-right corner (viewBox 1200 x 40 kept at 30:1, drawn upward from the bottom edge)
       const bottom = (() => {
-        const R = 1188;
-        const leaves = [[R - 96, -55, 0], [R - 70, 30, 2], [R - 4, 70, 1], [R - 112, -20, 3]].map(([x, r, c], i) => leaf(x, 37, r, 22, c, i % 2 === 1)).join("");
-        return `${defs}<g class="tgn">${leaves}${pumpkin(R - 36, 39, 50, 34)}${pumpkin(R - 76, 39, 30, 21, true)}${acorn(R - 98, 28, 0.6, 70)}</g>`;
+        // Small enough to sit in the gap under the Today cards (about 20 of the 40 units)
+        const R = 1190;
+        const leaves = [[R - 62, -55, 0], [R - 46, 30, 2], [R - 2, 70, 1], [R - 72, -20, 3]].map(([x, r, c], i) => leaf(x, 39, r, 13, c, i % 2 === 1)).join("");
+        return `${defs}<g class="tgn">${leaves}${pumpkin(R - 22, 39.5, 30, 20)}${pumpkin(R - 48, 39.5, 18, 12.5, true)}${acorn(R - 62, 33, 0.36, 70)}</g>`;
       })();
       return {
         icons,
