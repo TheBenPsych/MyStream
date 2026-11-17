@@ -29,7 +29,8 @@ object StarWarsNav {
         val color: Color,
     )
 
-    private fun parts(vararg p: Pair<String, Long>): List<Part> = p.map { (d, c) -> Part(PathParser().parsePathString(d).toPath(), Color(c)) }
+    private fun parts(vararg p: Pair<String, Long>): List<Part> =
+        p.map { (d, c) -> Part(PathParser().parsePathString(d).toPath(), Color(c)) }
 
     private const val SAND = 0xFFE2C296
     private const val CRAWL = 0xFFFFE81F
@@ -50,12 +51,14 @@ object StarWarsNav {
             // Twin suns setting over a dune with a dome on it
             "shows" to
                 parts(
-                    "M5 8a3 3 0 1 0 6 0a3 3 0 1 0-6 0zM13.5 6a2 2 0 1 0 4 0a2 2 0 1 0-4 0zM2 19c5-5.5 11-5.5 20-2.5M14 16.4a2.4 2.4 0 0 1 4.8 0" to SUNS,
+                    "M5 8a3 3 0 1 0 6 0a3 3 0 1 0-6 0zM13.5 6a2 2 0 1 0 4 0a2 2 0 1 0-4 0z" to SUNS,
+                    "M2 19c5-5.5 11-5.5 20-2.5M14 16.4a2.4 2.4 0 0 1 4.8 0" to SUNS,
                 ),
             // A hologram globe on its little projector
             "live" to
                 parts(
-                    "M6 9.5a6 6 0 1 0 12 0a6 6 0 1 0-12 0zM9.4 9.5a2.6 6 0 1 0 5.2 0a2.6 6 0 1 0-5.2 0zM6 9.5h12M8 21h8M10 21l.8-3.5h2.4L14 21" to HOLO,
+                    "M6 9.5a6 6 0 1 0 12 0a6 6 0 1 0-12 0zM9.4 9.5a2.6 6 0 1 0 5.2 0a2.6 6 0 1 0-5.2 0z" to HOLO,
+                    "M6 9.5h12M8 21h8M10 21l.8-3.5h2.4L14 21" to HOLO,
                 ),
             // Two laser swords crossed: one blue, one red, with grey hilts
             "games" to
