@@ -556,6 +556,8 @@ fun MusicNowPlayingPage(
             song = song,
             liked = music.liked,
             onDismiss = viewModel::closeMenu,
+            // A song deleted from here (admins) is gone from Tower, so the next one plays
+            onDeleted = { viewModel.next() },
             // Ben 2026-11-17: More has Songs like this too (it opens that tab)
             onSongsLikeThis =
                 if (viewModel.canAsk && !easy) {

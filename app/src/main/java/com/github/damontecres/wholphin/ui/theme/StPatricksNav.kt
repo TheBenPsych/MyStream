@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.WholphinApplication
 import kotlin.math.PI
@@ -248,63 +249,72 @@ object StPatricksNav {
     }
     private val stitch by lazy { PathEffect.dashPathEffect(floatArrayOf(2f, 1.6f)) }
 
-    /** Bunting in swags across the top (the sheet's 60 units = the trim's height) */
+    /**
+     * Bunting in swags across the top (the sheet's 60 units = the trim's height). It hangs just below Home's greeting
+     * and clock line (64dp down on TV, 52dp on phones) so it never crowds them, like Thanksgiving's garland.
+     */
     val bunting: HolidayArt = { t ->
         val u = size.height / 60f
         val w = size.width / u
         val swags = max(2, (w / 367f).roundToInt())
         val sw = w / swags
-        scale(u, u, pivot = Offset.Zero) {
-            var k = 0
-            for (s in 0 until swags) {
-                val x0 = s * sw
-                val sag = 18f
-                drawPath(
-                    Path().apply {
-                        moveTo(x0, 5f)
-                        quadraticTo(x0 + sw / 2, 5f + sag * 2, x0 + sw, 5f)
-                    },
-                    Twine,
-                    style = Stroke(1.6f),
-                )
-                val n = (sw / 32f).roundToInt()
-                for (i in 0 until n) {
-                    val f = (i + .5f) / n
-                    val x = x0 + f * sw
-                    val y = 5f + sag * 4 * f * (1 - f)
-                    val slope = (atan2(sag * 4 * (1 - 2 * f), sw) * 180 / PI).toFloat()
-                    val swing = 3f * sin((t / 3.6f) * 2 * PI.toFloat() + i * .65f + s * 1.7f)
-                    val c = flagColors[k++ % 3]
-                    val white = c == Cream
-                    translate(x, y) {
-                        rotate(slope + swing, pivot = Offset.Zero) {
-                            drawPath(flag, c)
-                            drawPath(flag, flagShade)
-                            drawRect(Color.Black.copy(alpha = .22f), Offset(-13f, 0f), Size(26f, 3.5f))
-                            drawLine(
-                                if (white) Color(0xFFB9AE8C) else Color.White.copy(alpha = .4f),
-                                Offset(-10.5f, 6f),
-                                Offset(10.5f, 6f),
-                                .8f,
-                                pathEffect = stitch,
-                            )
-                            if (white) {
-                                shamrock(Offset(0f, 21f), .4f, 0f, Clover, CloverLight, EmeraldDark, veins = false)
+        val drop = (if (size.width < 600.dp.toPx()) 52.dp else 64.dp).toPx()
+        translate(0f, drop) {
+            scale(u, u, pivot = Offset.Zero) {
+                var k = 0
+                for (s in 0 until swags) {
+                    val x0 = s * sw
+                    val sag = 18f
+                    drawPath(
+                        Path().apply {
+                            moveTo(x0, 5f)
+                            quadraticTo(x0 + sw / 2, 5f + sag * 2, x0 + sw, 5f)
+                        },
+                        Twine,
+                        style = Stroke(1.6f),
+                    )
+                    val n = (sw / 32f).roundToInt()
+                    for (i in 0 until n) {
+                        val f = (i + .5f) / n
+                        val x = x0 + f * sw
+                        val y = 5f + sag * 4 * f * (1 - f)
+                        val slope = (atan2(sag * 4 * (1 - 2 * f), sw) * 180 / PI).toFloat()
+                        val swing = 3f * sin((t / 3.6f) * 2 * PI.toFloat() + i * .65f + s * 1.7f)
+                        val c = flagColors[k++ % 3]
+                        val white = c == Cream
+                        translate(x, y) {
+                            rotate(slope + swing, pivot = Offset.Zero) {
+                                drawPath(flag, c)
+                                drawPath(flag, flagShade)
+                                drawRect(Color.Black.copy(alpha = .22f), Offset(-13f, 0f), Size(26f, 3.5f))
+                                drawLine(
+                                    if (white) Color(0xFFB9AE8C) else Color.White.copy(alpha = .4f),
+                                    Offset(-10.5f, 6f),
+                                    Offset(10.5f, 6f),
+                                    .8f,
+                                    pathEffect = stitch,
+                                )
+                                if (white) {
+                                    shamrock(Offset(0f, 21f), .4f, 0f, Clover, CloverLight, EmeraldDark, veins = false)
+                                }
                             }
                         }
                     }
+                    drawCircle(Gold, 3f, Offset(x0, 5f))
+                    drawCircle(GoldDark, 3f, Offset(x0, 5f), style = Stroke(1f))
                 }
-                drawCircle(Gold, 3f, Offset(x0, 5f))
-                drawCircle(GoldDark, 3f, Offset(x0, 5f), style = Stroke(1f))
+                drawCircle(Gold, 3f, Offset(w, 5f))
+                drawCircle(GoldDark, 3f, Offset(w, 5f), style = Stroke(1f))
             }
-            drawCircle(Gold, 3f, Offset(w, 5f))
-            drawCircle(GoldDark, 3f, Offset(w, 5f), style = Stroke(1f))
         }
     }
 
     // ---------- Home: shamrock patch along the bottom ----------
 
-    /** Shamrocks growing along the bottom edge, back ones darker, with a few white clover flowers (64 units tall) */
+    /**
+     * Shamrocks growing along the bottom edge, back ones darker, with a few white clover flowers (64 units tall). Kept
+     * low so the news cards floating just above never hide their tops.
+     */
     val patch: HolidayArt = { t ->
         val u = size.height / 64f
         val w = size.width / u
@@ -313,19 +323,19 @@ object StPatricksNav {
             val r = Seeded(7)
             var x = 4f
             while (x < w) {
-                val s = .55f + r.next() * .5f
+                val s = .45f + r.next() * .35f
                 val lean = -25f + r.next() * 50f
                 shamrock(Offset(x, 64f), s * .9f, lean, BackLeaf, BackLeaf, EmeraldDark, false)
                 x += 16f + r.next() * 10f
             }
             x = 40f
             while (x < w) {
-                flower(Offset(x, 66f), .55f + r.next() * .25f, sway(x))
+                flower(Offset(x, 66f), .5f + r.next() * .25f, sway(x))
                 x += 90f + r.next() * 80f
             }
             x = 10f
             while (x < w) {
-                val s = .6f + r.next() * .55f
+                val s = .5f + r.next() * .4f
                 val lean = -20f + r.next() * 40f
                 shamrock(Offset(x, 66f), s, lean + sway(r.next() * 6f), Emerald, CloverLight, EmeraldDark, true)
                 x += 20f + r.next() * 14f

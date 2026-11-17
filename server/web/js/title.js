@@ -2,7 +2,7 @@
    TV and phone app: a still picture (no trailer behind it), the title with a short line in the door's
    colour, the info line, up to 5 buttons (greyed-out ones are faded, can still be reached, and say why),
    then tabs. A tab opens on click and only loads the first time it's opened; empty tabs are hidden.
-   Overview = 2 lines of story + More (the whole story in a side panel) + one slim strip.
+   Overview = the whole story + one slim strip on the left, Details on the right (stacked on phones).
    On phone-size windows the picture sits across the top and a slim Play bar shows once Play scrolls away.
 
    Everything lives on B.titlePage so nothing clashes with other files (they share one scope). */
@@ -34,8 +34,9 @@
     const pic = opts.cover
       ? `<div class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" style="${opts.cover.url ? `background-image:url('${opts.cover.url}')` : ""}"></div>`
       : "";
-    const overview = `<div class="ov">${esc(opts.story || "")}</div>${opts.story ? `<button class="tp-more" id="tpStory">More</button>` : ""}
-      <div class="scores tp-strip">${opts.strip || ""}</div>${opts.overviewExtra || ""}`;
+    // The whole story on the left, Details (studio, released, the file for you) on the right; one under the other on phones
+    const overview = `<div class="tp-ov"><div class="tp-ovl"><div class="ov">${esc(opts.story || "")}</div>
+      <div class="scores tp-strip">${opts.strip || ""}</div>${opts.overviewExtra || ""}</div><div class="tp-ovr" id="tpOvDetails"></div></div>`;
     B.page().innerHTML = B.top("") + `<div class="details tp" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
         <div class="main">
@@ -102,10 +103,6 @@
     const watch = new MutationObserver(() => refresh());
     $$(".tp-pane").forEach((p) => watch.observe(p, { childList: true, subtree: true }));
     B.onLeave(() => watch.disconnect());
-    // The whole story in the side panel
-    const st = $("#tpStory");
-    let storyExtra = "";
-    if (st) st.onclick = () => B.side(`<h3>The story</h3><p class="dim">${esc(opts.title || "")}</p><p style="line-height:1.6">${esc(opts.story || "")}</p>${storyExtra}`);
     // Phones: the slim Play bar once Play has scrolled away
     const first = $(".tp .btns [data-tpb='0']"), bar = $("#tpBar");
     if (first && bar && "IntersectionObserver" in window) {
@@ -122,8 +119,8 @@
       pane: (id) => $("#" + id),
       open: (name) => show(tabs.find((t) => t.name === name || t.id === name)),
       refresh,
-      // More facts (studio, release date, the file) shown under the whole story
-      setStoryExtra: (html) => { storyExtra = html || ""; },
+      // More facts (studio, release date, the file) shown beside the whole story in Overview
+      setStoryExtra: (html) => { const box = $("#tpOvDetails"); if (box) box.innerHTML = html || ""; },
     };
   };
 
