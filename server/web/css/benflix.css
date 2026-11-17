@@ -711,7 +711,8 @@ body.np-open .mbar { display: none; }
 .np-x { position: absolute; top: 18px; right: 22px; z-index: 2; }
 .np-main { position: relative; display: flex; gap: 32px; padding: 28px 44px; height: 100%; box-sizing: border-box; }
 .np-song { width: 42%; min-width: 0; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow-y: auto; }
-.np-cover { width: min(30vw, 40vh); aspect-ratio: 1; border-radius: var(--r2); background: var(--pg3) center/cover no-repeat; flex: none; box-shadow: 0 18px 50px rgba(0,0,0,.45); margin-bottom: 18px; }
+.np-cover { width: min(30vw, 40vh); aspect-ratio: 1; border-radius: var(--r2); background: var(--pg3) center/cover no-repeat; flex: none; box-shadow: 0 18px 50px rgba(0,0,0,.45); margin-bottom: 18px; display: grid; place-items: center; }
+.np-cover.np-noart::after { content: "\266A"; font-size: min(10vw, 13vh); color: rgba(255,255,255,.35); }
 .np-kick { color: var(--music); font-size: 12px; font-weight: 700; letter-spacing: .14em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-t { font-size: 36px; font-weight: 800; letter-spacing: -.02em; line-height: 1.08; margin: 6px 0 4px; }
 .np-a { color: var(--ink2); font-size: 17px; }
