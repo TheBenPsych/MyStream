@@ -155,6 +155,7 @@ def start(jellyfin_call):
     threading.Thread(target=_drop_worker, name="music-drop", daemon=True).start()
     threading.Thread(target=_lyrics_worker, name="music-lyrics", daemon=True).start()
     threading.Thread(target=_info_worker, name="music-song-info", daemon=True).start()
+    threading.Thread(target=_cover_worker, name="music-covers", daemon=True).start()
     log(f"ready (Lidarr {'set up' if LIDARR_URL else 'NOT set up yet'}, ffmpeg {'found' if _has_ffmpeg() else 'missing'})")
 
 
@@ -4895,6 +4896,88 @@ def _info_tick():
         with _theme_lock:
             _themes.clear()
         log(f"song facts: looked up {done} songs")
+
+
+# ---------- Album covers: Tower finds missing ones by itself every hour ----------
+
+COVER_ART = "https://coverartarchive.org/release-group/"
+MB_GROUPS = "https://musicbrainz.org/ws/2/release-group"
+COVERS_PER_RUN = 200
+COVER_RETRY = 7 * 86400  # An album nobody has a cover for is looked at again after a week
+
+
+def _cover_worker():
+    time.sleep(600)
+    while True:
+        try:
+            _cover_tick()
+        except Exception as e:
+            log(f"album covers problem: {e!r}")
+        time.sleep(3600)
+
+
+def _cover_choices(album, artist):
+    """Picture addresses for an album, best first: Jellyfin's own picture sources, then Deezer, then Cover Art Archive"""
+    out = []
+    j = _jellyfin("GET", f"/Items/{album['Id']}/RemoteImages?Type=Primary&Limit=5&IncludeAllLanguages=true") or {}
+    out += [x["Url"] for x in j.get("Images") or [] if x.get("Url")]
+    name = album.get("Name") or ""
+    plain = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]", "", name).strip() or name
+    who = main_artist(artist) or artist
+    try:
+        found = deezer("/search/album", q=f'artist:"{who}" album:"{plain}"', limit=10).get("data") or []
+        if not found:
+            found = deezer("/search/album", q=f"{who} {plain}", limit=10).get("data") or []
+    except MusicError:
+        found = []
+    for a in found:
+        if (same(a.get("title"), name) or same(a.get("title"), plain)) and same((a.get("artist") or {}).get("name"), who):
+            if a.get("cover_xl"):
+                out.append(a["cover_xl"])
+                break
+    try:
+        q = f'releasegroup:"{plain}" AND artist:"{who}"'
+        got = _http(MB_GROUPS + "?" + urllib.parse.urlencode({"query": q, "fmt": "json", "limit": 5}),
+                    headers={"User-Agent": "Benflix/1.0 (https://github.com/TheBenPsych/MyStream)"}, timeout=20) or {}
+        time.sleep(1.1)  # MusicBrainz asks for one call a second
+        for g in got.get("release-groups") or []:
+            if (g.get("score") or 0) >= 90 and same(g.get("title"), plain) and g.get("id"):
+                out.append(COVER_ART + g["id"] + "/front-500")
+                break
+    except Exception:  # noqa: BLE001 - one album not found never stops the rest
+        pass
+    return out
+
+
+def _cover_tick():
+    """Albums with no cover get one saved through Jellyfin, so TV, phone and web all show it"""
+    if not _dir:
+        return
+    j = _jellyfin("GET", "/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Fields=ProviderIds&EnableImageTypes=Primary&Limit=20000")
+    if not j:
+        return
+    tried = _read("covers-tried.json") or {}
+    now, looked, saved = time.time(), 0, 0
+    for a in j.get("Items") or []:
+        aid = a.get("Id")
+        if not aid or (a.get("ImageTags") or {}).get("Primary") or now - tried.get(aid, 0) < COVER_RETRY:
+            continue
+        artist = (a.get("AlbumArtist") or ", ".join(a.get("Artists") or [])).strip()
+        if not artist or not a.get("Name"):
+            continue
+        if looked >= COVERS_PER_RUN:
+            break
+        looked += 1
+        tried[aid] = now
+        for url in _cover_choices(a, artist):
+            q = urllib.parse.urlencode({"Type": "Primary", "ImageUrl": url})
+            if _jellyfin("POST", f"/Items/{aid}/RemoteImages/Download?{q}") is not None:
+                saved += 1
+                tried.pop(aid, None)
+                break
+    if looked:
+        _write("covers-tried.json", tried)
+        log(f"album covers: looked for {looked} albums with no cover, found {saved}")
 
 
 # ---------- Lyrics: Tower fetches missing ones from LRCLIB each night ----------

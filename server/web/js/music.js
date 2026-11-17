@@ -30,8 +30,42 @@
     if (!it) return "";
     const tags = it.ImageTags || {};
     if (tags.Primary) return B.img(it.Id, "Primary", { h: h || 360, tag: tags.Primary });
-    if (it.AlbumId) return B.img(it.AlbumId, "Primary", { h: h || 360 });
+    if (it.AlbumId) return B.img(it.AlbumId, "Primary", { h: h || 360, tag: it.AlbumPrimaryImageTag });
     return "";
+  };
+  // When an album has no cover yet (Tower looks for one every hour), the artist's photo stands in, then a music note
+  const artistArt = (it, h) => {
+    const a = (it && ((it.AlbumArtists || [])[0] || (it.ArtistItems || [])[0])) || null;
+    return a && a.Id ? B.img(a.Id, "Primary", { h: h || 360 }) : "";
+  };
+  // Cover, then the artist's photo underneath: a picture that doesn't load lets the next one show
+  const artLayers = (it, h) => {
+    const l = [cover(it, h), artistArt(it, h)].filter(Boolean);
+    return l.length ? `background-image:${l.map((u) => `url('${u}')`).join(",")}` : "";
+  };
+  const showArt = (el, urls, onArt) => {
+    const list = urls.filter(Boolean);
+    el.classList.remove("np-noart");
+    const next = () => {
+      const u = list.shift();
+      if (!u) {
+        el.style.backgroundImage = "";
+        el.classList.add("np-noart");
+        return onArt && onArt("");
+      }
+      const im = new Image();
+      im.onload = () => {
+        if (el.dataset.want !== key) return;
+        el.style.backgroundImage = `url('${u}')`;
+        if (onArt) onArt(u);
+      };
+      im.onerror = () => el.dataset.want === key && next();
+      im.src = u;
+    };
+    const key = list.join("|");
+    if (el.dataset.want === key) return;
+    el.dataset.want = key;
+    next();
   };
   const artistOf = (s) => (s.AlbumArtist || (s.Artists || []).join(", ") || "");
 
@@ -500,14 +534,14 @@
     } else if (npTab === "upnext") {
       body.dataset.tab = "upnext"; body.dataset.song = s.Id;
       const next = M.queue.slice(M.index + 1, M.index + 13);
-      body.innerHTML = (next.length ? next.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${cover(x, 80) ? `background-image:url('${cover(x, 80)}')` : ""}"></span><span><b>${esc(x.Name)}</b><small class="dim">${esc(artistOf(x))}</small></span></button>`).join("") : `<div class="np-note"><b>Nothing waiting</b><p class="dim">When this song ends, a mix like it starts by itself.</p></div>`)
+      body.innerHTML = (next.length ? next.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${artLayers(x, 80)}"></span><span><b>${esc(x.Name)}</b><small class="dim">${esc(artistOf(x))}</small></span></button>`).join("") : `<div class="np-note"><b>Nothing waiting</b><p class="dim">When this song ends, a mix like it starts by itself.</p></div>`)
         + `<button class="btn small" data-openq style="margin-top:10px">${I("list")} Open the queue</button>`;
     } else if (body.dataset.tab !== npTab || body.dataset.song !== s.Id) {
       body.dataset.tab = npTab; body.dataset.song = s.Id;
       if (npTab === "about") aboutInto(body); else similarInto(body);
     }
     const up = M.queue.slice(M.index + 1, M.index + 4);
-    $(".np-upnext", np).innerHTML = `<div class="mkick">Up next</div><div class="np-uprow">${up.length ? up.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${cover(x, 80) ? `background-image:url('${cover(x, 80)}')` : ""}"></span><span><b>${esc(x.Name)}</b></span></button>`).join("") : `<span class="dim">A mix like this one starts by itself.</span>`}</div>`;
+    $(".np-upnext", np).innerHTML = `<div class="mkick">Up next</div><div class="np-uprow">${up.length ? up.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${artLayers(x, 80)}"></span><span><b>${esc(x.Name)}</b></span></button>`).join("") : `<span class="dim">A mix like this one starts by itself.</span>`}</div>`;
   }
   function drawLyric() {
     if (!np || npTab !== "lyrics" || !M.lyrics) return;
@@ -529,10 +563,8 @@
     const s = M.current();
     if (!s) return closeNow();
     if (!tick || full) {
-      const art = cover(s, 700);
-      $(".np-cover", np).style.backgroundImage = art ? `url('${art}')` : "";
       // A soft glow from the cover's colours (Ben's pick): the cover itself, blurred, behind everything
-      np.style.setProperty("--npart", art ? `url('${art}')` : "none");
+      showArt($(".np-cover", np), [cover(s, 700), artistArt(s, 700)], (art) => np.style.setProperty("--npart", art ? `url('${art}')` : "none"));
       $(".np-kick", np).textContent = M.thenTitle ? `NOW PLAYING · FROM ${M.thenTitle.toUpperCase()}` : "NOW PLAYING";
       $(".np-t", np).textContent = s.Name || "";
       $(".np-a", np).textContent = [artistOf(s), s.Album].filter(Boolean).join(" · ");
@@ -710,7 +742,7 @@
     const now = M.current() && M.current().Id === s.Id;
     const fav = (s.UserData || {}).IsFavorite || M.liked.has(s.Id);
     return `<div class="srow ${now ? "now" : ""}" data-i="${i}">
-      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i></span>' : opts.cover ? (cover(s, 80) ? `<img class="sc" src="${cover(s, 80)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`) : esc(opts.number != null ? opts.number : i + 1)}</span>
+      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i></span>' : opts.cover ? (cover(s, 80) ? `<img class="sc" src="${cover(s, 80)}" alt="" loading="lazy" decoding="async"${artistArt(s, 80) ? ` data-alt="${esc(artistArt(s, 80))}" onerror="this.onerror=null;this.src=this.dataset.alt"` : ""}>` : `<span class="sc"></span>`) : esc(opts.number != null ? opts.number : i + 1)}</span>
       <span class="st"><b>${esc(s.Name)}</b>${opts.artist ? `<small>${esc(artistOf(s))}</small>` : ""}</span>
       <button class="sh ${fav ? "on" : ""}" data-heart="${esc(s.Id)}" title="Like">${I("heart")}</button>
       <span class="sl">${len(s.RunTimeTicks)}</span>
