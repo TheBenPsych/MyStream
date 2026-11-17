@@ -161,7 +161,8 @@ object HolidayNavKit {
                 "New Year's pick",
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
             ),
-            holiday("thanksgiving", { TgLook.on }, 0xFF2A1A0E, 0xFF170E08, listOf(0xFFE07A2E, 0xFFC9A227, 0xFF8B3A1E), "Thanksgiving pick"),
+            // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
+            ThanksgivingNav.entry,
             holiday(
                 "valentine",
                 { ValLook.on },
