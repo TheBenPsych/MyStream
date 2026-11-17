@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
@@ -179,6 +180,18 @@ fun SwitchUserContent(
                 // New Year's (27 Dec to 1 Jan, unless switched off): the party room. The clock is watched so the
                 // countdown runs in the last 10 seconds of the year and the room pops open at midnight
                 val newYear = !christmas && !feast && NewYearSeason.on()
+                // 4th of July (1 to 4 Jul, unless switched off): the cookout room. The clock is watched so the
+                // fireworks show starts at 9 PM on the 4th
+                val july = !christmas && !feast && !newYear && JulySeason.on()
+                var julyNow by remember { mutableStateOf(LocalDateTime.now()) }
+                if (july) {
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            julyNow = LocalDateTime.now()
+                            kotlinx.coroutines.delay(20_000L)
+                        }
+                    }
+                }
                 // Popcorn Day (19 Jan, unless switched off): the popcorn cart room, the heap growing through the day
                 val popcorn = !christmas && !feast && !newYear && !valentine && PopcornSeason.on()
                 var nyNow by remember { mutableStateOf(LocalDateTime.now()) }
@@ -208,6 +221,8 @@ fun SwitchUserContent(
                         year = NewYearSeason.year(day),
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else if (july) {
+                    JulyRoom(variant = JulySeason.variant(julyNow), modifier = Modifier.fillMaxSize())
                 } else if (valentine) {
                     ValentineRoom(modifier = Modifier.fillMaxSize())
                 } else if (popcorn) {
@@ -271,6 +286,27 @@ fun SwitchUserContent(
                             style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
                         )
                         NewYearSeason.countdown(nyNow)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFC9D0E0),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (july) {
+                        // "Happy 4th of July", with "2 days to the Fourth" (then "The fireworks are on!") under it
+                        Text(
+                            text = JulySeason.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        JulySeason.countdown(julyNow)?.let {
                             Text(
                                 text = it,
                                 fontSize = 20.sp,

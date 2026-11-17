@@ -42,6 +42,7 @@ js/xmas.js
 js/feast.js
 js/valentine.js
 js/newyear.js
+js/july4.js
 js/popcorn.js
 js/starwars.js
 manifest.webmanifest
@@ -77,6 +78,19 @@ img/ny/ny_mark_spark.png
 img/ny/ny_mark_star.png
 img/ny/ny_sparkler.png
 img/ny/ny_star.png
+img/j4/j4_charm_books.png
+img/j4/j4_charm_games.png
+img/j4/j4_charm_live.png
+img/j4/j4_charm_movies.png
+img/j4/j4_charm_music.png
+img/j4/j4_charm_shows.png
+img/j4/j4_loader.png
+img/j4/j4_mark_burst.png
+img/j4/j4_mark_flag.png
+img/j4/j4_mark_rocket.png
+img/j4/j4_mark_star.png
+img/j4/j4_playstars.png
+img/j4/j4_star.png
 img/sw/sw_hyperspace.png
 img/sw/sw_moment_books.png
 img/sw/sw_moment_games.png
