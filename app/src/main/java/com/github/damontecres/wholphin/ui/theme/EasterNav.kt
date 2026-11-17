@@ -62,7 +62,7 @@ internal object EasterNav {
             }
         }
 
-    /** Draws [image] fitted into the box at [left],[top] of [w] x [h], keeping its shape, centred */
+    /** Draws [image] fitted into the box at [left], [top] of [w] x [h], keeping its shape, centred */
     private fun DrawScope.fit(
         image: ImageBitmap,
         left: Float,
