@@ -43,11 +43,13 @@ B.route(/^\/who$/, async () => {
   const ny = !xmas && !feast && B.nyOn();
   // 4th of July (approved 2026-11-17): the cookout room, 1 to 4 July, with the big fireworks show from 9 PM on the 4th
   const j4 = !xmas && !feast && !ny && B.j4On();
+  // Popcorn Day (approved 2026-11-17): the popcorn cart room, just 19 January, the heap growing through the day
+  const pcRoom = !xmas && !feast && !ny && !val && B.pcOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || ny || j4 || val ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || ny || j4 || val || pcRoom ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : j4 ? `<h1 class="xmas">${esc(B.j4.greeting())}</h1><p class="xcount j4count" id="j4Count">${esc(B.j4.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : j4 ? `<h1 class="xmas">${esc(B.j4.greeting())}</h1><p class="xcount j4count" id="j4Count">${esc(B.j4.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : pcRoom ? `<h1 class="xmas">${esc(B.pc.greeting())}</h1><p class="xcount pcline">${esc(B.pc.line())}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -65,10 +67,10 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || ny || j4 || val) {
+  if (xmas || feast || ny || j4 || val || pcRoom) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : val ? B.val : ny ? B.ny : B.j4;
+    const room = xmas ? B.xmas : feast ? B.tg : val ? B.val : pcRoom ? B.pc : ny ? B.ny : B.j4;
     let clock = null;
     const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; const c = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); if (typeof c === "function") clock = c; } svg.scene = scene; };
     draw();
@@ -287,18 +289,20 @@ B.route(/^\/home$/, async (m, nav) => {
   const nyGreet = !kids && B.nyOn();
   // 4th of July look: "Happy 4th of July, Ben" in the curly holiday font, with "2 days to the Fourth" leading the line under it
   const j4Greet = !kids && B.j4On();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(j4Greet ? "Happy 4th of July" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Popcorn Day look: "Happy Popcorn Day, Ben" in the curly holiday font (Kids too), "It's National Popcorn Day" under it
+  const pcGreet = B.pcOn();
+  const greet = kids ? `${pcGreet ? "Happy Popcorn Day!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(pcGreet ? "Happy Popcorn Day" : j4Greet ? "Happy 4th of July" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
-      <div class="greet">${greet}</div>
+      <div class="greet${pcGreet ? " tgh" : ""}">${greet}</div>
       <div class="doors fdoors n${count} ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}${more.length ? `<button class="door moredoor" id="moreDoors"><div class="n">More</div><div class="d">${more.length} more door${more.length === 1 ? "" : "s"}</div></button>` : ""}</div>
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
     const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet || nyGreet || j4Greet || valGreet ? " tgh" : ""}">${greet}</div>${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || nyGreet || j4Greet || valGreet || pcGreet ? " tgh" : ""}">${greet}</div>${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -612,7 +616,7 @@ const rowHtml = (r, n) => {
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}" data-pc="${B.pcMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -733,6 +737,13 @@ B.j4 = window.BenflixJuly4;
 B.j4Off = () => { try { return localStorage.getItem("benflix.j4Off") === "1"; } catch (e) { return false; } };
 B.setJ4Off = (off) => { try { localStorage.setItem("benflix.j4Off", off ? "1" : "0"); } catch (e) {} };
 B.j4On = () => !!B.j4 && B.j4.season(new Date()) && !B.j4Off();
+// Popcorn Day look: just 19 January unless switched off in Settings › Look (this browser), Kids too
+B.pc = window.BenflixPopcorn;
+B.pcOff = () => { try { return localStorage.getItem("benflix.pcOff") === "1"; } catch (e) { return false; } };
+B.setPcOff = (off) => { try { localStorage.setItem("benflix.pcOff", off ? "1" : "0"); } catch (e) {} };
+B.pcOn = () => !!B.pc && B.pc.season(new Date()) && !B.pcOff();
+// the mark for each kind of Home news (html.pc .brow small[data-pc]): ticket, bucket, kernel or film reel
+B.pcMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "ticket" : k.startsWith("ready") || k.includes("is ready") ? "bucket" : k.startsWith("on the way") || k.includes("arrives") ? "kernel" : k.includes("live") ? "reel" : "puff_hull"; };
 
 // Big holidays only, clean and simple
 B.holiday = () => {

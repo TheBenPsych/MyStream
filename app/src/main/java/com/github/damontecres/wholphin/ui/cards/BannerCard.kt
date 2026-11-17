@@ -57,11 +57,13 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
+import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.valProgressHeart
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
@@ -325,6 +327,8 @@ fun BannerCard(
                                     J4Look.Red
                                 } else if (ValLook.on) {
                                     ValLook.Rose
+                                } else if (PcLook.on) {
+                                    PcLook.Butter
                                 } else {
                                     BenflixRed
                                 },
@@ -353,6 +357,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .valProgressHeart((playPercent / 100).toFloat(), bead = 18.dp),
+                    )
+                }
+                // Popcorn Day look: a piece of popcorn on the end of the progress line
+                if (PcLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .pcProgressPuff((playPercent / 100).toFloat(), puff = 20.dp),
                     )
                 }
                 // New Year's look: a lit sparkler at the end of the progress line

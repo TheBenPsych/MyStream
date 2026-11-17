@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
+import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -189,6 +190,8 @@ fun SwitchUserContent(
                         }
                     }
                 }
+                // Popcorn Day (19 Jan, unless switched off): the popcorn cart room, the heap growing through the day
+                val popcorn = !christmas && !feast && !newYear && !valentine && PopcornSeason.on()
                 var nyNow by remember { mutableStateOf(LocalDateTime.now()) }
                 if (newYear) {
                     LaunchedEffect(Unit) {
@@ -215,6 +218,8 @@ fun SwitchUserContent(
                     JulyRoom(variant = JulySeason.variant(julyNow), modifier = Modifier.fillMaxSize())
                 } else if (valentine) {
                     ValentineRoom(modifier = Modifier.fillMaxSize())
+                } else if (popcorn) {
+                    PopcornRoom(modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -313,6 +318,24 @@ fun SwitchUserContent(
                             color = BenflixColors.Text,
                             textAlign = TextAlign.Center,
                             style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                    } else if (popcorn) {
+                        Text(
+                            text = PopcornSeason.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = PopcornSeason.WHO_LINE,
+                            fontSize = if (isTvLayout) 20.sp else 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFE0CFC0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 6.dp),
                         )
                     } else if (valentine) {
                         // "Who's watching?" in the curly script, then "Happy Valentine's Day" on the 14th, and the countdown

@@ -75,7 +75,6 @@ enum class LogoEffect {
     SPOOKY_CAT,
     GROUNDHOG,
     HARVEST_MOON,
-    POPCORN,
     GAME_BUTTONS,
     CAT_TAIL,
     PAW_PRINTS,
@@ -148,7 +147,8 @@ fun holidayFor(date: LocalDate): Celebration? {
 
         date == nthSunday(date, 6, 3) -> Celebration("Happy Father's Day", "🎣", 0xFFE0A050, LogoEffect.SUNSET)
 
-        m == 1 && d == 19 -> Celebration("Happy National Popcorn Day", "🍿", 0xFFFFCF4D, LogoEffect.POPCORN)
+        // The Popcorn Day look (ui/theme/PopcornSeason.kt) replaced the old Popcorn Day scene
+        m == 1 && d == 19 -> Celebration("Happy National Popcorn Day", "🍿", 0xFFFFCF4D)
 
         m == 2 && d == 2 -> Celebration("Happy Groundhog Day", "🦫", 0xFFC79A72, LogoEffect.GROUNDHOG)
 

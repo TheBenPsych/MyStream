@@ -167,13 +167,23 @@ class DoorDataService
         /**
          * Christmas favourites (Christmas look, 1 to 26 Dec): the hand-picked Christmas films, titles with a
          * Christmas word in the name and titles tagged Christmas, of this kind. The 4th of July favourites row
-         * (4th of July look, 1 to 4 Jul) uses the same search with [theme] HomeTheme.FOURTH_OF_JULY.
+         * (4th of July look, 1 to 4 Jul) uses [themed] with HomeTheme.FOURTH_OF_JULY.
          */
         suspend fun christmas(
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
-            theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+
+        /**
+         * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
+         * titles with its tags (Christmas favourites, Popcorn movies).
+         */
+        suspend fun themed(
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
         ): List<BaseItem> =
             coroutineScope {
                 fun search(term: String) =
