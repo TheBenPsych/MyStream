@@ -59,9 +59,17 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.NewYearSeason
+import com.github.damontecres.wholphin.ui.theme.NyKindMark
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValKindMark
+import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -244,15 +252,24 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || F13Look.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving and Friday the 13th looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || F13Look.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || NyLook.on || ValLook.on || F13Look.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving, New Year's, Valentine's and Friday the 13th looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || NyLook.on || ValLook.on || F13Look.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (weather != null) {
+        // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
+        val line =
+            if (ValLook.on) {
+                listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (NyLook.on) {
+                listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else {
+                weather
+            }
+        if (line != null) {
             Text(
-                text = weather,
+                text = line,
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
@@ -352,6 +369,8 @@ private fun SquareDoor(
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
                 .f13DoorCharm(door)
+                .valDoorCharm(door)
+                .nyDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -633,6 +652,24 @@ private fun RowDivider(modifier: Modifier = Modifier) {
     )
 }
 
+/** The small coloured line saying what a news row is ("New episode · S3 E12") */
+@Composable
+private fun KindLine(
+    row: HomeRow,
+    words: RowWords,
+) {
+    Text(
+        text = row.kind.uppercase(),
+        color = row.kindColor,
+        fontSize = words.kind,
+        lineHeight = words.kind * 1.3f,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = words.kind * 0.06f,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /**
  * One news row: a small square poster, the small coloured line (what it is), and the name on up to 2 lines.
  * When you land on it, a name too long for 2 lines slides by on one line (not with Lite mode on).
@@ -661,16 +698,21 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = row.kind.uppercase(),
-                    color = row.kindColor,
-                    fontSize = words.kind,
-                    lineHeight = words.kind * 1.3f,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = words.kind * 0.06f,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // New Year's look: each kind of notice gets its own small gold mark before its kind line
+                // Valentine's look: each kind of notice gets its own small mark before its kind line
+                if (ValLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ValKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (NyLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else {
+                    KindLine(row, words)
+                }
                 val slide = focused && !look.lite
                 Text(
                     text = row.title,

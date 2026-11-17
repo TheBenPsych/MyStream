@@ -40,11 +40,15 @@ B.route(/^\/who$/, async () => {
   // Friday the 13th (approved 2026-11-17): the room with the sleeping black cat, that day only (it takes over any
   // season room, because B.xmasOn and B.tgOn are off that day)
   const f13 = B.f13On();
+  // Valentine's Day (approved 2026-11-17): the table set for two, 1 to 14 February, petals falling on the 14th
+  const val = !xmas && !feast && !f13 && B.valOn();
+  // New Year's (approved 2026-11-17): the party room, 27 December to 1 January, with a 10-second countdown at midnight
+  const ny = !xmas && !feast && !f13 && B.nyOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || f13 ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || f13 || ny || val ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : f13 ? `<h1 class="xmas">${esc(B.f13.greeting())}</h1><p class="xline">${esc(B.f13.line())}</p>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : f13 ? `<h1 class="xmas">${esc(B.f13.greeting())}</h1><p class="xline">${esc(B.f13.line())}</p>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -71,12 +75,28 @@ B.route(/^\/who$/, async () => {
     } else if (!f13 || !svg || !svg.dataset.waking) open();
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || f13) {
+  if (xmas || feast || f13 || ny || val) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : B.f13;
-    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; svg.clock = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
+    const room = xmas ? B.xmas : feast ? B.tg : f13 ? B.f13 : val ? B.val : B.ny;
+    let clock = null;
+    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; const c = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); if (typeof c === "function") { clock = c; svg.clock = c; } } svg.scene = scene; };
     draw();
+    if (ny) {
+      // New Year's: the greeting counts down the last 10 seconds of the year, then the room pops open with confetti
+      let was = B.ny.variant(new Date());
+      const tick = () => {
+        if (!svg.isConnected) return;
+        const d = new Date();
+        const g = $("#nyGreet"), c = $("#nyCount");
+        if (g) g.textContent = B.ny.greeting(d);
+        if (c) c.textContent = B.ny.countdown(d);
+        const v = B.ny.variant(d);
+        if (v !== was) { was = v; draw(); if (svg.scene && svg.scene.celebrate && clock) svg.scene.celebrate(clock()); }
+        setTimeout(tick, B.ny.countdownSecs(d) || (d.getMonth() === 11 && d.getDate() === 31 && d.getHours() === 23 && d.getMinutes() >= 58) ? 250 : 20000);
+      };
+      tick();
+    }
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
     addEventListener("resize", onResize);
   } else whoWall(list);
@@ -261,7 +281,11 @@ B.route(/^\/home$/, async (m, nav) => {
   // Friday the 13th look (Kids too): "Happy Friday the 13th, Ben" in the curly holiday font, and a lucky line
   // instead of the weather (filled in by B.loadBoard once the news is in)
   const f13 = B.f13On();
-  const greet = kids ? `${f13 ? "Happy Friday the 13th!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(f13 ? "Happy Friday the 13th" : tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Valentine's look: "Happy Valentine's Day, Ben" in the curly holiday font, with "4 days to Valentine's Day" under it
+  const valGreet = !kids && !tgGreet && !f13 && B.valOn();
+  // New Year's look: "Happy New Year, Ben" in the curly holiday font, with "4 days to 2027" leading the line under it
+  const nyGreet = !kids && !f13 && B.nyOn();
+  const greet = kids ? `${f13 ? "Happy Friday the 13th!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(f13 ? "Happy Friday the 13th" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -272,7 +296,7 @@ B.route(/^\/home$/, async (m, nav) => {
   } else {
     const wx = f13 ? B.f13Lucky(0, 0) : B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}${f13 ? " f13h" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || nyGreet || valGreet ? " tgh" : ""}${f13 ? " f13h" : ""}">${greet}</div>${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -579,12 +603,16 @@ const homeNotices = async (c, ready) => {
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
 let boardParts = { news: [], way: [], facts: [] };
+// New Year's look: each kind of notice gets its own small gold mark (html.ny .brow small::before)
+const nyMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "glass" : k.startsWith("ready") ? "star" : k.startsWith("on the way") ? "clock" : k.includes("live") ? "ball" : "spark"; };
+// Valentine's look: each kind of notice gets its own small mark (html.val .brow small::before)
+const valMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "choc" : k.startsWith("ready") ? "rose" : k.startsWith("on the way") ? "letter" : k.includes("live") ? "balloon" : "choc"; };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -690,6 +718,16 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff() && !B.f13On();
+// Valentine's look: on from 1 to 14 February unless switched off in Settings › Look (this browser), not on Kids
+B.val = window.BenflixValentine;
+B.valOff = () => { try { return localStorage.getItem("benflix.valOff") === "1"; } catch (e) { return false; } };
+B.setValOff = (off) => { try { localStorage.setItem("benflix.valOff", off ? "1" : "0"); } catch (e) {} };
+B.valOn = () => !!B.val && B.val.season(new Date()) && !B.valOff() && !B.f13On();
+// New Year's look: on from 27 December to 1 January unless switched off in Settings › Look (this browser), Kids too
+B.ny = window.BenflixNewYear;
+B.nyOff = () => { try { return localStorage.getItem("benflix.nyOff") === "1"; } catch (e) { return false; } };
+B.setNyOff = (off) => { try { localStorage.setItem("benflix.nyOff", off ? "1" : "0"); } catch (e) {} };
+B.nyOn = () => !!B.ny && B.ny.season(new Date()) && !B.nyOff() && !B.f13On();
 // Friday the 13th look: only on a Friday the 13th, midnight to midnight, unless switched off in Settings › Look
 // (this browser). It takes over any season look that day, and Kids gets it too.
 B.f13 = window.BenflixF13;

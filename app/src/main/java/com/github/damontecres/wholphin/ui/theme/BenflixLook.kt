@@ -24,36 +24,44 @@ object BenflixColors {
 
     /** Pills, chips and small raised things */
     val Raised: Color get() =
-        KidsLook.palette?.raised ?: f13(F13Look.Raised) ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised)
+        ny(NyLook.Raised) ?: KidsLook.palette?.raised ?: f13(F13Look.Raised) ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised)
+            ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
     val Panel: Color get() =
-        KidsLook.palette?.panel ?: f13(F13Look.Panel) ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel)
+        ny(NyLook.Panel) ?: KidsLook.palette?.panel ?: f13(F13Look.Panel) ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel)
+            ?: vl(ValLook.Panel)
             ?: Color(0xFF16181E)
 
     /** The lighter side of a panel (profile card picture side) */
     val PanelHigh: Color get() =
-        KidsLook.palette?.panelHigh ?: f13(F13Look.PanelHigh) ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh)
+        ny(NyLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: f13(F13Look.PanelHigh) ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh)
+            ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
     val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
 
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
-    val FocusFill: Color get() = KidsLook.palette?.accent ?: f13(F13Look.Green) ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange) ?: Color.White
+    val FocusFill: Color get() =
+        ny(NyLook.Gold) ?: KidsLook.palette?.accent ?: f13(F13Look.Green) ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange) ?: vl(ValLook.Rose)
+            ?: Color.White
 
     /** Words on [FocusFill] */
     val OnFocusFill: Color get() =
-        KidsLook.palette?.onAccent ?: f13(F13Look.OnGreen) ?: xmas(Color.White) ?: tg(Color.White)
+        ny(NyLook.OnGold) ?: KidsLook.palette?.onAccent ?: f13(F13Look.OnGreen) ?: xmas(Color.White) ?: tg(Color.White) ?: vl(Color.White)
             ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
-    val Line: Color get() = KidsLook.palette?.line ?: f13(F13Look.Line) ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line) ?: Color(0xFF2A2D35)
+    val Line: Color get() =
+        ny(NyLook.Line) ?: KidsLook.palette?.line ?: f13(F13Look.Line) ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line) ?: vl(ValLook.Line)
+            ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
     val FocusRow: Color get() =
-        KidsLook.palette?.focusRow ?: f13(F13Look.Black) ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown)
+        ny(NyLook.Midnight) ?: KidsLook.palette?.focusRow ?: f13(F13Look.Black) ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown)
+            ?: vl(ValLook.Wine)
             ?: Color(0xFF262932)
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
@@ -94,6 +102,12 @@ object BenflixColors {
     /** Thanksgiving look: [c] while it's on (16 to 30 Nov, not on Kids), else null */
     private fun tg(c: Color): Color? = if (TgLook.on) c else null
 
+    /** Valentine's look: [c] while it's on (1 to 14 Feb, not on Kids), else null */
+    private fun vl(c: Color): Color? = if (ValLook.on) c else null
+
+    /** New Year's look: [c] while it's on (27 Dec to 1 Jan, Kids too, so it wins over the Kids colours), else null */
+    private fun ny(c: Color): Color? = if (NyLook.on) c else null
+
     /** Books, the sixth door: lime with dark words */
     val Books = Color(0xFFB9E36A)
     val OnBooks = Color(0xFF141C05)
@@ -126,9 +140,9 @@ enum class BenflixDoor(
                 BOOKS -> BenflixColors.Books
             }
 
-    /** The words on the door itself: white on every door in the Christmas and Thanksgiving looks (Ben: Books too) */
+    /** The words on the door itself: white on every door in the Christmas, Thanksgiving and New Year's looks (Ben: Books too) */
     val labelColor: Color
-        get() = if (XmasLook.on || TgLook.on || F13Look.on) Color.White else onColor
+        get() = if (XmasLook.on || TgLook.on || NyLook.on || ValLook.on || F13Look.on) Color.White else onColor
 
     /** Christmas look: the colour of the glass ornament hanging on this door */
     val ornamentColor: Color

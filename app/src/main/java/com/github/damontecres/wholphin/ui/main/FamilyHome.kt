@@ -55,9 +55,13 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
@@ -204,9 +208,10 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving look (not Kids) and Friday the 13th look (Kids too): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || F13Look.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || F13Look.on) HolidayFont else null,
+                // Thanksgiving, New Year's and Valentine's looks, and Friday the 13th (Kids too): the greeting is in the
+                // curly holiday font
+                fontWeight = if (TgLook.on || NyLook.on || ValLook.on || F13Look.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || NyLook.on || ValLook.on || F13Look.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -433,7 +438,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .valDoorCharm(door)
+                            .nyDoorCharm(door)
+                    },
+                )
                 // Friday the 13th look: the charms hang on Kids doors too
                 .f13DoorCharm(door)
                 .padding(if (small) 14.dp else 22.dp),

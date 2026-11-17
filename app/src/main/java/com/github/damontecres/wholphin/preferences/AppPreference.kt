@@ -1282,6 +1282,30 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_f13_look_off,
             )
 
+        val NewYearLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_new_year_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.newYearLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { newYearLookOff = !value }
+                },
+                summaryOn = R.string.benflix_new_year_look_on,
+                summaryOff = R.string.benflix_new_year_look_off,
+            )
+
+        val ValentinesLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_valentines_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.valentinesLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { valentinesLookOff = !value }
+                },
+                summaryOn = R.string.benflix_valentines_look_on,
+                summaryOff = R.string.benflix_valentines_look_off,
+            )
+
         val AutoMpvStyledSubs =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_auto_mpv,
@@ -1508,6 +1532,8 @@ val basicPreferences =
                     AppPreference.ThanksgivingLook,
                     AppPreference.ChristmasLook,
                     AppPreference.Friday13Look,
+                    AppPreference.ValentinesLook,
+                    AppPreference.NewYearLook,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,
                 ),

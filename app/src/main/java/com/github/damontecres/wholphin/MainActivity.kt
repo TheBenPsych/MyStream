@@ -346,6 +346,10 @@ class MainActivity : AppCompatActivity() {
                                         appPreferences.benflixPreferences.thanksgivingLookOff
                                     com.github.damontecres.wholphin.ui.theme.Friday13.lookOff =
                                         appPreferences.benflixPreferences.friday13LookOff
+                                    com.github.damontecres.wholphin.ui.theme.ValentineSeason.lookOff =
+                                        appPreferences.benflixPreferences.valentinesLookOff
+                                    com.github.damontecres.wholphin.ui.theme.NewYearSeason.lookOff =
+                                        appPreferences.benflixPreferences.newYearLookOff
                                     WholphinTheme(
                                         true,
                                         // Benflix always uses its own red and black look
