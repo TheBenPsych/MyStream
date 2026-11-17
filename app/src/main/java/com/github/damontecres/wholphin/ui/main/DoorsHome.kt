@@ -1156,11 +1156,15 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
         return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
-    // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
+    // Halloween look (1 to 31 Oct): "Happy Halloween, Ben" all month, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.HalloweenSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Star Wars Day (4 May): "May the 4th be with you, Ben" in yellow crawl lettering
     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) {
         return com.github.damontecres.wholphin.ui.theme.StarWarsDay.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }

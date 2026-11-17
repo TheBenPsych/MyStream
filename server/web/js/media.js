@@ -114,6 +114,22 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Halloween favourites: movies tagged Halloween or with a Halloween title, shuffled (cached 30 minutes).
+// On Kids the server's own age limits keep it to the cosy-spooky ones.
+B.halloweenMovies = () => B.cached("hwMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const tags = encodeURIComponent(["halloween", "trick or treating", "haunted house", "witch", "jack o'lantern"].join("|"));
+  const words = ["Halloween", "Hocus Pocus", "Halloweentown", "Great Pumpkin", "Casper", "Nightmare Before Christmas", "Coraline", "Beetlejuice", "Addams Family", "Ghostbusters", "Monster House", "Corpse Bride", "Trick 'r Treat", "ParaNorman", "Frankenweenie", "Hotel Transylvania"];
+  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => (x.Name || "").toLowerCase().includes(w.toLowerCase())) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
+    ...words.map(byWord),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Planet Earth picks (Earth Day look, Earth week): nature films and shows on Benflix, the same picks as the TV app
 const ED_TITLES = ["Planet Earth", "Planet Earth II", "Planet Earth III", "Our Planet", "Our Planet II", "Blue Planet", "The Blue Planet", "Blue Planet II", "Frozen Planet", "Frozen Planet II", "Seven Worlds, One Planet", "Earth", "One Day on Earth", "WALL·E", "FernGully: The Last Rainforest", "The Lorax", "Dr. Seuss' The Lorax", "Avatar", "Avatar: The Way of Water", "Princess Mononoke", "Nausicaä of the Valley of the Wind", "An Inconvenient Truth", "Chasing Coral", "My Octopus Teacher", "Penguins", "Bears", "Oceans", "Kiss the Ground"];
 const ED_TAGS = ["nature", "environmentalism", "climate change", "wildlife", "nature documentary"];
@@ -213,6 +229,8 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // Halloween look (1 to 31 October, Kids too): Halloween favourites right after Keep watching
+  const hwRow = B.hwOn && B.hwOn() ? await B.halloweenMovies().catch(() => []) : [];
   // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
   const earth = B.edOn && B.edOn() ? await B.earthPicks("Movie").catch(() => []) : [];
   // 4th of July look (1 to 4 July, Kids too): 4th of July favourites right after Keep watching
@@ -230,6 +248,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
     pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
+    hwRow.length >= 4 ? B.row("Halloween favourites", hwRow.map((it) => B.posterCard(it))) : "",
     j4.length >= 4 ? B.row("4th of July favourites", j4.map((it) => B.posterCard(it))) : "",
     dates.length >= 4 ? B.row("Date night", dates.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),

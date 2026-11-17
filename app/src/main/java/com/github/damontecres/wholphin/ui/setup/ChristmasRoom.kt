@@ -65,6 +65,17 @@ fun ChristmasRoom(modifier: Modifier = Modifier) =
 fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
 
 /**
+ * Benflix Halloween: the spooky room behind Who's watching (1 to 31 October). Drawn by the web version
+ * (server/web/js/halloween.js) and recorded as 30-second loops by tools/halloween/record.js. [stage] is how far
+ * the pumpkins are carved ("whole", "half", "carved") or "night" (31 Oct after 5 PM, with bats).
+ */
+@Composable
+fun HalloweenRoom(
+    stage: String,
+    modifier: Modifier = Modifier,
+) = LoopingRoom(HalloweenVideos, { tall -> "$stage-${if (tall) "tall" else "wide"}" }, modifier)
+
+/**
  * Benflix New Year's: the party room behind Who's watching (27 December to 1 January). Drawn by the web
  * version (server/web/js/newyear.js) and recorded as 60-second loops by tools/newyear/record.js: [variant]
  * "eve" until midnight on New Year's Eve (bottle corked), then "day" (opened, confetti falling all day).
@@ -233,6 +244,9 @@ object XmasVideos : RoomVideos("xmas", version = 1) {
         tall: Boolean,
     ) = "$variant-${if (tall) "tall" else "wide"}"
 }
+
+/** Downloads and keeps the Halloween room videos (extras/scenes/halloween in the repo: <stage>-<wide|tall>) */
+object HalloweenVideos : RoomVideos("halloween", version = 1)
 
 /** Downloads and keeps the New Year's party room videos (extras/scenes/newyear in the repo) */
 object NewYearVideos : RoomVideos("newyear", version = 1) {

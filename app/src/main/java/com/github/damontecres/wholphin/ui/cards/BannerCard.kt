@@ -56,6 +56,7 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
@@ -64,6 +65,7 @@ import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.edProgressBloom
+import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
@@ -338,6 +340,8 @@ fun BannerCard(
                             .background(
                                 if (TgLook.on) {
                                     TgLook.Orange
+                                } else if (HwLook.on) {
+                                    HwLook.Orange
                                 } else if (NyLook.on) {
                                     NyLook.Gold
                                 } else if (EdLook.on) {
@@ -356,6 +360,17 @@ fun BannerCard(
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
+                // Halloween look: a little ghost bobs on the end of the progress line
+                if (HwLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .hwProgressGhost((playPercent / 100).toFloat(), ghost = 22.dp),
+                    )
+                }
                 // Thanksgiving look: a gold maple leaf rides the end of the progress line
                 if (TgLook.on) {
                     Box(

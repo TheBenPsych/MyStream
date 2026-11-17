@@ -330,6 +330,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Halloween (1 to 31 Oct, Kids too): Halloween favourites right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.HwLook.charmsOn) listOf(rows.first(), HALLOWEEN) + rows.drop(1) else rows
+                }.let { rows ->
                     // 4th of July look (1 to 4 Jul, Kids too): 4th of July favourites right after Keep watching
                     if (J4Look.on) listOf(rows.first(), JULY4) + rows.drop(1) else rows
                 }.let { rows ->
@@ -408,6 +411,13 @@ class DoorViewModel
                         val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (HALLOWEEN in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.halloween(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(HALLOWEEN, "Halloween favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.MOVIE, disliked.await()) }
@@ -654,6 +664,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val HALLOWEEN = "halloween"
             const val EARTH = "earth"
             const val JULY4 = "july4"
             const val STAR_WARS = "starwars"

@@ -168,6 +168,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("Halloween look", "From 1 to 31 October: the spooky room on Who's watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours.", valBtn("hw", B.hwOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("4th of July look", "From 1 to 4 July: the cookout room on Who's watching with fireworks on the night of the 4th, summer things on the doors, and flag red and navy colours.", valBtn("j4", B.j4Off() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Valentine's look", "From 1 to 14 February: a table for two on Who's watching, love tokens on the doors, and rose red and wine colours.", valBtn("val", B.valOff() ? "Off" : "On")))
@@ -180,6 +181,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "ed") { B.setEdOff(!B.edOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "j4") { B.setJ4Off(!B.j4Off()); B.kidsLook(); B.render(); return; }
@@ -231,6 +233,11 @@ B.kidsLook = () => {
   root.classList.toggle("xmas", !!(B.me && !kids && B.xmasOn && B.xmasOn()));
   // Thanksgiving look (16 to 30 November, unless switched off): pumpkin orange, harvest brown and the harvest charms
   root.classList.toggle("tg", !!(B.me && !kids && B.tgOn && B.tgOn()));
+  // Halloween look (1 to 31 October, unless switched off): pumpkin orange, witch purple and the spooky charms;
+  // Kids keeps Sky and Sunshine and gets the friendly charms
+  const hw = !!(B.me && B.hwOn && B.hwOn());
+  root.classList.toggle("hw", hw && !kids);
+  root.classList.toggle("hwkids", hw && kids);
   // Valentine's look (1 to 14 February, unless switched off): rose red, deep wine and the love tokens
   root.classList.toggle("val", !!(B.me && !kids && B.valOn && B.valOn()));
   // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)

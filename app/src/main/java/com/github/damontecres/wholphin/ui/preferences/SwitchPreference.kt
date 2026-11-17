@@ -62,6 +62,11 @@ fun SwitchPreference(
                         .spacedBy(8.dp),
             ) {
                 // Thanksgiving look: a small acorn next to switches that are on
+                // Halloween look: a tiny pumpkin next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .HwPumpkin()
+                }
                 if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()

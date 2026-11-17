@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
@@ -78,6 +79,7 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
+import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
@@ -706,6 +708,8 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // Halloween look: Play is pumpkin orange with dark words, and glows and flickers like a candle in a jack-o'-lantern
+    val hw = HwLook.on
     // Valentine's look: Play is rose red with white words, a soft rosy glow round it and a faint heart in its corner
     val vl = com.github.damontecres.wholphin.ui.theme.ValLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
@@ -723,6 +727,8 @@ private fun TitleButtonView(
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (hw) {
+            HwLook.Orange
         } else if (ny) {
             NyLook.Gold
         } else if (ed) {
@@ -743,6 +749,8 @@ private fun TitleButtonView(
         if (primary) {
             if (xmas || tg || j4 || sw || vl) {
                 Color.White
+            } else if (hw) {
+                HwLook.OnOrange
             } else if (ny) {
                 NyLook.OnGold
             } else if (ed) {
@@ -775,6 +783,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
