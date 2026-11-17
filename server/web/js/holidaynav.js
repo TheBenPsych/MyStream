@@ -133,28 +133,29 @@
         + '<radialGradient id="pcGlow"><stop offset="0" stop-color="#F6C744" stop-opacity=".75"/><stop offset="1" stop-color="#F6C744" stop-opacity="0"/></radialGradient></defs>',
       // how stretched Home's trims are right now (they fill the picture's width, 44px and 36px tall)
       wide() { return Math.max(320, (window.innerWidth || 1200) - (matchMedia("(max-width: 760px)").matches ? 0 : 88)) / 1200; },
+      // a slim sign along the very top (12px strip, bulbs on its edge) so it stays clear of the greeting and clock
       top() {
-        const sx = this.wide(), sy = 44 / 60, r = 7, step = 36 / sx, n = Math.ceil(1200 / step);
+        const sx = this.wide(), sy = 44 / 60, r = 6.5, step = 36 / sx, n = Math.ceil(1200 / step), band = 12 / sy;
         let s = this.grad + '<style>.pcb{animation:pcchase 1.2s steps(1) infinite}@keyframes pcchase{0%{opacity:1}33%{opacity:.4}66%{opacity:1}}</style>'
           + '<linearGradient id="pcStrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6E1016"/><stop offset=".5" stop-color="#9E2129"/><stop offset="1" stop-color="#6E1016"/></linearGradient>'
-          + `<rect width="1200" height="${60 * .78}" fill="url(#pcStrip)"/><rect y="${60 * .78 - 3 / sy}" width="1200" height="${3 / sy}" fill="#F6C744"/>`;
+          + `<rect width="1200" height="${band}" fill="url(#pcStrip)"/><rect y="${band - 3 / sy}" width="1200" height="${3 / sy}" fill="#F6C744"/>`;
         for (let i = 0; i <= n; i++) {
-          const x = i * step + step / 2, y = 60 * .78 / 2;
-          s += `<g class="pcb" style="animation-delay:${-(i % 3) * .4}s"><ellipse cx="${x}" cy="${y}" rx="${r * 2.4 / sx}" ry="${r * 2.4 / sy}" fill="url(#pcGlow)"/>`
+          const x = i * step + step / 2, y = band;
+          s += `<g class="pcb" style="animation-delay:${-(i % 3) * .4}s"><ellipse cx="${x}" cy="${y}" rx="${r * 1.7 / sx}" ry="${r * 1.7 / sy}" fill="url(#pcGlow)"/>`
             + `<ellipse cx="${x}" cy="${y}" rx="${r / sx}" ry="${r / sy}" fill="url(#pcBulb)"/></g>`;
         }
         return s;
       },
       bottom() {
-        const sx = this.wide(), sy = 36 / 40, h = new Date().getHours(), full = h < 12 ? .55 : h < 17 ? .78 : 1, r0 = 9;
+        const sx = this.wide(), sy = 36 / 40, h = new Date().getHours(), full = h < 12 ? .55 : h < 17 ? .78 : 1, r0 = 7.5;
         // one puff drawn once (radius 1), then placed many times
         let seed = 11, s = this.grad + `<defs><g id="pcP">${this.puff(0, 0, 1, 1, 1, 1)}</g></defs>`;
         const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
         for (let row = 0; row < 3; row++) {
-          const count = Math.floor((1200 * sx) / (r0 * 2.1) * (1.15 - row * .3) * full);
-          const y = 40 - (r0 * .55 + row * r0 * 1.15 * full) / sy;
+          const count = Math.floor((1200 * sx) / (r0 * 1.5) * (1.15 - row * .3) * full);
+          const y = 40 - (r0 * 1.25 + row * r0 * 1.1 * full) / sy;
           for (let i = 0; i < count; i++) {
-            const x = rnd() * 1200, r = r0 * (.8 + rnd() * .45), yy = y - rnd() * r0 * .4 / sy, f = rnd() < .5 ? 1 : -1;
+            const x = rnd() * 1200, r = r0 * (.8 + rnd() * .45), yy = y - rnd() * r0 * .25 / sy, f = rnd() < .5 ? 1 : -1;
             s += `<use href="#pcP" transform="translate(${x.toFixed(1)} ${yy.toFixed(1)}) scale(${(f * r / sx).toFixed(3)} ${(r / sy).toFixed(3)})"/>`;
           }
         }

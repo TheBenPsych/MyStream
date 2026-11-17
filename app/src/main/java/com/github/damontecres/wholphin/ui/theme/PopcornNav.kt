@@ -148,20 +148,24 @@ internal object PopcornNav {
         puff(Offset(size.width * .45f, size.height * .55f), r)
     }
 
-    /** The cinema sign across the top of Home: a red strip with a butter edge and big bulbs chasing along it */
+    /**
+     * The cinema sign across the top of Home: a slim red strip along the very top with a butter edge, and big bulbs
+     * chasing along that edge. It stays above the greeting and clock line (Ben 2026-11-17: Thanksgiving's trim
+     * crowded the greeting), so it only takes the top 22dp of its box.
+     */
     private val marquee: HolidayArt = { t ->
-        val h = size.height * .78f
+        val h = 12f * density
         drawRect(Brush.verticalGradient(listOf(StripDark, Strip, StripDark), endY = h), size = size.copy(height = h))
         drawRect(Butter, topLeft = Offset(0f, h - 3f * density), size = size.copy(height = 3f * density))
         val step = 36f * density
         val n = (size.width / step).toInt() + 1
-        val r = 7f * density
+        val r = 6.5f * density
         val beat = floor(t / .4f).toInt()
         for (i in 0..n) {
             val x = i * step + step / 2
-            val c = Offset(x, h / 2)
+            val c = Offset(x, h)
             val lit = (i + beat) % 3 != 0
-            if (lit) drawCircle(Brush.radialGradient(listOf(Butter.copy(alpha = .75f), Color.Transparent), c, r * 2.4f), r * 2.4f, c)
+            if (lit) drawCircle(Brush.radialGradient(listOf(Butter.copy(alpha = .75f), Color.Transparent), c, r * 1.7f), r * 1.7f, c)
             drawCircle(
                 Brush.radialGradient(listOf(Bulb, Butter, Color(0xFFC48A12)), Offset(c.x - r * .3f, c.y - r * .3f), r * 1.3f),
                 r,
@@ -179,10 +183,10 @@ internal object PopcornNav {
             else -> 1f
         }
 
-    /** A heap of popcorn along the bottom of Home */
+    /** A heap of popcorn along the bottom of Home, all of it inside its box so the screen's edge never cuts it off */
     private val heap: HolidayArt = { _ ->
         val full = fullness()
-        val r0 = 9f * density
+        val r0 = 7.5f * density
         val rows = 3
         var seed = 11
 
@@ -191,12 +195,12 @@ internal object PopcornNav {
             return seed / 233280f
         }
         for (row in 0 until rows) {
-            val count = (size.width / (r0 * 2.1f) * (1.15f - row * .3f) * full).toInt()
-            val y = size.height - r0 * .55f - row * r0 * 1.15f * full
+            val count = (size.width / (r0 * 1.5f) * (1.15f - row * .3f) * full).toInt()
+            val y = size.height - r0 * 1.25f - row * r0 * 1.1f * full
             repeat(count) {
                 val x = rnd() * size.width
                 val r = r0 * (.8f + rnd() * .45f)
-                puff(Offset(x, y - rnd() * r0 * .4f), r, (rnd() * 4).toInt())
+                puff(Offset(x, y - rnd() * r0 * .25f), r, (rnd() * 4).toInt())
             }
         }
     }
