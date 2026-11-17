@@ -56,7 +56,8 @@ object KidsLook {
     /** The colours to use right now, or null for the normal grown-up look */
     val palette: KidsPalette? get() =
         // Easter look (Ben: "Kids get easter too"): lilac and meadow green replace Sky and Sunshine that week
-        if (!on || EaLook.on) {
+        // Popcorn Day (19 Jan): Kids gets the Popcorn Day look too (Ben), so the Sky and Sunshine colours rest that day
+        if (!on || EaLook.on || PcLook.on) {
             null
         } else if (night) {
             NightLight

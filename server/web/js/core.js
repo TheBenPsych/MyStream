@@ -568,7 +568,8 @@ B.busy = async (btn, fn) => {
   try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }
   if (btn) btn.disabled = false;
 };
-B.spinner = () => `<div class="spin"></div>`;
+// Popcorn Day look: loading is a ring of kernels popping one after another (html.pc .pcspin)
+B.spinner = () => (B.pcOn && B.pcOn() ? `<div class="spin pcspin">${"<i></i>".repeat(8)}</div>` : `<div class="spin"></div>`);
 
 // ---------- cards and rows ----------
 B.FIELDS = "Overview,Genres,ProductionYear,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,DateCreated,PremiereDate,ChildCount,RecursiveItemCount,ProviderIds,Path,ParentId,Status,EndDate,AirDays,Taglines,PrimaryImageAspectRatio";

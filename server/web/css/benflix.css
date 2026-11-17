@@ -1823,3 +1823,73 @@ html.val .brow .tx small[data-vmark="rose"]::before { background-image: url("../
 html.val .brow .tx small[data-vmark="letter"]::before { background-image: url("../img/val/val_mark_letter.png"); }
 html.val .brow .tx small[data-vmark="balloon"]::before { background-image: url("../img/val/val_mark_balloon.png"); }
 .who .vcount { color: #E0C8D0; }
+
+/* ---------- Popcorn Day look (approved 2026-11-17, just 19 January, Kids too) ----------
+   Butter yellow (with dark words) for selected things, deep cinema-seat red for other buttons and panels, white
+   words on every door, and a different movie snack standing in the bottom-right corner of each door (striped
+   bucket, microwave bag, popcorn cart, red bowl, star tin, cinema box). Small touches that fit each kind of thing:
+   popcorn pops out of Play, a piece of popcorn on the end of progress, switches that are on show a popped piece and
+   off a kernel, loading is a ring of kernels popping, and each kind of Home news has its own mark.
+   Kids gets it too, so it also wins over Sky and Sunshine (html.pc.kids). Settings › Look › Popcorn Day look turns it off. */
+html.pc, html.pc.kids, html.pc.kids.night {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #1E0C0E; --pg3: #2A1215; --pg4: #9E2129; --line: #3E1A1D;
+  --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10;
+  --movies: #FFB547; --shows: #7AA7FF; --games: #FF6F91; --ask: #F6C744;
+  --accent: #F6C744; --kacc: #F6C744; --kon: #2A1A05; --kshowsink: #fff;
+  --pbutter: #F6C744; --pred: #9E2129; --pon: #2A1A05;
+}
+html.pc .door, html.pc.kids .door { color: #fff; overflow: hidden; }
+html.pc .door > svg.i, html.pc .door .n, html.pc .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.pc .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -5.5%; bottom: 3.6%; width: 49.3%; max-width: 170px; aspect-ratio: 348 / 366; background: right bottom / contain no-repeat; }
+html.pc .door[data-door="movies"]::after { background-image: url("../img/pc/pc_snack_movies.png"); }
+html.pc .door[data-door="shows"]::after { background-image: url("../img/pc/pc_snack_shows.png"); }
+html.pc .door[data-door="live"]::after { background-image: url("../img/pc/pc_snack_live.png"); }
+html.pc .door[data-door="games"]::after { background-image: url("../img/pc/pc_snack_games.png"); }
+html.pc .door[data-door="music"]::after { background-image: url("../img/pc/pc_snack_music.png"); }
+html.pc .door[data-door="books"]::after { background-image: url("../img/pc/pc_snack_books.png"); }
+html.pc .door.moredoor::after { display: none; }
+html.pc .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.pc .btn.white, html.pc .btn.red, html.pc .chip.on, html.pc .circle.white, html.pc .pbadge { background: var(--pbutter); border-color: var(--pbutter); color: var(--pon); }
+html.pc .btn.white:hover, html.pc .btn.red:hover, html.pc .circle.white:hover { background: #FFD663; color: var(--pon); }
+html.pc .btn { background: var(--pred); color: #fff; }
+html.pc .btn.ghost { background: none; }
+html.pc .poster .prog { background: rgba(158,33,41,.85); }
+html.pc .poster .prog i, html.pc .kwbar .line i, html.pc .player .bar .knob, html.pc .player .bar .segs i b { background: var(--pbutter); }
+html.pc .corner .ctime { background: var(--pbutter); color: var(--pon); }
+/* popcorn pops out of the top of Play every few seconds and drops back in */
+html.pc .tp .btns .btn.white { position: relative; overflow: visible; }
+html.pc .tp .btns .btn.white::after { content: ""; position: absolute; z-index: 2; pointer-events: none; right: 18%; top: 0; width: 30px; height: 30px; background: url("../img/pc/pc_puff.png") center / contain no-repeat; animation: pcjump 3.2s ease-in-out infinite; opacity: 0; }
+@keyframes pcjump { 0%, 49% { transform: translateY(6px) rotate(0); opacity: 0; } 52% { opacity: 1; } 75% { transform: translateY(-38px) rotate(140deg); opacity: 1; } 98% { transform: translateY(6px) rotate(280deg); opacity: 1; } 100% { transform: translateY(6px) rotate(280deg); opacity: 0; } }
+/* a piece of popcorn on the end of the progress line */
+html.pc .kwbar .line { overflow: visible; background: var(--pred); }
+html.pc .kwbar .line i { position: relative; border-radius: 2px; }
+html.pc .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -10px; width: 24px; height: 24px; background: url("../img/pc/pc_puff.png") center / contain no-repeat; }
+/* switches: on shows a popped piece, off a kernel that hasn't popped yet */
+html.pc .setrow button.valbtn { background: #2A2F3A; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+html.pc .setrow button.valbtn::before { content: ""; width: 18px; height: 18px; background: url("../img/pc/pc_kernel.png") center / contain no-repeat; }
+html.pc .setrow button.valbtn.on { background: var(--pred); }
+html.pc .setrow button.valbtn.on::before { width: 24px; height: 24px; background-image: url("../img/pc/pc_puff.png"); }
+/* loading: a ring of kernels popping one after another */
+html.pc .spin.pcspin { position: relative; width: 64px; height: 64px; border: 5px solid var(--pred); border-radius: 50%; animation: none; box-sizing: border-box; }
+.pcspin i { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; background: url("../img/pc/pc_kernel.png") center / contain no-repeat; }
+.pcspin i::after { content: ""; position: absolute; inset: -5px; background: url("../img/pc/pc_puff.png") center / contain no-repeat; opacity: 0; transform: scale(.4); animation: pcpop 3.2s linear infinite; animation-delay: inherit; }
+.pcspin i:nth-child(1) { transform: rotate(0deg) translateY(-27px); animation-delay: 0s; }
+.pcspin i:nth-child(2) { transform: rotate(45deg) translateY(-27px); animation-delay: .3s; }
+.pcspin i:nth-child(3) { transform: rotate(90deg) translateY(-27px); animation-delay: .6s; }
+.pcspin i:nth-child(4) { transform: rotate(135deg) translateY(-27px); animation-delay: .9s; }
+.pcspin i:nth-child(5) { transform: rotate(180deg) translateY(-27px); animation-delay: 1.2s; }
+.pcspin i:nth-child(6) { transform: rotate(225deg) translateY(-27px); animation-delay: 1.5s; }
+.pcspin i:nth-child(7) { transform: rotate(270deg) translateY(-27px); animation-delay: 1.8s; }
+.pcspin i:nth-child(8) { transform: rotate(315deg) translateY(-27px); animation-delay: 2.1s; }
+@keyframes pcpop { 0% { opacity: 0; transform: scale(.4); } 6% { opacity: 1; transform: scale(1.25); } 10%, 80% { opacity: 1; transform: scale(1); } 90%, 100% { opacity: 0; transform: scale(.4); } }
+/* each kind of Home news gets its own mark: a ticket, a full bucket, a kernel or a film reel */
+html.pc .brow .tx small[data-pc]::before { content: ""; display: inline-block; width: 1.6em; height: 1.6em; margin: -.3em .45em -.3em 0; vertical-align: middle; background: center / contain no-repeat; }
+html.pc .brow .tx small[data-pc="ticket"]::before { background-image: url("../img/pc/pc_ticket.png"); }
+html.pc .brow .tx small[data-pc="bucket"]::before { background-image: url("../img/pc/pc_bucket.png"); }
+html.pc .brow .tx small[data-pc="kernel"]::before { background-image: url("../img/pc/pc_kernel.png"); }
+html.pc .brow .tx small[data-pc="reel"]::before { background-image: url("../img/pc/pc_reel.png"); }
+html.pc .brow .tx small[data-pc="puff_hull"]::before { background-image: url("../img/pc/pc_puff_hull.png"); }
+/* pop-up notices get the full bucket */
+html.pc .corner { overflow: visible; }
+html.pc .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -10px; top: -14px; width: 28px; height: 32px; background: url("../img/pc/pc_bucket.png") center / contain no-repeat; }
+.who .xcount.pcline { color: #E0CFC0; }
