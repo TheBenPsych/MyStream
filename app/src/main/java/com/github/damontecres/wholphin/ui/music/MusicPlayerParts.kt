@@ -98,7 +98,7 @@ fun PlayerProgress(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
     towers: Int = 56,
-    height: Dp = 34.dp,
+    height: Dp = 40.dp,
 ) {
     var dragAt by remember { mutableStateOf<Float?>(null) }
     var focused by remember { mutableStateOf(false) }

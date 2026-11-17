@@ -624,13 +624,15 @@
     const w = (c.width = Math.max(1, c.clientWidth * devicePixelRatio)), h = (c.height = Math.max(1, c.clientHeight * devicePixelRatio));
     const g = c.getContext("2d");
     const off = B.webSettings().musicBarsOff;
-    const gap = w / n * 0.25, bw = (w - gap * (n - 1)) / n, bh = Math.min(bw, h / 3), gy = bh * 0.22;
-    const rows = Math.max(1, Math.floor((h + gy) / (bh + gy)));
+    // Five rows of thin squares, one door colour each, amber at the bottom up to violet at the top
+    const gap = w / n * 0.25, bw = (w - gap * (n - 1)) / n;
+    const rows = Math.max(2, Math.min(COLORS.length, Math.floor(h / (4 * devicePixelRatio))));
+    const gy = h * 0.08, bh = (h - gy * (rows - 1)) / rows;
     const lit = Math.floor(progress * n);
     for (let i = 0; i < n; i++) {
       const played = i < lit;
-      const lv = off ? 0 : (levels[(i * 2) % levels.length] || 0) * (played ? 1 : 0.5);
-      const up = Math.min(rows, Math.max(1, Math.floor(lv * rows)));
+      const lv = off ? 0 : Math.sqrt(Math.min(1, levels[(i * 2) % levels.length] || 0)) * (played ? 1 : 0.6);
+      const up = Math.min(rows, Math.max(1, Math.ceil(lv * rows)));
       const x = i * (bw + gap);
       for (let r = 0; r < up; r++) {
         g.fillStyle = played ? COLORS[Math.min(COLORS.length - 1, Math.floor(r * COLORS.length / rows))] : "rgba(148,151,163,.45)";

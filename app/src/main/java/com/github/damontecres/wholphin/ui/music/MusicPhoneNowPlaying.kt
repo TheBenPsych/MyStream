@@ -117,7 +117,7 @@ internal fun PhoneNowPlaying(
                     isTv = false,
                     onSeek = viewModel::seekTo,
                     towers = 30,
-                    height = 28.dp,
+                    height = 36.dp,
                 )
                 Spacer(Modifier.height(6.dp))
                 PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = {}, big = true)
