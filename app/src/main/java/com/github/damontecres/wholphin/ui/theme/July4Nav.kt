@@ -220,13 +220,18 @@ object July4Nav {
         t: Float,
     ): Unit =
         with(d) {
+            // Ben 2026-11-17: the greeting sits top left on the clock's line (clock top right), so the bunting
+            // only hangs in the gap between them. Phones have no clock there, but a wider greeting.
+            val wide = size.width > 600f * density
+            val x0 = size.width * (if (wide) .34f else .66f)
+            val x1 = size.width * (if (wide) .86f else 1f)
             val step = 170f * density
-            val n = (size.width / step).toInt().coerceAtLeast(2)
-            val w = size.width / n
+            val n = ((x1 - x0) / step).toInt().coerceAtLeast(1)
+            val w = (x1 - x0) / n
             val top = 3f * density
             // The navy cord swags between the fans, with a thin white line
             for (i in 0 until n) {
-                val x = i * w
+                val x = x0 + i * w
                 val sag = 16f * density
                 val cord =
                     Path().apply {
@@ -238,10 +243,11 @@ object July4Nav {
             }
             for (i in 0..n) {
                 // A very gentle sway, as if a summer breeze catches them
-                val r = (if (i % 2 == 0) 26f else 21f) * density
+                val r = (if (i % 2 == 0) 33f else 27f) * density
                 val sway = 3f * sin(t * 1.7f + i)
-                rotate(sway, Offset(i * w, top)) { fan(i * w, top, r) }
-                drawCircle(Brass, 2.4f * density, Offset(i * w, top + 1f * density))
+                val x = x0 + i * w
+                rotate(sway, Offset(x, top)) { fan(x, top, r) }
+                drawCircle(Brass, 2.4f * density, Offset(x, top + 1f * density))
             }
             if (bigShow(LocalDateTime.now())) fireworks(this, t)
         }
@@ -261,8 +267,9 @@ object July4Nav {
                 if (p > .7f) return@forEachIndexed
                 val grow = (p / .45f).coerceAtMost(1f)
                 val fade = if (p < .45f) 1f else 1f - (p - .45f) / .25f
-                val x = size.width * (.12f + i * .19f) + 40f * density * sin(i * 2.1f + (t / period).toInt())
-                val y = size.height * (.9f + .25f * ((i * 7) % 3))
+                // Over the right of the picture, below the greeting and clock line and clear of the pick's words
+                val x = size.width * (.52f + i * .1f) + 24f * density * sin(i * 2.1f + (t / period).toInt())
+                val y = (110f + 22f * ((i * 7) % 3)) * density
                 val r = (34f + 8f * (i % 2)) * density * grow
                 for (k in 0 until 16) {
                     val a = k * PI.toFloat() / 8
@@ -287,17 +294,18 @@ object July4Nav {
             for (i in 0 until n) {
                 val x = i * w + w / 2
                 val lean = (if (i % 2 == 0) -1 else 1) * 6f * density
-                val tip = Offset(x + lean, size.height * .28f)
+                // Kept low, so the lit tips show below the Today cards instead of behind them
+                val tip = Offset(x + lean, size.height * .55f)
                 val foot = Offset(x - lean * .2f, size.height)
                 drawLine(Color(0xFF8A8F9C), foot, tip, strokeWidth = 1.6f * density)
                 val handle = Offset(foot.x + (tip.x - foot.x) * .25f, foot.y + (tip.y - foot.y) * .25f)
                 drawLine(Color(0xFF5A4632), foot, handle, strokeWidth = 3f * density)
-                drawCircle(Gold.copy(alpha = .22f), 9f * density, tip)
+                drawCircle(Gold.copy(alpha = .22f), 7f * density, tip)
                 // Sparks: a fresh scatter several times a second
                 val frame = (t * 9f).toInt() + i * 5
                 for (k in 0 until 12) {
                     val a = k * PI.toFloat() / 6 + frame * .7f
-                    val len = (if ((k + frame) % 2 == 0) 9f else 5.5f) * density
+                    val len = (if ((k + frame) % 2 == 0) 7f else 4.5f) * density
                     val c = listOf(GoldLight, Gold, Color.White)[(k + frame) % 3]
                     drawLine(c, tip, Offset(tip.x + cos(a) * len, tip.y + sin(a) * len), strokeWidth = .9f * density)
                 }
