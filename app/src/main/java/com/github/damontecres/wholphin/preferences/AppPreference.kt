@@ -1258,6 +1258,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_christmas_look_off,
             )
 
+        val HalloweenLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_halloween_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.halloweenLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { halloweenLookOff = !value }
+                },
+                summaryOn = R.string.benflix_halloween_look_on,
+                summaryOff = R.string.benflix_halloween_look_off,
+            )
+
         val PopcornLook =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_popcorn_look,
@@ -1282,6 +1294,18 @@ sealed interface AppPreference<Pref, T> {
                 summaryOff = R.string.benflix_thanksgiving_look_off,
             )
 
+        val Friday13Look =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_f13_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.friday13LookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { friday13LookOff = !value }
+                },
+                summaryOn = R.string.benflix_f13_look_on,
+                summaryOff = R.string.benflix_f13_look_off,
+            )
+
         val NewYearLook =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_new_year_look,
@@ -1292,6 +1316,18 @@ sealed interface AppPreference<Pref, T> {
                 },
                 summaryOn = R.string.benflix_new_year_look_on,
                 summaryOff = R.string.benflix_new_year_look_off,
+            )
+
+        val EarthDayLook =
+            AppSwitchPreference<AppPreferences>(
+                title = R.string.benflix_earth_day_look,
+                defaultValue = true,
+                getter = { !it.benflixPreferences.earthDayLookOff },
+                setter = { prefs, value ->
+                    prefs.updateBenflixPreferences { earthDayLookOff = !value }
+                },
+                summaryOn = R.string.benflix_earth_day_look_on,
+                summaryOff = R.string.benflix_earth_day_look_off,
             )
 
         val JulyLook =
@@ -1589,9 +1625,12 @@ val basicPreferences =
                 listOf(
                     AppPreference.EasyRead,
                     AppPreference.LateNightLook,
+                    AppPreference.HalloweenLook,
+                    AppPreference.EarthDayLook,
                     AppPreference.ThanksgivingLook,
                     AppPreference.PopcornLook,
                     AppPreference.ChristmasLook,
+                    AppPreference.Friday13Look,
                     AppPreference.ValentinesLook,
                     AppPreference.NewYearLook,
                     AppPreference.StPatricksLook,

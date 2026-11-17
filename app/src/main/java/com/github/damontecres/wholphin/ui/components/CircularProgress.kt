@@ -38,6 +38,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Halloween look: a bat flies round a pumpkin orange ring on witch purple
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .HwLoadingBat(modifier)
+        return
+    }
     // Popcorn Day look: loading is a ring of kernels popping one after another
     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
         com.github.damontecres.wholphin.ui.theme
@@ -71,6 +77,13 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         return
     }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // Friday the 13th look: the loading ring is a clock with 13 hours and a hand that goes round
+    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+        com.github.damontecres.wholphin.ui.theme.F13LoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
     // New Year's look: the loading ring is a clock face ticking round to midnight
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
@@ -86,6 +99,7 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         )
         return
     }
+    val ed = com.github.damontecres.wholphin.ui.theme.EdLook.on
     // 4th of July look: the loading ring is a red, white and blue firework blooming round the circle
     if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {
         com.github.damontecres.wholphin.ui.theme.J4LoadingBurst(
@@ -117,10 +131,13 @@ fun CircularProgress(modifier: Modifier = Modifier) {
             )
         }
         CircularProgressIndicator(
-            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
+            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside;
+            // Earth Day look: a leaf green ring on ocean blue, with the Earth turning inside
             color =
                 if (tg) {
                     com.github.damontecres.wholphin.ui.theme.TgLook.Orange
+                } else if (ed) {
+                    com.github.damontecres.wholphin.ui.theme.EdLook.Leaf
                 } else if (sw) {
                     com.github.damontecres.wholphin.ui.theme.SwLook.Red
                 } else {
@@ -129,6 +146,8 @@ fun CircularProgress(modifier: Modifier = Modifier) {
             trackColor =
                 if (tg) {
                     com.github.damontecres.wholphin.ui.theme.TgLook.Brown
+                } else if (ed) {
+                    com.github.damontecres.wholphin.ui.theme.EdLook.Ocean
                 } else if (sw) {
                     com.github.damontecres.wholphin.ui.theme.SwLook.Button
                 } else {
@@ -158,6 +177,28 @@ fun CircularProgress(modifier: Modifier = Modifier) {
                     .fillMaxSize(.62f)
                     .align(Alignment.Center)
                     .rotate(angle),
+            )
+        }
+        if (ed) {
+            val spin =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "edGlobe")
+            val turn by spin.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(5000, easing = androidx.compose.animation.core.LinearEasing),
+                    ),
+                label = "edGlobeTurn",
+            )
+            com.github.damontecres.wholphin.ui.theme.EdLoadingGlobe(
+                turn = { turn },
+                modifier =
+                    Modifier
+                        .fillMaxSize(.66f)
+                        .align(Alignment.Center),
             )
         }
     }

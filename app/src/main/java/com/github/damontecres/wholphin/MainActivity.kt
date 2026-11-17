@@ -354,10 +354,16 @@ class MainActivity : AppCompatActivity() {
                                         appPreferences.benflixPreferences.christmasLookOff
                                     com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.lookOff =
                                         appPreferences.benflixPreferences.thanksgivingLookOff
+                                    com.github.damontecres.wholphin.ui.theme.Friday13.lookOff =
+                                        appPreferences.benflixPreferences.friday13LookOff
+                                    com.github.damontecres.wholphin.ui.theme.HalloweenSeason.lookOff =
+                                        appPreferences.benflixPreferences.halloweenLookOff
                                     com.github.damontecres.wholphin.ui.theme.ValentineSeason.lookOff =
                                         appPreferences.benflixPreferences.valentinesLookOff
                                     com.github.damontecres.wholphin.ui.theme.NewYearSeason.lookOff =
                                         appPreferences.benflixPreferences.newYearLookOff
+                                    com.github.damontecres.wholphin.ui.theme.EarthDaySeason.lookOff =
+                                        appPreferences.benflixPreferences.earthDayLookOff
                                     com.github.damontecres.wholphin.ui.theme.JulySeason.lookOff =
                                         appPreferences.benflixPreferences.julyLookOff
                                     com.github.damontecres.wholphin.ui.theme.StarWarsDay.lookOff =

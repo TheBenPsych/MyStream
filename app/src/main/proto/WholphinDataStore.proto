@@ -293,8 +293,15 @@ message BenflixPreferences {
   bool christmas_look_off = 13;
   // Benflix Thanksgiving look (16 to 30 Nov) is on unless this is set
   bool thanksgiving_look_off = 14;
+  // Benflix Halloween look (1 to 31 Oct) is on unless this is set. Field numbers agreed between the holiday
+  // builds: New Year's 15, Friday the 13th 16, 4th of July 17, Popcorn Day 18, Halloween 19
+  bool halloween_look_off = 19;
   // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
   bool new_year_look_off = 15;
+  // Benflix Friday the 13th look (only on a Friday the 13th) is on unless this is set
+  bool friday13_look_off = 16;
+  // Benflix Earth Day look (Earth week, 22 to 28 Apr) is on unless this is set
+  bool earth_day_look_off = 23;
   // Benflix 4th of July look (1 to 4 Jul) is on unless this is set
   bool july_look_off = 17;
   // Benflix Star Wars Day look (4 May) is on unless this is set (numbers 15 to 21 are kept for other holiday looks)

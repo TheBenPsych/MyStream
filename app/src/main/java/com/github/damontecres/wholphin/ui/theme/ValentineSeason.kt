@@ -44,7 +44,7 @@ object ValentineSeason {
 
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth <= LAST_DAY
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** Valentine's Day itself: rose petals fall on Who's watching all day */
     fun isDay(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth == LAST_DAY

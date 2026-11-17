@@ -31,7 +31,7 @@ object ChristmasSeason {
 
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.DECEMBER && date.dayOfMonth <= LAST_DAY
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /**
      * Which recording of the room plays: presents pile up through December (L1, L2, L3), Santa's sleigh

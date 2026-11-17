@@ -76,12 +76,20 @@ fun WholphinTheme(
                 null
             }
         ) ?: kidsPalette?.accent ?: (
-            if (XmasLook.on) {
+            if (F13Look.on) {
+                // Friday the 13th look (that day only): lucky clover green
+                F13Look.Green
+            } else if (XmasLook.on) {
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange
+            } else if (HwLook.on) {
+                HwLook.Orange
             } else if (NyLook.on) {
                 NyLook.Gold
+            } else if (EdLook.on) {
+                // Earth Day look (Earth week, Kids too): leaf green
+                EdLook.Leaf
             } else if (PcLook.on) {
                 // Popcorn Day look (19 Jan): butter yellow
                 PcLook.Butter

@@ -71,7 +71,6 @@ enum class LogoEffect {
     FIRE_TRAILS,
     FLOWER_BLOOM,
     SUNSET,
-    SPROUTS,
     SPOOKY_CAT,
     GROUNDHOG,
     HARVEST_MOON,
@@ -156,7 +155,8 @@ fun holidayFor(date: LocalDate): Celebration? {
 
         m == 3 && d == 10 -> Celebration("Happy Mario Day", "🍄", 0xFFFBD000, LogoEffect.COIN)
 
-        m == 4 && d == 22 -> Celebration("Happy Earth Day", "🌍", 0xFF6CC06A, LogoEffect.SPROUTS)
+        // The Earth Day look (ui/theme/EarthDaySeason.kt) replaced the old Earth Day scene
+        m == 4 && d == 22 -> Celebration("Happy Earth Day", "🌍", 0xFF6CC06A)
 
         m == 5 && d == 4 -> Celebration("May the 4th be with you", "✨", 0xFFFFD54F, LogoEffect.HYPERSPACE)
 

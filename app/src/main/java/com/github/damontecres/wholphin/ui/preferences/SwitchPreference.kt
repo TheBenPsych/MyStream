@@ -62,9 +62,19 @@ fun SwitchPreference(
                         .spacedBy(8.dp),
             ) {
                 // Thanksgiving look: a small acorn next to switches that are on
+                // Halloween look: a tiny pumpkin next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .HwPumpkin()
+                }
                 if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
+                }
+                // Friday the 13th look: a little "13" knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .F13Knob()
                 }
                 // Valentine's look: a white knob with a red heart in it next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.ValLook.on) {
@@ -85,6 +95,11 @@ fun SwitchPreference(
                 if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .SpKnob()
+                }
+                // Earth Day look: a little Earth next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .EdGlobe()
                 }
                 // 4th of July look: a little striped switch with a navy star knob next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.J4Look.on) {
