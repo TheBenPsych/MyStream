@@ -133,13 +133,9 @@ object HolidayNavKit {
                 countdown = { HalloweenSeason.countdown(LocalDateTime.now()) },
             ),
             holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
-<<<<<<< HEAD
-            holiday("starwars", { SwLook.on }, 0xFF0B0B14, 0xFF05050A, listOf(0xFFFFE81F, 0xFF4FC3F7, 0xFFE53935), "Star Wars Day pick"),
-            // St. Patrick's Day: charms for the door icons, bunting and a shamrock patch on Home (StPatricksNav.kt)
-=======
             // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)
             StarWarsNav.entry,
->>>>>>> origin/main
+            // St. Patrick's Day: charms for the door icons, bunting and a shamrock patch on Home (StPatricksNav.kt)
             holiday(
                 "stpatricks",
                 { SpLook.on },
