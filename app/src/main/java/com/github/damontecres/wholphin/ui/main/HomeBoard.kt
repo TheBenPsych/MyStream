@@ -67,6 +67,9 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcKindMark
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
@@ -74,6 +77,7 @@ import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
+import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -256,11 +260,26 @@ private fun Greeting(
     Column {
         Text(
             text = greeting,
-            color = BenflixColors.Text,
+            // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering
+            color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) HolidayFont else null,
+            fontWeight =
+                if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) {
+                    FontWeight.Normal
+                } else if (SwLook.on) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.ExtraBold
+                },
+            // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
+            fontFamily =
+                if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) {
+                    HolidayFont
+                } else if (SwLook.on) {
+                    StarWarsFont
+                } else {
+                    null
+                },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -383,6 +402,7 @@ private fun SquareDoor(
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
                 .edDoorLife(door)
+                .swDoorMoment(door)
                 .pcDoorSnack(door)
                 .padding(u * 0.85f),
         ) {

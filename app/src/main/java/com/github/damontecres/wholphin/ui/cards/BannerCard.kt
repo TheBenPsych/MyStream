@@ -58,11 +58,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
+import com.github.damontecres.wholphin.ui.theme.SwLook
+import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
+import com.github.damontecres.wholphin.ui.theme.swProgressSaber
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.valProgressHeart
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
@@ -312,7 +315,19 @@ fun BannerCard(
                             .padding(6.dp),
                 )
             }
-            if (playPercent > 0 && playPercent < 100) {
+            if (playPercent > 0 && playPercent < 100 && SwLook.on) {
+                // Star Wars Day: the progress line is a laser sword in the colour of your side
+                val blade = SwSides.currentBlade
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp)
+                            .fillMaxWidth()
+                            .height(Cards.playedPercentHeight)
+                            .swProgressSaber((playPercent / 100).toFloat(), blade),
+                )
+            } else if (playPercent > 0 && playPercent < 100) {
                 Box(
                     modifier =
                         Modifier

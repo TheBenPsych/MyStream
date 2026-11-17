@@ -57,6 +57,7 @@ import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
+import com.github.damontecres.wholphin.ui.theme.swNoticeSaber
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -214,6 +215,8 @@ private fun CornerCard(
                 .tgTack()
                 // Earth Day look: a little sprout grows up out of the notice's top edge
                 .then(if (EdLook.on) Modifier.edPlaySprout(tall = 30.dp) else Modifier)
+                // Star Wars Day: a little laser sword lies along the notice's top edge
+                .swNoticeSaber()
                 .clip(shape)
                 .background(BenflixColors.Panel)
                 // New Year's look: a gold edge down the notice's left side

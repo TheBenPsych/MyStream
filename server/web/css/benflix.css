@@ -1824,6 +1824,72 @@ html.val .brow .tx small[data-vmark="rose"]::before { background-image: url("../
 html.val .brow .tx small[data-vmark="letter"]::before { background-image: url("../img/val/val_mark_letter.png"); }
 html.val .brow .tx small[data-vmark="balloon"]::before { background-image: url("../img/val/val_mark_balloon.png"); }
 .who .vcount { color: #E0C8D0; }
+/* ---------- Star Wars Day look (approved 2026-11-17, 4 May only, Kids too) ----------
+   Dark side red and black: laser red for selected things with white words, glossy black buttons and panels,
+   white words on every door, and a different galaxy moment in each door's corner (our own drawings). Small
+   touches: a red glow and light-speed streaks on Play, a laser sword for progress lines, light speed inside the
+   loading ring, and a little laser sword on notices. Laser swords glow in the colour of each profile's side
+   (--swb: blue for the light side, red for the dark side). The greeting is in yellow crawl lettering.
+   Settings › Look › Star Wars Day look turns it off (js/start.js B.swOn). */
+@font-face { font-family: "Benflix Crawl"; src: url("../fonts/sw_news_cycle.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+html.sw, html.sw.kids, html.sw.kids.night {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #0E0E10; --pg3: #18181B; --pg4: #2A2A2E; --line: #26262A; --accent: #FF2A2A;
+  --ink: #F1F2F5; --ink2: #C9CBD2; --ink3: #9497A3;
+  --kacc: #FF2A2A; --kon: #fff; --sred: #FF2A2A; --sblack: #2A2A2E; --swb: #4FB8FF;
+}
+html.sw .door { color: #fff; }
+html.sw .door > svg.i, html.sw .door .n, html.sw .door .d, html.sw .door > div { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.4); }
+html.sw .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; inset: 0; border-radius: inherit; background: right top / auto 100% no-repeat; }
+html.sw .door[data-door="movies"]::after { background-image: url("../img/sw/sw_moment_movies.png"); }
+html.sw .door[data-door="shows"]::after { background-image: url("../img/sw/sw_moment_shows.png"); }
+html.sw .door[data-door="live"]::after { background-image: url("../img/sw/sw_moment_live.png"); }
+html.sw .door[data-door="games"]::after { background-image: url("../img/sw/sw_moment_games.png"); }
+html.sw .door[data-door="music"]::after { background-image: url("../img/sw/sw_moment_music.png"); }
+html.sw .door[data-door="books"]::after { background-image: url("../img/sw/sw_moment_books.png"); }
+html.sw .greet.swg { font-family: "Benflix Crawl", "Franklin Gothic Medium", sans-serif; font-weight: 700; color: #FFE81F; letter-spacing: 0; }
+html.sw .btn.white, html.sw .btn.red, html.sw .chip.on { background: var(--sred); border-color: var(--sred); color: #fff; }
+html.sw .btn.white:hover, html.sw .btn.red:hover { background: #FF4A4A; color: #fff; }
+html.sw .btn { background: var(--sblack); }
+html.sw .btn.ghost { background: none; }
+html.sw .corner .ctime, html.sw .player .bar .knob { background: var(--sred); }
+/* Play: a red glow and three light-speed streaks rushing in from its left */
+html.sw .tp .btns .btn.white { position: relative; overflow: visible; box-shadow: 0 0 26px 6px rgba(255, 42, 42, .5); }
+html.sw .tp .btns .btn.white::before { content: ""; position: absolute; right: calc(100% + 8px); top: 22%; width: 52px; height: 56%; pointer-events: none;
+  background: linear-gradient(#fff, #fff) right 0 top 0 / 100% 4px no-repeat, linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)) right 0 center / 75% 3px no-repeat, linear-gradient(rgba(255,255,255,.6), rgba(255,255,255,.6)) right 0 bottom 0 / 50% 2px no-repeat; border-radius: 2px; }
+/* progress lines are laser swords: a metal hilt, then a white-hot blade glowing in your side's colour */
+html.sw .poster .prog, html.sw .kwbar .line { overflow: visible; background: rgba(42,42,46,.8); }
+html.sw .poster .prog i, html.sw .kwbar .line i { position: relative; background: #fff; border-radius: 3px; box-shadow: 0 0 4px 1px var(--swb), 0 0 10px 3px var(--swb); margin-left: 20px; max-width: calc(100% - 20px); }
+html.sw .poster .prog i::before, html.sw .kwbar .line i::before { content: ""; position: absolute; right: 100%; top: 50%; width: 20px; height: 8px; transform: translateY(-50%); border-radius: 2px;
+  background: repeating-linear-gradient(90deg, transparent 0 3px, #1A1E26 3px 4px), linear-gradient(#3A404C, #E4E9F0 40%, #9AA4B4 70%, #4E5868); }
+/* light speed inside the loading ring */
+html.sw .spin { position: relative; border: 0; animation: none; width: 46px; height: 46px; }
+html.sw .spin::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--sblack); border-top-color: var(--sred); animation: spin .8s linear infinite; }
+html.sw .spin::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: url("../img/sw/sw_hyperspace.png") center / contain no-repeat; animation: spin 9s linear infinite; }
+/* notices: a little laser sword lies along the top edge */
+html.sw .corner { overflow: visible; }
+html.sw .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: 18px; top: -3px; width: 96px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #4E5868 0, #C9D2DE 8px, #4E5868 22px, #fff 23px); box-shadow: 22px 0 8px -1px var(--swb); }
+/* Who's watching: the desert home and the yellow crawl greeting */
+.who h1.swh { font-family: "Benflix Crawl", "Franklin Gothic Medium", sans-serif; font-weight: 700; font-size: 54px; color: #FFE81F; margin: 0 0 30px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+@media (max-width: 600px) { .who h1.swh { font-size: 32px; } }
+/* the opening crawl (once on 4 May; any key, click or tap skips it) */
+.swcrawl { position: fixed; inset: 0; z-index: 1000; overflow: hidden; perspective: 260px; perspective-origin: 50% 50%; font-family: "Benflix Crawl", "Franklin Gothic Medium", sans-serif; cursor: pointer;
+  background: radial-gradient(1px 1px at 10% 20%,#fff,transparent),radial-gradient(1px 1px at 30% 70%,#fff,transparent),radial-gradient(1px 1px at 55% 35%,#fff,transparent),radial-gradient(1px 1px at 75% 80%,#fff,transparent),radial-gradient(1px 1px at 88% 15%,#fff,transparent),radial-gradient(1px 1px at 20% 90%,#fff,transparent),radial-gradient(1px 1px at 65% 55%,#fff,transparent),radial-gradient(1px 1px at 42% 8%,#fff,transparent),radial-gradient(1px 1px at 5% 52%,#fff,transparent),radial-gradient(1px 1px at 93% 62%,#fff,transparent),#000;
+  animation: swcov 13.2s linear forwards; }
+.swcrawl .intro { position: absolute; top: 46%; width: 100%; text-align: center; color: #4BD5EE; font-size: clamp(15px, 2.2vw, 30px); opacity: 0; animation: swintro 3s ease forwards; }
+.swcrawl .big { position: absolute; top: 50%; left: 50%; color: #000; -webkit-text-stroke: 2px #FFE81F; font-weight: 700; font-size: clamp(40px, 9vw, 140px); letter-spacing: .06em; white-space: nowrap; opacity: 0; transform: translate(-50%,-50%) scale(1); animation: swbig 4.5s 3s ease-in forwards; }
+.swcrawl .crawlbox { position: absolute; left: 19%; bottom: -10%; width: 62%; height: 130%; transform: rotateX(26deg); transform-origin: 50% 100%; }
+.swcrawl .crawltext { position: absolute; top: 100%; width: 100%; color: #FFE81F; font-weight: 700; font-size: clamp(16px, 3vw, 44px); text-align: justify; line-height: 1.35; animation: swcr 9s 4.2s linear forwards; }
+.swcrawl .crawltext p { margin: 0 0 .8em; }
+.swcrawl .crawltext .ep, .swcrawl .crawltext .ti { text-align: center; margin: 0 0 .3em; }
+.swcrawl .crawltext .ti { font-size: 1.5em; margin-bottom: .8em; }
+@media (max-width: 600px) { .swcrawl .crawlbox { left: 7%; width: 86%; } }
+@keyframes swcov { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes swintro { 0% { opacity: 0; } 20%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes swbig { 0% { opacity: 1; transform: translate(-50%,-50%) scale(1.3); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(.05); } }
+@keyframes swcr { 0% { top: 100%; } 100% { top: -120%; } }
+/* switches that are on get a glowing knob in your side's colour */
+html.sw .valbtn.on::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px 3px var(--swb); }
 
 /* ---------- Popcorn Day look (approved 2026-11-17, just 19 January, Kids too) ----------
    Butter yellow (with dark words) for selected things, deep cinema-seat red for other buttons and panels, white
