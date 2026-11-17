@@ -503,10 +503,10 @@ fun HomeSpotlight(
             Timber.d(ex, "Home: next picture")
         }
     }
-    val playTarget = {
+    val playTarget: () -> Unit = {
         // OK in the first second after a slide plays the one you were looking at
         val p = if (System.currentTimeMillis() - slidAt < OK_GRACE_MS) picks.getOrNull(previous) else pick
-        p?.let(onPlay)
+        if (p != null) onPlay(p)
     }
     val scale = if (kids) KIDS_SCALE else 1f
     val keys =
