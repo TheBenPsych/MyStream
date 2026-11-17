@@ -200,6 +200,32 @@ B.call = async (method, path, body, opts) => {
 B.jf = (method, path, body, opts) => B.call(method, "api/web/jf" + path, body, opts);
 B.get = (path) => B.jf("GET", path);
 B.uid = () => enc(B.me.id);
+// Which episode a show's Play / Resume opens, by episode order (Jellyfin's next up goes by date, so an old
+// episode with leftover progress could win): one part way through after the last watched, else the next unwatched.
+B.pickNextEpisode = (eps) => {
+  const sn = (e) => (e.ParentIndexNumber == null ? 1 : e.ParentIndexNumber);
+  const list = (eps || []).filter((e) => sn(e) > 0 && e.LocationType !== "Virtual")
+    .sort((a, b) => (sn(a) - sn(b)) || ((a.IndexNumber || 0) - (b.IndexNumber || 0)));
+  let last = -1;
+  list.forEach((e, i) => { if ((e.UserData || {}).Played) last = i; });
+  const after = list.slice(last + 1);
+  if (!after.length) return null;
+  return after.filter((e) => ((e.UserData || {}).PlaybackPositionTicks || 0) > 0).pop() || after[0];
+};
+B.watchedEp = (it) => !!it && it.Type === "Episode" && !!(it.UserData || {}).Played;
+B.nextEpisode = (seriesId, fields) => B.get(`/Shows/${seriesId}/Episodes?userId=${B.uid()}&IsMissing=false&EnableUserData=true${fields ? `&Fields=${fields}&ImageTypeLimit=1` : "&EnableImages=false"}`)
+  .then((r) => B.pickNextEpisode(r.Items)).catch(() => null);
+// Next up / resume lists: swap an already-watched episode for that show's real next one (costs nothing when none)
+B.fixNextUp = async (items, fields) => {
+  if (!(items || []).some(B.watchedEp)) return items || [];
+  const out = await Promise.all(items.map((it) => (B.watchedEp(it) && it.SeriesId ? B.nextEpisode(it.SeriesId, fields) : it)));
+  const seen = new Set();
+  return out.filter((x) => x && !seen.has(x.Id) && seen.add(x.Id));
+};
+// Play button on a show: the episode above, else Jellyfin's next up, else the first episode
+B.seriesNextEp = (seriesId) => B.nextEpisode(seriesId)
+  .then((ep) => ep || B.get(`/Shows/NextUp?SeriesId=${seriesId}&UserId=${B.uid()}&Limit=1&EnableResumable=true`).then((r) => (r.Items || [])[0]).catch(() => null))
+  .then((ep) => ep || B.get(`/Shows/${seriesId}/Episodes?UserId=${B.uid()}&Limit=1`).then((x) => (x.Items || [])[0]).catch(() => null));
 B.cache = {};
 B.cached = async (key, ms, fn) => {
   const c = B.cache[key];
@@ -962,8 +988,7 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   if (["Movie", "Episode", "Video", "MusicVideo"].includes(it.Type)) return B.go(`#/play/${it.Id}?resume=1`);
   if (it.Type === "Series") {
-    B.get(`/Shows/NextUp?SeriesId=${it.Id}&UserId=${B.uid()}&Limit=1&EnableResumable=true`)
-      .then((r) => (r.Items || [])[0] || B.get(`/Shows/${it.Id}/Episodes?UserId=${B.uid()}&Limit=1`).then((x) => (x.Items || [])[0]))
+    B.seriesNextEp(it.Id)
       .then((ep) => B.go(ep ? `#/play/${ep.Id}?resume=1` : B.hrefOf(it)))
       .catch(() => B.go(B.hrefOf(it)));
     return;

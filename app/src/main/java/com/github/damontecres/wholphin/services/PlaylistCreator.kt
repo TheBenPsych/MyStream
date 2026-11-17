@@ -263,7 +263,7 @@ class PlaylistCreator
                     } else {
                         val result by api.tvShowsApi.getNextUp(seriesId = item.id)
                         val nextUp =
-                            result.items.firstOrNull() ?: api.tvShowsApi
+                            NextEpisode.find(api, item.id) ?: result.items.firstOrNull() ?: api.tvShowsApi
                                 .getEpisodes(
                                     item.id,
                                     limit = 1,

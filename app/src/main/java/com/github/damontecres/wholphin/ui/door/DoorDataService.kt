@@ -5,6 +5,7 @@ import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LatestNextUpService
+import com.github.damontecres.wholphin.services.NextEpisode
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.main.trendingCache
@@ -118,6 +119,8 @@ class DoorDataService
                                         enableTotalRecordCount = false,
                                     ),
                                 ).content.items
+                                // Benflix: an episode already marked watched isn't "in progress" any more
+                                .filterNot { NextEpisode.isWatchedEpisode(it) }
                                 .map { BaseItem(it, true) }
                         }
                     val next =
@@ -135,6 +138,7 @@ class DoorDataService
                                         enableTotalRecordCount = false,
                                     ),
                                 ).content.items
+                                .let { NextEpisode.fixNextUp(api, it, userId, SlimItemFields) }
                                 .map { BaseItem(it, true) }
                         }
                     latestNextUpService
