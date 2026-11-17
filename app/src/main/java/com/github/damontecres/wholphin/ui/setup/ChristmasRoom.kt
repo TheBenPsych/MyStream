@@ -32,6 +32,7 @@ import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
+import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -96,6 +97,19 @@ fun EarthRoom(modifier: Modifier = Modifier) =
         { tall -> "day${EarthDaySeason.day(LocalDate.now()).coerceIn(1, EarthDaySeason.DAYS)}-${if (tall) "tall" else "wide"}" },
         modifier,
         bg = listOf(Color(0xFF0C1612), Color(0xFF16241C)),
+    )
+
+/**
+ * Benflix Valentine's Day: the table set for two behind Who's watching (1 to 14 February). Drawn by the web
+ * version (server/web/js/valentine.js) and recorded as 30-second loops by tools/valentine/record.js: one video
+ * for each number of chocolates left in the box, and one for the 14th with petals falling.
+ */
+@Composable
+fun ValentineRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        ValentineVideos,
+        { tall -> "${ValentineSeason.videoName(LocalDate.now())}-${if (tall) "tall" else "wide"}" },
+        modifier,
     )
 
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
@@ -201,6 +215,9 @@ object FeastVideos : RoomVideos("feast", version = 1)
 
 /** Downloads and keeps the Earth Day room videos (extras/scenes/earthday in the repo: day1 to day7, wide and tall) */
 object EarthVideos : RoomVideos("earthday", version = 1)
+
+/** Downloads and keeps the Valentine's room videos (extras/scenes/valentine in the repo: c13..c1 and day, wide and tall) */
+object ValentineVideos : RoomVideos("valentine", version = 1)
 
 /**
  * Downloads and keeps one holiday room's videos (extras/scenes/[folder] in the repo).

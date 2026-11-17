@@ -58,8 +58,10 @@ import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
@@ -206,9 +208,9 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving, New Year's (Kids too) and Earth Day (Kids too) looks: the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || NyLook.on || EdLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || NyLook.on || EdLook.on) HolidayFont else null,
+                // Thanksgiving, New Year's (Kids too), Valentine's and Earth Day (Kids too) looks: the greeting is in the curly holiday font
+                fontWeight = if (TgLook.on || NyLook.on || ValLook.on || EdLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || NyLook.on || ValLook.on || EdLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -435,9 +437,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier.nyDoorCharm(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).nyDoorCharm(door))
-                // Earth Day look: Kids gets the living things on the doors too
-                .edDoorLife(door)
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .valDoorCharm(door)
+                            .nyDoorCharm(door)
+                    },
+                ).edDoorLife(door) // Earth Day look: Kids gets the living things on the doors too
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

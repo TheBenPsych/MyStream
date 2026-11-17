@@ -38,6 +38,7 @@ js/start.js
 js/title.js
 js/xmas.js
 js/feast.js
+js/valentine.js
 js/newyear.js
 js/earthday.js
 manifest.webmanifest
@@ -87,3 +88,18 @@ img/ed/ed_life_movies.png
 img/ed/ed_life_music.png
 img/ed/ed_life_shows.png
 img/ed/ed_sprout.png
+img/val/val_bead.png
+img/val/val_charm_books.png
+img/val/val_charm_games.png
+img/val/val_charm_live.png
+img/val/val_charm_movies.png
+img/val/val_charm_music.png
+img/val/val_charm_shows.png
+img/val/val_heart_soft.png
+img/val/val_knob.png
+img/val/val_load_empty.png
+img/val/val_load_full.png
+img/val/val_mark_balloon.png
+img/val/val_mark_choc.png
+img/val/val_mark_letter.png
+img/val/val_mark_rose.png
