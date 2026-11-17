@@ -2476,7 +2476,18 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .sp-dots { display: flex; gap: 8px; margin-top: 18px; }
 .sp-dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 99px; background: rgba(255,255,255,.35); cursor: pointer; transition: width .25s, background .25s; }
 .sp-dots button.on { width: 26px; background: #fff; }
-.board.spotted .bmain { display: block; height: auto; margin-top: auto; }
+.board.spotted .bmain { display: block; height: auto; margin-top: auto; position: relative; z-index: 1; }
+@media (min-width: 761px) {
+  /* Ben 2026-11-17: the news cards float only a little (they sit near the bottom, just above the holiday trim), and
+     the greeting sits top left beside the rail, on the clock's line */
+  .home.board.spotted { min-height: 100vh; padding-bottom: 36px; }
+  .board.spotted .bgreet { position: absolute; z-index: 2; top: 0; left: var(--gutter); right: 220px; height: var(--bar); margin: 0;
+    display: flex; align-items: center; gap: 16px; white-space: nowrap; overflow: hidden; }
+  .board.spotted .bgreet .greet { font-size: 30px; }
+  .board.spotted .bgreet .wx { font-size: 15px; margin-top: 0; min-height: 0; overflow: hidden; text-overflow: ellipsis; }
+  .board.spotted .bgreet .wx:empty { display: none; }
+  .board.spotted .sp-info { margin-top: calc(min(9vh, 7vw) + 96px); }
+}
 @media (min-width: 901px) {
   .spotted .bpanel { position: relative; height: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto; gap: 12px; padding: 0; background: none; }
   .spotted .bhead { position: absolute; right: 0; top: -42px; }
@@ -2507,4 +2518,4 @@ body.nav-panel .brail.holiday { -webkit-mask-image: none; mask-image: none; }
 .bt-mark { position: absolute; left: 4px; top: -10px; width: 12px; height: 18px; }
 .sp-trim { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; }
 .sp-trim.top { top: 0; height: 44px; z-index: 1; }
-.sp-trim.bottom { position: relative; display: block; height: 36px; margin-top: 12px; }
+.sp-trim.bottom { top: auto; bottom: 0; height: 36px; z-index: 0; }

@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -616,12 +617,16 @@ fun HomeSpotlight(
             holiday?.bottomTrim?.let {
                 HolidayArtBox(it, Modifier.align(Alignment.BottomStart).fillMaxWidth().height(TRIM_BOTTOM))
             }
-            Column(
-                Modifier
-                    .padding(start = EDGE, top = LocalTopBarOverlap.current - 8.dp)
-                    .widthIn(max = maxWidth * 0.62f),
+            // Ben 2026-11-17: the greeting sits top left beside the rail, on the same line as the clock
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier =
+                    Modifier
+                        .padding(start = EDGE, top = HEADER_TOP)
+                        .height((LocalTopBarOverlap.current - HEADER_TOP - 6.dp).coerceAtLeast(44.dp))
+                        .widthIn(max = maxWidth * 0.7f),
             ) {
-                Greeting(greeting, weather, tv = true)
+                Greeting(greeting, weather, tv = true, inline = true)
             }
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -997,6 +1002,9 @@ private val REASON_GOLD = Color(0xFFFFD27A)
 private val EDGE = 40.dp
 private const val PICTURE_HEIGHT = 0.8f
 private const val INFO_TOP = 0.25f
+
+/** Where the header's row starts (PageHeader's top padding), so the greeting lines up with the clock */
+private val HEADER_TOP = 18.dp
 private const val CARDS_BOTTOM = 0.04f
 private const val MAX_CARDS = 4
 private const val PHONE_PICTURE_RATIO = 1.25f
