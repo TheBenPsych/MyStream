@@ -19,6 +19,7 @@
     cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   };
   const I = (name) => (ICON[name] ? `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : B.I(name));
+  B.doorIcon = I;
   // Books counts (and which of Manga / Comics exist), filled in once the Books page has asked Tower
   let bookCounts = null;
 
@@ -110,13 +111,40 @@
     }).join("")}${B.railExtra ? B.railExtra(door) : ""}</nav>`;
   };
 
+  // Navigation redesign: a door's places live in its panel off the rail now (js/nav.js), so this menu stays only on
+  // the Server page (it keeps its own menu, like the TV) and, in Music, just the Your library list under it.
+  B.doorPlaces = (door) => (menus()[door] || []).filter(Boolean);
+  const libOnly = (door) => {
+    const extra = B.railExtra ? B.railExtra(door) : "";
+    return extra ? `<nav class="drail libonly" data-door="${esc(door)}" aria-label="Your library" style="--door:${COLORS[door]};--ondoor:${ON[door]}">${extra}</nav>` : "";
+  };
+  const wanted = (door) => (door === "server" ? html(door) : door === "music" ? libOnly(door) : "");
+
+  // A place that's a row on the door's page (Live TV, Games): go to the door, then scroll to that row
+  B.doorJump = (door, label, tries) => {
+    const page = $("#page");
+    const name = String(label).toLowerCase();
+    if (location.hash !== "#/" + door) { B.go("#/" + door); setTimeout(() => B.doorJump(door, label, 1), 400); return; }
+    const row = $$("section.rowx h3, .rowx h3", page).find((h) => h.textContent.trim().toLowerCase().startsWith(name));
+    if (!row) {
+      // The rows may still be loading in
+      if (tries && tries < 10) { setTimeout(() => B.doorJump(door, label, tries + 1), 300); return; }
+      if (B.toast) B.toast(`Nothing in ${label} yet`);
+      return;
+    }
+    const top = row.getBoundingClientRect().top + window.scrollY - (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--bar")) || 76) - 12;
+    window.scrollTo({ top, behavior: "smooth" });
+    const first = row.closest("section, .rowx").querySelector("a, button");
+    if (first) setTimeout(() => first.focus({ preventScroll: true }), 350);
+  };
+
   // Puts the menu just under the top bar of the page (again after the page redraws itself)
   const paint = () => {
     const page = $("#page");
     if (!page) return;
     const door = B.me ? doorOf(location.hash || "") : null;
     const old = $(".drail", page);
-    const want = door ? html(door) : "";
+    const want = door ? wanted(door) : "";
     document.body.classList.toggle("has-rail", !!want);
     if (!want) { if (old) old.remove(); return; }
     if (old && old.outerHTML === want) return;
@@ -128,22 +156,6 @@
       const top = $(":scope > .top", page);
       if (top) top.after(nav); else page.prepend(nav);
     }
-    nav.addEventListener("click", (e) => {
-      const a = e.target.closest("[data-jump]");
-      if (!a) return;
-      e.preventDefault();
-      const name = a.dataset.jump.toLowerCase();
-      // A Games console page: Consoles goes back to the Games page's Consoles row
-      if (!$("#rows")) { B.go("#/" + (door === "games" ? "games" : door)); return; }
-      const row = $$("section.rowx h3, .rowx h3", page).find((h) => h.textContent.trim().toLowerCase().startsWith(name));
-      if (row) {
-        const top = row.getBoundingClientRect().top + window.scrollY - (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--bar")) || 76) - 12;
-        window.scrollTo({ top, behavior: "smooth" });
-        const first = row.closest("section, .rowx").querySelector("a, button");
-        if (first) setTimeout(() => first.focus({ preventScroll: true }), 350);
-      } else if (window.B && B.toast) B.toast(`Nothing in ${a.textContent.trim()} yet`);
-      $$("a", nav).forEach((x) => x.classList.toggle("on", x === a));
-    });
   };
 
   // The Books page tells the menu how many of each there are (and whether there are any manga or comics)
@@ -159,7 +171,7 @@
     const page = $("#page");
     if (!page) return;
     // Pages redraw themselves by replacing everything in #page: put the menu back each time
-    new MutationObserver(() => { if (!$(":scope > .drail", page) || document.body.classList.contains("has-rail") !== !!doorOf(location.hash || "")) paint(); })
+    new MutationObserver(() => { const door = B.me ? doorOf(location.hash || "") : null; if (!$(":scope > .drail", page) || document.body.classList.contains("has-rail") !== !!(door && wanted(door))) paint(); })
       .observe(page, { childList: true });
     paint();
   };

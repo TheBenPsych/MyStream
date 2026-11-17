@@ -2346,3 +2346,149 @@ html.vg .corner { box-shadow: inset 5px 0 0 var(--vcyan), 0 10px 30px rgba(0,0,0
 .who h1.vgh { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 34px; line-height: 1.4; margin: 0 0 10px; text-shadow: 0 3px 12px rgba(0,0,0,.7); }
 .who .vgline { margin: 0 0 30px; font-size: 22px; font-weight: 600; color: #C9D0E0; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
 @media (max-width: 600px) { .who h1.vgh { font-size: 17px; } .who .vgline { font-size: 15px; } }
+
+/* ---------- Navigation redesign (approved 2026-11-17, js/nav.js and js/spot.js) ----------
+   The icon rail down the left of every page (opens wider with names when you point at it or Tab into it), a door's
+   panel beside it, the page header with the named Back button, the phone bottom bar, and the new Home spotlight. */
+:root { --nrail: 66px; --nopen: 228px; }
+body.nav-kids { --nrail: 80px; --nopen: 260px; }
+body.nav-on #page { padding-left: var(--nrail); }
+body.nav-on .drail { left: var(--nrail); }
+body.nav-on .mbar { left: calc(var(--nrail) + 12px); }
+body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
+/* Books: its places are in the panel now */
+body.nav-on .bk-side { display: none; }
+.brail { position: fixed; z-index: 70; left: 0; top: 0; bottom: 0; width: var(--nrail); display: flex; flex-direction: column; gap: 4px; padding: 16px 10px; overflow: hidden auto; scrollbar-width: none;
+  background: linear-gradient(90deg, var(--tray) 72%, rgba(var(--trayrgb), .0)); transition: width .2s ease, background .2s ease, box-shadow .2s ease; }
+.brail[hidden], .bbar[hidden] { display: none; }
+.brail:hover, .brail:focus-within, .brail.always, body.nav-panel .brail { width: var(--nopen); background: var(--tray); box-shadow: 12px 0 40px rgba(0,0,0,.5); }
+/* The page dims while the rail is open */
+.brail::after { content: ""; position: fixed; top: 0; bottom: 0; left: var(--nopen); right: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.brail:hover::after, .brail:focus-within::after, body.nav-panel .brail::after { opacity: 1; }
+.brail.always::after { display: none; }
+body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
+.rl-logo { display: flex; align-items: center; height: 46px; padding: 0 11px; margin-bottom: 8px; border-radius: 14px; flex: none; }
+.rl-logo .logo { font-size: 22px; }
+.rl-logo:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
+.rl-i { position: relative; flex: none; width: 100%; display: flex; align-items: center; gap: 14px; height: 46px; padding: 0 12px; border-radius: 14px; border: 0; background: none;
+  color: var(--ink2); font: inherit; font-weight: 700; font-size: 16px; white-space: nowrap; cursor: pointer; text-align: left; }
+.rl-i svg.i { width: 22px; height: 22px; transition: color .2s; }
+.rl-t { opacity: 0; transition: opacity .15s; overflow: hidden; text-overflow: ellipsis; }
+.brail:hover .rl-t, .brail:focus-within .rl-t, .brail.always .rl-t, body.nav-panel .rl-t { opacity: 1; }
+/* Tucked in: just the logo's four squares */
+.rl-logo .logo { color: transparent; transition: color .15s; }
+.brail:hover .rl-logo .logo, .brail:focus-within .rl-logo .logo, .brail.always .rl-logo .logo, body.nav-panel .rl-logo .logo { color: var(--ink); }
+.rl-i:hover, .rl-i:focus-visible { background: var(--pg3); color: var(--ink); }
+.rl-i:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
+.rl-i.on { color: var(--c); }
+.rl-i.on::before { content: ""; position: absolute; left: -10px; top: 11px; bottom: 11px; width: 3px; border-radius: 2px; background: var(--c); }
+.rl-door.open { background: var(--pg3); color: var(--c); }
+.rl-gap { flex: 1; min-height: 12px; }
+.rl-me .pic { width: 30px; height: 30px; font-size: 13px; margin-left: -4px; }
+.rl-dot { position: absolute; left: 32px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tray); }
+.rl-count { position: absolute; left: 28px; top: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--live); color: #081B19; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.rl-count[hidden] { display: none; }
+/* Start-up: each icon lights up in its door colour, top to bottom */
+.rl-i.dark, .rl-i.dark.on { color: #3A3D46; }
+.rl-i.lit { color: var(--c); animation: rlglow .7s ease; }
+@keyframes rlglow { 0% { transform: scale(1); } 30% { transform: scale(1.14); filter: drop-shadow(0 0 10px var(--c)); } 100% { transform: scale(1); } }
+.brail.kids .rl-i { height: 56px; font-size: 18px; }
+.brail.kids .rl-i svg.i { width: 28px; height: 28px; }
+/* A door's panel: the picture strip, its places, Jump back in */
+.npanel { position: fixed; z-index: 69; left: var(--nopen); top: 0; bottom: 0; width: 300px; max-width: calc(100vw - var(--nopen)); background: var(--pg2); border-right: 1px solid var(--line); box-shadow: 18px 0 50px rgba(0,0,0,.5);
+  overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; animation: npin .2s ease; }
+@keyframes npin { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.np-strip { position: relative; flex: none; height: 132px; display: flex; align-items: flex-end; padding: 14px 18px; background-color: var(--pg3); background-size: cover; background-position: center;
+  background-image: radial-gradient(circle at 25% 20%, color-mix(in srgb, var(--c) 45%, transparent), transparent 70%); }
+.np-strip.art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(22,24,30,0) 25%, rgba(22,24,30,.95)); }
+.np-strip b { position: relative; font-size: 24px; font-weight: 800; color: var(--c); text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+.np-list { padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+.np-list a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; color: var(--ink); font-weight: 600; }
+.np-list a svg.i { color: var(--ink2); width: 20px; height: 20px; }
+.np-list a small { margin-left: auto; color: var(--ink3); }
+.np-list a:hover, .np-list a:focus-visible { background: var(--pg4); }
+.np-list a:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
+.np-back { padding: 4px 18px 18px; }
+.np-back h4 { margin: 8px 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+.np-posters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.np-posters a span { display: block; aspect-ratio: 2 / 3; border-radius: 8px; background: var(--pg3) center/cover no-repeat; }
+.np-posters a.sq span { aspect-ratio: 1; }
+.np-posters a small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-posters a:focus-visible { outline: 2.5px solid #fff; outline-offset: 2px; border-radius: 8px; }
+/* The page header: the door's name, or the named Back button and the where-am-I line */
+.top .hstart { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+.top .place { padding-left: 0; border-left: 0; }
+.nback { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 38px; max-width: 260px; padding: 0 14px 0 8px; border-radius: 99px; border: 0; background: rgba(29,32,39,.85); color: var(--ink);
+  font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.nback svg.i { width: 20px; height: 20px; }
+.nback span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nback:hover { background: var(--pg4); }
+.nback:focus-visible { outline: 2.5px solid #fff; outline-offset: 2px; }
+/* Phones: the bottom bar and the sheets */
+.bbar { position: fixed; z-index: 70; left: 0; right: 0; bottom: 0; display: flex; background: var(--tray); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+.bt { flex: 1; min-width: 0; height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; border-radius: 14px; color: var(--ink3); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.bt i { position: relative; display: grid; place-items: center; width: 56px; height: 30px; border-radius: 99px; font-style: normal; }
+.bt svg.i { width: 24px; height: 24px; }
+.bt.on { color: var(--ink); font-weight: 800; }
+.bt.on i { background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--c); }
+.bt .rl-dot { left: auto; right: 12px; top: 1px; }
+.navsheet .sheet { display: flex; flex-direction: column; gap: 2px; }
+.sh-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 10px; border-radius: 12px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.sh-row svg.i { color: var(--c, var(--ink2)); width: 22px; height: 22px; }
+.sh-row small { margin-left: auto; background: #fff; color: var(--tray); border-radius: 99px; padding: 1px 7px; font-size: 11px; font-weight: 800; }
+.sh-row:hover, .sh-row:focus-visible { background: var(--pg3); }
+.sh-sep { height: 1px; background: var(--line); margin: 8px 0; }
+.sh-me .pic { width: 40px; height: 40px; }
+.sh-me > svg.i:last-child { margin-left: auto; color: var(--ink3); }
+@media (max-width: 760px) {
+  body.nav-on #page { padding-left: 0; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  body.nav-on .brail { display: none; }
+  body.nav-on .drail { left: 0; }
+  body.nav-on .mbar { left: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); }
+  body.nav-on .tp .tp-bar { bottom: calc(66px + env(safe-area-inset-bottom)); }
+  body.nav-on .ehunt { left: auto; bottom: calc(80px + env(safe-area-inset-bottom)); }
+  body.nav-on #toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
+  .nback { height: 36px; font-size: 14px; max-width: 180px; }
+  .top .place.where { font-size: 13px; }
+}
+/* Home: the spotlight (six picks, one at a time) and the Today cards floating along the bottom */
+.home.spotted { position: relative; isolation: isolate; margin-top: calc(-1 * var(--bar)); padding-top: calc(var(--bar) + 6px); }
+.top:has(+ .home.spotted) { background: linear-gradient(rgba(var(--trayrgb), .55), rgba(var(--trayrgb), 0)); }
+.spot .sp-pics, .spot .sp-shade { position: absolute; left: 0; right: 0; top: 0; height: min(88vh, 60vw); z-index: -1; overflow: hidden; pointer-events: none; }
+.fam .spot .sp-pics, .fam .spot .sp-shade { height: min(72vh, 52vw); }
+.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease; animation: spzoom 20s ease-out forwards; }
+.sp-pic.on { opacity: 1; }
+.sp-pic.on.off { opacity: 0; }
+@keyframes spzoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+.sp-shade { background: linear-gradient(90deg, rgba(var(--trayrgb), .94) 0%, rgba(var(--trayrgb), .6) 36%, rgba(var(--trayrgb), 0) 66%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb), 0) 45%); }
+.sp-info { position: relative; max-width: min(46%, 640px); margin-top: min(9vh, 7vw); min-height: 290px; }
+.spot.empty .sp-info { min-height: 0; }
+.sp-why { display: block; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
+.sp-name { margin: 6px 0 10px; font-size: clamp(30px, 4.2vw, 64px); font-weight: 800; line-height: 1.02; letter-spacing: -.02em; text-shadow: 0 2px 20px rgba(0,0,0,.5); }
+.sp-line { font-weight: 600; color: var(--ink); }
+.sp-about { margin: 10px 0 0; max-width: 560px; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sp-btns { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.sp-dots { display: flex; gap: 8px; margin-top: 18px; }
+.sp-dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 99px; background: rgba(255,255,255,.35); cursor: pointer; transition: width .25s, background .25s; }
+.sp-dots button.on { width: 26px; background: #fff; }
+.board.spotted .bmain { display: block; height: auto; margin-top: auto; }
+@media (min-width: 901px) {
+  .spotted .bpanel { position: relative; height: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto; gap: 12px; padding: 0; background: none; }
+  .spotted .bhead { position: absolute; right: 0; top: -42px; }
+  .spotted .bitem, .spotted .bmore { min-height: 88px; height: calc(6.4 * var(--u)); border-radius: 14px; background: rgba(22,24,30,.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 14px 30px rgba(0,0,0,.45); }
+  .spotted .bitem::before, .spotted .bmore::before { display: none; }
+  .spotted .bmore { flex-direction: column; justify-content: center; gap: 6px; }
+}
+@media (max-width: 760px) {
+  .home.spotted { margin-top: 0; padding-top: 6px; }
+  .spot .sp-pics, .fam .spot .sp-pics { position: relative; height: auto; aspect-ratio: 16 / 10; margin: 12px calc(-1 * var(--gutter)) 0; z-index: 0; }
+  .spot .sp-shade { display: none; }
+  .sp-info { max-width: none; margin-top: 12px; min-height: 0; }
+  .sp-name { font-size: 28px; }
+  .sp-btns .btn { flex: 1; justify-content: center; }
+  /* Phone Home has nothing in the header: the greeting goes to the top */
+  .top:has(+ .home.spotted) { display: none; }
+}
+/* The where-am-I line beside the named Back: oldest first, and when it's too long the start is cut, not the end */
+.top .hstart .place.where { direction: ltr; display: flex; align-items: center; justify-content: flex-end; min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 1 auto; }
+.top .hstart .place.where > * { flex: none; }
