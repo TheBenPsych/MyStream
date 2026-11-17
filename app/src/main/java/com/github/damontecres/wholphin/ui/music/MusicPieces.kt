@@ -77,7 +77,9 @@ fun ImageUrlService.musicCover(
     px: Int,
 ): String? =
     if (item.type == BaseItemKind.AUDIO) {
-        item.data.albumId?.let { albumId ->
+        // The song's own picture when its album has none yet (Tower looks for missing album covers every hour)
+        val ownOnly = item.data.albumPrimaryImageTag == null && item.data.imageTags?.get(ImageType.PRIMARY) != null
+        item.data.albumId?.takeIf { !ownOnly }?.let { albumId ->
             getItemImageUrl(
                 itemId = albumId,
                 imageType = ImageType.PRIMARY,
