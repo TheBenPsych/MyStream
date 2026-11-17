@@ -78,7 +78,9 @@ fun Friday13Room(
 
         // Fill the screen and crop, keeping the floor (the table and the cat) at the bottom
         val (vw, vh) = if (tall) 540f to 1170f else 1280f to 720f
-        val scale = maxOf(maxWidth.value / vw, maxHeight.value / vh)
+        val boxW = maxWidth.value
+        val boxH = maxHeight.value
+        val scale = maxOf(boxW / vw, boxH / vh)
         Box(Modifier.fillMaxSize()) {
             PlayerSurface(
                 player = player,
@@ -90,8 +92,8 @@ fun Friday13Room(
             )
             if (catPlayer != null) {
                 val clip = F13Videos.catClip(tall)
-                val left = (maxWidth.value - vw * scale) / 2f
-                val top = maxHeight.value - vh * scale
+                val left = (boxW - vw * scale) / 2f
+                val top = boxH - vh * scale
                 PlayerSurface(
                     player = catPlayer,
                     surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
