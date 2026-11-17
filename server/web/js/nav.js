@@ -321,8 +321,7 @@
     const icons = $$(".rl-i", rail);
     lighting = true;
     icons.forEach((x) => { x.classList.remove("lit"); x.classList.add("dark"); });
-    B.sound("doors");
-    // Top to bottom, the door notes in step: Home and Search first, then each door
+    // Top to bottom: Home and Search first, then each door
     // While a holiday is on the icons light up in its colours (approved hq-start A)
     const h = B.holidayNav ? B.holidayNav() : null;
     if (h) icons.forEach((x, i) => x.style.setProperty("--lc", h.lights[i % h.lights.length]));

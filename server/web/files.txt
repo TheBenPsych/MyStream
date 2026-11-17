@@ -59,8 +59,6 @@ js/stpatricks.js
 js/starwars.js
 manifest.webmanifest
 reader.html
-sounds/doors.wav
-sounds/opening.wav
 sounds/game_boost.wav
 sounds/game_coin.wav
 sounds/game_crash.wav

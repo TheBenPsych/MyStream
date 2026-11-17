@@ -82,23 +82,13 @@ fun BenflixIntro(
     LaunchedEffect(Unit) {
         BenflixIntroState.setRunning(true)
         try {
-            // Get ready first (dark screen, nothing moving): the notes in memory, the first frames
-            // drawn, and how fast this TV draws. A slow TV waits a moment longer and plays a little slower.
-            IntroSounds.awaitReady(context)
+            // Get ready first (dark screen, nothing moving): the first frames drawn, and how fast this TV
+            // draws. A slow TV plays a little slower. (No sound: Ben wants it clean and plain.)
             val pace = IntroPace.measure(context)
             val f = pace.stretch
-            // The logo fades in on the first note, the second note comes as it finishes, then it holds
-            var played = 0
+            // The logo fades in, then it holds
             runIntroTimeline((FADE_MS + HOLD_MS) * f, pace) { t ->
                 logoAlpha.floatValue = (t / (FADE_MS * f)).coerceIn(0f, 1f)
-                if (played == 0) {
-                    IntroSounds.play(context, IntroSounds.OPEN_LOW, OPEN_LOW_VOLUME)
-                    played = 1
-                }
-                if (played == 1 && t >= SECOND_NOTE_MS * f) {
-                    IntroSounds.play(context, IntroSounds.OPEN_HIGH, OPEN_HIGH_VOLUME)
-                    played = 2
-                }
             }
             // Wait for Who's watching to be ready and settled (a slow server goes on anyway)
             val whoMark = waitForSettled(WAIT_FOR_PAGE_MS) { BenflixIntroState.whoMark }
@@ -191,13 +181,7 @@ private const val SETTLED_FRAMES = 3
 /** How big the logo is in the middle of the screen */
 private const val INTRO_LOGO_HEIGHT = 56
 
-/** Quiet, about half volume, as approved (each door note is softer, as four play close together) */
-private const val OPEN_LOW_VOLUME = 0.43f
-private const val OPEN_HIGH_VOLUME = 0.53f
-const val DOOR_NOTE_VOLUME = 0.36f
-
 private const val FADE_MS = 300f
-private const val SECOND_NOTE_MS = 250f
 private const val HOLD_MS = 400f
 private const val GLIDE_MS = 800f
 private const val FADE_OUT_MS = 300f

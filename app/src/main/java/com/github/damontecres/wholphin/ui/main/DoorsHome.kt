@@ -41,9 +41,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.BenflixIntroState
-import com.github.damontecres.wholphin.ui.DOOR_NOTE_VOLUME
 import com.github.damontecres.wholphin.ui.IntroPace
-import com.github.damontecres.wholphin.ui.IntroSounds
 import com.github.damontecres.wholphin.ui.components.HomeNewsDot
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
@@ -1273,8 +1271,8 @@ fun DoorsHomePage(
     val picks by picksViewModel.picks.collectAsState()
 
     // The start-up light-up (approved in-light), once, right after a profile is picked: the rail's door icons
-    // light up in their colours top to bottom, each on its own note (the same six notes the doors had), and the
-    // first pick blooms in on the last note
+    // light up in their colours top to bottom, one after another, and the
+    // first pick blooms in after the last one
     val lightUp = remember { BenflixIntroState.doorsPending }
     val bloom = remember { mutableFloatStateOf(if (lightUp) 0f else 1f) }
     var animating by remember { mutableStateOf(lightUp) }
@@ -1286,10 +1284,8 @@ fun DoorsHomePage(
                 .prepare()
             BenflixIntroState.doorsPending = false
             try {
-                // Everything ready before anything moves, so the notes land with the lights on every TV
-                IntroSounds.awaitReady(context)
+                // Everything ready before anything moves (no sound: Ben wants it clean and plain)
                 withTimeoutOrNull(WAIT_FOR_NEWS_MS) { picksViewModel.ready.first { it } }
-                IntroSounds.warmUp(context)
                 val pace = IntroPace.measure(context, frames = 6)
                 val f = pace.stretch
                 val stagger = DOOR_STAGGER_MS * f
@@ -1307,19 +1303,8 @@ fun DoorsHomePage(
                 val lastStart = starts.max()
                 val bloomMs = BLOOM_MS * f
                 val total = maxOf(lastStart + light, lastStart + bloomMs)
-                var played = 0
                 val intro = com.github.damontecres.wholphin.ui.nav.RailIntro
                 runIntroTimeline(total, pace) { t ->
-                    while (played < doors.size && t >= starts[played]) {
-                        if (doors[played] == BenflixDoor.MUSIC) {
-                            IntroSounds.play(context, IntroSounds.MUSIC_DOOR, MUSIC_NOTE_VOLUME)
-                        } else if (doors[played] == BenflixDoor.BOOKS) {
-                            IntroSounds.play(context, IntroSounds.BOOKS_DOOR, MUSIC_NOTE_VOLUME)
-                        } else {
-                            IntroSounds.DOORS.getOrNull(played)?.let { IntroSounds.play(context, it, DOOR_NOTE_VOLUME) }
-                        }
-                        played++
-                    }
                     doors.forEachIndexed { i, door ->
                         val p = ((t - starts[i]) / light).coerceIn(0f, 1f)
                         intro.lit[door.ordinal].floatValue = FastOutSlowInEasing.transform(p)
@@ -1529,9 +1514,6 @@ private const val DOOR_GROW_MS = 560f
  */
 private const val MUSIC_DOOR_START_MS = 4 * DOOR_STAGGER_MS
 private const val MUSIC_DOOR_GROW_MS = 640f
-
-/** The Music door's note is a little louder than the other four */
-private const val MUSIC_NOTE_VOLUME = 0.46f
 
 /** The longest Home waits for its news before the doors grow (a slow server goes on anyway) */
 private const val WAIT_FOR_NEWS_MS = 1500L

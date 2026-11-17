@@ -2,12 +2,6 @@
    profile menu. Follows the approved redesign (setup screens, intro, Home, menu). */
 "use strict";
 
-// ---------- sounds (soft mallets: two notes when Benflix opens, four as the doors grow) ----------
-B.sound = (name) => {
-  if (B.webSettings().sounds === false) return;
-  try { const a = new Audio(`web/sounds/${name}.wav`); a.volume = name === "doors" ? 0.55 : 0.45; a.play().catch(() => {}); } catch (e) {}
-};
-
 // ---------- intro: logo fades in, holds, then glides up into Who's watching ----------
 B.intro = () => new Promise((done) => {
   const lite = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -15,7 +9,6 @@ B.intro = () => new Promise((done) => {
   el.id = "intro";
   el.innerHTML = B.logo();
   document.body.appendChild(el);
-  B.sound("opening");
   requestAnimationFrame(() => el.classList.add("on"));
   setTimeout(() => {
     if (!lite) el.classList.add("glide");
