@@ -37,7 +37,9 @@ object ValentineNav {
 
     /** A heart in a 24 box (the same heart as the web's) */
     private val HEART by lazy {
-        p("M12 21.3C6.2 17.1 2.5 13.6 2.5 9.3 2.5 6.3 4.8 4 7.6 4c1.8 0 3.4.9 4.4 2.4C13 4.9 14.6 4 16.4 4c2.8 0 5.1 2.3 5.1 5.3 0 4.3-3.7 7.8-9.5 12z")
+        p(
+            "M12 21.3C6.2 17.1 2.5 13.6 2.5 9.3 2.5 6.3 4.8 4 7.6 4c1.8 0 3.4.9 4.4 2.4C13 4.9 14.6 4 16.4 4c2.8 0 5.1 2.3 5.1 5.3 0 4.3-3.7 7.8-9.5 12z",
+        )
     }
 
     /** Draws a heart [s] wide with its box's top-left at ([x], [y]) */
@@ -93,7 +95,13 @@ object ValentineNav {
             rotate(-14f, Offset(16f, 16f)) {
                 drawPath(TICKET, ROSE)
                 drawPath(TICKET, Color(0xFFFFD5DC), style = Stroke(.8f))
-                drawLine(Color(0xFFFFE3E8), Offset(21.5f, 10f), Offset(21.5f, 22f), 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.4f, 1.2f)))
+                drawLine(
+                    Color(0xFFFFE3E8),
+                    Offset(21.5f, 10f),
+                    Offset(21.5f, 22f),
+                    1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.4f, 1.2f)),
+                )
                 heart(7.2f, 10.6f, 10f, solid(Color.White))
                 for (y in listOf(13.5f, 16f, 18.5f)) drawLine(Color(0xFFFFE3E8), Offset(23.5f, y), Offset(27f, y), 1f)
             }
