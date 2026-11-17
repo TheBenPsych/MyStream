@@ -526,7 +526,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .sline.big .pic { width: 46px; height: 69px; }
   .sline.big .pic.sq { width: 60px; height: 60px; }
 }
-.askcard .im { background: var(--pg2); }
+.askcard .im { background-color: var(--pg2); }
 
 /* ---------- my watching ---------- */
 .bigweek { font-size: 72px; font-weight: 800; letter-spacing: -.02em; margin: 0; line-height: 1; }
@@ -928,6 +928,10 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .brow .tx small { font-size: 11px; } .brow .tx b { font-size: 15px; }
   .brow .th, .lgthumb { width: 46px; border-radius: 6px; }
   .lgthumb { grid-template-rows: repeat(2, 10px); }
+  /* Ben 2026-11-17 (Home news cards, phones too): the whole poster, smaller words, the fact in full */
+  .spotted .brow .th, .spotted .brow .lgthumb { width: 54px; aspect-ratio: 2 / 3; }
+  .spotted .brow .tx b { font-size: 14px; -webkit-line-clamp: 3; overflow-wrap: normal; }
+  .spotted .bitem.fact .brow .tx b { font-size: 13px; font-weight: 500; line-height: 1.3; -webkit-line-clamp: 6; }
 }
 
 /* ---------- "Can't decide?" games (Movies and Shows doors) ---------- */
@@ -1148,6 +1152,18 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .tp .tp-strip span.lf b { margin: 0 0 0 4px; }
 .tp .tp-pane .rowx { margin-top: 0; }
 .tp .tp-pane .parents, .tp .tp-pane .facts { max-width: 760px; }
+/* Overview: the whole story + strip on the left, Details on the right (stacked on narrow windows) */
+.tp .tp-pane > .tp-ov { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 520px); gap: 24px 56px; align-items: start; margin: 0 var(--gutter); }
+.tp .tp-ov .ov { max-width: none; display: block; -webkit-line-clamp: unset; overflow: visible; line-height: 1.6; }
+.tp .tp-ov .tp-ovl > .wrap0 { margin: 0; }
+.tp .tp-ovr:empty { display: none; }
+.tp .tp-ovr .rowx { margin: 0; }
+.tp .tp-ovr .rowx h3 { padding: 0; font-size: 18px; }
+.tp .tp-ovr .facts { padding: 0; max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tp .tp-ovr .facts div { padding: 10px 14px; overflow-wrap: anywhere; }
+.tp .tp-ovr > p { margin: 0; }
+.tp .tp-ovr .facts .fact-file { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .tp .tp-pane > .tp-ov { grid-template-columns: minmax(0, 1fr); } }
 .tp .tp-facts { margin: 0 var(--gutter); max-width: 900px; display: flex; flex-direction: column; gap: 12px; }
 .tp .tp-facts p { margin: 0; padding-left: 12px; border-left: 3px solid var(--door); line-height: 1.5; color: var(--ink2); }
 .tp .tp-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--pg2); }
@@ -1173,8 +1189,10 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .tp .tp-why { white-space: normal; }
   .tp .tp-tabs { gap: 22px; margin: 0 -16px; padding: 0 16px; }
   .tp .tp-tab { font-size: 16px; }
-  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-facts { margin-left: 16px; margin-right: 16px; }
+  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-facts, .tp .tp-pane > .tp-ov { margin-left: 16px; margin-right: 16px; }
   .tp .tp-pane .ov { -webkit-line-clamp: 3; }
+  .tp .tp-pane .tp-ov .ov { -webkit-line-clamp: unset; }
+  .tp .tp-ovr .facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .tp .tp-panes { padding-bottom: 90px; }
 }
 /* volume button + slider (web players): hover slides it out, touch screens tap to open */
@@ -1612,7 +1630,7 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
 
 /* ---------- Christmas look (approved 2026-11-16, 1 to 26 December, not on Kids) ----------
    Red highlights, pine green buttons and panels, white words on every door, and one decoration used one way:
-   a glass ornament hanging from a gold pin on a top edge (the doors, Play, notices and the poster you're on).
+   the rail's own Christmas icons, big glass bulbs across the top of Home and snow along the bottom (js/holidaynav.js).
    Settings › Look › Christmas look turns it off (js/start.js B.xmasOn). */
 html.xmas {
   --pg2: #0F241A; --pg3: #173A28; --pg4: #1E6B45; --line: #1F3D2C; --accent: #E0344E;
@@ -1626,29 +1644,8 @@ html.xmas .btn.ghost { background: none; }
 html.xmas .poster .prog { background: rgba(30,107,69,.85); }
 html.xmas .poster .prog i, html.xmas .kwbar .line i, html.xmas .player .bar .knob { background: var(--xred); }
 html.xmas .corner .ctime { background: var(--xred); }
-/* the ornament: ::before is the gold pin, thread and cap; ::after is the glass ball (--ob is its colour) */
-html.xmas .door, html.xmas .tp .btns .btn.white, html.xmas .corner, html.xmas .poster:focus-visible, html.xmas .poster:hover { position: relative; --ob: #E23A55; --os: 22px; --ol: 7px; --ox: 26px; }
-html.xmas .door { --ob: color-mix(in srgb, var(--c) 88%, #fff); --os: clamp(26px, 3.4vw, 46px); --ol: clamp(16px, 2vw, 34px); --ox: clamp(22px, 3vw, 44px); }
-html.xmas .tp .btns .btn.white { --ob: #2E9E5E; --os: 22px; --ol: 4px; --ox: 18px; padding-right: 52px; }
-html.xmas .corner { --os: 24px; --ol: 5px; --ox: 30px; overflow: visible; }
-html.xmas .door::before, html.xmas .tp .btns .btn.white::before, html.xmas .corner::before, html.xmas .poster:focus-visible::before, html.xmas .poster:hover::before {
-  content: ""; position: absolute; z-index: 3; pointer-events: none; top: -3px; right: calc(var(--ox) - var(--os) * .15); width: calc(var(--os) * .3); height: calc(var(--ol) + var(--os) * .32 + 3px);
-  background:
-    radial-gradient(circle at 50% 3px, var(--xgold) 0 3px, transparent 3.5px) top / 100% 7px no-repeat,
-    linear-gradient(var(--xgold), var(--xgold)) center 3px / 2px var(--ol) no-repeat,
-    linear-gradient(90deg, #9A7426, var(--xgold), #9A7426) center bottom / 100% calc(var(--os) * .32) no-repeat;
-}
-html.xmas .door::after, html.xmas .tp .btns .btn.white::after, html.xmas .corner::after, html.xmas .poster:focus-visible::after, html.xmas .poster:hover::after {
-  content: ""; position: absolute; z-index: 3; pointer-events: none; top: calc(var(--ol) + var(--os) * .3); right: calc(var(--ox) - var(--os) * .5); width: var(--os); height: var(--os); border-radius: 50%;
-  background:
-    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
-    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%);
-  box-shadow: 2px 5px 10px rgba(0,0,0,.45);
-}
-html.xmas .door::after { background:
-    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
-    linear-gradient(transparent 50%, var(--xgold) 50% 57%, transparent 57%),
-    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%); }
+/* (2026-11-17) no hanging ornaments any more: Ben said the bulb doesn't attach to every kind of button. Christmas
+   now decorates the rail icons and Home (js/holidaynav.js) and keeps the normal white focus ring. */
 .who .xroom { pointer-events: none; }
 
 /* ---------- Thanksgiving look (approved 2026-11-16, 16 to 30 November, not on Kids) ----------
@@ -2367,6 +2364,8 @@ body.nav-on .bk-side { display: none; }
 .brail::after { content: ""; position: fixed; top: 0; bottom: 0; left: var(--nopen); right: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .2s; }
 .brail:hover::after, .brail:focus-within::after, body.nav-panel .brail::after { opacity: 1; }
 .brail.always::after { display: none; }
+/* With a door's place panel open the dim starts where the panel ends, so the panel stays bright */
+body.nav-panel .brail::after { left: calc(var(--nopen) + min(300px, 100vw - var(--nopen))); }
 body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .rl-logo { display: flex; align-items: center; height: 46px; padding: 0 11px; margin-bottom: 8px; border-radius: 14px; flex: none; }
 .rl-logo .logo { font-size: 22px; }
@@ -2457,10 +2456,12 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .top:has(+ .home.spotted) { background: linear-gradient(rgba(var(--trayrgb), .55), rgba(var(--trayrgb), 0)); }
 .spot .sp-pics, .spot .sp-shade { position: absolute; left: 0; right: 0; top: 0; height: min(88vh, 60vw); z-index: -1; overflow: hidden; pointer-events: none; }
 .fam .spot .sp-pics, .fam .spot .sp-shade { height: min(72vh, 52vw); }
-.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease; animation: spzoom 20s ease-out forwards; }
+.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease;
+  /* Smooth zoom: on the graphics card, steady speed, and never snapped to whole pixels (it bounced before) */
+  will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0) scale3d(1,1,1); animation: spzoom 12s linear forwards; }
 .sp-pic.on { opacity: 1; }
 .sp-pic.on.off { opacity: 0; }
-@keyframes spzoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes spzoom { from { transform: translate3d(0,0,0) scale3d(1,1,1); } to { transform: translate3d(0,0,0) scale3d(1.06,1.06,1); } }
 .sp-shade { background: linear-gradient(90deg, rgba(var(--trayrgb), .94) 0%, rgba(var(--trayrgb), .6) 36%, rgba(var(--trayrgb), 0) 66%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb), 0) 45%); }
 .sp-info { position: relative; max-width: min(46%, 640px); margin-top: min(9vh, 7vw); min-height: 290px; }
 .spot.empty .sp-info { min-height: 0; }
@@ -2472,14 +2473,39 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .sp-dots { display: flex; gap: 8px; margin-top: 18px; }
 .sp-dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 99px; background: rgba(255,255,255,.35); cursor: pointer; transition: width .25s, background .25s; }
 .sp-dots button.on { width: 26px; background: #fff; }
-.board.spotted .bmain { display: block; height: auto; margin-top: auto; }
+.board.spotted .bmain { display: block; height: auto; margin-top: auto; position: relative; z-index: 1; }
+@media (min-width: 761px) {
+  /* Ben 2026-11-17: the news cards float only a little (they sit near the bottom, just above the holiday trim), and
+     the greeting sits top left beside the rail, on the clock's line */
+  .home.board.spotted { min-height: 100vh; padding-bottom: 36px; }
+  .board.spotted .bgreet { position: absolute; z-index: 2; top: 0; left: var(--gutter); right: 220px; height: var(--bar); margin: 0;
+    display: flex; align-items: center; gap: 16px; white-space: nowrap; overflow: hidden; }
+  .board.spotted .bgreet .greet { font-size: 30px; }
+  .board.spotted .bgreet .wx { font-size: 15px; margin-top: 0; min-height: 0; overflow: hidden; text-overflow: ellipsis; }
+  .board.spotted .bgreet .wx:empty { display: none; }
+  .board.spotted .sp-info { margin-top: calc(min(9vh, 7vw) + 96px); }
+}
 @media (min-width: 901px) {
   .spotted .bpanel { position: relative; height: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto; gap: 12px; padding: 0; background: none; }
   .spotted .bhead { position: absolute; right: 0; top: -42px; }
   .spotted .bitem, .spotted .bmore { min-height: 88px; height: calc(6.4 * var(--u)); border-radius: 14px; background: rgba(22,24,30,.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 14px 30px rgba(0,0,0,.45); }
   .spotted .bitem::before, .spotted .bmore::before { display: none; }
   .spotted .bmore { flex-direction: column; justify-content: center; gap: 6px; }
+  /* Ben 2026-11-17: the cards share the whole width, the cover art fills almost the card's height so you see all of
+     it, the words are smaller (the episode line shows which one), and Did you know shows the fact itself */
+  .spotted .bpanel { display: flex; }
+  .spotted .bitem { flex: 1 1 0; min-width: 0; }
+  .spotted .bmore { flex: 0 0 auto; padding: 0 22px; }
+  .spotted .bitem, .spotted .bmore { height: max(100px, calc(5.4 * var(--u))); }
+  .spotted .brow { height: 100%; padding: 8px; column-gap: 12px; align-items: center; }
+  .spotted .brow .th, .spotted .brow .lgthumb { width: auto; height: 100%; aspect-ratio: 2 / 3; border-radius: 8px; }
+  .spotted .brow .th { background-size: cover; }
+  .spotted .brow .tx small { font-size: 11px; }
+  .spotted .brow .tx b { font-size: clamp(13px, calc(.8 * var(--u)), 16px); line-height: 1.25; -webkit-line-clamp: 3; overflow-wrap: normal; }
+  .spotted .bitem.fact .brow .tx b { font-size: clamp(12px, calc(.7 * var(--u)), 14px); font-weight: 500; -webkit-line-clamp: 5; }
 }
+/* With music playing the cards float just above the player bar */
+@media (min-width: 761px) { body:has(.mbar:not(.hidden)) .home.board.spotted { padding-bottom: 96px; } }
 @media (max-width: 760px) {
   .home.spotted { margin-top: 0; padding-top: 6px; }
   .spot .sp-pics, .fam .spot .sp-pics { position: relative; height: auto; aspect-ratio: 16 / 10; margin: 12px calc(-1 * var(--gutter)) 0; z-index: 0; }
@@ -2503,4 +2529,8 @@ body.nav-panel .brail.holiday { -webkit-mask-image: none; mask-image: none; }
 .bt-mark { position: absolute; left: 4px; top: -10px; width: 12px; height: 18px; }
 .sp-trim { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; }
 .sp-trim.top { top: 0; height: 44px; z-index: 1; }
-.sp-trim.bottom { position: relative; display: block; height: 36px; margin-top: 12px; }
+.hol-tw { animation: holTw 2.4s ease-in-out infinite; }
+.xday .hol-tw { animation-duration: 1.1s; }
+@keyframes holTw { 0%, 100% { opacity: .9; } 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .hol-tw { animation: none; } }
+.sp-trim.bottom { top: auto; bottom: 0; height: 36px; z-index: 0; }

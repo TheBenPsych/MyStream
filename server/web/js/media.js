@@ -595,8 +595,9 @@ B.peopleRow = (it) => {
 };
 B.facts = async (it) => {
   const f = [];
-  if (it.Studios && it.Studios.length) f.push(["Studio", it.Studios.map((s) => s.Name).slice(0, 2).join(", ")]);
-  if (it.PremiereDate) f.push(["Released", B.day(it.PremiereDate)]);
+  const show = it.Type === "Series";
+  if (it.Studios && it.Studios.length) f.push([show ? "Network" : "Studio", it.Studios.map((s) => s.Name).slice(0, 2).join(", ")]);
+  if (it.PremiereDate) f.push([show ? "First aired" : "Released", B.day(it.PremiereDate)]);
   if (it.Genres && it.Genres.length) f.push(["Genres", it.Genres.join(", ")]);
   if (it.ProductionLocations && it.ProductionLocations.length) f.push(["Country", it.ProductionLocations[0]]);
   const ms = (it.MediaSources || [])[0];
@@ -607,13 +608,15 @@ B.facts = async (it) => {
     if (v) f.push(["Video", [v.Width && v.Height ? `${v.Width}×${v.Height}` : "", (v.Codec || "").toUpperCase(), v.VideoRangeType && v.VideoRangeType !== "SDR" ? v.VideoRangeType : ""].filter(Boolean).join(" · ")]);
   }
   if (!f.length) return "";
-  return `<section class="rowx"><h3>Details</h3><div class="facts">${f.map(([k, v]) => `<div><b>${esc(k)}</b>${esc(v)}</div>`).join("")}</div></section>`;
+  return `<section class="rowx"><h3>Details</h3><div class="facts">${f.map(([k, v]) => `<div${k === "File" ? ` class="fact-file"` : ""}><b>${esc(k)}</b>${esc(v)}</div>`).join("")}</div></section>`;
 };
 B.audioLine = (it) => {
   const ms = (it.MediaSources || [])[0];
   const a = ms && (ms.MediaStreams || []).filter((s) => s.Type === "Audio");
   if (!a || !a.length) return "";
-  return [...new Set(a.map((s) => s.Language ? (s.DisplayLanguage || s.Language) : ""))].filter(Boolean).slice(0, 4).join(", ") || (a[0].DisplayTitle || "");
+  // "und" (and "mis", "zxx", "mul") mean the file never said which language, so they are left out
+  const unknown = (c) => !c || ["und", "undefined", "unk", "mis", "zxx", "mul", "qaa"].includes(String(c).toLowerCase());
+  return [...new Set(a.map((s) => (unknown(s.Language) ? "" : s.DisplayLanguage || langName(s.Language))))].filter((x) => x && !unknown(x)).slice(0, 4).join(", ");
 };
 const langName = (code) => { try { return new Intl.DisplayNames(["en"], { type: "language" }).of(code); } catch (e) { return code; } };
 B.langName = langName;

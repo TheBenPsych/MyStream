@@ -402,6 +402,12 @@ object NewYearNav {
         return ((x xor (x ushr 16)) and 0xFFFF) / 65535f
     }
 
+    /**
+     * How far the fringe hangs, in dp: short enough to stay above the greeting, which now sits on the clock's line
+     * at the top left (Ben 2026-11-17, after Thanksgiving's garland crowded it)
+     */
+    private const val FRINGE = 16f
+
     /** Gold and silver foil fringe hanging across the top of Home, shimmering and swaying a little */
     val topTrim: HolidayArt = { t ->
         val d = density
@@ -414,7 +420,7 @@ object NewYearNav {
         drawRect(Gold, Offset.Zero, Size(size.width, 3f * d))
         for (i in 0..n) {
             val x = i * step + hash(i, 1) * d
-            val len = size.height * (.6f + .4f * hash(i, 2)) * (1f + flash * .15f)
+            val len = min(size.height, FRINGE * d) * (.6f + .4f * hash(i, 2)) * (1f + flash * .15f)
             val sway = sin(t * 1.3f + i * .37f) * 1.4f * d
             val col = colors[(hash(i, 3) * colors.size).toInt().coerceAtMost(colors.size - 1)]
             val shimmer = .78f + .22f * sin(t * 2.1f + i * .55f)
@@ -428,7 +434,21 @@ object NewYearNav {
                 }
             drawPath(p, col, alpha = (shimmer + flash * .2f).coerceAtMost(1f))
         }
-        if (flash > 0f) drawRect(Brush.verticalGradient(listOf(GoldLight.copy(alpha = .35f * flash), Color.Transparent)), size = size)
+        if (flash >
+            0f
+        ) {
+            drawRect(
+                Brush.verticalGradient(listOf(GoldLight.copy(alpha = .35f * flash), Color.Transparent)),
+                size =
+                    Size(
+                        size.width,
+                        min(
+                            size.height,
+                            FRINGE * d * 1.4f,
+                        ),
+                    ),
+            )
+        }
     }
 
     /** Confetti settled along the bottom of Home; at midnight fresh confetti falls into it */
