@@ -58,7 +58,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
+import com.github.damontecres.wholphin.ui.theme.HwKindMark
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -242,15 +246,22 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            fontWeight = if (TgLook.on || HwLook.on) FontWeight.Normal else FontWeight.ExtraBold,
             // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontFamily = if (TgLook.on || HwLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (weather != null) {
+        // Halloween look: the countdown ("14 days to Halloween") leads the line under the greeting
+        val line =
+            if (HwLook.on) {
+                listOfNotNull(HalloweenSeason.homeLine(), weather).joinToString(" · ").ifBlank { null }
+            } else {
+                weather
+            }
+        if (line != null) {
             Text(
-                text = weather,
+                text = line,
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
@@ -349,6 +360,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .hwDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -658,16 +670,20 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = row.kind.uppercase(),
-                    color = row.kindColor,
-                    fontSize = words.kind,
-                    lineHeight = words.kind * 1.3f,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = words.kind * 0.06f,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Halloween look: each kind of notice gets its own mark (moon, sweet, spider, cauldron)
+                    if (HwLook.on) HwKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
+                    Text(
+                        text = row.kind.uppercase(),
+                        color = row.kindColor,
+                        fontSize = words.kind,
+                        lineHeight = words.kind * 1.3f,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = words.kind * 0.06f,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 val slide = focused && !look.lite
                 Text(
                     text = row.title,

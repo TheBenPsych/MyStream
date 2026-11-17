@@ -55,7 +55,9 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -309,12 +311,23 @@ fun BannerCard(
                     modifier =
                         Modifier
                             .align(Alignment.BottomStart)
-                            .background(if (TgLook.on) TgLook.Orange else BenflixRed)
+                            .background(if (TgLook.on) TgLook.Orange else if (HwLook.on) HwLook.Orange else BenflixRed)
                             .clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
                 // Thanksgiving look: a gold maple leaf rides the end of the progress line
+                // Halloween look: a little ghost bobs on the end of the progress line
+                if (HwLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .hwProgressGhost((playPercent / 100).toFloat(), ghost = 22.dp),
+                    )
+                }
                 if (TgLook.on) {
                     Box(
                         modifier =

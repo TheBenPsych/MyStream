@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
@@ -167,10 +168,24 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
+                // Halloween (1 to 31 Oct, unless switched off): the spooky room. The pumpkins get carved as October
+                // goes on, and at 5 PM on the 31st the bats come out, so the clock is checked now and then
+                val halloween = !christmas && !feast && HalloweenSeason.on()
+                var hwNow by remember { mutableStateOf(java.time.LocalDateTime.now()) }
+                if (halloween) {
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            kotlinx.coroutines.delay(30_000L)
+                            hwNow = java.time.LocalDateTime.now()
+                        }
+                    }
+                }
                 if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
+                } else if (halloween) {
+                    HalloweenRoom(stage = HalloweenSeason.stage(hwNow), modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -214,6 +229,27 @@ fun SwitchUserContent(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFF2D27E),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (halloween) {
+                        // "Happy Halloween" with the countdown under it; "Happy Halloween!" on Halloween night
+                        Text(
+                            text = HalloweenSeason.whoGreeting(hwNow),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        HalloweenSeason.countdown(hwNow)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD6C8DA),
                                 textAlign = TextAlign.Center,
                                 style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
                                 modifier = Modifier.padding(top = 6.dp),

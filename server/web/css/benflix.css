@@ -1659,3 +1659,65 @@ html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: 
 /* notices are pinned with a brass tack */
 html.tg .corner { overflow: visible; }
 html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }
+
+/* ---------- Halloween look (approved 2026-11-17, 1 to 31 October) ----------
+   Glowing pumpkin orange for selected things (dark words on it), deep witch purple for other buttons and panels,
+   white words on every door, and a different spooky charm on each door, hung the way it really would be
+   (jack-o'-lantern, bat, spider, witch's hat, ghost, skeleton key). Small touches, each for one kind of thing:
+   Play flickers like candlelight, a ghost bobs on the end of progress, a tiny pumpkin on switches that are on,
+   a bat flying round the loading ring, and a mark for each kind of Home notice.
+   Kids (html.hwkids) keeps Sky and Sunshine and only gets the friendly charms.
+   Settings › Look › Halloween look turns it off (js/start.js B.hwOn). */
+html.hw {
+  --pg2: #170F24; --pg3: #20162F; --pg4: #4A2A78; --line: #30204A; --accent: #F07A1E;
+  --horange: #F07A1E; --hpurple: #4A2A78; --hon: #1C0E04;
+}
+html.hw .door { color: #fff; }
+html.hw .door > svg.i, html.hw .door .n, html.hw .door .d, html.hwkids .door > svg.i, html.hwkids .door .n, html.hwkids .door .d { position: relative; z-index: 2; }
+html.hw .door > svg.i, html.hw .door .n, html.hw .door .d { text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+/* the charm: the same box on every door (x 100 to 248, y -8 to 172 of a 240 x 220 door) */
+html.hw .door::after, html.hwkids .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -3.3%; top: -3.6%; width: 61.7%; max-width: 190px; aspect-ratio: 148 / 180; background: right top / contain no-repeat; }
+html.hw .door[data-door="movies"]::after { background-image: url("../img/hw/hw_charm_movies.png"); }
+html.hw .door[data-door="shows"]::after { background-image: url("../img/hw/hw_charm_shows.png"); }
+html.hw .door[data-door="live"]::after { background-image: url("../img/hw/hw_charm_live.png"); }
+html.hw .door[data-door="games"]::after { background-image: url("../img/hw/hw_charm_games.png"); }
+html.hw .door[data-door="music"]::after { background-image: url("../img/hw/hw_charm_music.png"); }
+html.hw .door[data-door="books"]::after { background-image: url("../img/hw/hw_charm_books.png"); }
+html.hwkids .door[data-door="movies"]::after { background-image: url("../img/hw/hw_kids_movies.png"); }
+html.hwkids .door[data-door="shows"]::after { background-image: url("../img/hw/hw_kids_shows.png"); }
+html.hwkids .door[data-door="live"]::after { background-image: url("../img/hw/hw_kids_live.png"); }
+html.hwkids .door[data-door="games"]::after { background-image: url("../img/hw/hw_kids_games.png"); }
+html.hwkids .door[data-door="music"]::after { background-image: url("../img/hw/hw_kids_music.png"); }
+html.hwkids .door[data-door="books"]::after { background-image: url("../img/hw/hw_kids_books.png"); }
+html.hw .door, html.hwkids .door { position: relative; overflow: visible; }
+html.hw .greet.hwh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.hw .btn.white, html.hw .btn.red, html.hw .chip.on { background: var(--horange); border-color: var(--horange); color: var(--hon); }
+html.hw .btn.white svg, html.hw .btn.red svg { color: var(--hon); }
+html.hw .btn.white:hover, html.hw .btn.red:hover { background: #F68A34; color: var(--hon); }
+html.hw .btn { background: var(--hpurple); }
+html.hw .btn.ghost { background: none; }
+html.hw .poster .prog { background: rgba(74,42,120,.85); }
+html.hw .poster .prog i, html.hw .kwbar .line i, html.hw .player .bar .knob { background: var(--horange); }
+html.hw .corner .ctime { background: var(--horange); }
+/* Play glows and flickers like a candle inside a jack-o'-lantern */
+@keyframes hwflicker { 0% { box-shadow: 0 0 18px 4px rgba(255,176,74,.35); } 16% { box-shadow: 0 0 28px 8px rgba(255,176,74,.7); } 32% { box-shadow: 0 0 20px 5px rgba(255,176,74,.45); } 50% { box-shadow: 0 0 30px 9px rgba(255,176,74,.8); } 66% { box-shadow: 0 0 19px 4px rgba(255,176,74,.4); } 83% { box-shadow: 0 0 24px 6px rgba(255,176,74,.6); } 100% { box-shadow: 0 0 18px 4px rgba(255,176,74,.35); } }
+html.hw .tp .btns .btn.white { animation: hwflicker 2.2s infinite; }
+/* a little ghost bobbing on the end of the progress line */
+@keyframes hwbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+html.hw .kwbar .line { overflow: visible; background: var(--hpurple); }
+html.hw .kwbar .line i { position: relative; border-radius: 2px; }
+html.hw .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -22px; width: 24px; height: 27px; background: url("../img/hw/hw_ghost.png") center / contain no-repeat; animation: hwbob 2.4s ease-in-out infinite; }
+/* a tiny pumpkin on switches that are on */
+html.hw .setrow button.valbtn.on { background: var(--hpurple); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+html.hw .setrow button.valbtn.on::before { content: ""; width: 22px; height: 20px; background: url("../img/hw/hw_knob.png") center / contain no-repeat; }
+/* loading: a bat flying round a pumpkin orange ring on witch purple */
+html.hw .spin { position: relative; border: 0; animation: none; width: 52px; height: 52px; }
+html.hw .spin::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 5px solid var(--hpurple); border-top-color: var(--horange); animation: spin 2.4s linear infinite; }
+html.hw .spin::after { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; background: url("../img/hw/hw_bat.png") center top / 34px auto no-repeat; animation: spin 2.4s linear infinite; transform-origin: 50% 50%; }
+/* each kind of Home notice gets its own mark (moon, sweet, spider, cauldron) */
+html.hw .brow small[data-hw]::before { content: ""; display: inline-block; vertical-align: middle; width: 1.8em; height: 1.8em; margin: -.4em .4em -.3em 0; background: center / contain no-repeat; }
+html.hw .brow small[data-hw="moon"]::before { background-image: url("../img/hw/hw_mark_moon.png"); }
+html.hw .brow small[data-hw="sweet"]::before { background-image: url("../img/hw/hw_mark_sweet.png"); }
+html.hw .brow small[data-hw="spider"]::before { background-image: url("../img/hw/hw_mark_spider.png"); }
+html.hw .brow small[data-hw="cauldron"]::before { background-image: url("../img/hw/hw_mark_cauldron.png"); }
+html.hw .corner { overflow: visible; }

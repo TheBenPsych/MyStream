@@ -75,6 +75,9 @@
     <string name="benflix_christmas_look">Christmas look</string>
     <string name="benflix_christmas_look_on">In December, until New Year\'s: the Christmas room on Who\'s watching, with the tree, the train and the parade past the window</string>
     <string name="benflix_christmas_look_off">Off this year</string>
+    <string name="benflix_halloween_look">Halloween look</string>
+    <string name="benflix_halloween_look_on">1 to 31 October: the spooky room on Who\'s watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours</string>
+    <string name="benflix_halloween_look_off">Off this year</string>
     <string name="benflix_thanksgiving_look">Thanksgiving look</string>
     <string name="benflix_thanksgiving_look_on">16 to 30 November: the feast table on Who\'s watching, harvest charms on the doors, and pumpkin orange and harvest brown colours</string>
     <string name="benflix_thanksgiving_look_off">Off this year</string>

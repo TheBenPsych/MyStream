@@ -172,9 +172,27 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
+        ): List<BaseItem> = holidayRow(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+
+        /**
+         * Halloween favourites (Halloween look, 1 to 31 Oct): the hand-picked Halloween films, titles with
+         * "Halloween" in the name and titles tagged Halloween, of this kind. On Kids the server's own age limits
+         * keep it to the cosy-spooky ones.
+         */
+        suspend fun halloween(
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
+        ): List<BaseItem> = holidayRow(com.github.damontecres.wholphin.ui.main.HomeTheme.HALLOWEEN, userId, type, limit)
+
+        /** A holiday's favourites row: its hand-picked titles, name words and tags */
+        private suspend fun holidayRow(
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int,
         ): List<BaseItem> =
             coroutineScope {
-                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
 
                 fun search(term: String) =
                     GetItemsRequest(

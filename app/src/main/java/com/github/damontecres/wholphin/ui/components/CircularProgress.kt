@@ -37,6 +37,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Halloween look: a bat flies round a pumpkin orange ring on witch purple
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        com.github.damontecres.wholphin.ui.theme.HwLoadingBat(modifier)
+        return
+    }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(

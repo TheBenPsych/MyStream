@@ -51,6 +51,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.HwKindMark
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -228,6 +230,8 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // Halloween look: the notice's own mark (a moon, a sweet, a spider or a cauldron)
+            if (HwLook.on) HwKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

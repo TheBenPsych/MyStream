@@ -59,7 +59,7 @@ const GROUPS = [
   { id: "behind", label: "Behind the scenes", icon: "key", line: "Main profile only", adminOnly: true },
 ];
 const setRow = (t, s, control, id) => `<div class="setrow" ${id ? `id="${id}"` : ""}><div class="grow"><div class="t">${esc(t)}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>${control}</div>`;
-const valBtn = (key, label) => `<button class="valbtn" data-pick="${esc(key)}">${esc(label)}</button>`;
+const valBtn = (key, label) => `<button class="valbtn${label === "On" ? " on" : ""}" data-pick="${esc(key)}">${esc(label)}</button>`;
 B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   const groups = GROUPS.filter((g) => !g.adminOnly || B.me.admin);
@@ -168,11 +168,13 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("Halloween look", "From 1 to 31 October: the spooky room on Who's watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours.", valBtn("hw", B.hwOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
@@ -217,6 +219,11 @@ B.kidsLook = () => {
   root.classList.toggle("xmas", !!(B.me && !kids && B.xmasOn && B.xmasOn()));
   // Thanksgiving look (16 to 30 November, unless switched off): pumpkin orange, harvest brown and the harvest charms
   root.classList.toggle("tg", !!(B.me && !kids && B.tgOn && B.tgOn()));
+  // Halloween look (1 to 31 October, unless switched off): pumpkin orange, witch purple and the spooky charms;
+  // Kids keeps Sky and Sunshine and gets the friendly charms
+  const hw = !!(B.me && B.hwOn && B.hwOn());
+  root.classList.toggle("hw", hw && !kids);
+  root.classList.toggle("hwkids", hw && kids);
 };
 setInterval(() => B.kidsLook(), 60000);
 

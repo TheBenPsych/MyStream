@@ -327,6 +327,9 @@ class DoorViewModel
                 }.let { rows ->
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Halloween (1 to 31 Oct, Kids too): Halloween favourites right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.HwLook.charmsOn) listOf(rows.first(), HALLOWEEN) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -360,6 +363,13 @@ class DoorViewModel
                         val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (HALLOWEEN in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.halloween(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(HALLOWEEN, "Halloween favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 launch {
@@ -576,6 +586,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val HALLOWEEN = "halloween"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

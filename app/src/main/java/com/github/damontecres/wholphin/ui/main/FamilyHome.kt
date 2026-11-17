@@ -54,7 +54,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
@@ -203,15 +205,16 @@ fun FamilyHome(
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
                 // Thanksgiving look (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on) HolidayFont else null,
+                fontWeight = if (TgLook.on || HwLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || HwLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (kind == FamilyKind.KIDS) {
                 // Ben: Kids profiles are shared by every kid on the TV, so no names, just a friendly question
                 Text(
-                    text = "What do you want to watch?",
+                    // Halloween on Kids: "Happy Halloween! What do you want to watch?"
+                    text = if (HwLook.charmsOn) "Happy Halloween! What do you want to watch?" else "What do you want to watch?",
                     color = BenflixColors.Soft,
                     fontSize = BenflixType.lead,
                     fontWeight = FontWeight.SemiBold,
@@ -431,6 +434,8 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
+                // Halloween: a charm on every door, the friendly ones on Kids
+                .hwDoorCharm(door, kids)
                 .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
                 .padding(if (small) 14.dp else 22.dp),
         ) {

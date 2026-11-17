@@ -1148,6 +1148,10 @@ fun greetingFor(
     now: LocalTime = LocalTime.now(),
 ): String {
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
+    // Halloween look (1 to 31 Oct): "Happy Halloween, Ben" all month, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.HalloweenSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
