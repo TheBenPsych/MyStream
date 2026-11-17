@@ -56,10 +56,12 @@ import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
+import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -208,9 +210,17 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving, Halloween, Valentine's and New Year's looks (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || HwLook.on || NyLook.on || ValLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || HwLook.on || NyLook.on || ValLook.on) HolidayFont else null,
+                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
+                // Popcorn Day look (Kids too): the curly holiday font as well
+                fontWeight =
+                    if (TgLook.on || HwLook.on || NyLook.on || ValLook.on ||
+                        PcLook.on
+                    ) {
+                        FontWeight.Normal
+                    } else {
+                        FontWeight.ExtraBold
+                    },
+                fontFamily = if (TgLook.on || HwLook.on || NyLook.on || ValLook.on || PcLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -441,14 +451,16 @@ private fun FamilyDoor(
                 // Halloween: a charm on every door, the friendly ones on Kids
                 .hwDoorCharm(door, kids)
                 .then(
+                    // Popcorn Day look: a movie snack stands on every door, Kids too
                     if (kids) {
-                        Modifier.nyDoorCharm(door)
+                        Modifier.nyDoorCharm(door).pcDoorSnack(door)
                     } else {
                         Modifier
                             .xmasDoorOrnament(door)
                             .tgDoorCharm(door)
                             .valDoorCharm(door)
                             .nyDoorCharm(door)
+                            .pcDoorSnack(door)
                     },
                 ).padding(if (small) 14.dp else 22.dp),
         ) {

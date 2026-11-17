@@ -172,7 +172,7 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
-        ): List<BaseItem> = holidayRow(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
 
         /**
          * Halloween favourites (Halloween look, 1 to 31 Oct): the hand-picked Halloween films, titles with
@@ -183,14 +183,17 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
-        ): List<BaseItem> = holidayRow(com.github.damontecres.wholphin.ui.main.HomeTheme.HALLOWEEN, userId, type, limit)
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.HALLOWEEN, userId, type, limit)
 
-        /** A holiday's favourites row: its hand-picked titles, name words and tags */
-        private suspend fun holidayRow(
+        /**
+         * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
+         * titles with its tags (Christmas favourites, Popcorn movies).
+         */
+        suspend fun themed(
             theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
             userId: UUID,
             type: BaseItemKind,
-            limit: Int,
+            limit: Int = ROW,
         ): List<BaseItem> =
             coroutineScope {
                 fun search(term: String) =

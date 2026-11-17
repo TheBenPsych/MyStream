@@ -334,6 +334,9 @@ class DoorViewModel
                 }.let { rows ->
                     // Valentine's look (1 to 14 Feb): Date night right after Keep watching
                     if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers, right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) listOf(rows.first(), POPCORN) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -600,6 +603,7 @@ class DoorViewModel
             const val CHRISTMAS = "christmas"
             const val HALLOWEEN = "halloween"
             const val DATE_NIGHT = "datenight"
+            const val POPCORN = "popcorn"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"
