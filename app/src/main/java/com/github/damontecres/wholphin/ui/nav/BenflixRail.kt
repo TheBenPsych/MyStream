@@ -83,6 +83,11 @@ import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.HolidayArtBox
+import com.github.damontecres.wholphin.ui.theme.HolidayIconKey
+import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
+import com.github.damontecres.wholphin.ui.theme.HolidayOrUsualIcon
+import com.github.damontecres.wholphin.ui.theme.holidayKey
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
@@ -238,6 +243,8 @@ fun BenflixRail(
             else -> null
         }
     val panels by viewModel.panels.collectAsState()
+    // Holiday marks: the rail takes the holiday's colours (Christmas: deep pine green)
+    val holiday = remember { HolidayNavKit.current() }
 
     fun focusCurrent() {
         val target =
@@ -341,6 +348,19 @@ fun BenflixRail(
                             1f to BenflixColors.Tray.copy(alpha = 0f),
                         )
                     },
+                ).then(
+                    if (holiday != null) {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    holiday.railTop.copy(alpha = if (open) 1f else .9f),
+                                    holiday.railBottom.copy(alpha = if (open) 1f else .9f),
+                                ),
+                            ),
+                        )
+                    } else {
+                        Modifier
+                    },
                 ),
         ) {
             // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
@@ -397,6 +417,7 @@ fun BenflixRail(
                 RailButton(
                     icon = BenflixIcon.HOME,
                     label = "Home",
+                    holidayKey = HolidayIconKey.HOME,
                     open = open,
                     scale = scale,
                     on = currentSpot == Spot.HOME,
@@ -413,6 +434,7 @@ fun BenflixRail(
                     RailButton(
                         icon = BenflixIcon.SEARCH,
                         label = "Search",
+                        holidayKey = HolidayIconKey.SEARCH,
                         open = open,
                         scale = scale,
                         on = currentSpot == Spot.SEARCH,
@@ -449,6 +471,7 @@ fun BenflixRail(
                     RailButton(
                         icon = BenflixIcon.REQUESTS,
                         label = "Requests",
+                        holidayKey = HolidayIconKey.REQUESTS,
                         open = open,
                         scale = scale,
                         on = currentSpot == Spot.REQUESTS,
@@ -558,9 +581,12 @@ private fun RailButton(
     count: Int = 0,
     chevron: Boolean = false,
     highlighted: Boolean = false,
+    /** The icon's name in a holiday's own icon set ([HolidayNav.icons]) */
+    holidayKey: String? = door?.holidayKey,
 ) {
     val shape = RoundedCornerShape(12.dp * scale)
     var focused by remember { mutableStateOf(false) }
+    val holiday = remember { HolidayNavKit.current() }
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -589,7 +615,18 @@ private fun RailButton(
             modifier = Modifier.fillMaxSize().padding(start = 11.dp * scale, end = 10.dp * scale),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
-                RailIcon(icon = icon, door = door, on = on, onColor = onColor, focused = focused, scale = scale)
+                RailIcon(icon = icon, door = door, on = on, onColor = onColor, focused = focused, scale = scale, holidayKey = holidayKey)
+                // Holiday marks: the holiday's optional decoration hangs beside the icon you're on, moving with you
+                val mark = holiday?.mark
+                if (on && mark != null) {
+                    HolidayArtBox(
+                        mark,
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = (-9).dp * scale, y = (-8).dp * scale)
+                            .size(12.dp * scale, 18.dp * scale),
+                    )
+                }
                 if (count > 0 && !open) {
                     CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
                 }
@@ -627,6 +664,7 @@ private fun RailIcon(
     onColor: Color,
     focused: Boolean,
     scale: Float,
+    holidayKey: String? = null,
 ) {
     val usual =
         when {
@@ -636,10 +674,18 @@ private fun RailIcon(
         }
     val size = ICON * scale
     if (door == null || !RailIntro.waiting) {
-        BenflixIconImage(icon, color = if (RailIntro.waiting) BenflixColors.Muted else usual, size = size, contentDescription = null)
+        HolidayOrUsualIcon(
+            icon,
+            key = holidayKey,
+            color = if (RailIntro.waiting) BenflixColors.Muted else usual,
+            size = size,
+        )
         return
     }
     val i = door.ordinal
+    // Holiday marks: while a holiday is on the icons light up in its colours
+    val holiday = remember { HolidayNavKit.current() }
+    val light = holiday?.light(i) ?: door.color
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
         // The glow as its note plays
         Box(
@@ -647,28 +693,31 @@ private fun RailIcon(
                 .size(size * 1.9f)
                 .graphicsLayer { alpha = RailIntro.glow[i].floatValue }
                 .background(
-                    Brush.radialGradient(listOf(door.color.copy(alpha = .55f), Color.Transparent)),
+                    Brush.radialGradient(listOf(light.copy(alpha = .55f), Color.Transparent)),
                     CircleShape,
                 ),
         )
         // Grey until it lights up
-        BenflixIconImage(
+        HolidayOrUsualIcon(
             icon,
+            key = holidayKey,
             color = BenflixColors.Muted.copy(alpha = .55f),
             size = size,
             modifier = Modifier.graphicsLayer { alpha = 1f - RailIntro.lit[i].floatValue },
         )
         // Back to the usual look as the light-up settles
-        BenflixIconImage(
+        HolidayOrUsualIcon(
             icon,
+            key = holidayKey,
             color = usual,
             size = size,
             modifier = Modifier.graphicsLayer { alpha = RailIntro.lit[i].floatValue * (1f - RailIntro.settle.floatValue) },
         )
-        // Lit, in the door's colour
-        BenflixIconImage(
+        // Lit, in the door's colour (or the holiday's)
+        HolidayOrUsualIcon(
             icon,
-            color = door.color,
+            key = holidayKey,
+            color = light,
             size = size,
             modifier = Modifier.graphicsLayer { alpha = RailIntro.lit[i].floatValue * RailIntro.settle.floatValue },
         )

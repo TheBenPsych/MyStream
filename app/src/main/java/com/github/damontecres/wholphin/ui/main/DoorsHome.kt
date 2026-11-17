@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -1404,7 +1405,24 @@ fun DoorsHomePage(
         )
     }
     val family = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
-    val cards =
+    // Holiday marks (approved hq-count A): the first Today card counts down to the day
+    val countdownCard =
+        remember {
+            HolidayNavKit.current()?.let { holiday ->
+                holiday.countdown()?.let { line ->
+                    TodayCard(
+                        id = "holiday-${holiday.key}",
+                        kind = holiday.countdownKind,
+                        kindColor = holiday.accent,
+                        title = line,
+                        image = null,
+                        square = true,
+                        onClick = {},
+                    )
+                }
+            }
+        }
+    val todayCards =
         if (family) {
             // Kids and Guest: titles to keep watching (or popular here) instead of news
             val data = if (familyData.key.endsWith("-" + familyKind?.name)) familyData else FamilyHomeData()
@@ -1437,7 +1455,8 @@ fun DoorsHomePage(
                 )
             }
         }
-    val moreNews = !family && rows.all.size > cards.size
+    val cards = listOfNotNull(countdownCard).plus(todayCards).take(TODAY_CARDS)
+    val moreNews = !family && rows.all.size > todayCards.size
     Box(
         modifier =
             modifier
