@@ -24,7 +24,8 @@ object BenflixColors {
 
     /** Pills, chips and small raised things */
     val Raised: Color get() =
-        ny(NyLook.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised) ?: sw(SwLook.Raised) ?: vl(ValLook.Raised)
+        ny(NyLook.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised) ?: sw(SwLook.Raised)
+            ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
@@ -34,7 +35,8 @@ object BenflixColors {
 
     /** The lighter side of a panel (profile card picture side) */
     val PanelHigh: Color get() =
-        ny(NyLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh) ?: sw(SwLook.PanelHigh) ?: vl(ValLook.PanelHigh)
+        ny(NyLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh) ?: sw(SwLook.PanelHigh)
+            ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
@@ -57,7 +59,8 @@ object BenflixColors {
 
     /** The focused row in a list or menu */
     val FocusRow: Color get() =
-        ny(NyLook.Midnight) ?: KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown) ?: sw(SwLook.Button) ?: vl(ValLook.Wine)
+        ny(NyLook.Midnight) ?: KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown) ?: sw(SwLook.Button)
+            ?: vl(ValLook.Wine)
             ?: Color(0xFF262932)
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
