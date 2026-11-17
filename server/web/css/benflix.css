@@ -1152,6 +1152,18 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .tp .tp-strip span.lf b { margin: 0 0 0 4px; }
 .tp .tp-pane .rowx { margin-top: 0; }
 .tp .tp-pane .parents, .tp .tp-pane .facts { max-width: 760px; }
+/* Overview: the whole story + strip on the left, Details on the right (stacked on narrow windows) */
+.tp .tp-pane > .tp-ov { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 520px); gap: 24px 56px; align-items: start; margin: 0 var(--gutter); }
+.tp .tp-ov .ov { max-width: none; display: block; -webkit-line-clamp: unset; overflow: visible; line-height: 1.6; }
+.tp .tp-ov .tp-ovl > .wrap0 { margin: 0; }
+.tp .tp-ovr:empty { display: none; }
+.tp .tp-ovr .rowx { margin: 0; }
+.tp .tp-ovr .rowx h3 { padding: 0; font-size: 18px; }
+.tp .tp-ovr .facts { padding: 0; max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tp .tp-ovr .facts div { padding: 10px 14px; overflow-wrap: anywhere; }
+.tp .tp-ovr > p { margin: 0; }
+.tp .tp-ovr .facts .fact-file { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .tp .tp-pane > .tp-ov { grid-template-columns: minmax(0, 1fr); } }
 .tp .tp-facts { margin: 0 var(--gutter); max-width: 900px; display: flex; flex-direction: column; gap: 12px; }
 .tp .tp-facts p { margin: 0; padding-left: 12px; border-left: 3px solid var(--door); line-height: 1.5; color: var(--ink2); }
 .tp .tp-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--pg2); }
@@ -1177,8 +1189,10 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .tp .tp-why { white-space: normal; }
   .tp .tp-tabs { gap: 22px; margin: 0 -16px; padding: 0 16px; }
   .tp .tp-tab { font-size: 16px; }
-  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-facts { margin-left: 16px; margin-right: 16px; }
+  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-facts, .tp .tp-pane > .tp-ov { margin-left: 16px; margin-right: 16px; }
   .tp .tp-pane .ov { -webkit-line-clamp: 3; }
+  .tp .tp-pane .tp-ov .ov { -webkit-line-clamp: unset; }
+  .tp .tp-ovr .facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .tp .tp-panes { padding-bottom: 90px; }
 }
 /* volume button + slider (web players): hover slides it out, touch screens tap to open */
