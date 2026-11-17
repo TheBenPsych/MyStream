@@ -76,8 +76,14 @@ object Friday13 {
                 newEpisodes.takeIf { it > 0 }?.let { if (it == 1) "1 new episode" else "$it new episodes" },
                 ready.takeIf { it > 0 }?.let { if (it == 1) "1 request ready" else "$it requests ready" },
             )
-        return if (parts.isEmpty()) "Lucky you: the couch is a black-cat-free zone" else "Lucky you: " + parts.joinToString(" and ")
+        val line = if (parts.isEmpty()) "Lucky you: the couch is a black-cat-free zone" else "Lucky you: " + parts.joinToString(" and ")
+        lastLucky = line.removePrefix("Lucky you: ").replaceFirstChar { it.uppercase() }
+        return line
     }
+
+    /** The last lucky line Home worked out (without "Lucky you: "), for the first Today card (HolidayNav.kt) */
+    @Volatile
+    var lastLucky: String? = null
 
     /**
      * The spooky but fun picks at the top of Movies (Ben: only films already on Benflix, and only if at least 4 fit).
@@ -147,11 +153,11 @@ object F13Look {
 
     val Green = Color(0xFFA6E36A)
     val OnGreen = Color(0xFF0F1A06)
-    val Black = Color(0xFF2A332C)
-    val Panel = Color(0xFF121613)
-    val PanelHigh = Color(0xFF19201A)
-    val Raised = Color(0xFF181E19)
-    val Line = Color(0xFF28322A)
+    val Black = Color(0xFF2B2440)
+    val Panel = Color(0xFF15111F)
+    val PanelHigh = Color(0xFF1C1729)
+    val Raised = Color(0xFF1A1526)
+    val Line = Color(0xFF2E2840)
 }
 
 /** The charm that hangs on each door */

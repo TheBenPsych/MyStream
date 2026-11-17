@@ -1700,11 +1700,11 @@ html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-e
    full moon on the end of progress, a loading clock with 13 hours, and a four-leaf clover pinning notices.
    That day it replaces Sky and Sunshine on Kids (html.kids.f13) and any season look (js/start.js B.f13On). */
 html.f13, html.kids.f13, html.kids.night.f13 {
-  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #121613; --pg3: #19201A; --pg4: #2A332C; --line: #28322A;
+  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #15111F; --pg3: #1C1729; --pg4: #2B2440; --line: #2E2840;
   --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0F1A06;
   --movies: #FFB547; --shows: #7AA7FF; --games: #FF6F91; --ask: #A6E36A;
   --kacc: #A6E36A; --kon: #0F1A06; --kshowsink: #fff;
-  --accent: #A6E36A; --fgreen: #A6E36A; --fblack: #2A332C;
+  --accent: #A6E36A; --fgreen: #A6E36A; --fblack: #2B2440;
 }
 html.f13 .door, html.kids.f13 .door[data-door="shows"] { color: #fff; }
 html.f13 .door > svg.i, html.f13 .door .n, html.f13 .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
@@ -1722,7 +1722,7 @@ html.f13 .btn.white, html.f13 .btn.red, html.f13 .chip.on, html.f13 .circle.whit
 html.f13 .btn.white:hover, html.f13 .btn.red:hover { background: #B8EC84; color: #0F1A06; }
 html.f13 .btn { background: var(--fblack); }
 html.f13 .btn.ghost { background: none; }
-html.f13 .poster .prog { background: rgba(42,51,44,.9); }
+html.f13 .poster .prog { background: rgba(43,36,64,.9); }
 html.f13 .poster .prog i, html.f13 .kwbar .line i, html.f13 .player .bar .knob, html.f13 .player .bar .segs i b { background: var(--fgreen); }
 html.f13 .corner .ctime { background: var(--fgreen); }
 html.f13 :focus-visible { outline-color: #fff; }
