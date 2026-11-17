@@ -58,7 +58,10 @@ object StPatricksSeason {
     fun variant(date: LocalDate = LocalDate.now()): String = if (date.month == Month.MARCH && date.dayOfMonth == 17) "day" else "week"
 
     /** Who's watching's big words: "Who's watching?" all week, "Happy St. Patrick's Day!" on the day */
-    fun whoGreeting(date: LocalDate = LocalDate.now()): String = if (variant(date) == "day") "Happy St. Patrick’s Day!" else "Who’s watching?"
+    fun whoGreeting(date: LocalDate = LocalDate.now()): String = if (variant(date) == "day") DAY_GREETING else WHO
+
+    private const val DAY_GREETING = "Happy St. Patrick\u2019s Day!"
+    private const val WHO = "Who\u2019s watching?"
 
     /** The line under the greeting in the week before: "3 days to St. Patrick's Day" (none on the day) */
     fun countdown(date: LocalDate = LocalDate.now()): String? {
