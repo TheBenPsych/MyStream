@@ -183,7 +183,86 @@
       countdown: () => { try { const d = window.BenflixEarth ? window.BenflixEarth.day(new Date()) : 0; return d ? "Earth week · day " + d + " of 7 · Planet Earth picks on Movies and Shows" : ""; } catch (e) { return ""; } },
     }),
     make("halloween", is("hwOn"), true, ["#24140A", "#120A05"], ["#FF8A1F", "#8E44AD", "#7CFC00"], "Halloween pick", { countdown: cd(() => B.hw), pickTags: ["halloween"], pickWords: ["Halloween"] }),
-    make("popcorn", is("pcOn"), true, ["#2A220E", "#17130A"], ["#F5D76E", "#D7263D", "#FFFFFF"], "Popcorn Day pick"),
+    // Popcorn Day (approved 2026-11-17, Ben: LOVE Cinema marquee): cinema-red rail with butter and red icons, a
+    // popped piece beside the icon you're on, chasing bulbs across the top of Home, a heap of popcorn along the
+    // bottom that grows through the day, hours left as the first Today card, a popcorn movie as the first pick
+    ((pc) => {
+      const h = make("popcorn", is("pcOn"), true, ["#5A1218", "#1E0C0E"], [pc.BUT, pc.RED], "Popcorn Day pick", pc.extra());
+      // the trims are drawn for the window's width when Home asks, so the bulbs and popcorn stay round
+      Object.defineProperty(h, "topTrim", { enumerable: true, get: () => pc.top() });
+      Object.defineProperty(h, "bottomTrim", { enumerable: true, get: () => pc.bottom() });
+      return h;
+    })({
+      BUT: "#F6C744", RED: "#FF5A52",
+      // one popped piece at (x, y), radius r, squashed back into a circle when the trim is stretched (sx, sy)
+      puff(x, y, r, sx, sy, flip) {
+        const L = [[-.42, .12, .55], [.44, .1, .55], [0, -.36, .6], [.05, .4, .52]];
+        let s = `<ellipse cx="${x}" cy="${y + r * .25 / sy}" rx="${r * .95 / sx}" ry="${r * .95 / sy}" fill="#000" fill-opacity=".28"/>`;
+        for (const [a, b, k] of L) s += `<ellipse cx="${x + a * r * flip / sx}" cy="${y + b * r / sy}" rx="${k * r / sx}" ry="${k * r / sy}" fill="url(#pcPuff)"/>`;
+        return s + `<ellipse cx="${x - .18 * r * flip / sx}" cy="${y - .42 * r / sy}" rx="${.16 * r / sx}" ry="${.16 * r / sy}" fill="#fff" fill-opacity=".7"/>`;
+      },
+      grad: '<defs><radialGradient id="pcPuff" cx=".4" cy=".35" r=".75"><stop offset=".45" stop-color="#FFF4D6"/><stop offset="1" stop-color="#E2A93A"/></radialGradient>'
+        + '<radialGradient id="pcBulb" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8DA"/><stop offset=".55" stop-color="#F6C744"/><stop offset="1" stop-color="#C48A12"/></radialGradient>'
+        + '<radialGradient id="pcGlow"><stop offset="0" stop-color="#F6C744" stop-opacity=".75"/><stop offset="1" stop-color="#F6C744" stop-opacity="0"/></radialGradient></defs>',
+      // how stretched Home's trims are right now (they fill the picture's width, 44px and 36px tall)
+      wide() { return Math.max(320, (window.innerWidth || 1200) - (matchMedia("(max-width: 760px)").matches ? 0 : 88)) / 1200; },
+      // a slim sign along the very top (12px strip, bulbs on its edge) so it stays clear of the greeting and clock
+      top() {
+        const sx = this.wide(), sy = 44 / 60, r = 6.5, step = 36 / sx, n = Math.ceil(1200 / step), band = 12 / sy;
+        let s = this.grad + '<style>.pcb{animation:pcchase 1.2s steps(1) infinite}@keyframes pcchase{0%{opacity:1}33%{opacity:.4}66%{opacity:1}}</style>'
+          + '<linearGradient id="pcStrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6E1016"/><stop offset=".5" stop-color="#9E2129"/><stop offset="1" stop-color="#6E1016"/></linearGradient>'
+          + `<rect width="1200" height="${band}" fill="url(#pcStrip)"/><rect y="${band - 3 / sy}" width="1200" height="${3 / sy}" fill="#F6C744"/>`;
+        for (let i = 0; i <= n; i++) {
+          const x = i * step + step / 2, y = band;
+          s += `<g class="pcb" style="animation-delay:${-(i % 3) * .4}s"><ellipse cx="${x}" cy="${y}" rx="${r * 1.7 / sx}" ry="${r * 1.7 / sy}" fill="url(#pcGlow)"/>`
+            + `<ellipse cx="${x}" cy="${y}" rx="${r / sx}" ry="${r / sy}" fill="url(#pcBulb)"/></g>`;
+        }
+        return s;
+      },
+      bottom() {
+        const sx = this.wide(), sy = 36 / 40, h = new Date().getHours(), full = h < 12 ? .55 : h < 17 ? .78 : 1, r0 = 7.5;
+        // one puff drawn once (radius 1), then placed many times
+        let seed = 11, s = this.grad + `<defs><g id="pcP">${this.puff(0, 0, 1, 1, 1, 1)}</g></defs>`;
+        const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+        for (let row = 0; row < 3; row++) {
+          const count = Math.floor((1200 * sx) / (r0 * 1.5) * (1.15 - row * .3) * full);
+          const y = 40 - (r0 * 1.25 + row * r0 * 1.1 * full) / sy;
+          for (let i = 0; i < count; i++) {
+            const x = rnd() * 1200, r = r0 * (.8 + rnd() * .45), yy = y - rnd() * r0 * .25 / sy, f = rnd() < .5 ? 1 : -1;
+            s += `<use href="#pcP" transform="translate(${x.toFixed(1)} ${yy.toFixed(1)}) scale(${(f * r / sx).toFixed(3)} ${(r / sy).toFixed(3)})"/>`;
+          }
+        }
+        return s;
+      },
+      // the usual icon's lines, in butter or red with a soft glow
+      icon(n, c) {
+        const svg = (B.doorIcon || B.I)(n) || "";
+        const inner = svg.replace(/^\s*<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+        return `<g style="color:${c};stroke:${c};filter:drop-shadow(0 0 2px ${c})">${inner}</g>`;
+      },
+      extra() {
+        const pc = this, BUT = this.BUT, RED = this.RED;
+        const ICONS = { home: ["home", BUT], search: ["search", RED], movies: ["film", RED], shows: ["tv", BUT], live: ["live", RED], games: ["pad", BUT], music: ["note", RED], books: ["book", BUT], requests: ["plus", BUT], more: ["more", BUT] };
+        const icons = {};
+        // the web's own icon names come from core.js, which loads first, so each is drawn when the rail asks
+        for (const [k, [n, c]] of Object.entries(ICONS)) Object.defineProperty(icons, k, { enumerable: true, get: () => pc.icon((B.DOORS[k] && B.DOORS[k].icon) || n, c) });
+        const out = {
+          icons,
+          mark: `${this.grad}${this.puff(6, 10, 6, 1, 1, 1)}`,
+          countdown: () => {
+            const d = now();
+            if (d.getMonth() !== 0 || d.getDate() !== 19) return "";
+            const left = 24 - d.getHours();
+            return left <= 1 ? "Last hour of Popcorn Day · grab a bowl" : `${left} hours of Popcorn Day left · grab a bowl`;
+          },
+          countdownKind: "Popcorn Day",
+          pickTags: ["blockbuster"],
+          pickWords: ["Jurassic Park", "Back to the Future", "Ghostbusters", "Raiders of the Lost Ark", "Jaws"],
+        };
+        return out;
+      },
+    }),
+    make("starwars", is("swOn"), true, ["#0B0B14", "#05050A"], ["#FFE81F", "#4FC3F7", "#E53935"], "Star Wars Day pick", { pickWords: ["Star Wars"] }),
     // Star Wars Day (Ben 2026-11-17, sheet starwars-7-icons): the saga drawings replace the rail and tab icons, each
     // in its own colour; a short lit laser sword in the profile's side colour marks where you are; Home stays plain
     // (no trims) with the "May the 4th" card; start-up icons ignite in the side colour. Same drawings as the app's
