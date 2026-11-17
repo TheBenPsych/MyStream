@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.waitForSettled
@@ -1156,6 +1157,10 @@ fun greetingFor(
         return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
+    // Star Wars Day (4 May): "May the 4th be with you, Ben" in yellow crawl lettering
+    if (com.github.damontecres.wholphin.ui.theme.SwLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.StarWarsDay.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
@@ -1482,12 +1487,14 @@ fun DoorsHomePage(
                             "Welcome"
                         }
 
+                        // Friday the 13th, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
                         FamilyKind.KIDS -> {
                             if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
                                 "Happy Friday the 13th!"
                             } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-                                // Popcorn Day (19 Jan): Kids gets the greeting too
                                 "Happy Popcorn Day!"
+                            } else if (SwLook.on) {
+                                "May the 4th be with you!"
                             } else {
                                 "Hi there!"
                             }
