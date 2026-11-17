@@ -1148,6 +1148,10 @@ fun greetingFor(
     name: String,
     now: LocalTime = LocalTime.now(),
 ): String {
+    // Friday the 13th look (that day only): "Happy Friday the 13th, Ben" in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+        return com.github.damontecres.wholphin.ui.theme.Friday13.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Earth Day look (Earth week): "Happy Earth Day, Ben" all week, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
         return com.github.damontecres.wholphin.ui.theme.EarthDaySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
@@ -1407,7 +1411,18 @@ fun DoorsHomePage(
     // News that arrives while the doors are growing waits until they've landed, so nothing shifts under
     // the animation (a jump mid-grow was the stutter Ben saw)
     val rows = frozenRows ?: liveRows
-    val weather = if (frozenRows != null) frozenWeather else liveWeather
+    val towerWeather = if (frozenRows != null) frozenWeather else liveWeather
+    // Friday the 13th look: a lucky line under the greeting instead of the weather ("Lucky you: 3 new episodes and
+    // 1 request ready")
+    val weather =
+        if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+            com.github.damontecres.wholphin.ui.theme.Friday13.luckyLine(
+                newEpisodes = rows.news.count { it.kind.startsWith("New episode") },
+                ready = rows.news.count { it.kind == "Ready to watch" },
+            )
+        } else {
+            towerWeather
+        }
     // A row with nowhere to go (a note from Ben, "Ben fixed it", a built-in fact) opens a pop-up with all its words
     var reading by remember { mutableStateOf<HomeRow?>(null) }
     // The row that opened the pop-up is gone after "Got it, clear it", so the remote goes back to the doors
@@ -1484,9 +1499,11 @@ fun DoorsHomePage(
                             "Welcome"
                         }
 
-                        // Earth week, Popcorn Day and Star Wars Day: Kids gets the greeting too
+                        // Friday the 13th, Earth week, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
                         FamilyKind.KIDS -> {
-                            if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                            if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                                "Happy Friday the 13th!"
+                            } else if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
                                 "Happy Earth Day!"
                             } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
                                 "Happy Popcorn Day!"

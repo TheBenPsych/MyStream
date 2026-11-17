@@ -40,7 +40,7 @@ object ThanksgivingSeason {
 
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.NOVEMBER && date.dayOfMonth >= 16
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     const val GREETING = "Happy Thanksgiving"
 }

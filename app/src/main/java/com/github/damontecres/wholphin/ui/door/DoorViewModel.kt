@@ -330,6 +330,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Friday the 13th look (that day only, Kids too): spooky but fun picks right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) listOf(rows.first(), SPOOKY) + rows.drop(1) else rows
+                }.let { rows ->
                     // Halloween (1 to 31 Oct, Kids too): Halloween favourites right after Keep watching
                     if (com.github.damontecres.wholphin.ui.theme.HwLook.charmsOn) listOf(rows.first(), HALLOWEEN) + rows.drop(1) else rows
                 }.let { rows ->
@@ -395,6 +398,17 @@ class DoorViewModel
                                 )
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(STAR_WARS, "May the 4th: the saga", items.takeIf { it.size >= 3 }.orEmpty()))
+                    }
+                }
+                if (SPOOKY in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(com.github.damontecres.wholphin.ui.theme.Friday13.SpookyPicks, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
+                        // Ben: only films already on Benflix, and only if at least 4 fit
+                        putOrRemove(order, DoorRowData(SPOOKY, "Spooky but fun", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (DATE_NIGHT in order) {
@@ -664,6 +678,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val SPOOKY = "spooky"
             const val HALLOWEEN = "halloween"
             const val EARTH = "earth"
             const val JULY4 = "july4"

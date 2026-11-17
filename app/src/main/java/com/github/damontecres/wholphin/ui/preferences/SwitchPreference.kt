@@ -71,6 +71,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // Friday the 13th look: a little "13" knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .F13Knob()
+                }
                 // Valentine's look: a white knob with a red heart in it next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.ValLook.on) {
                     com.github.damontecres.wholphin.ui.theme

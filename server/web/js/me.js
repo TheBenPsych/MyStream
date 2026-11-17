@@ -168,6 +168,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("Friday the 13th look", "Only on a Friday the 13th, Kids too: the room with the sleeping black cat on Who's watching, lucky charms on the doors, and lucky green colours.", valBtn("f13", B.f13Off() ? "Off" : "On").replace('class="valbtn"', `class="valbtn${B.f13Off() ? "" : " on13"}"`)))
       + (B.me.kids ? "" : setRow("Halloween look", "From 1 to 31 October: the spooky room on Who's watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours.", valBtn("hw", B.hwOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("4th of July look", "From 1 to 4 July: the cookout room on Who's watching with fireworks on the night of the 4th, summer things on the doors, and flag red and navy colours.", valBtn("j4", B.j4Off() ? "Off" : "On")))
@@ -181,6 +182,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "f13") { B.setF13Off(!B.f13Off()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "ed") { B.setEdOff(!B.edOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
@@ -242,6 +244,8 @@ B.kidsLook = () => {
   root.classList.toggle("val", !!(B.me && !kids && B.valOn && B.valOn()));
   // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)
   root.classList.toggle("ny", !!(B.me && B.nyOn && B.nyOn()));
+  // Friday the 13th look (that day only, Kids too): lucky green, black cat black and the lucky charms
+  root.classList.toggle("f13", !!(B.me && B.f13On && B.f13On()));
   // Earth Day look (Earth week, unless switched off): leaf green, ocean blue and a living thing on every door, Kids too (Ben)
   root.classList.toggle("ed", !!(B.me && B.edOn && B.edOn()));
   // 4th of July look (1 to 4 July, unless switched off): flag red, navy and the summer things on the doors, Kids too (Ben)

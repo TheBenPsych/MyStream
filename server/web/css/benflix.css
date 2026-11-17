@@ -1660,6 +1660,61 @@ html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: 
 html.tg .corner { overflow: visible; }
 html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }
 
+/* ---------- Friday the 13th look (approved 2026-11-17, only on a Friday the 13th, Kids too) ----------
+   Lucky clover green for selected things with dark words, black cat black with a hint of green for other buttons
+   and panels, white words on every door, and a different lucky or unlucky charm on each door (a black cat hanging
+   by its paws with its tail swinging, a cracked hand mirror, a horseshoe, dice showing 1 and 3, a moon wind chime
+   and a brass key with a "13" tag). Small touches, each used once: Play flickers like an old porch light, a little
+   full moon on the end of progress, a loading clock with 13 hours, and a four-leaf clover pinning notices.
+   That day it replaces Sky and Sunshine on Kids (html.kids.f13) and any season look (js/start.js B.f13On). */
+html.f13, html.kids.f13, html.kids.night.f13 {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #121613; --pg3: #19201A; --pg4: #2A332C; --line: #28322A;
+  --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0F1A06;
+  --movies: #FFB547; --shows: #7AA7FF; --games: #FF6F91; --ask: #A6E36A;
+  --kacc: #A6E36A; --kon: #0F1A06; --kshowsink: #fff;
+  --accent: #A6E36A; --fgreen: #A6E36A; --fblack: #2A332C;
+}
+html.f13 .door, html.kids.f13 .door[data-door="shows"] { color: #fff; }
+html.f13 .door > svg.i, html.f13 .door .n, html.f13 .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.f13 .door::after, html.f13 .door[data-door="movies"]::before { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -1.7%; top: -3.6%; width: 53.3%; max-width: 160px; aspect-ratio: 128 / 172; background: center top / contain no-repeat; }
+html.f13 .door[data-door="movies"]::after { background-image: url("../img/f13/f13_charm_movies.png"); }
+html.f13 .door[data-door="movies"]::before { background-image: url("../img/f13/f13_charm_movies_tail.png"); transform-origin: 64% 77.9%; animation: f13tail 3.4s ease-in-out infinite; }
+html.f13 .door[data-door="shows"]::after { background-image: url("../img/f13/f13_charm_shows.png"); }
+html.f13 .door[data-door="live"]::after { background-image: url("../img/f13/f13_charm_live.png"); }
+html.f13 .door[data-door="games"]::after { background-image: url("../img/f13/f13_charm_games.png"); }
+html.f13 .door[data-door="music"]::after { background-image: url("../img/f13/f13_charm_music.png"); }
+html.f13 .door[data-door="books"]::after { background-image: url("../img/f13/f13_charm_books.png"); }
+@keyframes f13tail { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(9deg); } }
+html.f13 .greet.f13h { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.f13 .btn.white, html.f13 .btn.red, html.f13 .chip.on, html.f13 .circle.white, html.f13 #toast { background: var(--fgreen); border-color: var(--fgreen); color: #0F1A06; }
+html.f13 .btn.white:hover, html.f13 .btn.red:hover { background: #B8EC84; color: #0F1A06; }
+html.f13 .btn { background: var(--fblack); }
+html.f13 .btn.ghost { background: none; }
+html.f13 .poster .prog { background: rgba(42,51,44,.9); }
+html.f13 .poster .prog i, html.f13 .kwbar .line i, html.f13 .player .bar .knob, html.f13 .player .bar .segs i b { background: var(--fgreen); }
+html.f13 .corner .ctime { background: var(--fgreen); }
+html.f13 :focus-visible { outline-color: #fff; }
+/* Play flickers now and then, like an old porch light on a spooky night */
+html.f13 .tp .btns .btn.white { animation: f13flicker 6s infinite; }
+@keyframes f13flicker {
+  0%, 70%, 78%, 86%, 100% { opacity: 1; box-shadow: none; }
+  74% { opacity: .55; box-shadow: 0 0 30px 10px rgba(166, 227, 106, .35); }
+  82% { opacity: .6; box-shadow: 0 0 30px 10px rgba(166, 227, 106, .4); }
+}
+/* a little full moon on the end of the progress line */
+html.f13 .kwbar .line { overflow: visible; background: var(--fblack); }
+html.f13 .kwbar .line i { position: relative; border-radius: 2px; }
+html.f13 .kwbar .line i::after { content: ""; position: absolute; right: -16px; top: -14px; width: 32px; height: 32px; background: url("../img/f13/f13_moon.png") center / contain no-repeat; }
+/* the loading clock has 13 hours */
+html.f13 .spin { position: relative; border: 0; animation: none; width: 56px; height: 56px; background: url("../img/f13/f13_clock.png") center / contain no-repeat; }
+html.f13 .spin::after { content: ""; position: absolute; inset: 0; background: url("../img/f13/f13_clock_hand.png") center / contain no-repeat; animation: spin 4s linear infinite; }
+/* a four-leaf clover pins notices */
+html.f13 .corner { overflow: visible; }
+html.f13 .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -8px; top: -8px; width: 26px; height: 28px; background: url("../img/f13/f13_clover.png") center / contain no-repeat; }
+/* a little "13" in the knob of settings that are on */
+html.f13 .valbtn.on13::before { content: "13"; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #fff; color: #16151B; font-size: 11px; font-weight: 800; vertical-align: middle; }
+.who .xline { margin: 0 0 6px; font-size: 20px; font-weight: 600; color: #CFC6E0; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+@media (prefers-reduced-motion: reduce) { html.f13 .tp .btns .btn.white, html.f13 .door[data-door="movies"]::before { animation: none; } }
 /* ---------- Halloween look (approved 2026-11-17, 1 to 31 October) ----------
    Glowing pumpkin orange for selected things (dark words on it), deep witch purple for other buttons and panels,
    white words on every door, and a different spooky charm on each door, hung the way it really would be

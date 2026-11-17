@@ -271,6 +271,11 @@ private fun CornerCard(
             }
             // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
             if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
+            // Friday the 13th look: a four-leaf clover on notices without a picture
+            if (card.image == null && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .F13Clover(size = if (isTv) 28.dp else 24.dp)
+            }
             // 4th of July look: the notice's own small mark (a flag, a star, a rocket, a firework)
             if (J4Look.on) J4KindMark(card.title, size = if (isTv) 28.dp else 24.dp)
             if (card.image != null) {

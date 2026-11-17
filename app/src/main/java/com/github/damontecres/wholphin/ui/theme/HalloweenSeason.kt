@@ -51,7 +51,7 @@ object HalloweenSeason {
 
     fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.OCTOBER
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** Halloween night: 31 October from 5 PM (the greeting gets a "!" and bats fly across the room) */
     fun isNight(now: LocalDateTime = LocalDateTime.now()): Boolean = now.month == Month.OCTOBER && now.dayOfMonth == 31 && now.hour >= 17

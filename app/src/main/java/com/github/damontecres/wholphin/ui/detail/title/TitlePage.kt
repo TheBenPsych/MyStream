@@ -79,6 +79,7 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
+import com.github.damontecres.wholphin.ui.theme.f13Flicker
 import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
@@ -708,6 +709,8 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // Friday the 13th look: Play is lucky green with dark words, and flickers now and then like an old porch light
+    val f13 = com.github.damontecres.wholphin.ui.theme.F13Look.on
     // Halloween look: Play is pumpkin orange with dark words, and glows and flickers like a candle in a jack-o'-lantern
     val hw = HwLook.on
     // Valentine's look: Play is rose red with white words, a soft rosy glow round it and a faint heart in its corner
@@ -723,7 +726,9 @@ private fun TitleButtonView(
     // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
     val pc = PcLook.on
     val primaryFill =
-        if (xmas) {
+        if (f13) {
+            com.github.damontecres.wholphin.ui.theme.F13Look.Green
+        } else if (xmas) {
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
@@ -747,7 +752,9 @@ private fun TitleButtonView(
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            if (xmas || tg || j4 || sw || vl) {
+            if (f13) {
+                com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
+            } else if (xmas || tg || j4 || sw || vl) {
                 Color.White
             } else if (hw) {
                 HwLook.OnOrange
@@ -783,6 +790,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && f13) Modifier.f13Flicker() else Modifier)
                 .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)

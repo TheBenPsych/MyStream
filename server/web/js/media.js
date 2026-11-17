@@ -114,6 +114,24 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Friday the 13th: spooky but fun picks (monster comedies, ghost stories, mysteries; never slashers), found by
+// their exact names, shuffled (cached 30 minutes). The same list as the app's Friday13.SpookyPicks.
+B.SPOOKY_PICKS = ["Ghostbusters", "Ghostbusters II", "Ghostbusters: Afterlife", "Beetlejuice", "Beetlejuice Beetlejuice", "Hocus Pocus",
+  "The Addams Family", "Addams Family Values", "Hotel Transylvania", "Coraline", "Monster House", "ParaNorman", "Casper", "Goosebumps",
+  "Scooby-Doo", "Frankenweenie", "Corpse Bride", "The Nightmare Before Christmas", "Monsters, Inc.", "Young Frankenstein",
+  "The Haunted Mansion", "Haunted Mansion", "Clue", "Knives Out", "Glass Onion", "Gremlins", "The Witches", "Edward Scissorhands",
+  "Arsenic and Old Lace", "The Others", "The Sixth Sense", "Shaun of the Dead", "What We Do in the Shadows", "Zombieland", "The Burbs",
+  "Death Becomes Her", "Little Shop of Horrors", "Wendell & Wild", "Spirited Away", "Ghost"];
+B.spookyMovies = () => B.cached("spookyMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+  const want = new Set(B.SPOOKY_PICKS.map(norm));
+  const terms = [...new Set(B.SPOOKY_PICKS.map((t) => t.split(":")[0].trim()))];
+  const lists = await Promise.all(terms.map((t) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(t)}&Limit=10&Fields=${F}`).catch(() => null)));
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id) && (want.has(norm(x.Name)) || want.has(norm(x.OriginalTitle)))) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Halloween favourites: movies tagged Halloween or with a Halloween title, shuffled (cached 30 minutes).
 // On Kids the server's own age limits keep it to the cosy-spooky ones.
 B.halloweenMovies = () => B.cached("hwMovies-" + B.uid(), 1800000, async () => {
@@ -229,6 +247,8 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // Friday the 13th look (that day only, Kids too): spooky but fun picks right after Keep watching (only if 4 or more)
+  const spooky = B.f13On && B.f13On() ? await B.spookyMovies().catch(() => []) : [];
   // Halloween look (1 to 31 October, Kids too): Halloween favourites right after Keep watching
   const hwRow = B.hwOn && B.hwOn() ? await B.halloweenMovies().catch(() => []) : [];
   // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
@@ -245,6 +265,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   $("#rows").innerHTML = [
     saga.length >= 3 ? B.row("May the 4th: the saga", saga.map((it) => B.posterCard(it))) : "",
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
+    spooky.length >= 4 ? B.row("Spooky but fun", spooky.map((it) => B.posterCard(it))) : "",
     earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
     pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",

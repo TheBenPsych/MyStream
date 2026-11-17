@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.EdKindMark
 import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.HwKindMark
@@ -81,6 +82,7 @@ import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
+import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
 import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
@@ -272,7 +274,7 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
@@ -281,7 +283,7 @@ private fun Greeting(
                 },
             // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -413,6 +415,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .f13DoorCharm(door)
                 .hwDoorCharm(door)
                 .valDoorCharm(door)
                 .nyDoorCharm(door)

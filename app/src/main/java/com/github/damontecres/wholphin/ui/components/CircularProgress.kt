@@ -77,6 +77,13 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         return
     }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // Friday the 13th look: the loading ring is a clock with 13 hours and a hand that goes round
+    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+        com.github.damontecres.wholphin.ui.theme.F13LoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
     // New Year's look: the loading ring is a clock face ticking round to midnight
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {

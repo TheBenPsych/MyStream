@@ -188,7 +188,7 @@ class DoorDataService
 
         /**
          * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
-         * titles with its tags (Christmas favourites, Popcorn movies, Planet Earth picks).
+         * titles with its tags (Christmas favourites, Popcorn movies, Planet Earth picks, Friday the 13th's spooky but fun picks).
          */
         suspend fun themed(
             theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
@@ -218,6 +218,8 @@ class DoorDataService
                     }
                 val tagged =
                     async {
+                        // No tags means no tag search (an empty tag list would match everything)
+                        if (theme.tags.isEmpty()) return@async emptyList<BaseItem>()
                         items(
                             GetItemsRequest(
                                 userId = userId,

@@ -40,6 +40,7 @@ js/start.js
 js/title.js
 js/xmas.js
 js/feast.js
+js/f13.js
 js/halloween.js
 js/valentine.js
 js/newyear.js
@@ -66,6 +67,17 @@ img/tg/tg_charm_shows.png
 img/tg/tg_leaf_gold.png
 img/tg/tg_leaf_red.png
 img/tg/tg_tack.png
+img/f13/f13_charm_books.png
+img/f13/f13_charm_games.png
+img/f13/f13_charm_live.png
+img/f13/f13_charm_movies.png
+img/f13/f13_charm_movies_tail.png
+img/f13/f13_charm_music.png
+img/f13/f13_charm_shows.png
+img/f13/f13_clock.png
+img/f13/f13_clock_hand.png
+img/f13/f13_clover.png
+img/f13/f13_moon.png
 img/hw/hw_bat.png
 img/hw/hw_charm_books.png
 img/hw/hw_charm_games.png
