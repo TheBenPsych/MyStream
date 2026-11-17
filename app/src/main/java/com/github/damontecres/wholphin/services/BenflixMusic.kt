@@ -117,6 +117,8 @@ data class MusicRequest(
     val waiting: Boolean = false,
     /** Days since it was asked for (or approved) */
     val days: Int = 0,
+    /** Why it couldn't be found, like "Lidarr's search sites had no copies" (blank from older Tower helpers) */
+    val why: String = "",
 )
 
 data class MusicPlaylist(
@@ -412,6 +414,7 @@ class BenflixMusic
                 who = j.optString("who"),
                 waiting = j.optBoolean("waiting"),
                 days = j.optInt("days"),
+                why = j.optString("why"),
             )
 
         private fun playlist(j: JSONObject) =
