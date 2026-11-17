@@ -65,6 +65,7 @@ import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.swNoticeSaber
 import com.github.damontecres.wholphin.ui.theme.tgTack
+import com.github.damontecres.wholphin.ui.theme.vgNoticeEdge
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
@@ -250,7 +251,10 @@ private fun CornerCard(
                     } else {
                         Modifier
                     },
-                ).border(1.dp, BenflixColors.Line, shape)
+                )
+                // Video Games Day look: a cyan edge down the left, like a lit-up game menu
+                .vgNoticeEdge()
+                .border(1.dp, BenflixColors.Line, shape)
                 // Never takes the remote's focus: on a TV, OK opens it; on a phone, a tap does
                 .focusProperties { canFocus = false }
                 .then(

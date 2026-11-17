@@ -112,6 +112,14 @@ fun NewYearRoom(
 }
 
 /**
+ * Benflix Video Games Day: the arcade room behind Who's watching (12 September). Drawn by the web version
+ * (server/web/js/arcade.js) and recorded as 30-second loops by tools/arcade/record.js.
+ */
+@Composable
+fun ArcadeRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(ArcadeVideos, { tall -> if (tall) "tall" else "wide" }, modifier, bg = listOf(Color(0xFF1A0F30), Color(0xFF07050E)))
+
+/**
  * Benflix Earth Day: the plant corner room behind Who's watching (Earth week). Drawn by the web version
  * (server/web/js/earthday.js) and recorded as 30-second loops by tools/earthday/record.js, one for each day of
  * the week: the seedling on the table grows each day, and on day 1 the new tree is being planted by the path.
@@ -288,6 +296,9 @@ object JulyVideos : RoomVideos("july4", version = 1)
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)
+
+/** Downloads and keeps the Video Games Day arcade room videos (extras/scenes/arcade in the repo: wide and tall) */
+object ArcadeVideos : RoomVideos("arcade", version = 1)
 
 /** Downloads and keeps the Earth Day room videos (extras/scenes/earthday in the repo: day1 to day7, wide and tall) */
 object EarthVideos : RoomVideos("earthday", version = 1)

@@ -38,6 +38,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Video Games Day look: eight pixel blocks in a ring, lighting up one after another
+    if (com.github.damontecres.wholphin.ui.theme.VgLook.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .VgLoadingBlocks(modifier)
+        return
+    }
     // Halloween look: a bat flies round a pumpkin orange ring on witch purple
     if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
         com.github.damontecres.wholphin.ui.theme

@@ -65,7 +65,7 @@ fun WholphinTheme(
     // Thanksgiving look (16 to 30 Nov): pumpkin orange; New Year's look (27 Dec to 1 Jan): champagne gold;
     // 4th of July look (1 to 4 Jul, Kids too): flag red
     val accentColor =
-        (
+        (if (VgLook.on) VgLook.Cyan else null) ?: (
             if (NyLook.on) {
                 NyLook.Gold
             } else if (SpLook.on) {

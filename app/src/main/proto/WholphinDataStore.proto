@@ -314,6 +314,8 @@ message BenflixPreferences {
   bool popcorn_look_off = 18;
   // Benflix St. Patrick's Day look (10 to 17 Mar) is on unless this is set (numbers agreed between theme builds: 15-19 taken)
   bool stpatricks_look_off = 20;
+  // Benflix Video Games Day look (12 Sep) is on unless this is set (31: other theme builds use 15 to 20s)
+  bool videogames_look_off = 31;
 }
 
 enum BenflixAccent {

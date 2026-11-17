@@ -96,6 +96,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
                 }
+                // Video Games Day look: a shiny round arcade button next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.VgLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .VgKnob()
+                }
                 // St. Patrick's Day look: a white knob with a green shamrock next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
                     com.github.damontecres.wholphin.ui.theme

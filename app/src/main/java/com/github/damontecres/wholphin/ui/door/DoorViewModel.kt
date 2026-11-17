@@ -356,6 +356,9 @@ class DoorViewModel
                 }.let { rows ->
                     // Star Wars Day (4 May): the saga, from your own library, at the very top
                     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
+                }.let { rows ->
+                    // Video Games Day look (12 Sep, not on Kids): a Game night row at the very top
+                    if (com.github.damontecres.wholphin.ui.theme.VgLook.on && !KidsMode.isActive) listOf(GAME_NIGHT) + rows else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -421,6 +424,20 @@ class DoorViewModel
                         val items = data.dateNight(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(DATE_NIGHT, "Date night", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (GAME_NIGHT in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(
+                                    com.github.damontecres.wholphin.ui.main.HomeTheme.VIDEO_GAMES_DAY,
+                                    userId,
+                                    BaseItemKind.MOVIE,
+                                ).filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(GAME_NIGHT, "Game night", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (CHRISTMAS in order) {
@@ -693,6 +710,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val GAME_NIGHT = "gamenight"
             const val SPOOKY = "spooky"
             const val HALLOWEEN = "halloween"
             const val EARTH = "earth"

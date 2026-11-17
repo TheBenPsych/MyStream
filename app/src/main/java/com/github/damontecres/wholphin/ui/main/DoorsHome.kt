@@ -1148,6 +1148,10 @@ fun greetingFor(
     name: String,
     now: LocalTime = LocalTime.now(),
 ): String {
+    // Video Games Day look (12 Sep): "Happy Video Games Day, Ben" in pixel capitals
+    if (com.github.damontecres.wholphin.ui.theme.VgLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.VideoGamesDay.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Friday the 13th look (that day only): "Happy Friday the 13th, Ben" in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
         return com.github.damontecres.wholphin.ui.theme.Friday13.GREETING + if (name.isNotBlank()) ", $name" else ""

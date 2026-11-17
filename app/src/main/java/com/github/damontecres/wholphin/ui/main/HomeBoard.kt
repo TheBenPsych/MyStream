@@ -88,6 +88,7 @@ import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
+import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
@@ -99,6 +100,7 @@ import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
+import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -277,13 +279,16 @@ private fun Greeting(
     tv: Boolean,
 ) {
     Column {
+        // Video Games Day look: the greeting is in pixel capitals (smaller, as they're very wide)
+        val vg = com.github.damontecres.wholphin.ui.theme.VgLook.on
         Text(
             text = greeting,
             // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
-            fontSize = BenflixType.pageTitle,
+            fontSize = if (vg) BenflixType.pageTitle * .6f else BenflixType.pageTitle,
             fontWeight =
                 if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                    vg ||
                     EaLook.on
                 ) {
                     FontWeight.Normal
@@ -294,7 +299,10 @@ private fun Greeting(
                 },
             // Thanksgiving, New Year's, Valentine's, Popcorn Day, Earth Day and Easter looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                if (vg) {
+                    com.github.damontecres.wholphin.ui.theme.PixelFont
+                } else if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on ||
+                    SpLook.on ||
                     EaLook.on
                 ) {
                     HolidayFont
@@ -305,6 +313,7 @@ private fun Greeting(
                 },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = if (vg) Modifier.padding(vertical = 6.dp) else Modifier,
         )
         // New Year's and Easter looks: the countdown line ("4 days to 2027", "5 days to Easter") leads the line under the greeting
         val line =
@@ -321,6 +330,9 @@ private fun Greeting(
                 listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (vg) {
+                // Video Games Day look: "Player 1 ready" comes before the usual news
+                listOfNotNull(com.github.damontecres.wholphin.ui.theme.VideoGamesDay.LINE, weather).joinToString(" · ")
             } else if (SpLook.on) {
                 // St. Patrick's Day look: "3 days to St. Patrick's Day" leads it the same way
                 listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
@@ -373,7 +385,7 @@ private fun DoorGrid(
                 name -= 0.5f
             }
             var desc = maxOf(toSp(u * 0.95f), 10.5f).coerceAtMost(17f)
-            while (desc > 8f && doors.any { !measurer.fits(it.description, desc, FontWeight.SemiBold, 2, textWidth) }) {
+            while (desc > 8f && doors.any { !measurer.fits(it.blurb, desc, FontWeight.SemiBold, 2, textWidth) }) {
                 desc -= 0.5f
             }
             DoorWords(name.sp, desc.sp)
@@ -438,6 +450,7 @@ private fun SquareDoor(
                 .eaDoorCharm(door)
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
+                .vgDoorKeepsake(door)
                 .edDoorLife(door)
                 .j4DoorCharm(door)
                 .swDoorMoment(door)
@@ -459,7 +472,7 @@ private fun SquareDoor(
                 )
                 // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
                 Text(
-                    text = door.description,
+                    text = door.blurb,
                     color = door.labelColor.copy(alpha = .85f),
                     fontSize = words.desc,
                     lineHeight = words.desc * 1.22f,
@@ -714,6 +727,19 @@ private fun SeeAllPanel(
     }
 }
 
+/** Video Games Day look: which pixel picture a news row gets (a TV, a star, an hourglass or a joystick), if any */
+private fun vgKindFor(row: HomeRow): com.github.damontecres.wholphin.ui.theme.VgKind? {
+    if (!com.github.damontecres.wholphin.ui.theme.VgLook.on) return null
+    val k = row.kind.lowercase()
+    return when {
+        "live" in k -> com.github.damontecres.wholphin.ui.theme.VgKind.LIVE
+        "episode" in k -> com.github.damontecres.wholphin.ui.theme.VgKind.EPISODE
+        row.kindColor == HomeKind.Ready -> com.github.damontecres.wholphin.ui.theme.VgKind.READY
+        row.kindColor == HomeKind.OnTheWay -> com.github.damontecres.wholphin.ui.theme.VgKind.ON_THE_WAY
+        else -> null
+    }
+}
+
 @Composable
 private fun RowDivider(modifier: Modifier = Modifier) {
     Box(
@@ -798,6 +824,13 @@ private fun ListRow(
                 } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (vgKindFor(row) != null) {
+                    // Video Games Day look: each kind of news gets its own pixel picture before its label
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        com.github.damontecres.wholphin.ui.theme
+                            .VgKindMark(vgKindFor(row)!!, size = with(LocalDensity.current) { (words.kind * 1.3f).toDp() })
                         KindLine(row, words)
                     }
                 } else if (SpLook.on) {

@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.eaProgressEgg
 import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.f13ProgressMoon
@@ -79,6 +80,7 @@ import com.github.damontecres.wholphin.ui.theme.spProgressCoin
 import com.github.damontecres.wholphin.ui.theme.swProgressSaber
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.valProgressHeart
+import com.github.damontecres.wholphin.ui.theme.vgProgressBlocks
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -362,6 +364,8 @@ fun BannerCard(
                                     SpLook.Clover
                                 } else if (ValLook.on) {
                                     ValLook.Rose
+                                } else if (VgLook.on) {
+                                    Color.Transparent
                                 } else if (PcLook.on) {
                                     PcLook.Butter
                                 } else {
@@ -372,6 +376,17 @@ fun BannerCard(
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
+                // Video Games Day look: the progress line is an XP bar of blocks, with a pixel coin where you are
+                if (VgLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .vgProgressBlocks((playPercent / 100).toFloat(), coin = 16.dp),
+                    )
+                }
                 // Halloween look: a little ghost bobs on the end of the progress line
                 if (HwLook.on) {
                     Box(

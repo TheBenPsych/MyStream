@@ -179,7 +179,8 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + (B.me.kids ? "" : setRow("Earth Day look", "Earth week, 22 to 28 April: the plant corner on Who's watching, a living thing on each door, and leaf green and ocean blue colours (Kids too).", valBtn("ed", B.edOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Star Wars Day look", "On 4 May: the desert home on Who's watching, the opening crawl, galaxy moments on the doors, dark side red and black colours, and a Star Wars row on Movies.", valBtn("sw", B.swOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("St. Patrick's Day look", "From 10 to 17 March: a rainy Irish room on Who's watching with a rainbow on the day, lucky charms on the doors, and clover green and emerald colours.", valBtn("sp", B.spOff() ? "Off" : "On")))
-      + setRow("Star Wars Day side", "The colour of your laser swords on 4 May, for this profile.", valBtn("swside", B.swSide(B.me.id) === "dark" ? "Dark side (red)" : "Light side (blue)"));
+      + setRow("Star Wars Day side", "The colour of your laser swords on 4 May, for this profile.", valBtn("swside", B.swSide(B.me.id) === "dark" ? "Dark side (red)" : "Light side (blue)"))
+      + setRow("Video Games Day look", "On 12 September: the arcade room on Who's watching, game keepsakes on the doors, and arcade cyan and purple colours (Kids too).", valBtn("vg", B.vgOff() ? "Off" : "On"));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
@@ -188,6 +189,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "ed") { B.setEdOff(!B.edOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "vg") { B.setVgOff(!B.vgOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "j4") { B.setJ4Off(!B.j4Off()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "val") { B.setValOff(!B.valOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "pc") { B.setPcOff(!B.pcOff()); B.kidsLook(); B.render(); return; }
@@ -248,6 +250,8 @@ B.kidsLook = () => {
   root.classList.toggle("val", !!(B.me && !kids && B.valOn && B.valOn()));
   // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)
   root.classList.toggle("ny", !!(B.me && B.nyOn && B.nyOn()));
+  // Video Games Day look (12 September, Kids too, unless switched off): cyan, purple and the game keepsakes
+  root.classList.toggle("vg", !!(B.me && B.vgOn && B.vgOn()));
   // Easter look (Monday to Easter Sunday, unless switched off; Kids too): lilac, meadow green and the Easter tree charms
   root.classList.toggle("ea", !!(B.me && B.eaOn && B.eaOn() && !root.classList.contains("tg")));
   // Friday the 13th look (that day only, Kids too): lucky green, black cat black and the lucky charms

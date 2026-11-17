@@ -79,6 +79,7 @@ import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.eaPlayEars
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
@@ -87,10 +88,12 @@ import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
+import com.github.damontecres.wholphin.ui.theme.pixelShape
 import com.github.damontecres.wholphin.ui.theme.spPlayClover
 import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.valRosyGlow
+import com.github.damontecres.wholphin.ui.theme.vgPlayPixel
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -708,7 +711,10 @@ private fun TitleButtonView(
     fill: Boolean = false,
     onOffTap: (String) -> Unit = {},
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    // Video Games Day look: Play is arcade cyan with dark words, chunky 8-bit corners, a hard pixel shadow
+    // and white corner brackets; the other buttons are deep purple
+    val vg = VgLook.on
+    val shape = if (vg && primary) pixelShape() else RoundedCornerShape(10.dp)
     // Christmas look: Play is ornament red with white words, and a green glass ornament hangs from it
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
@@ -732,7 +738,9 @@ private fun TitleButtonView(
     // St. Patrick's Day look: Play is clover green with dark words, a gold four-leaf clover on its corner and a soft sheen
     val stp = SpLook.on
     val primaryFill =
-        if (f13) {
+        if (vg) {
+            VgLook.Cyan
+        } else if (f13) {
             com.github.damontecres.wholphin.ui.theme.F13Look.Green
         } else if (xmas) {
             XmasLook.Red
@@ -763,7 +771,9 @@ private fun TitleButtonView(
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            if (f13) {
+            if (vg) {
+                VgLook.OnCyan
+            } else if (f13) {
                 com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
             } else if (xmas || tg || j4 || sw || vl) {
                 Color.White
@@ -810,6 +820,7 @@ private fun TitleButtonView(
                 .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && vg) Modifier.vgPlayPixel() else Modifier)
                 .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
                 .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)

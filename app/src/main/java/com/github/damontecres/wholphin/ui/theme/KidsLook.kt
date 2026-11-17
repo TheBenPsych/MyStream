@@ -60,6 +60,9 @@ object KidsLook {
         // Sunshine colours rest then
         if (!on || EaLook.on || F13Look.on || EdLook.on || PcLook.on || StarWarsDay.on()) {
             null
+        } else if (VideoGamesDay.on()) {
+            // Video Games Day (12 Sep): Kids gets the arcade look too, so Sky and Sunshine rest for the day
+            null
         } else if (night) {
             NightLight
         } else {

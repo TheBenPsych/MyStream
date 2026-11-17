@@ -60,12 +60,14 @@ import com.github.damontecres.wholphin.ui.theme.Friday13
 import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
 import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
+import com.github.damontecres.wholphin.ui.theme.PixelFont
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
+import com.github.damontecres.wholphin.ui.theme.VideoGamesDay
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -251,7 +253,11 @@ fun SwitchUserContent(
                 // Star Wars Day (4 May, unless switched off): the desert home, with a laser sword in the colour
                 // of the side of the profile you're on
                 val starWars = !christmas && !feast && StarWarsDay.on()
-                if (f13) {
+                // Video Games Day (12 Sep, unless switched off): the arcade room
+                val arcade = !christmas && !feast && !newYear && !starWars && !july && !f13 && !halloween && VideoGamesDay.on()
+                if (arcade) {
+                    ArcadeRoom(modifier = Modifier.fillMaxSize())
+                } else if (f13) {
                     Friday13Room(waking = catWaking, modifier = Modifier.fillMaxSize())
                 } else if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
@@ -307,7 +313,25 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
-                    if (f13) {
+                    if (arcade) {
+                        Text(
+                            text = VideoGamesDay.GREETING,
+                            fontFamily = PixelFont,
+                            fontSize = if (isTvLayout) 34.sp else 17.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = VideoGamesDay.LINE,
+                            fontSize = if (isTvLayout) 22.sp else 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFC9D0E0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    } else if (f13) {
                         Text(
                             text = Friday13.GREETING,
                             fontFamily = XmasFont,
