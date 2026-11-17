@@ -211,8 +211,10 @@ object HalloweenNav {
         }
     }
 
-    /** Cobwebs in both top corners and a string of glowing pumpkin lights across the top of Home */
-    val topTrim: HolidayArt = { t ->
+    /** A string of glowing pumpkin lights across Home just under the greeting and clock, small cobwebs at each end */
+    val topTrim: HolidayArt = { t -> translate(0f, underBar()) { hwTop(t) } }
+
+    private fun DrawScope.hwTop(t: Float) {
         val step = 110f * density
         val n = (size.width / step).roundToInt().coerceAtLeast(2)
         val gap = size.width / n
@@ -229,7 +231,7 @@ object HalloweenNav {
             drawLine(Color(0xFF2A1D14), Offset(x, top + sag), Offset(x, top + sag + 4f * density), strokeWidth = 1.5f * density)
             jack(Offset(x, top + sag + 4f * density + pw * .4f), pw, lit)
         }
-        val r = 64f * density
+        val r = 40f * density
         cobweb(r)
         scale(-1f, 1f, pivot = Offset(size.width / 2, 0f)) { cobweb(r) }
     }
@@ -255,13 +257,13 @@ object HalloweenNav {
     val bottomTrim: HolidayArt = { t ->
         drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0x8C4A2A78)), 0f, size.height))
         val colours = listOf(Color(0xFFC2410C), Color(0xFFE8A13A), Color(0xFF8C2F14), Color(0xFFF07A1E), Color(0xFFB45309))
-        val ls = 18f * density
+        val ls = minOf(18f * density, bottomRoom() * .9f)
         val count = (size.width / (60f * density)).toInt().coerceAtLeast(3)
         for (i in 0 until count) {
             val x = (i + .5f) * size.width / count + (if (i % 2 == 0) -8f else 8f) * density
             leaf(Offset(x, size.height - ls * .55f), ls, colours[i % colours.size], i * 47f)
         }
-        val jw = 34f * density
+        val jw = minOf(34f * density, bottomRoom() * 1.05f)
         val jacks = (size.width / (300f * density)).roundToInt().coerceIn(2, 5)
         for (i in 0 until jacks) {
             val x = (i + .5f) * size.width / jacks + 20f * density
@@ -269,6 +271,12 @@ object HalloweenNav {
         }
     }
 }
+
+/** Just under the greeting and clock line (it sits at the very top since the calmer Home) */
+private fun DrawScope.underBar(): Float = (if (size.width < 600f * density) 52f else 64f) * density
+
+/** TV: the bottom art stays in the gap under the Today cards; phones have room below them */
+private fun DrawScope.bottomRoom(): Float = if (size.width < 600f * density) size.height else minOf(size.height, 20f * density)
 
 object Friday13Nav {
     private val Crow = Color(0xFF16121E)
@@ -324,7 +332,9 @@ object Friday13Nav {
     }
 
     /** A full moon behind a sagging power line with five crows across the top of Home (one hops, one turns round) */
-    val topTrim: HolidayArt = { t ->
+    val topTrim: HolidayArt = { t -> translate(0f, underBar()) { f13Top(t) } }
+
+    private fun DrawScope.f13Top(t: Float) {
         val mr = 20f * density
         val mc = Offset(size.width * .66f, 22f * density)
         drawCircle(Brush.radialGradient(listOf(Moon.copy(alpha = .45f), Color.Transparent), mc, mr * 2f), mr * 2f, mc)
@@ -372,10 +382,12 @@ object Friday13Nav {
         val pw = 12f * density
         val n = (size.width / pw).toInt() + 1
         val rail = Color(0xFF3A3342)
-        drawRect(rail, Offset(0f, size.height * .42f), Size(size.width, 2.5f * density))
-        drawRect(rail, Offset(0f, size.height * .78f), Size(size.width, 2.5f * density))
+        val room = bottomRoom()
+        val sky = size.height - room
+        drawRect(rail, Offset(0f, sky + room * .42f), Size(size.width, 2.5f * density))
+        drawRect(rail, Offset(0f, sky + room * .78f), Size(size.width, 2.5f * density))
         for (i in 0 until n) {
-            val h = size.height * (.55f + ((i * 7) % 11) / 11f * .4f)
+            val h = room * (.55f + ((i * 7) % 11) / 11f * .4f)
             val tilt = (((i * 13) % 9) - 4).toFloat()
             val x = i * pw + pw / 2
             rotate(tilt, Offset(x, size.height)) {

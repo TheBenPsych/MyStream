@@ -697,7 +697,7 @@ const valMark = (kind) => { const k = String(kind || "").toLowerCase(); return k
 const spMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("ready") || k.includes("is ready") ? "pot" : k.startsWith("on the way") || k.includes("arrives") ? "rainbow" : k.startsWith("new") ? "horseshoe" : "hat"; };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
-  return `<div class="bitem">
+  return `<div class="bitem${r.kc === KIND_FACT ? " fact" : ""}">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
     <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}" data-hw="${hwMark(r.kind)}" data-pc="${B.pcMark(r.kind)}" data-ed="${B.edMark(r.kind)}" data-sp="${spMark(r.kind)}">${vgMark(r)}${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>

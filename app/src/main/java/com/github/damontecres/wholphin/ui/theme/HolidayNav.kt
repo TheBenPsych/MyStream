@@ -161,7 +161,8 @@ object HolidayNavKit {
                 moving = true,
             ),
             holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
-            holiday("starwars", { SwLook.on }, 0xFF0B0B14, 0xFF05050A, listOf(0xFFFFE81F, 0xFF4FC3F7, 0xFFE53935), "Star Wars Day pick"),
+            // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)
+            StarWarsNav.entry,
             holiday(
                 "stpatricks",
                 { SpLook.on },
@@ -189,7 +190,8 @@ object HolidayNavKit {
                 "New Year's pick",
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
             ),
-            holiday("thanksgiving", { TgLook.on }, 0xFF2A1A0E, 0xFF170E08, listOf(0xFFE07A2E, 0xFFC9A227, 0xFF8B3A1E), "Thanksgiving pick"),
+            // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
+            ThanksgivingNav.entry,
             holiday(
                 "valentine",
                 { ValLook.on },
@@ -208,6 +210,7 @@ object HolidayNavKit {
                 "Easter pick",
                 countdown = { EasterSeason.countdown(LocalDate.now()) },
             ),
+            // Christmas: Classic big bulbs (approved 2026-11-17), art in ChristmasNav.kt
             holiday(
                 "christmas",
                 { XmasLook.on },
@@ -215,7 +218,19 @@ object HolidayNavKit {
                 0xFF0B1912,
                 listOf(0xFFD7263D, 0xFF2E9E5B, 0xFFE8C15A),
                 "Christmas pick",
-                countdown = { ChristmasSeason.countdown(LocalDate.now()) },
+                // On the day itself the card says "Merry Christmas!" (approved xq-day A)
+                countdown = {
+                    val today = LocalDate.now()
+                    if (today.monthValue == 12 && today.dayOfMonth == 25) "Merry Christmas!" else ChristmasSeason.countdown(today)
+                },
+            ).copy(
+                icons = ChristmasNav.icons,
+                mark = ChristmasNav.mark,
+                topTrim = ChristmasNav.topTrim,
+                bottomTrim = ChristmasNav.bottomTrim,
+                pickTitles = ChristmasNav.pickTitles,
+                // the bulbs and the snowflake twinkle
+                moving = true,
             ),
         )
 
