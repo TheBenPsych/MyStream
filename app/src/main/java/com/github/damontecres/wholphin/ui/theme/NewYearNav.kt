@@ -122,11 +122,12 @@ object NewYearNav {
                 val ang = -PI / 2 + k * PI / 5
                 Offset(cx + (r * cos(ang)).toFloat(), cy + (r * sin(ang)).toFloat())
             }
-        val p = Path().apply {
-            moveTo(pts[0].x, pts[0].y)
-            pts.drop(1).forEach { lineTo(it.x, it.y) }
-            close()
-        }
+        val p =
+            Path().apply {
+                moveTo(pts[0].x, pts[0].y)
+                pts.drop(1).forEach { lineTo(it.x, it.y) }
+                close()
+            }
         return p to pts
     }
 
@@ -141,19 +142,21 @@ object NewYearNav {
         val (p, pts) = starPath(cx, cy, outer, inner)
         drawPath(p, Gold, alpha = a)
         for (k in 0 until 10 step 2) {
-            val f = Path().apply {
-                moveTo(cx, cy)
-                lineTo(pts[k].x, pts[k].y)
-                lineTo(pts[(k + 1) % 10].x, pts[(k + 1) % 10].y)
-                close()
-            }
+            val f =
+                Path().apply {
+                    moveTo(cx, cy)
+                    lineTo(pts[k].x, pts[k].y)
+                    lineTo(pts[(k + 1) % 10].x, pts[(k + 1) % 10].y)
+                    close()
+                }
             drawPath(f, GoldDark, alpha = a)
-            val g = Path().apply {
-                moveTo(cx, cy)
-                lineTo(pts[k].x, pts[k].y)
-                lineTo(pts[(k + 9) % 10].x, pts[(k + 9) % 10].y)
-                close()
-            }
+            val g =
+                Path().apply {
+                    moveTo(cx, cy)
+                    lineTo(pts[k].x, pts[k].y)
+                    lineTo(pts[(k + 9) % 10].x, pts[(k + 9) % 10].y)
+                    close()
+                }
             drawPath(g, GoldLight, alpha = a * .7f)
         }
         drawPath(p, GoldEdge, alpha = a, style = Stroke(width = .55f))
@@ -165,14 +168,15 @@ object NewYearNav {
         r: Float,
         a: Float,
     ) {
-        val p = Path().apply {
-            moveTo(x, y - r)
-            quadraticTo(x, y, x + r, y)
-            quadraticTo(x, y, x, y + r)
-            quadraticTo(x, y, x - r, y)
-            quadraticTo(x, y, x, y - r)
-            close()
-        }
+        val p =
+            Path().apply {
+                moveTo(x, y - r)
+                quadraticTo(x, y, x + r, y)
+                quadraticTo(x, y, x, y + r)
+                quadraticTo(x, y, x - r, y)
+                quadraticTo(x, y, x, y - r)
+                close()
+            }
         drawPath(p, Color.White, alpha = a)
     }
 
@@ -207,12 +211,13 @@ object NewYearNav {
         drawOval(fill, Offset(cx - rx, cy - ry), Size(rx * 2, ry * 2), alpha = a)
         drawOval(edge, Offset(cx - rx, cy - ry), Size(rx * 2, ry * 2), alpha = a, style = Stroke(.5f))
         drawOval(Color.White, Offset(cx - rx * .62f, cy - ry * .68f), Size(rx * .5f, ry * .62f), alpha = a * .55f)
-        val k = Path().apply {
-            moveTo(cx - .9f, cy + ry + .9f)
-            lineTo(cx + .9f, cy + ry + .9f)
-            lineTo(cx, cy + ry - .2f)
-            close()
-        }
+        val k =
+            Path().apply {
+                moveTo(cx - .9f, cy + ry + .9f)
+                lineTo(cx + .9f, cy + ry + .9f)
+                lineTo(cx, cy + ry - .2f)
+                close()
+            }
         drawPath(k, fill, alpha = a)
     }
 
@@ -244,7 +249,22 @@ object NewYearNav {
             for (h in 0 until 12) {
                 val ang = h * PI / 6
                 val o = Offset(c.x + (6.6f * sin(ang)).toFloat(), c.y - (6.6f * cos(ang)).toFloat())
-                val i = Offset(c.x + ((if (h % 3 == 0) 5.3f else 5.9f) * sin(ang)).toFloat(), c.y - ((if (h % 3 == 0) 5.3f else 5.9f) * cos(ang)).toFloat())
+                val i =
+                    Offset(
+                        c.x +
+                            (
+                                (
+                                    if (h % 3 ==
+                                        0
+                                    ) {
+                                        5.3f
+                                    } else {
+                                        5.9f
+                                    }
+                                ) * sin(ang)
+                            ).toFloat(),
+                        c.y - ((if (h % 3 == 0) 5.3f else 5.9f) * cos(ang)).toFloat(),
+                    )
                 drawLine(Ink, i, o, strokeWidth = if (h % 3 == 0) .7f else .4f, alpha = a)
             }
             // 11:59
@@ -261,8 +281,15 @@ object NewYearNav {
             drawLine(Gold, Offset(12f, -.5f), Offset(12f, 3.2f), strokeWidth = .7f, alpha = a)
             drawRect(Gold, Offset(10.5f, 3f), Size(3f, 2f), alpha = a)
             drawCircle(SilverDark, 9f, c, alpha = a)
-            val ball = Path().apply { addOval(androidx.compose.ui.geometry.Rect(c, 9f)) }
-            val tiles = listOf(Color(0xFFD7DDE8), Color(0xFFAEB7C6), Color(0xFF6E788A), Color(0xFFE9EEF5), Color(0xFF9CC3E6), Color(0xFFBFC7D4))
+            val ball =
+                Path().apply {
+                    addOval(
+                        androidx.compose.ui.geometry
+                            .Rect(c, 9f),
+                    )
+                }
+            val tiles =
+                listOf(Color(0xFFD7DDE8), Color(0xFFAEB7C6), Color(0xFF6E788A), Color(0xFFE9EEF5), Color(0xFF9CC3E6), Color(0xFFBFC7D4))
             clipPath(ball) {
                 var row = 0
                 var y = 5f
@@ -294,13 +321,14 @@ object NewYearNav {
                     val a0 = 2 * PI * k / n - PI / 2
                     val a1 = 2 * PI * (k + 1) / n - PI / 2
                     val r = 11.4f
-                    val p = Path().apply {
-                        moveTo(c.x, c.y)
-                        lineTo(c.x + (r * cos(a0)).toFloat(), c.y + (r * sin(a0)).toFloat())
-                        lineTo(c.x + ((r - .9f) * cos((a0 + a1) / 2)).toFloat(), c.y + ((r - .9f) * sin((a0 + a1) / 2)).toFloat())
-                        lineTo(c.x + (r * cos(a1)).toFloat(), c.y + (r * sin(a1)).toFloat())
-                        close()
-                    }
+                    val p =
+                        Path().apply {
+                            moveTo(c.x, c.y)
+                            lineTo(c.x + (r * cos(a0)).toFloat(), c.y + (r * sin(a0)).toFloat())
+                            lineTo(c.x + ((r - .9f) * cos((a0 + a1) / 2)).toFloat(), c.y + ((r - .9f) * sin((a0 + a1) / 2)).toFloat())
+                            lineTo(c.x + (r * cos(a1)).toFloat(), c.y + (r * sin(a1)).toFloat())
+                            close()
+                        }
                     drawPath(p, if (k % 2 == 0) Gold else Ink, alpha = a)
                     drawPath(p, if (k % 2 == 0) GoldLight else GoldDark, alpha = a * if (k % 2 == 0) .3f else 1f, style = Stroke(.35f))
                 }
@@ -319,15 +347,16 @@ object NewYearNav {
     ) {
         rotate(tilt, Offset(cx, cy - 5f)) {
             translate(cx, cy) {
-                val p = Path().apply {
-                    moveTo(-1.3f, -5f)
-                    cubicTo(-3.8f, -4.6f, -3.8f, -1f, -4f, 1.6f)
-                    lineTo(-5.2f, 4.2f)
-                    lineTo(5.2f, 4.2f)
-                    lineTo(4f, 1.6f)
-                    cubicTo(3.8f, -1f, 3.8f, -4.6f, 1.3f, -5f)
-                    close()
-                }
+                val p =
+                    Path().apply {
+                        moveTo(-1.3f, -5f)
+                        cubicTo(-3.8f, -4.6f, -3.8f, -1f, -4f, 1.6f)
+                        lineTo(-5.2f, 4.2f)
+                        lineTo(5.2f, 4.2f)
+                        lineTo(4f, 1.6f)
+                        cubicTo(3.8f, -1f, 3.8f, -4.6f, 1.3f, -5f)
+                        close()
+                    }
                 drawPath(p, Gold, alpha = a)
                 drawPath(p, GoldEdge, alpha = a, style = Stroke(.45f))
                 drawLine(GoldLight, Offset(-2.4f, -3f), Offset(-2.9f, 2.4f), strokeWidth = .8f, alpha = a * .8f)
@@ -389,13 +418,14 @@ object NewYearNav {
             val sway = sin(t * 1.3f + i * .37f) * 1.4f * d
             val col = colors[(hash(i, 3) * colors.size).toInt().coerceAtMost(colors.size - 1)]
             val shimmer = .78f + .22f * sin(t * 2.1f + i * .55f)
-            val p = Path().apply {
-                moveTo(x, 2f * d)
-                quadraticTo(x + sway * .3f, len * .5f, x + sway, len)
-                lineTo(x + sway + strand, len - .6f * d)
-                quadraticTo(x + strand + sway * .3f, len * .5f, x + strand, 2f * d)
-                close()
-            }
+            val p =
+                Path().apply {
+                    moveTo(x, 2f * d)
+                    quadraticTo(x + sway * .3f, len * .5f, x + sway, len)
+                    lineTo(x + sway + strand, len - .6f * d)
+                    quadraticTo(x + strand + sway * .3f, len * .5f, x + strand, 2f * d)
+                    close()
+                }
             drawPath(p, col, alpha = (shimmer + flash * .2f).coerceAtMost(1f))
         }
         if (flash > 0f) drawRect(Brush.verticalGradient(listOf(GoldLight.copy(alpha = .35f * flash), Color.Transparent)), size = size)
@@ -406,6 +436,7 @@ object NewYearNav {
         val d = density
         val colors = listOf(Gold, Silver, GoldLight, Color(0xFF7FA6FF), Color.White)
         val n = (size.width / (7f * d)).toInt()
+
         fun piece(
             i: Int,
             x: Float,
