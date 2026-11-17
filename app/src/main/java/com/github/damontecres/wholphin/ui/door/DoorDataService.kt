@@ -233,6 +233,74 @@ class DoorDataService
                     .take(limit)
             }
 
+        /**
+         * Date night (Valentine's look, 1 to 14 Feb): romance and comfy love stories of this kind, plus titles
+         * tagged Valentine's Day or with "Valentine" in the name. Nothing scary or grim.
+         */
+        suspend fun dateNight(
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
+        ): List<BaseItem> =
+            coroutineScope {
+                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.VALENTINES
+                val romance =
+                    async {
+                        items(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(type),
+                                recursive = true,
+                                genres = theme.genres,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                // genres too, so anything scary can be left out
+                                fields = SlimItemFields + ItemFields.GENRES,
+                                enableUserData = true,
+                                limit = limit * 2,
+                            ),
+                        )
+                    }
+                val tagged =
+                    async {
+                        items(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(type),
+                                recursive = true,
+                                tags = theme.tags,
+                                fields = SlimItemFields,
+                                enableUserData = true,
+                                limit = limit,
+                            ),
+                        )
+                    }
+                val named =
+                    theme.nameWords.map { word ->
+                        async {
+                            items(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(type),
+                                    recursive = true,
+                                    searchTerm = word,
+                                    fields = SlimItemFields,
+                                    enableUserData = true,
+                                    limit = 10,
+                                ),
+                            ).filter { theme.hasNameWord(it.name) || theme.hasNameWord(it.data.originalTitle) }
+                        }
+                    }
+                val grim = setOf("horror", "thriller", "war", "crime")
+                (tagged.await() + named.awaitAll().flatten() + romance.await())
+                    .distinctBy { it.id }
+                    .filter { item ->
+                        item.data.genres
+                            .orEmpty()
+                            .none { it.lowercase() in grim }
+                    }.take(limit)
+                    .shuffled()
+            }
+
         /** Newest of this kind in these libraries */
         suspend fun newest(
             userId: UUID,

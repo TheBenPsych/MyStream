@@ -249,6 +249,11 @@ private fun CornerCard(
         ) {
             // Halloween look: the notice's own mark (a moon, a sweet, a spider or a cauldron)
             if (HwLook.on) HwKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            // Valentine's look: the notice's own small mark (a heart chocolate, a rose, a sealed letter...)
+            if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .ValKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            }
             // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
             if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
             if (card.image != null) {
