@@ -111,7 +111,9 @@ fun SimilarSongsPanel(
 
                 is SimilarState.Songs -> {
                     Text(
-                        text = "Like ${state.playing}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.",
+                        text =
+                            "Like ${state.playing}, and not on Benflix yet. " +
+                                "The round button plays 30 seconds. Pick a song to ask for it.",
                         fontSize = BenflixType.small,
                         color = BenflixColors.Muted,
                     )

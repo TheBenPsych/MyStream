@@ -434,7 +434,8 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else if (state.catalogue) {
-                                        "Not on Benflix yet. Press a song to ask for it. Play previews hears 30 seconds of each, one after another.$okNote"
+                                        "Not on Benflix yet. Press a song to ask for it. " +
+                                            "Play previews hears 30 seconds of each, one after another.$okNote"
                                     } else {
                                         if (kind == CollectionKind.PLAYLIST) {
                                             "Songs like the ones here. Ask for one and it joins this playlist once it's in.$okNote"
