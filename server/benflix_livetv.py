@@ -17,6 +17,10 @@ What it does, once at start-up (when the saved list is old) and then every 24 ho
      Tuner (M3U):   http://<server>:8097/livetv/channels.m3u
      Guide (XMLTV): http://<server>:8097/livetv/guide.xml
    http://<server>:8097/livetv/status shows when it last ran and how many channels it kept.
+6. If a check finds far fewer channels working than last time (usually Tower's internet dropping for a
+   moment), the old list is kept and the check runs again 30 minutes later.
+7. The TV guide is fetched again every 3 hours (a saved copy is used if a download fails), and Jellyfin
+   is asked to read it, so the guide never runs out.
 
 Only uses the Python standard library.
 """
@@ -50,6 +54,21 @@ HOST_MARK = "__BENFLIX_HOST__"
 BROKEN_FILE = os.path.join(DIR, "broken.json")
 BROKEN_DAYS = 30
 EVERY = 24 * 3600
+# The TV guide is fetched again this often (the free guides only reach 12-24 hours ahead, so a guide
+# fetched once a night ran out by the evening)
+GUIDE_EVERY = 3 * 3600
+# Each free service's guide as last downloaded, used when the download fails
+GUIDE_SAVED = os.path.join(DIR, "guide-{}.xml")
+# What the guide needs to know about each kept channel, so the guide can be redone without a full check
+FINAL_FILE = os.path.join(DIR, "final.json")
+# A check that keeps far fewer channels than the last list (Tower's internet dropped, or a free service
+# had a bad minute) doesn't replace the list. It's tried again later; after HOLD_MAX tries in a row
+# that all say the same, the smaller list is used.
+HOLD_SHARE = 0.6
+HOLD_RETRY = 30 * 60
+HOLD_MAX = 3
+# Bump to make every Tower redo its list straight after updating
+CHECK_VERSION = 2
 UA = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 
 # key, name, channel list, guide (None = use the one the list names, if any)
@@ -264,6 +283,27 @@ def build():
     report["kept"] = len(final)
     report["types"] = {name: len(per_cat.get(name, [])) for name, _ in CATEGORIES}
 
+    # Safety net: a check that lost most of the channels at once is almost always Tower's internet
+    # or one service having a bad minute, not hundreds of channels closing overnight. Keep the list
+    # people have now and try again in a while.
+    before = status()
+    had = before.get("kept")
+    held = int(before.get("held") or 0)
+    if had and os.path.isfile(M3U_FILE) and len(final) < had * HOLD_SHARE and held < HOLD_MAX:
+        before.pop("running", None)
+        before.pop("ready", None)
+        before["held"] = held + 1
+        before["held_at"] = int(time.time())
+        before["held_note"] = (f"Tonight's check only found {len(final)} of {had} channels working "
+                               f"({report['dead']} of {report['checked']} copies didn't answer), so the list "
+                               f"was kept and will be checked again in {HOLD_RETRY // 60} minutes.")
+        before["retry_at"] = int(time.time()) + HOLD_RETRY
+        before["lists"] = report["lists"]
+        with open(STATUS_FILE, "w") as f:
+            json.dump(before, f, indent=1)
+        print("Live TV: " + before["held_note"], flush=True)
+        return before
+
     # Each channel's address in the list is Tower's own /livetv/play/<channel>, never the free service's
     # address. Jellyfin names its channels after their address, so when tonight's check swaps a dead copy
     # for another one, Jellyfin's channel stays the same and keeps playing (before, it pointed at a copy
@@ -292,11 +332,18 @@ def build():
             )
     os.replace(tmp, M3U_FILE)
 
+    tmp = FINAL_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"guides": guides, "channels": [{"id": c["id"], "source": c["source"], "tvg": c["tvg"]} for c in final]}, f)
+    os.replace(tmp, FINAL_FILE)
     report["guide"] = write_guide(final, guide_data)
+    report["guide_at"] = int(time.time())
+    report["guide_key"] = _guide_key(report["guide"])
     report["channels_key"] = hashlib.sha1(" ".join(sorted(copies)).encode()).hexdigest()[:12]
     report["finished"] = int(time.time())
     report["minutes"] = round((time.time() - started) / 60, 1)
-    report["jellyfin_synced"] = status().get("jellyfin_synced")
+    report["jellyfin_synced"] = before.get("jellyfin_synced")
+    report["jellyfin_guide_synced"] = before.get("jellyfin_guide_synced")
     with open(STATUS_FILE, "w") as f:
         json.dump(report, f, indent=1)
     print(f"Live TV: kept {report['kept']} channels ({report['dead']} dead) in {report['minutes']} min", flush=True)
@@ -309,16 +356,72 @@ def load_guides(guides):
     for source, url in guides.items():
         if not url:
             continue
-        try:
-            _, _, data = _get(url, timeout=120)
-            if data[:2] == b"\x1f\x8b":
-                data = gzip.decompress(data)
-            ids = set(re.findall(rb'<programme[^>]*?channel="([^"]+)"', data))
-            out[source] = (data, {i.decode("utf-8", "replace") for i in ids})
-        except Exception as e:
+        saved = GUIDE_SAVED.format(source)
+        data = None
+        for attempt in range(3):
+            try:
+                _, _, data = _get(url, timeout=120)
+                if data[:2] == b"\x1f\x8b":
+                    data = gzip.decompress(data)
+                if b"<programme" not in data:
+                    raise ValueError("no shows in it")
+                try:
+                    with open(saved + ".tmp", "wb") as f:
+                        f.write(data)
+                    os.replace(saved + ".tmp", saved)
+                except OSError:
+                    pass
+                break
+            except Exception as e:
+                data = None
+                print(f"Live TV: couldn't read the {source} guide ({e})", flush=True)
+                time.sleep(5 * (attempt + 1))
+        if data is None:
+            # The download failed: the copy from last time still has today's shows in it
+            try:
+                with open(saved, "rb") as f:
+                    data = f.read()
+                print(f"Live TV: using the saved {source} guide", flush=True)
+            except OSError:
+                pass
+        if data is None:
             out[source] = (None, set())
-            print(f"Live TV: couldn't read the {source} guide ({e})", flush=True)
+            continue
+        ids = set(re.findall(rb'<programme[^>]*?channel="([^"]+)"', data))
+        out[source] = (data, {i.decode("utf-8", "replace") for i in ids})
     return out
+
+
+def _guide_key(counts):
+    return hashlib.sha1(json.dumps([counts, int(time.time())]).encode()).hexdigest()[:12]
+
+
+def refresh_guide():
+    """Fetches the TV guides again for the channels in the list and rewrites guide.xml, then asks
+    Jellyfin to read it. Runs every few hours between the nightly channel checks."""
+    try:
+        with open(FINAL_FILE) as f:
+            saved = json.load(f)
+    except (OSError, ValueError):
+        return None
+    final = saved.get("channels") or []
+    if not final:
+        return None
+    counts = write_guide(final, load_guides(saved.get("guides") or {}))
+    with _lock:
+        st = {}
+        try:
+            with open(STATUS_FILE) as f:
+                st = json.load(f)
+        except (OSError, ValueError):
+            pass
+        st["guide"] = counts
+        st["guide_at"] = int(time.time())
+        st["guide_key"] = _guide_key(counts)
+        with open(STATUS_FILE, "w") as f:
+            json.dump(st, f, indent=1)
+    print(f"Live TV: guide fetched again ({counts})", flush=True)
+    return counts
 
 
 def write_guide(final, guide_data):
@@ -538,7 +641,8 @@ def sync_jellyfin(token=None):
         return
     st = status()
     want = st.get("channels_key")
-    if not want or st.get("jellyfin_synced") == want or st.get("running"):
+    guide = st.get("guide_key")
+    if not want or st.get("running") or (st.get("jellyfin_synced") == want and st.get("jellyfin_guide_synced") == guide):
         return
     try:
         tasks = json.loads(_jellyfin("/ScheduledTasks?isHidden=false", token))
@@ -554,6 +658,7 @@ def sync_jellyfin(token=None):
         except (OSError, ValueError):
             pass
         st_file["jellyfin_synced"] = want
+        st_file["jellyfin_guide_synced"] = guide
         with open(STATUS_FILE, "w") as f:
             json.dump(st_file, f, indent=1)
         print("Live TV: asked Jellyfin to read the new channel list", flush=True)
@@ -594,25 +699,37 @@ def status():
 
 def _lists_key():
     """Changes whenever the lists in SOURCES, the channel types or the line-up change, so an update remakes the list"""
-    return hashlib.sha1(json.dumps([SOURCES, CATEGORIES, PER_BLOCK, LINEUP]).encode()).hexdigest()[:12]
+    return hashlib.sha1(json.dumps([SOURCES, CATEGORIES, PER_BLOCK, LINEUP, CHECK_VERSION]).encode()).hexdigest()[:12]
 
 
 def start():
     """Keeps the channel list fresh: now if it's old, missing or made from other lists, then every 24 hours."""
 
     def loop():
+        # Give Tower's network a couple of minutes after a restart before checking hundreds of channels
+        time.sleep(120)
         while True:
             try:
-                age = time.time() - os.path.getmtime(M3U_FILE)
-            except OSError:
-                age = EVERY
-            if status().get("lists") != _lists_key() or not os.path.isfile(COPIES_FILE):
-                age = EVERY  # Benflix was updated with different lists: make it again now
-            if age >= EVERY - 600:
-                refresh()
-                time.sleep(EVERY)
-            else:
-                time.sleep(EVERY - age)
+                st = status()
+                now = time.time()
+                try:
+                    age = now - os.path.getmtime(M3U_FILE)
+                except OSError:
+                    age = EVERY
+                if st.get("lists") != _lists_key() or not os.path.isfile(COPIES_FILE):
+                    age = EVERY  # Benflix was updated with different lists: make it again now
+                if st.get("retry_at"):
+                    due = now >= st["retry_at"]  # the last check was held back: check again after a while
+                else:
+                    due = age >= EVERY - 600
+                if due:
+                    refresh()
+                elif now - (st.get("guide_at") or 0) >= GUIDE_EVERY and not st.get("running"):
+                    refresh_guide()
+                    sync_jellyfin()
+            except Exception as e:
+                print(f"Live TV: {e!r}", flush=True)
+            time.sleep(600)
 
     threading.Thread(target=loop, daemon=True).start()
 

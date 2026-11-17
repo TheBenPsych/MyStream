@@ -2,12 +2,6 @@
    profile menu. Follows the approved redesign (setup screens, intro, Home, menu). */
 "use strict";
 
-// ---------- sounds (soft mallets: two notes when Benflix opens, four as the doors grow) ----------
-B.sound = (name) => {
-  if (B.webSettings().sounds === false) return;
-  try { const a = new Audio(`web/sounds/${name}.wav`); a.volume = name === "doors" ? 0.55 : 0.45; a.play().catch(() => {}); } catch (e) {}
-};
-
 // ---------- intro: logo fades in, holds, then glides up into Who's watching ----------
 B.intro = () => new Promise((done) => {
   const lite = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -15,7 +9,6 @@ B.intro = () => new Promise((done) => {
   el.id = "intro";
   el.innerHTML = B.logo();
   document.body.appendChild(el);
-  B.sound("opening");
   requestAnimationFrame(() => el.classList.add("on"));
   setTimeout(() => {
     if (!lite) el.classList.add("glide");
@@ -396,7 +389,7 @@ B.loadFamilyRow = async (nav, kids) => {
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
   const [movies, eps, next] = await Promise.all([
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=12&Fields=${F}`),
-    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=12&Fields=${F}`),
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=12&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))),
     get(`/Shows/NextUp?userId=${u}&Limit=12&Fields=${F}&enableResumable=false&enableRewatching=false`),
   ]);
   if (!B.alive(nav)) return;
@@ -912,35 +905,41 @@ B.holiday = () => {
   return "";
 };
 
-// ---------- profile menu: corner card, picture + name on the left, list on the right ----------
-B.openMenu = async () => {
+// ---------- profile menu ----------
+// Computers: it slides out beside the rail like a door's panel (js/nav.js B.openMePanel). Phone-sized windows and
+// pages without the rail: the corner card. Requests isn't listed: it has its own spot on the rail and in More.
+B.profileItems = () => [
+  ["#/mine", "chart", "My watching"],
+  B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together"] : null,
+  ["#/settings", "gear", "Settings"],
+  B.me && B.me.admin ? ["#/server", "server", "Server"] : null,
+  ["#/help", "help", "Help and updates"],
+  ["report", "flag", "Report a problem"],
+].filter(Boolean);
+// Where a profile menu line goes (shared by the slide-out and the corner card)
+B.profileGo = (where) => {
+  B.closeAll();
+  if (where === "signout") return B.signOut();
+  if (where === "report") return B.report();
+  B.go(where);
+};
+B.openMenu = async (byKeys) => {
   if (!B.me) return;
   if (B.me.kids) return B.go("#/who");
+  if (B.openMePanel && B.openMePanel(byKeys)) return;
   B.closeAll();
   B.shade();
   const c = document.createElement("div");
   c.className = "menu-card";
-  const items = [
-    ["#/requests", "plus", "Requests"],
-    ["#/mine", "chart", "My watching"],
-    B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together"] : null,
-    ["#/settings", "gear", "Settings"],
-    B.me.admin ? ["#/server", "server", "Server"] : null,
-    ["#/help", "help", "Help and updates"],
-    ["report", "flag", "Report a problem"],
-  ].filter(Boolean);
+  const items = B.profileItems();
   c.innerHTML = `<div class="left">${B.picHtml(B.me, "", 220)}<div><div class="nm">${esc(B.me.name)}</div><div class="wt" id="wt">&nbsp;</div></div><button class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div>
-    <div class="list">${items.map(([href, icon, label]) => `<button data-go="${href}">${I(icon)}${esc(label)}${label === "Server" ? '<span class="badge hidden" id="srvBadge"></span>' : ""}</button>`).join("")}
+    <div class="list">${items.map(([href, icon, label]) => `<button data-go="${href}">${I(icon)}${esc(label)}</button>`).join("")}
       <div class="sep"></div><button class="out" data-go="signout">${I("out")}Sign out</button></div>`;
   document.body.appendChild(c);
   $("button[data-go]", c).focus();
-  c.onclick = async (e) => {
+  c.onclick = (e) => {
     const b = e.target.closest("[data-go]"); if (!b) return;
-    const where = b.dataset.go;
-    B.closeAll();
-    if (where === "signout") return B.signOut();
-    if (where === "report") return B.report();
-    B.go(where);
+    B.profileGo(b.dataset.go);
   };
   B.watchTime().then((w) => { const el = $("#wt"); if (el) el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
 };

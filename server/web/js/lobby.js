@@ -711,8 +711,7 @@
     async function pickTitle(id) {
       let it = await B.get(`/Users/${B.uid()}/Items/${id}?Fields=OfficialRating`).catch(() => null);
       if (it && it.Type === "Series") {
-        const next = await B.get(`/Shows/NextUp?userId=${B.uid()}&SeriesId=${id}&Limit=1&enableResumable=true`).then((r) => (r.Items || [])[0]).catch(() => null)
-          || await B.get(`/Shows/${id}/Episodes?userId=${B.uid()}&Limit=1`).then((r) => (r.Items || [])[0]).catch(() => null);
+        const next = await B.seriesNextEp(id).catch(() => null);
         if (!next) return toast("No episodes of that one yet.");
         it = Object.assign(next, { OfficialRating: next.OfficialRating || it.OfficialRating });
       }

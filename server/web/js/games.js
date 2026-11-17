@@ -34,11 +34,13 @@ const favs = () => loadJson(favKey(), []);
 const describeGame = (g) => `<div class="t">${esc(g.name)}</div><div class="meta">${[g.console, g.year || "", (g.genres || []).join(", ")].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="ov">Plays in your browser. Use the keyboard or plug in a controller.</div>`;
 
 B.route(/^\/games$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Games", DOORS.games.color) + `<section class="door-top" id="gTop" style="height:auto;min-height:250px;padding-bottom:16px"><div class="art"></div><div class="info" id="gInfo"></div></section><div class="rows" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Games", DOORS.games.color) + `<section class="door-top" id="gTop" style="height:auto;min-height:250px;padding-bottom:16px"><div class="art"></div><div class="info" id="gInfo"></div></section><div class="rows" id="bRows"></div><div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
+  // Benflix's own games (puzzles, party games, arcade, Ember Road) come first and don't need RomM
+  if (B.bgRows) B.bgRows($("#bRows"), $("#gInfo")).catch((e) => console.warn("Benflix games", e));
   let data, recent;
   try { [data, recent] = await Promise.all([B.gamesList(), B.call("GET", "api/saves/recent").catch(() => ({ games: [] }))]); }
-  catch (e) { $("#gTop").remove(); $("#rows").innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>`; return; }
+  catch (e) { $("#rows").innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>`; return; }
   if (!B.alive(nav)) return;
   const consoles = data.consoles.filter(playableHere).map((c) => Object.assign({}, c, { games: c.games.map((g) => Object.assign({ console: c.name, slug: c.slug }, g)) }));
   const all = consoles.flatMap((c) => c.games);
@@ -54,11 +56,10 @@ B.route(/^\/games$/, async (m, nav) => {
     B.row("Games for two", all.filter((g) => g.players >= 2).sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20).map((g) => gameCard(g))),
     all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin" style="white-space:normal;max-width:100%">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
     `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end"><span class="tname">${esc(c.name)}</span><small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
-    B.row("Arcade", arcade.slice(0, 30).map((g) => gameCard(g))),
+    B.row("Arcade machines", arcade.slice(0, 30).map((g) => gameCard(g))),
     ...consoles.filter((c) => EJS_CORES[c.slug] !== "arcade").slice(0, 6).map((c) => B.row(c.name, c.games.slice(0, 24).map((g) => gameCard(g, c.year)), { seeAll: `#/console/${enc(c.slug)}` })),
-    `<div class="wrap dim" style="font-size:14px">Benflix's own games (puzzles, party games and Ember Road) are on the TV and phone app.</div>`,
   ].join("");
-  const first = cont[0] || fav[0] || all[0];
+  const first = cont[0] || fav[0];
   if (first) $("#gInfo").innerHTML = describeGame(first);
   if ($("#gSpin")) $("#gSpin").onclick = () => B.gameRoulette(all);
   const point = (e) => { const c = e.target.closest("[data-id^='g']"); if (!c) return; const g = B.items[c.dataset.id]; if (g) $("#gInfo").innerHTML = describeGame(g); };

@@ -668,6 +668,8 @@ class SeerrService
                 backDropUrl = createImageUrl(ImageType.BACKDROP, search.backdropPath, search.mediaInfo),
                 logoUrl = createImageUrl(ImageType.LOGO, null, search.mediaInfo),
                 jellyfinItemId = search.mediaInfo?.jellyfinId,
+                isAnime = search.genreIds?.contains(16) == true && search.originalLanguage == "ja",
+                isAnimation = search.genreIds?.contains(16) == true,
             )
 
         suspend fun createDiscoverItem(credit: CreditCast): DiscoverItem =
