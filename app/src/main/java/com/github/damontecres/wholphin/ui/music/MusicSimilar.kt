@@ -119,7 +119,11 @@ fun SimilarSongsPanel(
                     )
                     if (!note.isNullOrBlank()) Text(note, fontSize = BenflixType.small, color = BenflixColors.Music)
                     if (state.songs.isEmpty()) {
-                        Text("Couldn't find songs like this one that you don't already have. Try another song.", fontSize = BenflixType.body, color = BenflixColors.Soft)
+                        Text(
+                            "Couldn't find songs like this one that you don't already have. Try another song.",
+                            fontSize = BenflixType.body,
+                            color = BenflixColors.Soft,
+                        )
                     }
                     state.songs.forEachIndexed { i, song ->
                         SimilarLine(
