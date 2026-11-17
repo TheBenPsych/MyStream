@@ -26,12 +26,14 @@ object BenflixColors {
     val Raised: Color get() =
         pc(PcLook.Raised) ?: ny(NyLook.Raised) ?: sp(SpLook.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised)
             ?: tg(TgLook.Raised)
+            ?: sw(SwLook.Raised)
             ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
     val Panel: Color get() =
         pc(PcLook.Panel) ?: ny(NyLook.Panel) ?: sp(SpLook.Panel) ?: KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel)
+            ?: sw(SwLook.Panel)
             ?: vl(ValLook.Panel)
             ?: Color(0xFF16181E)
 
@@ -39,6 +41,7 @@ object BenflixColors {
     val PanelHigh: Color get() =
         pc(PcLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: sp(SpLook.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh)
             ?: tg(TgLook.PanelHigh)
+            ?: sw(SwLook.PanelHigh)
             ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
@@ -48,6 +51,7 @@ object BenflixColors {
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
     val FocusFill: Color get() =
         pc(PcLook.Butter) ?: ny(NyLook.Gold) ?: sp(SpLook.Clover) ?: KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange)
+            ?: sw(SwLook.Red)
             ?: vl(ValLook.Rose)
             ?: Color.White
 
@@ -55,18 +59,21 @@ object BenflixColors {
     val OnFocusFill: Color get() =
         pc(PcLook.OnButter) ?: ny(NyLook.OnGold) ?: sp(SpLook.OnClover) ?: KidsLook.palette?.onAccent ?: xmas(Color.White)
             ?: tg(Color.White)
+            ?: sw(Color.White)
             ?: vl(Color.White)
             ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
     val Line: Color get() =
         pc(PcLook.Line) ?: ny(NyLook.Line) ?: sp(SpLook.Line) ?: KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line)
+            ?: sw(SwLook.Line)
             ?: vl(ValLook.Line)
             ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
     val FocusRow: Color get() =
         pc(PcLook.Red) ?: ny(NyLook.Midnight) ?: sp(SpLook.Emerald) ?: KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown)
+            ?: sw(SwLook.Button)
             ?: vl(ValLook.Wine)
             ?: Color(0xFF262932)
 
@@ -117,6 +124,9 @@ object BenflixColors {
     /** St. Patrick's Day look: [c] while it's on (10 to 17 Mar, Kids too, so it wins over the Kids colours), else null */
     private fun sp(c: Color): Color? = if (SpLook.on) c else null
 
+    /** Star Wars Day look: [c] on 4 May (Kids too), else null */
+    private fun sw(c: Color): Color? = if (SwLook.on) c else null
+
     /** Books, the sixth door: lime with dark words */
     val Books = Color(0xFFB9E36A)
     val OnBooks = Color(0xFF141C05)
@@ -151,7 +161,7 @@ enum class BenflixDoor(
 
     /** The words on the door itself: white on every door in the Christmas, Thanksgiving and New Year's looks (Ben: Books too) */
     val labelColor: Color
-        get() = if (XmasLook.on || TgLook.on || NyLook.on || ValLook.on || PcLook.on || SpLook.on) Color.White else onColor
+        get() = if (XmasLook.on || TgLook.on || NyLook.on || ValLook.on || PcLook.on || SwLook.on || SpLook.on) Color.White else onColor
 
     /** Christmas look: the colour of the glass ornament hanging on this door */
     val ornamentColor: Color

@@ -338,6 +338,9 @@ class DoorViewModel
                 }.let { rows ->
                     // St. Patrick's Day look (10 to 17 Mar, Kids too): Irish favourites right after Keep watching
                     if (SpLook.on) listOf(rows.first(), IRISH) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Star Wars Day (4 May): the saga, from your own library, at the very top
+                    if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -364,6 +367,27 @@ class DoorViewModel
                 launch {
                     val items = data.myList(userId, BaseItemKind.MOVIE)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
+                }
+                if (STAR_WARS in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(
+                                    com.github.damontecres.wholphin.ui.main.HomeTheme.STAR_WARS_DAY,
+                                    userId,
+                                    BaseItemKind.MOVIE,
+                                ).filter { it.id !in dislikes }
+                                // in the order they came out
+                                .sortedWith(
+                                    compareBy({ it.data.premiereDate ?: java.time.LocalDateTime.MAX }, {
+                                        it.data.productionYear
+                                            ?: Int.MAX_VALUE
+                                    }),
+                                )
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(STAR_WARS, "May the 4th: the saga", items.takeIf { it.size >= 3 }.orEmpty()))
+                    }
                 }
                 if (DATE_NIGHT in order) {
                     launch {
@@ -606,6 +630,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val STAR_WARS = "starwars"
             const val DATE_NIGHT = "datenight"
             const val POPCORN = "popcorn"
             const val IRISH = "irish"

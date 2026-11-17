@@ -114,6 +114,18 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Star Wars Day: every Star Wars film on Benflix (tagged "star wars" or with Star Wars in the name), oldest first
+B.starWarsMovies = () => B.cached("swMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${encodeURIComponent("star wars")}&Limit=40&Fields=${F}`).catch(() => null),
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent("Star Wars")}&Limit=40&Fields=${F}`).catch(() => null),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  out.sort((a, b) => String(a.PremiereDate || a.ProductionYear || "9999").localeCompare(String(b.PremiereDate || b.ProductionYear || "9999")));
+  return B.keep(out.slice(0, 24));
+});
 // Popcorn movies (Popcorn Day look, 19 January): big fun crowd-pleasers on Benflix, the same picks as the TV app
 const PC_TITLES = ["Jurassic Park", "Back to the Future", "Star Wars", "Raiders of the Lost Ark", "The Avengers", "Avengers: Endgame", "Top Gun: Maverick", "Spider-Man: Into the Spider-Verse", "Toy Story", "The Lion King", "Jaws", "E.T. the Extra-Terrestrial", "Ghostbusters", "The Princess Bride", "Home Alone", "Finding Nemo", "Shrek", "The Incredibles", "Pirates of the Caribbean", "The Dark Knight", "Guardians of the Galaxy", "Inside Out", "Up", "Ferris Bueller's Day Off", "The Goonies", "Men in Black", "Independence Day", "Titanic", "Frozen", "Paddington 2"];
 B.popcornMovies = () => B.cached("pcMovies-" + B.uid(), 1800000, async () => {
@@ -188,6 +200,8 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // Star Wars Day (4 May, Kids too): the saga from this library, in the order the films came out, at the very top
+  const saga = B.swOn && B.swOn() ? await B.starWarsMovies().catch(() => []) : [];
   // Valentine's look (1 to 14 February): Date night right after Keep watching (like the TV app)
   const dates = !fewer && B.valOn && B.valOn() ? await B.dateNightMovies().catch(() => []) : [];
   // Popcorn Day look (19 January): Popcorn movies right after Keep watching, Kids too
@@ -196,6 +210,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   const irish = B.spOn && B.spOn() ? await B.irishMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
+    saga.length >= 3 ? B.row("May the 4th: the saga", saga.map((it) => B.posterCard(it))) : "",
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
     pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",

@@ -73,11 +73,13 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SpLook
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
 import com.github.damontecres.wholphin.ui.theme.spPlayClover
+import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.valRosyGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -706,6 +708,8 @@ private fun TitleButtonView(
     val vl = com.github.damontecres.wholphin.ui.theme.ValLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
+    val sw = SwLook.on
     // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
     val pc = PcLook.on
     // St. Patrick's Day look: Play is clover green with dark words, a gold four-leaf clover on its corner and a soft sheen
@@ -717,6 +721,8 @@ private fun TitleButtonView(
             TgLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (sw) {
+            SwLook.Red
         } else if (pc) {
             PcLook.Butter
         } else if (vl) {
@@ -729,7 +735,7 @@ private fun TitleButtonView(
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            if (xmas || tg || vl) {
+            if (xmas || tg || sw || vl) {
                 Color.White
             } else if (ny) {
                 NyLook.OnGold
@@ -765,6 +771,7 @@ private fun TitleButtonView(
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
                 .then(if (primary && stp) Modifier.spPlayClover(corner = 10.dp) else Modifier)
                 .then(
