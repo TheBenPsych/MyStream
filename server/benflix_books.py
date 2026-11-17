@@ -138,6 +138,7 @@ def start(jellyfin_call=None):
             os.makedirs(os.path.join(_dir, sub), exist_ok=True)
         _meta.update(_read(os.path.join(_dir, "meta.json"), {}))
         _state.update(_read(os.path.join(_dir, "state.json"), {}))
+        _look_again_once()
         _probe_saved = _read(os.path.join(_dir, "probe.json"), {})
         for k, v in _probe_saved.items():
             _probe[k] = tuple(v)
@@ -205,6 +206,24 @@ def _save_user(u):
     if _dir:
         with _lock:
             _write(os.path.join(_dir, "users", u["_id"] + ".json"), {k: v for k, v in u.items() if not k.startswith("_")})
+
+
+def _look_again_once():
+    """Before Benflix knew Chaptarr keeps ebooks and audiobooks apart (and hides downloads that don't name
+    the author), every book request ended up as "Couldn't find it". Look for all of those again, once."""
+    if _state.get("looked_again", 0) >= 1:
+        return
+    n = 0
+    for r in _state["requests"]:
+        if r.get("state") == "cant":
+            r.update(state="problem", at=int(time.time()), problem="Looking again")
+            for k in ("ch", "chIds", "pickedAt", "searchedAt"):
+                r.pop(k, None)
+            n += 1
+    _state["looked_again"] = 1
+    if n:
+        log(f"Looking again for {n} book requests that said Couldn't find it")
+        _save_state()
 
 
 def _loop():
@@ -2262,6 +2281,7 @@ def retry(rid):
         r["state"] = "searching"
         r["at"] = int(time.time())
         r.pop("problem", None)
+        r.pop("pickedAt", None)
     _save_state()
     threading.Thread(target=_send, args=(r,), daemon=True).start()
     return {"ok": True}
@@ -2279,7 +2299,7 @@ def forget(rid, user_id, is_admin):
 # ---------- Chaptarr (Readarr-style /api/v1) ----------
 
 
-def ch(method, path, body=None):
+def ch(method, path, body=None, timeout=60):
     if not CH_URL or not CH_KEY:
         raise BooksError(503, "Chaptarr isn't connected yet. Run the Benflix setup command again.")
     data = json.dumps(body).encode() if body is not None else None
@@ -2288,7 +2308,7 @@ def ch(method, path, body=None):
         headers={"X-Api-Key": CH_KEY, "Accept": "application/json", "Content-Type": "application/json", "User-Agent": UA},
     )
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             raw = r.read()
             return json.loads(raw) if raw else None
     except urllib.error.HTTPError as e:
@@ -2328,6 +2348,8 @@ def _ch_defaults():
         ebook_quality=next((q.get("id") for q in quality if q.get("profileType") == "ebook"), None)
         or next((q.get("id") for q in quality if "audio" not in (q.get("name") or "").lower()), first),
         meta=_ch_english_meta(meta),
+        ebook_meta=next((m.get("id") for m in meta if "ebook" in (m.get("name") or "").lower()), None),
+        audiobook_meta=next((m.get("id") for m in meta if "audio" in (m.get("name") or "").lower()), None),
     )
     _ch_english_releases()
     _ch_setup["indexers"] = _ch_indexers()
@@ -2394,6 +2416,8 @@ def _english_author(book):
         return
     try:
         a = ch("GET", f"/api/v1/author/{aid}") or {}
+        if "ebookMetadataProfileId" in a or "audiobookMetadataProfileId" in a:
+            return  # Newer Chaptarr: a profile per format, and the old single one is ignored
         if a and a.get("metadataProfileId") != d["meta"]:
             a["metadataProfileId"] = d["meta"]
             ch("PUT", f"/api/v1/author/{aid}", a)
@@ -2457,25 +2481,176 @@ def _english_edition(book):
     return dict(book, editions=[dict(e, monitored=e is pick) for e in eds])
 
 
-def _send_to_chaptarr(r):
-    want_t, want_a = norm(r["name"]), norm(r["author"].split(",")[0])
-    found = ch("GET", "/api/v1/book/lookup?" + urllib.parse.urlencode({"term": f"{r['name']} {r['author']}".strip()})) or []
-    if not found:
-        found = ch("GET", "/api/v1/book/lookup?" + urllib.parse.urlencode({"term": r["name"]})) or []
+NOT_THE_BOOK = ("summary", "study guide", "analysis of", "supersummary", "workbook", "sparknotes", "cliffsnotes", "quiz book")
+
+
+def _author_parts(author):
+    """'Matt, Matt Dinniman' or 'Sarah J. Maas, Narrator' -> the names worth matching on"""
+    parts = [p for p in (norm(x) for x in str(author or "").split(",")) if len(p) > 3]
+    return [p for p in parts if " " in p] or parts or [norm(author)]
+
+
+def _lookup(r):
+    """Ask Chaptarr for the book. Asking with the author's name too can bring back only study guides
+    ("Summary of Project Hail Mary by Andy Weir"), so ask both ways and keep the best match."""
+    want_t, want_as = norm(r["name"]), _author_parts(r["author"])
+    found, seen = [], set()
+    for term in (f"{r['name']} {r['author']}".strip(), r["name"]):
+        try:
+            hits = ch("GET", "/api/v1/book/lookup?" + urllib.parse.urlencode({"term": term})) or []
+        except BooksError as e:
+            log(f"Chaptarr lookup for {term}: {e.message}")
+            hits = []
+        for b in hits:
+            k = b.get("foreignBookId") or b.get("titleSlug") or b.get("title")
+            if k not in seen and not any(w in str(b.get("title") or "").lower() for w in NOT_THE_BOOK):
+                seen.add(k)
+                found.append(b)
 
     def score(b):
         bt = norm(b.get("title"))
         ba = norm((b.get("author") or {}).get("authorName") or b.get("authorTitle") or "")
         s = 3 if bt == want_t else 1 if want_t and (want_t in bt or bt in want_t) else 0
-        return s + (2 if want_a and (want_a in ba or ba in want_a) else 0)
+        return s + (2 if any(a and (a in ba or ba in a) for a in want_as) else 0)
 
+    found = [b for b in found if score(b) not in (0, 2)]  # the title has to match, not just the author
     if not found or score(max(found, key=score)) < 2:
         raise BooksError(404, "Chaptarr couldn't find that exact book.")
-    best = max(found, key=score)
+    return max(found, key=score)
+
+
+def _same_book(a, b):
+    ka = {a.get("foreignBookId"), a.get("goodreadsWorkId"), a.get("hardcoverBookId")} - {None, ""}
+    kb = {b.get("foreignBookId"), b.get("goodreadsWorkId"), b.get("hardcoverBookId")} - {None, ""}
+    return bool(ka & kb)
+
+
+def _book_formats(book):
+    """Chaptarr keeps a title's ebook and audiobook as two books (twins that share an id from
+    Hardcover). Returns {"ebook": book, "audiobook": book} for the ones it has. An older Chaptarr
+    without twins has one book with an ebook switch and an audiobook switch, so it covers both."""
+    if not book.get("mediaType"):
+        return {"ebook": book, "audiobook": book}
+    try:
+        books = ch("GET", f"/api/v1/book?authorId={book.get('authorId')}") or []
+    except BooksError:
+        books = [book]
+    out = {}
+    for b in sorted(books, key=lambda x: (x.get("id") != book.get("id"), not x.get("hasFiles"), not x.get("monitored"), x.get("id") or 0)):
+        if b.get("id") == book.get("id") or _same_book(b, book):
+            out.setdefault(b.get("mediaType") or "ebook", b)
+    return out
+
+
+def _settle(book_id, seconds=120):
+    """A new author: wait until Chaptarr has finished filling in their books (the count stops growing)"""
+    try:
+        aid = (ch("GET", f"/api/v1/book/{book_id}") or {}).get("authorId")
+    except BooksError:
+        return
+    last, end = -1, time.time() + seconds
+    while aid and time.time() < end:
+        time.sleep(10)
+        try:
+            n = len(ch("GET", f"/api/v1/book?authorId={aid}") or [])
+        except BooksError:
+            return
+        if n == last:
+            return
+        last = n
+
+
+def _wait_for(cmd, seconds=120):
+    """Waits (a little) for a Chaptarr job like RefreshAuthor to finish"""
+    cid = (cmd or {}).get("id")
+    end = time.time() + seconds
+    while cid and time.time() < end:
+        time.sleep(5)
+        try:
+            if (ch("GET", f"/api/v1/command/{cid}") or {}).get("status") in ("completed", "failed", "aborted", "cancelled"):
+                return
+        except BooksError:
+            return
+
+
+def _author_formats(aid, kinds, keep):
+    """Chaptarr only makes the ebook (or audiobook) twin of a book when the author has a folder for that
+    format. Authors added by older Benflix only had one, so "ebook and audiobook" requests only ever
+    searched for one of them. Adds the missing folder, and turns off "get every new book by this author"
+    so only the books people ask for download. Anything Chaptarr switches on while doing that (other
+    than [keep]) is switched back off."""
+    if not aid:
+        return False
+    try:
+        a = ch("GET", f"/api/v1/author/{aid}") or {}
+    except BooksError:
+        return False
+    if "ebookRootFolderPath" not in a and "audiobookRootFolderPath" not in a and "ebookStatistics" not in a:
+        return False  # Older Chaptarr: one folder per author
+    d = _ch_setup
+    change = {}
+    for k in kinds:
+        if not a.get(f"{k}RootFolderPath"):
+            root = d["ebook"] if k == "ebook" else d["audio"]
+            change.update({
+                f"{k}RootFolderPath": root["path"],
+                f"{k}QualityProfileId": d["ebook_quality"] if k == "ebook" else d["audio_quality"],
+                f"{k}Monitored": True,
+            })
+            if not a.get(f"{k}MetadataProfileId"):
+                change[f"{k}MetadataProfileId"] = d.get(f"{k}_meta") or d.get("meta")
+    for k in ("ebook", "audiobook"):
+        if a.get(f"{k}MonitorFuture") or a.get(f"{k}MonitorNewItems") not in (None, "none"):
+            change.update({f"{k}MonitorFuture": False, f"{k}MonitorNewItems": "none"})
+    if not change:
+        return False
+    try:
+        before = {b.get("id") for b in ch("GET", f"/api/v1/book?authorId={aid}") or [] if b.get("monitored")}
+        ch("PUT", f"/api/v1/author/{aid}", dict(a, **change))
+        if not any(k.endswith("RootFolderPath") for k in change):
+            return False
+        log(f"Gave {a.get('authorName') or 'an author'} a folder for {', '.join(k for k in kinds if f'{k}RootFolderPath' in change)} in Chaptarr")
+        _wait_for(ch("POST", "/api/v1/command", {"name": "RefreshAuthor", "authorId": aid}))
+        _unmonitor_extras(aid, before | set(keep))
+        return True
+    except BooksError as e:
+        log(f"Couldn't set up {a.get('authorName') or 'the author'} for both formats: {e.message}")
+        return False
+
+
+def _unmonitor_extras(aid, keep):
+    try:
+        extra = [b["id"] for b in ch("GET", f"/api/v1/book?authorId={aid}") or [] if b.get("monitored") and b.get("id") not in keep]
+        if extra:
+            ch("PUT", "/api/v1/book/monitor", {"bookIds": extra, "monitored": False})
+            log(f"Switched {len(extra)} books nobody asked for back off in Chaptarr")
+    except BooksError as e:
+        log(f"Couldn't switch off books nobody asked for: {e.message}")
+
+
+def _switch_on(b, kind):
+    """Monitor one book for the format asked for (both switches on an older Chaptarr)"""
+    bid = b["id"]
+    try:
+        if not b.get("monitored"):
+            ch("PUT", "/api/v1/book/monitor", {"bookIds": [bid], "monitored": True})
+        flags = ["ebook", "audiobook"] if not b.get("mediaType") else [b["mediaType"]]
+        want = [f for f in flags if (f == kind or not b.get("mediaType")) and b.get(f"{f}Monitored") is False]
+        if want:
+            b = ch("GET", f"/api/v1/book/{bid}") or b
+            b.update(monitored=True, **{f"{f}Monitored": True for f in want})
+            ch("PUT", f"/api/v1/book/{bid}", b)
+    except BooksError as e:
+        log(f"Couldn't switch on book {bid}: {e.message}")
+
+
+def _send_to_chaptarr(r):
+    best = _lookup(r)
     d = _ch_defaults()
     kinds = r["types"]
     folder = d["ebook"] if "ebook" in kinds else d["audio"]
     book_id = best.get("id") or 0
+    new_author = False
     if not book_id:
         book = _english_edition(dict(best))
         author = dict(book.get("author") or {})
@@ -2486,48 +2661,124 @@ def _send_to_chaptarr(r):
             monitored=True,
             addOptions={"monitor": "none", "searchForMissingBooks": False},
         )
-        # Chaptarr keeps an ebook switch and an audiobook switch on each book, so "Both" turns both on
+        # Chaptarr's own settings: a folder per format, and don't grab every other book by this author
+        for k in ("ebook", "audiobook"):
+            root = d["ebook"] if k == "ebook" else d["audio"]
+            author.update({
+                f"{k}RootFolderPath": root["path"], f"{k}Monitored": True,
+                f"{k}QualityProfileId": d["ebook_quality"] if k == "ebook" else d["audio_quality"],
+                f"{k}MonitorFuture": False, f"{k}MonitorNewItems": "none",
+            })
+            if d.get(f"{k}_meta"):
+                author[f"{k}MetadataProfileId"] = d[f"{k}_meta"]
+        # Older Chaptarr keeps an ebook switch and an audiobook switch on each book, so "Both" turns both on
         book.update(
-            author=author, monitored=True, addOptions={"searchForNewBook": True},
+            author=author, monitored=True, addOptions={"searchForNewBook": False},
             ebookMonitored="ebook" in kinds, audiobookMonitored="audiobook" in kinds,
         )
         try:
             added = ch("POST", "/api/v1/book", book) or {}
             book_id = added.get("id") or 0
+            new_author = not (best.get("author") or {}).get("id")
         except BooksError as e:
             if e.status != 409:
                 raise
             # Already in Chaptarr: find it and just search again
             mine = ch("GET", "/api/v1/book") or []
-            hit = next((b for b in mine if b.get("foreignBookId") == best.get("foreignBookId") or norm(b.get("title")) == norm(best.get("title"))), None)
+            hit = next((b for b in mine if b.get("foreignBookId") == best.get("foreignBookId") or _same_book(b, best)), None) \
+                or next((b for b in mine if norm(b.get("title")) == norm(best.get("title"))), None)
             book_id = (hit or {}).get("id") or 0
     if not book_id:
         raise BooksError(502, "Chaptarr didn't keep the book.")
-    try:
-        book = ch("GET", f"/api/v1/book/{book_id}") or {}
-        _english_author(book)
-        book = _pick_english_edition(book_id, book)
-        if not book.get("monitored"):
-            ch("PUT", "/api/v1/book/monitor", {"bookIds": [book_id], "monitored": True})
-        # Already in Chaptarr (maybe as the other format): switch on the format(s) asked for, keep what was on
-        want_e = "ebook" in kinds and book.get("ebookMonitored") is False
-        want_a = "audiobook" in kinds and book.get("audiobookMonitored") is False
-        if want_e or want_a:
-            book.update(monitored=True)
-            if want_e:
-                book["ebookMonitored"] = True
-            if want_a:
-                book["audiobookMonitored"] = True
-            ch("PUT", f"/api/v1/book/{book_id}", book)
-    except BooksError:
-        pass
-    ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": [book_id]})
+    if new_author:
+        _settle(book_id)
+    book = ch("GET", f"/api/v1/book/{book_id}") or {"id": book_id}
+    _english_author(book)
+    aid = book.get("authorId")
+    forms = _book_formats(book)
+    if any(k not in forms for k in kinds) and _author_formats(aid, kinds, {b["id"] for b in forms.values()}):
+        forms = _book_formats(book)
+    elif aid:
+        _author_formats(aid, [], {b["id"] for b in forms.values()})
+    ids = []
+    for k in kinds:
+        b = forms.get(k)
+        if b and b["id"] not in ids:
+            if k == "ebook" or not b.get("mediaType"):
+                b = _pick_english_edition(b["id"], b) or b
+            _switch_on(b, k)
+            ids.append(b["id"])
+    if not ids:
+        ids = [book_id]
+        _switch_on(book, kinds[0])
+    if new_author and aid:
+        # A new author: Chaptarr may switch on all their other books while it fills them in
+        _unmonitor_extras(aid, set(ids))
+    ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": ids})
     with _lock:
-        r["ch"] = book_id
+        r["ch"] = ids[0]
+        r["chIds"] = ids
         r["searchedAt"] = int(time.time())
+        r.pop("pickedAt", None)
         r["state"] = "searching"
         r.pop("problem", None)
     log(f"Asked Chaptarr for {r['name']} ({', '.join(kinds)})")
+
+
+def _ids(r):
+    return r.get("chIds") or ([r["ch"]] if r.get("ch") else [])
+
+
+def _pick_release(r):
+    """Chaptarr hides downloads whose name doesn't spell out the author ("Halo - The Flood (Chaptered
+    Audiobook)" is hidden as a "Title/Author mismatch"), so it never grabs them by itself. When its own
+    search found nothing, look at what it hid and grab the closest one whose name has the whole title in it,
+    the way you would by hand in Chaptarr's Interactive Search."""
+    got = False
+    for bid in _ids(r):
+        try:
+            b = ch("GET", f"/api/v1/book/{bid}") or {}
+            if b.get("hasFiles") or ((b.get("statistics") or {}).get("bookFileCount") or 0) > 0:
+                continue
+            res = ch("GET", f"/api/v1/release?bookId={bid}", timeout=180) or []
+        except BooksError as e:
+            log(f"Couldn't look through Chaptarr's results for {r['name']}: {e.message}")
+            continue
+        if isinstance(res, dict):
+            shown, hidden = res.get("releases") or [], res.get("hiddenReleases") or []
+        else:
+            shown, hidden = [x for x in res if x.get("approved")], [x for x in res if not x.get("approved")]
+        title = norm(b.get("title") or r["name"])
+        words = set(title.split()) or set(norm(r["name"]).split())
+        author = (b.get("author") or {}).get("authorName") or r["author"]
+        last = (norm(author).split() or [""])[-1]
+
+        def ok(x):
+            details = x.get("rejectionDetails")
+            if details is None:
+                details = [{"reason": t, "category": "Matching" if "mismatch" in str(t).lower() else "", "canBypass": "mismatch" in str(t).lower()}
+                           for t in x.get("rejections") or []]
+            if not all(dd.get("canBypass") and dd.get("category") == "Matching" for dd in details):
+                return False
+            name = str(x.get("title") or "")
+            low = name.lower()
+            if any(w in low for w in NOT_THE_BOOK) or re.search(FOREIGN_RELEASES[1:-2], name, re.I):
+                return False
+            if x.get("protocol") == "torrent" and (x.get("seeders") or 0) < 1:
+                return False
+            return words <= set(norm(name).split())
+
+        picks = [x for x in shown if x.get("downloadAllowed", True)] + [x for x in hidden if ok(x)]
+        if not picks:
+            continue
+        pick = max(picks, key=lambda x: (bool(x.get("approved")), last and last in norm(x.get("title")), min(x.get("seeders") or 0, 50), -(x.get("ageHours") or 0)))
+        try:
+            ch("POST", "/api/v1/release", {"guid": pick.get("guid"), "indexerId": pick.get("indexerId"), "bookId": bid}, timeout=120)
+            log(f"Picked {pick.get('title')} for {r['name']} (Chaptarr had hidden it)")
+            got = True
+        except BooksError as e:
+            log(f"Couldn't grab {pick.get('title')}: {e.message}")
+    return got
 
 
 def _check_chaptarr(active):
@@ -2540,18 +2791,21 @@ def _check_chaptarr(active):
     downloading = {q.get("bookId") for q in records or []}
     changed = False
     for r in active:
-        if not r.get("ch"):
+        ids = _ids(r)
+        if not ids:
             continue
         new = r["state"]
-        if r["ch"] in downloading:
+        if any(i in downloading for i in ids):
             new = "downloading"
         else:
-            try:
-                b = ch("GET", f"/api/v1/book/{r['ch']}") or {}
-                if ((b.get("statistics") or {}).get("bookFileCount") or 0) > 0:
-                    new = "downloading" if not r.get("title") else "ready"
-            except Exception:
-                pass
+            for i in ids:
+                try:
+                    b = ch("GET", f"/api/v1/book/{i}") or {}
+                    if ((b.get("statistics") or {}).get("bookFileCount") or 0) > 0:
+                        new = "downloading" if not r.get("title") else "ready"
+                        break
+                except Exception:
+                    pass
         if new != r["state"]:
             r["state"] = new
             changed = True
@@ -2580,15 +2834,27 @@ def check_requests():
     active = [r for r in _state["requests"] if r["state"] in ("searching", "downloading", "problem")]
     if not active:
         return
-    for r in active:
-        if r["state"] == "problem" and not r.get("ch") and can_ask():
-            _send(r)
+    resend = [r for r in active if r["state"] == "problem" and not r.get("ch")]
+    for r in resend[:5] if can_ask() else []:  # a few at a time, so a big batch doesn't hold everything up
+        _send(r)
     changed = _check_chaptarr(active) if CH_URL else False
+    picks = 0
     for r in active:
+        if r["state"] != "searching" or not _ids(r):
+            continue
+        since = time.time() - (r.get("searchedAt") or r["at"])
+        # Chaptarr's own search found nothing: look at what it hid (30 minutes after asking, then twice a day)
+        if picks < 3 and since > 1800 and time.time() - (r.get("pickedAt") or 0) > 12 * 3600:
+            picks += 1
+            r["pickedAt"] = int(time.time())
+            changed = True
+            if _pick_release(r):
+                r["state"] = "downloading"
+                continue
         # Nothing found yet: Chaptarr only looks once, so ask it to look again every 12 hours
-        if r["state"] == "searching" and r.get("ch") and time.time() - (r.get("searchedAt") or r["at"]) > 12 * 3600:
+        if since > 12 * 3600:
             try:
-                ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": [r["ch"]]})
+                ch("POST", "/api/v1/command", {"name": "BookSearch", "bookIds": _ids(r)})
                 r["searchedAt"] = int(time.time())
                 changed = True
             except Exception as e:
