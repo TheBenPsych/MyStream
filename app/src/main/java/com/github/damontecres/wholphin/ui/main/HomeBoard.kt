@@ -61,6 +61,9 @@ import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.EdKindMark
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.J4KindMark
+import com.github.damontecres.wholphin.ui.theme.J4Look
+import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
@@ -75,6 +78,7 @@ import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
+import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
@@ -264,7 +268,7 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) {
+                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
@@ -273,7 +277,7 @@ private fun Greeting(
                 },
             // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) {
+                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -295,6 +299,9 @@ private fun Greeting(
                 listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (J4Look.on) {
+                // 4th of July look: "2 days to the Fourth" leads the line under the greeting
+                listOfNotNull(JulySeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else {
                 weather
             }
@@ -402,6 +409,7 @@ private fun SquareDoor(
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
                 .edDoorLife(door)
+                .j4DoorCharm(door)
                 .swDoorMoment(door)
                 .pcDoorSnack(door)
                 .padding(u * 0.85f),
@@ -753,6 +761,12 @@ private fun ListRow(
                 } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (J4Look.on) {
+                    // 4th of July look: a flag, a star, a rocket or a firework before the kind line
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        J4KindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
                         KindLine(row, words)
                     }
                 } else {

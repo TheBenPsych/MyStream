@@ -117,7 +117,8 @@ fun holidayFor(date: LocalDate): Celebration? {
 
         m == 3 && d == 17 -> Celebration("Happy St. Patrick's Day", "☘️", 0xFF4CD964, LogoEffect.GREEN_SHIMMER)
 
-        m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFF64B5F6, LogoEffect.FIREWORKS_USA)
+        // 4th of July: no small logo touch any more (Ben: never decorate the logo); the 4th of July look has it
+        m == 7 && d == 4 -> Celebration("Happy 4th of July", "🎆", 0xFFE0404F)
 
         m == 10 && d == 31 -> Celebration("Happy Halloween", "🎃", 0xFFFF8C1A, LogoEffect.GHOST_PEEK)
 
