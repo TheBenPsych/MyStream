@@ -150,21 +150,29 @@
         if (!w || !h) return;
         svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
         const top = svg.querySelector(".vgh").dataset.k === "top";
-        const fs = Math.min(14, Math.round(h * (top ? .3 : .34)));
+        // Phones keep the greeting at the top of the picture, so there the score moves to the bottom strip
+        const narrow = w < 600;
+        const fs = 11;
         const t = (x, y, fill, s, anchor) => `<text x="${x}" y="${y}" fill="${fill}" font-size="${fs}" text-anchor="${anchor || "start"}" style="${PX};paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:2px">${s}</text>`;
+        const score = (x, y) => t(x, y, "#FF5FB0", "1UP") + `<text class="vgs" x="${x + fs * 4}" y="${y}" fill="#fff" font-size="${fs}" style="${PX}">012900</text>`;
+        const blink = (inner) => `<g>${inner}<animate attributeName="opacity" values="1;0" keyTimes="0;.62" dur="1s" calcMode="discrete" repeatCount="indefinite"/></g>`;
         let out = `<g class="vgh" data-k="${top ? "top" : "bottom"}" data-w="${w}"></g>`;
-        if (top) {
-          const band = Math.round(h * .64), y = Math.round(band / 2 + fs / 2);
-          out += `<rect width="${w}" height="${band}" fill="rgba(10,6,24,.88)"/><rect y="${band}" width="${w}" height="2" fill="rgba(63,224,255,.6)"/>`;
-          out += t(18, y, "#FF5FB0", "1UP") + `<text class="vgs" x="${18 + fs * 4}" y="${y}" fill="#fff" font-size="${fs}" style="${PX}">012900</text>`;
+        if (top && narrow) {
+          out += `<rect width="${w}" height="4" fill="rgba(10,6,24,.88)"/><line x1="0" x2="${w}" y1="4" y2="4" stroke="rgba(63,224,255,.7)" stroke-width="2" stroke-dasharray="7 5"/>`;
+        } else if (top) {
+          // A slim bar along the very top edge, above the greeting and clock's line, so it never crowds them
+          const band = 18, y = 13;
+          out += `<rect width="${w}" height="${band}" fill="rgba(10,6,24,.88)"/><rect y="${band - 2}" width="${w}" height="2" fill="rgba(63,224,255,.6)"/>`;
+          out += score(18, y);
           if (w > 900) out += t(w / 2, y, "#FFD45A", 'HI-SCORE <tspan fill="#fff">091200</tspan>', "middle");
-          out += t(w - 18, y, "#fff", "×12", "end") + `<circle cx="${w - 18 - fs * 3.9}" cy="${y - fs * .42}" r="${fs * .55}" fill="#FFD45A" stroke="#C48A1E" stroke-width="2"/>`;
+          out += t(w - 18, y, "#fff", "×12", "end") + `<circle cx="${w - 18 - fs * 3.9}" cy="${y - fs * .42}" r="${fs * .5}" fill="#FFD45A" stroke="#C48A1E" stroke-width="1.5"/>`;
           out += t(w - 18 - fs * 5.2, y, "#FF5FB0", "♥♥♥", "end");
         } else {
-          const top0 = Math.round(h * .18), y = Math.round(top0 + (h - top0) / 2 + fs / 2);
-          out += `<rect y="${top0}" width="${w}" height="${h - top0}" fill="rgba(10,6,24,.88)"/><line x1="0" x2="${w}" y1="${top0}" y2="${top0}" stroke="rgba(63,224,255,.65)" stroke-width="2" stroke-dasharray="7 5"/>`;
-          out += `<g>${t(w / 2, y, "#FFD45A", "PRESS START", "middle")}<animate attributeName="opacity" values="1;0" keyTimes="0;.62" dur="1s" calcMode="discrete" repeatCount="indefinite"/></g>`;
-          if (w > 620) out += t(18, y, "#AAB0C4", "LEVEL 09·12") + t(w - 18, y, "#AAB0C4", "CREDIT 01", "end");
+          // A 20px strip along the very bottom, below the floating Today cards
+          const top0 = h - 20, y = h - 6;
+          out += `<rect y="${top0}" width="${w}" height="20" fill="rgba(10,6,24,.88)"/><line x1="0" x2="${w}" y1="${top0}" y2="${top0}" stroke="rgba(63,224,255,.65)" stroke-width="2" stroke-dasharray="7 5"/>`;
+          if (narrow) out += score(16, y) + blink(t(w - 16, y, "#FFD45A", "PRESS START", "end"));
+          else out += blink(t(w / 2, y, "#FFD45A", "PRESS START", "middle")) + t(16, y, "#AAB0C4", "LEVEL 09·12") + t(w - 16, y, "#AAB0C4", "CREDIT 01", "end");
         }
         svg.innerHTML = out;
       };

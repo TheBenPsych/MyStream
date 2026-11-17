@@ -325,39 +325,61 @@ object VideoGamesNav {
         return at
     }
 
-    /** Top of Home: the score bar */
+    /** Phones keep the greeting at the top of the picture, so there the score moves down to the bottom trim */
+    private fun DrawScope.narrow() = size.width < 600f * density
+
+    private fun scoreAt(seconds: Float) = (12900 + (seconds * 125f).toInt() / 50 * 50) % 1_000_000
+
+    /**
+     * Top of Home: a slim score bar along the very top edge, above the greeting and clock's line (it stops 18 dp
+     * down, where that line starts, so it never crowds them). Phones get just a dashed cyan edge.
+     */
     val topTrim: HolidayArt = { seconds ->
-        val band = size.height * .64f
-        drawRect(Bar, Offset.Zero, Size(size.width, band))
-        drawRect(VgLook.Cyan.copy(alpha = .6f), Offset(0f, band), Size(size.width, 2f * density))
-        val cell = (band * .5f / 7f).coerceAtMost(2.4f * density)
-        val y = (band - cell * 7f) / 2f
-        val pad = 18f * density
-        val score = (12900 + (seconds * 125f).toInt() / 50 * 50) % 1_000_000
-        // left: 1UP and the score, ticking up
-        val after1 = text("1UP", pad, y, cell, Pink)
-        text(score.toString().padStart(6, '0'), after1 + cell * 4, y, cell, Color.White)
-        // right: coins and three hearts
-        val coinsW = (7 + 3 + cells("x12")) * cell
-        val heartsW = (3 * 8 - 1) * cell
-        var x = size.width - pad - coinsW
-        pixels(COIN, x, y, cell, Gold)
-        text("x12", x + 10 * cell, y, cell, Color.White)
-        x -= heartsW + 8 * cell
-        for (i in 0 until 3) pixels(HEART, x + i * 8 * cell, y + cell * .5f, cell, Pink)
-        // middle: HI-SCORE 091200 (12 Sep), when there's room
-        val mid = (cells("HI-SCORE") + 4 + cells("091200")) * cell
-        val leftEnd = after1 + cell * (4 + cells("000000"))
-        if (size.width / 2 - mid / 2 > leftEnd + 24 * density && size.width / 2 + mid / 2 < x - 24 * density) {
-            val a = text("HI-SCORE", size.width / 2 - mid / 2, y, cell, Gold)
-            text("091200", a + cell * 4, y, cell, Color.White)
+        if (narrow()) {
+            drawRect(Bar, Offset.Zero, Size(size.width, 4f * density))
+            drawLine(
+                VgLook.Cyan.copy(alpha = .7f),
+                Offset(0f, 4f * density),
+                Offset(size.width, 4f * density),
+                strokeWidth = 2f * density,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f * density, 5f * density)),
+            )
+        } else {
+            val band = (18f * density).coerceAtMost(size.height * .45f)
+            drawRect(Bar, Offset.Zero, Size(size.width, band))
+            drawRect(VgLook.Cyan.copy(alpha = .6f), Offset(0f, band - 2f * density), Size(size.width, 2f * density))
+            val cell = (band * .62f / 7f).coerceAtMost(1.8f * density)
+            val y = (band - 2f * density - cell * 7f) / 2f
+            val pad = 18f * density
+            // left: 1UP and the score, ticking up
+            val after1 = text("1UP", pad, y, cell, Pink)
+            text(scoreAt(seconds).toString().padStart(6, '0'), after1 + cell * 4, y, cell, Color.White)
+            // right: coins and three hearts
+            val coinsW = (7 + 3 + cells("x12")) * cell
+            val heartsW = (3 * 8 - 1) * cell
+            var x = size.width - pad - coinsW
+            pixels(COIN, x, y, cell, Gold)
+            text("x12", x + 10 * cell, y, cell, Color.White)
+            x -= heartsW + 8 * cell
+            for (i in 0 until 3) pixels(HEART, x + i * 8 * cell, y + cell * .5f, cell, Pink)
+            // middle: HI-SCORE 091200 (12 Sep), when there's room
+            val mid = (cells("HI-SCORE") + 4 + cells("091200")) * cell
+            val leftEnd = after1 + cell * (4 + cells("000000"))
+            if (size.width / 2 - mid / 2 > leftEnd + 24 * density && size.width / 2 + mid / 2 < x - 24 * density) {
+                val a = text("HI-SCORE", size.width / 2 - mid / 2, y, cell, Gold)
+                text("091200", a + cell * 4, y, cell, Color.White)
+            }
         }
     }
 
-    /** Bottom of Home: PRESS START, blinking, between LEVEL 09·12 and CREDIT 01 */
+    /**
+     * Bottom of Home: PRESS START, blinking, between LEVEL 09·12 and CREDIT 01, in a 20 dp strip along the very
+     * bottom so the floating Today cards never cover it. Phones: 1UP and the score on the left, PRESS START right.
+     */
     val bottomTrim: HolidayArt = { seconds ->
-        val top = size.height * .18f
-        drawRect(Bar, Offset(0f, top), Size(size.width, size.height - top))
+        val h = (20f * density).coerceAtMost(size.height)
+        val top = size.height - h
+        drawRect(Bar, Offset(0f, top), Size(size.width, h))
         drawLine(
             VgLook.Cyan.copy(alpha = .65f),
             Offset(0f, top),
@@ -365,14 +387,17 @@ object VideoGamesNav {
             strokeWidth = 2f * density,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f * density, 5f * density)),
         )
-        val h = size.height - top
-        val cell = (h * .5f / 7f).coerceAtMost(2.4f * density)
-        val y = top + (h - cell * 7f) / 2f
-        val pad = 18f * density
+        val cell = (h * .6f / 7f).coerceAtMost(1.7f * density)
+        val y = top + (h - cell * 7f) / 2f + density
+        val pad = 16f * density
         val press = cells("PRESS START") * cell
-        val sides = (cells("LEVEL 09.12") + cells("CREDIT 01")) * cell + press + 80f * density
-        if ((seconds % 1f) < .62f) text("PRESS START", size.width / 2 - press / 2, y, cell, Gold)
-        if (size.width > sides) {
+        val blink = (seconds % 1f) < .62f
+        if (narrow()) {
+            val after1 = text("1UP", pad, y, cell, Pink)
+            text(scoreAt(seconds).toString().padStart(6, '0'), after1 + cell * 4, y, cell, Color.White)
+            if (blink) text("PRESS START", size.width - pad - press, y, cell, Gold)
+        } else {
+            if (blink) text("PRESS START", size.width / 2 - press / 2, y, cell, Gold)
             text("LEVEL 09.12", pad, y, cell, Grey)
             text("CREDIT 01", size.width - pad - cells("CREDIT 01") * cell, y, cell, Grey)
         }
