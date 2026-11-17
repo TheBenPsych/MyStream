@@ -2504,3 +2504,8 @@ body.nav-panel .brail.holiday { -webkit-mask-image: none; mask-image: none; }
 .sp-trim { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; }
 .sp-trim.top { top: 0; height: 44px; z-index: 1; }
 .sp-trim.bottom { position: relative; display: block; height: 36px; margin-top: 12px; }
+/* Star Wars Day on the rail (js/holidaynav.js): the saga icons keep their own colours, but go dark before the
+   start-up and ignite in the side's blade colour as they light up, like the app */
+.rl-i.dark .swp { stroke: #3A3D46; }
+.rl-i.lit .swp { stroke: var(--lc, var(--swb)); }
+.rl-i .hol-i { overflow: visible; }
