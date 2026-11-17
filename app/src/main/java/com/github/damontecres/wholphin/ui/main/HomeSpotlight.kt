@@ -2,11 +2,8 @@ package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,7 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -619,12 +617,16 @@ fun HomeSpotlight(
             holiday?.bottomTrim?.let {
                 HolidayArtBox(it, Modifier.align(Alignment.BottomStart).fillMaxWidth().height(TRIM_BOTTOM))
             }
-            Column(
-                Modifier
-                    .padding(start = EDGE, top = LocalTopBarOverlap.current - 8.dp)
-                    .widthIn(max = maxWidth * 0.62f),
+            // Ben 2026-11-17: the greeting sits top left beside the rail, on the same line as the clock
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier =
+                    Modifier
+                        .padding(start = EDGE, top = HEADER_TOP)
+                        .height((LocalTopBarOverlap.current - HEADER_TOP - 6.dp).coerceAtLeast(44.dp))
+                        .widthIn(max = maxWidth * 0.7f),
             ) {
-                Greeting(greeting, weather, tv = true)
+                Greeting(greeting, weather, tv = true, inline = true)
             }
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -737,20 +739,18 @@ private val TRIM_BOTTOM = 36.dp
 /** The pick's picture: a tiny copy first, then the sharp one, slowly zooming in (approved hc-q-trailer A) */
 @Composable
 private fun SpotPicture(pick: HomePick?) {
-    val zoom by rememberInfiniteTransition(label = "spotZoom").animateFloat(
-        initialValue = 1f,
-        targetValue = ZOOM,
-        animationSpec = infiniteRepeatable(tween(ZOOM_MS, easing = LinearEasing), RepeatMode.Reverse),
-        label = "spotZoomValue",
-    )
     Crossfade(targetState = pick, animationSpec = tween(FADE_MS), label = "spotPicture") { p ->
+        // Each picture zooms in one way at a steady speed from when it shows (it used to turn round and bounce).
+        // Read only while drawing, so the zoom never rebuilds the screen.
+        val zoom = remember { Animatable(1f) }
+        LaunchedEffect(Unit) { zoom.animateTo(ZOOM, tween(ZOOM_MS, easing = LinearEasing)) }
         Box(
             Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(0.dp))
                 .graphicsLayer {
-                    scaleX = zoom
-                    scaleY = zoom
+                    scaleX = zoom.value
+                    scaleY = zoom.value
                 },
         ) {
             if (p == null) {
@@ -915,18 +915,20 @@ private fun FloatingCard(
             ),
         border = focusRing(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
-        modifier = modifier.shadow(14.dp, shape, clip = false),
+        modifier = modifier.height(CARD_HEIGHT * scale).shadow(14.dp, shape, clip = false),
     ) {
+        // Ben 2026-11-17: the cover art fills almost the card's whole height so you see all of it, the words are
+        // smaller, and a Did you know shows the fact itself so you can read it at a glance
+        val fact = card.kind.startsWith("Did you know")
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(10.dp * scale),
+            modifier = Modifier.fillMaxSize().padding(7.dp * scale),
         ) {
-            val w: Dp = 44.dp * scale
             Box(
                 Modifier
-                    .width(w)
-                    .height(if (card.square) w else w * 1.45f)
+                    .fillMaxHeight()
+                    .aspectRatio(if (card.square) 1f else 2f / 3f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(BenflixColors.Raised),
             ) {
@@ -943,9 +945,9 @@ private fun FloatingCard(
                 Text(
                     text = card.kind.uppercase(),
                     color = card.kindColor,
-                    fontSize = 11.sp * scale,
+                    fontSize = 10.sp * scale,
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.8.sp,
+                    letterSpacing = 0.6.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -953,11 +955,11 @@ private fun FloatingCard(
                 Text(
                     text = card.title,
                     color = BenflixColors.Text,
-                    fontSize = 14.sp * scale,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
+                    fontSize = (if (fact) 12.sp else 13.sp) * scale,
+                    fontWeight = if (fact) FontWeight.Medium else FontWeight.SemiBold,
+                    maxLines = if (fact) 5 else 3,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 17.sp * scale,
+                    lineHeight = (if (fact) 15.sp else 16.sp) * scale,
                 )
             }
         }
@@ -984,7 +986,7 @@ private fun SeeAllCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
         modifier = Modifier.shadow(14.dp, shape, clip = false),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(84.dp * scale).padding(horizontal = 20.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(CARD_HEIGHT * scale).padding(horizontal = 20.dp)) {
             Text("See all", fontSize = 14.sp * scale, fontWeight = FontWeight.Bold)
         }
     }
@@ -1002,15 +1004,21 @@ private val REASON_GOLD = Color(0xFFFFD27A)
 private val EDGE = 40.dp
 private const val PICTURE_HEIGHT = 0.8f
 private const val INFO_TOP = 0.25f
+
+/** Where the header's row starts (PageHeader's top padding), so the greeting lines up with the clock */
+private val HEADER_TOP = 18.dp
 private const val CARDS_BOTTOM = 0.04f
 private const val MAX_CARDS = 4
+
+/** The Today cards' height on TV: tall enough for a whole poster and a 5-line fact */
+private val CARD_HEIGHT = 104.dp
 private const val PHONE_PICTURE_RATIO = 1.25f
 private const val KIDS_SCALE = 1.15f
 private const val SLIDE_MS = 10_000L
 private const val OK_GRACE_MS = 1_000L
 private const val FADE_MS = 600
-private const val ZOOM = 1.08f
-private const val ZOOM_MS = 20_000
+private const val ZOOM = 1.06f
+private const val ZOOM_MS = 12_000
 private const val SWIPE_PX = 80f
 private const val FOCUS_TRIES = 10
 private const val FOCUS_RETRY_MS = 60L
