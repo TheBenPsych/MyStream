@@ -143,15 +143,8 @@ object HolidayNavKit {
                 "St. Patrick's pick",
                 countdown = { StPatricksSeason.countdown(LocalDate.now()) },
             ),
-            holiday(
-                "july4",
-                { J4Look.on },
-                0xFF101A33,
-                0xFF0A0F1F,
-                listOf(0xFFD7263D, 0xFFFFFFFF, 0xFF3F6FD8),
-                "4th of July pick",
-                countdown = { JulySeason.countdown(LocalDateTime.now()) },
-            ),
+            // 4th of July: its own icons, star, bunting and sparklers (ui/theme/July4Nav.kt)
+            July4Nav.nav(),
             holiday(
                 "newyear",
                 { NyLook.on },
