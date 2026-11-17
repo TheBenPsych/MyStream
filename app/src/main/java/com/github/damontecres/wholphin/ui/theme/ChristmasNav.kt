@@ -92,8 +92,9 @@ object ChristmasNav {
         c: Color,
     ) = drawCircle(c, r, Offset(x, y))
 
-    private const val PAD = "M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 " +
-        "1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"
+    private const val PAD =
+        "M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 " +
+            "1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"
     private const val BELL = "M0 0c-6.5 0-8.5 5.5-8.5 12l-3 6.5h23l-3-6.5c0-6.5-2-12-8.5-12z"
 
     /** Movies: a clapperboard wrapped like a present */
@@ -222,6 +223,7 @@ object ChristmasNav {
         val top = 3f * d
         val sag = 10f * d
         val wire = Color(0xFF16251B)
+
         fun at(
             a: Float,
             t: Float,
@@ -264,7 +266,13 @@ object ChristmasNav {
         drawPath(
             glass,
             Brush.radialGradient(
-                listOf(androidx.compose.ui.graphics.lerp(c, Color.White, .45f), c, androidx.compose.ui.graphics.lerp(c, Color.Black, .35f)),
+                listOf(
+                    androidx.compose.ui.graphics
+                        .lerp(c, Color.White, .45f),
+                    c,
+                    androidx.compose.ui.graphics
+                        .lerp(c, Color.Black, .35f),
+                ),
                 Offset(x - 2f * d, y + 11f * d),
                 10f * d,
             ),
@@ -276,6 +284,7 @@ object ChristmasNav {
     val bottomTrim: HolidayArt = {
         val w = size.width
         val h = size.height
+
         fun drift(
             base: Float,
             amp: Float,
@@ -288,7 +297,9 @@ object ChristmasNav {
             var py = 0f
             for (i in 0..n) {
                 val x = w * i / n
-                val y = base - amp * (.55f + .45f * sin(x / w * PI.toFloat() * 3f + seed)) - amp * .35f * sin(x / w * PI.toFloat() * 9f + seed * 2f)
+                val y =
+                    base - amp * (.55f + .45f * sin(x / w * PI.toFloat() * 3f + seed)) -
+                        amp * .35f * sin(x / w * PI.toFloat() * 9f + seed * 2f)
                 if (i == 0) {
                     path.lineTo(x, y)
                 } else {
