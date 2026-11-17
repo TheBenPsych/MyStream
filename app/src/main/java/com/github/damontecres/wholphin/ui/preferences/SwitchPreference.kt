@@ -66,6 +66,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // Friday the 13th look: a little "13" knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .F13Knob()
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,

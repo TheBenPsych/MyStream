@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.Friday13
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
@@ -78,6 +79,13 @@ fun SwitchUserContent(
 
     val currentUser by viewModel.serverRepository.currentUserFlow.collectAsState(null)
     var showAddUser by remember { mutableStateOf(false) }
+    // Friday the 13th: the sleeping cat wakes up and yawns when someone picks a profile
+    val f13Room =
+        remember {
+            com.github.damontecres.wholphin.ui.theme.Friday13
+                .on()
+        }
+    var catWaking by remember { mutableStateOf(false) }
     var addUser by remember(server) { mutableStateOf<JellyfinUser?>(null) }
 
     fun showAddUserDialog(user: JellyfinUser?) {
@@ -98,9 +106,16 @@ fun SwitchUserContent(
     ) {
         // Benflix redesign: after picking someone, Home's doors grow out of the logo once
         BenflixIntroState.doorsPending = true
-        // Kids / Guest are set by the view model, and only kept if the switch works
-        val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
         scope.launch {
+            // Friday the 13th: give the cat a moment to open its eyes and yawn before Home opens
+            if (f13Room) {
+                // A second press while the cat is waking up does nothing
+                if (catWaking) return@launch
+                catWaking = true
+                kotlinx.coroutines.delay(F13Videos.WAKE_MS)
+            }
+            // Kids / Guest are set by the view model, and only kept if the switch works
+            val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
             when (val r = result.await()) {
                 is SwitchUserResult.Error -> {
                     com.github.damontecres.wholphin.ui.components.BenflixNotices
@@ -114,6 +129,7 @@ fun SwitchUserContent(
                     // no-op, view model will navigate
                 }
             }
+            if (result.await() is SwitchUserResult.Error) catWaking = false
         }
     }
 
@@ -165,9 +181,14 @@ fun SwitchUserContent(
                 // Christmas (December until New Year's, unless switched off in Settings): the cosy room with the tree,
                 // the train and the parade past the window, instead of the wall
                 val christmas = ChristmasSeason.on()
+                // Friday the 13th (that day only, unless switched off): the room with the sleeping black cat. It takes
+                // over any season room that day (ChristmasSeason and ThanksgivingSeason are off on a Friday the 13th)
+                val f13 = f13Room
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
-                if (christmas) {
+                if (f13) {
+                    Friday13Room(waking = catWaking, modifier = Modifier.fillMaxSize())
+                } else if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
@@ -198,7 +219,25 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
-                    if (christmas) {
+                    if (f13) {
+                        Text(
+                            text = Friday13.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = Friday13.LINE,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFCFC6E0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    } else if (christmas) {
                         val today = remember { LocalDate.now() }
                         Text(
                             text = ChristmasSeason.greeting(today),

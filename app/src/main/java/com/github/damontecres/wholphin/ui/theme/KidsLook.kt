@@ -55,7 +55,8 @@ object KidsLook {
 
     /** The colours to use right now, or null for the normal grown-up look */
     val palette: KidsPalette? get() =
-        if (!on) {
+        // Friday the 13th (Ben's pick): Kids gets the Friday the 13th look that day instead of Sky and Sunshine
+        if (!on || F13Look.on) {
             null
         } else if (night) {
             NightLight

@@ -228,6 +228,11 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // Friday the 13th look: a four-leaf clover on notices without a picture
+            if (card.image == null && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .F13Clover(size = if (isTv) 28.dp else 24.dp)
+            }
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

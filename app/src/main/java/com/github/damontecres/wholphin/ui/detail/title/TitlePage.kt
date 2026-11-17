@@ -72,6 +72,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.f13Flicker
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -695,8 +696,12 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // Friday the 13th look: Play is lucky green with dark words, and flickers now and then like an old porch light
+    val f13 = com.github.damontecres.wholphin.ui.theme.F13Look.on
     val primaryFill =
-        if (xmas) {
+        if (f13) {
+            com.github.damontecres.wholphin.ui.theme.F13Look.Green
+        } else if (xmas) {
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
@@ -704,7 +709,18 @@ private fun TitleButtonView(
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) (if (xmas || tg) Color.White else BenflixColors.Tray) else BenflixColors.Text
+    val content =
+        if (primary) {
+            if (f13) {
+                com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
+            } else if (xmas || tg) {
+                Color.White
+            } else {
+                BenflixColors.Tray
+            }
+        } else {
+            BenflixColors.Text
+        }
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
@@ -725,6 +741,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && f13) Modifier.f13Flicker() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

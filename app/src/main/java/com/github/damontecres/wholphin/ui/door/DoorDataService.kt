@@ -166,16 +166,17 @@ class DoorDataService
 
         /**
          * Christmas favourites (Christmas look, 1 to 26 Dec): the hand-picked Christmas films, titles with a
-         * Christmas word in the name and titles tagged Christmas, of this kind.
+         * Christmas word in the name and titles tagged Christmas, of this kind. Another [theme] works the same way
+         * (Friday the 13th's spooky but fun picks).
          */
         suspend fun christmas(
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme =
+                com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
         ): List<BaseItem> =
             coroutineScope {
-                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
-
                 fun search(term: String) =
                     GetItemsRequest(
                         userId = userId,
@@ -197,6 +198,8 @@ class DoorDataService
                     }
                 val tagged =
                     async {
+                        // No tags means no tag search (an empty tag list would match everything)
+                        if (theme.tags.isEmpty()) return@async emptyList<BaseItem>()
                         items(
                             GetItemsRequest(
                                 userId = userId,

@@ -38,6 +38,12 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // Friday the 13th look: the loading ring is a clock with 13 hours and a hand that goes round
+    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .F13LoadingClock(modifier)
+        return
+    }
     Box(modifier = modifier) {
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside

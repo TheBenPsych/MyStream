@@ -57,8 +57,10 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -242,9 +244,9 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || F13Look.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving and Friday the 13th looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || F13Look.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -349,6 +351,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .f13DoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))

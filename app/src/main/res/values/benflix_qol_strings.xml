@@ -78,6 +78,10 @@
     <string name="benflix_thanksgiving_look">Thanksgiving look</string>
     <string name="benflix_thanksgiving_look_on">16 to 30 November: the feast table on Who\'s watching, harvest charms on the doors, and pumpkin orange and harvest brown colours</string>
     <string name="benflix_thanksgiving_look_off">Off this year</string>
+    <string name="benflix_f13_look">Friday the 13th look</string>
+    <string name="benflix_f13_look_on">Only on a Friday the 13th, Kids too: the room with the sleeping black cat on Who\'s watching, lucky charms on the doors, and lucky green colours</string>
+    <string name="benflix_f13_look_off">Off</string>
+    <string name="benflix_f13_row">Spooky but fun</string>
     <string name="benflix_late_night_start">Late-night look starts at</string>
     <string-array name="benflix_late_night_hours">
         <item>8 PM</item>

@@ -37,11 +37,14 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // Friday the 13th (approved 2026-11-17): the room with the sleeping black cat, that day only (it takes over any
+  // season room, because B.xmasOn and B.tgOn are off that day)
+  const f13 = B.f13On();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || f13 ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : f13 ? `<h1 class="xmas">${esc(B.f13.greeting())}</h1><p class="xline">${esc(B.f13.line())}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -53,17 +56,26 @@ B.route(/^\/who$/, async () => {
     const p = B.profiles().find((x) => x.id === b.dataset.id);
     if (!p) return;
     if (p.expired) return B.go(`#/signin?name=${enc(p.name)}`);
-    B.pick(p.id);
-    sessionStorage.setItem("benflix.picked", p.id);
-    B.doorsGrow = true;
-    B.go("#/home");
+    const open = () => {
+      B.pick(p.id);
+      sessionStorage.setItem("benflix.picked", p.id);
+      B.doorsGrow = true;
+      B.go("#/home");
+    };
+    // Friday the 13th: the sleeping cat opens its eyes and yawns before Home opens
+    const svg = $(".who .xroom");
+    if (f13 && svg && svg.scene && svg.clock && !svg.dataset.waking) {
+      svg.dataset.waking = "1";
+      svg.scene.wake(svg.clock());
+      setTimeout(open, 1500);
+    } else if (!f13 || !svg || !svg.dataset.waking) open();
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast) {
+  if (xmas || feast || f13) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : B.tg;
-    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
+    const room = xmas ? B.xmas : feast ? B.tg : B.f13;
+    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; svg.clock = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
     draw();
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
     addEventListener("resize", onResize);
@@ -246,18 +258,21 @@ B.route(/^\/home$/, async (m, nav) => {
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Friday the 13th look (Kids too): "Happy Friday the 13th, Ben" in the curly holiday font, and a lucky line
+  // instead of the weather (filled in by B.loadBoard once the news is in)
+  const f13 = B.f13On();
+  const greet = kids ? `${f13 ? "Happy Friday the 13th!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(f13 ? "Happy Friday the 13th" : tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
-      <div class="greet">${greet}</div>
+      <div class="greet${f13 ? " f13h" : ""}">${greet}</div>
       <div class="doors fdoors n${count} ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}${more.length ? `<button class="door moredoor" id="moreDoors"><div class="n">More</div><div class="d">${more.length} more door${more.length === 1 ? "" : "s"}</div></button>` : ""}</div>
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
-    const wx = B.savedWeather();
+    const wx = f13 ? B.f13Lucky(0, 0) : B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}${f13 ? " f13h" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -471,7 +486,7 @@ B.loadBoard = async (nav) => {
   if (weather) {
     const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
     try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
-    $("#wx").textContent = line;
+    if (!B.f13On()) $("#wx").textContent = line;
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
   const c = (prefs && prefs.CustomPrefs) || {};
@@ -534,6 +549,8 @@ B.loadBoard = async (nav) => {
   lastFacts = factRows.map((f) => f.fid).join(",");
   const keep = (r) => !cleared.has(r.id) && !clearedNow.has(r.id);
   boardParts = { news: news.filter(keep).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 12), way: reqs.way.filter(keep), facts: factRows.filter(keep) };
+  // Friday the 13th look: "Lucky you: 3 new episodes and 1 request ready" under the greeting
+  if (B.f13On() && $("#wx")) $("#wx").textContent = B.f13Lucky(boardParts.news.filter((r) => /^New episode/.test(r.kind)).length, boardParts.news.filter((r) => r.kind === "Ready to watch").length);
   drawBoard();
   homeNotices(c, reqs.ready);
 };
@@ -666,13 +683,23 @@ addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 B.xmas = window.BenflixXmas;
 B.xmasOff = () => { try { return localStorage.getItem("benflix.xmasOff") === "1"; } catch (e) { return false; } };
 B.setXmasOff = (off) => { try { localStorage.setItem("benflix.xmasOff", off ? "1" : "0"); } catch (e) {} };
-B.xmasOn = () => !!B.xmas && B.xmas.season(new Date()) && !B.xmasOff();
+B.xmasOn = () => !!B.xmas && B.xmas.season(new Date()) && !B.xmasOff() && !B.f13On();
 B.xmasGreeting = () => (new Date().getDate() === 24 ? "Merry Christmas Eve" : "Merry Christmas");
 // Thanksgiving look: on from 16 to 30 November unless switched off in Settings › Look (this browser)
 B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
-B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff() && !B.f13On();
+// Friday the 13th look: only on a Friday the 13th, midnight to midnight, unless switched off in Settings › Look
+// (this browser). It takes over any season look that day, and Kids gets it too.
+B.f13 = window.BenflixF13;
+B.f13Off = () => { try { return localStorage.getItem("benflix.f13Off") === "1"; } catch (e) { return false; } };
+B.setF13Off = (off) => { try { localStorage.setItem("benflix.f13Off", off ? "1" : "0"); } catch (e) {} };
+B.f13On = () => !!B.f13 && B.f13.season(new Date()) && !B.f13Off();
+B.f13Lucky = (eps, ready) => {
+  const parts = [eps ? `${eps} new episode${eps === 1 ? "" : "s"}` : "", ready ? `${ready} request${ready === 1 ? "" : "s"} ready` : ""].filter(Boolean);
+  return parts.length ? `Lucky you: ${parts.join(" and ")}` : "Lucky you: the couch is a black-cat-free zone";
+};
 
 // Big holidays only, clean and simple
 B.holiday = () => {
