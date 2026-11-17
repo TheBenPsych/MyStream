@@ -170,6 +170,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Valentine's look", "From 1 to 14 February: a table for two on Who's watching, love tokens on the doors, and rose red and wine colours.", valBtn("val", B.valOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("Popcorn Day look", "Just 19 January: the popcorn cart room on Who's watching, a movie snack on every door, and butter yellow and cinema red colours (Kids too).", valBtn("pc", B.pcOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("New Year's look", "From 27 December to 1 January: the party room on Who's watching with a midnight countdown, party charms on the doors, and champagne gold and midnight blue colours.", valBtn("ny", B.nyOff() ? "Off" : "On")));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
@@ -177,6 +178,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "val") { B.setValOff(!B.valOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "pc") { B.setPcOff(!B.pcOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "ny") { B.setNyOff(!B.nyOff()); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
@@ -225,6 +227,8 @@ B.kidsLook = () => {
   root.classList.toggle("val", !!(B.me && !kids && B.valOn && B.valOn()));
   // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)
   root.classList.toggle("ny", !!(B.me && B.nyOn && B.nyOn()));
+  // Popcorn Day look (19 January, unless switched off): butter yellow, cinema red and a snack on every door, Kids too (Ben)
+  root.classList.toggle("pc", !!(B.me && B.pcOn && B.pcOn()));
 };
 setInterval(() => B.kidsLook(), 60000);
 
