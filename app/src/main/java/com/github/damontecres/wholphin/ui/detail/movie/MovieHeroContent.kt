@@ -47,6 +47,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
+import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.lengthText
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -163,7 +164,13 @@ fun MovieHeroContent(
         buildList {
             add(
                 TitleTab("Overview") { scope ->
-                    TitleOverview(scope = scope, title = movie.title.orEmpty(), story = dto.overview, strip = strip)
+                    TitleOverview(
+                        scope = scope,
+                        title = movie.title.orEmpty(),
+                        story = dto.overview,
+                        strip = strip,
+                        details = remember(movie, isAdmin) { titleDetails(movie, isAdmin) },
+                    )
                 },
             )
             val hasMore =

@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
+import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
@@ -199,6 +200,7 @@ fun SeriesHeroContent(
                         story = series.data.overview,
                         strip = strip,
                         extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
+                        details = remember(series, state.isAdmin) { titleDetails(series, state.isAdmin, show = true) },
                     )
                 },
             )

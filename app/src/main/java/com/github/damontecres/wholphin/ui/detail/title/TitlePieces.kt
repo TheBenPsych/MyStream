@@ -152,3 +152,52 @@ fun rememberScoreParts(item: BaseItem): List<StripPart> {
         }
     }
 }
+
+/**
+ * The Details list for the Overview tab (the same as the web): studio (network for shows), released,
+ * genres, country, and for the admin the file name, its size and the picture size.
+ */
+fun titleDetails(
+    item: BaseItem,
+    admin: Boolean,
+    show: Boolean = false,
+): List<Pair<String, String>> {
+    val d = item.data
+    return buildList {
+        d.studios
+            ?.mapNotNull { it.name }
+            ?.take(2)
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { add((if (show) "Network" else "Studio") to it.joinToString(", ")) }
+        d.premiereDate?.let {
+            val day =
+                try {
+                    it.format(java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy", java.util.Locale.ENGLISH))
+                } catch (ex: Exception) {
+                    null
+                }
+            if (day != null) add((if (show) "First aired" else "Released") to day)
+        }
+        d.genres?.takeIf { it.isNotEmpty() }?.let { add("Genres" to it.joinToString(", ")) }
+        d.productionLocations?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { add("Country" to it) }
+        val source = d.mediaSources?.firstOrNull()
+        if (admin && source != null) {
+            source.path
+                ?.substringAfterLast('/')
+                ?.substringAfterLast('\\')
+                ?.takeIf { it.isNotBlank() }
+                ?.let { add("File" to it) }
+            source.size?.takeIf { it > 0 }?.let { add("Size" to String.format(java.util.Locale.ENGLISH, "%.1f GB", it / 1073741824.0)) }
+            source.mediaStreams
+                ?.firstOrNull { it.type == org.jellyfin.sdk.model.api.MediaStreamType.VIDEO }
+                ?.let { v ->
+                    val range = v.videoRangeType?.serialName?.takeIf { it != "SDR" && it != "Unknown" }
+                    listOfNotNull(
+                        if (v.width != null && v.height != null) "${v.width}×${v.height}" else null,
+                        v.codec?.uppercase(),
+                        range,
+                    ).joinToString(" · ").takeIf { it.isNotBlank() }?.let { add("Video" to it) }
+                }
+        }
+    }
+}
