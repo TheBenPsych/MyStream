@@ -28,6 +28,9 @@ js/spot.js
 js/extras.js
 js/fix.js
 js/games.js
+js/bgames.js
+js/barcade.js
+js/bpuzzles.js
 js/livetv.js
 js/lobby.js
 js/me.js
@@ -58,6 +61,17 @@ manifest.webmanifest
 reader.html
 sounds/doors.wav
 sounds/opening.wav
+sounds/game_boost.wav
+sounds/game_coin.wav
+sounds/game_crash.wav
+sounds/game_flap.wav
+sounds/game_flip.wav
+sounds/game_go.wav
+sounds/game_miss.wav
+sounds/game_point.wav
+sounds/game_pop.wav
+sounds/game_thud.wav
+sounds/game_tick.wav
 sw.js
 vendor/hls.LICENSE.txt
 vendor/hls.min.js

@@ -33,7 +33,7 @@
     if (/^#\/(movies$|grid\/movies|browse\/movies|movie\/)/.test(hash)) return "movies";
     if (/^#\/(shows$|grid\/shows|browse\/shows|show\/|season\/)/.test(hash)) return "shows";
     if (/^#\/live/.test(hash)) return "live";
-    if (/^#\/(games$|console\/|game\/)/.test(hash)) return "games";
+    if (/^#\/(games$|console\/|game\/|bgame\/)/.test(hash)) return "games";
     if (/^#\/(music$|msearch|mlibrary|mthemes\/|songs$|liked$|mgrid\/|album\/|artist\/|playlist\/|mix\/|song\/|queue)/.test(hash)) return "music";
     if (/^#\/(books(\?|$)|book\/)/.test(hash)) return "books";
     return null;
