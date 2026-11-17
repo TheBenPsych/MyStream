@@ -71,6 +71,9 @@ fun WholphinTheme(
                 TgLook.Orange
             } else if (NyLook.on) {
                 NyLook.Gold
+            } else if (ValLook.on) {
+                // Valentine's look (1 to 14 Feb): rose red
+                ValLook.Rose
             } else {
                 BenflixRedBase
             }

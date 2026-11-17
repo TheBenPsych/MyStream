@@ -57,10 +57,12 @@ import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PixelFont
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
@@ -210,11 +212,11 @@ fun FamilyHome(
                 // Video Games Day look (Kids too): the greeting is in pixel capitals, smaller as they're very wide
                 fontSize = BenflixType.pageTitle * scale * (if (VgLook.on) .6f else 1f),
                 // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || NyLook.on || VgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontWeight = if (TgLook.on || NyLook.on || ValLook.on || VgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
                 fontFamily =
                     if (VgLook.on) {
                         PixelFont
-                    } else if (TgLook.on || NyLook.on) {
+                    } else if (TgLook.on || NyLook.on || ValLook.on) {
                         HolidayFont
                     } else {
                         null
@@ -445,7 +447,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier.nyDoorCharm(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).nyDoorCharm(door))
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .valDoorCharm(door)
+                            .nyDoorCharm(door)
+                    },
+                )
                 // Video Games Day look: Kids gets the game keepsakes too
                 .vgDoorKeepsake(door)
                 .padding(if (small) 14.dp else 22.dp),
