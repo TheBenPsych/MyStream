@@ -969,8 +969,10 @@ private fun TabLine(
 // ---------- Pieces tabs are made of ----------
 
 /**
- * The Overview tab: the story in 2 lines (3 on phones), More (opens the whole story in a side panel or
- * a sheet on phones), then the slim strip of scores, language and who made it (2 lines at most).
+ * The Overview tab: the whole story, the slim strip of scores, language and who made it, then the
+ * Details list (studio, released, genres, country, and the file for the admin). On TV the story sits on
+ * the left and Details on the right; a very long story is cut at 6 lines and More opens the rest.
+ * Phones show everything one under the other.
  */
 @Composable
 fun TitleOverview(
@@ -980,46 +982,95 @@ fun TitleOverview(
     strip: List<StripPart>,
     modifier: Modifier = Modifier,
     extra: (@Composable () -> Unit)? = null,
+    details: List<Pair<String, String>> = emptyList(),
 ) {
     var showStory by remember { mutableStateOf(false) }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier =
-            modifier
-                .padding(start = scope.side, end = scope.side)
-                .then(if (scope.wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth()),
-    ) {
-        if (!story.isNullOrBlank()) {
-            Text(
-                text = story,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                lineHeight = BenflixType.body * 1.4f,
-                maxLines = if (scope.wide) 2 else 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-            TitleTextLink("More", onClick = { showStory = true })
-        }
-        if (strip.isNotEmpty()) {
-            val text =
-                remember(strip) {
-                    buildAnnotatedString {
-                        strip.forEachIndexed { i, p ->
-                            if (i > 0) append("     ")
-                            withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(p.label) }
-                            if (p.value != null) {
-                                append(" ")
-                                withStyle(SpanStyle(color = BenflixColors.Text, fontWeight = FontWeight.ExtraBold)) { append(p.value) }
+    val left: @Composable (Modifier) -> Unit = { m ->
+        var cut by remember(story) { mutableStateOf(false) }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = m) {
+            if (!story.isNullOrBlank()) {
+                Text(
+                    text = story,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.body,
+                    lineHeight = BenflixType.body * 1.4f,
+                    maxLines = if (scope.wide) 6 else Int.MAX_VALUE,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { cut = it.hasVisualOverflow },
+                )
+                if (cut) TitleTextLink("More", onClick = { showStory = true })
+            }
+            if (strip.isNotEmpty()) {
+                val text =
+                    remember(strip) {
+                        buildAnnotatedString {
+                            strip.forEachIndexed { i, p ->
+                                if (i > 0) append("     ")
+                                withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(p.label) }
+                                if (p.value != null) {
+                                    append(" ")
+                                    withStyle(SpanStyle(color = BenflixColors.Text, fontWeight = FontWeight.ExtraBold)) { append(p.value) }
+                                }
                             }
                         }
                     }
-                }
-            Text(text = text, fontSize = BenflixType.small, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(text = text, fontSize = BenflixType.small, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            extra?.invoke()
         }
-        extra?.invoke()
+    }
+    if (scope.wide && details.isNotEmpty()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(48.dp),
+            modifier = modifier.padding(start = scope.side, end = scope.side).fillMaxWidth(),
+        ) {
+            left(Modifier.weight(1.2f).widthIn(max = 760.dp))
+            TitleDetailsList(details, wide = true, modifier = Modifier.weight(1f).widthIn(max = 560.dp))
+        }
+    } else {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier =
+                modifier
+                    .padding(start = scope.side, end = scope.side)
+                    .then(if (scope.wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth()),
+        ) {
+            left(Modifier.fillMaxWidth())
+            if (details.isNotEmpty()) TitleDetailsList(details, wide = false)
+        }
     }
     if (showStory && !story.isNullOrBlank()) {
         TitleStoryPanel(title = title, story = story, onDismiss = { showStory = false })
+    }
+}
+
+/** The Details list beside (TV) or under (phones) the story: a quiet label, then the words */
+@Composable
+fun TitleDetailsList(
+    details: List<Pair<String, String>>,
+    wide: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(if (wide) 4.dp else 6.dp), modifier = modifier) {
+        Text("Details", color = BenflixColors.Text, fontSize = BenflixType.body, fontWeight = FontWeight.ExtraBold)
+        details.forEach { (label, value) ->
+            Row {
+                Text(
+                    text = label,
+                    color = BenflixColors.Muted,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.width(if (wide) 96.dp else 84.dp),
+                )
+                Text(
+                    text = value,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    maxLines = if (wide) 1 else 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
