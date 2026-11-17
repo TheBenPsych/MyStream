@@ -82,6 +82,9 @@ fun WholphinTheme(
                 HwLook.Orange
             } else if (NyLook.on) {
                 NyLook.Gold
+            } else if (EdLook.on) {
+                // Earth Day look (Earth week, Kids too): leaf green
+                EdLook.Leaf
             } else if (PcLook.on) {
                 // Popcorn Day look (19 Jan): butter yellow
                 PcLook.Butter

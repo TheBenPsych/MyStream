@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
@@ -63,6 +64,7 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
@@ -342,6 +344,8 @@ fun BannerCard(
                                     HwLook.Orange
                                 } else if (NyLook.on) {
                                     NyLook.Gold
+                                } else if (EdLook.on) {
+                                    EdLook.Leaf
                                 } else if (J4Look.on) {
                                     J4Look.Red
                                 } else if (ValLook.on) {
@@ -420,6 +424,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .j4ProgressStar((playPercent / 100).toFloat(), star = 20.dp),
+                    )
+                }
+                // Earth Day look: a little flower opens at the end of the progress line
+                if (EdLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .edProgressBloom((playPercent / 100).toFloat(), flower = 18.dp, leaves = false),
                     )
                 }
             }

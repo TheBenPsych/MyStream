@@ -174,6 +174,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + (B.me.kids ? "" : setRow("Valentine's look", "From 1 to 14 February: a table for two on Who's watching, love tokens on the doors, and rose red and wine colours.", valBtn("val", B.valOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Popcorn Day look", "Just 19 January: the popcorn cart room on Who's watching, a movie snack on every door, and butter yellow and cinema red colours (Kids too).", valBtn("pc", B.pcOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("New Year's look", "From 27 December to 1 January: the party room on Who's watching with a midnight countdown, party charms on the doors, and champagne gold and midnight blue colours.", valBtn("ny", B.nyOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("Earth Day look", "Earth week, 22 to 28 April: the plant corner on Who's watching, a living thing on each door, and leaf green and ocean blue colours (Kids too).", valBtn("ed", B.edOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Star Wars Day look", "On 4 May: the desert home on Who's watching, the opening crawl, galaxy moments on the doors, dark side red and black colours, and a Star Wars row on Movies.", valBtn("sw", B.swOff() ? "Off" : "On")))
       + setRow("Star Wars Day side", "The colour of your laser swords on 4 May, for this profile.", valBtn("swside", B.swSide(B.me.id) === "dark" ? "Dark side (red)" : "Light side (blue)"));
     sp.onclick = (e) => {
@@ -181,6 +182,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "ed") { B.setEdOff(!B.edOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "j4") { B.setJ4Off(!B.j4Off()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "val") { B.setValOff(!B.valOff()); B.kidsLook(); B.render(); return; }
@@ -240,6 +242,8 @@ B.kidsLook = () => {
   root.classList.toggle("val", !!(B.me && !kids && B.valOn && B.valOn()));
   // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)
   root.classList.toggle("ny", !!(B.me && B.nyOn && B.nyOn()));
+  // Earth Day look (Earth week, unless switched off): leaf green, ocean blue and a living thing on every door, Kids too (Ben)
+  root.classList.toggle("ed", !!(B.me && B.edOn && B.edOn()));
   // 4th of July look (1 to 4 July, unless switched off): flag red, navy and the summer things on the doors, Kids too (Ben)
   root.classList.toggle("j4", !!(B.me && B.j4On && B.j4On()));
   // Popcorn Day look (19 January, unless switched off): butter yellow, cinema red and a snack on every door, Kids too (Ben)

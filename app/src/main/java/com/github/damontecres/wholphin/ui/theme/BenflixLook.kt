@@ -24,16 +24,17 @@ object BenflixColors {
 
     /** Pills, chips and small raised things */
     val Raised: Color get() =
-        pc(PcLook.Raised) ?: ny(NyLook.Raised) ?: j4(J4Look.Raised) ?: KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised)
-            ?: tg(TgLook.Raised)
+        ed(EdLook.Raised) ?: pc(PcLook.Raised) ?: ny(NyLook.Raised) ?: j4(J4Look.Raised) ?: KidsLook.palette?.raised
+            ?: xmas(XmasLook.PineRaised)
+            ?: tg(TgLook.Raised) ?: sw(SwLook.Raised)
             ?: hw(HwLook.Raised)
-            ?: sw(SwLook.Raised)
             ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
     val Panel: Color get() =
-        pc(PcLook.Panel) ?: ny(NyLook.Panel) ?: j4(J4Look.Panel) ?: KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel)
+        ed(EdLook.Panel) ?: pc(PcLook.Panel) ?: ny(NyLook.Panel) ?: j4(J4Look.Panel) ?: KidsLook.palette?.panel ?: xmas(XmasLook.PineDark)
+            ?: tg(TgLook.Panel)
             ?: hw(HwLook.Panel)
             ?: sw(SwLook.Panel)
             ?: vl(ValLook.Panel)
@@ -41,10 +42,10 @@ object BenflixColors {
 
     /** The lighter side of a panel (profile card picture side) */
     val PanelHigh: Color get() =
-        pc(PcLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: j4(J4Look.PanelHigh) ?: KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh)
-            ?: tg(TgLook.PanelHigh)
+        ed(EdLook.PanelHigh) ?: pc(PcLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: j4(J4Look.PanelHigh) ?: KidsLook.palette?.panelHigh
+            ?: xmas(XmasLook.PineHigh)
+            ?: tg(TgLook.PanelHigh) ?: sw(SwLook.PanelHigh)
             ?: hw(HwLook.PanelHigh)
-            ?: sw(SwLook.PanelHigh)
             ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
@@ -53,7 +54,8 @@ object BenflixColors {
 
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
     val FocusFill: Color get() =
-        pc(PcLook.Butter) ?: ny(NyLook.Gold) ?: j4(J4Look.Red) ?: KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange)
+        ed(EdLook.Leaf) ?: pc(PcLook.Butter) ?: ny(NyLook.Gold) ?: j4(J4Look.Red) ?: KidsLook.palette?.accent ?: xmas(XmasLook.Red)
+            ?: tg(TgLook.Orange)
             ?: hw(HwLook.Orange)
             ?: sw(SwLook.Red)
             ?: vl(ValLook.Rose)
@@ -61,7 +63,8 @@ object BenflixColors {
 
     /** Words on [FocusFill] */
     val OnFocusFill: Color get() =
-        pc(PcLook.OnButter) ?: ny(NyLook.OnGold) ?: j4(Color.White) ?: KidsLook.palette?.onAccent ?: xmas(Color.White) ?: tg(Color.White)
+        ed(EdLook.OnLeaf) ?: pc(PcLook.OnButter) ?: ny(NyLook.OnGold) ?: j4(Color.White) ?: KidsLook.palette?.onAccent ?: xmas(Color.White)
+            ?: tg(Color.White)
             ?: hw(HwLook.OnOrange)
             ?: sw(Color.White)
             ?: vl(Color.White)
@@ -69,7 +72,8 @@ object BenflixColors {
 
     /** Thin lines and panel edges */
     val Line: Color get() =
-        pc(PcLook.Line) ?: ny(NyLook.Line) ?: j4(J4Look.Line) ?: KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line)
+        ed(EdLook.Line) ?: pc(PcLook.Line) ?: ny(NyLook.Line) ?: j4(J4Look.Line) ?: KidsLook.palette?.line ?: xmas(XmasLook.PineLine)
+            ?: tg(TgLook.Line)
             ?: hw(HwLook.Line)
             ?: sw(SwLook.Line)
             ?: vl(ValLook.Line)
@@ -77,7 +81,8 @@ object BenflixColors {
 
     /** The focused row in a list or menu */
     val FocusRow: Color get() =
-        pc(PcLook.Red) ?: ny(NyLook.Midnight) ?: j4(J4Look.Navy) ?: KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown)
+        ed(EdLook.Ocean) ?: pc(PcLook.Red) ?: ny(NyLook.Midnight) ?: j4(J4Look.Navy) ?: KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine)
+            ?: tg(TgLook.Brown)
             ?: hw(HwLook.Purple)
             ?: sw(SwLook.Button)
             ?: vl(ValLook.Wine)
@@ -130,6 +135,9 @@ object BenflixColors {
     /** New Year's look: [c] while it's on (27 Dec to 1 Jan, Kids too, so it wins over the Kids colours), else null */
     private fun ny(c: Color): Color? = if (NyLook.on) c else null
 
+    /** Earth Day look: [c] while it's on (Earth week, Kids too, so it wins over the Kids colours), else null */
+    private fun ed(c: Color): Color? = if (EdLook.on) c else null
+
     /** 4th of July look: [c] while it's on (1 to 4 Jul, Kids too, so it wins over the Kids colours), else null */
     private fun j4(c: Color): Color? = if (J4Look.on) c else null
 
@@ -171,8 +179,8 @@ enum class BenflixDoor(
     /** The words on the door itself: white on every door in the Christmas, Thanksgiving and New Year's and 4th of July looks (Ben: Books too) */
     val labelColor: Color
         get() =
-            if (XmasLook.on || TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on ||
-                SwLook.on
+            if (XmasLook.on || TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || SwLook.on ||
+                EdLook.on
             ) {
                 Color.White
             } else {
