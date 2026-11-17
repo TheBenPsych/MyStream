@@ -97,6 +97,27 @@ fun NewYearRoom(
 }
 
 /**
+ * Benflix 4th of July: the cookout room behind Who's watching (1 to 4 July). Drawn by the web version
+ * (server/web/js/july4.js) and recorded as 30-second loops by tools/july4/record.js: [variant] "day", or
+ * "night" on the 4th from 9 PM when the window fills with fireworks. Phones have no window, so they always
+ * play the one tall video.
+ */
+@Composable
+fun JulyRoom(
+    variant: String,
+    modifier: Modifier = Modifier,
+) {
+    LoopingRoom(
+        JulyVideos,
+        { tall -> if (tall) "day-tall" else "$variant-wide" },
+        modifier,
+        bg = listOf(Color(0xFF0A0E1E), Color(0xFF151B36)),
+        // On the 4th, the fireworks video downloads early so the show starts right at 9 PM
+        alsoFetch = { tall -> if (!tall && variant == "day" && LocalDate.now().dayOfMonth == 4) "night-wide" else null },
+    )
+}
+
+/**
  * Benflix National Popcorn Day: the popcorn cart room behind Who's watching (19 January). Drawn by the web
  * version (server/web/js/popcorn.js) and recorded as 36-second loops by tools/popcorn/record.js: the heap in the
  * cart grows through the day (morning, afternoon and evening videos).
@@ -221,6 +242,9 @@ object NewYearVideos : RoomVideos("newyear", version = 1) {
         tall: Boolean,
     ) = "$variant-$year-${if (tall) "tall" else "wide"}"
 }
+
+/** Downloads and keeps the 4th of July cookout room videos (extras/scenes/july4 in the repo: day-wide, night-wide, day-tall) */
+object JulyVideos : RoomVideos("july4", version = 1)
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)

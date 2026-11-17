@@ -298,6 +298,8 @@ message BenflixPreferences {
   bool halloween_look_off = 19;
   // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
   bool new_year_look_off = 15;
+  // Benflix 4th of July look (1 to 4 Jul) is on unless this is set
+  bool july_look_off = 17;
   // Benflix Star Wars Day look (4 May) is on unless this is set (numbers 15 to 21 are kept for other holiday looks)
   bool star_wars_look_off = 22;
   // Benflix Valentine's look (1 to 14 Feb) is on unless this is set
