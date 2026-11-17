@@ -71,6 +71,7 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         return
     }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
     // New Year's look: the loading ring is a clock face ticking round to midnight
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
         com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
@@ -79,10 +80,46 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         return
     }
     Box(modifier = modifier) {
+        // Star Wars Day: light speed inside a laser red ring on black
+        if (sw) {
+            val turn =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "swStreaks")
+            val angle by turn.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(9000, easing = androidx.compose.animation.core.LinearEasing),
+                    ),
+                label = "swStreaksAngle",
+            )
+            com.github.damontecres.wholphin.ui.theme.SwLoadingStreaks(
+                Modifier
+                    .fillMaxSize(.9f)
+                    .align(Alignment.Center)
+                    .rotate(angle),
+            )
+        }
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
-            color = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Orange else BenflixColors.Text,
-            trackColor = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Brown else androidx.compose.ui.graphics.Color.Transparent,
+            color =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Orange
+                } else if (sw) {
+                    com.github.damontecres.wholphin.ui.theme.SwLook.Red
+                } else {
+                    BenflixColors.Text
+                },
+            trackColor =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Brown
+                } else if (sw) {
+                    com.github.damontecres.wholphin.ui.theme.SwLook.Button
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
             modifier =
                 Modifier
                     .fillMaxSize()

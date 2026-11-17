@@ -286,6 +286,9 @@ class MainActivity : AppCompatActivity() {
         // Benflix: learn TV or phone before anything draws, so the shared text sizes are right
         com.github.damontecres.wholphin.ui.touch
             .isTvDevice(this)
+        // Benflix Star Wars Day: each profile's side (light or dark), kept on this TV or phone
+        com.github.damontecres.wholphin.ui.theme.SwSides
+            .init(this)
         setContent {
             PhoneFit {
                 MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
@@ -294,6 +297,13 @@ class MainActivity : AppCompatActivity() {
                         // Benflix startup animation, every time the app is opened fresh
                         var showIntro by rememberSaveable { mutableStateOf(true) }
                         var finishing by rememberSaveable { mutableStateOf(finishingUpdate) }
+                        // Benflix Star Wars Day: the opening crawl, the first time Benflix opens on 4 May
+                        var showCrawl by rememberSaveable {
+                            mutableStateOf(
+                                com.github.damontecres.wholphin.ui.StarWarsCrawlDay
+                                    .due(this@MainActivity),
+                            )
+                        }
                         if (userPreferences == null) {
                             // Show loading page if it is taking a while to get app preferences
                             var showLoading by remember { mutableStateOf(false) }
@@ -348,6 +358,8 @@ class MainActivity : AppCompatActivity() {
                                         appPreferences.benflixPreferences.valentinesLookOff
                                     com.github.damontecres.wholphin.ui.theme.NewYearSeason.lookOff =
                                         appPreferences.benflixPreferences.newYearLookOff
+                                    com.github.damontecres.wholphin.ui.theme.StarWarsDay.lookOff =
+                                        appPreferences.benflixPreferences.starWarsLookOff
                                     com.github.damontecres.wholphin.ui.theme.PopcornSeason.lookOff =
                                         appPreferences.benflixPreferences.popcornLookOff
                                     WholphinTheme(
@@ -417,6 +429,12 @@ class MainActivity : AppCompatActivity() {
                         if (finishing) {
                             com.github.damontecres.wholphin.ui
                                 .FinishingUpdateScreen(onDone = { finishing = false })
+                        } else if (showCrawl &&
+                            com.github.damontecres.wholphin.ui.theme.StarWarsDay
+                                .on()
+                        ) {
+                            com.github.damontecres.wholphin.ui
+                                .StarWarsCrawl(onDone = { showCrawl = false })
                         } else if (showIntro) {
                             BenflixIntro(onFinished = { showIntro = false })
                         }
