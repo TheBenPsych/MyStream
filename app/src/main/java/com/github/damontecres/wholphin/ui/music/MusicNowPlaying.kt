@@ -215,7 +215,7 @@ class MusicNowPlayingViewModel
 
         fun previous() = player.seekToPrevious()
 
-        fun next() = player.seekToNext()
+        fun next() = musicService.skipToNext()
 
         fun seekBy(ms: Long) {
             val d = player.duration.takeIf { it > 0 } ?: return

@@ -30,6 +30,7 @@ import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import org.jellyfin.sdk.api.client.extensions.instantMixApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
 import javax.inject.Inject
@@ -46,6 +47,7 @@ class MusicActionsViewModel
         private val benflixMusic: BenflixMusic,
         @param:ApplicationContext private val context: Context,
         private val musicMe: com.github.damontecres.wholphin.services.MusicMe,
+        private val api: org.jellyfin.sdk.api.client.ApiClient,
     ) : ViewModel() {
         /**
          * Ben only: deletes this song's file on Tower and has Lidarr (or Soulseek) find a better copy. The bad
@@ -88,6 +90,53 @@ class MusicActionsViewModel
                 // Ben: Play or Shuffle goes straight to Now playing (once the music has started)
                 if (openNow) onMain { navigationManager.navigateTo(Destination.NowPlaying) }
             }
+        }
+
+        /**
+         * Music redesign 3 (part 4): Smart shuffle. The songs shuffled, with a song like them from your music (not
+         * already in the list) after every 3 songs.
+         */
+        fun smartShuffle(
+            songs: List<BaseItem>,
+            source: BaseItem?,
+            sourceName: String?,
+            place: com.github.damontecres.wholphin.services.MusicPlace? = null,
+        ) = viewModelScope.launchIO {
+            val have = songs.map { it.id }.toMutableSet()
+            val extra = mutableListOf<BaseItem>()
+            songs.shuffled().take(SMART_SEEDS).forEach { seed ->
+                try {
+                    api.instantMixApi
+                        .getInstantMixFromItem(
+                            userId = serverRepository.currentUser?.id,
+                            itemId = seed.id,
+                            limit = 15,
+                            fields = com.github.damontecres.wholphin.ui.SongListFields,
+                        ).content.items
+                        .filter { it.type == BaseItemKind.AUDIO && have.add(it.id) }
+                        .forEach { extra.add(BaseItem(it, false)) }
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Smart shuffle: songs like %s", seed.title)
+                }
+            }
+            val more = extra.shuffled().toMutableList()
+            val mixed =
+                buildList {
+                    songs.shuffled().forEachIndexed { i, s ->
+                        add(s)
+                        if (i % 3 == 2 && more.isNotEmpty()) add(more.removeAt(0))
+                    }
+                }
+            musicService.playList(mixed, 0, false, source?.id, listOfNotNull(sourceName, "Smart shuffle").joinToString(" · "))
+            (place ?: source?.let { musicPlaceOf(it, sourceName) })?.let { musicMe.played(it) }
+            com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                if (extra.isEmpty()) {
+                    "Shuffling (no similar songs found yet)"
+                } else {
+                    "Smart shuffle: songs like these join in after every 3 songs"
+                },
+            )
+            onMain { navigationManager.navigateTo(Destination.NowPlaying) }
         }
 
         /** Runs [block] in the background (for things that load songs first, like Play top songs) */
@@ -323,3 +372,6 @@ fun musicPlaceOf(
     return com.github.damontecres.wholphin.services
         .MusicPlace(kind, item.id.toString(), name?.ifBlank { null } ?: item.title.orEmpty())
 }
+
+/** Smart shuffle: how many songs of the list it finds songs like */
+private const val SMART_SEEDS = 3

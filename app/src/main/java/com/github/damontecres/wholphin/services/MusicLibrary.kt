@@ -46,6 +46,8 @@ data class MusicMix(
     val group: String = "",
     /** The page ends with Songs to add (catalogue songs for this theme; every profile but Kids, Ben okays others) */
     val adds: Boolean = false,
+    /** Discover weekly and Release radar: only songs that aren't on Benflix yet (previews and Ask) */
+    val catalogue: Boolean = false,
 )
 
 /** Tower's themed playlists (holidays in season, decades, genres, moods, throwbacks) and each row's name */
@@ -390,6 +392,7 @@ class MusicLibrary
                 coverAlbumIds = (0 until (covers?.length() ?: 0)).mapNotNull { covers?.optString(it)?.toUUIDOrNull() },
                 group = j.optString("group"),
                 adds = j.optBoolean("adds"),
+                catalogue = j.optBoolean("catalogue"),
             ).takeIf { it.songIds.isNotEmpty() || it.adds }
         }
     }

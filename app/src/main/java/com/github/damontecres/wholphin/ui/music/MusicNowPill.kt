@@ -164,7 +164,7 @@ fun MusicMiniBar(
                         onDragEnd = {
                             val at = slide.value
                             when {
-                                at <= -skipAt -> viewModel.musicService.player.seekToNext()
+                                at <= -skipAt -> viewModel.musicService.skipToNext()
                                 at >= skipAt -> viewModel.musicService.player.seekToPrevious()
                             }
                             scope.launch { slide.animateTo(0f) }

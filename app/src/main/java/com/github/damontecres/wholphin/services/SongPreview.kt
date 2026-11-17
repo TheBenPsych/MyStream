@@ -56,7 +56,29 @@ class SongPreview
             if (_state.value.songId == songId) stop() else play(songId)
         }
 
+        /** Music redesign 3 (Discover weekly, Release radar): the previews of [songIds], one after another */
+        fun playAll(songIds: List<Long>) {
+            if (songIds.isEmpty()) return
+            playOne(songIds.first())
+            chain = songIds.drop(1)
+        }
+
+        /** The songs still to come after this preview (Play previews) */
+        private var chain: List<Long> = emptyList()
+
+        private fun nextInChain(): Boolean {
+            val next = chain.firstOrNull() ?: return false
+            chain = chain.drop(1)
+            playOne(next)
+            return true
+        }
+
         fun play(songId: Long) {
+            chain = emptyList()
+            playOne(songId)
+        }
+
+        private fun playOne(songId: Long) {
             stopPlayer()
             job?.cancel()
             _state.value = SongPreviewState(songId = songId, loading = true)
@@ -81,6 +103,7 @@ class SongPreview
 
         /** Stops the preview (leaving the page does this too) and lets paused Benflix music carry on */
         fun stop() {
+            chain = emptyList()
             job?.cancel()
             job = null
             stopPlayer()
@@ -121,7 +144,7 @@ class SongPreview
                                 if (playbackState == Player.STATE_READY && _state.value.songId == songId) {
                                     _state.value = _state.value.copy(loading = false)
                                 }
-                                if (playbackState == Player.STATE_ENDED && _state.value.songId == songId) stop()
+                                if (playbackState == Player.STATE_ENDED && _state.value.songId == songId && !nextInChain()) stop()
                             }
 
                             override fun onPlayerError(error: PlaybackException) {
@@ -138,6 +161,7 @@ class SongPreview
         }
 
         private fun noPreview(songId: Long) {
+            if (nextInChain()) return
             stopPlayer()
             resumeMusic()
             _state.value = SongPreviewState(missingId = songId)

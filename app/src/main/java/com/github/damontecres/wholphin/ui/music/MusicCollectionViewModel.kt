@@ -52,6 +52,8 @@ data class MusicCollectionState(
     /** Ben's Songs to add under a themed playlist, and whether they're still coming */
     val adds: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
     val addsLoading: Boolean = false,
+    /** Discover weekly and Release radar: only songs that aren't on Benflix yet (Play previews, the heart asks) */
+    val catalogue: Boolean = false,
     /** Not Ben's profile: an ask waits for Ben to okay it */
     val askNeedsOk: Boolean = false,
     val liked: Set<UUID> = emptySet(),
@@ -447,6 +449,7 @@ class MusicCollectionViewModel
                     mixLine = mix.line,
                     themed = mix.group.isNotBlank(),
                     addsLoading = mix.adds,
+                    catalogue = mix.catalogue,
                     askNeedsOk = serverRepository.currentUserDto?.policy?.isAdministrator != true,
                     loaded = true,
                 )
@@ -549,6 +552,20 @@ class MusicCollectionViewModel
                     Timber.w(ex, "Not for this playlist")
                 }
             }
+        }
+
+        /** Discover weekly and Release radar: their 30 second previews one after another (asked-for ones left out) */
+        fun playPreviews() {
+            val ids =
+                _state.value.adds
+                    .filter { it.asked == null && !it.have }
+                    .map { it.id }
+            if (ids.isEmpty()) {
+                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                    .pill("You've asked for all of these already.")
+                return
+            }
+            preview.playAll(ids)
         }
 
         /** Songs to add: asks for the song; once it's downloaded it joins this themed playlist by itself */

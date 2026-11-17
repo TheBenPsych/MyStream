@@ -142,7 +142,12 @@
     draw();
     B.toast(`Plays next: ${s.Name}`);
   };
-  M.next = () => { if (M.index + 1 < M.queue.length) load(M.index + 1); else keepGoing(true); };
+  M.next = () => {
+    // Skip learning (Music redesign 3): a song skipped in its first 30 seconds 3 times stays out of your mixes
+    const cur = M.current();
+    if (cur && pos() < 30 && B.me && !B.me.kids) B.call("POST", "api/music/me/skip", { id: cur.Id }).catch(() => {});
+    if (M.index + 1 < M.queue.length) load(M.index + 1); else keepGoing(true);
+  };
   M.prev = () => { if (pos() > 4 || M.index === 0) seek(0); else load(M.index - 1); };
   M.toggle = () => { if (!M.queue.length) return; wakeSound(); if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
   M.stop = () => {
@@ -1236,6 +1241,20 @@
       <div class="mhero-words"><div class="mkick">${esc(o.kick)}</div><h1>${esc(o.title)}</h1><div class="dim">${o.line}</div>
         <div class="mhero-btns"><button class="btn white" data-h="play">${I("play")} Play</button><button class="btn" data-h="shuffle">${icon("shuffle")} Shuffle</button>${o.heart != null ? `<button class="btn mheart ${o.heart ? "on" : ""}" data-h="heart">${I("heart")}</button>` : ""}<button class="btn" data-h="more">${I("more")}</button></div>
       </div></div>`;
+  // Music redesign 3 (part 4): Smart shuffle mixes in a song like these (from your music) after every 3 songs
+  const smartShuffle = async (list, o) => {
+    const have = new Set(list.map((x) => x.Id));
+    const seeds = list.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+    const extra = [];
+    for (const x of seeds) {
+      const j = await B.get(`/Items/${enc(x.Id)}/InstantMix?UserId=${B.uid()}&Limit=15&${SONG_FIELDS}`).catch(() => null);
+      ((j && j.Items) || []).forEach((y) => { if (y.Type === "Audio" && !have.has(y.Id)) { have.add(y.Id); extra.push(y); } });
+    }
+    const mixed = [], order = list.slice().sort(() => Math.random() - 0.5), more = extra.sort(() => Math.random() - 0.5);
+    order.forEach((x, i) => { mixed.push(x); if (i % 3 === 2 && more.length) mixed.push(Object.assign({}, more.shift(), { _smart: true })); });
+    M.playList(mixed, 0, false, `${o.title} · Smart shuffle`, o.place); M.sourceId = o.sourceId; openNow();
+    B.toast(extra.length ? "Smart shuffle: songs like these join in after every 3 songs" : "Shuffling (no similar songs found yet)");
+  };
   // Music redesign 3: Find and Sort on playlists and Liked songs, style chips on Liked songs
   const SORTS = ["Custom order", "Title", "Artist", "Album", "Recently added"];
   const STYLE_WORDS = [["Rap", ["hip hop", "hip-hop", "rap", "trap", "drill"]], ["R&B", ["r&b", "rnb", "soul", "funk"]], ["Metal", ["metal", "metalcore", "hardcore"]],
@@ -1326,8 +1345,10 @@
       if (b.dataset.h === "more") {
         const menu = [{ label: "Add all to Up next", value: "all" }, { label: "Add all to a playlist", value: "pl" }].concat(o.menu || []);
         if (o.place && (o.place.kind === "album" || o.place.kind === "playlist")) menu.push({ label: "Send to someone", value: "send" });
+        if (o.place && (o.place.kind === "playlist" || o.place.kind === "liked") && shown.length > 3) menu.unshift({ label: "Smart shuffle (adds songs like these)", value: "smart" });
         B.dropdown(b, menu, null, (v) => {
           if (v === "send") setTimeout(() => sendTo(b, o.place), 0);
+          else if (v === "smart") smartShuffle(shown, o);
           else if (v === "all") shown.forEach((s) => M.addToUpNext(s));
           else if (v === "pl") addToPlaylist(b, shown);
           else (o.menu || []).forEach((x) => { if (x.value === v && x.run) x.run(); });
@@ -1505,6 +1526,7 @@
     const key = decodeURIComponent(m[1]);
     const mix = (await B.musicMixes()).find((x) => x.key === key) || ((await B.musicThemes().catch(() => ({}))).themes || []).find((x) => x.key === key);
     if (!mix) return B.go("#/music");
+    if (mix.catalogue) return catalogueMix(nav, mix);
     const got = mix.songs.length ? await items(`Ids=${enc(mix.songs.join(","))}&${SONG_FIELDS}`) : [];
     const byId = {}; got.forEach((s) => { byId[s.Id] = s; });
     const songs = mix.songs.map((id) => byId[id]).filter(Boolean);
@@ -1525,6 +1547,41 @@
     await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null, extra: notHere, place: { kind: "mix", id: mix.key, name: mix.name } });
     if (mix.adds) themeAdds(nav, mix);
   });
+
+  // Music redesign 3 (part 4): Discover weekly and Release radar are songs that aren't on Benflix yet. Play plays
+  // their 30 second previews one after another; the heart asks for a song.
+  const catalogueMix = async (nav, mix) => {
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg"><div class="mhero"><div class="mhero-words"><div class="mkick">MADE FOR YOU</div><h1>${esc(mix.name)}</h1><div class="dim">${esc(mix.line)}</div>
+      <div class="mhero-btns"><button class="btn white" data-h="pv">${I("play")} Play previews</button><button class="btn" data-h="stop">${I("x")} Stop</button></div></div></div>
+      <p class="dim">Not on Benflix yet. Hear 30 seconds of each, one after another, and press the heart to ask for the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
+      <div class="msongs" id="mcat">${B.spinner()}</div></div>`;
+    B.wireTop();
+    $("#mpg").style.backgroundImage = "linear-gradient(rgba(108,74,190,.45), transparent 460px)";
+    const got = await B.call("GET", `api/music/theme?key=${enc(mix.key)}`).catch(() => null);
+    if (!B.alive(nav)) return;
+    const list = (got && got.songs) || [];
+    const box = $("#mcat");
+    if (!list.length) { box.innerHTML = `<p class="dim">${mix.key === "release-radar" ? "No new songs from the artists you play this week. Follow a few artists to get more here." : "Play some more music and new picks show up here next Monday."}</p>`; return; }
+    const heart = (x) => `<button class="circle mheart ${x.asked ? "on" : ""}" data-ask="${esc(String(x.id))}" title="${x.asked ? esc(x.asked) : "Ask for it"}">${I("heart")}</button>`;
+    box.innerHTML = list.map((x, i) => `<div class="srow ghost"><span class="sn">${x.cover ? `<img class="sc" src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(x.title)}</b><small>${esc([x.artist, x.album].filter(Boolean).join(" · "))}</small></span>${B.previewBtn(x.id)}${heart(x)}</div>`).join("");
+    const waiting = () => list.filter((x) => !x.asked).map((x) => x.id);
+    $(".mhero-btns").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-h]"); if (!b) return;
+      if (b.dataset.h === "pv") { if (!waiting().length) return B.toast("You've asked for all of these already."); B.previewAll(waiting()); }
+      if (b.dataset.h === "stop") B.previewStop();
+    });
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-ask]"); if (!b || b.classList.contains("on")) return;
+      const x = list.find((y) => String(y.id) === b.dataset.ask); if (!x) return;
+      b.classList.add("on");
+      try {
+        const r = await B.call("POST", "api/music/request", { kind: "song", id: x.id });
+        x.asked = (r && r.words) || "Asked for";
+        b.title = x.asked;
+        B.toast(`${x.asked}: ${x.title}`);
+      } catch (err) { b.classList.remove("on"); B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute."); }
+    });
+  };
 
   // Every profile but Kids (Ben okays the others' asks): Songs to add under a themed playlist. Asking for one downloads it, and Tower puts it in this theme.
   const themeAdds = async (nav, mix) => {

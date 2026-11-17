@@ -3567,8 +3567,29 @@ def _slug(text):
     return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-") or "mix"
 
 
+def _day_part(hour):
+    """The part of the day the daylist is for"""
+    if 5 <= hour < 11:
+        return "morning"
+    if 11 <= hour < 17:
+        return "afternoon"
+    if 17 <= hour < 22:
+        return "evening"
+    return "night"
+
+
+# The daylist (Music redesign 3): (name words, slowest and fastest speed, styles it leans to)
+DAYLIST = {
+    "morning": ("easy", 70, 118, ("Indie and folk", "Pop", "R&B and soul", "Jazz and blues", "Country")),
+    "afternoon": ("upbeat", 100, 170, ("Pop", "Rock", "Electronic and dance", "Rap and hip hop", "K-pop and J-pop")),
+    "evening": ("feel-good", 85, 135, ("R&B and soul", "Pop", "Rock", "Country", "Latin", "Indie and folk")),
+    "night": ("late-night", 55, 112, ("R&B and soul", "Electronic and dance", "Indie and folk", "Jazz and blues", "Classical and soundtracks")),
+}
+
+
 def mixes_for(token, user_id):
-    day = time.strftime("%Y-%m-%d")
+    part = _day_part(time.localtime().tm_hour)
+    day = time.strftime("%Y-%m-%d") + "-" + part
     with _mix_lock:
         cached = _mixes.get(user_id)
         if cached and cached[0] == day:
@@ -3591,6 +3612,10 @@ def mixes_for(token, user_id):
     if blocked:
         ok = lambda x: norm(_mix_artist(x)[0]) not in blocked  # noqa: E731
         played, liked, fresh, lately = ([x for x in lst if ok(x)] for lst in (played, liked, fresh, lately))
+    # Skip learning (Music redesign 3): songs skipped early again and again stay out
+    skipped = _skipped(user_id)
+    if skipped:
+        played, liked, fresh, lately = ([x for x in lst if x["Id"] not in skipped] for lst in (played, liked, fresh, lately))
     pool = {s["Id"]: s for s in played + liked + fresh}
     count = lambda s: (s.get("UserData") or {}).get("PlayCount") or 0  # noqa: E731
     # The artists each person plays most (likes count a little too)
@@ -3691,10 +3716,49 @@ def mixes_for(token, user_id):
         songs = list(fresh)
         rnd.shuffle(songs)
         mixes.append(_mix("discover", "Something new", "Songs you haven't played yet", [s for s in songs if count(s) == 0]))
+    # ---- Music redesign 3, part 4: the new mixes ----
+    keep = lambda lst: [x for x in lst if (xmas_ok or not _is_christmas(x)) and norm(_mix_artist(x)[0]) not in blocked and x["Id"] not in skipped]  # noqa: E731
+    first = []
+    # daylist: changes with the part of the day (by the songs' speed when Tower knows it, else their style)
+    words, slow, fast, leans = DAYLIST[part]
+    both = list({x["Id"]: x for x in played + liked + fresh}.values())
+    by_speed = [x for x in both if slow <= (_song_bpm(x) or 0) <= fast]
+    by_style = [x for x in both if not _song_bpm(x) and _style(x) in leans]
+    pick = by_speed + by_style
+    rnd.shuffle(pick)
+    pick.sort(key=lambda x: 0 if count(x) > 0 else 1)
+    picked = pick[:22] + [x for x in pick[22:] if count(x) == 0][:8]
+    rnd.shuffle(picked)
+    weekday = time.strftime("%A")
+    styles_here = []
+    for x in picked:
+        st = _style(x)
+        if st and st not in styles_here:
+            styles_here.append(st)
+    first.append(_mix("daylist", f"daylist · {words} {weekday} {part}", ", ".join(styles_here[:3]) or "Made for this time of day", picked))
+    # Discover weekly and Release radar: songs that aren't on Benflix yet, to preview and ask for (made on Tower when opened)
+    first.append({"key": "discover-weekly", "name": "Discover weekly", "line": "20 new songs for you, every Monday", "songs": [], "covers": [], "adds": True, "catalogue": True})
+    first.append({"key": "release-radar", "name": "Release radar", "line": "New songs from artists you play, every Friday", "songs": [], "covers": [], "adds": True, "catalogue": True})
+    # Fresh on Benflix: songs that came in over the last 2 weeks
+    new = keep(_songs(token, user_id, "SortBy=DateCreated&SortOrder=Descending&Limit=120"))
+    cut = (now - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
+    new = [x for x in new if (x.get("DateCreated") or "")[:10] >= cut]
+    later = [_mix("fresh", "Fresh on Benflix", "Songs that came in over the last 2 weeks", new, limit=60)]
+    # Your top songs of the year: all December, and the first week of January for the year before
+    if now.month == 12 or (now.month == 1 and now.day <= 7):
+        year = now.year if now.month == 12 else now.year - 1
+        this_year = [x for x in played if ((x.get("UserData") or {}).get("LastPlayedDate") or "")[:4] == str(year)]
+        this_year.sort(key=lambda x: -count(x))
+        later.append(_mix(f"top-{year}", f"Your top songs {year}", f"The songs you played most in {year}", this_year, limit=50))
+    # This is: each of the 10 artists you play most, their songs you play most first
+    for name, aid in [a for a in top if a[1]][:10]:
+        theirs = keep(_songs(token, user_id, f"ArtistIds={aid}&SortBy=PlayCount,CommunityRating,SortName&SortOrder=Descending&Limit=40"))
+        later.append(_mix(f"thisis-{aid}", f"This is {name}", f"The essential {name}, the ones you play most first", theirs, limit=40))
+    mixes = first + mixes[: DAILY_MIXES + 5] + later
     out = [m for m in mixes if m]
     # Songs this person said aren't for a playlist (Not for this playlist) stay out of it
-    out = [m for m in (_apply_hides(user_id, m) for m in out) if m]
-    answer = {"mixes": out[: DAILY_MIXES + 5]}
+    out = [m for m in (m if m.get("catalogue") else _apply_hides(user_id, m) for m in out) if m]
+    answer = {"mixes": out[:30]}
     if answer["mixes"]:  # an empty answer (server busy, no plays yet) is tried again next time
         with _mix_lock:
             _mixes[user_id] = (day, answer)
@@ -3775,6 +3839,19 @@ def me_get(user_id):
     }
 
 
+SKIP_DAYS = 60
+SKIPS_OUT = 3
+
+
+def _skipped(user_id):
+    """Songs this profile skipped early 3 times or more in the last 60 days (they stay out of the mixes)"""
+    try:
+        cut = time.time() - SKIP_DAYS * 86400
+        return {k for k, v in ((_me_all().get(user_id) or {}).get("skips") or {}).items() if isinstance(v, list) and len(v) > 1 and v[0] >= SKIPS_OUT and v[1] >= cut}
+    except Exception:
+        return set()
+
+
 def _no_artists(user_id):
     """Artists this profile said not to play in their mixes (lowercase, simple letters)"""
     try:
@@ -3837,6 +3914,18 @@ def me_route(method, path, user_id, read_json):
                 adds[pl] = lst
             else:
                 adds.pop(pl, None)
+        elif path == "/api/music/me/skip":
+            # Skip learning (Music redesign 3): a song skipped in its first 30 seconds 3 times stays out of the mixes
+            song = str(body.get("id") or "")
+            if not re.fullmatch(r"[\w-]{8,64}", song):
+                raise MusicError(400, "Which song?")
+            skips = {k: v for k, v in (mine.get("skips") or {}).items() if now - (v[1] if isinstance(v, list) and len(v) > 1 else 0) < SKIP_DAYS * 86400}
+            n = (skips.get(song) or [0, 0])[0] + 1
+            skips[song] = [n, now]
+            mine["skips"] = dict(sorted(skips.items(), key=lambda kv: -kv[1][1])[:2000])
+            if n == SKIPS_OUT:
+                with _mix_lock:
+                    _mixes.pop(user_id, None)
         elif path == "/api/music/me/send":
             # Send to a profile (Music redesign 3): it shows in their Home news
             to = str(body.get("to") or "")
@@ -4448,6 +4537,10 @@ def themes_for(token, user_id, is_admin):
 
 def theme_adds(token, user_id, key):
     """Songs to add for one theme: catalogue songs that fit it and aren't in the music yet"""
+    if key == "discover-weekly":
+        return discover_weekly(token, user_id)
+    if key == "release-radar":
+        return release_radar(token, user_id)
     if not _theme_query(key):
         raise MusicError(404, "That theme isn't there any more.")
     dz = _theme_dz(key)
@@ -4464,6 +4557,124 @@ def theme_adds(token, user_id, key):
     _mark_asked(out, extra_have=have)
     out["songs"] = [s for s in out["songs"] if not s.get("have")][:40]
     return out
+
+
+# ---------- Discover weekly and Release radar (Music redesign 3, part 4) ----------
+# Songs that aren't on Benflix yet, picked from what each profile plays. Discover weekly is new every Monday,
+# Release radar every Friday morning. Each plays its 30 second previews back to back; the heart asks for a song.
+
+_weekly = {}  # (user id, kind) -> (week, answer)
+_weekly_lock = threading.Lock()
+
+
+def _week_from(weekday, hour=0):
+    """The date of the last [weekday] (0 = Monday) at [hour] o'clock, as text: when this week's list started"""
+    import datetime
+
+    now = datetime.datetime.now()
+    back = (now.weekday() - weekday) % 7
+    start = (now - datetime.timedelta(days=back)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    if start > now:
+        start -= datetime.timedelta(days=7)
+    return start.strftime("%Y-%m-%d")
+
+
+def _weekly_cached(user_id, kind, week, load):
+    with _weekly_lock:
+        got = _weekly.get((user_id, kind))
+        if got and got[0] == week:
+            return got[1]
+    answer = load()
+    if answer.get("songs"):
+        with _weekly_lock:
+            _weekly[(user_id, kind)] = (week, answer)
+    return answer
+
+
+def _not_owned(token, user_id, songs, n):
+    out = {"songs": songs}
+    have = set()
+    try:
+        have = set(_have_songs())
+    except OSError:
+        pass
+    for x in _songs(token, user_id, "Limit=8000"):
+        have.add(_theme_song_key(x))
+    _mark_asked(out, extra_have=have)
+    blocked = _no_artists(user_id)
+    return [x for x in out["songs"] if not x.get("have") and norm(x.get("artist")) not in blocked][:n]
+
+
+def discover_weekly(token, user_id):
+    """20 songs that aren't on Benflix, like the ones this profile plays most (no more than 2 by one artist)"""
+    import random
+
+    week = _week_from(0)
+
+    def load():
+        rnd = random.Random(f"{user_id}-{week}-dw")
+        seeds = _seeds_for(token, user_id)[:24]
+        rnd.shuffle(seeds)
+        found, per_artist = [], {}
+        for seed in seeds[:10]:
+            row = _seed_row(seed) or {}
+            songs = list(row.get("songs") or [])
+            rnd.shuffle(songs)
+            for x in songs[:6]:
+                who = norm(x.get("artist"))
+                if per_artist.get(who, 0) >= 2 or any(f["id"] == x["id"] for f in found):
+                    continue
+                per_artist[who] = per_artist.get(who, 0) + 1
+                found.append(dict(x))
+        rnd.shuffle(found)
+        return {"songs": _not_owned(token, user_id, found, 20), "week": week}
+
+    return _weekly_cached(user_id, "dw", week, load)
+
+
+def release_radar(token, user_id):
+    """New songs (the last 4 weeks) from the artists this profile follows or plays most, that aren't on Benflix"""
+    import datetime
+
+    week = _week_from(4, 6)
+
+    def load():
+        names = []
+        j = _as_user(token, f"/Users/{user_id}/Items?IncludeItemTypes=MusicArtist&Recursive=true&Filters=IsFavorite&Limit=40&EnableImages=false") or {}
+        names += [x.get("Name") for x in j.get("Items") or [] if x.get("Name")]
+        names += [a for a, _ in _seeds_for(token, user_id)]
+        seen, artists = set(), []
+        for n in names:
+            if norm(n) not in seen:
+                seen.add(norm(n))
+                artists.append(n)
+        cut = (datetime.date.today() - datetime.timedelta(days=28)).isoformat()
+        found = []
+        for name in artists[:25]:
+            aid = _artist_id(name)
+            if not aid:
+                continue
+            try:
+                albums = _cached(f"newalbums-{aid}-{week}", lambda: deezer(f"/artist/{aid}/albums", limit=10).get("data") or [], keep=7 * 24 * 3600) or []
+            except MusicError:
+                continue
+            for al in albums:
+                if (al.get("release_date") or "") < cut:
+                    continue
+                try:
+                    tracks = deezer(f"/album/{al['id']}/tracks", limit=3).get("data") or []
+                except MusicError:
+                    continue
+                for t in tracks[:3]:
+                    t = dict(t)
+                    t["album"] = {"id": al.get("id"), "title": al.get("title"), "cover_medium": al.get("cover_medium")}
+                    t.setdefault("artist", {"name": name})
+                    found.append(_song(t))
+            if len(found) >= 60:
+                break
+        return {"songs": _not_owned(token, user_id, found, 30), "week": week}
+
+    return _weekly_cached(user_id, "rr", week, load)
 
 
 # Moods by how songs sound (Ben 2026-11-16): the song's speed in beats per minute, when Tower knows it.
