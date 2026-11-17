@@ -333,8 +333,8 @@ B.route(/^\/shows$/, async (m, nav) => {
   const libs = await B.libs("shows");
   const animeLibs = libs.filter(B.isAnimeLib);
   const [next, resume, mine, newShows, latestEps, top, topAnime] = await Promise.all([
-    q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=true&enableRewatching=false`),
-    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).catch(() => []),
+    q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=true&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep),
+    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
     q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
     q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`),
@@ -763,7 +763,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   const [it, seasons, nextUp] = await Promise.all([
     B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},People,Studios,RemoteTrailers,LocalTrailerCount`),
     B.get(`/Shows/${m[1]}/Seasons?userId=${u}&Fields=ChildCount`).then((r) => r.Items || []),
-    B.get(`/Shows/NextUp?userId=${u}&SeriesId=${m[1]}&Limit=1&enableResumable=true&Fields=${B.FIELDS}`).then((r) => (r.Items || [])[0]).catch(() => null),
+    B.nextEpisode(m[1], B.FIELDS).then((ep) => ep || B.get(`/Shows/NextUp?userId=${u}&SeriesId=${m[1]}&Limit=1&enableResumable=true&Fields=${B.FIELDS}`).then((r) => (r.Items || [])[0])).catch(() => null),
   ]);
   if (!B.alive(nav)) return;
   B.items[it.Id] = it;
@@ -772,7 +772,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   let target = wantEp ? await B.get(`/Users/${u}/Items/${wantEp}?Fields=${B.FIELDS}`).catch(() => null) : null;
   if (!target) target = nextUp;
   const seasonId = wantSeason || (target && target.SeasonId) || (seasons.find((s) => s.IndexNumber > 0) || seasons[0] || {}).Id;
-  const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks ? "Resume" : ud.PlayedPercentage || ud.UnplayedItemCount < it.RecursiveItemCount ? "Play" : "Play"} S${target.ParentIndexNumber} E${target.IndexNumber}` : "Play";
+  const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? "Resume" : "Play"} S${target.ParentIndexNumber} E${target.IndexNumber}` : "Play";
   const bits = [it.ProductionYear ? (it.Status === "Ended" && it.EndDate ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear) : "", seasons.filter((s) => s.IndexNumber > 0).length ? `${seasons.filter((s) => s.IndexNumber > 0).length} seasons` : "", it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : "", it.Status === "Ended" ? "Ended" : it.AirDays && it.AirDays.length ? `New episodes on ${it.AirDays[0]}s` : ""].filter(Boolean);
   const creators = (it.People || []).filter((p) => p.Type === "Creator").map((p) => p.Name).slice(0, 2);
   const maker = creators.length ? ["Created by", creators.join(", "), true] : it.Studios && it.Studios.length ? ["Network", it.Studios[0].Name, true] : null;

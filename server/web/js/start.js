@@ -396,7 +396,7 @@ B.loadFamilyRow = async (nav, kids) => {
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
   const [movies, eps, next] = await Promise.all([
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=12&Fields=${F}`),
-    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=12&Fields=${F}`),
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=12&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))),
     get(`/Shows/NextUp?userId=${u}&Limit=12&Fields=${F}&enableResumable=false&enableRewatching=false`),
   ]);
   if (!B.alive(nav)) return;

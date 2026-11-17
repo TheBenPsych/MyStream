@@ -228,7 +228,7 @@
     const get = (p) => B.get(p).then((r) => B.keep(r.Items || [])).catch(() => []);
     let items = [];
     if (door === "movies") items = await get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=3&Fields=${B.FIELDS}`);
-    else if (door === "shows") items = await get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=3&Fields=${B.FIELDS}`);
+    else if (door === "shows") items = (await get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=6&Fields=${B.FIELDS}`)).filter((e) => !B.watchedEp(e)).slice(0, 3);
     else if (door === "music") items = await get(`/Items?userId=${u}&IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=3`);
     const box = $("#npBack");
     if (!box || openDoor !== door || !items.length) return;
