@@ -162,14 +162,23 @@ object HolidayNavKit {
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
             ),
             holiday("thanksgiving", { TgLook.on }, 0xFF2A1A0E, 0xFF170E08, listOf(0xFFE07A2E, 0xFFC9A227, 0xFF8B3A1E), "Thanksgiving pick"),
+            // Valentine's Day: "Love tokens" (art in ValentineNav.kt)
             holiday(
                 "valentine",
                 { ValLook.on },
-                0xFF2A0F1A,
-                0xFF170810,
-                listOf(0xFFFF5C8A, 0xFFD7263D, 0xFFFFB3C6),
+                0xFF3A1226,
+                0xFF200A15,
+                listOf(0xFFE8405E, 0xFFA8284F),
                 "Valentine's pick",
-                countdown = { ValentineSeason.countdown(LocalDate.now()) },
+                countdown = { ValentineNav.countdown(LocalDate.now()) },
+            ).copy(
+                icons = ValentineNav.icons,
+                topTrim = ValentineNav.topTrim,
+                bottomTrim = ValentineNav.bottomTrim,
+                moving = true,
+                countdownKind = "Valentine's Day",
+                pickTitles = ValentineNav.pickTitles,
+                accent = Color(0xFFFF9DB0),
             ),
             holiday(
                 "easter",
