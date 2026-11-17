@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,7 +59,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.SpKindMark
+import com.github.damontecres.wholphin.ui.theme.SpLook
+import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -242,15 +247,22 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving and St. Patrick's Day looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || SpLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (weather != null) {
+        // St. Patrick's Day look: the countdown ("3 days to St. Patrick's Day") leads the line under the greeting
+        val line =
+            if (SpLook.on) {
+                listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" \u00b7 ").ifBlank { null }
+            } else {
+                weather
+            }
+        if (line != null) {
             Text(
-                text = weather,
+                text = line,
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
@@ -349,6 +361,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .spDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -658,16 +671,23 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = row.kind.uppercase(),
-                    color = row.kindColor,
-                    fontSize = words.kind,
-                    lineHeight = words.kind * 1.3f,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = words.kind * 0.06f,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // St. Patrick's Day look: each kind of notice gets its own small mark before its kind line
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (SpLook.on) {
+                        SpKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.6f).toDp() })
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = row.kind.uppercase(),
+                        color = row.kindColor,
+                        fontSize = words.kind,
+                        lineHeight = words.kind * 1.3f,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = words.kind * 0.06f,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 val slide = focused && !look.lite
                 Text(
                     text = row.title,

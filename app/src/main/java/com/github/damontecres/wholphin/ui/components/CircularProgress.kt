@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,6 +39,13 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // St. Patrick's Day look: a rainbow sweeps round the ring into a pot of gold in the middle
+    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+        com.github.damontecres.wholphin.ui.theme.SpLoadingRainbow(
+            modifier.then(Modifier.defaultMinSize(40.dp, 40.dp)),
+        )
+        return
+    }
     Box(modifier = modifier) {
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside

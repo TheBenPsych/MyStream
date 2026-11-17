@@ -1659,3 +1659,57 @@ html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: 
 /* notices are pinned with a brass tack */
 html.tg .corner { overflow: visible; }
 html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }
+
+/* ---------- St. Patrick's Day look (approved 2026-11-17, 10 to 17 March, Kids too: Ben 2026-11-17) ----------
+   Clover green for selected things (dark words on it), emerald for other buttons and panels, white words on every
+   door, and a different lucky charm on each door (green top hat, horseshoe on a nail, gold coin on a medal ribbon,
+   two green dice, gold Irish harp, pressed four-leaf clover). Small touches, each for one kind of thing: a gold
+   four-leaf clover on Play's corner with a soft sheen, a gold coin at the end of progress, a shamrock knob by
+   switches that are on, a rainbow loader around a pot of gold, and a different mark for each kind of Home notice.
+   Settings › Look › St. Patrick's Day look turns it off (js/start.js B.spOn). */
+html.sp, html.kids.sp {
+  --pg2: #0B2219; --pg3: #113021; --pg4: #16603A; --line: #1E4A34; --accent: #3DBE6C; --kacc: #3DBE6C;
+  --sclover: #3DBE6C; --semerald: #16603A; --sonclover: #04210F;
+}
+html.sp .door { color: #fff; }
+html.sp .door > svg.i, html.sp .door .n, html.sp .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.sp .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -3.3%; top: -2.7%; width: 55%; aspect-ratio: 132 / 160; background: center top / contain no-repeat; }
+html.sp .door[data-door="movies"]::after { background-image: url("../img/sp/sp_charm_movies.png"); }
+html.sp .door[data-door="shows"]::after { background-image: url("../img/sp/sp_charm_shows.png"); }
+html.sp .door[data-door="live"]::after { background-image: url("../img/sp/sp_charm_live.png"); }
+html.sp .door[data-door="games"]::after { background-image: url("../img/sp/sp_charm_games.png"); }
+html.sp .door[data-door="music"]::after { background-image: url("../img/sp/sp_charm_music.png"); }
+html.sp .door[data-door="books"]::after { background-image: url("../img/sp/sp_charm_books.png"); }
+html.sp .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.sp .bgreet .wx.spc { color: #C9D8CC; font-weight: 600; }
+html.sp .btn.white, html.sp .btn.red, html.sp .chip.on { background: var(--sclover); border-color: var(--sclover); color: var(--sonclover); }
+html.sp .btn.white:hover, html.sp .btn.red:hover { background: #52CC7E; color: var(--sonclover); }
+html.sp .btn { background: var(--semerald); }
+html.sp .btn.ghost { background: none; }
+html.sp .poster .prog { background: rgba(22,96,58,.9); }
+html.sp .poster .prog i, html.sp .kwbar .line i, html.sp .player .bar .knob { background: var(--sclover); }
+html.sp .corner .ctime { background: var(--sclover); color: var(--sonclover); }
+/* a gold four-leaf clover tucked on Play's corner, and a soft sheen sweeping across now and then */
+html.sp .tp .btns .btn.white { position: relative; overflow: visible; }
+html.sp .tp .btns .btn.white::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.4) 50%, transparent 65%) no-repeat; background-size: 300% 100%; animation: spsheen 4.5s ease-in-out infinite; pointer-events: none; }
+html.sp .tp .btns .btn.white::after { content: ""; position: absolute; right: -12px; top: -14px; width: 32px; height: 32px; background: url("../img/sp/sp_play_clover.png") center / contain no-repeat; pointer-events: none; }
+@keyframes spsheen { 0% { background-position: 100% 0; } 22%, 100% { background-position: 0 0; } }
+/* a gold coin at the end of the progress line */
+html.sp .kwbar .line { overflow: visible; background: var(--semerald); }
+html.sp .kwbar .line i { position: relative; border-radius: 2px; }
+html.sp .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -10px; width: 24px; height: 24px; background: url("../img/sp/sp_coin.png") center / contain no-repeat; }
+/* loading: a rainbow sweeping round the ring into a pot of gold */
+html.sp .spin { position: relative; border: 0; animation: none; width: 52px; height: 52px; }
+html.sp .spin::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#E5484D 0 4%, #F28C28 4% 8%, #F2C94C 8% 12%, #3CC46A 12% 16%, #4A90E2 16% 20%, #8E5BD8 20% 26%, var(--semerald) 26% 100%); -webkit-mask: radial-gradient(circle, transparent 58%, #000 60%); mask: radial-gradient(circle, transparent 58%, #000 60%); animation: spin 1.6s linear infinite; }
+html.sp .spin::after { content: ""; position: absolute; inset: 13px; background: url("../img/sp/sp_mark_pot.png") center / contain no-repeat; }
+/* switches that are on get a shamrock knob */
+html.sp .valbtn.on::before { content: ""; display: inline-block; width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; background: url("../img/sp/sp_knob.png") center / contain no-repeat; }
+/* each kind of Home notice gets its own small mark */
+html.sp .brow .tx small::before { content: ""; display: inline-block; width: 1.5em; height: 1.5em; margin-right: .4em; vertical-align: -.4em; background: center / contain no-repeat; }
+html.sp .brow .tx small[data-sp="horseshoe"]::before { background-image: url("../img/sp/sp_mark_horseshoe.png"); }
+html.sp .brow .tx small[data-sp="pot"]::before { background-image: url("../img/sp/sp_mark_pot.png"); }
+html.sp .brow .tx small[data-sp="rainbow"]::before { background-image: url("../img/sp/sp_mark_rainbow.png"); }
+html.sp .brow .tx small[data-sp="hat"]::before { background-image: url("../img/sp/sp_mark_hat.png"); }
+/* notices get a clover green edge */
+html.sp .corner { box-shadow: inset 4px 0 0 var(--sclover); }
+.who .spcount { color: #C9D8CC; }

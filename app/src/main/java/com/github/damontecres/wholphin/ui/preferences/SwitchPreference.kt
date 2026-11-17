@@ -66,6 +66,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // St. Patrick's Day look: a white knob with a green shamrock next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .SpKnob()
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -209,7 +210,21 @@ private fun CornerCard(
                 .tgTack()
                 .clip(shape)
                 .background(BenflixColors.Panel)
-                .border(1.dp, BenflixColors.Line, shape)
+                // St. Patrick's Day look: a clover green edge down the notice's left side
+                .then(
+                    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                        Modifier.drawBehind {
+                            drawRect(
+                                com.github.damontecres.wholphin.ui.theme.SpLook.Clover,
+                                size =
+                                    androidx.compose.ui.geometry
+                                        .Size(4.dp.toPx(), size.height),
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ).border(1.dp, BenflixColors.Line, shape)
                 // Never takes the remote's focus: on a TV, OK opens it; on a phone, a tap does
                 .focusProperties { canFocus = false }
                 .then(
@@ -228,6 +243,11 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // St. Patrick's Day look: the notice's own small mark (a horseshoe, a pot of gold, a rainbow, a top hat)
+            if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .SpKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            }
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

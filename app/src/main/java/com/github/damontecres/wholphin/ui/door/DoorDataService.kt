@@ -166,16 +166,16 @@ class DoorDataService
 
         /**
          * Christmas favourites (Christmas look, 1 to 26 Dec): the hand-picked Christmas films, titles with a
-         * Christmas word in the name and titles tagged Christmas, of this kind.
+         * Christmas word in the name and titles tagged Christmas, of this kind. The Irish favourites row
+         * (St. Patrick's Day look, 10 to 17 Mar) uses the same search with [theme] HomeTheme.ST_PATRICKS.
          */
         suspend fun christmas(
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
         ): List<BaseItem> =
             coroutineScope {
-                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
-
                 fun search(term: String) =
                     GetItemsRequest(
                         userId = userId,

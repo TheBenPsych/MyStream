@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
@@ -167,10 +168,14 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
+                // St. Patrick's Day (10 to 17 Mar, unless switched off): the rainy Irish room, with a rainbow on the 17th
+                val stPatricks = !christmas && !feast && StPatricksSeason.on()
                 if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
+                } else if (stPatricks) {
+                    StPatricksRoom(modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -214,6 +219,28 @@ fun SwitchUserContent(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFF2D27E),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (stPatricks) {
+                        // "Who's watching?" with "3 days to St. Patrick's Day" under it, then "Happy St. Patrick's Day!" on the 17th
+                        val today = remember { LocalDate.now() }
+                        Text(
+                            text = StPatricksSeason.whoGreeting(today),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        StPatricksSeason.countdown(today)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFC9D8CC),
                                 textAlign = TextAlign.Center,
                                 style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
                                 modifier = Modifier.padding(top = 6.dp),

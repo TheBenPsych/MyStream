@@ -61,6 +61,19 @@ fun ChristmasRoom(modifier: Modifier = Modifier) =
 @Composable
 fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
 
+/**
+ * Benflix St. Patrick's Day: the rainy Irish room behind Who's watching (10 to 17 March). Drawn by the web version
+ * (server/web/js/stpatricks.js) and recorded as 30-second loops by tools/stpatricks/record.js: "week" (soft rain in
+ * the window) until the 16th, then "day" on the 17th (rainbow, shamrocks drifting down).
+ */
+@Composable
+fun StPatricksRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        StPatricksVideos,
+        { tall -> "${com.github.damontecres.wholphin.ui.theme.StPatricksSeason.variant(LocalDate.now())}-${if (tall) "tall" else "wide"}" },
+        modifier,
+    )
+
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
 @Composable
@@ -143,6 +156,9 @@ object XmasVideos : RoomVideos("xmas", version = 1) {
         tall: Boolean,
     ) = "$variant-${if (tall) "tall" else "wide"}"
 }
+
+/** Downloads and keeps the St. Patrick's Day room videos (extras/scenes/stpatricks in the repo: week/day, wide/tall) */
+object StPatricksVideos : RoomVideos("stpatricks", version = 1)
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)
