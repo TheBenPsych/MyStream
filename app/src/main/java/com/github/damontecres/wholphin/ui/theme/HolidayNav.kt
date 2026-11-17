@@ -107,13 +107,24 @@ object HolidayNavKit {
     val all: List<HolidayNav> =
         listOf(
             holiday("friday13", { F13Look.on }, 0xFF141414, 0xFF0A0A0A, listOf(0xFF9BE15D, 0xFFC9D0E0), "Friday the 13th pick"),
-            holiday(
-                "videogames",
-                { VgLook.on },
-                0xFF1A1030,
-                0xFF0E0819,
-                listOf(0xFFFF6F91, 0xFF3DD6C6, 0xFFFFE14D, 0xFF7AA7FF),
-                "Game Day pick",
+            // Video Games Day (12 Sep, Kids too): arcade score screen on Home, pixel-art icons, blinking arrow
+            // (art in VideoGamesNav.kt)
+            HolidayNav(
+                key = "videogames",
+                isOn = { VgLook.on },
+                railTop = Color(0xFF1E1238),
+                railBottom = VgLook.Panel,
+                lights = listOf(VideoGamesNav.Flash),
+                icons = VideoGamesNav.icons,
+                mark = VideoGamesNav.mark,
+                topTrim = VideoGamesNav.topTrim,
+                bottomTrim = VideoGamesNav.bottomTrim,
+                moving = true,
+                countdown = { runCatching { VideoGamesNav.countdown() }.getOrNull() },
+                countdownKind = "Video Games Day",
+                pickWhy = "Game night pick",
+                pickTitles = listOf("Free Guy", "Wreck-It Ralph", "Pixels", "Tron", "Ready Player One", "Scott Pilgrim vs. the World"),
+                accent = VgLook.Cyan,
             ),
             holiday(
                 "earthday",
