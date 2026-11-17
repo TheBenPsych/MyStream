@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
@@ -205,6 +206,8 @@ fun SwitchUserContent(
                         }
                     }
                 }
+                // Earth week (unless switched off): the plant corner with the turning globe and the spring window
+                val earth = !christmas && !feast && !newYear && EarthDaySeason.on()
                 // Star Wars Day (4 May, unless switched off): the desert home, with a laser sword in the colour
                 // of the side of the profile you're on
                 val starWars = !christmas && !feast && StarWarsDay.on()
@@ -225,6 +228,8 @@ fun SwitchUserContent(
                     JulyRoom(variant = JulySeason.variant(julyNow), modifier = Modifier.fillMaxSize())
                 } else if (valentine) {
                     ValentineRoom(modifier = Modifier.fillMaxSize())
+                } else if (earth) {
+                    EarthRoom(modifier = Modifier.fillMaxSize())
                 } else if (popcorn) {
                     PopcornRoom(modifier = Modifier.fillMaxSize())
                 } else {
@@ -371,6 +376,27 @@ fun SwitchUserContent(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFE0C8D0),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (earth) {
+                        Text(
+                            text = EarthDaySeason.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        // "Earth week, day 3" under the greeting
+                        EarthDaySeason.line()?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFC9D6C8),
                                 textAlign = TextAlign.Center,
                                 style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
                                 modifier = Modifier.padding(top = 6.dp),

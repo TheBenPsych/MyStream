@@ -1148,6 +1148,10 @@ fun greetingFor(
     name: String,
     now: LocalTime = LocalTime.now(),
 ): String {
+    // Earth Day look (Earth week): "Happy Earth Day, Ben" all week, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.EarthDaySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
         return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
@@ -1476,9 +1480,11 @@ fun DoorsHomePage(
                             "Welcome"
                         }
 
-                        // Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
+                        // Earth week, Popcorn Day and Star Wars Day: Kids gets the greeting too
                         FamilyKind.KIDS -> {
-                            if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                            if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                                "Happy Earth Day!"
+                            } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
                                 "Happy Popcorn Day!"
                             } else if (SwLook.on) {
                                 "May the 4th be with you!"

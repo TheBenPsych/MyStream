@@ -57,6 +57,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
+import com.github.damontecres.wholphin.ui.theme.EdKindMark
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.J4KindMark
 import com.github.damontecres.wholphin.ui.theme.J4Look
@@ -74,6 +77,7 @@ import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
+import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
@@ -264,16 +268,16 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on) {
+                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
                 } else {
                     FontWeight.ExtraBold
                 },
-            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
+            // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on) {
+                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -285,7 +289,10 @@ private fun Greeting(
         )
         // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
         val line =
-            if (PcLook.on) {
+            if (EdLook.on) {
+                // Earth Day look: "Earth week, day 3" leads the line under the greeting
+                listOfNotNull(EarthDaySeason.line(), weather).joinToString(" \u00b7 ")
+            } else if (PcLook.on) {
                 // Popcorn Day look: "It's National Popcorn Day" leads the line under the greeting
                 listOfNotNull(PopcornSeason.LINE, weather).joinToString(" · ")
             } else if (ValLook.on) {
@@ -401,6 +408,7 @@ private fun SquareDoor(
                 .tgDoorCharm(door)
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
+                .edDoorLife(door)
                 .j4DoorCharm(door)
                 .swDoorMoment(door)
                 .pcDoorSnack(door)
@@ -732,14 +740,20 @@ private fun ListRow(
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 // New Year's look: each kind of notice gets its own small gold mark before its kind line
-                // Valentine's look: each kind of notice gets its own small mark before its kind line
-                if (PcLook.on) {
+                // Earth Day look: a sprout, flower, bud or the Earth before each kind line
+                if (EdLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        EdKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.8f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (PcLook.on) {
                     // Popcorn Day look: each kind of notice gets its own mark (ticket, bucket, kernel, film reel)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PcKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.8f).toDp() })
                         KindLine(row, words)
                     }
                 } else if (ValLook.on) {
+                    // Valentine's look: each kind of notice gets its own small mark before its kind line
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ValKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
                         KindLine(row, words)

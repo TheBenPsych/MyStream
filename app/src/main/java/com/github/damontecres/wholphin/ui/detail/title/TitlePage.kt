@@ -70,12 +70,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
@@ -708,6 +710,8 @@ private fun TitleButtonView(
     val vl = com.github.damontecres.wholphin.ui.theme.ValLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // Earth Day look: Play is leaf green with dark words, and a sprout grows up out of it
+    val ed = EdLook.on
     // 4th of July look: Play is flag red with white words, and three big white stars across its end
     val j4 = J4Look.on
     // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
@@ -721,6 +725,8 @@ private fun TitleButtonView(
             TgLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (ed) {
+            EdLook.Leaf
         } else if (j4) {
             J4Look.Red
         } else if (sw) {
@@ -739,6 +745,8 @@ private fun TitleButtonView(
                 Color.White
             } else if (ny) {
                 NyLook.OnGold
+            } else if (ed) {
+                EdLook.OnLeaf
             } else if (pc) {
                 PcLook.OnButter
             } else {
@@ -769,6 +777,7 @@ private fun TitleButtonView(
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
                 .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
