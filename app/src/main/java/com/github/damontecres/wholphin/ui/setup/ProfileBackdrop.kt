@@ -288,10 +288,6 @@ private fun DrawScope.drawScene(
             fathersDay(t, statics)
         }
 
-        LogoEffect.SPROUTS -> {
-            earthDay(t)
-        }
-
         LogoEffect.SPOOKY_CAT -> {
             friday13(t)
         }
@@ -1758,60 +1754,6 @@ private fun DrawScope.fathersDay(
     for (i in 0 until 20) {
         val tw = (sin(t * 2.5f + i * 1.7f) + 1) / 2
         glow(Offset(h(273, i) * VW, 640f + h(274, i) * 220f + sin(t + i) * 20f), 16f, hex(0xFFDCFF78), .6f * tw)
-    }
-}
-
-// ---- Earth Day: the Earth rising from the corner of the screen, turning slowly, with leaves drifting by
-
-private fun DrawScope.earthDay(t: Float) {
-    box(0f, 0f, VW, VH, hex(0xFF02030C))
-    stars(140, 281, VH, t)
-    val c = Offset(1330f, 760f)
-    val r = 380f
-    glow(c, r * 1.35f, hex(0xFF5AAAFF), .35f)
-    val clip = Path().apply { addOval(Rect(c, r)) }
-    clipPath(clip) {
-        box(c.x - r, c.y - r, r * 2, r * 2, hex(0xFF1F5FAE))
-        val rot = t * .04f
-        for (i in 0 until 9) {
-            val x = c.x - r + frac(h(282, i) + rot) * r * 4 - r
-            val y = c.y - r * .7f + h(283, i) * r * 1.4f
-            val sz = 70f + h(284, i) * 80f
-            listOf(0f, -r * 4).forEach { off ->
-                oval(x + off, y, sz, sz * .6f, hex(0xFF3FA34D))
-                oval(x + off + 15f, y - 10f, sz * .5f, sz * .3f, hex(0xFF6CC06A))
-            }
-        }
-        for (i in 0 until 10) {
-            val x = c.x - r + frac(h(286, i) + rot * 1.6f) * r * 4 - r
-            oval(x, c.y - r * .8f + h(287, i) * r * 1.6f, 90f, 15f, Color.White, .7f)
-        }
-        drawRect(
-            Brush.radialGradient(
-                0f to Color.Transparent,
-                1f to hex(0xFF000014).copy(alpha = .75f),
-                center = c - Offset(r * .4f, r * .4f),
-                radius =
-                    r * 1.45f,
-            ),
-            topLeft = c - Offset(r, r),
-            size = Size(r * 2, r * 2),
-        )
-    }
-    glow(c - Offset(r * .75f, r * .75f), 160f, hex(0xFFFFF0C8), .6f + .2f * sin(t))
-    for (i in 0 until 14) {
-        val p = frac(h(288, i) + t * (.02f + h(289, i) * .02f))
-        at(-50f + p * 1700f, h(290, i) * VH + sin(t + i) * 40f, (t + i) * 57f) {
-            drawPath(
-                Path().apply {
-                    moveTo(0f, -16f)
-                    quadraticTo(12f, 0f, 0f, 16f)
-                    quadraticTo(-12f, 0f, 0f, -16f)
-                    close()
-                },
-                if (i % 2 == 1) hex(0xFF7CC45E) else hex(0xFFA3D977),
-            )
-        }
     }
 }
 

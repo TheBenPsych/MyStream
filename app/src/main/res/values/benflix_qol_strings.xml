@@ -75,6 +75,9 @@
     <string name="benflix_christmas_look">Christmas look</string>
     <string name="benflix_christmas_look_on">In December, until New Year\'s: the Christmas room on Who\'s watching, with the tree, the train and the parade past the window</string>
     <string name="benflix_christmas_look_off">Off this year</string>
+    <string name="benflix_halloween_look">Halloween look</string>
+    <string name="benflix_halloween_look_on">1 to 31 October: the spooky room on Who\'s watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours</string>
+    <string name="benflix_halloween_look_off">Off this year</string>
     <string name="benflix_popcorn_look">Popcorn Day look</string>
     <string name="benflix_popcorn_look_on">19 January: the popcorn cart room on Who\'s watching, a movie snack on every door, and butter yellow and cinema red colours (Kids too)</string>
     <string name="benflix_popcorn_look_off">Off this year</string>
@@ -91,6 +94,9 @@
     <string name="benflix_new_year_look">New Year\'s look</string>
     <string name="benflix_new_year_look_on">27 December to 1 January: the party room on Who\'s watching with a midnight countdown, party charms on the doors, and champagne gold and midnight blue colours</string>
     <string name="benflix_new_year_look_off">Off this year</string>
+    <string name="benflix_earth_day_look">Earth Day look</string>
+    <string name="benflix_earth_day_look_on">Earth week, 22 to 28 April: the plant corner on Who\'s watching, a living thing on each door, and leaf green and ocean blue colours (Kids too)</string>
+    <string name="benflix_earth_day_look_off">Off this year</string>
     <string name="benflix_july_look">4th of July look</string>
     <string name="benflix_july_look_on">1 to 4 July: the cookout room on Who\'s watching with fireworks on the night of the 4th, summer things on the doors, and flag red and navy colours</string>
     <string name="benflix_july_look_off">Off this year</string>

@@ -31,6 +31,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,17 @@ fun ChristmasRoom(modifier: Modifier = Modifier) =
 fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
 
 /**
+ * Benflix Halloween: the spooky room behind Who's watching (1 to 31 October). Drawn by the web version
+ * (server/web/js/halloween.js) and recorded as 30-second loops by tools/halloween/record.js. [stage] is how far
+ * the pumpkins are carved ("whole", "half", "carved") or "night" (31 Oct after 5 PM, with bats).
+ */
+@Composable
+fun HalloweenRoom(
+    stage: String,
+    modifier: Modifier = Modifier,
+) = LoopingRoom(HalloweenVideos, { tall -> "$stage-${if (tall) "tall" else "wide"}" }, modifier)
+
+/**
  * Benflix New Year's: the party room behind Who's watching (27 December to 1 January). Drawn by the web
  * version (server/web/js/newyear.js) and recorded as 60-second loops by tools/newyear/record.js: [variant]
  * "eve" until midnight on New Year's Eve (bottle corked), then "day" (opened, confetti falling all day).
@@ -84,6 +96,20 @@ fun NewYearRoom(
         alsoFetch = { tall -> if (variant == "eve" && LocalDate.now().dayOfMonth == 31) NewYearVideos.name("day", year, tall) else null },
     )
 }
+
+/**
+ * Benflix Earth Day: the plant corner room behind Who's watching (Earth week). Drawn by the web version
+ * (server/web/js/earthday.js) and recorded as 30-second loops by tools/earthday/record.js, one for each day of
+ * the week: the seedling on the table grows each day, and on day 1 the new tree is being planted by the path.
+ */
+@Composable
+fun EarthRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        EarthVideos,
+        { tall -> "day${EarthDaySeason.day(LocalDate.now()).coerceIn(1, EarthDaySeason.DAYS)}-${if (tall) "tall" else "wide"}" },
+        modifier,
+        bg = listOf(Color(0xFF0C1612), Color(0xFF16241C)),
+    )
 
 /**
  * Benflix 4th of July: the cookout room behind Who's watching (1 to 4 July). Drawn by the web version
@@ -219,6 +245,9 @@ object XmasVideos : RoomVideos("xmas", version = 1) {
     ) = "$variant-${if (tall) "tall" else "wide"}"
 }
 
+/** Downloads and keeps the Halloween room videos (extras/scenes/halloween in the repo: <stage>-<wide|tall>) */
+object HalloweenVideos : RoomVideos("halloween", version = 1)
+
 /** Downloads and keeps the New Year's party room videos (extras/scenes/newyear in the repo) */
 object NewYearVideos : RoomVideos("newyear", version = 1) {
     /** The recording's name in the repo, like "eve-2027-wide" */
@@ -234,6 +263,9 @@ object JulyVideos : RoomVideos("july4", version = 1)
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)
+
+/** Downloads and keeps the Earth Day room videos (extras/scenes/earthday in the repo: day1 to day7, wide and tall) */
+object EarthVideos : RoomVideos("earthday", version = 1)
 
 /** Downloads and keeps the Valentine's room videos (extras/scenes/valentine in the repo: c13..c1 and day, wide and tall) */
 object ValentineVideos : RoomVideos("valentine", version = 1)

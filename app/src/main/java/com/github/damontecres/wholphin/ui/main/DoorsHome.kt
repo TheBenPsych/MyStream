@@ -1152,15 +1152,23 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
         return com.github.damontecres.wholphin.ui.theme.Friday13.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Earth Day look (Earth week): "Happy Earth Day, Ben" all week, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.EarthDaySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
         return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
-    // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
+    // Halloween look (1 to 31 Oct): "Happy Halloween, Ben" all month, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.HalloweenSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Star Wars Day (4 May): "May the 4th be with you, Ben" in yellow crawl lettering
     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) {
         return com.github.damontecres.wholphin.ui.theme.StarWarsDay.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
@@ -1491,10 +1499,12 @@ fun DoorsHomePage(
                             "Welcome"
                         }
 
-                        // Friday the 13th, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
+                        // Friday the 13th, Earth week, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
                         FamilyKind.KIDS -> {
                             if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
                                 "Happy Friday the 13th!"
+                            } else if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                                "Happy Earth Day!"
                             } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
                                 "Happy Popcorn Day!"
                             } else if (SwLook.on) {

@@ -176,8 +176,19 @@ class DoorDataService
         ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
 
         /**
+         * Halloween favourites (Halloween look, 1 to 31 Oct): the hand-picked Halloween films, titles with
+         * "Halloween" in the name and titles tagged Halloween, of this kind. On Kids the server's own age limits
+         * keep it to the cosy-spooky ones.
+         */
+        suspend fun halloween(
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.HALLOWEEN, userId, type, limit)
+
+        /**
          * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
-         * titles with its tags (Christmas favourites, Popcorn movies, Friday the 13th's spooky but fun picks).
+         * titles with its tags (Christmas favourites, Popcorn movies, Planet Earth picks, Friday the 13th's spooky but fun picks).
          */
         suspend fun themed(
             theme: com.github.damontecres.wholphin.ui.main.HomeTheme,

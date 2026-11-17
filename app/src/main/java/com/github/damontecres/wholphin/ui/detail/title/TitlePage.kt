@@ -70,13 +70,17 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.f13Flicker
+import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
@@ -707,10 +711,14 @@ private fun TitleButtonView(
     val tg = TgLook.on
     // Friday the 13th look: Play is lucky green with dark words, and flickers now and then like an old porch light
     val f13 = com.github.damontecres.wholphin.ui.theme.F13Look.on
+    // Halloween look: Play is pumpkin orange with dark words, and glows and flickers like a candle in a jack-o'-lantern
+    val hw = HwLook.on
     // Valentine's look: Play is rose red with white words, a soft rosy glow round it and a faint heart in its corner
     val vl = com.github.damontecres.wholphin.ui.theme.ValLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // Earth Day look: Play is leaf green with dark words, and a sprout grows up out of it
+    val ed = EdLook.on
     // 4th of July look: Play is flag red with white words, and three big white stars across its end
     val j4 = J4Look.on
     // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
@@ -724,8 +732,12 @@ private fun TitleButtonView(
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (hw) {
+            HwLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (ed) {
+            EdLook.Leaf
         } else if (j4) {
             J4Look.Red
         } else if (sw) {
@@ -744,8 +756,12 @@ private fun TitleButtonView(
                 com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
             } else if (xmas || tg || j4 || sw || vl) {
                 Color.White
+            } else if (hw) {
+                HwLook.OnOrange
             } else if (ny) {
                 NyLook.OnGold
+            } else if (ed) {
+                EdLook.OnLeaf
             } else if (pc) {
                 PcLook.OnButter
             } else {
@@ -775,8 +791,10 @@ private fun TitleButtonView(
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && f13) Modifier.f13Flicker() else Modifier)
+                .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
                 .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)

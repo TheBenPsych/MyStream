@@ -1715,6 +1715,68 @@ html.f13 .corner::before { content: ""; position: absolute; z-index: 3; pointer-
 html.f13 .valbtn.on13::before { content: "13"; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #fff; color: #16151B; font-size: 11px; font-weight: 800; vertical-align: middle; }
 .who .xline { margin: 0 0 6px; font-size: 20px; font-weight: 600; color: #CFC6E0; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
 @media (prefers-reduced-motion: reduce) { html.f13 .tp .btns .btn.white, html.f13 .door[data-door="movies"]::before { animation: none; } }
+/* ---------- Halloween look (approved 2026-11-17, 1 to 31 October) ----------
+   Glowing pumpkin orange for selected things (dark words on it), deep witch purple for other buttons and panels,
+   white words on every door, and a different spooky charm on each door, hung the way it really would be
+   (jack-o'-lantern, bat, spider, witch's hat, ghost, skeleton key). Small touches, each for one kind of thing:
+   Play flickers like candlelight, a ghost bobs on the end of progress, a tiny pumpkin on switches that are on,
+   a bat flying round the loading ring, and a mark for each kind of Home notice.
+   Kids (html.hwkids) keeps Sky and Sunshine and only gets the friendly charms.
+   Settings › Look › Halloween look turns it off (js/start.js B.hwOn). */
+html.hw {
+  --pg2: #170F24; --pg3: #20162F; --pg4: #4A2A78; --line: #30204A; --accent: #F07A1E;
+  --horange: #F07A1E; --hpurple: #4A2A78; --hon: #1C0E04;
+}
+html.hw .door { color: #fff; }
+html.hw .door > svg.i, html.hw .door .n, html.hw .door .d, html.hwkids .door > svg.i, html.hwkids .door .n, html.hwkids .door .d { position: relative; z-index: 2; }
+html.hw .door > svg.i, html.hw .door .n, html.hw .door .d { text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+/* the charm: the same box on every door (x 100 to 248, y -8 to 172 of a 240 x 220 door) */
+html.hw .door::after, html.hwkids .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -3.3%; top: -3.6%; width: 61.7%; max-width: 190px; aspect-ratio: 148 / 180; background: right top / contain no-repeat; }
+html.hw .door[data-door="movies"]::after { background-image: url("../img/hw/hw_charm_movies.png"); }
+html.hw .door[data-door="shows"]::after { background-image: url("../img/hw/hw_charm_shows.png"); }
+html.hw .door[data-door="live"]::after { background-image: url("../img/hw/hw_charm_live.png"); }
+html.hw .door[data-door="games"]::after { background-image: url("../img/hw/hw_charm_games.png"); }
+html.hw .door[data-door="music"]::after { background-image: url("../img/hw/hw_charm_music.png"); }
+html.hw .door[data-door="books"]::after { background-image: url("../img/hw/hw_charm_books.png"); }
+html.hwkids .door[data-door="movies"]::after { background-image: url("../img/hw/hw_kids_movies.png"); }
+html.hwkids .door[data-door="shows"]::after { background-image: url("../img/hw/hw_kids_shows.png"); }
+html.hwkids .door[data-door="live"]::after { background-image: url("../img/hw/hw_kids_live.png"); }
+html.hwkids .door[data-door="games"]::after { background-image: url("../img/hw/hw_kids_games.png"); }
+html.hwkids .door[data-door="music"]::after { background-image: url("../img/hw/hw_kids_music.png"); }
+html.hwkids .door[data-door="books"]::after { background-image: url("../img/hw/hw_kids_books.png"); }
+html.hw .door, html.hwkids .door { position: relative; overflow: visible; }
+html.hw .greet.hwh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.hw .btn.white, html.hw .btn.red, html.hw .chip.on { background: var(--horange); border-color: var(--horange); color: var(--hon); }
+html.hw .btn.white svg, html.hw .btn.red svg { color: var(--hon); }
+html.hw .btn.white:hover, html.hw .btn.red:hover { background: #F68A34; color: var(--hon); }
+html.hw .btn { background: var(--hpurple); }
+html.hw .btn.ghost { background: none; }
+html.hw .poster .prog { background: rgba(74,42,120,.85); }
+html.hw .poster .prog i, html.hw .kwbar .line i, html.hw .player .bar .knob { background: var(--horange); }
+html.hw .corner .ctime { background: var(--horange); }
+/* Play glows and flickers like a candle inside a jack-o'-lantern */
+@keyframes hwflicker { 0% { box-shadow: 0 0 18px 4px rgba(255,176,74,.35); } 16% { box-shadow: 0 0 28px 8px rgba(255,176,74,.7); } 32% { box-shadow: 0 0 20px 5px rgba(255,176,74,.45); } 50% { box-shadow: 0 0 30px 9px rgba(255,176,74,.8); } 66% { box-shadow: 0 0 19px 4px rgba(255,176,74,.4); } 83% { box-shadow: 0 0 24px 6px rgba(255,176,74,.6); } 100% { box-shadow: 0 0 18px 4px rgba(255,176,74,.35); } }
+html.hw .tp .btns .btn.white { animation: hwflicker 2.2s infinite; }
+/* a little ghost bobbing on the end of the progress line */
+@keyframes hwbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+html.hw .kwbar .line { overflow: visible; background: var(--hpurple); }
+html.hw .kwbar .line i { position: relative; border-radius: 2px; }
+html.hw .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -22px; width: 24px; height: 27px; background: url("../img/hw/hw_ghost.png") center / contain no-repeat; animation: hwbob 2.4s ease-in-out infinite; }
+/* a tiny pumpkin on switches that are on */
+html.hw .setrow button.valbtn.on { background: var(--hpurple); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+html.hw .setrow button.valbtn.on::before { content: ""; width: 22px; height: 20px; background: url("../img/hw/hw_knob.png") center / contain no-repeat; }
+/* loading: a bat flying round a pumpkin orange ring on witch purple */
+html.hw .spin { position: relative; border: 0; animation: none; width: 52px; height: 52px; }
+html.hw .spin::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 5px solid var(--hpurple); border-top-color: var(--horange); animation: spin 2.4s linear infinite; }
+html.hw .spin::after { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; background: url("../img/hw/hw_bat.png") center top / 34px auto no-repeat; animation: spin 2.4s linear infinite; transform-origin: 50% 50%; }
+/* each kind of Home notice gets its own mark (moon, sweet, spider, cauldron) */
+html.hw .brow small[data-hw]::before { content: ""; display: inline-block; vertical-align: middle; width: 1.8em; height: 1.8em; margin: -.4em .4em -.3em 0; background: center / contain no-repeat; }
+html.hw .brow small[data-hw="moon"]::before { background-image: url("../img/hw/hw_mark_moon.png"); }
+html.hw .brow small[data-hw="sweet"]::before { background-image: url("../img/hw/hw_mark_sweet.png"); }
+html.hw .brow small[data-hw="spider"]::before { background-image: url("../img/hw/hw_mark_spider.png"); }
+html.hw .brow small[data-hw="cauldron"]::before { background-image: url("../img/hw/hw_mark_cauldron.png"); }
+html.hw .corner { overflow: visible; }
+
 /* ---------- New Year's look (approved 2026-11-17, 27 December to 1 January, Kids too: Ben 2026-11-17) ----------
    Champagne gold for selected things (dark words on gold), midnight blue for other buttons and panels, white words
    on every door, and a different party charm on each door (foil balloons, pocket watch at 11:59, mirror ball, paper
@@ -1770,6 +1832,65 @@ html.ny .brow .tx small[data-mark="spark"]::before { background-image: url("../i
 html.ny .corner { box-shadow: inset 4px 0 0 var(--ngold); }
 .who .nycount { color: #C9D0E0; }
 
+/* ---------- Earth Day look (approved 2026-11-17, Earth week: 22 to 28 April, or the 7 days after Easter Sunday
+   when Easter week touches it; Kids too) ----------
+   Leaf green (with dark words) for selected things, ocean blue for other buttons, switches and panels, white words
+   on every door, and a different living thing on each door (a sprout in a hanging pot, a monarch butterfly, a glass
+   terrarium, a ladybird on a leaf, a robin on a twig, a pressed daisy and fern). Small touches, each used once: a
+   sprout growing out of Play, a flower opening at the end of progress, the Earth turning in the loading ring, a
+   sprout on notices, and a sprout, flower, bud or Earth beside each kind of Home news.
+   Kids gets it too, so it also wins over Sky and Sunshine (html.ed.kids). Settings › Look › Earth Day look turns it off
+   (js/start.js B.edOn). The pictures come from tools/earthday/pictures.js, which prints the door boxes used here. */
+html.ed, html.ed.kids, html.ed.kids.night {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #0B1A26; --pg3: #10243A; --pg4: #1E5A86; --line: #1E3A50;
+  --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10;
+  --movies: #FFB547; --shows: #7AA7FF; --games: #FF6F91; --ask: #7CD36B;
+  --accent: #7CD36B; --kacc: #7CD36B; --kon: #0B2410; --kshowsink: #fff;
+  --eleaf: #7CD36B; --eocean: #1E5A86; --eon: #0B2410;
+}
+html.ed .door, html.ed.kids .door { color: #fff; }
+html.ed .door > svg.i, html.ed .door .n, html.ed .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.ed .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; max-width: 190px; background: center / contain no-repeat; }
+html.ed .door[data-door="movies"]::after { background-image: url("../img/ed/ed_life_movies.png"); right: 5.0%; top: -3.2%; width: 33.3%; aspect-ratio: 80 / 169; }
+html.ed .door[data-door="shows"]::after { background-image: url("../img/ed/ed_life_shows.png"); right: -5.4%; top: 2.3%; width: 61.2%; aspect-ratio: 147 / 125; }
+html.ed .door[data-door="live"]::after { background-image: url("../img/ed/ed_life_live.png"); right: 1.7%; top: -3.2%; width: 41.7%; aspect-ratio: 100 / 159; }
+html.ed .door[data-door="games"]::after { background-image: url("../img/ed/ed_life_games.png"); right: 5.0%; top: 0.5%; width: 55.4%; aspect-ratio: 133 / 146; }
+html.ed .door[data-door="music"]::after { background-image: url("../img/ed/ed_life_music.png"); right: -1.7%; top: 13.6%; width: 50.0%; aspect-ratio: 120 / 91; }
+html.ed .door[data-door="books"]::after { background-image: url("../img/ed/ed_life_books.png"); right: -5.0%; top: 1.8%; width: 46.7%; aspect-ratio: 112 / 147; }
+html.ed .door.moredoor::after { display: none; }
+html.ed .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.ed .board .wx.edw { color: #C9D6C8; font-weight: 600; min-height: 0; }
+html.ed .who .xcount.edline { color: #C9D6C8; }
+html.ed .btn.white, html.ed .btn.red, html.ed .chip.on, html.ed .circle.white, html.ed .valbtn.on { background: var(--eleaf); border-color: var(--eleaf); color: var(--eon); }
+html.ed .btn.white:hover, html.ed .btn.red:hover, html.ed .circle.white:hover { background: #92DE83; color: var(--eon); }
+html.ed .btn { background: var(--eocean); color: #fff; }
+html.ed .btn.ghost { background: none; }
+html.ed .poster .prog { background: rgba(30,90,134,.85); }
+html.ed .poster .prog i, html.ed .kwbar .line i, html.ed .player .bar .knob { background: var(--eleaf); }
+html.ed .corner .ctime { background: var(--eleaf); }
+/* a sprout growing up out of Play */
+html.ed .tp .btns .btn.white { position: relative; overflow: visible; }
+html.ed .tp .btns .btn.white::after { content: ""; position: absolute; pointer-events: none; right: 18%; bottom: 72%; width: 52px; height: 41px; background: url("../img/ed/ed_sprout.png") center bottom / contain no-repeat; }
+/* a flower opening at the end of the progress line */
+html.ed .kwbar .line { overflow: visible; background: var(--eocean); }
+html.ed .kwbar .line i { position: relative; border-radius: 2px; }
+html.ed .kwbar .line i::after { content: ""; position: absolute; right: -11px; top: -9px; width: 22px; height: 22px; background: url("../img/ed/ed_bloom.png") center / contain no-repeat; }
+/* the Earth turning inside the loading ring */
+html.ed .spin { position: relative; border: 0; animation: none; width: 46px; height: 46px; }
+html.ed .spin::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--eocean); border-top-color: var(--eleaf); animation: spin .8s linear infinite; }
+html.ed .spin::after { content: ""; position: absolute; inset: 8px; border-radius: 50%;
+  background: url("../img/ed/ed_globe_shade.png") center / 100% 100% no-repeat, url("../img/ed/ed_globe_land.png") 0.6px 0.6px / 28.8px 28.8px repeat-x, url("../img/ed/ed_globe_sea.png") center / 100% 100% no-repeat;
+  animation: edturn 5s linear infinite; }
+@keyframes edturn { from { background-position: center, 0.6px 0.6px, center; } to { background-position: center, 29.4px 0.6px, center; } }
+/* a little sprout growing out of notices */
+html.ed .corner { overflow: visible; }
+html.ed .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; right: 26px; top: -26px; width: 34px; height: 27px; background: url("../img/ed/ed_sprout.png") center bottom / contain no-repeat; }
+/* each kind of Home news has its own mark */
+html.ed .brow small[data-ed]::before { content: ""; display: inline-block; width: 1.6em; height: 1.6em; margin-right: 6px; vertical-align: -0.45em; background: center / contain no-repeat; }
+html.ed .brow small[data-ed="sprout"]::before { background-image: url("../img/ed/ed_sprout.png"); }
+html.ed .brow small[data-ed="bloom"]::before { background-image: url("../img/ed/ed_bloom.png"); }
+html.ed .brow small[data-ed="bud"]::before { background-image: url("../img/ed/ed_bud.png"); }
+html.ed .brow small[data-ed="globe"]::before { background-image: url("../img/ed/ed_globe.png"); }
 /* ---------- 4th of July look (approved 2026-11-17, 1 to 4 July, Kids too: Ben 2026-11-17) ----------
    Flag red for selected things (white words on red), deep navy for other buttons and panels, white words on every
    door, and a different summer thing on each door (fan bunting, a hanging flag, star balloons, a beach ball in a net,

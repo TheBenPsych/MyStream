@@ -333,14 +333,22 @@ class DoorViewModel
                     // Friday the 13th look (that day only, Kids too): spooky but fun picks right after Keep watching
                     if (com.github.damontecres.wholphin.ui.theme.F13Look.on) listOf(rows.first(), SPOOKY) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Halloween (1 to 31 Oct, Kids too): Halloween favourites right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.HwLook.charmsOn) listOf(rows.first(), HALLOWEEN) + rows.drop(1) else rows
+                }.let { rows ->
                     // 4th of July look (1 to 4 Jul, Kids too): 4th of July favourites right after Keep watching
                     if (J4Look.on) listOf(rows.first(), JULY4) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Earth Day look (Earth week, Kids too): Planet Earth picks right after Keep watching;
                     // Valentine's look (1 to 14 Feb): Date night right after Keep watching
-                    if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
-                }.let { rows ->
-                    // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers, right after Keep watching
-                    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) listOf(rows.first(), POPCORN) + rows.drop(1) else rows
+                    val extra =
+                        listOfNotNull(
+                            EARTH.takeIf { com.github.damontecres.wholphin.ui.theme.EdLook.on },
+                            DATE_NIGHT.takeIf { ValLook.on && !easy },
+                            // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers
+                            POPCORN.takeIf { com.github.damontecres.wholphin.ui.theme.PcLook.on },
+                        )
+                    if (extra.isNotEmpty()) listOf(rows.first()) + extra + rows.drop(1) else rows
                 }.let { rows ->
                     // Star Wars Day (4 May): the saga, from your own library, at the very top
                     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
@@ -419,6 +427,14 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
+                if (HALLOWEEN in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.halloween(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(HALLOWEEN, "Halloween favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.MOVIE, disliked.await()) }
                 if (JULY4 in order) {
                     launch {
                         val dislikes = disliked.await()
@@ -469,6 +485,20 @@ class DoorViewModel
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
 
+        /** Earth Day look: Planet Earth picks (nature films and shows), only when there are enough to make a proper row */
+        private suspend fun earthRow(
+            userId: UUID,
+            order: List<String>,
+            type: BaseItemKind,
+            dislikes: Set<UUID>,
+        ) {
+            val items =
+                data
+                    .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.EARTH_DAY, userId, type)
+                    .filter { it.id !in dislikes }
+            putOrRemove(order, DoorRowData(EARTH, "Planet Earth picks", items.takeIf { it.size >= 4 }.orEmpty()))
+        }
+
         private suspend fun loadShows(userId: UUID) {
             val libs = libraries()
             val main = libs.ofKind(LibraryKind.SHOWS)
@@ -479,6 +509,9 @@ class DoorViewModel
                     listOf(KEEP, MY_LIST, NEW_SHOWS)
                 } else {
                     listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
+                }.let { rows ->
+                    // Earth Day look (Earth week, Kids too): Planet Earth picks right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) listOf(rows.first(), EARTH) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -506,6 +539,7 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(NEW_EPISODES, "New episodes", fresh))
                     }
                 }
+                if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.SERIES, disliked.await()) }
                 launch {
                     val items = data.myList(userId, BaseItemKind.SERIES)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
@@ -645,6 +679,8 @@ class DoorViewModel
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
             const val SPOOKY = "spooky"
+            const val HALLOWEEN = "halloween"
+            const val EARTH = "earth"
             const val JULY4 = "july4"
             const val STAR_WARS = "starwars"
             const val DATE_NIGHT = "datenight"
