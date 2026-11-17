@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -57,7 +58,10 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaKindMark
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
+import com.github.damontecres.wholphin.ui.theme.EasterSeason
 import com.github.damontecres.wholphin.ui.theme.EdKindMark
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.F13Look
@@ -84,6 +88,7 @@ import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
+import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
 import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
@@ -278,16 +283,20 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                    EaLook.on
+                ) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
                 } else {
                     FontWeight.ExtraBold
                 },
-            // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
+            // Thanksgiving, New Year's, Valentine's, Popcorn Day, Earth Day and Easter looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                    EaLook.on
+                ) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -297,7 +306,7 @@ private fun Greeting(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
+        // New Year's and Easter looks: the countdown line ("4 days to 2027", "5 days to Easter") leads the line under the greeting
         val line =
             if (HwLook.on) {
                 // Halloween look: "14 days to Halloween" leads the line under the greeting
@@ -318,6 +327,8 @@ private fun Greeting(
             } else if (J4Look.on) {
                 // 4th of July look: "2 days to the Fourth" leads the line under the greeting
                 listOfNotNull(JulySeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (EaLook.on) {
+                listOfNotNull(EasterSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else {
                 weather
             }
@@ -424,6 +435,7 @@ private fun SquareDoor(
                 .tgDoorCharm(door)
                 .f13DoorCharm(door)
                 .hwDoorCharm(door)
+                .eaDoorCharm(door)
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
                 .edDoorLife(door)
@@ -756,7 +768,13 @@ private fun ListRow(
             horizontalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = vertical),
         ) {
-            Thumb(row, thumb.coerceAtLeast(20.dp))
+            Box {
+                Thumb(row, thumb.coerceAtLeast(20.dp))
+                // Easter look: each kind of news gets its own small mark on the picture's corner
+                if (EaLook.on) {
+                    EaKindMark(row.kind, size = 22.dp, modifier = Modifier.align(Alignment.TopStart).offset((-6).dp, (-6).dp))
+                }
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 // New Year's look: each kind of notice gets its own small gold mark before its kind line
                 // Earth Day look: a sprout, flower, bud or the Earth before each kind line

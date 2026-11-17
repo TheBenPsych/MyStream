@@ -29,6 +29,7 @@ object BenflixColors {
             ?: xmas(XmasLook.PineRaised)
             ?: tg(TgLook.Raised) ?: sw(SwLook.Raised)
             ?: hw(HwLook.Raised)
+            ?: ea(EaLook.Raised)
             ?: vl(ValLook.Raised)
             ?: Color(0xFF15171D)
 
@@ -39,6 +40,7 @@ object BenflixColors {
             ?: xmas(XmasLook.PineDark)
             ?: tg(TgLook.Panel)
             ?: hw(HwLook.Panel)
+            ?: ea(EaLook.Panel)
             ?: sw(SwLook.Panel)
             ?: vl(ValLook.Panel)
             ?: Color(0xFF16181E)
@@ -51,6 +53,7 @@ object BenflixColors {
             ?: xmas(XmasLook.PineHigh)
             ?: tg(TgLook.PanelHigh) ?: sw(SwLook.PanelHigh)
             ?: hw(HwLook.PanelHigh)
+            ?: ea(EaLook.PanelHigh)
             ?: vl(ValLook.PanelHigh)
             ?: Color(0xFF1D2027)
 
@@ -64,6 +67,7 @@ object BenflixColors {
             ?: xmas(XmasLook.Red)
             ?: tg(TgLook.Orange)
             ?: hw(HwLook.Orange)
+            ?: ea(EaLook.Lilac)
             ?: sw(SwLook.Red)
             ?: vl(ValLook.Rose)
             ?: Color.White
@@ -76,6 +80,7 @@ object BenflixColors {
             ?: xmas(Color.White)
             ?: tg(Color.White)
             ?: hw(HwLook.OnOrange)
+            ?: ea(EaLook.OnLilac)
             ?: sw(Color.White)
             ?: vl(Color.White)
             ?: Color(0xFF0B0C10)
@@ -87,6 +92,7 @@ object BenflixColors {
             ?: xmas(XmasLook.PineLine)
             ?: tg(TgLook.Line)
             ?: hw(HwLook.Line)
+            ?: ea(EaLook.Line)
             ?: sw(SwLook.Line)
             ?: vl(ValLook.Line)
             ?: Color(0xFF2A2D35)
@@ -98,6 +104,7 @@ object BenflixColors {
             ?: xmas(XmasLook.Pine)
             ?: tg(TgLook.Brown)
             ?: hw(HwLook.Purple)
+            ?: ea(EaLook.Green)
             ?: sw(SwLook.Button)
             ?: vl(ValLook.Wine)
             ?: Color(0xFF262932)
@@ -152,6 +159,9 @@ object BenflixColors {
     /** New Year's look: [c] while it's on (27 Dec to 1 Jan, Kids too, so it wins over the Kids colours), else null */
     private fun ny(c: Color): Color? = if (NyLook.on) c else null
 
+    /** Easter look: [c] while it's on (Monday to Easter Sunday, Kids too: the Kids colours step aside), else null */
+    private fun ea(c: Color): Color? = if (EaLook.on) c else null
+
     /** St. Patrick's Day look: [c] while it's on (10 to 17 Mar, Kids too, so it wins over the Kids colours), else null */
     private fun sp(c: Color): Color? = if (SpLook.on) c else null
 
@@ -201,7 +211,7 @@ enum class BenflixDoor(
         get() =
             if (XmasLook.on || TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || SwLook.on ||
                 EdLook.on || F13Look.on ||
-                SpLook.on
+                SpLook.on || EaLook.on
             ) {
                 Color.White
             } else {

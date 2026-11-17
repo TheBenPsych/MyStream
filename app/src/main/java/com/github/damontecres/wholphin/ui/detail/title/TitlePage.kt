@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
@@ -79,6 +80,7 @@ import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.eaPlayEars
 import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.f13Flicker
 import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
@@ -736,6 +738,9 @@ private fun TitleButtonView(
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (EaLook.on) {
+            // Easter look: Play is soft lilac with dark words, and a bunny's ears peek over its top edge
+            EaLook.Lilac
         } else if (hw) {
             HwLook.Orange
         } else if (ny) {
@@ -762,6 +767,8 @@ private fun TitleButtonView(
                 com.github.damontecres.wholphin.ui.theme.F13Look.OnGreen
             } else if (xmas || tg || j4 || sw || vl) {
                 Color.White
+            } else if (EaLook.on) {
+                EaLook.OnLilac
             } else if (hw) {
                 HwLook.OnOrange
             } else if (ny) {
@@ -798,6 +805,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary) Modifier.eaPlayEars() else Modifier)
                 .then(if (primary && f13) Modifier.f13Flicker() else Modifier)
                 .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
                 .then(if (primary && vl) Modifier.valRosyGlow() else Modifier)

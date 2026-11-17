@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
@@ -66,6 +67,7 @@ import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
 import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
@@ -223,11 +225,13 @@ fun FamilyHome(
                 // Star Wars Day: the greeting is in yellow crawl lettering
                 color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font;
-                // Valentine's, Popcorn Day and Earth Day and Friday the 13th (Kids too) looks too; Star Wars Day: yellow crawl lettering
+                // Thanksgiving, Halloween, New Year's, Valentine's, St. Patrick's, Popcorn Day, Earth Day and Friday the 13th
+                // (Kids too) and Easter looks (not on Kids, which keeps its round letters): the greeting is in the curly
+                // holiday font. Star Wars Day: yellow crawl lettering
                 fontWeight =
-                    if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on ||
-                        SpLook.on
+                    if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || HwLook.on || PcLook.on || EdLook.on || F13Look.on ||
+                        SpLook.on ||
+                        (EaLook.on && kind != FamilyKind.KIDS)
                     ) {
                         FontWeight.Normal
                     } else if (SwLook.on) {
@@ -236,8 +240,9 @@ fun FamilyHome(
                         FontWeight.ExtraBold
                     },
                 fontFamily =
-                    if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on ||
-                        SpLook.on
+                    if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || HwLook.on || PcLook.on || EdLook.on || F13Look.on ||
+                        SpLook.on ||
+                        (EaLook.on && kind != FamilyKind.KIDS)
                     ) {
                         HolidayFont
                     } else if (SwLook.on) {
@@ -497,6 +502,8 @@ private fun FamilyDoor(
                 ).edDoorLife(door) // Earth Day look: Kids gets the living things on the doors too
                 // Friday the 13th look: the charms hang on Kids doors too
                 .f13DoorCharm(door)
+                // Easter look: Kids gets the charms too
+                .eaDoorCharm(door)
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

@@ -1831,6 +1831,64 @@ html.ny .brow .tx small[data-mark="spark"]::before { background-image: url("../i
 /* notices get a gold edge */
 html.ny .corner { box-shadow: inset 4px 0 0 var(--ngold); }
 .who .nycount { color: #C9D0E0; }
+/* ---------- Easter look (approved 2026-11-17, Monday to Easter Sunday, Kids too) ----------
+   Soft lilac for selected things (dark words on it), meadow green for other buttons and panels, white words on
+   every door, and a different Easter tree charm on each door, hung on a satin ribbon from a pearl pin (painted
+   egg, felt bunny, hatching chick, basket of eggs, tulips, carrot). Small Easter touches, each used once: bunny
+   ears peeking over Play, a painted egg as the progress knob, a rocking cracked egg in the loading ring, and a
+   small mark on notices (egg, chick, paw prints, tulip). Kids gets it too, keeping its round letters.
+   Settings › Look › Easter look turns it off (js/start.js B.eaOn). */
+html.ea, html.ea.kids, html.ea.kids.night {
+  --pg2: #122019; --pg3: #1A2B22; --pg4: #3D7A4F; --line: #264232; --accent: #C9B2F5;
+  --elilac: #C9B2F5; --eonlilac: #1E1236; --egreen: #3D7A4F;
+}
+html.ea.kids, html.ea.kids.night {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10;
+  --movies: #FFB547; --shows: #7AA7FF; --games: #FF6F91; --ask: #F1F2F5; --kacc: #C9B2F5; --kon: #1E1236; --kshowsink: #fff;
+}
+html.ea .door, html.ea.kids .door[data-door="shows"] { color: #fff; }
+html.ea .door > svg.i, html.ea .door .n, html.ea .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.ea .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -1.7%; top: 0; width: 50%; max-width: 160px; aspect-ratio: 120 / 156; background: center top / contain no-repeat; }
+html.ea .door[data-door="movies"]::after { background-image: url("../img/ea/ea_charm_movies.png"); }
+html.ea .door[data-door="shows"]::after { background-image: url("../img/ea/ea_charm_shows.png"); }
+html.ea .door[data-door="live"]::after { background-image: url("../img/ea/ea_charm_live.png"); }
+html.ea .door[data-door="games"]::after { background-image: url("../img/ea/ea_charm_games.png"); }
+html.ea .door[data-door="music"]::after { background-image: url("../img/ea/ea_charm_music.png"); }
+html.ea .door[data-door="books"]::after { background-image: url("../img/ea/ea_charm_books.png"); }
+html.ea .greet.eah { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.ea .btn.white, html.ea .btn.red, html.ea .chip.on, html.ea #toast { background: var(--elilac); border-color: var(--elilac); color: var(--eonlilac); }
+html.ea .btn.white:hover, html.ea .btn.red:hover { background: #D8C7F8; color: var(--eonlilac); }
+html.ea .btn { background: var(--egreen); }
+html.ea .btn.ghost { background: none; }
+html.ea .poster .prog { background: rgba(61,122,79,.9); }
+html.ea .poster .prog i, html.ea .kwbar .line i, html.ea .player .bar .knob, html.ea .player .bar .segs i b { background: var(--elilac); }
+html.ea .corner .ctime { background: var(--elilac); }
+/* bunny ears peeking over the top of Play */
+html.ea .tp .btns .btn.white { position: relative; overflow: visible; }
+html.ea .tp .btns .btn.white::before { content: ""; position: absolute; right: 8px; top: -34px; width: 44px; height: 37px; background: url("../img/ea/ea_ears.png") center bottom / contain no-repeat; z-index: -1; }
+/* a painted egg rolls along the end of the progress line */
+html.ea .kwbar .line { overflow: visible; background: var(--egreen); }
+html.ea .kwbar .line i { position: relative; border-radius: 2px; }
+html.ea .kwbar .line i::after { content: ""; position: absolute; right: -11px; top: -10px; width: 22px; height: 22px; background: url("../img/ea/ea_knob.png") center / contain no-repeat; }
+/* loading: an egg rocks in the middle and the ring goes round it */
+html.ea .spin { position: relative; border: 0; animation: none; width: 54px; height: 54px; }
+html.ea .spin::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--egreen); border-top-color: var(--elilac); animation: spin .8s linear infinite; }
+html.ea .spin::after { content: ""; position: absolute; inset: 9px; background: url("../img/ea/ea_loader.png") center / contain no-repeat; animation: earock 1.6s ease-in-out infinite; }
+@keyframes earock { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+/* each kind of notice gets its own small mark: an egg, a hatching chick (ready), paw prints (on the way), a tulip (live) */
+html.ea .corner { overflow: visible; }
+html.ea .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -8px; top: -10px; width: 28px; height: 28px; background: url("../img/ea/ea_mark_ep.png") center / contain no-repeat; }
+html.ea .corner.ea-ready::before { background-image: url("../img/ea/ea_mark_ready.png"); }
+html.ea .corner.ea-way::before { background-image: url("../img/ea/ea_mark_way.png"); }
+html.ea .corner.ea-live::before { background-image: url("../img/ea/ea_mark_live.png"); }
+/* Easter Sunday: the hidden egg on each door page, tucked in the bottom corner of the side menu */
+.ehunt { position: fixed; z-index: 30; left: 18px; bottom: 14px; width: 54px; height: 50px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 12px; transition: transform .2s, opacity .4s; }
+.ehunt img { width: 100%; height: 100%; display: block; }
+.ehunt:hover, .ehunt:focus-visible { transform: scale(1.15) rotate(-6deg); outline: 3px solid var(--ink); outline-offset: 2px; }
+.ehunt.got { transform: scale(1.6) translateY(-20px); opacity: 0; }
+@media (max-width: 760px) { .ehunt { left: auto; right: 12px; bottom: 76px; } }
+.who .xcount.ea { color: #CFE0D4; }
+html.ea .bgreet .wx.eac { color: #CFE0D4; font-weight: 600; }
 
 /* ---------- Earth Day look (approved 2026-11-17, Earth week: 22 to 28 April, or the 7 days after Easter Sunday
    when Easter week touches it; Kids too) ----------

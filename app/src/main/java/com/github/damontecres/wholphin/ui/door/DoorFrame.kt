@@ -180,6 +180,8 @@ fun DoorFrame(
     phoneInset: Boolean = false,
     /** Phones: the sections as chips along the top (Music has its own tabs along the bottom instead) */
     phoneChips: Boolean = true,
+    /** Easter Sunday: this door's hidden egg is somewhere in the frame (not on pages that aren't doors, like Server) */
+    hunt: Boolean = true,
     content: @Composable (Modifier) -> Unit,
 ) {
     val isTv = rememberIsTv()
@@ -206,21 +208,36 @@ fun DoorFrame(
         state.content.tryRequestFocus()
     }
     if (!wide) {
-        Column(modifier.fillMaxSize()) {
-            if (sections.size > 1 && phoneChips) {
-                DoorChips(state, sections, Modifier.padding(top = LocalTopBarOverlap.current))
+        val chips = sections.size > 1 && phoneChips
+        Box(modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                if (chips) {
+                    DoorChips(state, sections, Modifier.padding(top = LocalTopBarOverlap.current), hunt)
+                }
+                content(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .then(if (phoneInset) Modifier.padding(start = BenflixSpace.phoneEdge, end = 8.dp) else Modifier),
+                )
             }
-            content(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .then(if (phoneInset) Modifier.padding(start = BenflixSpace.phoneEdge, end = 8.dp) else Modifier),
-            )
+            // Easter Sunday, no chips: the hidden egg is tucked in the top corner instead
+            if (hunt && !chips) {
+                EasterHuntEgg(
+                    state.door,
+                    40.dp,
+                    Modifier.align(Alignment.TopEnd).padding(top = LocalTopBarOverlap.current + 4.dp, end = 8.dp),
+                )
+            }
         }
         return
     }
     if (sections.size <= 1) {
-        content(modifier.fillMaxSize().padding(start = if (isTv) RAIL_TUCKED - CONTENT_TUCK else 0.dp))
+        Box(modifier.fillMaxSize()) {
+            content(Modifier.fillMaxSize().padding(start = if (isTv) RAIL_TUCKED - CONTENT_TUCK else 0.dp))
+            // Easter Sunday, no side menu: the hidden egg is tucked in the bottom-left corner
+            if (hunt) EasterHuntEgg(state.door, ITEM_HEIGHT, Modifier.align(Alignment.BottomStart).padding(14.dp))
+        }
         return
     }
     Box(modifier.fillMaxSize()) {
@@ -231,7 +248,7 @@ fun DoorFrame(
                 .focusRequester(state.content)
                 .focusRestorer(),
         )
-        DoorRail(state, sections, alwaysOpen = !isTv)
+        DoorRail(state, sections, alwaysOpen = !isTv, hunt = hunt)
     }
 }
 
@@ -241,6 +258,7 @@ private fun DoorRail(
     state: DoorFrameState,
     sections: List<DoorSection>,
     alwaysOpen: Boolean,
+    hunt: Boolean,
 ) {
     var focused by remember { mutableStateOf(false) }
     val open = alwaysOpen || focused
@@ -311,6 +329,11 @@ private fun DoorRail(
                     modifier = if (on) Modifier.focusRequester(active) else Modifier,
                 )
             }
+            // Easter Sunday: this door's hidden egg, at the bottom of the menu
+            if (hunt) {
+                Spacer(Modifier.height(10.dp))
+                EasterHuntEgg(state.door, ITEM_HEIGHT)
+            }
         }
     }
 }
@@ -377,6 +400,7 @@ private fun DoorChips(
     state: DoorFrameState,
     sections: List<DoorSection>,
     modifier: Modifier = Modifier,
+    hunt: Boolean = false,
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -393,6 +417,8 @@ private fun DoorChips(
                 onClick = { state.pick(section.key) },
             )
         }
+        // Easter Sunday: this door's hidden egg, at the end of the chips
+        if (hunt) item(key = "easter-egg") { EasterHuntEgg(state.door, 40.dp) }
     }
 }
 

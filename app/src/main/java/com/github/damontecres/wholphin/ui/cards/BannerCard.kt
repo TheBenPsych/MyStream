@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.EaLook
 import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.F13Look
 import com.github.damontecres.wholphin.ui.theme.HwLook
@@ -66,6 +67,7 @@ import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.eaProgressEgg
 import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.f13ProgressMoon
 import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
@@ -346,6 +348,8 @@ fun BannerCard(
                                     F13Look.Green
                                 } else if (TgLook.on) {
                                     TgLook.Orange
+                                } else if (EaLook.on) {
+                                    EaLook.Lilac
                                 } else if (HwLook.on) {
                                     HwLook.Orange
                                 } else if (NyLook.on) {
@@ -465,6 +469,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .f13ProgressMoon((playPercent / 100).toFloat(), moon = 14.dp),
+                    )
+                }
+                // Easter look: a painted egg rolls along as the knob at the end of the progress line
+                if (EaLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .eaProgressEgg((playPercent / 100).toFloat(), egg = 22.dp),
                     )
                 }
             }

@@ -1172,6 +1172,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Easter look (Monday to Easter Sunday): "Happy Easter, Ben" all week
+    if (com.github.damontecres.wholphin.ui.theme.EaLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.EasterSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // New Year's look (27 Dec to 1 Jan): "Happy New Year, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
         return com.github.damontecres.wholphin.ui.theme.NewYearSeason.GREETING + if (name.isNotBlank()) ", $name" else ""

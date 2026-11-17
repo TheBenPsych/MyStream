@@ -83,6 +83,8 @@ fun WholphinTheme(
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange
+            } else if (EaLook.on) {
+                EaLook.Lilac
             } else if (HwLook.on) {
                 HwLook.Orange
             } else if (NyLook.on) {

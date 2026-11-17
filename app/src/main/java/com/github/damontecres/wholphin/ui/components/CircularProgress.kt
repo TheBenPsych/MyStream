@@ -107,6 +107,7 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         )
         return
     }
+    val ea = !tg && com.github.damontecres.wholphin.ui.theme.EaLook.on
     Box(modifier = modifier) {
         // Star Wars Day: light speed inside a laser red ring on black
         if (sw) {
@@ -131,11 +132,14 @@ fun CircularProgress(modifier: Modifier = Modifier) {
             )
         }
         CircularProgressIndicator(
-            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside;
+            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
+            // Easter look: a lilac ring on meadow green, with a cracked painted egg rocking inside
             // Earth Day look: a leaf green ring on ocean blue, with the Earth turning inside
             color =
                 if (tg) {
                     com.github.damontecres.wholphin.ui.theme.TgLook.Orange
+                } else if (ea) {
+                    com.github.damontecres.wholphin.ui.theme.EaLook.Lilac
                 } else if (ed) {
                     com.github.damontecres.wholphin.ui.theme.EdLook.Leaf
                 } else if (sw) {
@@ -146,6 +150,8 @@ fun CircularProgress(modifier: Modifier = Modifier) {
             trackColor =
                 if (tg) {
                     com.github.damontecres.wholphin.ui.theme.TgLook.Brown
+                } else if (ea) {
+                    com.github.damontecres.wholphin.ui.theme.EaLook.Green
                 } else if (ed) {
                     com.github.damontecres.wholphin.ui.theme.EdLook.Ocean
                 } else if (sw) {
@@ -177,6 +183,28 @@ fun CircularProgress(modifier: Modifier = Modifier) {
                     .fillMaxSize(.62f)
                     .align(Alignment.Center)
                     .rotate(angle),
+            )
+        }
+        if (ea) {
+            val rock =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "eaEgg")
+            val tilt by rock.animateFloat(
+                initialValue = -12f,
+                targetValue = 12f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+                    ),
+                label = "eaEggTilt",
+            )
+            com.github.damontecres.wholphin.ui.theme.EaLoadingEgg(
+                Modifier
+                    .fillMaxSize(.66f)
+                    .align(Alignment.Center)
+                    .rotate(tilt),
             )
         }
         if (ed) {
