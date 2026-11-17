@@ -159,6 +159,8 @@ object HolidayNavKit {
                 topTrim = NewYearNav.topTrim,
                 bottomTrim = NewYearNav.bottomTrim,
                 moving = true,
+                // the charms twinkle and sway themselves (on the shared slow clock)
+                iconsMove = true,
                 pickTitles = NewYearNav.pickTitles,
                 accent = Color(0xFFE8B84A),
             ),
