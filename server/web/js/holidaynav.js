@@ -65,29 +65,32 @@
     const sway = "<style>.eaSw{transform-box:fill-box;transform-origin:50% 0;animation:eaSw 4.5s ease-in-out infinite}@keyframes eaSw{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}</style>";
     // A painted egg on a pink ribbon, hanging from a pearl pin (viewBox 0 0 12 18)
     const mark = plain(`${sway}<g class="eaSw"><path d="M6 1.4V5.6" stroke="#C25A86" stroke-width=".9"/>${K.egg(6, 11.4, 4.6, 6.2, "#FFB8D2", "#7B5BD6", "zig", { nosh: true })}</g><circle cx="6" cy="1.4" r="1.4" fill="#F4F1EA" stroke="#B8B0A0" stroke-width=".3"/>`);
-    // Wide and cut to the screen (slice), so the eggs keep their shape at any width: 2 units = 1 pixel. A little
-    // taller than the usual trim box, so the eggs and tulips are big enough to see from the couch
+    // Wide and cut to the screen (slice), so the eggs keep their shape at any width: 2 units = 1 pixel. Ben
+    // 2026-11-17: the greeting now sits top left on the clock's line, so the ribbon stays in a thin band along the
+    // very top with its eggs ending above the greeting's letters, and the grass stays inside its own box so it
+    // never covers the news cards. Phones put the greeting at the top of the picture: eggs there hang only on the
+    // right, past the words
     const wide = (h, art) => (cls) => `<svg class="${cls || ""}" viewBox="0 0 4800 ${h}" preserveAspectRatio="xMinYMin slice" style="height:${h / 2}px" aria-hidden="true">${plain(art)}</svg>`;
-    let top = sway, rope = "M0 8";
+    let top = sway.replace("</style>", "@media (max-width:700px){.eaL{display:none}}</style>"), rope = "M0 6";
     const step = 300, pins = [];
-    for (let x = 0; x < 4800; x += step) { rope += `Q${x + step / 2} ${8 + 56} ${x + step} 8`; pins.push(x); }
+    for (let x = 0; x < 4800; x += step) { rope += `Q${x + step / 2} ${6 + 24} ${x + step} 6`; pins.push(x); }
     top += `<path d="${rope}" stroke="#C25A86" stroke-width="9" fill="none"/><path d="${rope}" stroke="#F28DB2" stroke-width="6" fill="none"/><path d="${rope}" stroke="#FFD0E2" stroke-width="1.6" fill="none" transform="translate(0 -1.5)"/>`;
     pins.forEach((x, i) => {
       const m = x + step / 2, e = EGGS[i % 6];
-      top += `<g class="eaSw" style="animation-delay:${(-i * 0.7).toFixed(1)}s"><path d="M${m} 36V52" stroke="#C25A86" stroke-width="3"/>${K.egg(m, 90, 26, 36, e[0], e[1], e[2])}</g>`;
-      top += `<circle cx="${x}" cy="9" r="6" fill="#F4F1EA" stroke="#B8B0A0"/><circle cx="${x - 2}" cy="7" r="2" fill="#fff"/>`;
+      top += `<g class="eaSw${m < 560 ? " eaL" : ""}" style="animation-delay:${(-i * 0.7).toFixed(1)}s"><path d="M${m} 18V25" stroke="#C25A86" stroke-width="2.4"/>${K.egg(m, 39, 11, 15, e[0], e[1], e[2])}</g>`;
+      top += `<circle cx="${x}" cy="6" r="5" fill="#F4F1EA" stroke="#B8B0A0"/><circle cx="${x - 1.6}" cy="4.4" r="1.6" fill="#fff"/>`;
     });
     // Spring grass with tulips and eggs half hidden in it
     let seed = 3;
     const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
     const grass = (yb, h) => { let s = ""; for (let x = 0; x < 4800; x += 5) { const hh = h * (0.55 + rnd() * 0.6), lean = (rnd() - 0.5) * 18; s += `<path d="M${x} ${yb}q${(lean * 0.3).toFixed(1)} ${(-hh * 0.6).toFixed(1)} ${lean.toFixed(1)} ${(-hh).toFixed(1)}" stroke="${["#3E8A45", "#5AAE52", "#7CCB6A", "#4FA052"][(x / 5) % 4]}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`; } return s; };
-    let bottom = `<rect x="0" y="90" width="4800" height="18" fill="#24502F"/>` + grass(108, 60);
-    for (let i = 0, x = 80; x < 4800; i++, x += 190) {
-      if (i % 2) { const e = EGGS[i % 6]; bottom += K.egg(x, 78, 22, 29, e[0], e[1], e[2]); }
-      else bottom += `<path d="M${x} 56V108" stroke="#3E8A45" stroke-width="4"/>` + K.tulip(x, 60, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.5);
+    let bottom = `<rect x="0" y="58" width="4800" height="14" fill="#24502F"/>` + grass(72, 40);
+    for (let i = 0, x = 60; x < 4800; i++, x += 150) {
+      if (i % 2) { const e = EGGS[i % 6]; bottom += K.egg(x, 46, 17, 23, e[0], e[1], e[2]); }
+      else bottom += `<path d="M${x} 32V72" stroke="#3E8A45" stroke-width="3.4"/>` + K.tulip(x, 36, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.2);
     }
-    bottom += grass(108, 30);
-    return Object.assign(base, { icons, mark, topTrim: wide(132, top), bottomTrim: wide(108, bottom) });
+    bottom += grass(72, 22);
+    return Object.assign(base, { icons, mark, topTrim: wide(56, top), bottomTrim: wide(72, bottom) });
   }
   // ---------- Christmas art (approved "Classic big bulbs", sheet nav-13-christmas) ----------
   // Door icons are small full-colour drawings on a 48 grid (drawn at half size into the 24 box); a small gold

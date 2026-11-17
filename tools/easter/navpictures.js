@@ -31,8 +31,9 @@ PICS.ea_nav_grass = ["0 0 600 72", `(() => {
   const E = ${JSON.stringify(EGGS)};
   let s = '<rect x="0" y="58" width="600" height="14" fill="#24502F"/>' + grass(72, 40);
   [[60, 0], [135, 1], [210, 2], [285, 3], [360, 4], [435, 5], [510, 6], [585, 7]].forEach(([x, i]) => {
-    if (i % 2) { const e = E[i % 6]; s += K.egg(x, 52, 14, 19, e[0], e[1], e[2]); }
-    else s += '<path d="M' + x + ' 40V72" stroke="#3E8A45" stroke-width="3"/>' + K.tulip(x, 42, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 0.9);
+    // big enough to read at the trim's 36dp height (Ben 2026-11-17: the art stays inside its box)
+    if (i % 2) { const e = E[i % 6]; s += K.egg(x, 46, 17, 23, e[0], e[1], e[2]); }
+    else s += '<path d="M' + x + ' 32V72" stroke="#3E8A45" stroke-width="3.4"/>' + K.tulip(x, 36, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.2);
   });
   return s + grass(72, 22);
 })()`, 144];

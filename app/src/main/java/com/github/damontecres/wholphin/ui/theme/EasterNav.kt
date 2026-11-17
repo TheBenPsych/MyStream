@@ -138,8 +138,12 @@ internal object EasterNav {
     val topTrim: HolidayArt = { t ->
         val d = density
         val step = 150f * d
-        val pinY = 4f * d
-        val sag = 28f * d
+        // Ben 2026-11-17: the greeting now sits top left on the clock's line, so the ribbon stays in a thin band
+        // along the very top and the eggs end above the greeting's letters (about 34dp down on TV). Phones put
+        // the greeting right at the top of the picture, so there the eggs only hang on the right, past the words.
+        val phone = size.width < 600f * d
+        val pinY = 3f * d
+        val sag = 12f * d
         val n = (size.width / step).toInt() + 1
         val rope = Path()
         rope.moveTo(0f, pinY)
@@ -156,12 +160,11 @@ internal object EasterNav {
             val mx = x + step / 2
             val low = pinY + sag / 2
             val egg = pic(eggPics[i % eggPics.size])
-            if (egg != null && mx < size.width + step) {
+            if (egg != null && mx < size.width + step && (!phone || mx > size.width * .62f)) {
                 rotate(degrees = 6f * sin(t * 1.4f + i * .7f), pivot = Offset(mx, low)) {
-                    drawLine(Color(0xFFC25A86), Offset(mx, low), Offset(mx, low + 6f * d), strokeWidth = 1.2f * d)
-                    // a little taller than the trim's box (it isn't clipped), so the eggs read from the couch
-                    val eh = 32f * d
-                    fit(egg, mx - eh * .4f, low + 5f * d, eh * .8f, eh)
+                    drawLine(Color(0xFFC25A86), Offset(mx, low), Offset(mx, low + 4f * d), strokeWidth = 1.2f * d)
+                    val eh = (if (phone) 26f else 21f) * d
+                    fit(egg, mx - eh * .4f, low + 3f * d, eh * .8f, eh)
                 }
             }
             drawCircle(Color(0xFFB8B0A0), 3.4f * d, Offset(x, pinY + .5f * d))
@@ -173,9 +176,8 @@ internal object EasterNav {
     /** Spring grass with tulips and eggs half hidden in it, repeated along the bottom of Home */
     val bottomTrim: HolidayArt = {
         pic(R.drawable.ea_nav_grass)?.let { image ->
-            // a little taller than the trim's box, growing up from its bottom (it isn't clipped), so the tulips
-            // and eggs read from the couch
-            val h = 54f * density
+            // inside the trim's own box, so it never covers the news cards just above it
+            val h = size.height
             val w = image.width * h / image.height
             var x = 0f
             while (x < size.width) {
