@@ -81,6 +81,23 @@ B.trending = async (type, onlyAnime) => {
   }
   return B.keep(items.slice(0, 10));
 };
+// Date night (Valentine's look): romance and love stories, plus anything tagged Valentine's Day or with "Valentine"
+// in the name, leaving out anything scary or grim, shuffled (cached 30 minutes)
+B.dateNightMovies = () => B.cached("dateNight-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${encodeURIComponent("valentine's day")}&Limit=20&Fields=${F}`).catch(() => null),
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=Valentine&Limit=10&Fields=${F}`)
+      .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => /\bvalentine/i.test(x.Name || "")) })).catch(() => null),
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Genres=Romance&SortBy=Random&Limit=40&Fields=${F}`).catch(() => null),
+  ]);
+  const grim = /^(horror|thriller|war|crime)$/i, seen = new Set(), out = [];
+  for (const l of lists) for (const x of (l && l.Items) || []) {
+    if (seen.has(x.Id) || (x.Genres || []).some((g) => grim.test(g))) continue;
+    seen.add(x.Id); out.push(x);
+  }
+  return B.keep(out.slice(0, 20).sort(() => Math.random() - 0.5));
+});
 // Christmas favourites: movies tagged Christmas or with a Christmas word in the name, shuffled (cached 30 minutes)
 B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () => {
   const u = B.uid(), F = B.FIELDS;
@@ -151,11 +168,14 @@ B.route(/^\/movies$/, async (m, nav) => {
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
   // 4th of July look (1 to 4 July, Kids too): 4th of July favourites right after Keep watching
   const j4 = B.j4On && B.j4On() ? await B.july4Movies().catch(() => []) : [];
+  // Valentine's look (1 to 14 February): Date night right after Keep watching (like the TV app)
+  const dates = !fewer && B.valOn && B.valOn() ? await B.dateNightMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
     j4.length >= 4 ? B.row("4th of July favourites", j4.map((it) => B.posterCard(it))) : "",
+    dates.length >= 4 ? B.row("Date night", dates.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
     fewer ? "" : B.row("Top 10 movies", B.top10(top)),

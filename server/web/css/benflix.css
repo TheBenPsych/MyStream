@@ -1765,3 +1765,54 @@ html.j4 .brow .tx small[data-mark="ball"]::before, html.j4 .brow .tx small[data-
 /* notices get a flag red edge */
 html.j4 .corner { box-shadow: inset 5px 0 0 var(--jred); }
 .who .j4count { color: #C9D0E0; }
+
+/* ---------- Valentine's look (approved 2026-11-17, 1 to 14 February, not on Kids) ----------
+   Rose red for selected things, deep wine for other buttons and panels, white words on every door, and a different
+   love token on each door (Admit Two tickets, a gold heart locket, a red foil heart balloon, the ace of hearts, a
+   heart-shaped record, a love letter with a wax seal). Small touches, each for one kind of thing: a rosy glow and a
+   faint heart on Play, a heart bead at the end of progress, a heart in switches that are on, a heart that fills up
+   while loading, and a different mark for each kind of Home notice.
+   Settings › Look › Valentine's look turns it off (js/start.js B.valOn). */
+html.val {
+  --pg2: #241019; --pg3: #2E1520; --pg4: #6E1F3A; --line: #43202F; --accent: #E8405E;
+  --vrose: #E8405E; --vwine: #6E1F3A;
+}
+html.val .door { color: #fff; }
+html.val .door > svg.i, html.val .door .n, html.val .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+/* the token's box on a 240 x 220 door: x 104 to 248, y -8 to 180 */
+html.val .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: -3.3%; top: -3.6%; width: 60%; max-width: 180px; aspect-ratio: 144 / 188; background: center top / contain no-repeat; }
+html.val .door[data-door="movies"]::after { background-image: url("../img/val/val_charm_movies.png"); }
+html.val .door[data-door="shows"]::after { background-image: url("../img/val/val_charm_shows.png"); }
+html.val .door[data-door="live"]::after { background-image: url("../img/val/val_charm_live.png"); }
+html.val .door[data-door="games"]::after { background-image: url("../img/val/val_charm_games.png"); }
+html.val .door[data-door="music"]::after { background-image: url("../img/val/val_charm_music.png"); }
+html.val .door[data-door="books"]::after { background-image: url("../img/val/val_charm_books.png"); }
+html.val .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.val .bgreet .wx.vlc { color: #E0C8D0; font-weight: 600; }
+html.val .btn.white, html.val .btn.red, html.val .chip.on { background: var(--vrose); border-color: var(--vrose); color: #fff; }
+html.val .btn.white:hover, html.val .btn.red:hover { background: #EE5A74; color: #fff; }
+html.val .btn { background: var(--vwine); }
+html.val .btn.ghost { background: none; }
+html.val .poster .prog { background: rgba(110,31,58,.9); }
+html.val .poster .prog i, html.val .kwbar .line i, html.val .player .bar .knob { background: var(--vrose); }
+html.val .corner .ctime { background: var(--vrose); }
+/* a soft rosy glow round Play, and a faint heart in its corner */
+html.val .tp .btns .btn.white { position: relative; box-shadow: 0 0 30px 8px rgba(255, 110, 134, .4); }
+html.val .tp .btns .btn.white::after { content: ""; position: absolute; right: 10px; top: 50%; width: 22px; height: 22px; margin-top: -11px; background: url("../img/val/val_heart_soft.png") center / contain no-repeat; pointer-events: none; }
+/* a glossy little heart bead at the end of the progress line */
+html.val .kwbar .line { overflow: visible; background: var(--vwine); }
+html.val .kwbar .line i { position: relative; border-radius: 2px; }
+html.val .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -10px; width: 24px; height: 24px; background: url("../img/val/val_bead.png") center / contain no-repeat; }
+/* a heart that fills up with rose red while loading */
+html.val .spin { position: relative; border: 0; border-radius: 0; animation: none; width: 52px; height: 50px; background: url("../img/val/val_load_empty.png") center / contain no-repeat; }
+html.val .spin::after { content: ""; position: absolute; inset: 0; background: url("../img/val/val_load_full.png") center / contain no-repeat; animation: valfill 1.6s ease-in-out infinite; }
+@keyframes valfill { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+/* switches that are on get a white knob with a red heart in it */
+html.val .valbtn.on::before { content: ""; display: inline-block; width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; background: url("../img/val/val_knob.png") center / contain no-repeat; }
+/* each kind of Home notice gets its own small mark */
+html.val .brow .tx small::before { content: ""; display: inline-block; width: 1.3em; height: 1.5em; margin-right: .4em; vertical-align: -.4em; background: center / contain no-repeat; }
+html.val .brow .tx small[data-vmark="choc"]::before { background-image: url("../img/val/val_mark_choc.png"); }
+html.val .brow .tx small[data-vmark="rose"]::before { background-image: url("../img/val/val_mark_rose.png"); }
+html.val .brow .tx small[data-vmark="letter"]::before { background-image: url("../img/val/val_mark_letter.png"); }
+html.val .brow .tx small[data-vmark="balloon"]::before { background-image: url("../img/val/val_mark_balloon.png"); }
+.who .vcount { color: #E0C8D0; }
