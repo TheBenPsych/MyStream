@@ -10,6 +10,8 @@ fonts/opendyslexic.LICENSE.txt
 fonts/opendyslexic_regular.woff2
 fonts/outfit_bold.ttf
 fonts/xmas_berkshire_swash.ttf
+fonts/sw_news_cycle.ttf
+fonts/news_cycle.LICENSE.txt
 fonts/outfit_medium.ttf
 fonts/outfit_regular.ttf
 fonts/outfit_semibold.ttf
@@ -42,6 +44,7 @@ js/halloween.js
 js/valentine.js
 js/newyear.js
 js/popcorn.js
+js/starwars.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -94,6 +97,13 @@ img/ny/ny_mark_spark.png
 img/ny/ny_mark_star.png
 img/ny/ny_sparkler.png
 img/ny/ny_star.png
+img/sw/sw_hyperspace.png
+img/sw/sw_moment_books.png
+img/sw/sw_moment_games.png
+img/sw/sw_moment_live.png
+img/sw/sw_moment_movies.png
+img/sw/sw_moment_music.png
+img/sw/sw_moment_shows.png
 img/val/val_bead.png
 img/val/val_charm_books.png
 img/val/val_charm_games.png

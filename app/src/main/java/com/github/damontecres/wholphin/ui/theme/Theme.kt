@@ -79,6 +79,8 @@ fun WholphinTheme(
             } else if (ValLook.on) {
                 // Valentine's look (1 to 14 Feb): rose red
                 ValLook.Rose
+            } else if (SwLook.on) {
+                SwLook.Red
             } else {
                 BenflixRedBase
             }

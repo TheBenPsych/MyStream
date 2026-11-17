@@ -57,6 +57,7 @@ import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.swNoticeSaber
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -212,6 +213,8 @@ private fun CornerCard(
                 .then(if (XmasLook.on) Modifier.xmasOrnament(XmasLook.RedBall, ball = 24.dp, string = 6.dp, fromEnd = 34.dp) else Modifier)
                 // Thanksgiving look: the notice is pinned with a brass tack
                 .tgTack()
+                // Star Wars Day: a little laser sword lies along the notice's top edge
+                .swNoticeSaber()
                 .clip(shape)
                 .background(BenflixColors.Panel)
                 // New Year's look: a gold edge down the notice's left side
