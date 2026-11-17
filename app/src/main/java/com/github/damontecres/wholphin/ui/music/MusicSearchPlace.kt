@@ -123,7 +123,7 @@ class MusicSearchViewModel
             viewModelScope.launchIO { musicMe.load() }
             viewModelScope.launchIO {
                 val t = library.themes()
-                val order = listOf("season", "mood", "genre", "decade", "throwback")
+                val order = listOf("season", "lofi", "mood", "genre", "decade", "throwback")
                 browse.value = t.themes.sortedBy { order.indexOf(it.group).let { i -> if (i < 0) 99 else i } }
             }
         }

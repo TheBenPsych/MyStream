@@ -596,6 +596,7 @@ fun browseLine(group: String): String =
         "decade" -> "Every decade you have"
         "genre" -> "Your music by style"
         "mood" -> "For any moment"
+        "lofi" -> "Hip hop, house, jazz and more"
         "throwback" -> "Songs from years ago"
         else -> ""
     }

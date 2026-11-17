@@ -451,13 +451,14 @@ class MusicDoorViewModel
             private const val QUICK_DAYS = 5
 
             /** The theme rows lower down the page, in this order */
-            private val LOWER_THEMES = listOf("decade", "genre", "mood", "throwback")
+            private val LOWER_THEMES = listOf("lofi", "decade", "genre", "mood", "throwback")
             private val THEME_TITLES =
                 mapOf(
                     "season" to "In season",
                     "decade" to "Decades",
                     "genre" to "Genres",
                     "mood" to "Moods and moments",
+                    "lofi" to "LoFi",
                     "throwback" to "Throwbacks",
                 )
 

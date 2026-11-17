@@ -4115,6 +4115,7 @@ THEME_ROWS = {
     "decade": "Decades",
     "genre": "Genres",
     "mood": "Moods and moments",
+    "lofi": "LoFi",
     "throwback": "Throwbacks",
 }
 
@@ -4218,6 +4219,26 @@ THEMES = [
     {"key": "sleep", "group": "mood", "name": "Sleep", "line": "Soft songs to drift off to", "dz": "sleep",
      "genres": ["ambient", "classical", "piano", "new age", "sleep", "meditation"],
      "words": ["sleep", "sleeping", "dream", "dreams", "dreaming", "lullaby", "goodnight", "good night", "moon", "stars", "night", "quiet"]},
+    # LoFi (Ben 2026-11-17): one LoFi mix with everything, then a mix for each kind of LoFi. Like Christmas, Ben
+    # always sees them (even empty) with top songs to ask for, so he can fill them.
+    {"key": "lofi", "group": "lofi", "name": "LoFi", "line": "Every kind of LoFi, all in one", "dz": "lofi hits",
+     "genres": ["lo-fi", "lofi", "lo fi", "chillhop", "chill hop", "jazzhop", "jazz hop", "lofi hip hop", "lo-fi hip hop", "lofi house", "lo-fi house", "lo-fi beats", "lofi beats"],
+     "words": ["lofi", "lo fi", "chillhop", "jazzhop"]},
+    {"key": "lofi-hiphop", "group": "lofi", "name": "LoFi hip hop", "line": "Dusty beats to relax and study to", "dz": "lofi hip hop",
+     "genres": ["lofi hip hop", "lo-fi hip hop", "lo fi hip hop", "lofi hip-hop", "lo-fi hip-hop", "lo-fi beats", "lofi beats"],
+     "words": ["lofi hip hop", "lo fi hip hop", "lofi beats", "lo fi beats"]},
+    {"key": "lofi-house", "group": "lofi", "name": "LoFi house", "line": "Warm, fuzzy house beats", "dz": "lofi house",
+     "genres": ["lofi house", "lo-fi house", "lo fi house", "outsider house"],
+     "words": ["lofi house", "lo fi house"]},
+    {"key": "lofi-jazz", "group": "lofi", "name": "LoFi jazz", "line": "Jazzy keys over soft beats", "dz": "lofi jazz",
+     "genres": ["jazzhop", "jazz hop", "jazz-hop", "lofi jazz", "lo-fi jazz"],
+     "words": ["lofi jazz", "lo fi jazz", "jazzhop", "jazz hop"]},
+    {"key": "lofi-chillhop", "group": "lofi", "name": "Chillhop", "line": "Sunny, easy LoFi grooves", "dz": "chillhop",
+     "genres": ["chillhop", "chill hop", "chill-hop"],
+     "words": ["chillhop", "chill hop"]},
+    {"key": "lofi-sleep", "group": "lofi", "name": "Sleepy LoFi", "line": "Slow LoFi for late nights", "dz": "lofi sleep",
+     "genres": ["lofi sleep", "lo-fi sleep", "sleep lofi"],
+     "words": ["lofi sleep", "lo fi sleep", "sleepy lofi"]},
 ]
 THEME_BY_KEY = {t["key"]: t for t in THEMES}
 
@@ -4453,6 +4474,23 @@ def themes_for(token, user_id, is_admin):
         if m:
             out.append(m)
 
+    # LoFi (Ben 2026-11-17): the LoFi mix has every LoFi song, then one mix for each kind of LoFi. They show
+    # even before they have songs (like Christmas), with top songs to ask for; Kids never get here.
+    lofi_all = []
+    lofi_out = []
+    for t in THEMES:
+        if t["group"] != "lofi" or t["key"] == "lofi":
+            continue
+        mine = [s for s in songs if (t["_re"] and t["_re"].search(s["_names"])) or _theme_genre(t, s["_genres"])]
+        mine += from_catalogue(t["key"]) + pinned(t["key"])
+        lofi_all += mine
+        lofi_out.append(_theme_out(t["key"], "lofi", t["name"], t["line"], mine, rnd, 0, limit=100, adds=True))
+    t = THEME_BY_KEY["lofi"]
+    mine = [s for s in songs if (t["_re"] and t["_re"].search(s["_names"])) or _theme_genre(t, s["_genres"])]
+    mine += from_catalogue("lofi") + pinned("lofi") + lofi_all
+    out.append(_theme_out("lofi", "lofi", t["name"], t["line"], mine, rnd, 0, limit=150, adds=True))
+    out += lofi_out
+
     # Decades: every decade with enough songs, oldest first
     decades = {}
     for s in songs:
@@ -4518,7 +4556,7 @@ def themes_for(token, user_id, is_admin):
             before = len(m["songs"])
             m["songs"] = [i for i in m["songs"] if i not in xmas]
             if len(m["songs"]) < before:
-                if len(m["songs"]) < (need if m["group"] != "throwback" else max(8, need)) and not (is_admin and m["group"] == "season"):
+                if len(m["songs"]) < (need if m["group"] != "throwback" else max(8, need)) and not (is_admin and m["group"] == "season") and m["group"] != "lofi":
                     continue
                 m["covers"] = list(dict.fromkeys(album_of[i] for i in m["songs"] if album_of.get(i)))[:4]
         kept.append(m)

@@ -603,7 +603,7 @@
   B.musicMixes = () => B.cached("music-mixes-" + B.me.id + new Date().toDateString(), 3600000, async () => ((await B.call("GET", "api/music/mixes")) || {}).mixes || []);
   // Themed playlists (Ben 2026-11-16): holidays in season, decades, genres, moods, throwbacks
   B.musicThemes = () => B.cached("music-themes-" + B.me.id + new Date().toDateString(), 3600000, async () => (await B.call("GET", "api/music/themes")) || { themes: [] });
-  const THEME_ROWS = { season: "In season", decade: "Decades", genre: "Genres", mood: "Moods and moments", throwback: "Throwbacks" };
+  const THEME_ROWS = { season: "In season", decade: "Decades", genre: "Genres", mood: "Moods and moments", lofi: "LoFi", throwback: "Throwbacks" };
   const themeRow = (th, group) => {
     const list = (th.themes || []).filter((t) => t.group === group);
     return list.length ? B.row((th.rows || {})[group] || THEME_ROWS[group], list.map(mixCard)) : "";
@@ -863,7 +863,7 @@
 
   // ---------- Music Home (approved g2-home): greeting, chips, 8 quick picks, shorter rows, one Browse row ----------
   const HOME_CHIPS = [["all", "All"], ["mixes", "Mixes"], ["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["new", "New to you"]];
-  const BROWSE = { decade: "Every decade you have", genre: "Your music by style", mood: "For any moment", throwback: "Songs from years ago" };
+  const BROWSE = { decade: "Every decade you have", genre: "Your music by style", mood: "For any moment", lofi: "Hip hop, house, jazz and more", throwback: "Songs from years ago" };
   const browseCard = (group, title, list) => {
     const covers = B.mixCovers([...new Set(list.flatMap((t) => t.covers || []))].slice(0, 4));
     const art = covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("");
@@ -913,7 +913,7 @@
     if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
     rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
     // Ben (shorter Home + one Browse row): Decades, Genres, Moods and Throwbacks are tiles at the bottom
-    const groups = ["decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
+    const groups = ["lofi", "decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
     if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
     const allRows = rows.join("");
     $("#mrows").innerHTML = allRows;
@@ -1091,7 +1091,7 @@
       // Browse all: In season, moods, genres and decades as colour tiles
       const th = ((await B.musicThemes().catch(() => ({}))).themes || []).slice();
       if (!B.alive(nav) || box.value.trim().length >= 2 || !$("#mbrowse")) return;
-      const order = ["season", "mood", "genre", "decade", "throwback"];
+      const order = ["season", "lofi", "mood", "genre", "decade", "throwback"];
       th.sort((p, q) => (order.indexOf(p.group) + 1 || 99) - (order.indexOf(q.group) + 1 || 99));
       const COLS = ["#b83b5e", "#2e86ab", "#e07a1f", "#6a4c93", "#1b998b", "#c0392b", "#3d5a80", "#8e7d2b", "#9b2c6e", "#2d6a4f"];
       const hue = (k) => COLS[[...String(k)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLS.length];
