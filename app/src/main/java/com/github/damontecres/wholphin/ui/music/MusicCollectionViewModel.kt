@@ -52,7 +52,7 @@ data class MusicCollectionState(
     /** Ben's Songs to add under a themed playlist, and whether they're still coming */
     val adds: List<com.github.damontecres.wholphin.services.MusicSong> = emptyList(),
     val addsLoading: Boolean = false,
-    /** Discover weekly and Release radar: only songs that aren't on Benflix yet (Play previews, the heart asks) */
+    /** Discover weekly and Release radar: only songs that aren't on Benflix yet (Play previews; pressing a song asks for it) */
     val catalogue: Boolean = false,
     /** Not Ben's profile: an ask waits for Ben to okay it */
     val askNeedsOk: Boolean = false,
@@ -586,6 +586,9 @@ class MusicCollectionViewModel
                         null
                     }
                 _state.update { st -> st.copy(adds = st.adds.map { if (it.id == song.id) it.copy(asked = words) else it }) }
+                com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                    if (words == null) "Couldn't ask for ${song.title}. Try again in a minute." else "$words: ${song.title}",
+                )
             }
         }
 

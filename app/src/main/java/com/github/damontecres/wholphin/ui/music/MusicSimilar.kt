@@ -99,7 +99,7 @@ fun SimilarSongsPanel(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
         ) {
-            Text("Similar songs", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
+            Text("Songs like this", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
             when (state) {
                 SimilarState.Loading -> {
                     Text("Looking for songs like this one…", fontSize = BenflixType.body, color = BenflixColors.Soft)
@@ -111,7 +111,7 @@ fun SimilarSongsPanel(
 
                 is SimilarState.Songs -> {
                     Text(
-                        text = "Like ${state.playing}, and not in your music yet. Pick one to ask for it.",
+                        text = "Like ${state.playing}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.",
                         fontSize = BenflixType.small,
                         color = BenflixColors.Muted,
                     )

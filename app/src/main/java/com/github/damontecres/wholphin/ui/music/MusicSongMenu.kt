@@ -192,6 +192,8 @@ fun SongMenu(
     onLikedChanged: (Boolean) -> Unit = {},
     onRemoveFromPlaylist: (() -> Unit)? = null,
     onNotForThisPlaylist: (() -> Unit)? = null,
+    /** Now playing: songs like this one that aren't on Benflix yet, to hear and ask for */
+    onSongsLikeThis: (() -> Unit)? = null,
     onDeleted: () -> Unit = {},
     actions: MusicActionsViewModel = hiltViewModel(),
     playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
@@ -320,6 +322,9 @@ fun SongMenu(
                     onDismiss()
                 }),
             )
+            if (onSongsLikeThis != null) {
+                add(DialogItem(headlineContent = { Text("Songs like this to ask for") }, onClick = { onSongsLikeThis() }))
+            }
             if (!song.data.albumArtists.isNullOrEmpty() || !song.data.artistItems.isNullOrEmpty()) {
                 add(
                     DialogItem(headlineContent = { Text("Go to artist") }, onClick = {

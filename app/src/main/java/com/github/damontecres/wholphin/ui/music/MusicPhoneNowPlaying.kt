@@ -140,6 +140,14 @@ internal fun PhoneNowPlaying(
             SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
             SmallButton("More", BenflixIcon.MORE_VERT, easy, onClick = viewModel::openMenu)
         }
+        // Ben 2026-11-17: songs like this one that aren't on Benflix yet (30-second taste + Ask), right on the player.
+        // Its own named button under the round ones, because a 7th round button doesn't fit across a phone.
+        if (viewModel.canAsk) {
+            Spacer(Modifier.height(10.dp))
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                MusicButton("Songs like this", BenflixIcon.STAR, onClick = viewModel::openSimilar)
+            }
+        }
         // The bars sit along the bottom; the small buttons overlap their tops a little
         // Any spare room sits here, so the buttons stay up with the words and clear of the bars (Ben)
         Spacer(Modifier.weight(1f))
