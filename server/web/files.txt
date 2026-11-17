@@ -22,6 +22,7 @@ js/ask.js
 js/books.js
 js/core.js
 js/doors.js
+js/holidaynav.js
 js/nav.js
 js/spot.js
 js/extras.js

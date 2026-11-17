@@ -14,7 +14,9 @@
   const PICKS = 6;
   const SLIDE_MS = 10000;
   const FRESH_MS = 3 * 3600000;
-  const key = () => "benflix.homepicks." + (B.me ? B.me.id : "");
+  // A holiday starting (or ending) makes fresh picks, so its pick shows up first straight away
+  const holiday = () => (B.holidayNav ? B.holidayNav() : null);
+  const key = () => "benflix.homepicks." + (B.me ? B.me.id : "") + (holiday() ? "." + holiday().key : "");
   const saved = () => { try { return JSON.parse(localStorage.getItem(key()) || "null"); } catch (e) { return null; } };
   const save = (v) => { try { localStorage.setItem(key(), JSON.stringify(v)); } catch (e) {} };
 
@@ -30,8 +32,31 @@
     pic: B.backdrop(it, 1600), small: B.backdrop(it, 96),
   });
 
+  // Holiday marks (approved hq-pick A): during a holiday one of its films comes first (Kids get a Kids-safe one,
+  // as Kids profiles only ever see Kids titles)
+  const holidayPick = async (h, get, good) => {
+    if (!h || (!h.pickTags.length && !h.pickWords.length)) return null;
+    const u = B.uid(), F = B.FIELDS;
+    const lists = await Promise.all([
+      h.pickTags.length ? get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&Tags=${encodeURIComponent(h.pickTags.join("|"))}&SortBy=Random&Limit=12&Fields=${F}`) : [],
+      // Whole words only, so "Elf" never brings in "Self/less"
+      ...h.pickWords.map((w) => get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
+        .then((l) => l.filter((x) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(x.Name || "")))),
+    ]);
+    const all = lists.flat().filter(good);
+    const it = all[Math.floor(Math.random() * all.length)];
+    return it ? toPick(it, h.pickWhy) : null;
+  };
+
   // Make six picks (Kids: Ben's picks for the Kids home)
   const build = async () => {
+    const out = await buildPlain();
+    const get = (p) => B.get(p).then((r) => r.Items || r || []).catch(() => []);
+    const good = (it) => it && (it.BackdropImageTags || []).length && !((it.UserData || {}).Played);
+    const first = await holidayPick(holiday(), get, good).catch(() => null);
+    return first ? [first].concat(out.filter((p) => p.id !== first.id)).slice(0, PICKS) : out;
+  };
+  const buildPlain = async () => {
     const u = B.uid(), F = B.FIELDS;
     const get = (p) => B.get(p).then((r) => r.Items || r || []).catch(() => []);
     const good = (it) => it && (it.BackdropImageTags || []).length && !((it.UserData || {}).Played);
@@ -108,6 +133,14 @@
     if (timer) clearInterval(timer);
     const box = $("#spot");
     if (!box) return;
+    // Holiday marks: a trim along the top of the picture and another along the bottom of Home
+    const h = holiday();
+    if (h) {
+      const pics = $("#spPics");
+      if (pics && h.topTrim) pics.insertAdjacentHTML("beforeend", B.holidaySvg(h.topTrim, "0 0 1200 60", "sp-trim top"));
+      const home = box.closest(".home");
+      if (home && h.bottomTrim) home.insertAdjacentHTML("beforeend", B.holidaySvg(h.bottomTrim, "0 0 1200 40", "sp-trim bottom"));
+    }
     const old = saved();
     picks = old && old.list && old.list.length ? old.list : [];
     if (picks.length) show(0, true);

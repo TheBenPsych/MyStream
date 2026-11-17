@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -85,6 +86,13 @@ internal suspend fun HomeViewModel.loadMonthly(userDto: ServerUserConfig) {
  * with a holiday word in the name come first (shuffled), then genre picks if the theme has a genre.
  */
 internal suspend fun HomeViewModel.findThemeItems(
+    userId: UUID,
+    theme: HomeTheme,
+): List<BaseItemDto> = findThemeItems(api, userId, theme)
+
+/** The same, for anything with an [ApiClient] (Home's holiday pick uses it too) */
+internal suspend fun findThemeItems(
+    api: ApiClient,
     userId: UUID,
     theme: HomeTheme,
 ): List<BaseItemDto> =

@@ -636,6 +636,10 @@ B.loadBoard = async (nav) => {
   });
   reqs.ready.forEach(add);
   cant.forEach(add);
+  // Holiday marks (approved hq-count A): the first card counts down to the day (js/holidaynav.js)
+  const hol = B.holidayNav ? B.holidayNav() : null;
+  const left = hol ? hol.countdown() : "";
+  if (left) add({ id: `holiday-${hol.key}-${new Date().toDateString()}`, kind: "Countdown", title: left, full: left, kc: hol.lights[0], href: "", t: Infinity });
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
     let text = f.fact;
