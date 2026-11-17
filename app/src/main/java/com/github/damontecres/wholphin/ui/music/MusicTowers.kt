@@ -13,11 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.services.MusicSpectrum
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** The door colours, low sounds to high: amber, blue, teal, pink, violet (Ben's pick) */
 private val TowerColors =
@@ -178,18 +180,24 @@ fun TowerLine(
         if (frame < 0L) return@Canvas
         val gapX = size.width / towers * 0.25f
         val w = (size.width - gapX * (towers - 1)) / towers
-        val block = minOf(w, size.height / 3f)
-        val gapY = block * 0.22f
-        val rows = max(1, ((size.height + gapY) / (block + gapY)).toInt())
-        val corner = CornerRadius(block * 0.3f, block * 0.3f)
+        // Five rows of thin squares, one door colour each, amber at the bottom up to violet at the top (the
+        // approved sheet). Tiny lines (the pill, the mini bar) get fewer rows so the squares stay visible.
+        val rows = (size.height / 4.dp.toPx()).toInt().coerceIn(2, TowerColors.size)
+        val gapY = size.height * 0.08f
+        val block = (size.height - gapY * (rows - 1)) / rows
+        val corner = CornerRadius(minOf(w, block) * 0.3f, minOf(w, block) * 0.3f)
         val litTowers = (progress.coerceIn(0f, 1f) * towers).toInt()
         val grey = BenflixColors.Muted.copy(alpha = 0.45f)
         for (i in 0 until towers) {
             val x = i * (w + gapX)
             val played = i < litTowers
-            // Grey towers dance at half height
-            val level = if (played) shown[i] else shown[i] * 0.5f
-            val lit = (level * rows).toInt().coerceIn(1, rows)
+            // Quiet sounds still reach a few rows up (square root), and the grey part dances a little lower
+            val level = sqrt(shown[i].coerceIn(0f, 1f)) * (if (played) 1f else 0.6f)
+            val lit =
+                kotlin.math
+                    .ceil(level * rows)
+                    .toInt()
+                    .coerceIn(1, rows)
             for (r in 0 until lit) {
                 val y = size.height - (r + 1) * block - r * gapY
                 val color = if (played) TowerColors[min(TowerColors.size - 1, r * TowerColors.size / rows)] else grey
