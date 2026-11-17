@@ -1770,6 +1770,57 @@ html.ny .brow .tx small[data-mark="spark"]::before { background-image: url("../i
 html.ny .corner { box-shadow: inset 4px 0 0 var(--ngold); }
 .who .nycount { color: #C9D0E0; }
 
+/* ---------- 4th of July look (approved 2026-11-17, 1 to 4 July, Kids too: Ben 2026-11-17) ----------
+   Flag red for selected things (white words on red), deep navy for other buttons and panels, white words on every
+   door, and a different summer thing on each door (fan bunting, a hanging flag, star balloons, a beach ball in a net,
+   a parade drum, a pinwheel). Small touches, each for one kind of thing: three stars on Play, red and white stripes
+   with a big star on progress, a striped switch with a navy star knob, a firework for loading, and a different mark
+   for each kind of Home notice. Settings › Look › 4th of July look turns it off (js/start.js B.j4On). */
+html.j4 {
+  --pg2: #0E1631; --pg3: #15204A; --pg4: #24366E; --line: #25386A; --accent: #E0404F; --kacc: #E0404F;
+  --jred: #E0404F; --jnavy: #24366E;
+}
+html.j4 .door { color: #fff; }
+html.j4 .door > svg.i, html.j4 .door .n, html.j4 .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.j4 .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: 0; top: -1.8%; width: 55%; max-width: 165px; aspect-ratio: 132 / 166; background: right top / contain no-repeat; }
+html.j4 .door[data-door="movies"]::after { background-image: url("../img/j4/j4_charm_movies.png"); }
+html.j4 .door[data-door="shows"]::after { background-image: url("../img/j4/j4_charm_shows.png"); }
+html.j4 .door[data-door="live"]::after { background-image: url("../img/j4/j4_charm_live.png"); }
+html.j4 .door[data-door="games"]::after { background-image: url("../img/j4/j4_charm_games.png"); }
+html.j4 .door[data-door="music"]::after { background-image: url("../img/j4/j4_charm_music.png"); }
+html.j4 .door[data-door="books"]::after { background-image: url("../img/j4/j4_charm_books.png"); }
+html.j4 .greet.tgh { font-family: "Benflix Xmas", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+html.j4 .bgreet .wx.j4c { color: #C9D0E0; font-weight: 600; }
+html.j4 .btn.white, html.j4 .btn.red, html.j4 .chip.on { background: var(--jred); border-color: var(--jred); color: #fff; }
+html.j4 .btn.white:hover, html.j4 .btn.red:hover { background: #EC5865; color: #fff; }
+html.j4 .btn { background: var(--jnavy); }
+html.j4 .btn.ghost { background: none; }
+html.j4 .poster .prog { background: rgba(36,54,110,.9); }
+html.j4 .poster .prog i, html.j4 .kwbar .line i, html.j4 .player .bar .knob { background: var(--jred); }
+html.j4 .corner .ctime { background: var(--jred); }
+/* three big white stars across the end of Play */
+html.j4 .tp .btns .btn.white { position: relative; padding-right: 54px; }
+html.j4 .tp .btns .btn.white::after { content: ""; position: absolute; right: 4px; top: 0; bottom: 0; aspect-ratio: 1; background: url("../img/j4/j4_playstars.png") center / contain no-repeat; pointer-events: none; }
+/* the watched part of progress is red and white stripes, with a big white star at its end */
+html.j4 .poster .prog i, html.j4 .kwbar .line i { background: repeating-linear-gradient(-55deg, var(--jred) 0 6px, #fff 6px 10px); }
+html.j4 .kwbar .line { overflow: visible; background: var(--jnavy); height: 6px; border-radius: 3px; }
+html.j4 .kwbar .line i { position: relative; border-radius: 3px; }
+html.j4 .kwbar .line i::after { content: ""; position: absolute; right: -12px; top: -9px; width: 24px; height: 24px; background: url("../img/j4/j4_star.png") center / contain no-repeat; }
+/* loading is a red, white and blue firework blooming round the circle */
+html.j4 .spin { border: 0; width: 52px; height: 52px; background: url("../img/j4/j4_loader.png") center / contain no-repeat; animation: spin 1.6s linear infinite; }
+/* switches that are on turn red with white stripes and a navy star knob */
+html.j4 .valbtn.on { background: repeating-linear-gradient(180deg, var(--jred) 0 6px, #fff 6px 9px, var(--jred) 9px 12px); color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); position: relative; padding-right: 40px; }
+html.j4 .valbtn.on::after { content: ""; position: absolute; right: 6px; top: 50%; width: 24px; height: 24px; margin-top: -12px; border-radius: 50%; background: var(--jnavy) url("../img/j4/j4_star.png") center / 70% no-repeat; box-shadow: 0 0 0 2px #fff; }
+/* each kind of Home notice gets its own small mark */
+html.j4 .brow .tx small::before { content: ""; display: inline-block; width: 1.5em; height: 1.5em; margin-right: .4em; vertical-align: -.4em; background: center / contain no-repeat; }
+html.j4 .brow .tx small[data-mark="glass"]::before { background-image: url("../img/j4/j4_mark_flag.png"); }
+html.j4 .brow .tx small[data-mark="star"]::before { background-image: url("../img/j4/j4_mark_star.png"); }
+html.j4 .brow .tx small[data-mark="clock"]::before { background-image: url("../img/j4/j4_mark_rocket.png"); }
+html.j4 .brow .tx small[data-mark="ball"]::before, html.j4 .brow .tx small[data-mark="spark"]::before { background-image: url("../img/j4/j4_mark_burst.png"); }
+/* notices get a flag red edge */
+html.j4 .corner { box-shadow: inset 5px 0 0 var(--jred); }
+.who .j4count { color: #C9D0E0; }
+
 /* ---------- Valentine's look (approved 2026-11-17, 1 to 14 February, not on Kids) ----------
    Rose red for selected things, deep wine for other buttons and panels, white words on every door, and a different
    love token on each door (Admit Two tickets, a gold heart locket, a red foil heart balloon, the ace of hearts, a

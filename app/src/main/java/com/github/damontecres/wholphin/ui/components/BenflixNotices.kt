@@ -52,6 +52,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.J4KindMark
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
@@ -217,10 +219,11 @@ private fun CornerCard(
                 .background(BenflixColors.Panel)
                 // New Year's look: a gold edge down the notice's left side
                 .then(
-                    if (NyLook.on) {
+                    if (NyLook.on || J4Look.on) {
+                        // 4th of July look: a flag red edge instead
                         Modifier.drawBehind {
                             drawRect(
-                                NyLook.Gold,
+                                if (J4Look.on) J4Look.Red else NyLook.Gold,
                                 size =
                                     androidx.compose.ui.geometry
                                         .Size(4.dp.toPx(), size.height),
@@ -265,6 +268,8 @@ private fun CornerCard(
                 com.github.damontecres.wholphin.ui.theme
                     .F13Clover(size = if (isTv) 28.dp else 24.dp)
             }
+            // 4th of July look: the notice's own small mark (a flag, a star, a rocket, a firework)
+            if (J4Look.on) J4KindMark(card.title, size = if (isTv) 28.dp else 24.dp)
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

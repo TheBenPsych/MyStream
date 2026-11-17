@@ -166,7 +166,8 @@ class DoorDataService
 
         /**
          * Christmas favourites (Christmas look, 1 to 26 Dec): the hand-picked Christmas films, titles with a
-         * Christmas word in the name and titles tagged Christmas, of this kind.
+         * Christmas word in the name and titles tagged Christmas, of this kind. The 4th of July favourites row
+         * (4th of July look, 1 to 4 Jul) uses [themed] with HomeTheme.FOURTH_OF_JULY.
          */
         suspend fun christmas(
             userId: UUID,
