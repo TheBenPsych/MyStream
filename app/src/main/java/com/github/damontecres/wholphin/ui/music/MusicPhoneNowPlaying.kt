@@ -1,25 +1,22 @@
 package com.github.damontecres.wholphin.ui.music
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
@@ -30,8 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -43,139 +38,150 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.AudioItem
-import com.github.damontecres.wholphin.ui.components.BenflixHeartFilled
-import com.github.damontecres.wholphin.ui.components.BenflixIcon
-import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import org.jellyfin.sdk.model.api.LyricDto
 import kotlin.math.abs
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Phone Now playing, built for one hand (Ben picked option B, plus lyrics and the music bars):
- * big album cover on top (swipe it left/right to skip), the song name centred, the words under it,
- * then a thick seek bar, the big back / play-pause / next trio in the middle, and heart / Up next / Stop
- * just below, all in the bottom half where the thumb rests. The bars bounce along the very bottom.
+ * Phone Now playing (music player redesign 2026-11-17): the same pieces as the TV, stacked for one hand.
+ * The cover (swipe it left/right to skip), the name, the tower progress line (tap or drag it), Shuffle /
+ * Previous / Play / Next, then Like, Play on, Stop and More. The panel (Lyrics, Up next, About, Songs like
+ * this) peeks up from the bottom and fills the rest of the screen; tap its handle to pull it up full size.
  */
 @Composable
 internal fun PhoneNowPlaying(
     viewModel: MusicNowPlayingViewModel,
     audio: AudioItem?,
     from: String?,
-    lyrics: LyricDto?,
-    lyricIndex: Int?,
-    next: AudioItem?,
     position: Long,
     duration: Long,
     playing: Boolean,
     liked: Boolean,
     easy: Boolean,
-    towersHeight: Dp,
+    barsOn: Boolean,
+    shuffle: ShuffleMode,
     boxHeight: Dp,
     boxWidth: Dp,
+    panelTabs: @Composable () -> Unit,
+    panelBody: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).padding(top = 14.dp),
-    ) {
-        val coverSize = minOf(boxWidth - 48.dp, boxHeight * (if (lyrics != null) 0.26f else 0.4f))
-        SwipeCover(audio, coverSize, onNext = viewModel::next, onPrevious = viewModel::previous)
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = audio?.title.orEmpty(),
-            color = BenflixColors.Text,
-            fontSize = if (easy) 28.sp else 24.sp,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        val line = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · ")
-        Text(
-            text = line,
-            color = BenflixColors.Soft,
-            fontSize = BenflixType.body,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        )
-        if (!from.isNullOrBlank()) {
-            MusicKicker("From $from", Modifier.padding(top = 6.dp))
+    var expanded by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = expanded) { expanded = false }
+    val playFocus =
+        remember {
+            androidx.compose.ui.focus
+                .FocusRequester()
         }
-        Words(lyrics, lyricIndex, next, easy)
-        SeekBar(position, duration) { viewModel.player.seekTo(it) }
-        Spacer(Modifier.height(14.dp))
-        // The big trio, centred, play/pause in the middle
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(22.dp),
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize().padding(top = 12.dp),
         ) {
-            RoundButton(64.dp, BenflixIcon.PREVIOUS, "Previous song", onClick = viewModel::previous)
-            RoundButton(
-                size = 84.dp,
-                icon = if (playing) BenflixIcon.PAUSE else null,
-                description = if (playing) "Pause" else "Play",
-                primary = true,
-                filledPlay = !playing,
-                onClick = viewModel::playPause,
-            )
-            RoundButton(64.dp, BenflixIcon.NEXT, "Next song", onClick = viewModel::next)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            SmallButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, easy, filledHeart = liked, onClick = viewModel::like)
-            SmallButton("Up next", BenflixIcon.LIST, easy, onClick = viewModel::openUpNext)
-            // Music redesign 3: the About cards (with Songs like this to ask for) and Play on another screen
-            SmallButton("About", BenflixIcon.INFO, easy, onClick = viewModel::openAbout)
-            SmallButton("Play on", BenflixIcon.TV, easy, onClick = { viewModel.playOnOpen.value = true })
-            SmallButton("Stop", BenflixIcon.STOP, easy, onClick = viewModel::stop)
-            SmallButton("More", BenflixIcon.MORE_VERT, easy, onClick = viewModel::openMenu)
-        }
-        // Ben 2026-11-17: songs like this one that aren't on Benflix yet (30-second taste + Ask), right on the player.
-        // Its own named button under the round ones, because a 7th round button doesn't fit across a phone.
-        if (viewModel.canAsk) {
-            Spacer(Modifier.height(10.dp))
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                MusicButton("Songs like this", BenflixIcon.STAR, onClick = viewModel::openSimilar)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 22.dp),
+            ) {
+                val coverSize = minOf(boxWidth - 44.dp, boxHeight * (if (easy) 0.24f else 0.3f))
+                SwipeCover(audio, coverSize, onNext = viewModel::next, onPrevious = viewModel::previous)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = audio?.title.orEmpty(),
+                    color = BenflixColors.Text,
+                    fontSize = if (easy) 28.sp else 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val line = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · ")
+                Text(
+                    text = line,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                )
+                if (!from.isNullOrBlank()) {
+                    MusicKicker("From $from", Modifier.padding(top = 4.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+                PlayerProgress(
+                    position,
+                    duration,
+                    playing,
+                    barsOn,
+                    isTv = false,
+                    onSeek = viewModel::seekTo,
+                    towers = 30,
+                    height = 28.dp,
+                )
+                Spacer(Modifier.height(6.dp))
+                PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = {}, big = true)
+                Spacer(Modifier.height(10.dp))
+                PlayerRoundButtons(viewModel, liked, easy, size = 46.dp)
             }
+            Spacer(Modifier.height(12.dp))
+            // The panel peeks up from the bottom and takes whatever room is left (never an empty gap)
+            PhonePanel(
+                onHandle = { expanded = true },
+                tabs = panelTabs,
+                body = panelBody,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            )
         }
-        // The bars sit along the bottom; the small buttons overlap their tops a little
-        // Any spare room sits here, so the buttons stay up with the words and clear of the bars (Ben)
-        Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(towersHeight + 8.dp))
+        if (expanded) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(BenflixColors.Tray.copy(alpha = .7f))
+                    .clickable(onClickLabel = "Close", onClick = { expanded = false }),
+            )
+            PhonePanel(
+                onHandle = { expanded = false },
+                tabs = panelTabs,
+                body = panelBody,
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.88f).align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 
-/** The lyrics (centred, the line being sung in white), or the next song when there are none */
+/** The bottom sheet: a handle (tap to pull it up or let it down), the tabs, and the chosen tab */
 @Composable
-private fun Words(
-    lyrics: LyricDto?,
-    lyricIndex: Int?,
-    next: AudioItem?,
-    easy: Boolean,
+private fun PhonePanel(
+    onHandle: () -> Unit,
+    tabs: @Composable () -> Unit,
+    body: @Composable ColumnScope.() -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    if (lyrics != null) {
-        // Three lines (Ben): the one before, the one being sung, and the next
-        val fontSize = if (easy) 19f else 16f
-        val threeLines = with(LocalDensity.current) { (fontSize * 1.3f * 3).sp.toDp() } + 36.dp
-        LyricsColumn(
-            lyrics,
-            lyricIndex,
-            Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(threeLines),
-            fontSize = fontSize,
-            center = true,
-        )
-    } else {
-        Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { UpNextLine(next) }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier =
+            modifier
+                .background(
+                    androidx.compose.ui.graphics
+                        .Color(0xFF1A1529),
+                    RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+                ).padding(horizontal = 14.dp)
+                .padding(bottom = 8.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(26.dp)
+                    .clickable(onClickLabel = "Pull up", onClick = onHandle),
+        ) {
+            Box(Modifier.size(width = 44.dp, height = 5.dp).background(BenflixColors.Muted, RoundedCornerShape(3.dp)))
+        }
+        Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), contentAlignment = Alignment.Center) { tabs() }
+        Column(Modifier.fillMaxWidth().weight(1f)) { body() }
     }
 }
 
@@ -221,137 +227,5 @@ private fun SwipeCover(
             },
     ) {
         CoverImage(audio?.imageUrl, Modifier.fillMaxSize(), shape = RoundedCornerShape(16.dp))
-    }
-}
-
-/** Thick seek bar with a round handle: tap or drag anywhere on it to jump in the song */
-@Composable
-private fun SeekBar(
-    position: Long,
-    duration: Long,
-    onSeek: (Long) -> Unit,
-) {
-    var dragAt by remember { mutableStateOf<Float?>(null) }
-    val f = dragAt ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-    Column(Modifier.fillMaxWidth()) {
-        BoxWithConstraints(
-            Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .systemGestureExclusion()
-                .pointerInput(duration) {
-                    detectTapGestures { o ->
-                        if (duration > 0) onSeek((o.x / size.width * duration).toLong().coerceIn(0L, duration))
-                    }
-                }.pointerInput(duration) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { o -> dragAt = (o.x / size.width).coerceIn(0f, 1f) },
-                        onDragEnd = {
-                            dragAt?.let { if (duration > 0) onSeek((it * duration).toLong()) }
-                            dragAt = null
-                        },
-                        onDragCancel = { dragAt = null },
-                        onHorizontalDrag = { change, _ ->
-                            change.consume()
-                            dragAt = (change.position.x / size.width).coerceIn(0f, 1f)
-                        },
-                    )
-                },
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            val w = maxWidth
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(7.dp)
-                    .background(BenflixColors.Line, RoundedCornerShape(4.dp)),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(f)
-                        .fillMaxHeight()
-                        .background(BenflixColors.Music, RoundedCornerShape(4.dp)),
-                )
-            }
-            Box(
-                Modifier
-                    .offset(x = (w - 18.dp) * f)
-                    .size(18.dp)
-                    .background(BenflixColors.Text, CircleShape),
-            )
-        }
-        Row(Modifier.fillMaxWidth()) {
-            val shownAt = dragAt?.let { (it * duration).toLong() } ?: position
-            Text(songLength(shownAt.milliseconds), color = BenflixColors.Muted, fontSize = BenflixType.small)
-            Spacer(Modifier.weight(1f))
-            Text(songLength(duration.milliseconds), color = BenflixColors.Muted, fontSize = BenflixType.small)
-        }
-    }
-}
-
-@Composable
-private fun RoundButton(
-    size: Dp,
-    icon: BenflixIcon?,
-    description: String,
-    onClick: () -> Unit,
-    primary: Boolean = false,
-    filledPlay: Boolean = false,
-) {
-    val fg = if (primary) BenflixColors.Tray else BenflixColors.Text
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(if (primary) BenflixColors.Text else BenflixColors.Raised)
-                .clickable(onClickLabel = description, onClick = onClick),
-    ) {
-        val iconSize = size * 0.4f
-        if (filledPlay) {
-            Image(
-                BenflixPlayFilled,
-                contentDescription = description,
-                colorFilter = ColorFilter.tint(fg),
-                modifier = Modifier.size(iconSize),
-            )
-        } else if (icon != null) {
-            BenflixIconImage(icon, color = fg, size = iconSize, contentDescription = description)
-        }
-    }
-}
-
-/** Heart / Up next / About / Play on / Stop / More: 48dp circles (six fit across a small phone), with their names under them in Easy read */
-@Composable
-private fun SmallButton(
-    label: String,
-    icon: BenflixIcon,
-    easy: Boolean,
-    onClick: () -> Unit,
-    filledHeart: Boolean = false,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = label, onClick = onClick).padding(4.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(48.dp).background(BenflixColors.Raised, CircleShape),
-        ) {
-            if (filledHeart) {
-                Image(
-                    BenflixHeartFilled,
-                    contentDescription = label,
-                    colorFilter = ColorFilter.tint(BenflixColors.Music),
-                    modifier = Modifier.size(22.dp),
-                )
-            } else {
-                BenflixIconImage(icon, color = BenflixColors.Text, size = 22.dp, contentDescription = label)
-            }
-        }
-        if (easy) {
-            Text(label, color = BenflixColors.Soft, fontSize = BenflixType.small, modifier = Modifier.padding(top = 4.dp))
-        }
     }
 }

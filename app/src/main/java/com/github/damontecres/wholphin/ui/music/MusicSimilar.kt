@@ -151,7 +151,7 @@ fun SimilarSongsPanel(
 }
 
 @Composable
-private fun SimilarLine(
+internal fun SimilarLine(
     song: MusicSong,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

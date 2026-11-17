@@ -228,6 +228,7 @@
       const lines = (j.Lyrics || []).filter((l) => (l.Text || "").trim());
       M.lyrics = lines.length ? { lines, timed: lines.some((l) => l.Start != null && l.Start > 0) } : null;
     } catch (e) { M.lyrics = null; }
+    if (M.current() === s) M.lyricsChecked = s.Id;
     drawNow(true);
   };
   const lyricIndex = () => {
@@ -250,7 +251,7 @@
       bar.innerHTML = `<button class="mbar-open" data-open title="Now playing"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
         <div class="mbar-ctl"><button class="circle" data-a="prev" title="Previous song">${icon("prev")}</button><button class="circle white" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song">${I("next")}</button>
         <button class="circle mheart" data-a="like" title="Like (L)">${I("heart")}</button>${B.volume("", "circle")}</div>
-        <div class="mbar-line"><i></i></div>`;
+        <canvas class="mbar-towers"></canvas>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
         if (a) { e.stopPropagation(); return act(a.dataset.a); }
@@ -282,22 +283,20 @@
     else if (a === "like") M.like();
     else if (a === "stop") M.stop();
     else if (a === "queue") { closeNow(); B.go("#/upnext"); }
-    else if (a === "similar") similarSongs();
-    else if (a === "about") aboutCards();
+    else if (a === "similar") { openNow(); showTab("like"); }
+    else if (a === "about") { openNow(); showTab("about"); }
+    else if (a === "shuffle") cycleShuffle();
     else if (a === "playon") playOn();
   };
-  // Music redesign 3 (np cards): About the artist, Credits, Next in queue, Songs like this to ask for
-  async function aboutCards() {
+  // Music player 2026-11-17: the About tab (the artist and the credits) inside Now playing's panel
+  async function aboutInto(box) {
     const s = M.current();
-    if (!s) return;
-    closeNow();
-    const card = (title, body) => `<div class="mcard"><div class="mkick">${esc(title)}</div>${body}</div>`;
-    const panel = B.side(`<h3>About this song</h3><div id="mabout">${B.spinner()}</div>`);
+    if (!s || !box) return;
+    box.innerHTML = B.spinner();
     const full = await B.get(`/Users/${B.uid()}/Items/${enc(s.Id)}`).catch(() => s);
     const ar = (full.AlbumArtists || [])[0] || (full.ArtistItems || [])[0];
     const artist = ar ? await B.get(`/Users/${B.uid()}/Items/${enc(ar.Id)}`).catch(() => null) : null;
-    const box = $("#mabout", panel);
-    if (!box || !document.body.contains(panel)) return;
+    if (M.current() !== s || !document.body.contains(box)) return;
     const ROLES = { Composer: "Written by", Lyricist: "Words by", Producer: "Produced by", Arranger: "Arranged by", Conductor: "Conducted by" };
     const credits = [];
     if ((full.Artists || []).length) credits.push(["Performed by", full.Artists.join(", ")]);
@@ -306,18 +305,10 @@
     Object.keys(byRole).forEach((k) => credits.push([ROLES[k], [...new Set(byRole[k])].join(", ")]));
     if (full.Album) credits.push(["Album", [full.Album, full.ProductionYear].filter(Boolean).join(" · ")]);
     if ((full.Genres || []).length) credits.push(["Style", full.Genres.slice(0, 3).join(", ")]);
-    const next = M.queue.slice(M.index + 1, M.index + 4);
     const pic = ar ? B.img(ar.Id, "Primary", { h: 200 }) : "";
-    box.innerHTML = card("About the artist", `<div class="mabout-ar"><span class="mabout-pic" style="${pic ? `background-image:url('${pic}')` : ""}"></span><b>${esc((ar && ar.Name) || artistOf(s))}</b></div>
-        ${artist && artist.Overview ? `<p class="dim mabout-bio">${esc(artist.Overview)}</p>` : ""}${ar ? `<a class="btn small" href="#/artist/${ar.Id}">${I("user")} Go to artist</a>` : ""}`)
-      + (credits.length ? card("Credits", credits.map(([r, n]) => `<div class="mcredit"><small class="dim">${esc(r)}</small><div>${esc(n)}</div></div>`).join("")) : "")
-      + card("Next in queue", (next.length ? next.map((x) => `<div class="mnextq"><span class="sc" style="background-image:url('${cover(x, 80)}')"></span><span><b>${esc(x.Name)}</b><small class="dim">${esc(artistOf(x))}</small></span></div>`).join("") : `<p class="dim">Nothing waiting. A mix like this one starts by itself.</p>`)
-        + `<a class="btn small" href="#/upnext">${I("list")} Open the queue</a>`)
-      + (B.me.kids || B.me.guest ? "" : card("Songs like this to ask for", `<p class="dim">Songs like this one that aren't on Benflix yet. Play 30 seconds of each, then ask for the ones you like.</p><button class="btn small" data-simnow>${I("plus")} Show songs like this</button>`));
-    box.addEventListener("click", (e) => {
-      if (e.target.closest("[data-simnow]")) { B.closeAll(); openNow(); similarSongs(); }
-      else if (e.target.closest("a")) B.closeAll();
-    });
+    box.innerHTML = `<div class="mkick">About the artist</div><div class="mabout-ar"><span class="mabout-pic" style="${pic ? `background-image:url('${pic}')` : ""}"></span><b>${esc((ar && ar.Name) || artistOf(s))}</b>${ar ? `<a class="btn small" href="#/artist/${ar.Id}">${I("user")} Go to artist</a>` : ""}</div>
+      ${artist && artist.Overview ? `<p class="dim mabout-bio">${esc(artist.Overview)}</p>` : ""}
+      ${credits.length ? `<div class="mkick" style="margin-top:14px">Credits</div><div class="np-credits">${credits.map(([r, n]) => `<div class="mcredit"><small class="dim">${esc(r)}</small><div>${esc(n)}</div></div>`).join("")}</div>` : ""}`;
   }
   // Music redesign 3: Play on. Another Benflix (a TV or phone open on Benflix) plays the queue from here, straight away
   async function playOn() {
@@ -343,48 +334,34 @@
       } catch (err) { B.toast(`Couldn't reach ${b.textContent.trim()}`); }
     });
   }
-  // Ben 2026-11-15: a few songs like the playing one that you can ask for (songs already in your music left out)
-  async function similarSongs() {
+  // Music player 2026-11-17: the Songs like this tab. Songs like the playing one that aren't on Benflix yet:
+  // the round button plays 30 seconds, picking a song opens its Ask for it panel, and the list keeps its place.
+  async function similarInto(box) {
     const s = M.current();
-    if (!s) return;
+    if (!s || !box) return;
     const title = s.Name || "";
     const artist = (artistOf(s) || "").split(",")[0].trim();
-    closeNow();
     const admin = B.me.admin;
-    const head = `<h3>Songs like this</h3><p class="dim">Like ${esc(title)}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.</p>`;
-    let panel = B.side(head + `<div id="msim">${B.spinner()}</div>`);
+    box.innerHTML = `<p class="dim">Like ${esc(title)}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.</p><div class="np-sim">${B.spinner()}</div>`;
     let found;
-    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
-    if (!document.contains(panel)) return; // closed while it was looking
+    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { const l = $(".np-sim", box); if (l) l.innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+    if (M.current() !== s || !document.body.contains(box)) return;
     const songs = (found && found.songs) || [];
-    const rows = () => songs.length ? songs.map((x, i) => `<div style="display:flex;align-items:center;gap:8px">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`} style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:left;margin:0">
-        <span style="flex:none;width:44px;height:44px;border-radius:6px;background:var(--pg3) center/cover;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
-        <span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button></div>`).join("")
+    const list = $(".np-sim", box);
+    const rows = () => songs.length ? songs.map((x, i) => `<div class="np-simrow">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`}>
+        <span class="np-simc" style="${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
+        <span style="min-width:0"><b>${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button></div>`).join("")
       : `<p class="dim">Nothing new like this one right now.</p>`;
-    // Ben 2026-11-16: the list stays put. Asking for a song opens its ask panel with a Back button, and once it's
-    // asked for you land back on the same list (scrolled where you were) with that song marked, ready for the next one.
-    let scroll = 0;
-    const showList = (focusI) => {
-      if (!panel) panel = B.side(head + `<div id="msim"></div>`);
-      $("#msim", panel).innerHTML = rows();
-      panel.scrollTop = scroll;
-      const f = focusI != null && panel.querySelectorAll("#msim .opt")[focusI];
-      if (f) f.focus({ preventScroll: true });
-      panel.addEventListener("click", (ev) => {
-        const one = ev.target.closest("[data-sim]");
-        if (one) showAsk(+one.dataset.sim);
-      });
-    };
-    const showAsk = (i) => {
-      const x = songs[i];
-      scroll = panel ? panel.scrollTop : 0;
-      panel = null;
-      const ask = B.side(`<button class="btn small" data-simback style="margin-bottom:12px">${I("left")} Songs like this</button><h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
+    list.innerHTML = rows();
+    list.addEventListener("click", (ev) => {
+      const one = ev.target.closest("[data-sim]");
+      if (!one) return;
+      const i = +one.dataset.sim, x = songs[i];
+      const ask = B.side(`<h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
         ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
         <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(x.id)}<span class="dim">Hear 30 seconds</span></div>
         <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button>${x.album_id ? `<button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>` : ""}`);
       ask.addEventListener("click", (e2) => {
-        if (e2.target.closest("[data-simback]")) { showList(i); return; }
         const p = e2.target.closest("[data-pick]");
         if (!p) return;
         const album = p.dataset.pick === "album";
@@ -393,48 +370,62 @@
           B.previewStop();
           const words = admin ? "Asked for" : "Asked Ben";
           songs.forEach((y) => { if (y === x || (album && y.album_id && String(y.album_id) === String(x.album_id))) y.asked = words; });
-          showList(i);
+          list.innerHTML = rows();
+          B.closeAll();
           return admin ? `Asked for ${album ? x.album : x.title}.` : `Asked Ben for ${album ? x.album : x.title}.`;
         });
       });
-    };
-    showList();
+    });
   }
   setInterval(() => {
     if (!bar || !M.current()) return;
-    const d = songLen();
-    $(".mbar-line i", bar).style.width = d ? Math.min(100, 100 * pos() / d) + "%" : "0";
     drawNow(false, true);
   }, 500);
 
-  // ---------- Now playing (approved np-cover + w-column) ----------
-  let np, raf;
+  // ---------- Now playing (music player 2026-11-17, Ben's final sheet) ----------
+  // The song side centred (cover, name, the logo-square towers inside the progress line, Shuffle / Previous /
+  // Play / Next and volume, then Like, Play on, Stop and More as circles with a word under each), and one
+  // full-height panel with Lyrics, Up next, About and Songs like this, plus the next three songs along its
+  // bottom. Songs with no words open on About. Click a lyric line to play from there. A narrow window puts the
+  // panel under the song (the round buttons always stay circles).
+  let np, raf, npTab = "lyrics", tabMoved = false;
+  const tabFor = {};
+  const TABS = () => [["lyrics", "Lyrics"], ["upnext", "Up next"], ["about", "About"]].concat(B.me.kids || B.me.guest ? [] : [["like", "Songs like this"]]);
+  const roundBtn = (a, ic, word, cls) => `<button class="np-rb ${cls || ""}" data-a="${a}"><span class="circle">${ic}</span><small>${word}</small></button>`;
   function openNow() {
     if (!M.current()) return;
     if (!np) {
       np = document.createElement("div");
       np.className = "np";
-      np.innerHTML = `<canvas class="np-towers"></canvas><div class="np-fade"></div>
-        <button class="circle np-x" data-x title="Close (Esc)">${I("down")}</button>
-        <div class="np-main"><div class="np-cover"></div>
-          <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
-            <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
-            <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="about" title="About the artist, credits, what's next, songs like this">${I("info")} About</button>${B.me.kids || B.me.guest ? "" : `<button class="btn" data-a="similar" title="Songs like this one that aren't on Benflix yet: hear 30 seconds, ask for the ones you like">${I("star")} Songs like this</button>`}<button class="btn" data-a="playon" title="Play on a TV or phone that's open on Benflix">${I("tv")} Play on</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
-            <div class="np-next"></div>
+      np.innerHTML = `<button class="circle np-x" data-x title="Close (Esc)">${I("down")}</button>
+        <div class="np-main">
+          <div class="np-song">
+            <div class="np-cover"></div>
+            <div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
+            <div class="np-prog"><span class="np-now">0:00</span><canvas class="np-line" title="Click to jump (Shift + Left/Right: 10 seconds)"></canvas><span class="np-len">0:00</span></div>
+            <div class="np-ctl"><button class="circle np-shuf" data-a="shuffle" title="Shuffle">${icon("shuffle")}</button><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
+            <div class="np-round">${roundBtn("like", I("heart"), "Like", "mheart")}${roundBtn("playon", I("tv"), "Play on")}${roundBtn("stop", icon("stop"), "Stop")}${roundBtn("more", I("more"), "More")}</div>
           </div>
-          <div class="np-words"></div>
+          <div class="np-panel">
+            <div class="np-tabs"></div>
+            <div class="np-body"></div>
+            <div class="np-upnext"></div>
+          </div>
         </div>`;
       np.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
-        // Ben 2026-11-17: More has Songs like this too (everyone but Kids and Guest)
-        if (a && a.dataset.a === "more") return M.current() && songMenu(a, M.current(), B.me.kids || B.me.guest ? null : [{ label: "Songs like this to ask for", value: "similar", run: similarSongs }]);
+        if (a && a.dataset.a === "more") return M.current() && songMenu(a, M.current(), B.me.kids || B.me.guest ? null : [{ label: "Songs like this to ask for", value: "similar", run: () => showTab("like") }]);
         if (a) return act(a.dataset.a);
         if (e.target.closest("[data-x]")) return closeNow();
-        const tr = e.target.closest(".np-track");
-        if (tr && songLen()) { const r = tr.getBoundingClientRect(); seek(songLen() * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); }
-        const nx = e.target.closest("[data-upnext]");
-        if (nx) { closeNow(); B.go("#/upnext"); }
+        const tab = e.target.closest("[data-tab]");
+        if (tab) return showTab(tab.dataset.tab, true);
+        const line = e.target.closest(".np-line");
+        if (line && songLen()) { const r = line.getBoundingClientRect(); seek(songLen() * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); return; }
+        const jump = e.target.closest("[data-jump]");
+        if (jump) { seek(+jump.dataset.jump); return; }
+        const play = e.target.closest("[data-playat]");
+        if (play) { load(+play.dataset.playat); return; }
+        if (e.target.closest("[data-openq]")) { closeNow(); B.go("#/upnext"); }
       });
       document.body.appendChild(np);
       B.wireVolume($(".volw", np), audio, "musicVolume");
@@ -448,13 +439,90 @@
     if (!np) return;
     np.classList.remove("on");
     document.body.classList.remove("np-open");
-    cancelAnimationFrame(raf);
   }
   M.openNow = openNow;
   // Going to another page (Go to artist or Go to album in More, a link, or the browser's Back) closes Now playing,
   // which used to stay on top of the new page
   window.addEventListener("hashchange", () => closeNow());
+  // Shuffle on the player: one button, Off, then Shuffle, then Smart shuffle (songs like these join in)
+  let shuffleMode = 0;
+  async function cycleShuffle() {
+    const rest = M.queue.slice(M.index + 1);
+    if (shuffleMode === 2 || !rest.length) {
+      shuffleMode = 0;
+      B.toast("Shuffle off");
+    } else if (shuffleMode === 0) {
+      shuffleMode = 1;
+      M.queue = M.queue.slice(0, M.index + 1).concat(rest.sort(() => Math.random() - 0.5));
+      B.toast("Shuffle on");
+    } else {
+      shuffleMode = 2;
+      const s = M.current();
+      let extra = [];
+      try {
+        const have = new Set(M.queue.map((x) => x.Id));
+        extra = ((await B.get(`/Items/${enc(s.Id)}/InstantMix?UserId=${B.uid()}&Limit=12&${SONG_FIELDS}`)).Items || []).filter((x) => x.Type === "Audio" && !have.has(x.Id));
+      } catch (e) {}
+      const left = M.queue.slice(M.index + 1), mixed = [];
+      left.forEach((x, i) => { mixed.push(x); if (i % 3 === 2 && extra.length) mixed.push(Object.assign({}, extra.shift(), { _key: Math.random() })); });
+      M.queue = M.queue.slice(0, M.index + 1).concat(mixed, extra.map((x) => Object.assign({}, x, { _key: Math.random() })));
+      B.toast(mixed.length > left.length || extra.length ? "Smart shuffle: songs like these join in" : "Shuffling (no songs like these found yet)");
+    }
+    draw();
+  }
+  function showTab(t, byHand) {
+    npTab = t;
+    if (byHand) tabMoved = false;
+    drawNpPanel(true);
+  }
   let lastLyric = -2;
+  // The panel's middle: only redrawn when the tab or the song changes (lyrics just move the lit line)
+  function drawNpPanel(full) {
+    if (!np) return;
+    const s = M.current();
+    if (!s) return;
+    const noWords = !M.lyrics && M.lyricsChecked === s.Id;
+    // Ben: a song with no words opens on About; the next song with words goes back to Lyrics
+    if (noWords && npTab === "lyrics" && !tabMoved && full !== "tab") { npTab = "about"; tabMoved = true; }
+    else if (M.lyrics && tabMoved && npTab === "about") { npTab = "lyrics"; tabMoved = false; }
+    $(".np-tabs", np).innerHTML = TABS().map(([k, w]) => `<button class="np-tab ${k === npTab ? "on" : ""} ${k === "lyrics" && noWords ? "faded" : ""}" data-tab="${k}">${w}</button>`).join("");
+    const body = $(".np-body", np);
+    if (npTab === "lyrics") {
+      if (full || body.dataset.tab !== "lyrics" || body.dataset.song !== s.Id) {
+        body.dataset.tab = "lyrics"; body.dataset.song = s.Id;
+        lastLyric = -2;
+        body.innerHTML = M.lyrics
+          ? `<div class="np-words">${M.lyrics.lines.map((l, k) => M.lyrics.timed ? `<button class="np-ly" data-jump="${(l.Start || 0) / B.TICKS}" data-k="${k}" title="Play from here">${esc(l.Text)}</button>` : `<p class="np-ly" data-k="${k}">${esc(l.Text)}</p>`).join("")}</div>`
+          : noWords ? `<div class="np-note"><b>No words for this song yet</b><p class="dim">Benflix looks for them every night, so they may turn up tomorrow.</p></div>` : `<p class="dim">Looking for the words…</p>`;
+      }
+      drawLyric();
+    } else if (npTab === "upnext") {
+      body.dataset.tab = "upnext"; body.dataset.song = s.Id;
+      const next = M.queue.slice(M.index + 1, M.index + 13);
+      body.innerHTML = (next.length ? next.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${cover(x, 80) ? `background-image:url('${cover(x, 80)}')` : ""}"></span><span><b>${esc(x.Name)}</b><small class="dim">${esc(artistOf(x))}</small></span></button>`).join("") : `<div class="np-note"><b>Nothing waiting</b><p class="dim">When this song ends, a mix like it starts by itself.</p></div>`)
+        + `<button class="btn small" data-openq style="margin-top:10px">${I("list")} Open the queue</button>`;
+    } else if (body.dataset.tab !== npTab || body.dataset.song !== s.Id) {
+      body.dataset.tab = npTab; body.dataset.song = s.Id;
+      if (npTab === "about") aboutInto(body); else similarInto(body);
+    }
+    const up = M.queue.slice(M.index + 1, M.index + 4);
+    $(".np-upnext", np).innerHTML = `<div class="mkick">Up next</div><div class="np-uprow">${up.length ? up.map((x, k) => `<button class="np-q" data-playat="${M.index + 1 + k}"><span class="np-upcover" style="${cover(x, 80) ? `background-image:url('${cover(x, 80)}')` : ""}"></span><span><b>${esc(x.Name)}</b></span></button>`).join("") : `<span class="dim">A mix like this one starts by itself.</span>`}</div>`;
+  }
+  function drawLyric() {
+    if (!np || npTab !== "lyrics" || !M.lyrics) return;
+    const i = lyricIndex();
+    if (i === lastLyric) return;
+    lastLyric = i;
+    const box = $(".np-words", np);
+    if (!box) return;
+    $$(".np-ly", box).forEach((p) => p.classList.toggle("on", +p.dataset.k === i));
+    const on = $(`.np-ly[data-k="${i}"]`, box);
+    // Keep the line being sung second from the top, unless you're picking a line yourself
+    if (on && !box.matches(":hover") && !box.contains(document.activeElement)) {
+      const prev = on.previousElementSibling || on;
+      box.scrollTo({ top: prev.offsetTop - box.offsetTop, behavior: "smooth" });
+    }
+  }
   function drawNow(full, tick) {
     if (!np || !np.classList.contains("on")) return;
     const s = M.current();
@@ -462,95 +530,114 @@
     if (!tick || full) {
       const art = cover(s, 700);
       $(".np-cover", np).style.backgroundImage = art ? `url('${art}')` : "";
+      // A soft glow from the cover's colours (Ben's pick): the cover itself, blurred, behind everything
+      np.style.setProperty("--npart", art ? `url('${art}')` : "none");
+      $(".np-kick", np).textContent = M.thenTitle ? `NOW PLAYING · FROM ${M.thenTitle.toUpperCase()}` : "NOW PLAYING";
       $(".np-t", np).textContent = s.Name || "";
       $(".np-a", np).textContent = [artistOf(s), s.Album].filter(Boolean).join(" · ");
       $("[data-a=toggle]", np).innerHTML = audio.paused ? I("play") : I("pause");
-      $(".np-ctl2 .mheart", np).classList.toggle("on", M.liked.has(s.Id));
-      const n = M.queue[M.index + 1];
-      $(".np-next", np).innerHTML = n
-        ? `<button class="np-up" data-upnext><span class="np-upcover" style="${cover(n, 80) ? `background-image:url('${cover(n, 80)}')` : ""}"></span><span><small>UP NEXT</small>${esc([n.Name, artistOf(n)].filter(Boolean).join(" · "))}</span></button>`
-        : `<div class="dim">Up next: a mix like this song</div>`;
-      np.classList.toggle("nowords", !M.lyrics);
-      lastLyric = -2;
+      const liked = M.liked.has(s.Id);
+      $(".np-round .mheart", np).classList.toggle("on", liked);
+      $(".np-round .mheart small", np).textContent = liked ? "Liked" : "Like";
+      const sh = $(".np-shuf", np);
+      sh.classList.toggle("on", shuffleMode > 0);
+      sh.classList.toggle("smart", shuffleMode === 2);
+      sh.title = ["Shuffle is off", "Shuffle is on", "Smart shuffle is on"][shuffleMode];
+      drawNpPanel(full);
     }
     const d = songLen();
     $(".np-now", np).textContent = B.hms(pos());
     $(".np-len", np).textContent = d ? B.hms(d) : "";
-    $(".np-track i", np).style.width = d ? Math.min(100, 100 * pos() / d) + "%" : "0";
-    if (M.lyrics) {
-      const i = lyricIndex();
-      if (i !== lastLyric || full) {
-        lastLyric = i;
-        const from = Math.max(0, i - 2);
-        $(".np-words", np).innerHTML = M.lyrics.lines.slice(from, from + 5).map((l, k) => `<p class="${from + k === i ? "on" : ""}">${esc(l.Text)}</p>`).join("");
-      }
-    } else $(".np-words", np).innerHTML = "";
+    drawLyric();
   }
 
-  // The towers: the same soft squares as the logo, in the door colours from low (amber) to high (violet)
+  // The towers: the same soft squares as the logo, now inside the progress line (Ben's pick). Played part lit in
+  // the door colours, amber at the bottom up to violet at the top, the rest grey. The bar at the bottom of every
+  // page gets the same line, smaller.
   let ctx, analyser, data;
   // Browsers pause the sound graph when the tab sleeps; wake it or the music goes silent
   function wakeSound() { try { if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); } catch (e) {} }
-  audio.addEventListener("play", wakeSound);
+  audio.addEventListener("play", () => { wakeSound(); startTowers(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) wakeSound(); });
   const COLORS = ["#FFB547", "#7AA7FF", "#3DD6C6", "#FF6F91", MUSIC];
+  const levels = [];
+  let towersOn = false;
   function startTowers() {
-    if (B.webSettings().musicBarsOff) return;
-    try {
-      if (!ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        ctx = new AC();
-        const node = ctx.createMediaElementSource(audio);
-        analyser = ctx.createAnalyser();
-        analyser.fftSize = 1024;
-        analyser.smoothingTimeConstant = 0.7;
-        node.connect(analyser);
-        analyser.connect(ctx.destination);
-        data = new Uint8Array(analyser.frequencyBinCount);
-      }
-      if (ctx.state === "suspended") ctx.resume();
-    } catch (e) { analyser = null; }
-    const c = $(".np-towers", np);
-    const shown = [], peaks = [];
+    if (np && np.classList.contains("on") && !B.webSettings().musicBarsOff) {
+      try {
+        if (!ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          ctx = new AC();
+          const node = ctx.createMediaElementSource(audio);
+          analyser = ctx.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.7;
+          node.connect(analyser);
+          analyser.connect(ctx.destination);
+          data = new Uint8Array(analyser.frequencyBinCount);
+        }
+        if (ctx.state === "suspended") ctx.resume();
+      } catch (e) { analyser = null; }
+    }
+    if (towersOn) return;
+    towersOn = true;
+    const N = 32;
+    let quiet = 0;
     const frame = () => {
-      if (!np.classList.contains("on")) return;
+      const npOpen = np && np.classList.contains("on");
+      const barOn = bar && !bar.classList.contains("hidden") && !npOpen;
+      if (!M.current() || (!npOpen && !barOn) || document.hidden) { towersOn = false; return; }
       raf = requestAnimationFrame(frame);
-      const w = (c.width = c.clientWidth * devicePixelRatio), h = (c.height = c.clientHeight * devicePixelRatio);
-      const g = c.getContext("2d");
-      const n = w > 1400 ? 30 : 16;
-      const gap = w / n * 0.22, bw = (w - gap * (n - 1)) / n, gy = bw * 0.18;
-      const rows = Math.max(1, Math.floor((h + gy) / (bw + gy)));
-      if (analyser) analyser.getByteFrequencyData(data);
+      if (analyser && npOpen) analyser.getByteFrequencyData(data);
       const t = performance.now() / 1000;
-      for (let i = 0; i < n; i++) {
+      let any = false;
+      for (let i = 0; i < N; i++) {
         let target = 0;
         if (!audio.paused) {
-          if (analyser) {
-            // Log-spaced bands from about 40 Hz to 16 kHz
+          if (analyser && npOpen) {
             const nyq = (ctx.sampleRate || 44100) / 2, bins = data.length;
-            const f0 = 40 * Math.pow(16000 / 40, i / n), f1 = 40 * Math.pow(16000 / 40, (i + 1) / n);
+            const f0 = 40 * Math.pow(16000 / 40, i / N), f1 = 40 * Math.pow(16000 / 40, (i + 1) / N);
             const b0 = Math.floor(f0 / nyq * bins), b1 = Math.max(b0 + 1, Math.floor(f1 / nyq * bins));
             let sum = 0; for (let b = b0; b < b1 && b < bins; b++) sum += data[b];
             target = Math.min(1, (sum / (b1 - b0) / 255) * 1.15);
           } else {
-            const f = i / n;
-            target = Math.max(0, Math.min(1, 0.55 - 0.35 * f + 0.18 * Math.sin(t * (2.1 + f * 3) + i * 1.7)));
+            const f = i / N, beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2 * 1.05)), 6);
+            target = Math.max(0, Math.min(1, 0.55 - 0.35 * f + 0.18 * Math.sin(t * (2.1 + f * 3) + i * 1.7) + beat * (0.35 - 0.25 * f)));
           }
         }
-        shown[i] = shown[i] || 0; peaks[i] = peaks[i] || 0;
-        shown[i] = target > shown[i] ? shown[i] + (target - shown[i]) * 0.6 : Math.max(target, shown[i] - 0.03);
-        peaks[i] = shown[i] >= peaks[i] ? shown[i] : Math.max(0, peaks[i] - 0.008);
-        const x = i * (bw + gap), col = COLORS[Math.min(COLORS.length - 1, Math.floor(i * COLORS.length / n))];
-        const lit = Math.min(rows, Math.max(shown[i] > 0.02 ? 1 : 0, Math.floor(shown[i] * rows)));
-        g.fillStyle = col;
-        for (let r = 0; r < lit; r++) rr(g, x, h - (r + 1) * bw - r * gy, bw, bw, bw * 0.32);
-        const pr = Math.floor(peaks[i] * rows);
-        if (pr >= lit && pr >= 1 && pr < rows) { g.globalAlpha = 0.35; rr(g, x, h - (pr + 1) * bw - pr * gy, bw, bw, bw * 0.32); g.globalAlpha = 1; }
+        levels[i] = levels[i] || 0;
+        levels[i] = target > levels[i] ? levels[i] + (target - levels[i]) * 0.6 : Math.max(target, levels[i] - 0.04);
+        if (levels[i] > 0.01) any = true;
       }
+      const d = songLen(), f = d ? Math.min(1, pos() / d) : 0;
+      if (npOpen) towerLine($(".np-line", np), f, 56);
+      else if (barOn) towerLine($(".mbar-towers", bar), f, Math.max(24, Math.round((bar.clientWidth || 600) / 14)));
+      // Paused and settled: draw once more and stop (play starts it again)
+      quiet = audio.paused && !any ? quiet + 1 : 0;
+      if (quiet > 2) { towersOn = false; cancelAnimationFrame(raf); }
     };
     frame();
   }
   const rr = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.fill(); };
+  function towerLine(c, progress, n) {
+    if (!c) return;
+    const w = (c.width = Math.max(1, c.clientWidth * devicePixelRatio)), h = (c.height = Math.max(1, c.clientHeight * devicePixelRatio));
+    const g = c.getContext("2d");
+    const off = B.webSettings().musicBarsOff;
+    const gap = w / n * 0.25, bw = (w - gap * (n - 1)) / n, bh = Math.min(bw, h / 3), gy = bh * 0.22;
+    const rows = Math.max(1, Math.floor((h + gy) / (bh + gy)));
+    const lit = Math.floor(progress * n);
+    for (let i = 0; i < n; i++) {
+      const played = i < lit;
+      const lv = off ? 0 : (levels[(i * 2) % levels.length] || 0) * (played ? 1 : 0.5);
+      const up = Math.min(rows, Math.max(1, Math.floor(lv * rows)));
+      const x = i * (bw + gap);
+      for (let r = 0; r < up; r++) {
+        g.fillStyle = played ? COLORS[Math.min(COLORS.length - 1, Math.floor(r * COLORS.length / rows))] : "rgba(148,151,163,.45)";
+        rr(g, x, h - (r + 1) * bh - r * gy, bw, bh, Math.min(bw, bh) * 0.3);
+      }
+    }
+  }
 
   // ---------- keys ----------
   document.addEventListener("keydown", (e) => {

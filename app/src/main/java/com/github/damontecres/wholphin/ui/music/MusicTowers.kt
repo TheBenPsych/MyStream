@@ -122,3 +122,79 @@ private fun fallback(
     val wobble = 0.18 * sin(t * (2.1 + f * 3) + i * 1.7)
     return (base + wobble + beat * (0.35 - 0.25 * f)).toFloat().coerceIn(0f, 1f)
 }
+
+/**
+ * Music player 2026-11-17 (Ben's pick p3-progress): the progress line made of the same logo-square towers.
+ * Towers left of [progress] are lit in the door colours (amber at the bottom up to violet at the top) and
+ * dance to the music; the rest are grey and dance quietly. Every tower always keeps at least one square, so
+ * the line reads as a line even when the song is quiet or paused.
+ */
+@Composable
+fun TowerLine(
+    progress: Float,
+    playing: Boolean,
+    towers: Int,
+    modifier: Modifier = Modifier,
+    dancing: Boolean = true,
+    // The small players (pill, strip, mini bar) dance to a made-up beat, so the sound isn't measured on every page
+    measure: Boolean = true,
+) {
+    DisposableEffect(dancing, measure) {
+        val on = dancing && measure
+        if (on) MusicSpectrum.watching++
+        onDispose { if (on) MusicSpectrum.watching-- }
+    }
+    val shown = remember(towers) { FloatArray(towers) }
+    var frame by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playing, towers, dancing) {
+        if (!dancing) return@LaunchedEffect
+        var last = 0L
+        var settled = false
+        while (true) {
+            withFrameNanos { now ->
+                if (now - last < 32_000_000L) return@withFrameNanos
+                last = now
+                val fresh = System.currentTimeMillis() - MusicSpectrum.lastSoundAt < 1500
+                var any = false
+                for (i in 0 until towers) {
+                    // Spread the 32 sound bands over the line twice, so the whole line moves, not just one end
+                    val band = (i * 2) % towers
+                    val target =
+                        when {
+                            !playing -> 0f
+                            fresh -> level(band, towers)
+                            else -> fallback(band, towers, now / 1_000_000_000.0)
+                        }
+                    shown[i] = if (target > shown[i]) shown[i] + (target - shown[i]) * 0.6f else max(target, shown[i] - 0.05f)
+                    if (shown[i] > 0.001f) any = true
+                }
+                settled = !playing && !any
+                frame = now
+            }
+            if (settled) break
+        }
+    }
+    Canvas(modifier = modifier) {
+        if (frame < 0L) return@Canvas
+        val gapX = size.width / towers * 0.25f
+        val w = (size.width - gapX * (towers - 1)) / towers
+        val block = minOf(w, size.height / 3f)
+        val gapY = block * 0.22f
+        val rows = max(1, ((size.height + gapY) / (block + gapY)).toInt())
+        val corner = CornerRadius(block * 0.3f, block * 0.3f)
+        val litTowers = (progress.coerceIn(0f, 1f) * towers).toInt()
+        val grey = BenflixColors.Muted.copy(alpha = 0.45f)
+        for (i in 0 until towers) {
+            val x = i * (w + gapX)
+            val played = i < litTowers
+            // Grey towers dance at half height
+            val level = if (played) shown[i] else shown[i] * 0.5f
+            val lit = (level * rows).toInt().coerceIn(1, rows)
+            for (r in 0 until lit) {
+                val y = size.height - (r + 1) * block - r * gapY
+                val color = if (played) TowerColors[min(TowerColors.size - 1, r * TowerColors.size / rows)] else grey
+                drawRoundRect(color = color, topLeft = Offset(x, y), size = Size(w, block), cornerRadius = corner)
+            }
+        }
+    }
+}

@@ -1,12 +1,11 @@
 package com.github.damontecres.wholphin.ui.music
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,15 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +46,6 @@ import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.MusicSong
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NowPlayingStatus
-import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
@@ -69,6 +60,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
+import org.jellyfin.sdk.api.client.extensions.instantMixApi
 import org.jellyfin.sdk.api.client.extensions.lyricsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.LyricDto
@@ -76,7 +68,6 @@ import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class MusicNowPlayingViewModel
@@ -117,6 +108,7 @@ class MusicNowPlayingViewModel
             val title = audio.title.orEmpty()
             similarNote.value = null
             similarPicked.value = null
+            similarFor = audio.id
             _similar.value = SimilarState.Loading
             viewModelScope.launchIO {
                 _similar.value =
@@ -175,9 +167,124 @@ class MusicNowPlayingViewModel
         }
 
         val player get() = musicService.player
+
+        /** Music player 2026-11-17: the panel's tab (Lyrics, Up next, About, Songs like this) */
+        val tab = MutableStateFlow(PlayerTab.LYRICS)
+
+        /** The panel moved to About by itself because the song has no words (it goes back to Lyrics when a song has them) */
+        var tabMovedForNoWords = false
+
+        /** Which song the Songs like this tab looked up */
+        private var similarFor: UUID? = null
+
+        fun showTab(t: PlayerTab) {
+            tab.value = t
+            tabMovedForNoWords = false
+            loadTab(t)
+        }
+
+        /** The About and Songs like this tabs look things up the first time they show for a song */
+        fun loadTab(t: PlayerTab) {
+            val id =
+                musicService.state.value.currentAudio
+                    ?.id ?: return
+            when (t) {
+                PlayerTab.ABOUT -> if (_about.value?.songId != id) openAbout()
+                PlayerTab.LIKE_THIS -> if (similarFor != id || _similar.value == null) openSimilar()
+                else -> Unit
+            }
+        }
+
+        /** Shuffle on the player: Off, then Shuffle, then Smart shuffle (songs like these from your music join in) */
+        val shuffle =
+            MutableStateFlow(
+                when {
+                    musicService.state.value.thenTitle
+                        ?.contains("Smart shuffle") == true -> ShuffleMode.SMART
+
+                    musicService.player.shuffleModeEnabled -> ShuffleMode.SHUFFLE
+
+                    else -> ShuffleMode.OFF
+                },
+            )
+
+        fun cycleShuffle() {
+            when (shuffle.value) {
+                ShuffleMode.OFF -> {
+                    player.shuffleModeEnabled = true
+                    shuffle.value = ShuffleMode.SHUFFLE
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Shuffle on")
+                }
+
+                ShuffleMode.SHUFFLE -> {
+                    shuffle.value = ShuffleMode.SMART
+                    smartShuffle()
+                }
+
+                ShuffleMode.SMART -> {
+                    player.shuffleModeEnabled = false
+                    shuffle.value = ShuffleMode.OFF
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices
+                        .pill("Shuffle off")
+                }
+            }
+        }
+
+        /** Songs like the playing one, from your music, slipped into what's coming (one after every 3 songs) */
+        private fun smartShuffle() {
+            val audio = musicService.state.value.currentAudio ?: return
+            viewModelScope.launchIO {
+                val extra =
+                    try {
+                        val queued = musicService.state.value.queuedIds
+                        api.instantMixApi
+                            .getInstantMixFromItem(
+                                userId = serverRepository.currentUser?.id,
+                                itemId = audio.id,
+                                limit = 12,
+                                fields = com.github.damontecres.wholphin.ui.SongListFields,
+                            ).content.items
+                            .filter { it.type == org.jellyfin.sdk.model.api.BaseItemKind.AUDIO && it.id !in queued && it.id != audio.id }
+                            .map { BaseItem(it, false) }
+                    } catch (ex: kotlinx.coroutines.CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Smart shuffle on the player")
+                        emptyList()
+                    }
+                var at = onMain { player.currentMediaItemIndex } + 1
+                extra.forEach { song ->
+                    at += 3
+                    val count = onMain { player.mediaItemCount }
+                    musicService.addToQueue(song, minOf(at, count))
+                    at++
+                }
+                onMain {
+                    player.shuffleModeEnabled = true
+                    com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                        if (extra.isEmpty()) "Shuffle on (no songs like these found yet)" else "Smart shuffle: songs like these join in",
+                    )
+                }
+            }
+        }
+
+        /** Play the song at [index] in the queue (Up next) */
+        fun playAt(index: Int) {
+            viewModelScope.launch { musicService.playIndex(index) }
+        }
+
+        /** Jump the song to [ms] (a lyric line, or the progress line) */
+        fun seekTo(ms: Long) {
+            player.seekTo(ms.coerceAtLeast(0))
+        }
+
         private val _lyrics = MutableStateFlow<Pair<UUID, LyricDto>?>(null)
         val lyrics: StateFlow<Pair<UUID, LyricDto>?> = _lyrics
         private val cache = mutableMapOf<UUID, LyricDto?>()
+
+        /** The song whose words have been looked up (found or not), so "no words" can show instead of waiting */
+        val lyricsChecked = MutableStateFlow<UUID?>(null)
 
         /** The words for [audio], if Jellyfin has them (Tower fetches missing ones every night) */
         fun loadLyrics(audio: AudioItem?) {
@@ -185,6 +292,7 @@ class MusicNowPlayingViewModel
             if (_lyrics.value?.first == audio.id) return
             if (cache.containsKey(audio.id)) {
                 _lyrics.value = cache[audio.id]?.let { audio.id to it }
+                lyricsChecked.value = audio.id
                 return
             }
             _lyrics.value = null
@@ -205,6 +313,7 @@ class MusicNowPlayingViewModel
                         ?.id == audio.id
                 ) {
                     _lyrics.value = dto?.let { audio.id to it }
+                    lyricsChecked.value = audio.id
                 }
             }
         }
@@ -364,11 +473,12 @@ data class AboutSong(
 )
 
 /**
- * Benflix music: Now playing (approved np-cover + w-column + v-blocks). The cover on the left, the name
- * and controls in the middle (always on screen), the song's words in a column on the right (5 lines, the
- * line being sung in white), and the logo-square towers along the bottom. Songs with no words keep the same
- * screen without the column. Up next sits under the controls with a small cover.
- * TV remote: Left/Right on Play = previous/next song, holding them = rewind/fast forward.
+ * Benflix music: Now playing (music player redesign 2026-11-17, Ben's final sheet). The song side centred
+ * (cover, name, the logo-square towers inside the progress line, Shuffle / Previous / Play / Next, then Like,
+ * Play on, Stop and More), and one full-height panel with Lyrics, Up next, About and Songs like this, with the
+ * next three songs along its bottom. Songs with no words open the panel on About. OK on a lyric line plays from
+ * there. TV remote: starts on Play; Left/Right only move between buttons (Ben); on the progress line they jump
+ * 10 seconds. A narrow window puts the panel under the song; phones held upright get [PhoneNowPlaying].
  */
 @Composable
 fun MusicNowPlayingPage(
@@ -411,7 +521,6 @@ fun MusicNowPlayingPage(
             if (viewModel.musicService.state.value.queueSize == 0 && !viewModel.stopping) viewModel.navigationManager.goBack()
         }
     }
-    val next = remember(music.queueVersion, music.currentIndex) { nextSong(viewModel) }
     val playFocus = remember { FocusRequester() }
     // Ben 2026-11-15: the first open after an update can be slow to draw, and one try at 60ms missed, so nothing
     // had focus until Down was pressed. Keep trying for a few seconds until Play really has it.
@@ -425,18 +534,34 @@ fun MusicNowPlayingPage(
         }
     }
     val lyricIndex = lyrics?.let { currentLine(it, position, duration) }
+    val checked by viewModel.lyricsChecked.collectAsState()
+    // The words were looked up and there are none (Ben: the panel opens on About instead of an empty space)
+    val noLyrics = lyrics == null && checked == audio?.id && audio != null
+    val tab by viewModel.tab.collectAsState()
+    LaunchedEffect(audio?.id, noLyrics, lyrics != null) {
+        if (noLyrics && viewModel.tab.value == PlayerTab.LYRICS) {
+            viewModel.tab.value = PlayerTab.ABOUT
+            viewModel.tabMovedForNoWords = true
+        } else if (lyrics != null && viewModel.tabMovedForNoWords && viewModel.tab.value == PlayerTab.ABOUT) {
+            viewModel.tab.value = PlayerTab.LYRICS
+            viewModel.tabMovedForNoWords = false
+        }
+        viewModel.loadTab(viewModel.tab.value)
+    }
+    val shuffle by viewModel.shuffle.collectAsState()
+    val coming = rememberComing(viewModel, music.queueVersion, music.currentIndex)
     val menuSong by viewModel.menuSong.collectAsState()
     menuSong?.let { song ->
         SongMenu(
             song = song,
             liked = music.liked,
             onDismiss = viewModel::closeMenu,
-            // Ben 2026-11-17: More has Songs like this too
+            // Ben 2026-11-17: More has Songs like this too (it opens that tab)
             onSongsLikeThis =
-                if (viewModel.canAsk) {
+                if (viewModel.canAsk && !easy) {
                     {
                         viewModel.closeMenu()
-                        viewModel.openSimilar()
+                        viewModel.showTab(PlayerTab.LIKE_THIS)
                     }
                 } else {
                     null
@@ -444,113 +569,203 @@ fun MusicNowPlayingPage(
         )
     }
     val about by viewModel.about.collectAsState()
-    about?.let { AboutPanel(it, viewModel, next = remember(music.queueVersion, music.currentIndex) { comingUp(viewModel) }) }
     val playOn by viewModel.playOnOpen.collectAsState()
     if (playOn) MusicPlayOnDialog(viewModel, onDismiss = { viewModel.playOnOpen.value = false })
     val similar by viewModel.similar.collectAsState()
     val similarPicked by viewModel.similarPicked.collectAsState()
     val similarNote by viewModel.similarNote.collectAsState()
-    similar?.let { state ->
+    // A song picked in Songs like this: the usual Ask for it panel (this song, or the whole album)
+    if (similarPicked != null) {
         androidx.compose.runtime.CompositionLocalProvider(
             com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
         ) {
             SimilarSongsPanel(
-                state = state,
+                state = similar ?: SimilarState.Loading,
                 admin = viewModel.isAdmin,
                 picked = similarPicked,
                 onPick = { viewModel.similarPicked.value = it },
                 onAsk = viewModel::askSimilar,
-                onDismiss = viewModel::closeSimilar,
+                onDismiss = { viewModel.similarPicked.value = null },
                 note = similarNote,
             )
         }
+    }
+    val tabs =
+        remember(viewModel.canAsk, easy) {
+            PlayerTab.entries.filter { it != PlayerTab.LIKE_THIS || (viewModel.canAsk && !easy) }
+        }
+    val tint = rememberCoverTint(audio?.imageUrl)
+
+    // The panel's middle, per tab
+    val panelBody: @Composable androidx.compose.foundation.layout.ColumnScope.(
+        fontSize: Float,
+        center: Boolean,
+    ) -> Unit = { fontSize, center ->
+        when (tab) {
+            PlayerTab.LYRICS -> {
+                if (lyrics != null) {
+                    LyricsColumn(
+                        lyrics,
+                        lyricIndex,
+                        Modifier.fillMaxSize(),
+                        fontSize = fontSize,
+                        center = center,
+                        onJump = if (lyrics.isTimed()) viewModel::seekTo else null,
+                    )
+                } else if (noLyrics) {
+                    PanelNote("No words for this song yet", "Benflix looks for them every night, so they may turn up tomorrow.")
+                } else {
+                    Text("Looking for the words…", color = BenflixColors.Soft, fontSize = BenflixType.body)
+                }
+            }
+
+            PlayerTab.UP_NEXT -> {
+                UpNextTab(coming, onPlay = viewModel::playAt, onQueue = viewModel::openUpNext)
+            }
+
+            PlayerTab.ABOUT -> {
+                AboutTab(about?.takeIf { it.songId == audio?.id }, onArtist = viewModel::goToArtist)
+            }
+
+            PlayerTab.LIKE_THIS -> {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
+                ) {
+                    LikeThisTab(similar, similarNote, onPick = { viewModel.similarPicked.value = it })
+                }
+            }
+        }
+    }
+    val panelTabs: @Composable () -> Unit = {
+        PlayerTabs(tab, tabs, noLyrics, isTv, easy, onTab = viewModel::showTab)
     }
 
     BoxWithConstraints(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(BenflixColors.Tray),
+                .coverGlow(tint),
     ) {
         val boxWidth = maxWidth
         val boxHeight = maxHeight
-        val towersHeight = boxHeight * (if (wide) 0.34f else 0.11f)
-        if (barsOn) {
-            MusicTowers(
-                playing = playing,
-                towers = if (wide) 30 else 16,
+        // Ben 2026-11-17 (f-narrow): the panel only sits beside the song when there's room for both halves
+        if (wide && boxWidth >= 720.dp) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 28.dp),
+            ) {
+                // The song side, centred top to bottom and left to right
+                androidx.compose.foundation.layout.Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier =
+                        Modifier
+                            .width(songSideWidth(boxWidth - 80.dp))
+                            .fillMaxHeight()
+                            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                ) {
+                    val coverSize = minOf(boxHeight * (if (easy) 0.3f else 0.36f), songSideWidth(boxWidth - 80.dp) * 0.62f)
+                    CoverImage(audio?.imageUrl, Modifier.size(coverSize), shape = RoundedCornerShape(14.dp))
+                    Spacer(Modifier.height(16.dp))
+                    SongName(audio, music.thenTitle, easy, center = true)
+                    Spacer(Modifier.height(8.dp))
+                    PlayerProgress(position, duration, playing, barsOn, isTv, onSeek = viewModel::seekTo, towers = 56)
+                    Spacer(Modifier.height(8.dp))
+                    PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = { playFocused.value = it })
+                    Spacer(Modifier.height(14.dp))
+                    PlayerRoundButtons(viewModel, music.liked, easy)
+                }
+                PlayerPanelFrame(
+                    tabs = panelTabs,
+                    upNext = { PlayerUpNextStrip(coming, onPlay = viewModel::playAt) },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                ) { panelBody(if (easy) 30f else 26f, false) }
+            }
+        } else if (wide) {
+            // A narrow window (or a small phone on its side): the panel goes under the song instead of squeezing
+            androidx.compose.foundation.layout.Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier =
                     Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(towersHeight)
-                        .padding(horizontal = if (wide) 40.dp else 16.dp),
-            )
-            // The words and controls stay easy to read over tall towers
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(towersHeight * 1.25f)
-                    .background(Brush.verticalGradient(0f to BenflixColors.Tray, 0.25f to BenflixColors.Tray.copy(alpha = .0f))),
-            )
-        }
-        // Room kept at the bottom for the bars (none when they're turned off)
-        val reserved = if (barsOn) towersHeight else 0.dp
-        if (wide) {
-            // Redesign 2 (pl-family): the same frame as the audiobook player
-            NowPlayingWideFrame(
-                reservedBottom = reserved,
-                cover = { size -> CoverImage(audio?.imageUrl, Modifier.size(size)) },
-                middle = {
-                    SongWords(audio, music.thenTitle, easy, big = true)
-                    Spacer(Modifier.height(12.dp))
-                    ProgressLine(position, duration)
-                    Spacer(Modifier.height(14.dp))
-                    Controls(viewModel, playing, music.liked, easy, isTv, playFocus, onPlayFocus = { playFocused.value = it })
-                },
-                underCover = { UpNextLine(next, stacked = true) },
-                side =
-                    if (lyrics != null) {
-                        { mod -> LyricsColumn(lyrics, lyricIndex, mod, fontSize = if (easy) 24f else 20f) }
-                    } else {
-                        null
-                    },
-                modifier = Modifier.fillMaxSize(),
-            )
+                        .fillMaxSize()
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+            ) {
+                CoverImage(audio?.imageUrl, Modifier.size(minOf(240.dp, boxWidth * 0.5f)), shape = RoundedCornerShape(14.dp))
+                Spacer(Modifier.height(14.dp))
+                SongName(audio, music.thenTitle, easy, center = true)
+                Spacer(Modifier.height(8.dp))
+                PlayerProgress(position, duration, playing, barsOn, isTv, onSeek = viewModel::seekTo, towers = 40)
+                Spacer(Modifier.height(8.dp))
+                PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = { playFocused.value = it })
+                Spacer(Modifier.height(12.dp))
+                PlayerRoundButtons(viewModel, music.liked, easy)
+                Spacer(Modifier.height(16.dp))
+                PlayerPanelFrame(
+                    tabs = panelTabs,
+                    upNext = { PlayerUpNextStrip(coming, onPlay = viewModel::playAt) },
+                    modifier = Modifier.fillMaxWidth().height(maxOf(360.dp, boxHeight * 0.7f)),
+                ) { panelBody(if (easy) 24f else 20f, false) }
+            }
         } else {
             PhoneNowPlaying(
                 viewModel = viewModel,
                 audio = audio,
                 from = music.thenTitle,
-                lyrics = lyrics,
-                lyricIndex = lyricIndex,
-                next = next,
                 position = position,
                 duration = duration,
                 playing = playing,
                 liked = music.liked,
                 easy = easy,
-                towersHeight = towersHeight,
+                barsOn = barsOn,
+                shuffle = shuffle,
                 boxHeight = boxHeight,
                 boxWidth = boxWidth,
+                panelTabs = panelTabs,
+                panelBody = { panelBody(if (easy) 20f else 17f, true) },
             )
         }
     }
 }
 
-/** The next few songs in the queue (the Next in queue card) */
-private fun comingUp(viewModel: MusicNowPlayingViewModel): List<AudioItem> {
-    val p = viewModel.player
-    val from = p.currentMediaItemIndex + 1
-    return (from until minOf(p.mediaItemCount, from + 3)).mapNotNull { p.getMediaItemAt(it).localConfiguration?.tag as? AudioItem }
-}
-
-private fun nextSong(viewModel: MusicNowPlayingViewModel): AudioItem? {
-    val p = viewModel.player
-    val i = p.nextMediaItemIndex
-    if (i < 0 || i >= p.mediaItemCount) return null
-    return p.getMediaItemAt(i).localConfiguration?.tag as? AudioItem
+/** "NOW PLAYING · FROM ...", the song's name, and who it's by */
+@Composable
+private fun SongName(
+    audio: AudioItem?,
+    from: String?,
+    easy: Boolean,
+    center: Boolean,
+) {
+    androidx.compose.foundation.layout.Column(
+        horizontalAlignment = if (center) Alignment.CenterHorizontally else Alignment.Start,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        MusicKicker(if (from.isNullOrBlank()) "Now playing" else "Now playing · from $from", color = BenflixColors.Music)
+        Text(
+            text = audio?.title.orEmpty(),
+            color = BenflixColors.Text,
+            fontSize = if (easy) 40.sp else 34.sp,
+            lineHeight = if (easy) 44.sp else 38.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = if (center) TextAlign.Center else TextAlign.Start,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        val by = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · ")
+        if (by.isNotBlank()) {
+            Text(
+                text = by,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.lead,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = if (center) TextAlign.Center else TextAlign.Start,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
 }
 
 /** Which line is being sung: by its time, or (no times) spread evenly over the song (Ben: a slow scroll) */
@@ -573,185 +788,6 @@ private fun currentLine(
         if (duration <= 0) 0 else ((position.toDouble() / duration) * lines.size).toInt().coerceIn(0, lines.size - 1)
     }
 }
-
-@Composable
-private fun SongWords(
-    audio: AudioItem?,
-    from: String?,
-    easy: Boolean,
-    big: Boolean,
-) {
-    NowPlayingTitle(
-        kicker = if (from.isNullOrBlank()) "Now playing" else "Now playing · from $from",
-        title = audio?.title.orEmpty(),
-        byLine = listOfNotNull(audio?.artistNames, audio?.albumTitle).filter { it.isNotBlank() }.joinToString(" · "),
-        color = BenflixColors.Music,
-        big = big,
-        easy = easy,
-    )
-}
-
-@Composable
-private fun ProgressLine(
-    position: Long,
-    duration: Long,
-) {
-    NowPlayingLine(
-        progress = if (duration > 0) position.toFloat() / duration else 0f,
-        leftText = songLength(position.milliseconds),
-        rightText = songLength(duration.milliseconds),
-        color = BenflixColors.Music,
-    )
-}
-
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-private fun Controls(
-    viewModel: MusicNowPlayingViewModel,
-    playing: Boolean,
-    liked: Boolean,
-    easy: Boolean,
-    isTv: Boolean,
-    playFocus: FocusRequester,
-    onPlayFocus: (Boolean) -> Unit = {},
-) {
-    // True while Left or Right is held down (rewinding or fast forwarding)
-    var held by remember { mutableStateOf(false) }
-
-    // Only a press that started on Play counts (moving onto Play from Previous/Next must not change the song)
-    var downOnPlay by remember { mutableStateOf(false) }
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // TV: Left/Right on Play already change the song, so these two are just there to see (and tap on phones)
-        val tvSkip = Modifier.focusProperties { canFocus = !isTv }
-        MusicButton(if (easy) "Previous" else null, BenflixIcon.PREVIOUS, onClick = viewModel::previous, big = easy, modifier = tvSkip)
-        MusicButton(
-            label = if (easy) (if (playing) "Pause" else "Play") else null,
-            icon = if (playing) BenflixIcon.PAUSE else null,
-            filledPlay = !playing,
-            primary = true,
-            big = true,
-            onClick = viewModel::playPause,
-            modifier =
-                Modifier
-                    .focusRequester(playFocus)
-                    .onFocusChanged { if (it.isFocused) onPlayFocus(true) }
-                    .onPreviewKeyEvent { e ->
-                        // Ben: on the TV remote, Left/Right = previous/next song; holding = rewind/fast forward
-                        if (!isTv) return@onPreviewKeyEvent false
-                        val left = e.key == Key.DirectionLeft
-                        val right = e.key == Key.DirectionRight
-                        if (!left && !right) return@onPreviewKeyEvent false
-                        if (e.type == KeyEventType.KeyDown) {
-                            if (e.nativeKeyEvent.repeatCount == 0) {
-                                downOnPlay = true
-                            } else if (downOnPlay) {
-                                held = true
-                                viewModel.seekBy(if (left) -SEEK_STEP_MS else SEEK_STEP_MS)
-                            }
-                        } else if (e.type == KeyEventType.KeyUp) {
-                            if (downOnPlay && !held) {
-                                if (left) viewModel.previous() else viewModel.next()
-                            }
-                            held = false
-                            downOnPlay = false
-                        }
-                        true
-                    },
-        )
-        MusicButton(if (easy) "Next song" else null, BenflixIcon.NEXT, onClick = viewModel::next, big = easy, modifier = tvSkip)
-    }
-    if (!isTv) {
-        // Phones held sideways: the round buttons on their own line under Play (wrapping when narrow)
-        androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 10.dp),
-        ) {
-            ExtraButtons(viewModel, liked, easy)
-        }
-    } else if (easy) {
-        // Easy read: the buttons keep their names, wrapping onto a second line when the middle is narrow
-        androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(top = 12.dp),
-        ) {
-            ExtraButtons(viewModel, liked, easy, labels = true)
-        }
-    } else {
-        // TV: Left/Right on Play change the song, so the heart, Up next, Similar songs, Stop and More sit one row
-        // down. Ben 2026-11-15: as named pills they wrapped onto two lines and got cut off, so they're round
-        // buttons on one line, and the name of the one you're on shows beside them.
-        var focusedName by remember { mutableStateOf<String?>(null) }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 12.dp),
-        ) {
-            ExtraButtons(viewModel, liked, easy, labels = false, onFocusName = { n, f ->
-                if (f) {
-                    focusedName = n
-                } else if (focusedName ==
-                    n
-                ) {
-                    focusedName = null
-                }
-            })
-            Text(
-                text = focusedName.orEmpty(),
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ExtraButtons(
-    viewModel: MusicNowPlayingViewModel,
-    liked: Boolean,
-    easy: Boolean,
-    labels: Boolean = easy,
-    onFocusName: ((name: String, focused: Boolean) -> Unit)? = null,
-) {
-    val named: (String) -> Modifier = { name ->
-        if (onFocusName == null) Modifier else Modifier.onFocusChanged { onFocusName(name, it.isFocused) }
-    }
-    val likeName = if (liked) "Liked" else "Like"
-    MusicButton(
-        if (labels) likeName else null,
-        BenflixIcon.HEART,
-        filledHeart = liked,
-        onClick = viewModel::like,
-        big = easy,
-        modifier = named(likeName),
-    )
-    MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy, modifier = named("Up next"))
-    // Music redesign 3: About the artist, Credits, Next in queue and Songs like this to ask for, as cards
-    MusicButton(if (labels) "About" else null, BenflixIcon.INFO, onClick = viewModel::openAbout, big = easy, modifier = named("About"))
-    // Ben 2026-11-17: songs like this one that aren't on Benflix yet (30-second taste + Ask), right on the player
-    if (viewModel.canAsk) {
-        MusicButton(
-            if (labels) "Songs like this" else null,
-            BenflixIcon.STAR,
-            onClick = viewModel::openSimilar,
-            big = easy,
-            modifier = named("Songs like this"),
-        )
-    }
-    MusicButton(if (labels) "Play on" else null, BenflixIcon.TV, onClick = {
-        viewModel.playOnOpen.value = true
-    }, big = easy, modifier = named("Play on"))
-    MusicButton(if (labels) "Stop" else null, BenflixIcon.STOP, onClick = viewModel::stop, big = easy, modifier = named("Stop"))
-    // Play next, Add to a playlist, Go to album ... and, on Ben's profile, Delete and find again
-    MusicButton(if (labels) "More" else null, BenflixIcon.MORE_VERT, onClick = viewModel::openMenu, big = easy, modifier = named("More"))
-}
-
-private const val SEEK_STEP_MS = 5_000L
 
 /** "UP NEXT" with the next song's small cover, name and artist (always there) */
 @Composable
@@ -808,7 +844,7 @@ internal fun UpNextLine(
     }
 }
 
-/** The song's words: 5 lines, the one being sung in white and a little bigger, the rest grey */
+/** The song's words: the one being sung in white and a little bigger, the rest grey. [onJump]: OK/tap on a line plays from it */
 @Composable
 internal fun LyricsColumn(
     lyrics: LyricDto,
@@ -816,34 +852,40 @@ internal fun LyricsColumn(
     modifier: Modifier = Modifier,
     fontSize: Float,
     center: Boolean = false,
+    onJump: ((Long) -> Unit)? = null,
 ) {
     val lines = lyrics.lyrics
     val at = (index ?: 0).coerceIn(0, (lines.size - 1).coerceAtLeast(0))
+    val isTv = rememberIsTv()
+    // While the remote is on a line, the words stop gliding so you can pick one
+    var picking by remember { mutableStateOf(false) }
     // Every line shows in full (long lines wrap). The list glides so the line being sung stays second from the
     // top, with the next lines ahead of it; whatever doesn't fit is simply further down, not cut off.
     val listState =
         androidx.compose.foundation.lazy
             .rememberLazyListState()
-    LaunchedEffect(at, lines.size) {
-        if (lines.isNotEmpty()) listState.animateScrollToItem((at - 1).coerceAtLeast(0))
+    LaunchedEffect(at, lines.size, picking) {
+        if (lines.isNotEmpty() && !picking) listState.animateScrollToItem((at - 1).coerceAtLeast(0))
     }
     androidx.compose.foundation.lazy.LazyColumn(
         state = listState,
-        userScrollEnabled = false,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        userScrollEnabled = onJump != null && !isTv,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 200.dp),
-        modifier = modifier.padding(top = 8.dp).clipToBounds(),
+        modifier =
+            modifier
+                .padding(top = 8.dp)
+                .clipToBounds()
+                .onFocusChanged { picking = it.hasFocus },
     ) {
         items(lines.size) { i ->
-            val current = i == at
-            Text(
-                text = lines[i].text.ifBlank { "♪" },
-                color = if (current) BenflixColors.Text else BenflixColors.Muted,
-                fontSize = if (current) (fontSize * 1.15f).sp else fontSize.sp,
-                lineHeight = (fontSize * 1.3f).sp,
-                fontWeight = if (current) FontWeight.ExtraBold else FontWeight.SemiBold,
-                textAlign = if (center) TextAlign.Center else TextAlign.Start,
-                modifier = if (center) Modifier.fillMaxWidth() else Modifier,
+            LyricLine(
+                text = lines[i].text,
+                current = i == at,
+                fontSize = fontSize,
+                center = center,
+                onJump = onJump?.let { jump -> lyrics.lineStartMs(i)?.let { ms -> { jump(ms) } } },
+                isTv = isTv,
             )
         }
     }
