@@ -86,6 +86,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
                 }
+                // 4th of July look: a little striped switch with a navy star knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.J4Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .J4Switch()
+                }
                 // Star Wars Day: a glowing knob in the colour of your side next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.SwLook.on) {
                     com.github.damontecres.wholphin.ui.theme
