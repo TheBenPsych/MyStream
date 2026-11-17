@@ -72,8 +72,8 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
-import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -710,7 +710,20 @@ private fun TitleButtonView(
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) (if (xmas || tg) Color.White else if (hw) HwLook.OnOrange else BenflixColors.Tray) else BenflixColors.Text
+    val content =
+        if (primary) {
+            (
+                if (xmas || tg) {
+                    Color.White
+                } else if (hw) {
+                    HwLook.OnOrange
+                } else {
+                    BenflixColors.Tray
+                }
+            )
+        } else {
+            BenflixColors.Text
+        }
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },

@@ -311,8 +311,15 @@ fun BannerCard(
                     modifier =
                         Modifier
                             .align(Alignment.BottomStart)
-                            .background(if (TgLook.on) TgLook.Orange else if (HwLook.on) HwLook.Orange else BenflixRed)
-                            .clip(RectangleShape)
+                            .background(
+                                if (TgLook.on) {
+                                    TgLook.Orange
+                                } else if (HwLook.on) {
+                                    HwLook.Orange
+                                } else {
+                                    BenflixRed
+                                },
+                            ).clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )

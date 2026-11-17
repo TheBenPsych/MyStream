@@ -23,13 +23,17 @@ object BenflixColors {
     val Muted: Color get() = KidsLook.palette?.muted ?: Color(0xFF9497A3)
 
     /** Pills, chips and small raised things */
-    val Raised: Color get() = KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised) ?: hw(HwLook.Raised) ?: Color(0xFF15171D)
+    val Raised: Color get() =
+        KidsLook.palette?.raised ?: xmas(XmasLook.PineRaised) ?: tg(TgLook.Raised) ?: hw(HwLook.Raised)
+            ?: Color(0xFF15171D)
 
     /** Menus and panels */
     val Panel: Color get() = KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel) ?: hw(HwLook.Panel) ?: Color(0xFF16181E)
 
     /** The lighter side of a panel (profile card picture side) */
-    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh) ?: hw(HwLook.PanelHigh) ?: Color(0xFF1D2027)
+    val PanelHigh: Color get() =
+        KidsLook.palette?.panelHigh ?: xmas(XmasLook.PineHigh) ?: tg(TgLook.PanelHigh) ?: hw(HwLook.PanelHigh)
+            ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
     val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
@@ -38,13 +42,17 @@ object BenflixColors {
     val FocusFill: Color get() = KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange) ?: hw(HwLook.Orange) ?: Color.White
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: xmas(Color.White) ?: tg(Color.White) ?: hw(HwLook.OnOrange) ?: Color(0xFF0B0C10)
+    val OnFocusFill: Color get() =
+        KidsLook.palette?.onAccent ?: xmas(Color.White) ?: tg(Color.White) ?: hw(HwLook.OnOrange)
+            ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
     val Line: Color get() = KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line) ?: hw(HwLook.Line) ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
-    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown) ?: hw(HwLook.Purple) ?: Color(0xFF262932)
+    val FocusRow: Color get() =
+        KidsLook.palette?.focusRow ?: xmas(XmasLook.Pine) ?: tg(TgLook.Brown) ?: hw(HwLook.Purple)
+            ?: Color(0xFF262932)
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
     val Dim = Color(0xB8050608)

@@ -193,7 +193,6 @@ class DoorDataService
             limit: Int,
         ): List<BaseItem> =
             coroutineScope {
-
                 fun search(term: String) =
                     GetItemsRequest(
                         userId = userId,
