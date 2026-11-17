@@ -925,16 +925,22 @@ private fun FloatingCard(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(7.dp * scale),
-        ) {
-            Box(
+            modifier =
                 Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(if (card.square) 1f else 2f / 3f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(BenflixColors.Raised),
-            ) {
-                if (card.image != null) {
+                    .fillMaxSize()
+                    .padding(7.dp * scale)
+                    .padding(start = if (card.image == null) 9.dp * scale else 0.dp),
+        ) {
+            // Cards with no picture (holiday countdown, Tower needs the setup command, update) leave out the
+            // picture box instead of showing an empty grey square, so their words get the whole card
+            if (card.image != null) {
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(if (card.square) 1f else 2f / 3f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(BenflixColors.Raised),
+                ) {
                     AsyncImage(
                         model = card.image,
                         contentDescription = null,
