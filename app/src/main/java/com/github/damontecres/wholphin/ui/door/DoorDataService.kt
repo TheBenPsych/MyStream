@@ -176,7 +176,6 @@ class DoorDataService
             theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
         ): List<BaseItem> =
             coroutineScope {
-
                 fun search(term: String) =
                     GetItemsRequest(
                         userId = userId,

@@ -362,8 +362,11 @@ class DoorViewModel
                         val dislikes = disliked.await()
                         val items =
                             data
-                                .christmas(userId, BaseItemKind.MOVIE, theme = com.github.damontecres.wholphin.ui.main.HomeTheme.VIDEO_GAMES_DAY)
-                                .filter { it.id !in dislikes }
+                                .christmas(
+                                    userId,
+                                    BaseItemKind.MOVIE,
+                                    theme = com.github.damontecres.wholphin.ui.main.HomeTheme.VIDEO_GAMES_DAY,
+                                ).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(GAME_NIGHT, "Game night", items.takeIf { it.size >= 4 }.orEmpty()))
                     }

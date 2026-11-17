@@ -28,7 +28,9 @@ object BenflixColors {
             ?: Color(0xFF15171D)
 
     /** Menus and panels */
-    val Panel: Color get() = vg(VgLook.Panel) ?: ny(NyLook.Panel) ?: KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel) ?: Color(0xFF16181E)
+    val Panel: Color get() =
+        vg(VgLook.Panel) ?: ny(NyLook.Panel) ?: KidsLook.palette?.panel ?: xmas(XmasLook.PineDark) ?: tg(TgLook.Panel)
+            ?: Color(0xFF16181E)
 
     /** The lighter side of a panel (profile card picture side) */
     val PanelHigh: Color get() =
@@ -39,7 +41,9 @@ object BenflixColors {
     val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
 
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
-    val FocusFill: Color get() = vg(VgLook.Cyan) ?: ny(NyLook.Gold) ?: KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange) ?: Color.White
+    val FocusFill: Color get() =
+        vg(VgLook.Cyan) ?: ny(NyLook.Gold) ?: KidsLook.palette?.accent ?: xmas(XmasLook.Red) ?: tg(TgLook.Orange)
+            ?: Color.White
 
     /** Words on [FocusFill] */
     val OnFocusFill: Color get() =
@@ -47,7 +51,9 @@ object BenflixColors {
             ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
-    val Line: Color get() = vg(VgLook.Line) ?: ny(NyLook.Line) ?: KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line) ?: Color(0xFF2A2D35)
+    val Line: Color get() =
+        vg(VgLook.Line) ?: ny(NyLook.Line) ?: KidsLook.palette?.line ?: xmas(XmasLook.PineLine) ?: tg(TgLook.Line)
+            ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
     val FocusRow: Color get() =

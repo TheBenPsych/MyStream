@@ -64,8 +64,8 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
-import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -252,7 +252,14 @@ private fun Greeting(
             fontSize = if (vg) BenflixType.pageTitle * .6f else BenflixType.pageTitle,
             fontWeight = if (TgLook.on || NyLook.on || vg) FontWeight.Normal else FontWeight.ExtraBold,
             // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
-            fontFamily = if (vg) com.github.damontecres.wholphin.ui.theme.PixelFont else if (TgLook.on || NyLook.on) HolidayFont else null,
+            fontFamily =
+                if (vg) {
+                    com.github.damontecres.wholphin.ui.theme.PixelFont
+                } else if (TgLook.on || NyLook.on) {
+                    HolidayFont
+                } else {
+                    null
+                },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (vg) Modifier.padding(vertical = 6.dp) else Modifier,
