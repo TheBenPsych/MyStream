@@ -70,6 +70,8 @@ class LatestNextUpService
                     .getResumeItems(request)
                     .content
                     .items
+                    // Benflix: an episode already marked watched isn't "in progress" any more
+                    .filterNot { NextEpisode.isWatchedEpisode(it) }
                     .map { BaseItem(it, useSeriesForPrimary) }
             return items
         }
@@ -182,6 +184,8 @@ class LatestNextUpService
                     .getNextUp(request)
                     .content
                     .items
+                    // Benflix: never offer an already-watched episode as next
+                    .let { NextEpisode.fixNextUp(api, it, userId, SlimItemFields) }
                     .map { BaseItem(it, useSeriesForPrimary) }
                     .filter {
                         val seriesId = it.data.seriesId

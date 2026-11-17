@@ -2382,7 +2382,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .rl-i:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
 .rl-i.on { color: var(--c); }
 .rl-i.on::before { content: ""; position: absolute; left: -10px; top: 11px; bottom: 11px; width: 3px; border-radius: 2px; background: var(--c); }
-.rl-door.open { background: var(--pg3); color: var(--c); }
+.rl-door.open, .rl-me.open { background: var(--pg3); color: var(--c); }
 .rl-gap { flex: 1; min-height: 12px; }
 .rl-me .pic { width: 30px; height: 30px; font-size: 13px; margin-left: -4px; }
 .rl-dot { position: absolute; left: 32px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tray); }
@@ -2415,6 +2415,19 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .np-posters a.sq span { aspect-ratio: 1; }
 .np-posters a small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-posters a:focus-visible { outline: 2.5px solid #fff; outline-offset: 2px; border-radius: 8px; }
+/* Your picture's panel: the profile menu slides out beside the rail like a door's panel, Sign out down by your picture */
+.np-who { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 18px 22px; text-align: center; background: var(--pg3);
+  background-image: radial-gradient(circle at 50% 30%, rgba(255,255,255,.08), transparent 70%); }
+.np-who .pic { width: 96px; height: 96px; font-size: 36px; margin-bottom: 6px; }
+.np-who b { font-size: 22px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-who small { font-size: 13px; color: var(--ink2); }
+.np-who .btn { margin-top: 8px; }
+.np-list button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.np-list button svg.i { color: var(--ink2); width: 20px; height: 20px; }
+.np-list button:hover, .np-list button:focus-visible { background: var(--pg4); }
+.np-list button:focus-visible, .np-who .btn:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
+.np-end { margin-top: auto; border-top: 1px solid var(--line); padding-bottom: 16px; }
+.np-list .np-out { color: var(--ink2); }
 /* The page header: the door's name, or the named Back button and the where-am-I line */
 .top .hstart { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
 .top .place { padding-left: 0; border-left: 0; }
@@ -2534,3 +2547,84 @@ body.nav-panel .brail.holiday { -webkit-mask-image: none; mask-image: none; }
 @keyframes holTw { 0%, 100% { opacity: .9; } 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .hol-tw { animation: none; } }
 .sp-trim.bottom { top: auto; bottom: 0; height: 36px; z-index: 0; }
+/* Star Wars Day on the rail (js/holidaynav.js): the saga icons keep their own colours, but go dark before the
+   start-up and ignite in the side's blade colour as they light up, like the app */
+.rl-i.dark .swp { stroke: #3A3D46; }
+.rl-i.lit .swp { stroke: var(--lc, var(--swb)); }
+.rl-i .hol-i { overflow: visible; }
+
+/* ---------- Benflix's own games in the browser (js/bgames.js, barcade.js, bpuzzles.js) ---------- */
+.bg-top3 { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--ink2); }
+.bg-top3 b { color: var(--ink); margin-right: 4px; }
+.bg-steps { margin: 12px 0 4px; padding-left: 22px; color: var(--ink2); line-height: 1.6; max-width: 760px; }
+.bg-anime { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+.bg-ember { display: flex; flex-direction: column; gap: 4px; padding: 18px 22px; border-radius: var(--r); background: linear-gradient(100deg, #B45309, #1C1917 70%); color: #fff; max-width: 760px; }
+.bg-ember b { font-size: 20px; } .bg-ember span { opacity: .85; font-size: 14px; }
+.bg-ember:hover, .bg-ember:focus-visible { box-shadow: 0 0 0 3px #fff; outline: none; }
+.bgplay { position: fixed; inset: 0; z-index: 90; background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--g1) 30%, #0B0C10), #0B0C10 70%); display: flex; flex-direction: column; }
+.bgbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; flex: none; }
+.bgscore { color: var(--ink2); font-weight: 600; font-size: 14px; }
+.bgstage { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; overflow: hidden; }
+.bgcanvas { display: block; touch-action: none; border-radius: 12px 12px 0 0; }
+.bg-how { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,.7); color: #fff; padding: 8px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center; transition: opacity .6s; pointer-events: none; }
+.bg-how.gone { opacity: 0; }
+.bg-over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); padding: 16px; z-index: 3; }
+.bg-card { background: var(--pg2); border-radius: 16px; padding: 24px 28px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.bg-card h2 { margin: 0 0 10px; font-size: 26px; } .bg-card p { margin: 6px 0; line-height: 1.5; }
+.bg-card .acts { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.bg-msg { margin: auto; text-align: center; padding: 24px; max-width: 520px; }
+.bgq { width: 100%; max-width: 980px; padding: 4px 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.bgq > .spin { margin: 80px auto; }
+.bgq-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.bgq-head b { font-size: 22px; } .bgq-head span { color: var(--ink2); font-weight: 600; }
+.bgq-pic { position: relative; border-radius: 14px; overflow: hidden; background: var(--pg3); margin: 0 auto; }
+.bgq-pic.wide { width: 100%; max-height: 48vh; aspect-ratio: 16/9; }
+.bgq-pic.tall { height: min(44vh, 460px); aspect-ratio: 2/3; }
+.bgq-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bgq-pic.zoom img { transform-origin: 50% 32%; transition: transform .1s linear; }
+.bg-tiles { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
+.bg-tiles i { background: linear-gradient(135deg, #A16207, #422006); border: 1px solid rgba(0,0,0,.35); transition: transform .35s, opacity .35s; }
+.bg-tiles i.off { transform: rotateY(90deg); opacity: 0; }
+.bgq-say { text-align: center; font-weight: 700; font-size: 17px; min-height: 24px; white-space: pre-line; }
+.bgq-clue { background: var(--pg2); border-radius: 14px; padding: 18px 22px; font-size: 19px; line-height: 1.5; text-align: center; }
+.bgq-clue p { margin: 6px 0; }
+.bgq-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.bgq-choices.four, .bgq-choices.two { grid-template-columns: repeat(2, 1fr); }
+.bg-choice { justify-content: flex-start; text-align: left; white-space: normal; min-height: 52px; font-weight: 600; }
+.bg-choice .n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: 13px; }
+.bg-choice:focus-visible { outline: none; box-shadow: 0 0 0 3px #fff; }
+.bg-choice.right { background: #15803D; color: #fff; } .bg-choice.wrong { background: #7F1D1D; color: #fff; }
+.bg-choice:disabled { cursor: default; } .bg-choice:disabled:not(.right):not(.wrong) { opacity: .5; }
+.bg-hints { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.bg-hints span { background: var(--pg3); padding: 5px 12px; border-radius: 99px; font-size: 14px; }
+.bg-clock { height: 6px; border-radius: 3px; background: var(--pg3); overflow: hidden; }
+.bg-clock i { display: block; height: 100%; background: linear-gradient(90deg, #C2410C, #6D28D9); transition: width .2s linear; }
+.bg-hls { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.bg-hl { width: min(34vw, 220px); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.bg-hl img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px; background: var(--pg3); }
+.bg-hl .r { font-size: 24px; font-weight: 800; }
+.bg-hlq { font-weight: 700; text-align: center; max-width: 140px; }
+.fadein { animation: bgfade 1.2s ease; } @keyframes bgfade { from { opacity: 0; } to { opacity: 1; } }
+.bg-tl-new { display: flex; gap: 16px; align-items: center; justify-content: center; }
+.bg-tl { flex: none; width: 110px; display: flex; flex-direction: column; gap: 4px; text-align: center; font-size: 13px; }
+.bg-tl img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 10px; background: var(--pg3); }
+.bg-tl b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bg-tl span { font-weight: 800; color: #5EEAD4; font-size: 15px; }
+.bg-line { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 8px 4px 14px; }
+.bg-slot { flex: none; border: 2px dashed var(--ink3); background: none; color: var(--ink2); border-radius: 10px; padding: 30px 10px; font-weight: 700; cursor: pointer; }
+.bg-slot:hover, .bg-slot:focus-visible { border-color: #fff; color: #fff; background: rgba(94,234,212,.15); outline: none; }
+.bg-grid { width: 100%; max-width: min(100%, calc((100vh - 220px) * 1.25)); margin: 0 auto; display: grid; grid-template-columns: minmax(70px, 1fr) repeat(3, minmax(0, 1.4fr)); gap: 8px; }
+.bg-grid .rule { display: grid; place-items: center; text-align: center; font-weight: 700; font-size: 14px; padding: 6px; color: var(--ink2); }
+.bg-cell { aspect-ratio: 1; border-radius: 12px; border: 0; background: var(--pg3); color: var(--ink); font-size: 26px; font-weight: 800; cursor: pointer; position: relative; overflow: hidden; display: grid; place-items: center; padding: 0; }
+.bg-cell:hover, .bg-cell:focus-visible { box-shadow: 0 0 0 3px #fff; outline: none; }
+.bg-cell.done img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
+.bg-cell.done b { position: relative; font-size: 13px; padding: 4px; text-shadow: 0 1px 3px #000; }
+.bg-pickcell { position: fixed; inset: 0; z-index: 4; background: rgba(11,12,16,.94); display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px max(16px, calc(50% - 490px)); }
+@media (max-width: 760px) {
+  .bgq-choices { grid-template-columns: repeat(2, 1fr); }
+  .bgq-pic.tall { height: 36vh; }
+  .bg-hlq { max-width: 80px; font-size: 14px; }
+  .bg-grid .rule { font-size: 11px; padding: 2px; }
+  .bg-cell { font-size: 20px; }
+  .bg-tl { width: 84px; }
+}
