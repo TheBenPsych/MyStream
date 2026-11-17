@@ -134,14 +134,22 @@ object HolidayNavKit {
             ),
             holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
             holiday("starwars", { SwLook.on }, 0xFF0B0B14, 0xFF05050A, listOf(0xFFFFE81F, 0xFF4FC3F7, 0xFFE53935), "Star Wars Day pick"),
+            // St. Patrick's Day: charms for the door icons, bunting and a shamrock patch on Home (StPatricksNav.kt)
             holiday(
                 "stpatricks",
                 { SpLook.on },
-                0xFF0F2A17,
-                0xFF08170D,
-                listOf(0xFF2E9E5B, 0xFF7BD389, 0xFFE8C15A),
+                0xFF0E2B1D,
+                0xFF081710,
+                listOf(0xFF3DBE6C, 0xFFE2B33C, 0xFFF3F0E4),
                 "St. Patrick's pick",
                 countdown = { StPatricksSeason.countdown(LocalDate.now()) },
+            ).copy(
+                icons = StPatricksNav.icons,
+                topTrim = StPatricksNav.bunting,
+                bottomTrim = StPatricksNav.patch,
+                moving = true,
+                pickTitles = StPatricksNav.pickTitles,
+                accent = Color(0xFFE2B33C),
             ),
             holiday(
                 "july4",
