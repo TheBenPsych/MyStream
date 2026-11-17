@@ -172,14 +172,20 @@ fun titleDetails(
         d.premiereDate?.let {
             val day =
                 try {
-                    it.format(java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy", java.util.Locale.ENGLISH))
+                    it.format(
+                        java.time.format.DateTimeFormatter
+                            .ofPattern("MMMM d, yyyy", java.util.Locale.ENGLISH),
+                    )
                 } catch (ex: Exception) {
                     null
                 }
             if (day != null) add((if (show) "First aired" else "Released") to day)
         }
         d.genres?.takeIf { it.isNotEmpty() }?.let { add("Genres" to it.joinToString(", ")) }
-        d.productionLocations?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { add("Country" to it) }
+        d.productionLocations
+            ?.firstOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { add("Country" to it) }
         val source = d.mediaSources?.firstOrNull()
         if (admin && source != null) {
             source.path
