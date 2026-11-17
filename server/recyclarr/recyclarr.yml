@@ -15,6 +15,10 @@ sonarr:
     base_url: !secret sonarr_url
     api_key: !secret sonarr_key
     delete_old_custom_formats: false
+    # 2026-11-17: the repack scores below decide this. Left on "Prefer and Upgrade", any repack (even from
+    # another group or a worse copy) replaces the file you have.
+    media_management:
+      propers_and_repacks: do_not_prefer
     quality_profiles:
       - name: HD - 720p/1080p
         reset_unmatched_scores:
@@ -328,6 +332,10 @@ radarr:
     base_url: !secret radarr_url
     api_key: !secret radarr_key
     delete_old_custom_formats: false
+    # 2026-11-17: the repack scores below decide this. Left on "Prefer and Upgrade", any repack (even from
+    # another group or a worse copy) replaces the file you have.
+    media_management:
+      propers_and_repacks: do_not_prefer
     quality_profiles:
       - name: HD - 720p/1080p
         reset_unmatched_scores:
