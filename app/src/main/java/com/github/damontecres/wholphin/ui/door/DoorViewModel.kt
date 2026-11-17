@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.J4Look
+import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -330,6 +331,12 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Friday the 13th look (that day only, Kids too): spooky but fun picks right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) listOf(rows.first(), SPOOKY) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Halloween (1 to 31 Oct, Kids too): Halloween favourites right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.HwLook.charmsOn) listOf(rows.first(), HALLOWEEN) + rows.drop(1) else rows
+                }.let { rows ->
                     // 4th of July look (1 to 4 Jul, Kids too): 4th of July favourites right after Keep watching
                     if (J4Look.on) listOf(rows.first(), JULY4) + rows.drop(1) else rows
                 }.let { rows ->
@@ -343,6 +350,9 @@ class DoorViewModel
                             POPCORN.takeIf { com.github.damontecres.wholphin.ui.theme.PcLook.on },
                         )
                     if (extra.isNotEmpty()) listOf(rows.first()) + extra + rows.drop(1) else rows
+                }.let { rows ->
+                    // St. Patrick's Day look (10 to 17 Mar, Kids too): Irish favourites right after Keep watching
+                    if (SpLook.on) listOf(rows.first(), IRISH) + rows.drop(1) else rows
                 }.let { rows ->
                     // Star Wars Day (4 May): the saga, from your own library, at the very top
                     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
@@ -394,6 +404,17 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(STAR_WARS, "May the 4th: the saga", items.takeIf { it.size >= 3 }.orEmpty()))
                     }
                 }
+                if (SPOOKY in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(com.github.damontecres.wholphin.ui.theme.Friday13.SpookyPicks, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
+                        // Ben: only films already on Benflix, and only if at least 4 fit
+                        putOrRemove(order, DoorRowData(SPOOKY, "Spooky but fun", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
                 if (DATE_NIGHT in order) {
                     launch {
                         val dislikes = disliked.await()
@@ -408,6 +429,24 @@ class DoorViewModel
                         val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (IRISH in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.ST_PATRICKS, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
+                        // Only when there are at least 4 that fit (Ben)
+                        putOrRemove(order, DoorRowData(IRISH, "Irish favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (HALLOWEEN in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.halloween(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(HALLOWEEN, "Halloween favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.MOVIE, disliked.await()) }
@@ -654,11 +693,14 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val SPOOKY = "spooky"
+            const val HALLOWEEN = "halloween"
             const val EARTH = "earth"
             const val JULY4 = "july4"
             const val STAR_WARS = "starwars"
             const val DATE_NIGHT = "datenight"
             const val POPCORN = "popcorn"
+            const val IRISH = "irish"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

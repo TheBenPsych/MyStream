@@ -68,18 +68,25 @@ fun WholphinTheme(
         (
             if (NyLook.on) {
                 NyLook.Gold
+            } else if (SpLook.on) {
+                SpLook.Clover
             } else if (J4Look.on) {
                 J4Look.Red
             } else {
                 null
             }
         ) ?: kidsPalette?.accent ?: (
-            if (XmasLook.on) {
+            if (F13Look.on) {
+                // Friday the 13th look (that day only): lucky clover green
+                F13Look.Green
+            } else if (XmasLook.on) {
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange
             } else if (EaLook.on) {
                 EaLook.Lilac
+            } else if (HwLook.on) {
+                HwLook.Orange
             } else if (NyLook.on) {
                 NyLook.Gold
             } else if (EdLook.on) {

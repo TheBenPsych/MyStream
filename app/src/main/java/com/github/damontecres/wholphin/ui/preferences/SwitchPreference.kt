@@ -62,6 +62,11 @@ fun SwitchPreference(
                         .spacedBy(8.dp),
             ) {
                 // Thanksgiving look: a small acorn next to switches that are on
+                // Halloween look: a tiny pumpkin next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .HwPumpkin()
+                }
                 if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
@@ -70,6 +75,11 @@ fun SwitchPreference(
                 if (value && com.github.damontecres.wholphin.ui.theme.EaLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .EaDaisy()
+                }
+                // Friday the 13th look: a little "13" knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .F13Knob()
                 }
                 // Valentine's look: a white knob with a red heart in it next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.ValLook.on) {
@@ -85,6 +95,11 @@ fun SwitchPreference(
                 if (value && com.github.damontecres.wholphin.ui.theme.NyLook.on) {
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
+                }
+                // St. Patrick's Day look: a white knob with a green shamrock next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .SpKnob()
                 }
                 // Earth Day look: a little Earth next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.EdLook.on) {

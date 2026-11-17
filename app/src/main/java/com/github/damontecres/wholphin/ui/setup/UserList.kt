@@ -421,6 +421,10 @@ private fun UserIconCard(
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.EasterSeason
                         .on() ||
+                    com.github.damontecres.wholphin.ui.theme.Friday13
+                        .on() ||
+                    com.github.damontecres.wholphin.ui.theme.HalloweenSeason
+                        .on() ||
                     com.github.damontecres.wholphin.ui.theme.NewYearSeason
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.EarthDaySeason
@@ -430,6 +434,8 @@ private fun UserIconCard(
                     com.github.damontecres.wholphin.ui.theme.StarWarsDay
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.PopcornSeason
+                        .on() ||
+                    com.github.damontecres.wholphin.ui.theme.StPatricksSeason
                         .on()
             )
     // Star Wars Day: the room's laser sword turns the colour of the side of the profile the remote is on

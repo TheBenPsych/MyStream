@@ -56,9 +56,12 @@ import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.EasterHunt
 import com.github.damontecres.wholphin.ui.theme.EasterSeason
+import com.github.damontecres.wholphin.ui.theme.Friday13
+import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
 import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
+import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
@@ -88,6 +91,13 @@ fun SwitchUserContent(
 
     val currentUser by viewModel.serverRepository.currentUserFlow.collectAsState(null)
     var showAddUser by remember { mutableStateOf(false) }
+    // Friday the 13th: the sleeping cat wakes up and yawns when someone picks a profile
+    val f13Room =
+        remember {
+            com.github.damontecres.wholphin.ui.theme.Friday13
+                .on()
+        }
+    var catWaking by remember { mutableStateOf(false) }
     var addUser by remember(server) { mutableStateOf<JellyfinUser?>(null) }
 
     fun showAddUserDialog(user: JellyfinUser?) {
@@ -108,9 +118,16 @@ fun SwitchUserContent(
     ) {
         // Benflix redesign: after picking someone, Home's doors grow out of the logo once
         BenflixIntroState.doorsPending = true
-        // Kids / Guest are set by the view model, and only kept if the switch works
-        val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
         scope.launch {
+            // Friday the 13th: give the cat a moment to open its eyes and yawn before Home opens
+            if (f13Room) {
+                // A second press while the cat is waking up does nothing
+                if (catWaking) return@launch
+                catWaking = true
+                kotlinx.coroutines.delay(F13Videos.WAKE_MS)
+            }
+            // Kids / Guest are set by the view model, and only kept if the switch works
+            val result = viewModel.trySwitchUser(user, kids, bigKids, guest)
             when (val r = result.await()) {
                 is SwitchUserResult.Error -> {
                     com.github.damontecres.wholphin.ui.components.BenflixNotices
@@ -124,6 +141,7 @@ fun SwitchUserContent(
                     // no-op, view model will navigate
                 }
             }
+            if (result.await() is SwitchUserResult.Error) catWaking = false
         }
     }
 
@@ -175,6 +193,9 @@ fun SwitchUserContent(
                 // Christmas (December until New Year's, unless switched off in Settings): the cosy room with the tree,
                 // the train and the parade past the window, instead of the wall
                 val christmas = ChristmasSeason.on()
+                // Friday the 13th (that day only, unless switched off): the room with the sleeping black cat. It takes
+                // over any season room that day (ChristmasSeason and ThanksgivingSeason are off on a Friday the 13th)
+                val f13 = f13Room
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
                 // Valentine's Day (1 to 14 Feb, unless switched off): the table set for two, one chocolate gone each
@@ -197,6 +218,20 @@ fun SwitchUserContent(
                 }
                 // Popcorn Day (19 Jan, unless switched off): the popcorn cart room, the heap growing through the day
                 val popcorn = !christmas && !feast && !newYear && !valentine && PopcornSeason.on()
+                // St. Patrick's Day (10 to 17 Mar, unless switched off): the rainy Irish room, with a rainbow on the 17th
+                val stPatricks = !christmas && !feast && !newYear && !valentine && !popcorn && !f13Room && StPatricksSeason.on()
+                // Halloween (1 to 31 Oct, unless switched off): the spooky room. The pumpkins get carved as October
+                // goes on, and at 5 PM on the 31st the bats come out, so the clock is checked now and then
+                val halloween = !christmas && !feast && !newYear && HalloweenSeason.on()
+                var hwNow by remember { mutableStateOf(LocalDateTime.now()) }
+                if (halloween) {
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            kotlinx.coroutines.delay(30_000L)
+                            hwNow = LocalDateTime.now()
+                        }
+                    }
+                }
                 var nyNow by remember { mutableStateOf(LocalDateTime.now()) }
                 if (newYear) {
                     LaunchedEffect(Unit) {
@@ -216,7 +251,9 @@ fun SwitchUserContent(
                 // Star Wars Day (4 May, unless switched off): the desert home, with a laser sword in the colour
                 // of the side of the profile you're on
                 val starWars = !christmas && !feast && StarWarsDay.on()
-                if (christmas) {
+                if (f13) {
+                    Friday13Room(waking = catWaking, modifier = Modifier.fillMaxSize())
+                } else if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (starWars) {
                     StarWarsRoom(modifier = Modifier.fillMaxSize())
@@ -224,6 +261,8 @@ fun SwitchUserContent(
                     FeastRoom(modifier = Modifier.fillMaxSize())
                 } else if (easter) {
                     EasterRoom(modifier = Modifier.fillMaxSize())
+                } else if (halloween) {
+                    HalloweenRoom(stage = HalloweenSeason.stage(hwNow), modifier = Modifier.fillMaxSize())
                 } else if (newYear) {
                     val day = nyNow.toLocalDate()
                     NewYearRoom(
@@ -239,6 +278,8 @@ fun SwitchUserContent(
                     EarthRoom(modifier = Modifier.fillMaxSize())
                 } else if (popcorn) {
                     PopcornRoom(modifier = Modifier.fillMaxSize())
+                } else if (stPatricks) {
+                    StPatricksRoom(modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -266,7 +307,25 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
-                    if (christmas) {
+                    if (f13) {
+                        Text(
+                            text = Friday13.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = Friday13.LINE,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFCFC6E0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    } else if (christmas) {
                         val today = remember { LocalDate.now() }
                         Text(
                             text = ChristmasSeason.greeting(today),
@@ -282,6 +341,27 @@ fun SwitchUserContent(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFF2D27E),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (halloween) {
+                        // "Happy Halloween" with the countdown under it; "Happy Halloween!" on Halloween night
+                        Text(
+                            text = HalloweenSeason.whoGreeting(hwNow),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        HalloweenSeason.countdown(hwNow)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD6C8DA),
                                 textAlign = TextAlign.Center,
                                 style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
                                 modifier = Modifier.padding(top = 6.dp),
@@ -303,6 +383,28 @@ fun SwitchUserContent(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFC9D0E0),
+                                textAlign = TextAlign.Center,
+                                style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    } else if (stPatricks) {
+                        // "Who's watching?" with "3 days to St. Patrick's Day" under it, then "Happy St. Patrick's Day!" on the 17th
+                        val today = remember { LocalDate.now() }
+                        Text(
+                            text = StPatricksSeason.whoGreeting(today),
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        StPatricksSeason.countdown(today)?.let {
+                            Text(
+                                text = it,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFC9D8CC),
                                 textAlign = TextAlign.Center,
                                 style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
                                 modifier = Modifier.padding(top = 6.dp),

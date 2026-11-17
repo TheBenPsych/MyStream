@@ -64,7 +64,11 @@ import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import com.github.damontecres.wholphin.ui.theme.EasterSeason
 import com.github.damontecres.wholphin.ui.theme.EdKindMark
 import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.F13Look
+import com.github.damontecres.wholphin.ui.theme.HalloweenSeason
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.HwKindMark
+import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4KindMark
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.JulySeason
@@ -74,6 +78,9 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcKindMark
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
+import com.github.damontecres.wholphin.ui.theme.SpKindMark
+import com.github.damontecres.wholphin.ui.theme.SpLook
+import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.SwLook
@@ -83,9 +90,12 @@ import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.edDoorLife
+import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
+import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
+import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
@@ -273,7 +283,9 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || EaLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                    EaLook.on
+                ) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
@@ -282,7 +294,9 @@ private fun Greeting(
                 },
             // Thanksgiving, New Year's, Valentine's, Popcorn Day, Earth Day and Easter looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || EaLook.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on ||
+                    EaLook.on
+                ) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -294,7 +308,10 @@ private fun Greeting(
         )
         // New Year's and Easter looks: the countdown line ("4 days to 2027", "5 days to Easter") leads the line under the greeting
         val line =
-            if (EdLook.on) {
+            if (HwLook.on) {
+                // Halloween look: "14 days to Halloween" leads the line under the greeting
+                listOfNotNull(HalloweenSeason.homeLine(), weather).joinToString(" · ").ifBlank { null }
+            } else if (EdLook.on) {
                 // Earth Day look: "Earth week, day 3" leads the line under the greeting
                 listOfNotNull(EarthDaySeason.line(), weather).joinToString(" \u00b7 ")
             } else if (PcLook.on) {
@@ -304,6 +321,9 @@ private fun Greeting(
                 listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (SpLook.on) {
+                // St. Patrick's Day look: "3 days to St. Patrick's Day" leads it the same way
+                listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (J4Look.on) {
                 // 4th of July look: "2 days to the Fourth" leads the line under the greeting
                 listOfNotNull(JulySeason.countdown(), weather).joinToString(" · ").ifBlank { null }
@@ -413,6 +433,8 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .f13DoorCharm(door)
+                .hwDoorCharm(door)
                 .eaDoorCharm(door)
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
@@ -420,6 +442,7 @@ private fun SquareDoor(
                 .j4DoorCharm(door)
                 .swDoorMoment(door)
                 .pcDoorSnack(door)
+                .spDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -775,6 +798,18 @@ private fun ListRow(
                 } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (SpLook.on) {
+                    // St. Patrick's Day look: a horseshoe, pot of gold, rainbow or top hat before the kind line
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SpKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.6f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (HwLook.on) {
+                    // Halloween look: each kind of notice gets its own mark (moon, sweet, spider, cauldron)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        HwKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
                         KindLine(row, words)
                     }
                 } else if (J4Look.on) {

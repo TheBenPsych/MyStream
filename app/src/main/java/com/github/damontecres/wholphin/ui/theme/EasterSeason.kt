@@ -61,7 +61,7 @@ object EasterSeason {
         return !date.isBefore(start) && !date.isAfter(end)
     }
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     fun isSunday(date: LocalDate = LocalDate.now()): Boolean = date == easterSunday(date.year)
 

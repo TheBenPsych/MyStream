@@ -38,6 +38,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Halloween look: a bat flies round a pumpkin orange ring on witch purple
+    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .HwLoadingBat(modifier)
+        return
+    }
     // Popcorn Day look: loading is a ring of kernels popping one after another
     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
         com.github.damontecres.wholphin.ui.theme
@@ -71,11 +77,25 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         return
     }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // Friday the 13th look: the loading ring is a clock with 13 hours and a hand that goes round
+    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+        com.github.damontecres.wholphin.ui.theme.F13LoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
     // New Year's look: the loading ring is a clock face ticking round to midnight
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
         com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
             modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
+    // St. Patrick's Day look: a rainbow sweeps round the ring into a pot of gold in the middle
+    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+        com.github.damontecres.wholphin.ui.theme.SpLoadingRainbow(
+            modifier.then(Modifier.defaultMinSize(40.dp, 40.dp)),
         )
         return
     }
