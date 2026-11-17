@@ -1467,10 +1467,12 @@ fun DoorsHomePage(
                 kind = familyKind,
                 greeting =
                     when (familyKind) {
-                        FamilyKind.GUEST -> "Welcome"
+                        FamilyKind.GUEST -> {
+                            "Welcome"
+                        }
 
                         // Earth week and Popcorn Day: Kids gets the greeting too
-                        FamilyKind.KIDS ->
+                        FamilyKind.KIDS -> {
                             if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
                                 "Happy Earth Day!"
                             } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
@@ -1478,8 +1480,11 @@ fun DoorsHomePage(
                             } else {
                                 "Hi there!"
                             }
+                        }
 
-                        else -> greetingFor(viewModel.userName)
+                        else -> {
+                            greetingFor(viewModel.userName)
+                        }
                     },
                 doors = familyDoorSet,
                 // Never show rows that belong to someone else, even for a moment

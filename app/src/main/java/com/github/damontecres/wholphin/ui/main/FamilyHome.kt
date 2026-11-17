@@ -211,7 +211,14 @@ fun FamilyHome(
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
                 // Thanksgiving, New Year's (Kids too), Valentine's, Popcorn Day and Earth Day (Kids too) looks: the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontWeight =
+                    if (TgLook.on || NyLook.on || ValLook.on || PcLook.on ||
+                        EdLook.on
+                    ) {
+                        FontWeight.Normal
+                    } else {
+                        FontWeight.ExtraBold
+                    },
                 fontFamily = if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || EdLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
