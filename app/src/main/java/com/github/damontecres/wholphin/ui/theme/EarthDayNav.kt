@@ -347,28 +347,34 @@ object EarthDayNav {
     private val CLOUD_SHADE = Color(0xFFC9D9E6)
     private val BIRD = Color(0xFFE8F3FF)
 
-    /** Top of Home: whole round clouds drifting slowly, and now and then a flock of birds crossing */
+    /**
+     * Top of Home: whole round clouds drifting slowly, and now and then a flock of birds crossing. They keep to the
+     * middle of the top edge (about 46% to 86% across), so the greeting on the left and the clock on the right
+     * stay clear (Ben 2026-11-17: holiday trims mustn't crowd the greeting).
+     */
     private fun DrawScope.sky(t: Float) {
         val u = size.height / 44f // one "dp" of the 44dp box
-        val gap = 230f * u
-        val n = (size.width / gap).toInt() + 2
-        val drift = sin(t * .05f) * 30f * u
-        for (i in 0 until n) {
-            val s = (.8f + h(i) * .35f) * u
-            val x = i * gap + h(i + 40) * 90f * u + drift - 40f * u
-            val y = 8f * u + h(i + 80) * 6f * u
+        val from = size.width * .46f
+        val to = size.width * .86f
+        val drift = sin(t * .05f) * 14f * u
+        val count = ((to - from) / (120f * u)).toInt().coerceIn(2, 4)
+        val gap = (to - from) / count
+        for (i in 0 until count) {
+            val s = (.62f + h(i) * .12f) * u
+            val x = from + i * gap + h(i + 40) * (gap - 64f * s) * .6f + drift
+            val y = 9f * u + h(i + 80) * 3f * u
             cloud(x, y, s)
         }
-        // the flock takes 18 seconds to cross, then waits a little before the next
-        val cross = 18f
-        val p = (t % (cross + 6f)) / cross
+        // the flock takes 12 seconds to cross the band, then waits a little before the next
+        val cross = 12f
+        val p = (t % (cross + 8f)) / cross
         if (p <= 1f) {
-            val fx = -60f * u + p * (size.width + 120f * u)
-            val fy = 26f * u - p * 10f * u
-            val flock = listOf(0f to 0f, -16f to -7f, -16f to 7f, -32f to -14f, -32f to 14f)
+            val fx = from + p * (to - from)
+            val fy = 30f * u - p * 8f * u
+            val flock = listOf(0f to 0f, -14f to -6f, -14f to 6f, -28f to -12f, -28f to 12f)
             flock.forEachIndexed { k, (dx, dy) ->
                 val flap = sin(t * 10f + k * 1.1f)
-                bird(fx + dx * u, fy + dy * u * .6f, 6.5f * u, flap)
+                bird(fx + dx * u, fy + dy * u * .5f, 5.5f * u, flap)
             }
         }
     }
@@ -424,7 +430,7 @@ object EarthDayNav {
         val blade = Path()
         for (i in 0 until n) {
             val x = i * step
-            val tall = (10f + h(i) * 14f) * u
+            val tall = (9f + h(i) * 11f) * u
             val lean = (h(i + 500) * 8f - 4f) * u + sin(t * 1.4f + i * .37f) * 2.2f * u
             blade.reset()
             blade.moveTo(x - 2.2f * u, bottom)
@@ -437,7 +443,7 @@ object EarthDayNav {
         var x = 24f * u
         var i = 0
         while (x < size.width) {
-            val headY = bottom - (20f + h(i + 1300) * 8f) * u
+            val headY = bottom - (15f + h(i + 1300) * 6f) * u
             val sway = sin(t * 1.2f + i) * 1.5f * u
             drawLine(STEM, Offset(x, bottom), Offset(x + sway, headY), strokeWidth = 1.8f * u)
             flower(i % 4, x + sway, headY, u)
@@ -447,7 +453,7 @@ object EarthDayNav {
         // the bee drifts along the meadow, bobbing between the flowers
         val p = (t % 24f) / 24f
         val bx = p * size.width
-        val by = bottom - (26f + sin(t * 2.2f) * 4f) * u
+        val by = bottom - (20f + sin(t * 2.2f) * 3f) * u
         val wing = .5f + abs(sin(t * 30f)) * .5f
         drawOval(Color(0xFFE8F6FF).copy(alpha = .85f), Offset(bx - 4f * u, by - 7f * u * wing - 3f * u), Size(7f * u, 6f * u * wing))
         drawOval(SUN, Offset(bx - 6f * u, by - 4f * u), Size(12f * u, 8f * u))

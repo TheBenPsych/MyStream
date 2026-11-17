@@ -62,14 +62,14 @@
       + '<g fill="#C9D9E6"><circle cx="2" cy="16" r="10"/><circle cx="20" cy="17" r="11"/><circle cx="40" cy="17" r="10"/><circle cx="56" cy="15" r="8"/></g>'
       + '<g fill="#F2F7FB"><circle cx="2" cy="12" r="10"/><circle cx="18" cy="4" r="15"/><circle cx="36" cy="6" r="13"/><circle cx="20" cy="14" r="10"/><circle cx="40" cy="13" r="10"/><circle cx="55" cy="12" r="8"/></g></g>';
     let clouds = "";
-    for (let i = 0; i < 7; i++) clouds += cloud(i * 190 + h(i + 40) * 60 - 20, 7 + h(i + 80) * 3, 0.55 + h(i) * 0.15);
+    for (let i = 0; i < 3; i++) clouds += cloud(20 + i * 195 + h(i + 40) * 40, 9 + h(i + 80) * 3, 0.62 + h(i) * 0.12);
     let birds = "";
     [[0, 0], [-16, -5], [-16, 5], [-32, -10], [-32, 10]].forEach(([x, y], k) => {
       birds += '<path class="edn-flap" style="animation-delay:-' + f(k * 0.17) + 's" d="M' + (x - 6) + " " + y + "q3 -4 6 0q3 -4 6 0" + '" stroke="#E8F3FF" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
     });
     const top = '<g><style>'
-      + ".edn-drift{animation:edn-drift 40s ease-in-out infinite alternate}@keyframes edn-drift{to{transform:translateX(-40px)}}"
-      + ".edn-flock{animation:edn-flock 24s linear infinite}@keyframes edn-flock{0%{transform:translate(-60px,20px)}75%{transform:translate(1260px,12px)}100%{transform:translate(1260px,12px)}}"
+      + ".edn-drift{animation:edn-drift 40s ease-in-out infinite alternate}@keyframes edn-drift{to{transform:translateX(-20px)}}"
+      + ".edn-flock{animation:edn-flock 20s linear infinite}@keyframes edn-flock{0%{transform:translate(0,42px);opacity:0}5%{opacity:1}60%{transform:translate(600px,32px);opacity:1}61%,100%{transform:translate(600px,32px);opacity:0}}"
       + ".edn-flap{transform-box:fill-box;transform-origin:50% 100%;animation:edn-flap .6s ease-in-out infinite}@keyframes edn-flap{50%{transform:scaleY(-.6)}}"
       + "@media (prefers-reduced-motion:reduce){.edn-drift,.edn-flock,.edn-flap{animation:none}}</style>"
       + '<g class="edn-drift">' + clouds + '</g><g class="edn-flock">' + birds + "</g></g>";
@@ -90,17 +90,23 @@
       flowers += '<path d="M' + f(x) + " 41L" + f(x) + " " + f(y) + '" stroke="#2F7A34" stroke-width="1.3"/>' + head;
     }
     const bee = '<g class="edn-bee"><ellipse class="edn-wing" cx="-0.5" cy="-4.4" rx="3" ry="2.2" fill="#E8F6FF" opacity=".85"/><ellipse cx="0" cy="0" rx="4.4" ry="3.1" fill="#F4C542"/><path d="M-1.2 -3v6M1.6 -2.8v5.6" stroke="#222" stroke-width="1.3"/></g>';
-    const bottom = '<g><style>'
+    const bottom = '<g id="ednMeadow"><style>'
       + ".edn-sw{transform-box:fill-box;transform-origin:50% 100%;animation:edn-sw 4s ease-in-out infinite}.edn-sw.b{animation-delay:-1.3s}.edn-sw.c{animation-delay:-2.6s;animation-duration:5s}@keyframes edn-sw{50%{transform:skewX(-5deg)}}"
       + ".edn-bee{animation:edn-bee 24s ease-in-out infinite}@keyframes edn-bee{0%{transform:translate(40px,22px)}25%{transform:translate(330px,19px)}50%{transform:translate(620px,23px)}75%{transform:translate(900px,19px)}100%{transform:translate(1180px,22px)}}"
       + ".edn-wing{transform-box:fill-box;transform-origin:50% 100%;animation:edn-flap .15s linear infinite}@keyframes edn-flap{50%{transform:scaleY(-.6)}}"
       + "@media (prefers-reduced-motion:reduce){.edn-sw,.edn-bee,.edn-wing{animation:none}}</style>"
       + '<g class="edn-sw a">' + grass[0] + "</g>" + flowers + '<g class="edn-sw b">' + grass[1] + '</g><g class="edn-sw c">' + grass[2] + "</g>" + bee + "</g>";
-    // Whole <svg>s so round clouds and flowers stay round on any screen width (B.holidaySvg takes a function)
-    const svg = (box, fit, inner) => (cls) => `<svg class="${cls || ""}" viewBox="${box}" preserveAspectRatio="${fit}" aria-hidden="true">${inner}</svg>`;
+    // Whole <svg>s (B.holidaySvg takes a function), so nothing is stretched or cut on any screen width (Ben
+    // 2026-11-17: trims mustn't crowd the greeting or get cut off):
+    // - top: the clouds and birds keep to the middle of the top edge (46% to 86% across), clear of the greeting on
+    //   the left and the clock on the right
+    // - bottom: the meadow is drawn at one fixed size that fits its 36px and repeated along the width, so flowers and the
+    //   bee are never cropped
+    const topSvg = (cls) => `<svg class="${cls || ""}" aria-hidden="true"><svg x="46%" width="40%" height="100%" viewBox="0 3 640 41" preserveAspectRatio="xMidYMin meet">${top}</svg></svg>`;
+    const bottomSvg = (cls) => `<svg class="${cls || ""}" aria-hidden="true"><g transform="translate(0 -16) scale(1.3)">${bottom}<use href="#ednMeadow" x="1200"/><use href="#ednMeadow" x="2400"/><use href="#ednMeadow" x="3600"/></g></svg>`;
     return {
-      top: svg("0 0 1200 60", "xMidYMin slice", top),
-      bottom: svg("0 0 1200 40", "xMidYMax slice", bottom),
+      top: topSvg,
+      bottom: bottomSvg,
       icons: {
         home: DIM + '<path d="M3 11l9-7 9 7" class="edn-o" stroke="#A8DCF7"/><path d="M5 10v10h14V10" class="edn-o" stroke="#A8DCF7"/><path d="M12 20v-3.75" stroke="#5DB64E" stroke-width="1.6" fill="none"/><path d="M12 16.75c-3.25 0 -4.5 -2 -4.5 -4.25 2.75 0 4.5 1.5 4.5 4.25z" fill="#7CD36B" stroke="none"/><path d="M12 16.75c3.25 0 4.5 -2 4.5 -4.25 -2.75 0 -4.5 1.5 -4.5 4.25z" fill="#4FA846" stroke="none"/>',
         movies: DIM + '<rect x="3" y="9" width="18" height="11" rx="1.8" class="edn-o" stroke="#7FC8F2"/><path d="M3 9l16.5 -4.2 0.8 2.9L4 12" class="edn-o" stroke="#7FC8F2"/><path d="M8.5 7.6l2 2.6M13.5 6.3l2 2.6" class="edn-o" stroke="#7FC8F2"/><path d="M12 18.5v-3" stroke="#5DB64E" stroke-width="1.6" fill="none"/><path d="M12 15.9c-2.6 0 -3.6 -1.6 -3.6 -3.4 2.2 0 3.6 1.2 3.6 3.4z" fill="#7CD36B" stroke="none"/><path d="M12 15.9c2.6 0 3.6 -1.6 3.6 -3.4 -2.2 0 -3.6 1.2 -3.6 3.4z" fill="#4FA846" stroke="none"/>',
