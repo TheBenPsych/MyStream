@@ -172,9 +172,10 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
+            /** The same kind of row for another look, like Video Games Day's Game night */
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS,
         ): List<BaseItem> =
             coroutineScope {
-                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
 
                 fun search(term: String) =
                     GetItemsRequest(

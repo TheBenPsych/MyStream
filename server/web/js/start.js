@@ -37,11 +37,13 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // Video Games Day (approved 2026-11-17): the arcade room, 12 September
+  const arcade = !xmas && !feast && B.vgOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || arcade ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : arcade ? `<h1 class="vgh">${esc(B.vg.greeting())}</h1><p class="vgline">${esc(B.vg.LINE)}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -59,10 +61,10 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast) {
+  if (xmas || feast || arcade) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : B.tg;
+    const room = xmas ? B.xmas : feast ? B.tg : B.vg;
     const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
     draw();
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
@@ -242,11 +244,15 @@ B.route(/^\/home$/, async (m, nav) => {
   }
   const doors = keys.map((k) => DOORS[k]);
   const small = kids || easy;
-  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(d.desc)}</div></div></a>`;
+  // Video Games Day look: the Games door nudges you to play something today
+  const vgDay = B.vgOn();
+  const doorDesc = (d) => (vgDay && d.key === "games" ? "Play something today" : d.desc);
+  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(doorDesc(d))}</div></div></a>`;
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Video Games Day look (Kids too): "Happy Video Games Day, Ben" in pixel capitals (html.vg .greet)
+  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(vgDay ? B.vg.greeting() : tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -257,7 +263,7 @@ B.route(/^\/home$/, async (m, nav) => {
   } else {
     const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}">${greet}</div><div class="wx" id="wx">${esc(vgDay ? [B.vg.LINE, wx].filter(Boolean).join(" · ") : wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -471,7 +477,7 @@ B.loadBoard = async (nav) => {
   if (weather) {
     const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
     try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
-    $("#wx").textContent = line;
+    $("#wx").textContent = B.vgOn() ? [B.vg.LINE, line].filter(Boolean).join(" · ") : line;
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
   const c = (prefs && prefs.CustomPrefs) || {};
@@ -562,12 +568,19 @@ const homeNotices = async (c, ready) => {
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
 let boardParts = { news: [], way: [], facts: [] };
+// Video Games Day look: each kind of news gets its own pixel picture (a TV, a star, an hourglass or a joystick)
+const vgMark = (r) => {
+  if (!(B.vgOn && B.vgOn())) return "";
+  const k = String(r.kind || "").toLowerCase();
+  const m = k.includes("live") ? "live" : k.includes("episode") ? "ep" : r.kc === KIND_READY ? "ready" : r.kc === KIND_WAY ? "way" : "";
+  return m ? `<img class="vgmark" src="web/img/vg/vg_mark_${m}.png" alt="">` : "";
+};
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}">${vgMark(r)}${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -673,6 +686,11 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+// Video Games Day look: on 12 September (Kids too) unless switched off in Settings › Look (this browser)
+B.vg = window.BenflixArcade;
+B.vgOff = () => { try { return localStorage.getItem("benflix.vgOff") === "1"; } catch (e) { return false; } };
+B.setVgOff = (off) => { try { localStorage.setItem("benflix.vgOff", off ? "1" : "0"); } catch (e) {} };
+B.vgOn = () => !!B.vg && B.vg.season(new Date()) && !B.vgOff();
 
 // Big holidays only, clean and simple
 B.holiday = () => {

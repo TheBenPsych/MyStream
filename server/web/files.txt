@@ -38,6 +38,7 @@ js/start.js
 js/title.js
 js/xmas.js
 js/feast.js
+js/arcade.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -57,3 +58,18 @@ img/tg/tg_charm_shows.png
 img/tg/tg_leaf_gold.png
 img/tg/tg_leaf_red.png
 img/tg/tg_tack.png
+fonts/vg_press_start_2p.ttf
+fonts/vg_silkscreen.ttf
+fonts/press_start_2p.LICENSE.txt
+fonts/silkscreen.LICENSE.txt
+img/vg/vg_charm_books.png
+img/vg/vg_charm_games.png
+img/vg/vg_charm_live.png
+img/vg/vg_charm_movies.png
+img/vg/vg_charm_music.png
+img/vg/vg_charm_shows.png
+img/vg/vg_coin.png
+img/vg/vg_mark_ep.png
+img/vg/vg_mark_live.png
+img/vg/vg_mark_ready.png
+img/vg/vg_mark_way.png

@@ -53,7 +53,9 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.PixelFont
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
+import com.github.damontecres.wholphin.ui.theme.VideoGamesDay
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.launch
@@ -167,7 +169,11 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
-                if (christmas) {
+                // Video Games Day (12 Sep, unless switched off): the arcade room, with the parade past the window
+                val arcade = !christmas && !feast && VideoGamesDay.on()
+                if (arcade) {
+                    ArcadeRoom(modifier = Modifier.fillMaxSize())
+                } else if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
@@ -198,7 +204,25 @@ fun SwitchUserContent(
                     androidx.compose.foundation.layout
                         .Spacer(Modifier.weight(1f))
                     val holiday = remember { holidayFor(LocalDate.now()) }
-                    if (christmas) {
+                    if (arcade) {
+                        Text(
+                            text = VideoGamesDay.GREETING,
+                            fontFamily = PixelFont,
+                            fontSize = if (isTvLayout) 34.sp else 17.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = VideoGamesDay.LINE,
+                            fontSize = if (isTvLayout) 22.sp else 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFC9D0E0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    } else if (christmas) {
                         val today = remember { LocalDate.now() }
                         Text(
                             text = ChristmasSeason.greeting(today),

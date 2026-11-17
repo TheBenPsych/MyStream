@@ -56,7 +56,9 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
+import com.github.damontecres.wholphin.ui.theme.vgProgressBlocks
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -309,11 +311,22 @@ fun BannerCard(
                     modifier =
                         Modifier
                             .align(Alignment.BottomStart)
-                            .background(if (TgLook.on) TgLook.Orange else BenflixRed)
+                            .background(if (TgLook.on) TgLook.Orange else if (VgLook.on) Color.Transparent else BenflixRed)
                             .clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
+                // Video Games Day look: the progress line is an XP bar of blocks, with a pixel coin where you are
+                if (VgLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .vgProgressBlocks((playPercent / 100).toFloat(), coin = 16.dp),
+                    )
+                }
                 // Thanksgiving look: a gold maple leaf rides the end of the progress line
                 if (TgLook.on) {
                     Box(

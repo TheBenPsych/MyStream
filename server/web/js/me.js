@@ -168,11 +168,13 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
+      + setRow("Video Games Day look", "On 12 September: the arcade room on Who's watching, game keepsakes on the doors, and arcade cyan and purple colours (Kids too).", valBtn("vg", B.vgOff() ? "Off" : "On"))
       + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "vg") { B.setVgOff(!B.vgOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
@@ -217,6 +219,8 @@ B.kidsLook = () => {
   root.classList.toggle("xmas", !!(B.me && !kids && B.xmasOn && B.xmasOn()));
   // Thanksgiving look (16 to 30 November, unless switched off): pumpkin orange, harvest brown and the harvest charms
   root.classList.toggle("tg", !!(B.me && !kids && B.tgOn && B.tgOn()));
+  // Video Games Day look (12 September, Kids too, unless switched off): cyan, purple and the game keepsakes
+  root.classList.toggle("vg", !!(B.me && B.vgOn && B.vgOn()));
 };
 setInterval(() => B.kidsLook(), 60000);
 

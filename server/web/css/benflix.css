@@ -1659,3 +1659,78 @@ html.tg .spin::after { content: ""; position: absolute; inset: 8px; background: 
 /* notices are pinned with a brass tack */
 html.tg .corner { overflow: visible; }
 html.tg .corner::before { content: ""; position: absolute; z-index: 3; pointer-events: none; left: -6px; top: -6px; width: 22px; height: 22px; background: url("../img/tg/tg_tack.png") center / contain no-repeat; }
+
+/* ---------- Video Games Day look (approved 2026-11-17, 12 September only, Kids too) ----------
+   Arcade cyan (with dark words) for selected things, deep purple for other buttons and panels, white words on
+   every door, and a different game keepsake on each door, each hung or fixed the way it really would be
+   (cartridge on a key ring, handheld on its wrist strap, joystick plate screwed on, gamepad by its cable,
+   headset over a pin, arcade token on a key ring). Small game touches, each for its own kind of thing: an 8-bit
+   Play with a hard pixel shadow and corner brackets, a block XP bar with a pixel coin, eight pixel blocks for
+   loading, a cyan edge on notices, and a pixel picture for each kind of news. The greeting is in pixel capitals.
+   Settings › Look › Video Games Day look turns it off (js/start.js B.vgOn). All the art is original. */
+@font-face { font-family: "Press Start 2P"; src: url("../fonts/vg_press_start_2p.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Silkscreen"; src: url("../fonts/vg_silkscreen.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+html.vg, html.vg.kids, html.vg.kids.night {
+  --pg2: #170E2C; --pg3: #221640; --pg4: #4A2A86; --line: #33205C; --accent: #3FE0FF;
+  --vcyan: #3FE0FF; --voncyan: #06222B; --vpurple: #4A2A86;
+}
+/* Kids gets the arcade look too: back to the dark page, with cyan in place of sunny yellow */
+html.vg.kids, html.vg.kids.night {
+  --tray: #0B0C10; --trayrgb: 11,12,16; --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10;
+  --kacc: #3FE0FF; --kon: #06222B;
+}
+html.vg .door { color: #fff; }
+html.vg .door > svg.i, html.vg .door .n, html.vg .door .d { position: relative; z-index: 2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+html.vg .door::after { content: ""; position: absolute; z-index: 1; pointer-events: none; right: 0; top: -5.5%; width: 56.7%; max-width: 170px; aspect-ratio: 136 / 162; background: right top / contain no-repeat; }
+html.vg .door[data-door="movies"]::after { background-image: url("../img/vg/vg_charm_movies.png"); }
+html.vg .door[data-door="shows"]::after { background-image: url("../img/vg/vg_charm_shows.png"); }
+html.vg .door[data-door="live"]::after { background-image: url("../img/vg/vg_charm_live.png"); }
+html.vg .door[data-door="games"]::after { background-image: url("../img/vg/vg_charm_games.png"); }
+html.vg .door[data-door="music"]::after { background-image: url("../img/vg/vg_charm_music.png"); }
+html.vg .door[data-door="books"]::after { background-image: url("../img/vg/vg_charm_books.png"); }
+html.vg .door.moredoor::after { content: none; }
+html.vg .home .greet { font-family: "Press Start 2P", monospace; font-weight: 400; letter-spacing: 0; font-size: 24px; line-height: 1.5; }
+@media (max-width: 700px) { html.vg .home .greet { font-size: 15px; } }
+html.vg .btn.white, html.vg .btn.red, html.vg .chip.on { background: var(--vcyan); border-color: var(--vcyan); color: var(--voncyan); }
+html.vg .btn.white:hover, html.vg .btn.red:hover { background: #7FEBFF; color: var(--voncyan); }
+html.vg .btn { background: var(--vpurple); }
+html.vg .btn.ghost { background: none; }
+/* Play: chunky 8-bit corners, a hard pixel shadow and white corner brackets */
+html.vg .tp .btns .btn.white { position: relative; border-radius: 0; overflow: visible; box-shadow: 5px 5px 0 #000; }
+html.vg .tp .btns .btn.white::before { content: ""; position: absolute; inset: -9px; pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) left top / 10px 3px no-repeat, linear-gradient(#fff, #fff) left top / 3px 10px no-repeat,
+    linear-gradient(#fff, #fff) right top / 10px 3px no-repeat, linear-gradient(#fff, #fff) right top / 3px 10px no-repeat,
+    linear-gradient(#fff, #fff) left bottom / 10px 3px no-repeat, linear-gradient(#fff, #fff) left bottom / 3px 10px no-repeat,
+    linear-gradient(#fff, #fff) right bottom / 10px 3px no-repeat, linear-gradient(#fff, #fff) right bottom / 3px 10px no-repeat; }
+/* block XP bar with a pixel coin where you are */
+html.vg .poster .prog, html.vg .kwbar .line { overflow: visible; border-radius: 0; background: repeating-linear-gradient(90deg, var(--vpurple) 0 10px, transparent 10px 12px); }
+html.vg .poster .prog i, html.vg .kwbar .line i { position: relative; border-radius: 0; background: repeating-linear-gradient(90deg, var(--vcyan) 0 10px, transparent 10px 12px); }
+html.vg .kwbar .line { height: 8px; }
+html.vg .kwbar .line i::after { content: ""; position: absolute; right: -9px; top: -6px; width: 18px; height: 18px; background: url("../img/vg/vg_coin.png") center / contain no-repeat; image-rendering: pixelated; }
+html.vg .player .bar .knob { background: var(--vcyan); }
+html.vg .corner .ctime { background: var(--vcyan); }
+/* eight pixel blocks lighting up one after another */
+html.vg .spin { position: relative; border: 0; border-radius: 0; animation: none; width: 48px; height: 48px;
+  background:
+    linear-gradient(var(--vpurple), var(--vpurple)) 20px 0 / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 34px 6px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 40px 20px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 34px 34px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 20px 40px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 6px 34px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 0 20px / 8px 8px no-repeat,
+    linear-gradient(var(--vpurple), var(--vpurple)) 6px 6px / 8px 8px no-repeat; }
+html.vg .spin::before { content: ""; position: absolute; width: 8px; height: 8px; background: var(--vcyan); box-shadow: 0 0 8px var(--vcyan); animation: vgblocks .96s steps(1) infinite; }
+@keyframes vgblocks {
+  0% { left: 20px; top: 0; } 12.5% { left: 34px; top: 6px; } 25% { left: 40px; top: 20px; } 37.5% { left: 34px; top: 34px; }
+  50% { left: 20px; top: 40px; } 62.5% { left: 6px; top: 34px; } 75% { left: 0; top: 20px; } 87.5% { left: 6px; top: 6px; } 100% { left: 20px; top: 0; }
+}
+/* notices: a cyan edge down the left, like a lit-up game menu */
+html.vg .corner { box-shadow: inset 5px 0 0 var(--vcyan), 0 10px 30px rgba(0,0,0,.45); }
+/* a pixel picture for each kind of news */
+.vgmark { width: 1.35em; height: 1.35em; vertical-align: -0.3em; margin-right: 6px; image-rendering: pixelated; }
+/* Who's watching: the arcade room's greeting in pixel capitals, and "Player 1 ready" under it */
+.who h1.vgh { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 34px; line-height: 1.4; margin: 0 0 10px; text-shadow: 0 3px 12px rgba(0,0,0,.7); }
+.who .vgline { margin: 0 0 30px; font-size: 22px; font-weight: 600; color: #C9D0E0; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+@media (max-width: 600px) { .who h1.vgh { font-size: 17px; } .who .vgline { font-size: 15px; } }

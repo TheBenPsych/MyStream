@@ -65,7 +65,9 @@ fun WholphinTheme(
     // Thanksgiving look (16 to 30 Nov): pumpkin orange
     val accentColor =
         kidsPalette?.accent ?: (
-            if (XmasLook.on) {
+            if (VgLook.on) {
+                VgLook.Cyan
+            } else if (XmasLook.on) {
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange

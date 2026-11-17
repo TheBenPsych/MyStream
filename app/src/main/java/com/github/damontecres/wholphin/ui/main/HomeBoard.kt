@@ -59,7 +59,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -238,19 +240,29 @@ private fun Greeting(
     tv: Boolean,
 ) {
     Column {
+        // Video Games Day look: the greeting is in pixel capitals (smaller, as they're very wide)
+        val vg = com.github.damontecres.wholphin.ui.theme.VgLook.on
         Text(
             text = greeting,
             color = BenflixColors.Text,
-            fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            fontSize = if (vg) BenflixType.pageTitle * .6f else BenflixType.pageTitle,
+            fontWeight = if (TgLook.on || vg) FontWeight.Normal else FontWeight.ExtraBold,
             // Thanksgiving look: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on) HolidayFont else null,
+            fontFamily = if (vg) com.github.damontecres.wholphin.ui.theme.PixelFont else if (TgLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = if (vg) Modifier.padding(vertical = 6.dp) else Modifier,
         )
-        if (weather != null) {
+        // Video Games Day look: "Player 1 ready" comes before the usual news
+        val line =
+            if (vg) {
+                listOfNotNull(com.github.damontecres.wholphin.ui.theme.VideoGamesDay.LINE, weather).joinToString(" · ")
+            } else {
+                weather
+            }
+        if (line != null) {
             Text(
-                text = weather,
+                text = line,
                 color = BenflixColors.Muted,
                 fontSize = if (tv) BenflixType.body else BenflixType.small,
                 fontWeight = FontWeight.Medium,
@@ -289,7 +301,7 @@ private fun DoorGrid(
                 name -= 0.5f
             }
             var desc = maxOf(toSp(u * 0.95f), 10.5f).coerceAtMost(17f)
-            while (desc > 8f && doors.any { !measurer.fits(it.description, desc, FontWeight.SemiBold, 2, textWidth) }) {
+            while (desc > 8f && doors.any { !measurer.fits(it.blurb, desc, FontWeight.SemiBold, 2, textWidth) }) {
                 desc -= 0.5f
             }
             DoorWords(name.sp, desc.sp)
@@ -349,6 +361,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .vgDoorKeepsake(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -365,7 +378,7 @@ private fun SquareDoor(
                 )
                 // Always two lines tall, so a door whose words fit on one line keeps its name level with the rest
                 Text(
-                    text = door.description,
+                    text = door.blurb,
                     color = door.labelColor.copy(alpha = .85f),
                     fontSize = words.desc,
                     lineHeight = words.desc * 1.22f,
@@ -620,6 +633,19 @@ private fun SeeAllPanel(
     }
 }
 
+/** Video Games Day look: which pixel picture a news row gets (a TV, a star, an hourglass or a joystick), if any */
+private fun vgKindFor(row: HomeRow): com.github.damontecres.wholphin.ui.theme.VgKind? {
+    if (!com.github.damontecres.wholphin.ui.theme.VgLook.on) return null
+    val k = row.kind.lowercase()
+    return when {
+        "live" in k -> com.github.damontecres.wholphin.ui.theme.VgKind.LIVE
+        "episode" in k -> com.github.damontecres.wholphin.ui.theme.VgKind.EPISODE
+        row.kindColor == HomeKind.Ready -> com.github.damontecres.wholphin.ui.theme.VgKind.READY
+        row.kindColor == HomeKind.OnTheWay -> com.github.damontecres.wholphin.ui.theme.VgKind.ON_THE_WAY
+        else -> null
+    }
+}
+
 @Composable
 private fun RowDivider(modifier: Modifier = Modifier) {
     Box(
@@ -658,16 +684,27 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = row.kind.uppercase(),
-                    color = row.kindColor,
-                    fontSize = words.kind,
-                    lineHeight = words.kind * 1.3f,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = words.kind * 0.06f,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // Video Games Day look: each kind of news gets its own pixel picture before its label
+                val mark = vgKindFor(row)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (mark != null) {
+                        com.github.damontecres.wholphin.ui.theme.VgKindMark(
+                            mark,
+                            size = (words.kind.value * 1.3f).dp,
+                            modifier = Modifier.padding(end = 6.dp),
+                        )
+                    }
+                    Text(
+                        text = row.kind.uppercase(),
+                        color = row.kindColor,
+                        fontSize = words.kind,
+                        lineHeight = words.kind * 1.3f,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = words.kind * 0.06f,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 val slide = focused && !look.lite
                 Text(
                     text = row.title,

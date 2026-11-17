@@ -57,6 +57,9 @@ object KidsLook {
     val palette: KidsPalette? get() =
         if (!on) {
             null
+        } else if (VideoGamesDay.on()) {
+            // Video Games Day (12 Sep): Kids gets the arcade look too, so Sky and Sunshine rest for the day
+            null
         } else if (night) {
             NightLight
         } else {

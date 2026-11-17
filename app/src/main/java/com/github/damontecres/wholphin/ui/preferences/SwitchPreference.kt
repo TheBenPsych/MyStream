@@ -66,6 +66,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // Video Games Day look: a shiny round arcade button next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.VgLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .VgKnob()
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
