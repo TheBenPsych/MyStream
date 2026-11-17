@@ -53,9 +53,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -204,9 +206,9 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || NyLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || NyLook.on) HolidayFont else null,
+                // Thanksgiving, New Year's and 4th of July looks: the greeting is in the curly holiday font
+                fontWeight = if (TgLook.on || NyLook.on || J4Look.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || NyLook.on || J4Look.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -433,8 +435,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier.nyDoorCharm(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).nyDoorCharm(door))
-                .padding(if (small) 14.dp else 22.dp),
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door).j4DoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .nyDoorCharm(door)
+                            .j4DoorCharm(door)
+                    },
+                ).padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(
                 icon = doorIcon(door),

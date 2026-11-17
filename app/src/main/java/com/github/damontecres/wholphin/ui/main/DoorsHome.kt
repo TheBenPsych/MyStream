@@ -1155,6 +1155,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
         return com.github.damontecres.wholphin.ui.theme.NewYearSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // 4th of July look (1 to 4 Jul): "Happy 4th of July, Ben" all season, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {
+        return com.github.damontecres.wholphin.ui.theme.JulySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     val holiday = holidayFor(java.time.LocalDate.now())
     if (holiday != null) return holiday.text + if (name.isNotBlank()) ", $name" else ""
     val part =

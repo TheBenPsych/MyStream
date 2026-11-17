@@ -46,6 +46,13 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         )
         return
     }
+    // 4th of July look: the loading ring is a red, white and blue firework blooming round the circle
+    if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {
+        com.github.damontecres.wholphin.ui.theme.J4LoadingBurst(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     Box(modifier = modifier) {
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside

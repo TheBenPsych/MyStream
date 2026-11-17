@@ -71,6 +71,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
                 }
+                // 4th of July look: a little striped switch with a navy star knob next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.J4Look.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .J4Switch()
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,

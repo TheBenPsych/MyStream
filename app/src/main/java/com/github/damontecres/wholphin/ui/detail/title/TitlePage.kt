@@ -70,9 +70,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -699,6 +701,8 @@ private fun TitleButtonView(
     val tg = TgLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // 4th of July look: Play is flag red with white words, and three big white stars across its end
+    val j4 = J4Look.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
@@ -706,13 +710,15 @@ private fun TitleButtonView(
             TgLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (j4) {
+            J4Look.Red
         } else {
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            if (xmas || tg) {
+            if (xmas || tg || j4) {
                 Color.White
             } else if (ny) {
                 NyLook.OnGold
@@ -743,6 +749,7 @@ private fun TitleButtonView(
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

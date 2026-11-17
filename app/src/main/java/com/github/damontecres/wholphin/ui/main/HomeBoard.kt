@@ -58,10 +58,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.J4KindMark
+import com.github.damontecres.wholphin.ui.theme.J4Look
+import com.github.damontecres.wholphin.ui.theme.JulySeason
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -246,9 +250,9 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || NyLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || NyLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || NyLook.on || J4Look.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving, New Year's and 4th of July looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || NyLook.on || J4Look.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -256,6 +260,9 @@ private fun Greeting(
         val line =
             if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (J4Look.on) {
+                // 4th of July look: "2 days to the Fourth" leads the line under the greeting
+                listOfNotNull(JulySeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else {
                 weather
             }
@@ -361,6 +368,7 @@ private fun SquareDoor(
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
                 .nyDoorCharm(door)
+                .j4DoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -692,6 +700,12 @@ private fun ListRow(
                 if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (J4Look.on) {
+                    // 4th of July look: a flag, a star, a rocket or a firework before the kind line
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        J4KindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.7f).toDp() })
                         KindLine(row, words)
                     }
                 } else {
