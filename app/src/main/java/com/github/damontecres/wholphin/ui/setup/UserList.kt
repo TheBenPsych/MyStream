@@ -418,6 +418,8 @@ private fun UserIconCard(
                     com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.HalloweenSeason
+                        .on() ||
+                    com.github.damontecres.wholphin.ui.theme.NewYearSeason
                         .on()
             )
 

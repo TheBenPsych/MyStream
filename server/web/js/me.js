@@ -169,13 +169,15 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Halloween look", "From 1 to 31 October: the spooky room on Who's watching, a different Halloween charm on each door (friendly ones on Kids), and pumpkin orange and witch purple colours.", valBtn("hw", B.hwOff() ? "Off" : "On")))
-      + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")));
+      + (B.me.kids ? "" : setRow("Thanksgiving look", "From 16 to 30 November: the feast table on Who's watching, harvest charms on the doors, and pumpkin orange and harvest brown colours.", valBtn("tg", B.tgOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("New Year's look", "From 27 December to 1 January: the party room on Who's watching with a midnight countdown, party charms on the doors, and champagne gold and midnight blue colours.", valBtn("ny", B.nyOff() ? "Off" : "On")));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
       if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       if (p && p.dataset.pick === "xmas") { B.setXmasOff(!B.xmasOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "hw") { B.setHwOff(!B.hwOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "tg") { B.setTgOff(!B.tgOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "ny") { B.setNyOff(!B.nyOff()); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
   }
@@ -224,6 +226,8 @@ B.kidsLook = () => {
   const hw = !!(B.me && B.hwOn && B.hwOn());
   root.classList.toggle("hw", hw && !kids);
   root.classList.toggle("hwkids", hw && kids);
+  // New Year's look (27 December to 1 January, unless switched off): gold, midnight blue and the party charms, Kids too (Ben)
+  root.classList.toggle("ny", !!(B.me && B.nyOn && B.nyOn()));
 };
 setInterval(() => B.kidsLook(), 60000);
 

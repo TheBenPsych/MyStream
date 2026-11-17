@@ -56,8 +56,10 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.HwLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
+import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -316,6 +318,8 @@ fun BannerCard(
                                     TgLook.Orange
                                 } else if (HwLook.on) {
                                     HwLook.Orange
+                                } else if (NyLook.on) {
+                                    NyLook.Gold
                                 } else {
                                     BenflixRed
                                 },
@@ -323,7 +327,6 @@ fun BannerCard(
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
-                // Thanksgiving look: a gold maple leaf rides the end of the progress line
                 // Halloween look: a little ghost bobs on the end of the progress line
                 if (HwLook.on) {
                     Box(
@@ -335,6 +338,7 @@ fun BannerCard(
                                 .hwProgressGhost((playPercent / 100).toFloat(), ghost = 22.dp),
                     )
                 }
+                // Thanksgiving look: a gold maple leaf rides the end of the progress line
                 if (TgLook.on) {
                     Box(
                         modifier =
@@ -343,6 +347,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
+                    )
+                }
+                // New Year's look: a lit sparkler at the end of the progress line
+                if (NyLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
                     )
                 }
             }

@@ -296,6 +296,8 @@ message BenflixPreferences {
   // Benflix Halloween look (1 to 31 Oct) is on unless this is set. Field numbers agreed between the holiday
   // builds: New Year's 15, Friday the 13th 16, 4th of July 17, Popcorn Day 18, Halloween 19
   bool halloween_look_off = 19;
+  // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
+  bool new_year_look_off = 15;
 }
 
 enum BenflixAccent {

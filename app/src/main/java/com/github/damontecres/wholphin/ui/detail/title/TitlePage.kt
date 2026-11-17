@@ -71,9 +71,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HwLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
+import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -699,6 +701,8 @@ private fun TitleButtonView(
     val tg = TgLook.on
     // Halloween look: Play is pumpkin orange with dark words, and glows and flickers like a candle in a jack-o'-lantern
     val hw = HwLook.on
+    // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
+    val ny = NyLook.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
@@ -706,21 +710,23 @@ private fun TitleButtonView(
             TgLook.Orange
         } else if (hw) {
             HwLook.Orange
+        } else if (ny) {
+            NyLook.Gold
         } else {
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
     val content =
         if (primary) {
-            (
-                if (xmas || tg) {
-                    Color.White
-                } else if (hw) {
-                    HwLook.OnOrange
-                } else {
-                    BenflixColors.Tray
-                }
-            )
+            if (xmas || tg) {
+                Color.White
+            } else if (hw) {
+                HwLook.OnOrange
+            } else if (ny) {
+                NyLook.OnGold
+            } else {
+                BenflixColors.Tray
+            }
         } else {
             BenflixColors.Text
         }
@@ -745,6 +751,7 @@ private fun TitleButtonView(
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && hw) Modifier.hwCandleFlicker() else Modifier)
+                .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)
