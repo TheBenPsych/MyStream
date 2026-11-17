@@ -72,7 +72,30 @@ fun StPatricksRoom(modifier: Modifier = Modifier) =
         StPatricksVideos,
         { tall -> "${com.github.damontecres.wholphin.ui.theme.StPatricksSeason.variant(LocalDate.now())}-${if (tall) "tall" else "wide"}" },
         modifier,
+        bg = listOf(Color(0xFF08110D), Color(0xFF11211A)),
     )
+
+/**
+ * Benflix New Year's: the party room behind Who's watching (27 December to 1 January). Drawn by the web
+ * version (server/web/js/newyear.js) and recorded as 60-second loops by tools/newyear/record.js: [variant]
+ * "eve" until midnight on New Year's Eve (bottle corked), then "day" (opened, confetti falling all day).
+ * The year is on the balloons, so each year has its own videos.
+ */
+@Composable
+fun NewYearRoom(
+    variant: String,
+    year: Int,
+    modifier: Modifier = Modifier,
+) {
+    LoopingRoom(
+        NewYearVideos,
+        { tall -> NewYearVideos.name(variant, year, tall) },
+        modifier,
+        bg = listOf(Color(0xFF090C18), Color(0xFF121830)),
+        // On New Year's Eve, the after-midnight video downloads early so the room changes the moment the countdown ends
+        alsoFetch = { tall -> if (variant == "eve" && LocalDate.now().dayOfMonth == 31) NewYearVideos.name("day", year, tall) else null },
+    )
+}
 
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
@@ -81,6 +104,8 @@ private fun LoopingRoom(
     videos: RoomVideos,
     nameFor: (Boolean) -> String,
     modifier: Modifier = Modifier,
+    bg: List<Color> = listOf(Color(0xFF1A110D), Color(0xFF0D0A0A)),
+    alsoFetch: ((Boolean) -> String?)? = null,
 ) {
     val context = LocalContext.current
     BoxWithConstraints(
@@ -88,13 +113,16 @@ private fun LoopingRoom(
             modifier
                 .clipToBounds()
                 .background(
-                    Brush.verticalGradient(listOf(Color(0xFF1A110D), Color(0xFF0D0A0A))),
+                    Brush.verticalGradient(bg),
                 ),
     ) {
         val tall = maxWidth < maxHeight * 0.8f
-        val name = remember(tall) { nameFor(tall) }
+        val name = nameFor(tall)
         var file by remember(name) { mutableStateOf(videos.cached(context, name)) }
-        LaunchedEffect(name) { if (file == null) file = videos.fetch(context, name) }
+        LaunchedEffect(name) {
+            if (file == null) file = videos.fetch(context, name)
+            alsoFetch?.invoke(tall)?.let { videos.fetch(context, it) }
+        }
         val video = file ?: return@BoxWithConstraints
 
         val player =
@@ -157,11 +185,21 @@ object XmasVideos : RoomVideos("xmas", version = 1) {
     ) = "$variant-${if (tall) "tall" else "wide"}"
 }
 
-/** Downloads and keeps the St. Patrick's Day room videos (extras/scenes/stpatricks in the repo: week/day, wide/tall) */
-object StPatricksVideos : RoomVideos("stpatricks", version = 1)
+/** Downloads and keeps the New Year's party room videos (extras/scenes/newyear in the repo) */
+object NewYearVideos : RoomVideos("newyear", version = 1) {
+    /** The recording's name in the repo, like "eve-2027-wide" */
+    fun name(
+        variant: String,
+        year: Int,
+        tall: Boolean,
+    ) = "$variant-$year-${if (tall) "tall" else "wide"}"
+}
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)
+
+/** Downloads and keeps the St. Patrick's Day room videos (extras/scenes/stpatricks in the repo: week/day, wide/tall) */
+object StPatricksVideos : RoomVideos("stpatricks", version = 1)
 
 /**
  * Downloads and keeps one holiday room's videos (extras/scenes/[folder] in the repo).

@@ -62,13 +62,23 @@ fun WholphinTheme(
     val kidsPalette = KidsLook.palette
     val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
     // Christmas look (December until New Year's): highlights and progress lines turn ornament red;
-    // Thanksgiving look (16 to 30 Nov): pumpkin orange; St. Patrick's Day look (10 to 17 Mar, Kids too): clover green
+    // Thanksgiving look (16 to 30 Nov): pumpkin orange; New Year's look (27 Dec to 1 Jan): champagne gold
     val accentColor =
-        (if (SpLook.on) SpLook.Clover else null) ?: kidsPalette?.accent ?: (
+        (
+            if (NyLook.on) {
+                NyLook.Gold
+            } else if (SpLook.on) {
+                SpLook.Clover
+            } else {
+                null
+            }
+        ) ?: kidsPalette?.accent ?: (
             if (XmasLook.on) {
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange
+            } else if (NyLook.on) {
+                NyLook.Gold
             } else {
                 BenflixRedBase
             }

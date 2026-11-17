@@ -54,8 +54,10 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -204,9 +206,9 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving (not Kids) and St. Patrick's Day looks: the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || SpLook.on) HolidayFont else null,
+                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
+                fontWeight = if (TgLook.on || NyLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || NyLook.on || SpLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -433,9 +435,18 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                // St. Patrick's Day look: lucky charms on Kids doors too (Ben picked that)
-                .then(if (kids) Modifier.spDoorCharm(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).spDoorCharm(door))
-                .padding(if (small) 14.dp else 22.dp),
+                // New Year's and St. Patrick's Day looks: their charms on Kids doors too (Ben picked that)
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door).spDoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .nyDoorCharm(door)
+                            .spDoorCharm(door)
+                    },
+                ).padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(
                 icon = doorIcon(door),

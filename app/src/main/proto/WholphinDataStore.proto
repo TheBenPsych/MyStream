@@ -293,6 +293,8 @@ message BenflixPreferences {
   bool christmas_look_off = 13;
   // Benflix Thanksgiving look (16 to 30 Nov) is on unless this is set
   bool thanksgiving_look_off = 14;
+  // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
+  bool new_year_look_off = 15;
   // Benflix St. Patrick's Day look (10 to 17 Mar) is on unless this is set (numbers agreed between theme builds: 15-19 taken)
   bool stpatricks_look_off = 20;
 }

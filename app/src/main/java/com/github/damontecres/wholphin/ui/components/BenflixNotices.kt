@@ -52,6 +52,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.NyKindMark
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -210,9 +212,19 @@ private fun CornerCard(
                 .tgTack()
                 .clip(shape)
                 .background(BenflixColors.Panel)
-                // St. Patrick's Day look: a clover green edge down the notice's left side
+                // New Year's look: a gold edge down the notice's left side
                 .then(
-                    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                    if (NyLook.on) {
+                        Modifier.drawBehind {
+                            drawRect(
+                                NyLook.Gold,
+                                size =
+                                    androidx.compose.ui.geometry
+                                        .Size(4.dp.toPx(), size.height),
+                            )
+                        }
+                    } else if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                        // St. Patrick's Day look: a clover green edge down the notice's left side
                         Modifier.drawBehind {
                             drawRect(
                                 com.github.damontecres.wholphin.ui.theme.SpLook.Clover,
@@ -243,6 +255,8 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
+            if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
             // St. Patrick's Day look: the notice's own small mark (a horseshoe, a pot of gold, a rainbow, a top hat)
             if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
                 com.github.damontecres.wholphin.ui.theme

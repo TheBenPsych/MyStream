@@ -39,6 +39,13 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // New Year's look: the loading ring is a clock face ticking round to midnight
+    if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
+        com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     // St. Patrick's Day look: a rainbow sweeps round the ring into a pot of gold in the middle
     if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
         com.github.damontecres.wholphin.ui.theme.SpLoadingRainbow(

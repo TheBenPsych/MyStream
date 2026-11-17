@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,10 +58,14 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.NewYearSeason
+import com.github.damontecres.wholphin.ui.theme.NyKindMark
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.SpKindMark
 import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -247,16 +250,19 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving and St. Patrick's Day looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || SpLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || NyLook.on || SpLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || NyLook.on || SpLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        // St. Patrick's Day look: the countdown ("3 days to St. Patrick's Day") leads the line under the greeting
+        // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
         val line =
-            if (SpLook.on) {
-                listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" \u00b7 ").ifBlank { null }
+            if (NyLook.on) {
+                listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (SpLook.on) {
+                // St. Patrick's Day look: "3 days to St. Patrick's Day" leads it the same way
+                listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else {
                 weather
             }
@@ -361,6 +367,7 @@ private fun SquareDoor(
                 .graphicsLayer { alpha = labelAlpha() }
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
+                .nyDoorCharm(door)
                 .spDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
@@ -643,6 +650,24 @@ private fun RowDivider(modifier: Modifier = Modifier) {
     )
 }
 
+/** The small coloured line saying what a news row is ("New episode · S3 E12") */
+@Composable
+private fun KindLine(
+    row: HomeRow,
+    words: RowWords,
+) {
+    Text(
+        text = row.kind.uppercase(),
+        color = row.kindColor,
+        fontSize = words.kind,
+        lineHeight = words.kind * 1.3f,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = words.kind * 0.06f,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /**
  * One news row: a small square poster, the small coloured line (what it is), and the name on up to 2 lines.
  * When you land on it, a name too long for 2 lines slides by on one line (not with Lite mode on).
@@ -671,22 +696,20 @@ private fun ListRow(
         ) {
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                // St. Patrick's Day look: each kind of notice gets its own small mark before its kind line
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (SpLook.on) {
-                        SpKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.6f).toDp() })
-                        Spacer(Modifier.width(6.dp))
+                // New Year's look: each kind of notice gets its own small gold mark before its kind line
+                if (NyLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
                     }
-                    Text(
-                        text = row.kind.uppercase(),
-                        color = row.kindColor,
-                        fontSize = words.kind,
-                        lineHeight = words.kind * 1.3f,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = words.kind * 0.06f,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                } else if (SpLook.on) {
+                    // St. Patrick's Day look: a horseshoe, pot of gold, rainbow or top hat before the kind line
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SpKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.6f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else {
+                    KindLine(row, words)
                 }
                 val slide = focused && !look.lite
                 Text(
