@@ -51,7 +51,7 @@ sonarr:
       - trash_ids: [3bc5f395426614e155e585a2f056cdf1]  # Season Pack
         assign_scores_to:
           - name: HD - 720p/1080p
-            score: 101
+            score: 0  # 2026-11-17: any bonus made Sonarr re-download whole seasons it already had (same quality) whenever a season pack showed up
       - trash_ids: [9623c5c9cac8e939c1b9aedd32f640bf]  # SYFY
         assign_scores_to:
           - name: HD - 720p/1080p
@@ -252,7 +252,7 @@ sonarr:
       - trash_ids: [3bc5f395426614e155e585a2f056cdf1]  # Season Pack
         assign_scores_to:
           - name: Anime HD - 720p/1080p
-            score: 101
+            score: 0  # 2026-11-17: any bonus made Sonarr re-download whole seasons it already had (same quality) whenever a season pack showed up
       - trash_ids: [026d5aadd1a6b4e550b134cb6c72b3ca]  # Uncensored
         assign_scores_to:
           - name: Anime HD - 720p/1080p
