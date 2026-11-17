@@ -526,7 +526,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .sline.big .pic { width: 46px; height: 69px; }
   .sline.big .pic.sq { width: 60px; height: 60px; }
 }
-.askcard .im { background: var(--pg2); }
+.askcard .im { background-color: var(--pg2); }
 
 /* ---------- my watching ---------- */
 .bigweek { font-size: 72px; font-weight: 800; letter-spacing: -.02em; margin: 0; line-height: 1; }
@@ -1612,7 +1612,7 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
 
 /* ---------- Christmas look (approved 2026-11-16, 1 to 26 December, not on Kids) ----------
    Red highlights, pine green buttons and panels, white words on every door, and one decoration used one way:
-   a glass ornament hanging from a gold pin on a top edge (the doors, Play, notices and the poster you're on).
+   the rail's own Christmas icons, big glass bulbs across the top of Home and snow along the bottom (js/holidaynav.js).
    Settings › Look › Christmas look turns it off (js/start.js B.xmasOn). */
 html.xmas {
   --pg2: #0F241A; --pg3: #173A28; --pg4: #1E6B45; --line: #1F3D2C; --accent: #E0344E;
@@ -1626,29 +1626,8 @@ html.xmas .btn.ghost { background: none; }
 html.xmas .poster .prog { background: rgba(30,107,69,.85); }
 html.xmas .poster .prog i, html.xmas .kwbar .line i, html.xmas .player .bar .knob { background: var(--xred); }
 html.xmas .corner .ctime { background: var(--xred); }
-/* the ornament: ::before is the gold pin, thread and cap; ::after is the glass ball (--ob is its colour) */
-html.xmas .door, html.xmas .tp .btns .btn.white, html.xmas .corner, html.xmas .poster:focus-visible, html.xmas .poster:hover { position: relative; --ob: #E23A55; --os: 22px; --ol: 7px; --ox: 26px; }
-html.xmas .door { --ob: color-mix(in srgb, var(--c) 88%, #fff); --os: clamp(26px, 3.4vw, 46px); --ol: clamp(16px, 2vw, 34px); --ox: clamp(22px, 3vw, 44px); }
-html.xmas .tp .btns .btn.white { --ob: #2E9E5E; --os: 22px; --ol: 4px; --ox: 18px; padding-right: 52px; }
-html.xmas .corner { --os: 24px; --ol: 5px; --ox: 30px; overflow: visible; }
-html.xmas .door::before, html.xmas .tp .btns .btn.white::before, html.xmas .corner::before, html.xmas .poster:focus-visible::before, html.xmas .poster:hover::before {
-  content: ""; position: absolute; z-index: 3; pointer-events: none; top: -3px; right: calc(var(--ox) - var(--os) * .15); width: calc(var(--os) * .3); height: calc(var(--ol) + var(--os) * .32 + 3px);
-  background:
-    radial-gradient(circle at 50% 3px, var(--xgold) 0 3px, transparent 3.5px) top / 100% 7px no-repeat,
-    linear-gradient(var(--xgold), var(--xgold)) center 3px / 2px var(--ol) no-repeat,
-    linear-gradient(90deg, #9A7426, var(--xgold), #9A7426) center bottom / 100% calc(var(--os) * .32) no-repeat;
-}
-html.xmas .door::after, html.xmas .tp .btns .btn.white::after, html.xmas .corner::after, html.xmas .poster:focus-visible::after, html.xmas .poster:hover::after {
-  content: ""; position: absolute; z-index: 3; pointer-events: none; top: calc(var(--ol) + var(--os) * .3); right: calc(var(--ox) - var(--os) * .5); width: var(--os); height: var(--os); border-radius: 50%;
-  background:
-    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
-    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%);
-  box-shadow: 2px 5px 10px rgba(0,0,0,.45);
-}
-html.xmas .door::after { background:
-    radial-gradient(ellipse 22% 13% at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 100%),
-    linear-gradient(transparent 50%, var(--xgold) 50% 57%, transparent 57%),
-    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ob) 38%, #fff) 0, var(--ob) 30%, color-mix(in srgb, var(--ob) 45%, #000) 78%, color-mix(in srgb, var(--ob) 20%, #000) 100%); }
+/* (2026-11-17) no hanging ornaments any more: Ben said the bulb doesn't attach to every kind of button. Christmas
+   now decorates the rail icons and Home (js/holidaynav.js) and keeps the normal white focus ring. */
 .who .xroom { pointer-events: none; }
 
 /* ---------- Thanksgiving look (approved 2026-11-16, 16 to 30 November, not on Kids) ----------
@@ -2503,6 +2482,10 @@ body.nav-panel .brail.holiday { -webkit-mask-image: none; mask-image: none; }
 .bt-mark { position: absolute; left: 4px; top: -10px; width: 12px; height: 18px; }
 .sp-trim { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; }
 .sp-trim.top { top: 0; height: 44px; z-index: 1; }
+.hol-tw { animation: holTw 2.4s ease-in-out infinite; }
+.xday .hol-tw { animation-duration: 1.1s; }
+@keyframes holTw { 0%, 100% { opacity: .9; } 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .hol-tw { animation: none; } }
 .sp-trim.bottom { position: relative; display: block; height: 36px; margin-top: 12px; }
 /* Star Wars Day on the rail (js/holidaynav.js): the saga icons keep their own colours, but go dark before the
    start-up and ignite in the side's blade colour as they light up, like the app */

@@ -63,7 +63,7 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 14;
+const SETUP_NEEDED = 15;
 const SETUP_WAITING = {
   1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
@@ -78,6 +78,7 @@ const SETUP_WAITING = {
   12: ["Artist pages show their popular songs and Fans also like, artists get photos overnight, and your playlists get Songs to add"],
   13: ["Send music to someone in the family, and find a song by a line of its words"],
   14: ["Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Benflix and skip learning"],
+  15: ["When Radarr or Sonarr swap in a better copy, the movie or episode keeps its first date and doesn't show as new again"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
 const setupNeed = async () => {

@@ -80,6 +80,11 @@ try:  # Home's weather line (a town typed once on the Server page), in benflix_h
 except ImportError:
     home = None
 
+try:  # Better copies from Radarr/Sonarr keep their first "date added", so they don't show as new, in benflix_arrivals.py
+    import benflix_arrivals as arrivals
+except ImportError:
+    arrivals = None
+
 try:  # Fix posters: blurry poster finder and night-time fill of missing pictures, in benflix_posters.py
     import benflix_posters as posters
 except ImportError:
@@ -202,7 +207,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 14
+SETUP_VERSION = 15
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 
@@ -1285,6 +1290,8 @@ class Handler(BaseHTTPRequestHandler):
             raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
         if method == "POST" and path == "/api/admin/livetv/refresh" and livetv is not None:
             return self.send(200, {"started": livetv.refresh(), **livetv.status()})
+        if method == "GET" and path == "/api/admin/arrivals" and arrivals is not None:
+            return self.send(200, arrivals.status())
         if method == "GET" and path == "/api/admin/drives":
             return self.send(200, tools.drives(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         if method == "GET" and path == "/api/admin/tower":
@@ -1805,6 +1812,12 @@ if __name__ == "__main__":
         posters.start(
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+        )
+    if arrivals is not None:
+        arrivals.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            tools,
         )
     if home is not None:
         home.start()
