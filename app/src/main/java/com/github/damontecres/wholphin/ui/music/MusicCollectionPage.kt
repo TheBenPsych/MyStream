@@ -434,7 +434,8 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else if (state.catalogue) {
-                                        "Not on Benflix yet. Play hears 30 seconds of each, one after another. The heart asks for a song.$okNote"
+                                        "Not on Benflix yet. Press a song to ask for it. " +
+                                            "Play previews hears 30 seconds of each, one after another.$okNote"
                                     } else {
                                         if (kind == CollectionKind.PLAYLIST) {
                                             "Songs like the ones here. Ask for one and it joins this playlist once it's in.$okNote"
@@ -453,31 +454,13 @@ fun MusicCollectionPage(
                             androidx.compose.runtime.CompositionLocalProvider(
                                 com.github.damontecres.wholphin.ui.discover.LocalSongPreview provides viewModel.preview,
                             ) {
-                                if (state.catalogue) {
-                                    // Discover weekly and Release radar: the heart asks for the song
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Box(Modifier.weight(1f)) {
-                                            com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
-                                                song = song,
-                                                onClick = { viewModel.preview.toggle(song.id) },
-                                            )
-                                        }
-                                        MusicButton(
-                                            null,
-                                            BenflixIcon.HEART,
-                                            filledHeart = song.asked != null || song.have,
-                                            onClick = { viewModel.askToAdd(song) },
-                                        )
-                                    }
-                                } else {
-                                    com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
-                                        song = song,
-                                        onClick = { viewModel.askToAdd(song) },
-                                    )
-                                }
+                                // Ben 2026-11-17: Discover weekly and Release radar work like Songs to add. Pressing a song asks for
+                                // it ("Ask for it" on the row turns into "Asked for"), and the round play button beside it plays 30
+                                // seconds. The heart that used to ask read like a Like, so it's gone.
+                                com.github.damontecres.wholphin.ui.discover.CatalogueSongRow(
+                                    song = song,
+                                    onClick = { viewModel.askToAdd(song) },
+                                )
                             }
                         }
                     }

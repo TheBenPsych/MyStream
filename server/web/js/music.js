@@ -351,7 +351,7 @@
     const artist = (artistOf(s) || "").split(",")[0].trim();
     closeNow();
     const admin = B.me.admin;
-    const head = `<h3>Similar songs</h3><p class="dim">Like ${esc(title)}, and not in your music yet. Pick one to ask for it.</p>`;
+    const head = `<h3>Songs like this</h3><p class="dim">Like ${esc(title)}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.</p>`;
     let panel = B.side(head + `<div id="msim">${B.spinner()}</div>`);
     let found;
     try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { $("#msim", panel).innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
@@ -379,7 +379,7 @@
       const x = songs[i];
       scroll = panel ? panel.scrollTop : 0;
       panel = null;
-      const ask = B.side(`<button class="btn small" data-simback style="margin-bottom:12px">${I("left")} Similar songs</button><h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
+      const ask = B.side(`<button class="btn small" data-simback style="margin-bottom:12px">${I("left")} Songs like this</button><h3>${esc(x.title)}</h3><p class="dim">${esc([x.artist, x.album].filter(Boolean).join(" · "))}</p><h4 style="margin:14px 0 8px">Ask for ${esc(x.title)}</h4>
         ${admin ? "" : `<p class="dim">Ben says yes before it downloads.</p>`}
         <div class="acts" style="justify-content:flex-start;margin:4px 0 12px">${B.previewBtn(x.id)}<span class="dim">Hear 30 seconds</span></div>
         <button class="opt" data-pick="song">${admin ? "Ask for this song" : "Ask Ben for this song"}</button>${x.album_id ? `<button class="opt" data-pick="album">${admin ? "Ask for the whole album" : "Ask Ben for the whole album"}</button>` : ""}`);
@@ -420,14 +420,15 @@
           <div class="np-mid"><div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><div class="np-track"><i></i></div><span class="np-len">0:00</span></div>
             <div class="np-ctl"><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
-            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="about" title="About the artist, credits, what's next, songs like this">${I("info")} About</button><button class="btn" data-a="playon" title="Play on a TV or phone that's open on Benflix">${I("tv")} Play on</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
+            <div class="np-ctl2"><button class="btn mheart" data-a="like">${I("heart")} Like</button><button class="btn" data-a="queue">${icon("queue")} Up next</button><button class="btn" data-a="about" title="About the artist, credits, what's next, songs like this">${I("info")} About</button>${B.me.kids || B.me.guest ? "" : `<button class="btn" data-a="similar" title="Songs like this one that aren't on Benflix yet: hear 30 seconds, ask for the ones you like">${I("star")} Songs like this</button>`}<button class="btn" data-a="playon" title="Play on a TV or phone that's open on Benflix">${I("tv")} Play on</button><button class="btn" data-a="stop">${icon("stop")} Stop</button><button class="btn" data-a="more" title="More">${I("more")} More</button></div>
             <div class="np-next"></div>
           </div>
           <div class="np-words"></div>
         </div>`;
       np.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
-        if (a && a.dataset.a === "more") return M.current() && songMenu(a, M.current());
+        // Ben 2026-11-17: More has Songs like this too (everyone but Kids and Guest)
+        if (a && a.dataset.a === "more") return M.current() && songMenu(a, M.current(), B.me.kids || B.me.guest ? null : [{ label: "Songs like this to ask for", value: "similar", run: similarSongs }]);
         if (a) return act(a.dataset.a);
         if (e.target.closest("[data-x]")) return closeNow();
         const tr = e.target.closest(".np-track");
@@ -1553,7 +1554,7 @@
   const catalogueMix = async (nav, mix) => {
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg"><div class="mhero"><div class="mhero-words"><div class="mkick">MADE FOR YOU</div><h1>${esc(mix.name)}</h1><div class="dim">${esc(mix.line)}</div>
       <div class="mhero-btns"><button class="btn white" data-h="pv">${I("play")} Play previews</button><button class="btn" data-h="stop">${I("x")} Stop</button></div></div></div>
-      <p class="dim">Not on Benflix yet. Hear 30 seconds of each, one after another, and press the heart to ask for the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
+      <p class="dim">Not on Benflix yet. Hear 30 seconds of each, one after another, and press Ask for it on the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
       <div class="msongs" id="mcat">${B.spinner()}</div></div>`;
     B.wireTop();
     $("#mpg").style.backgroundImage = "linear-gradient(rgba(108,74,190,.45), transparent 460px)";
@@ -1562,8 +1563,9 @@
     const list = (got && got.songs) || [];
     const box = $("#mcat");
     if (!list.length) { box.innerHTML = `<p class="dim">${mix.key === "release-radar" ? "No new songs from the artists you play this week. Follow a few artists to get more here." : "Play some more music and new picks show up here next Monday."}</p>`; return; }
-    const heart = (x) => `<button class="circle mheart ${x.asked ? "on" : ""}" data-ask="${esc(String(x.id))}" title="${x.asked ? esc(x.asked) : "Ask for it"}">${I("heart")}</button>`;
-    box.innerHTML = list.map((x, i) => `<div class="srow ghost"><span class="sn">${x.cover ? `<img class="sc" src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(x.title)}</b><small>${esc([x.artist, x.album].filter(Boolean).join(" · "))}</small></span>${B.previewBtn(x.id)}${heart(x)}</div>`).join("");
+    // Ben 2026-11-17: a clear Ask for it button (the heart that used to ask read like a Like)
+    const askBtn = (x) => x.asked ? `<span class="sl">${esc(x.asked)}</span>` : `<button class="btn small white" data-ask="${esc(String(x.id))}">${I("plus")} Ask for it</button>`;
+    box.innerHTML = list.map((x, i) => `<div class="srow"><span class="sn">${x.cover ? `<img class="sc" src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`}</span><span class="st"><b>${esc(x.title)}</b><small>${esc([x.artist, x.album].filter(Boolean).join(" · "))}</small></span>${B.previewBtn(x.id)}<span data-slot>${askBtn(x)}</span></div>`).join("");
     const waiting = () => list.filter((x) => !x.asked).map((x) => x.id);
     $(".mhero-btns").addEventListener("click", (e) => {
       const b = e.target.closest("[data-h]"); if (!b) return;
@@ -1571,15 +1573,16 @@
       if (b.dataset.h === "stop") B.previewStop();
     });
     box.addEventListener("click", async (e) => {
-      const b = e.target.closest("[data-ask]"); if (!b || b.classList.contains("on")) return;
+      const b = e.target.closest("[data-ask]"); if (!b || b.disabled) return;
       const x = list.find((y) => String(y.id) === b.dataset.ask); if (!x) return;
-      b.classList.add("on");
+      b.disabled = true;
       try {
         const r = await B.call("POST", "api/music/request", { kind: "song", id: x.id });
         x.asked = (r && r.words) || "Asked for";
-        b.title = x.asked;
+        B.previewStop();
+        b.parentNode.innerHTML = `<span class="sl">${esc(x.asked)}</span>`;
         B.toast(`${x.asked}: ${x.title}`);
-      } catch (err) { b.classList.remove("on"); B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute."); }
+      } catch (err) { b.disabled = false; B.toast((err && err.message) || "Couldn't ask for that song. Try again in a minute."); }
     });
   };
 

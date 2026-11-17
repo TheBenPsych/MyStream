@@ -427,7 +427,21 @@ fun MusicNowPlayingPage(
     val lyricIndex = lyrics?.let { currentLine(it, position, duration) }
     val menuSong by viewModel.menuSong.collectAsState()
     menuSong?.let { song ->
-        SongMenu(song = song, liked = music.liked, onDismiss = viewModel::closeMenu)
+        SongMenu(
+            song = song,
+            liked = music.liked,
+            onDismiss = viewModel::closeMenu,
+            // Ben 2026-11-17: More has Songs like this too
+            onSongsLikeThis =
+                if (viewModel.canAsk) {
+                    {
+                        viewModel.closeMenu()
+                        viewModel.openSimilar()
+                    }
+                } else {
+                    null
+                },
+        )
     }
     val about by viewModel.about.collectAsState()
     about?.let { AboutPanel(it, viewModel, next = remember(music.queueVersion, music.currentIndex) { comingUp(viewModel) }) }
@@ -719,6 +733,16 @@ private fun ExtraButtons(
     MusicButton(if (labels) "Up next" else null, BenflixIcon.LIST, onClick = viewModel::openUpNext, big = easy, modifier = named("Up next"))
     // Music redesign 3: About the artist, Credits, Next in queue and Songs like this to ask for, as cards
     MusicButton(if (labels) "About" else null, BenflixIcon.INFO, onClick = viewModel::openAbout, big = easy, modifier = named("About"))
+    // Ben 2026-11-17: songs like this one that aren't on Benflix yet (30-second taste + Ask), right on the player
+    if (viewModel.canAsk) {
+        MusicButton(
+            if (labels) "Songs like this" else null,
+            BenflixIcon.STAR,
+            onClick = viewModel::openSimilar,
+            big = easy,
+            modifier = named("Songs like this"),
+        )
+    }
     MusicButton(if (labels) "Play on" else null, BenflixIcon.TV, onClick = {
         viewModel.playOnOpen.value = true
     }, big = easy, modifier = named("Play on"))
