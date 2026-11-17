@@ -1151,6 +1151,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
         return com.github.damontecres.wholphin.ui.theme.Friday13.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
     if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
@@ -1479,7 +1483,14 @@ fun DoorsHomePage(
                         }
 
                         FamilyKind.KIDS -> {
-                            if (com.github.damontecres.wholphin.ui.theme.F13Look.on) "Happy Friday the 13th!" else "Hi there!"
+                            if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                                "Happy Friday the 13th!"
+                            } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                                // Popcorn Day (19 Jan): Kids gets the greeting too
+                                "Happy Popcorn Day!"
+                            } else {
+                                "Hi there!"
+                            }
                         }
 
                         else -> {

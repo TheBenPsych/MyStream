@@ -422,6 +422,8 @@ private fun UserIconCard(
                     com.github.damontecres.wholphin.ui.theme.Friday13
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.NewYearSeason
+                        .on() ||
+                    com.github.damontecres.wholphin.ui.theme.PopcornSeason
                         .on()
             )
 

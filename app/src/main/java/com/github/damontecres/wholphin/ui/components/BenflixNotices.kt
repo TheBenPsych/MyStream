@@ -250,6 +250,11 @@ private fun CornerCard(
                 com.github.damontecres.wholphin.ui.theme
                     .ValKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
             }
+            // Popcorn Day look: the notice's own mark (a ticket, a full bucket, a kernel, a film reel)
+            if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .PcKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            }
             // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
             if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
             // Friday the 13th look: a four-leaf clover on notices without a picture

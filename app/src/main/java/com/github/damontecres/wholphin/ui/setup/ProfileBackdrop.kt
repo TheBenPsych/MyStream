@@ -304,10 +304,6 @@ private fun DrawScope.drawScene(
             midAutumn(t)
         }
 
-        LogoEffect.POPCORN -> {
-            popcornDay(t)
-        }
-
         LogoEffect.GAME_BUTTONS -> {
             arcade(t)
         }
@@ -1960,47 +1956,6 @@ private fun DrawScope.midAutumn(t: Float) {
         box(x - 12f * sc, y - 26f * sc, 24f * sc, 5f * sc, hex(0xFFFFD36B))
         box(x - 12f * sc, y + 21f * sc, 24f * sc, 5f * sc, hex(0xFFFFD36B))
     }
-}
-
-// ---- National Popcorn Day: a dark theater, a glowing screen, popcorn bursting from a striped bucket
-
-private fun DrawScope.popcorn(
-    x: Float,
-    y: Float,
-    r: Float,
-) {
-    for (k in 0 until 4) oval(x + cos(k * 1.6f) * r * .8f, y + sin(k * 1.6f) * r * .8f, r, r * .9f, hex(0xFFFFF7E0))
-    oval(x, y, r * .6f, r * .6f, hex(0xFFFFD56B))
-}
-
-private fun DrawScope.popcornDay(t: Float) {
-    box(0f, 0f, VW, VH, hex(0xFF0A0506))
-    glow(Offset(800f, 260f), 700f, hex(0xFFC8D2FF), .25f)
-    box(380f, 60f, 840f, 360f, hex(0xFFDFE6FF), .85f)
-    box(260f, 40f, 120f, 460f, hex(0xFF5A0B10))
-    box(1220f, 40f, 120f, 460f, hex(0xFF5A0B10))
-    for (r in 0 until 3) {
-        for (i in 0 until 14) {
-            val x = 40f + i * 115f + (r % 2) * 50f
-            val y = 560f + r * 110f
-            oval(x, y, 48f, 40f, hex(0xFF160809))
-            box(x - 48f, y, 96f, 70f, hex(0xFF160809))
-        }
-    }
-    val bx = 1340f
-    val by = 820f
-    for (i in 0 until 50) {
-        val p = frac(h(331, i) + t * .35f * (.7f + h(332, i) * .6f))
-        val x = bx + (h(333, i) - .7f) * 700f * p
-        val y = by - 200f - (600f + h(334, i) * 500f) * p + 900f * p * p
-        if (y > by - 180f && p > .5f) continue
-        at(x, y, (p * 6 + i) * 57f) { popcorn(0f, 0f, 11f) }
-    }
-    val bucket = poly(bx - 130f, by - 200f, bx + 130f, by - 200f, bx + 95f, by + 60f, bx - 95f, by + 60f)
-    clipPath(bucket) {
-        for (k in -4 until 4) box(bx + k * 36f, by - 210f, 36f, 280f, if (k % 2 != 0) hex(0xFFE50914) else Color.White)
-    }
-    for (i in 0 until 16) popcorn(bx - 110f + i * 14f, by - 206f - h(335, i) * 30f, 9f)
 }
 
 // ---- Video Games Day: a neon arcade with cabinets at the sides, a glowing floor grid and floating game buttons

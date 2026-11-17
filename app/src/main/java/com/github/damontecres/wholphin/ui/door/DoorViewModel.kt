@@ -334,6 +334,9 @@ class DoorViewModel
                 }.let { rows ->
                     // Valentine's look (1 to 14 Feb): Date night right after Keep watching
                     if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers, right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) listOf(rows.first(), POPCORN) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -366,11 +369,8 @@ class DoorViewModel
                         val dislikes = disliked.await()
                         val items =
                             data
-                                .christmas(
-                                    userId,
-                                    BaseItemKind.MOVIE,
-                                    theme = com.github.damontecres.wholphin.ui.theme.Friday13.SpookyPicks,
-                                ).filter { it.id !in dislikes }
+                                .themed(com.github.damontecres.wholphin.ui.theme.Friday13.SpookyPicks, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
                         // Ben: only films already on Benflix, and only if at least 4 fit
                         putOrRemove(order, DoorRowData(SPOOKY, "Spooky but fun", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
@@ -607,6 +607,7 @@ class DoorViewModel
             const val CHRISTMAS = "christmas"
             const val SPOOKY = "spooky"
             const val DATE_NIGHT = "datenight"
+            const val POPCORN = "popcorn"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"
