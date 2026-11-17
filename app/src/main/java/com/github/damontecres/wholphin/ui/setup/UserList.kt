@@ -423,6 +423,8 @@ private fun UserIconCard(
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.VideoGamesDay
                         .on() ||
+                    com.github.damontecres.wholphin.ui.theme.JulySeason
+                        .on() ||
                     com.github.damontecres.wholphin.ui.theme.StarWarsDay
                         .on() ||
                     com.github.damontecres.wholphin.ui.theme.PopcornSeason

@@ -41,17 +41,19 @@ B.route(/^\/who$/, async () => {
   const val = !xmas && !feast && B.valOn();
   // New Year's (approved 2026-11-17): the party room, 27 December to 1 January, with a 10-second countdown at midnight
   const ny = !xmas && !feast && B.nyOn();
+  // 4th of July (approved 2026-11-17): the cookout room, 1 to 4 July, with the big fireworks show from 9 PM on the 4th
+  const j4 = !xmas && !feast && !ny && B.j4On();
   // Popcorn Day (approved 2026-11-17): the popcorn cart room, just 19 January, the heap growing through the day
   const pcRoom = !xmas && !feast && !ny && !val && B.pcOn();
   // Star Wars Day (approved 2026-11-17): the desert home, 4 May only. The laser sword matches each profile's side
   const sw = !xmas && !feast && !ny && !val && !pcRoom && B.swOn();
   // Video Games Day (approved 2026-11-17): the arcade room, 12 September
-  const arcade = !xmas && !feast && !ny && !val && !pcRoom && !sw && B.vgOn();
+  const arcade = !xmas && !feast && !ny && !j4 && !val && !pcRoom && !sw && B.vgOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || ny || val || pcRoom || sw || arcade ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || ny || j4 || val || pcRoom || sw || arcade ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : pcRoom ? `<h1 class="xmas">${esc(B.pc.greeting())}</h1><p class="xcount pcline">${esc(B.pc.line())}</p>` : sw ? `<h1 class="swh">${esc(B.sw.greeting())}</h1>` : arcade ? `<h1 class="vgh">${esc(B.vg.greeting())}</h1><p class="vgline">${esc(B.vg.LINE)}</p>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : j4 ? `<h1 class="xmas">${esc(B.j4.greeting())}</h1><p class="xcount j4count" id="j4Count">${esc(B.j4.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : pcRoom ? `<h1 class="xmas">${esc(B.pc.greeting())}</h1><p class="xcount pcline">${esc(B.pc.line())}</p>` : sw ? `<h1 class="swh">${esc(B.sw.greeting())}</h1>` : arcade ? `<h1 class="vgh">${esc(B.vg.greeting())}</h1><p class="vgline">${esc(B.vg.LINE)}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -69,10 +71,10 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || ny || val || pcRoom || sw || arcade) {
+  if (xmas || feast || ny || j4 || val || pcRoom || sw || arcade) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : ny ? B.ny : val ? B.val : pcRoom ? B.pc : sw ? B.sw : B.vg;
+    const room = xmas ? B.xmas : feast ? B.tg : ny ? B.ny : val ? B.val : pcRoom ? B.pc : j4 ? B.j4 : sw ? B.sw : B.vg;
     // Star Wars Day: the blade takes the side of the profile you're on (or the last one picked)
     let side = B.swSide(last);
     if (sw) {
@@ -83,6 +85,19 @@ B.route(/^\/who$/, async () => {
     let clock = null;
     const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide", side }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; const c = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); if (typeof c === "function") clock = c; } svg.scene = scene; };
     draw();
+    if (j4) {
+      // 4th of July: the line under the greeting keeps up, and at 9 PM on the 4th the fireworks show starts
+      let was = B.j4.variant(new Date());
+      const tick = () => {
+        if (!svg.isConnected) return;
+        const d = new Date(), c = $("#j4Count");
+        if (c) c.textContent = B.j4.countdown(d);
+        const v = B.j4.variant(d);
+        if (v !== was) { was = v; draw(); }
+        setTimeout(tick, 20000);
+      };
+      tick();
+    }
     if (ny) {
       // New Year's: the greeting counts down the last 10 seconds of the year, then the room pops open with confetti
       let was = B.ny.variant(new Date());
@@ -286,11 +301,13 @@ B.route(/^\/home$/, async (m, nav) => {
   const valGreet = !kids && !tgGreet && B.valOn();
   // New Year's look: "Happy New Year, Ben" in the curly holiday font, with "4 days to 2027" leading the line under it
   const nyGreet = !kids && B.nyOn();
+  // 4th of July look: "Happy 4th of July, Ben" in the curly holiday font, with "2 days to the Fourth" leading the line under it
+  const j4Greet = !kids && B.j4On();
   // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering (html.sw .greet.swg), Kids too
   // Popcorn Day look: "Happy Popcorn Day, Ben" in the curly holiday font (Kids too), "It's National Popcorn Day" under it
   const pcGreet = B.pcOn();
   const swGreet = B.swOn();
-  const greet = kids ? `${pcGreet ? "Happy Popcorn Day!" : swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(vgDay ? B.vg.greeting() : pcGreet ? "Happy Popcorn Day" : swGreet ? B.sw.greeting() : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  const greet = kids ? `${pcGreet ? "Happy Popcorn Day!" : swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(vgDay ? B.vg.greeting() : pcGreet ? "Happy Popcorn Day" : swGreet ? B.sw.greeting() : j4Greet ? "Happy 4th of July" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -301,7 +318,7 @@ B.route(/^\/home$/, async (m, nav) => {
   } else {
     const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet || nyGreet || valGreet || pcGreet ? " tgh" : ""}${swGreet ? " swg" : ""}">${greet}</div>${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(vgDay ? [B.vg.LINE, wx].filter(Boolean).join(" · ") : wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || nyGreet || j4Greet || valGreet || pcGreet ? " tgh" : ""}${swGreet ? " swg" : ""}">${greet}</div>${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(vgDay ? [B.vg.LINE, wx].filter(Boolean).join(" · ") : wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -743,6 +760,11 @@ B.vg = window.BenflixArcade;
 B.vgOff = () => { try { return localStorage.getItem("benflix.vgOff") === "1"; } catch (e) { return false; } };
 B.setVgOff = (off) => { try { localStorage.setItem("benflix.vgOff", off ? "1" : "0"); } catch (e) {} };
 B.vgOn = () => !!B.vg && B.vg.season(new Date()) && !B.vgOff();
+// 4th of July look: on from 1 to 4 July unless switched off in Settings › Look (this browser), Kids too
+B.j4 = window.BenflixJuly4;
+B.j4Off = () => { try { return localStorage.getItem("benflix.j4Off") === "1"; } catch (e) { return false; } };
+B.setJ4Off = (off) => { try { localStorage.setItem("benflix.j4Off", off ? "1" : "0"); } catch (e) {} };
+B.j4On = () => !!B.j4 && B.j4.season(new Date()) && !B.j4Off();
 // Star Wars Day look: 4 May only, Kids too, unless switched off in Settings › Look (this browser)
 B.sw = window.BenflixStarWars;
 B.swOff = () => { try { return localStorage.getItem("benflix.swOff") === "1"; } catch (e) { return false; } };

@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
+import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
@@ -64,6 +65,7 @@ import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
+import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
@@ -221,7 +223,7 @@ fun FamilyHome(
                 // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font;
                 // Valentine's and Popcorn Day looks too; Star Wars Day: yellow crawl lettering
                 fontWeight =
-                    if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || VgLook.on) {
+                    if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || VgLook.on) {
                         FontWeight.Normal
                     } else if (SwLook.on) {
                         FontWeight.Bold
@@ -231,7 +233,7 @@ fun FamilyHome(
                 fontFamily =
                     if (VgLook.on) {
                         PixelFont
-                    } else if (TgLook.on || NyLook.on || ValLook.on || PcLook.on) {
+                    } else if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on) {
                         HolidayFont
                     } else if (SwLook.on) {
                         StarWarsFont
@@ -467,13 +469,18 @@ private fun FamilyDoor(
                 .then(
                     // Popcorn Day look: a movie snack stands on every door, Kids too
                     if (kids) {
-                        Modifier.nyDoorCharm(door).pcDoorSnack(door).swDoorMoment(door)
+                        Modifier
+                            .nyDoorCharm(door)
+                            .j4DoorCharm(door)
+                            .pcDoorSnack(door)
+                            .swDoorMoment(door)
                     } else {
                         Modifier
                             .xmasDoorOrnament(door)
                             .tgDoorCharm(door)
                             .valDoorCharm(door)
                             .nyDoorCharm(door)
+                            .j4DoorCharm(door)
                             .swDoorMoment(door)
                             .pcDoorSnack(door)
                     },

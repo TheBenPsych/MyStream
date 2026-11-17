@@ -360,6 +360,8 @@ class MainActivity : AppCompatActivity() {
                                         appPreferences.benflixPreferences.newYearLookOff
                                     com.github.damontecres.wholphin.ui.theme.VideoGamesDay.lookOff =
                                         appPreferences.benflixPreferences.videogamesLookOff
+                                    com.github.damontecres.wholphin.ui.theme.JulySeason.lookOff =
+                                        appPreferences.benflixPreferences.julyLookOff
                                     com.github.damontecres.wholphin.ui.theme.StarWarsDay.lookOff =
                                         appPreferences.benflixPreferences.starWarsLookOff
                                     com.github.damontecres.wholphin.ui.theme.PopcornSeason.lookOff =
