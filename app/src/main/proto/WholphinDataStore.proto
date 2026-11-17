@@ -295,6 +295,8 @@ message BenflixPreferences {
   bool thanksgiving_look_off = 14;
   // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
   bool new_year_look_off = 15;
+  // Benflix Earth Day look (Earth week, 22 to 28 Apr) is on unless this is set
+  bool earth_day_look_off = 20;
 }
 
 enum BenflixAccent {

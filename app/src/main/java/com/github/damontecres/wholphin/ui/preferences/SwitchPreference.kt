@@ -71,6 +71,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
                 }
+                // Earth Day look: a little Earth next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .EdGlobe()
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,

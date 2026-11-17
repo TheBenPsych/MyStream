@@ -97,6 +97,24 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Planet Earth picks (Earth Day look, Earth week): nature films and shows on Benflix, the same picks as the TV app
+const ED_TITLES = ["Planet Earth", "Planet Earth II", "Planet Earth III", "Our Planet", "Our Planet II", "Blue Planet", "The Blue Planet", "Blue Planet II", "Frozen Planet", "Frozen Planet II", "Seven Worlds, One Planet", "Earth", "One Day on Earth", "WALL·E", "FernGully: The Last Rainforest", "The Lorax", "Dr. Seuss' The Lorax", "Avatar", "Avatar: The Way of Water", "Princess Mononoke", "Nausicaä of the Valley of the Wind", "An Inconvenient Truth", "Chasing Coral", "My Octopus Teacher", "Penguins", "Bears", "Oceans", "Kiss the Ground"];
+const ED_TAGS = ["nature", "environmentalism", "climate change", "wildlife", "nature documentary"];
+B.earthPicks = (type) => B.cached(`edPicks-${type}-` + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const byTitle = (t) => B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SearchTerm=${encodeURIComponent(t.split(":")[0])}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => norm(x.Name) === norm(t) || norm(x.OriginalTitle) === norm(t)) })).catch(() => null);
+  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SearchTerm=${w}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => ` ${norm(x.Name)} `.includes(` ${w.toLowerCase()} `)) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&Tags=${encodeURIComponent(ED_TAGS.join("|"))}&SortBy=Random&Limit=24&Fields=${F}`).catch(() => null),
+    ...ED_TITLES.map(byTitle), byWord("Planet"), byWord("Earth"),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Ids of anime titles (anything in a library with "anime" in its name)
 B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
   const libs = (await B.libs(type === "Movie" ? "movies" : "shows")).filter(B.isAnimeLib);
@@ -134,9 +152,12 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
+  const earth = B.edOn && B.edOn() ? await B.earthPicks("Movie").catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
+    earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
@@ -192,8 +213,12 @@ B.route(/^\/shows$/, async (m, nav) => {
   };
   // Easy mode: fewer rows, like Kids (Keep watching, My List, New shows)
   const fewerShows = B.me.kids || (B.easyMode && B.easyMode());
+  // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
+  const earth = B.edOn && B.edOn() ? await B.earthPicks("Series").catch(() => []) : [];
+  if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", kw.map(kwCard)),
+    earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?mine=1&title=My%20List" }),
     fewerShows ? "" : B.row("New episodes", newEpShows.map((s) => B.posterCard(s, { newCount: newCount[s.Id] }))),
     B.row("New shows", newShows.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?sort=newshow&title=New%20shows" }),

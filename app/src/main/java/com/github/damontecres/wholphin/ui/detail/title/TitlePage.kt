@@ -74,6 +74,8 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
+import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -699,6 +701,8 @@ private fun TitleButtonView(
     val tg = TgLook.on
     // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
     val ny = NyLook.on
+    // Earth Day look: Play is leaf green with dark words, and a sprout grows up out of it
+    val ed = EdLook.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
@@ -706,6 +710,8 @@ private fun TitleButtonView(
             TgLook.Orange
         } else if (ny) {
             NyLook.Gold
+        } else if (ed) {
+            EdLook.Leaf
         } else {
             BenflixColors.Text
         }
@@ -716,6 +722,8 @@ private fun TitleButtonView(
                 Color.White
             } else if (ny) {
                 NyLook.OnGold
+            } else if (ed) {
+                EdLook.OnLeaf
             } else {
                 BenflixColors.Tray
             }
@@ -743,6 +751,7 @@ private fun TitleButtonView(
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
+                .then(if (primary && ed) Modifier.edPlaySprout() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

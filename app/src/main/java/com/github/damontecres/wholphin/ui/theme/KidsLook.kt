@@ -55,7 +55,8 @@ object KidsLook {
 
     /** The colours to use right now, or null for the normal grown-up look */
     val palette: KidsPalette? get() =
-        if (!on) {
+        // Earth week: Kids gets the Earth Day look too (Ben), so the Sky and Sunshine colours rest that week
+        if (!on || EdLook.on) {
             null
         } else if (night) {
             NightLight

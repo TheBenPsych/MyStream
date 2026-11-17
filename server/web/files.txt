@@ -39,6 +39,7 @@ js/title.js
 js/xmas.js
 js/feast.js
 js/newyear.js
+js/earthday.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -72,3 +73,17 @@ img/ny/ny_mark_spark.png
 img/ny/ny_mark_star.png
 img/ny/ny_sparkler.png
 img/ny/ny_star.png
+img/ed/ed_bloom.png
+img/ed/ed_bud.png
+img/ed/ed_globe.png
+img/ed/ed_globe_land.png
+img/ed/ed_globe_sea.png
+img/ed/ed_globe_shade.png
+img/ed/ed_leaf.png
+img/ed/ed_life_books.png
+img/ed/ed_life_games.png
+img/ed/ed_life_live.png
+img/ed/ed_life_movies.png
+img/ed/ed_life_music.png
+img/ed/ed_life_shows.png
+img/ed/ed_sprout.png

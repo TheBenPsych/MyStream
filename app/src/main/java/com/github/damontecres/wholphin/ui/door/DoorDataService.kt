@@ -172,9 +172,19 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             limit: Int = ROW,
+        ): List<BaseItem> = themed(com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS, userId, type, limit)
+
+        /**
+         * A holiday row of this kind: the theme's hand-picked titles, titles with one of its words in the name, and
+         * titles with its tags (Christmas favourites, Planet Earth picks).
+         */
+        suspend fun themed(
+            theme: com.github.damontecres.wholphin.ui.main.HomeTheme,
+            userId: UUID,
+            type: BaseItemKind,
+            limit: Int = ROW,
         ): List<BaseItem> =
             coroutineScope {
-                val theme = com.github.damontecres.wholphin.ui.main.HomeTheme.CHRISTMAS
 
                 fun search(term: String) =
                     GetItemsRequest(

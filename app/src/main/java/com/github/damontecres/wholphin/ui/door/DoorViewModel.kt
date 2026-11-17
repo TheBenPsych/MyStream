@@ -327,6 +327,9 @@ class DoorViewModel
                 }.let { rows ->
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
+                }.let { rows ->
+                    // Earth Day look (Earth week, Kids too): Planet Earth picks right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) listOf(rows.first(), EARTH) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -362,6 +365,7 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
+                if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.MOVIE, disliked.await()) }
                 launch {
                     val dislikes = disliked.await()
                     val items = data.newest(userId, main + anime + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
@@ -401,6 +405,20 @@ class DoorViewModel
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
 
+        /** Earth Day look: Planet Earth picks (nature films and shows), only when there are enough to make a proper row */
+        private suspend fun earthRow(
+            userId: UUID,
+            order: List<String>,
+            type: BaseItemKind,
+            dislikes: Set<UUID>,
+        ) {
+            val items =
+                data
+                    .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.EARTH_DAY, userId, type)
+                    .filter { it.id !in dislikes }
+            putOrRemove(order, DoorRowData(EARTH, "Planet Earth picks", items.takeIf { it.size >= 4 }.orEmpty()))
+        }
+
         private suspend fun loadShows(userId: UUID) {
             val libs = libraries()
             val main = libs.ofKind(LibraryKind.SHOWS)
@@ -411,6 +429,9 @@ class DoorViewModel
                     listOf(KEEP, MY_LIST, NEW_SHOWS)
                 } else {
                     listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
+                }.let { rows ->
+                    // Earth Day look (Earth week, Kids too): Planet Earth picks right after Keep watching
+                    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) listOf(rows.first(), EARTH) + rows.drop(1) else rows
                 }
             startRows(order)
             aniListLibraries.warm(anime, userId)
@@ -438,6 +459,7 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(NEW_EPISODES, "New episodes", fresh))
                     }
                 }
+                if (EARTH in order) launch { earthRow(userId, order, BaseItemKind.SERIES, disliked.await()) }
                 launch {
                     val items = data.myList(userId, BaseItemKind.SERIES)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
@@ -576,6 +598,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val EARTH = "earth"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

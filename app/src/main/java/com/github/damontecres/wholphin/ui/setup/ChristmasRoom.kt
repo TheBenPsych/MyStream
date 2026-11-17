@@ -31,6 +31,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -82,6 +83,20 @@ fun NewYearRoom(
         alsoFetch = { tall -> if (variant == "eve" && LocalDate.now().dayOfMonth == 31) NewYearVideos.name("day", year, tall) else null },
     )
 }
+
+/**
+ * Benflix Earth Day: the plant corner room behind Who's watching (Earth week). Drawn by the web version
+ * (server/web/js/earthday.js) and recorded as 30-second loops by tools/earthday/record.js, one for each day of
+ * the week: the seedling on the table grows each day, and on day 1 the new tree is being planted by the path.
+ */
+@Composable
+fun EarthRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(
+        EarthVideos,
+        { tall -> "day${EarthDaySeason.day(LocalDate.now()).coerceIn(1, EarthDaySeason.DAYS)}-${if (tall) "tall" else "wide"}" },
+        modifier,
+        bg = listOf(Color(0xFF0C1612), Color(0xFF16241C)),
+    )
 
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
@@ -183,6 +198,9 @@ object NewYearVideos : RoomVideos("newyear", version = 1) {
 
 /** Downloads and keeps the Thanksgiving feast room videos (extras/scenes/feast in the repo: wide and tall) */
 object FeastVideos : RoomVideos("feast", version = 1)
+
+/** Downloads and keeps the Earth Day room videos (extras/scenes/earthday in the repo: day1 to day7, wide and tall) */
+object EarthVideos : RoomVideos("earthday", version = 1)
 
 /**
  * Downloads and keeps one holiday room's videos (extras/scenes/[folder] in the repo).

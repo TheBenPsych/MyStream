@@ -57,12 +57,16 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.EarthDaySeason
+import com.github.damontecres.wholphin.ui.theme.EdKindMark
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.NewYearSeason
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
+import com.github.damontecres.wholphin.ui.theme.edDoorLife
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -246,15 +250,18 @@ private fun Greeting(
             text = greeting,
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || NyLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
-            fontFamily = if (TgLook.on || NyLook.on) HolidayFont else null,
+            fontWeight = if (TgLook.on || NyLook.on || EdLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+            // Thanksgiving, New Year's and Earth Day looks: the greeting is in the curly holiday font
+            fontFamily = if (TgLook.on || NyLook.on || EdLook.on) HolidayFont else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         // New Year's look: the countdown line ("4 days to 2027") leads the line under the greeting
         val line =
-            if (NyLook.on) {
+            if (EdLook.on) {
+                // Earth Day look: "Earth week, day 3" leads the line under the greeting
+                listOfNotNull(EarthDaySeason.line(), weather).joinToString(" \u00b7 ")
+            } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else {
                 weather
@@ -361,6 +368,7 @@ private fun SquareDoor(
                 .xmasDoorOrnament(door)
                 .tgDoorCharm(door)
                 .nyDoorCharm(door)
+                .edDoorLife(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -689,7 +697,13 @@ private fun ListRow(
             Thumb(row, thumb.coerceAtLeast(20.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 // New Year's look: each kind of notice gets its own small gold mark before its kind line
-                if (NyLook.on) {
+                // Earth Day look: a sprout, flower, bud or the Earth before each kind line
+                if (EdLook.on) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        EdKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.8f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
                         KindLine(row, words)

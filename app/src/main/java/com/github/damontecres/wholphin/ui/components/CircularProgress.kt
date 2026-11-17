@@ -46,11 +46,27 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         )
         return
     }
+    val ed = com.github.damontecres.wholphin.ui.theme.EdLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(
-            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
-            color = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Orange else BenflixColors.Text,
-            trackColor = if (tg) com.github.damontecres.wholphin.ui.theme.TgLook.Brown else androidx.compose.ui.graphics.Color.Transparent,
+            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside;
+            // Earth Day look: a leaf green ring on ocean blue, with the Earth turning inside
+            color =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Orange
+                } else if (ed) {
+                    com.github.damontecres.wholphin.ui.theme.EdLook.Leaf
+                } else {
+                    BenflixColors.Text
+                },
+            trackColor =
+                if (tg) {
+                    com.github.damontecres.wholphin.ui.theme.TgLook.Brown
+                } else if (ed) {
+                    com.github.damontecres.wholphin.ui.theme.EdLook.Ocean
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -75,6 +91,28 @@ fun CircularProgress(modifier: Modifier = Modifier) {
                     .fillMaxSize(.62f)
                     .align(Alignment.Center)
                     .rotate(angle),
+            )
+        }
+        if (ed) {
+            val spin =
+                androidx.compose.animation.core
+                    .rememberInfiniteTransition(label = "edGlobe")
+            val turn by spin.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec =
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        androidx.compose.animation.core
+                            .tween(5000, easing = androidx.compose.animation.core.LinearEasing),
+                    ),
+                label = "edGlobeTurn",
+            )
+            com.github.damontecres.wholphin.ui.theme.EdLoadingGlobe(
+                turn = { turn },
+                modifier =
+                    Modifier
+                        .fillMaxSize(.66f)
+                        .align(Alignment.Center),
             )
         }
     }

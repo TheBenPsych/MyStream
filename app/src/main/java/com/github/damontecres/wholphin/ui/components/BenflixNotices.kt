@@ -54,7 +54,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.NyKindMark
 import com.github.damontecres.wholphin.ui.theme.NyLook
+import com.github.damontecres.wholphin.ui.theme.EdLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.edPlaySprout
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -210,6 +212,8 @@ private fun CornerCard(
                 .then(if (XmasLook.on) Modifier.xmasOrnament(XmasLook.RedBall, ball = 24.dp, string = 6.dp, fromEnd = 34.dp) else Modifier)
                 // Thanksgiving look: the notice is pinned with a brass tack
                 .tgTack()
+                // Earth Day look: a little sprout grows up out of the notice's top edge
+                .then(if (EdLook.on) Modifier.edPlaySprout(tall = 30.dp) else Modifier)
                 .clip(shape)
                 .background(BenflixColors.Panel)
                 // New Year's look: a gold edge down the notice's left side

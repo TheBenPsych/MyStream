@@ -58,6 +58,8 @@ import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
+import com.github.damontecres.wholphin.ui.theme.EdLook
+import com.github.damontecres.wholphin.ui.theme.edProgressBloom
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -316,6 +318,8 @@ fun BannerCard(
                                     TgLook.Orange
                                 } else if (NyLook.on) {
                                     NyLook.Gold
+                                } else if (EdLook.on) {
+                                    EdLook.Leaf
                                 } else {
                                     BenflixRed
                                 },
@@ -343,6 +347,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
+                    )
+                }
+                // Earth Day look: a little flower opens at the end of the progress line
+                if (EdLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .edProgressBloom((playPercent / 100).toFloat(), flower = 18.dp, leaves = false),
                     )
                 }
             }
