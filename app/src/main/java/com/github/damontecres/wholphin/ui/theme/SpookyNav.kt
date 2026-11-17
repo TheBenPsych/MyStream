@@ -123,7 +123,13 @@ object HalloweenNav {
         for (s in listOf(-1f, 1f)) {
             for (k in 0..3) {
                 val a = cy - 1.5f * u + k * 1.3f * u
-                drawLine(leg, Offset(cx + s * 1.5f * u, a), Offset(cx + s * 4.6f * u, a - 1.2f * u + k * .9f * u), strokeWidth = .9f * u, cap = StrokeCap.Round)
+                drawLine(
+                    leg,
+                    Offset(cx + s * 1.5f * u, a),
+                    Offset(cx + s * 4.6f * u, a - 1.2f * u + k * .9f * u),
+                    strokeWidth = .9f * u,
+                    cap = StrokeCap.Round,
+                )
             }
         }
         drawOval(leg, Offset(cx - 2.3f * u, cy - 2f * u), Size(4.6f * u, 5.4f * u))
@@ -180,7 +186,12 @@ object HalloweenNav {
         val spokes = 6
         for (i in 0..spokes) {
             val a = i * (PI / 2) / spokes
-            drawLine(Web.copy(alpha = .55f), Offset.Zero, Offset((r * kotlin.math.cos(a)).toFloat(), (r * sin(a)).toFloat()), strokeWidth = sw)
+            drawLine(
+                Web.copy(alpha = .55f),
+                Offset.Zero,
+                Offset((r * kotlin.math.cos(a)).toFloat(), (r * sin(a)).toFloat()),
+                strokeWidth = sw,
+            )
         }
         for (ring in 1..3) {
             val rr = r * ring / 3.4f
@@ -291,14 +302,14 @@ object Friday13Nav {
         translate(feet.x - 20f * s, feet.y - 30f * s - hop) {
             scale(s, s, pivot = Offset.Zero) {
                 scale(if (flip) -1f else 1f, 1f, pivot = Offset(20f, 0f)) {
-                // a pale edge so the crow reads on the dark sky (Ben: the crows were hard to see)
-                drawPath(svgPath(CROW_PATH), Color(0x4DB9A6FF), style = Stroke(3.2f))
-                drawPath(svgPath(CROW_PATH), Crow)
-                drawPath(svgPath(CROW_PATH), CrowEdge, style = Stroke(1.1f))
-                drawLine(Color(0xFF2C2636), Offset(8f, 17f), Offset(20f, 18f), strokeWidth = 1.2f)
-                drawCircle(Eye, 1.1f, Offset(27.4f, 8.6f))
-                drawLine(Color(0xFF8A80A0), Offset(19.5f, 25.5f), Offset(19.5f, 30f), strokeWidth = 1f)
-                drawLine(Color(0xFF8A80A0), Offset(22.5f, 25.5f), Offset(22.5f, 30f), strokeWidth = 1f)
+                    // a pale edge so the crow reads on the dark sky (Ben: the crows were hard to see)
+                    drawPath(svgPath(CROW_PATH), Color(0x4DB9A6FF), style = Stroke(3.2f))
+                    drawPath(svgPath(CROW_PATH), Crow)
+                    drawPath(svgPath(CROW_PATH), CrowEdge, style = Stroke(1.1f))
+                    drawLine(Color(0xFF2C2636), Offset(8f, 17f), Offset(20f, 18f), strokeWidth = 1.2f)
+                    drawCircle(Eye, 1.1f, Offset(27.4f, 8.6f))
+                    drawLine(Color(0xFF8A80A0), Offset(19.5f, 25.5f), Offset(19.5f, 30f), strokeWidth = 1f)
+                    drawLine(Color(0xFF8A80A0), Offset(22.5f, 25.5f), Offset(22.5f, 30f), strokeWidth = 1f)
                 }
             }
         }
@@ -324,6 +335,7 @@ object Friday13Nav {
         // low enough that no crow is cut off at the top (Ben)
         val top = size.height * .78f
         val sag = size.height * .15f
+
         fun wireY(f: Float) = top + sag * 4f * f * (1f - f)
         val wire = Path()
         wire.moveTo(0f, top)
@@ -333,7 +345,14 @@ object Friday13Nav {
         val cw = 46f * density
         val spots = listOf(.1f, .26f, .44f, .62f, .84f)
         spots.forEachIndexed { i, f ->
-            val hop = if (i == 1) (if ((t % 5f) / 5f in .7f..0.8f) sin((((t % 5f) / 5f - .7f) / .1f) * PI).toFloat() * 8f * density else 0f) else 0f
+            val hop =
+                if (i ==
+                    1
+                ) {
+                    (if ((t % 5f) / 5f in .7f..0.8f) sin((((t % 5f) / 5f - .7f) / .1f) * PI).toFloat() * 8f * density else 0f)
+                } else {
+                    0f
+                }
             val turned = if (i == 3) (t % 6f) > 3.6f else i % 2 == 1
             crow(Offset(size.width * f, wireY(f) + 1f * density), cw, turned, hop)
         }
