@@ -185,6 +185,7 @@ internal object PopcornNav {
         val r0 = 9f * density
         val rows = 3
         var seed = 11
+
         fun rnd(): Float {
             seed = (seed * 9301 + 49297) % 233280
             return seed / 233280f
