@@ -33,62 +33,172 @@ object VideoGamesNav {
         mapOf(
             HolidayIconKey.HOME to
                 listOf(
-                    "....RR......", "...RRRR.CC..", "..RRRRRR.C..", ".RRRRRRRR...", "RRRRRRRRRR..", ".WWWWWWWW...",
-                    ".WBBWWWDDW..", ".WBBWWWDDW..", ".WWWWWWDDW..", ".WWWWWWDDW..", "GGGGGGGGGGGG", "............",
+                    "....RR......",
+                    "...RRRR.CC..",
+                    "..RRRRRR.C..",
+                    ".RRRRRRRR...",
+                    "RRRRRRRRRR..",
+                    ".WWWWWWWW...",
+                    ".WBBWWWDDW..",
+                    ".WBBWWWDDW..",
+                    ".WWWWWWDDW..",
+                    ".WWWWWWDDW..",
+                    "GGGGGGGGGGGG",
+                    "............",
                 ),
             "movies" to
                 listOf(
-                    "............", ".WKWKWKWKWK.", ".KWKWKWKWKW.", "............", ".AAAAAAAAAA.", ".AKKKKKKKKA.",
-                    ".AKAAAAAAKA.", ".AKAAAAAAKA.", ".AKKKKKKKKA.", ".AAAAAAAAAA.", ".AA......AA.", "............",
+                    "............",
+                    ".WKWKWKWKWK.",
+                    ".KWKWKWKWKW.",
+                    "............",
+                    ".AAAAAAAAAA.",
+                    ".AKKKKKKKKA.",
+                    ".AKAAAAAAKA.",
+                    ".AKAAAAAAKA.",
+                    ".AKKKKKKKKA.",
+                    ".AAAAAAAAAA.",
+                    ".AA......AA.",
+                    "............",
                 ),
             "shows" to
                 listOf(
-                    "..K......K..", "...K....K...", "....K..K....", ".SSSSSSSSSS.", ".SCCCCCCCSS.", ".SCWCCCCCSY.",
-                    ".SCCCCCCCSS.", ".SCCCCCCCSY.", ".SCCCCCCCSS.", ".SSSSSSSSSS.", "..SS....SS..", "............",
+                    "..K......K..",
+                    "...K....K...",
+                    "....K..K....",
+                    ".SSSSSSSSSS.",
+                    ".SCCCCCCCSS.",
+                    ".SCWCCCCCSY.",
+                    ".SCCCCCCCSS.",
+                    ".SCCCCCCCSY.",
+                    ".SCCCCCCCSS.",
+                    ".SSSSSSSSSS.",
+                    "..SS....SS..",
+                    "............",
                 ),
             "live" to
                 listOf(
-                    "............", "T....RR....T", ".T...RR...T.", "T.T..TT..T.T", ".T...TT...T.", "T...TTTT...T",
-                    "....T..T....", "....TTTT....", "...T....T...", "...TTTTTT...", "..T......T..", ".TT......TT.",
+                    "............",
+                    "T....RR....T",
+                    ".T...RR...T.",
+                    "T.T..TT..T.T",
+                    ".T...TT...T.",
+                    "T...TTTT...T",
+                    "....T..T....",
+                    "....TTTT....",
+                    "...T....T...",
+                    "...TTTTTT...",
+                    "..T......T..",
+                    ".TT......TT.",
                 ),
             "games" to
                 listOf(
-                    "............", "............", "..PPP..PPP..", ".PPPPPPPPPP.", "PPWPPPPPYPPP", "PWWWPPPBPRPP",
-                    "PPWPPPPPLPPP", "PPPPPPPPPPPP", "PPPP....PPPP", ".PP......PP.", "............", "............",
+                    "............",
+                    "............",
+                    "..PPP..PPP..",
+                    ".PPPPPPPPPP.",
+                    "PPWPPPPPYPPP",
+                    "PWWWPPPBPRPP",
+                    "PPWPPPPPLPPP",
+                    "PPPPPPPPPPPP",
+                    "PPPP....PPPP",
+                    ".PP......PP.",
+                    "............",
+                    "............",
                 ),
             "music" to
                 listOf(
-                    "............", "....MMMMMMMM", "....MMMMMMMM", "....M......M", "....M......M", "....M......M",
-                    "....M......M", "..MMM....MMM", ".MMMM...MMMM", ".MMMM...MMMM", "..MM.....MM.", "............",
+                    "............",
+                    "....MMMMMMMM",
+                    "....MMMMMMMM",
+                    "....M......M",
+                    "....M......M",
+                    "....M......M",
+                    "....M......M",
+                    "..MMM....MMM",
+                    ".MMMM...MMMM",
+                    ".MMMM...MMMM",
+                    "..MM.....MM.",
+                    "............",
                 ),
             "books" to
                 listOf(
-                    "............", ".LLLL..LLLL.", "LWWWWLLWWWWL", "LWKKWLLWKKWL", "LWWWWLLWWWWL", "LWKKWLLWKKWL",
-                    "LWWWWLLWWWWL", "LWKKWLLWKKWL", "LWWWWLLWWWWL", "LLLLLLLLLLLL", ".....LL.....", "............",
+                    "............",
+                    ".LLLL..LLLL.",
+                    "LWWWWLLWWWWL",
+                    "LWKKWLLWKKWL",
+                    "LWWWWLLWWWWL",
+                    "LWKKWLLWKKWL",
+                    "LWWWWLLWWWWL",
+                    "LWKKWLLWKKWL",
+                    "LWWWWLLWWWWL",
+                    "LLLLLLLLLLLL",
+                    ".....LL.....",
+                    "............",
                 ),
             HolidayIconKey.SEARCH to
                 listOf(
-                    "............", "...WWWW.....", "..W....W....", ".W......W...", ".W......W...", ".W......W...",
-                    ".W......W...", "..W....W....", "...WWWWWW...", "........WW..", ".........WW.", "..........W.",
+                    "............",
+                    "...WWWW.....",
+                    "..W....W....",
+                    ".W......W...",
+                    ".W......W...",
+                    ".W......W...",
+                    ".W......W...",
+                    "..W....W....",
+                    "...WWWWWW...",
+                    "........WW..",
+                    ".........WW.",
+                    "..........W.",
                 ),
             HolidayIconKey.REQUESTS to
                 listOf(
-                    "............", ".....YY.....", ".....YY.....", "..Y..YY..Y..", "...Y.YY.Y...", "YYYY.YY.YYYY",
-                    "...Y.YY.Y...", "..Y..YY..Y..", ".....YY.....", ".....YY.....", "............", "............",
+                    "............",
+                    ".....YY.....",
+                    ".....YY.....",
+                    "..Y..YY..Y..",
+                    "...Y.YY.Y...",
+                    "YYYY.YY.YYYY",
+                    "...Y.YY.Y...",
+                    "..Y..YY..Y..",
+                    ".....YY.....",
+                    ".....YY.....",
+                    "............",
+                    "............",
                 ),
             HolidayIconKey.MORE to
                 listOf(
-                    "............", "............", "............", "............", "............", ".WW..WW..WW.",
-                    ".WW..WW..WW.", "............", "............", "............", "............", "............",
+                    "............",
+                    "............",
+                    "............",
+                    "............",
+                    "............",
+                    ".WW..WW..WW.",
+                    ".WW..WW..WW.",
+                    "............",
+                    "............",
+                    "............",
+                    "............",
+                    "............",
                 ),
         )
 
     private val INK: Map<Char, Color> =
         mapOf(
-            'R' to Color(0xFFFF5F6D), 'W' to Color(0xFFF4F1FF), 'B' to Color(0xFF3FE0FF), 'D' to Color(0xFF9A5B2E),
-            'C' to Color(0xFFB8B8C8), 'G' to Color(0xFF5BD86A), 'K' to Color(0xFF22183C), 'A' to Color(0xFFFFB547),
-            'S' to Color(0xFF7AA7FF), 'Y' to Color(0xFFFFD45A), 'T' to Color(0xFF3DD6C6), 'M' to Color(0xFFB69CFF),
-            'L' to Color(0xFFB9E36A), 'P' to Color(0xFFFF6F91),
+            'R' to Color(0xFFFF5F6D),
+            'W' to Color(0xFFF4F1FF),
+            'B' to Color(0xFF3FE0FF),
+            'D' to Color(0xFF9A5B2E),
+            'C' to Color(0xFFB8B8C8),
+            'G' to Color(0xFF5BD86A),
+            'K' to Color(0xFF22183C),
+            'A' to Color(0xFFFFB547),
+            'S' to Color(0xFF7AA7FF),
+            'Y' to Color(0xFFFFD45A),
+            'T' to Color(0xFF3DD6C6),
+            'M' to Color(0xFFB69CFF),
+            'L' to Color(0xFFB9E36A),
+            'P' to Color(0xFFFF6F91),
         )
 
     /** One pixel icon, filling its box. [color] is what the usual icon would be drawn in. */
@@ -106,8 +216,10 @@ object VideoGamesNav {
                     val fill =
                         when {
                             !one -> INK[ch] ?: Color.White
+
                             // the dark lines (clapper stripes, book text) stay dark so the shape still reads
                             ch == 'K' -> INK.getValue('K')
+
                             else -> if (color == Flash) Color.White else color
                         }
                     // a hair over one cell so neighbouring pixels never show a seam
@@ -267,6 +379,5 @@ object VideoGamesNav {
     }
 
     /** The first Today card, on the day only (vq-count A) */
-    fun countdown(): String? =
-        if (VgLook.on || HolidayNavKit.preview == "videogames") "Today is Video Games Day · Player 1 ready" else null
+    fun countdown(): String? = if (VgLook.on || HolidayNavKit.preview == "videogames") "Today is Video Games Day · Player 1 ready" else null
 }
