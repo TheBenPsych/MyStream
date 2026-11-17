@@ -56,8 +56,10 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.eaProgressEgg
+import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -316,6 +318,8 @@ fun BannerCard(
                                     TgLook.Orange
                                 } else if (EaLook.on) {
                                     EaLook.Lilac
+                                } else if (NyLook.on) {
+                                    NyLook.Gold
                                 } else {
                                     BenflixRed
                                 },
@@ -332,6 +336,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
+                    )
+                }
+                // New Year's look: a lit sparkler at the end of the progress line
+                if (NyLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
                     )
                 }
                 // Easter look: a painted egg rolls along as the knob at the end of the progress line

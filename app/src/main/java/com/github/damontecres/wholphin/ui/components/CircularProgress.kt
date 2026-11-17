@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,6 +39,13 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // New Year's look: the loading ring is a clock face ticking round to midnight
+    if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
+        com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     val ea = !tg && com.github.damontecres.wholphin.ui.theme.EaLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(

@@ -37,15 +37,17 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // New Year's (approved 2026-11-17): the party room, 27 December to 1 January, with a 10-second countdown at midnight
+  const ny = !xmas && !feast && B.nyOn();
   // Easter (approved 2026-11-17): the spring morning room with the egg tree and the pet rabbit, Monday to Easter Sunday
-  const easter = !xmas && !feast && B.eaOn();
+  const easter = !xmas && !feast && !ny && B.eaOn();
   const eaNow = new Date(), eaFound = easter && B.ea.isSunday(eaNow) && B.ea.hunt.all(eaNow);
   const eaCrack = eaFound && !B.ea.hunt.cracked(eaNow);
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || easter ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || ny || easter ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : easter ? `<h1 class="xmas" id="eaGreet">${esc(eaFound && !eaCrack ? "You found all six!" : B.ea.greeting())}</h1>${B.ea.countdown(eaNow) ? `<p class="xcount ea">${esc(B.ea.countdown(eaNow))}</p>` : ""}` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : easter ? `<h1 class="xmas" id="eaGreet">${esc(eaFound && !eaCrack ? "You found all six!" : B.ea.greeting())}</h1>${B.ea.countdown(eaNow) ? `<p class="xcount ea">${esc(B.ea.countdown(eaNow))}</p>` : ""}` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -63,17 +65,33 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || easter) {
+  if (xmas || feast || ny || easter) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : B.ea;
+    const room = xmas ? B.xmas : feast ? B.tg : ny ? B.ny : B.ea;
+    let clock = null;
     // Easter Sunday: once all six hidden eggs are found, the golden egg cracks open (the first time), then stays open
-    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide", open: eaFound && !eaCrack }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; svg.clock = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
+    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide", open: eaFound && !eaCrack }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; const c = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); if (typeof c === "function") clock = c; } svg.scene = scene; };
     draw();
     if (eaCrack) {
       B.ea.hunt.setCracked(eaNow);
-      setTimeout(() => { if (svg.scene && svg.scene.crack) svg.scene.crack(svg.clock ? svg.clock() : 0); }, 900);
+      setTimeout(() => { if (svg.scene && svg.scene.crack) svg.scene.crack(clock ? clock() : 0); }, 900);
       setTimeout(() => { const g = $("#eaGreet"); if (g) g.textContent = "You found all six!"; }, 3100);
+    }
+    if (ny) {
+      // New Year's: the greeting counts down the last 10 seconds of the year, then the room pops open with confetti
+      let was = B.ny.variant(new Date());
+      const tick = () => {
+        if (!svg.isConnected) return;
+        const d = new Date();
+        const g = $("#nyGreet"), c = $("#nyCount");
+        if (g) g.textContent = B.ny.greeting(d);
+        if (c) c.textContent = B.ny.countdown(d);
+        const v = B.ny.variant(d);
+        if (v !== was) { was = v; draw(); if (svg.scene && svg.scene.celebrate && clock) svg.scene.celebrate(clock()); }
+        setTimeout(tick, B.ny.countdownSecs(d) || (d.getMonth() === 11 && d.getDate() === 31 && d.getHours() === 23 && d.getMinutes() >= 58) ? 250 : 20000);
+      };
+      tick();
     }
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
     addEventListener("resize", onResize);
@@ -256,9 +274,11 @@ B.route(/^\/home$/, async (m, nav) => {
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
-  // Easter look (Kids too): "Happy Easter, Ben" in the curly holiday font, with the countdown leading the line under it
-  const eaGreet = !tgGreet && B.eaOn();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : eaGreet ? "Happy Easter" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // New Year's look: "Happy New Year, Ben" in the curly holiday font, with "4 days to 2027" leading the line under it
+  const nyGreet = !kids && B.nyOn();
+  // Easter look: "Happy Easter, Ben" in the curly holiday font, with the countdown leading the line under it
+  const eaGreet = !nyGreet && !tgGreet && B.eaOn();
+  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : eaGreet ? "Happy Easter" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -267,9 +287,9 @@ B.route(/^\/home$/, async (m, nav) => {
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
-    const wx = [eaGreet ? B.ea.countdown(new Date()) : "", B.savedWeather()].filter(Boolean).join(" · ");
+    const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : eaGreet ? " eah" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || nyGreet ? " tgh" : eaGreet ? " eah" : ""}">${greet}</div>${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${eaGreet && B.ea.countdown(new Date()) ? `<div class="wx eac">${esc(B.ea.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -483,9 +503,7 @@ B.loadBoard = async (nav) => {
   if (weather) {
     const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
     try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
-    // Easter look: the countdown stays in front of the weather
-    const eaLine = B.eaOn() && !B.me.kids ? B.ea.countdown(new Date()) : "";
-    $("#wx").textContent = [eaLine, line].filter(Boolean).join(" · ");
+    $("#wx").textContent = line;
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
   const c = (prefs && prefs.CustomPrefs) || {};
@@ -576,12 +594,14 @@ const homeNotices = async (c, ready) => {
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
 let boardParts = { news: [], way: [], facts: [] };
+// New Year's look: each kind of notice gets its own small gold mark (html.ny .brow small::before)
+const nyMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "glass" : k.startsWith("ready") ? "star" : k.startsWith("on the way") ? "clock" : k.includes("live") ? "ball" : "spark"; };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}" data-mark="${nyMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -687,6 +707,11 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+// New Year's look: on from 27 December to 1 January unless switched off in Settings › Look (this browser), Kids too
+B.ny = window.BenflixNewYear;
+B.nyOff = () => { try { return localStorage.getItem("benflix.nyOff") === "1"; } catch (e) { return false; } };
+B.setNyOff = (off) => { try { localStorage.setItem("benflix.nyOff", off ? "1" : "0"); } catch (e) {} };
+B.nyOn = () => !!B.ny && B.ny.season(new Date()) && !B.nyOff();
 // Easter look: Monday to Easter Sunday (worked out each year), Kids too, unless switched off in Settings › Look (this browser)
 B.ea = window.BenflixEaster;
 B.eaOff = () => { try { return localStorage.getItem("benflix.eaOff") === "1"; } catch (e) { return false; } };

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -53,6 +54,8 @@ import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.EaKindMark
 import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.NyKindMark
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.tgTack
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -211,7 +214,21 @@ private fun CornerCard(
                 .tgTack()
                 .clip(shape)
                 .background(BenflixColors.Panel)
-                .border(1.dp, BenflixColors.Line, shape)
+                // New Year's look: a gold edge down the notice's left side
+                .then(
+                    if (NyLook.on) {
+                        Modifier.drawBehind {
+                            drawRect(
+                                NyLook.Gold,
+                                size =
+                                    androidx.compose.ui.geometry
+                                        .Size(4.dp.toPx(), size.height),
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ).border(1.dp, BenflixColors.Line, shape)
                 // Never takes the remote's focus: on a TV, OK opens it; on a phone, a tap does
                 .focusProperties { canFocus = false }
                 .then(
@@ -232,6 +249,8 @@ private fun CornerCard(
         ) {
             // Easter look: the notice's own small mark (a painted egg, a hatching chick, paw prints or a tulip)
             if (EaLook.on) EaKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
+            // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
+            if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

@@ -71,9 +71,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.EaLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import com.github.damontecres.wholphin.ui.theme.eaPlayEars
+import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -697,6 +699,8 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
+    val ny = NyLook.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
@@ -705,6 +709,8 @@ private fun TitleButtonView(
         } else if (EaLook.on) {
             // Easter look: Play is soft lilac with dark words, and a bunny's ears peek over its top edge
             EaLook.Lilac
+        } else if (ny) {
+            NyLook.Gold
         } else {
             BenflixColors.Text
         }
@@ -715,6 +721,8 @@ private fun TitleButtonView(
                 Color.White
             } else if (EaLook.on) {
                 EaLook.OnLilac
+            } else if (ny) {
+                NyLook.OnGold
             } else {
                 BenflixColors.Tray
             }
@@ -742,6 +750,7 @@ private fun TitleButtonView(
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
                 .then(if (primary) Modifier.eaPlayEars() else Modifier)
+                .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)
