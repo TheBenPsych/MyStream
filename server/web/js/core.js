@@ -17,7 +17,9 @@ const P = {
   film: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 12h4M3 16h4M17 8h4M17 12h4M17 16h4"/>',
   tv: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
   live: '<circle cx="12" cy="12" r="2"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
-  pad: '<path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.3 5H6.7a4 4 0 0 0-4 3.6L2 15a3 3 0 0 0 5.4 2l1.4-1.6a2 2 0 0 1 1.5-.7h3.4a2 2 0 0 1 1.5.7L16.6 17a3 3 0 0 0 5.4-2l-.7-6.4a4 4 0 0 0-4-3.6Z"/>',
+  // Navigation redesign: the taller Xbox-style controller, with a gap around the stick
+  pad: '<path d="M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"/><path d="M7 9.4v4M5 11.4h4M12 8.3h.01M16.6 10h.01M18.2 12.6h.01"/>',
+  home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   down: '<path d="m6 9 6 6 6-6"/>', up: '<path d="m18 15-6-6-6 6"/>',
   left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>',
@@ -395,41 +397,39 @@ B.where = (hash) => {
   else if (name) trail.push({ h: hash, n: name.slice(0, 80) });
   trail = trail.slice(-6);
   try { sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail)); } catch (e) {}
-  let place = $(".top .place");
-  if (!place && $(".top .homelink") && trail.length >= 2) {
-    place = document.createElement("span");
-    place.className = "place";
-    $(".top .homelink").after(place);
-  }
-  if (!place || trail.length < 2 || /^#\/(home|who|signin|play|game|read)/.test(page)) return;
-  const steps = trail.slice(-4);
-  place.classList.add("where");
-  place.innerHTML = steps.map((t, i) => (i === steps.length - 1 || t.h === hash
+  // Navigation redesign (approved pc-back): deeper pages get the named Back button ("‹ Action") and the
+  // where-am-I line in the header, in place of the page's name. Phone-sized windows show the last 2 parts.
+  const top = $(".top");
+  if (!top || trail.length < 2 || /^#\/(home|who|signin|play|game|read)/.test(page)) return;
+  const start = $(".hstart", top);
+  if (!start) return;
+  const steps = trail.slice(matchMedia("(max-width: 760px)").matches ? -2 : -4);
+  const here = trail.findIndex((t) => t.h === hash);
+  const prev = trail[(here >= 0 ? here : trail.length) - 1] || trail[trail.length - 2];
+  start.innerHTML = `<button type="button" class="nback" id="nback" title="Back">${I("left")}<span>${esc(prev ? prev.n : "Back")}</span></button>
+    <span class="place where">${steps.map((t, i) => (i === steps.length - 1 || t.h === hash
     ? `<b>${esc(t.n)}</b>`
-    : `<a href="${esc(t.h)}">${esc(t.n)}</a>`)).join('<span class="sep">›</span>');
+    : `<a href="${esc(t.h)}">${esc(t.n)}</a>`)).join('<span class="sep">›</span>')}</span>`;
+  $("#nback").onclick = () => B.back();
 };
 
 // ---------- top bar ----------
+// Navigation redesign (approved tb-header): the page's own header. On the left the door's name in its colour
+// (deeper pages: the named Back button and the where-am-I line, see B.where); on the right the clock.
+// The logo, Search and your picture live in the rail now (js/nav.js).
 B.top = (place, color, opts) => {
   opts = opts || {};
   if (place) B.placeName = place;
   const now = new Date();
   const t = B.clock(now).split(" ");
   return `<header class="top ${opts.solid ? "solid" : ""}">
-    <a class="homelink" href="#/home" title="Home">${B.logo()}</a>
-    ${B.me && B.me.kids ? '<span class="pbadge">Kids</span>' : ""}
-    ${place ? `<span class="place" style="color:${color || "var(--ink)"}">${esc(place)}</span>` : ""}
+    <div class="hstart">${place ? `<span class="place" style="color:${color || "var(--ink)"}">${esc(place)}</span>` : ""}${B.me && B.me.kids ? '<span class="pbadge">Kids</span>' : ""}</div>
     <div class="right">
       <span class="clock" id="clock">${esc(t[0])}<small>${esc(t[1] || "")}</small></span>
-      <a class="circle" href="#/search" title="Search">${I("search")}</a>
-      <button class="me" id="meBtn" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<span class="dotnew"></span>' : ""}${I("down")}</button>
     </div>
   </header>`;
 };
-B.wireTop = () => {
-  const b = $("#meBtn");
-  if (b) b.onclick = () => B.openMenu();
-};
+B.wireTop = () => {};
 setInterval(() => {
   const c = $("#clock"); if (!c) return;
   const t = B.clock(new Date()).split(" ");

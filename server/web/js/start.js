@@ -331,7 +331,8 @@ B.route(/^\/home$/, async (m, nav) => {
     more = all.filter((k) => !top.includes(k));
   }
   const doors = keys.map((k) => DOORS[k]);
-  const small = kids || easy;
+  // Navigation redesign: Easy mode gets the normal Home (the rail has every door); Kids get their own
+  const small = kids;
   // Video Games Day look: the Games door nudges you to play something today
   const vgDay = B.vgOn();
   const doorDesc = (d) => (vgDay && d.key === "games" ? "Play something today" : d.desc);
@@ -363,33 +364,29 @@ B.route(/^\/home$/, async (m, nav) => {
   const eaGreet = !nyGreet && !tgGreet && !valGreet && !pcGreet && !swGreet && !j4Greet && !edGreet && !spGreet && !hwGreet && !f13 && B.eaOn();
   const greet = kids ? `${f13 ? "Happy Friday the 13th!" : edGreet ? "Happy Earth Day!" : pcGreet ? "Happy Popcorn Day!" : swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">${hwOn ? "Happy Halloween! " : ""}What do you want to watch?</small>` : `${esc(vgDay ? B.vg.greeting() : f13 ? "Happy Friday the 13th" : edGreet ? "Happy Earth Day" : hwGreet ? "Happy Halloween" : pcGreet ? "Happy Popcorn Day" : swGreet ? B.sw.greeting() : spGreet ? "Happy St. Patrick\u2019s Day" : j4Greet ? "Happy 4th of July" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : eaGreet ? "Happy Easter" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
-    const count = doors.length + (more.length ? 1 : 0);
-    B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
+    B.page().innerHTML = B.top("") + `<div class="home fam spotted ${kids ? "kidsh" : "easyh"}">
       <div class="greet${edGreet || pcGreet ? " tgh" : ""}${swGreet ? " swg" : ""}${f13 ? " f13h" : ""}">${greet}</div>
-      <div class="doors fdoors n${count} ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}${more.length ? `<button class="door moredoor" id="moreDoors"><div class="n">More</div><div class="d">${more.length} more door${more.length === 1 ? "" : "s"}</div></button>` : ""}</div>
+      ${B.spotHtml()}
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
     const wx = f13 ? B.f13Lucky(0, 0) : B.savedWeather();
-    B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
+    B.page().innerHTML = B.top("") + `<div class="home board spotted ${grow ? "grow" : ""}">
       <div class="bgreet"><div class="greet${tgGreet || nyGreet || j4Greet || valGreet || pcGreet || edGreet || spGreet ? " tgh" : eaGreet ? " eah" : ""}${swGreet ? " swg" : ""}${hwGreet ? " hwh" : ""}${f13 ? " f13h" : ""}">${greet}</div>${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${hwGreet && B.hw.homeLine(new Date()) ? `<div class="wx hwc">${esc(B.hw.homeLine(new Date()))}</div>` : ""}${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${eaGreet && B.ea.countdown(new Date()) ? `<div class="wx eac">${esc(B.ea.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}${edGreet ? `<div class="wx edw">${esc(B.ed.line(new Date()))}</div>` : ""}${spGreet && B.sp.countdown(new Date()) ? `<div class="wx spc">${esc(B.sp.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(vgDay ? [B.vg.LINE, wx].filter(Boolean).join(" · ") : wx)}</div></div>
-      <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
+      ${B.spotHtml()}
+      <div class="bmain"><div class="blist" id="blist"></div></div>
     </div>`;
   }
   B.wireTop();
   const mb = $("#moreDoors");
   if (mb) mb.onclick = () => B.side(`<h3>More doors</h3><div class="fmore">${more.map((k) => doorHtml(DOORS[k])).join("")}</div>`);
-  if (grow) {
-    // The doors grow out of the logo squares, one after another
-    const logo = $(".top .logo .sq").getBoundingClientRect();
-    $$(".door").forEach((d) => {
-      const r = d.getBoundingClientRect();
-      d.style.setProperty("--fx", `${logo.left - r.left}px`);
-      d.style.setProperty("--fy", `${logo.top - r.top}px`);
-    });
-    B.sound("doors");
-  }
-  setTimeout(() => { const f = $(".door"); if (f && B.alive(nav)) f.focus({ preventScroll: true }); }, grow ? 800 : 0);
+  // Navigation redesign (approved in-light): when Benflix opens, the rail's icons light up one after another
+  // with the door notes, in place of the doors growing out of the logo
+  if (grow && B.railLightUp) setTimeout(() => B.railLightUp(), 60);
+  B.loadSpot(nav);
+  // The keyboard starts on Play (once the first pick is there)
+  const focusPlay = (n) => { if (!B.alive(nav)) return; if (!B.spotFocus() && n < 20) setTimeout(() => focusPlay(n + 1), 150); };
+  focusPlay(0);
   if (small) B.loadFamilyRow(nav, kids); else B.loadBoard(nav);
 });
 

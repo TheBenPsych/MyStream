@@ -22,6 +22,8 @@ js/ask.js
 js/books.js
 js/core.js
 js/doors.js
+js/nav.js
+js/spot.js
 js/extras.js
 js/fix.js
 js/games.js
