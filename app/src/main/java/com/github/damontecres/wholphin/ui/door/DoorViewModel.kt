@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -328,6 +329,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Valentine's look (1 to 14 Feb): Date night right after Keep watching
+                    if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
+                }.let { rows ->
                     // Star Wars Day (4 May): the saga, from your own library, at the very top
                     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
                 }
@@ -376,6 +380,14 @@ class DoorViewModel
                                 )
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(STAR_WARS, "May the 4th: the saga", items.takeIf { it.size >= 3 }.orEmpty()))
+                    }
+                }
+                if (DATE_NIGHT in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.dateNight(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(DATE_NIGHT, "Date night", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (CHRISTMAS in order) {
@@ -601,6 +613,7 @@ class DoorViewModel
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
             const val STAR_WARS = "starwars"
+            const val DATE_NIGHT = "datenight"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

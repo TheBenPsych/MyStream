@@ -37,15 +37,17 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // Valentine's Day (approved 2026-11-17): the table set for two, 1 to 14 February, petals falling on the 14th
+  const val = !xmas && !feast && B.valOn();
   // New Year's (approved 2026-11-17): the party room, 27 December to 1 January, with a 10-second countdown at midnight
   const ny = !xmas && !feast && B.nyOn();
   // Star Wars Day (approved 2026-11-17): the desert home, 4 May only. The laser sword matches each profile's side
   const sw = !xmas && !feast && !ny && B.swOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || ny || sw ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || ny || val || sw ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : sw ? `<h1 class="swh">${esc(B.sw.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : sw ? `<h1 class="swh">${esc(B.sw.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -63,10 +65,10 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || ny || sw) {
+  if (xmas || feast || ny || val || sw) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : ny ? B.ny : B.sw;
+    const room = xmas ? B.xmas : feast ? B.tg : ny ? B.ny : val ? B.val : B.sw;
     // Star Wars Day: the blade takes the side of the profile you're on (or the last one picked)
     let side = B.swSide(last);
     if (sw) {
@@ -273,11 +275,13 @@ B.route(/^\/home$/, async (m, nav) => {
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
+  // Valentine's look: "Happy Valentine's Day, Ben" in the curly holiday font, with "4 days to Valentine's Day" under it
+  const valGreet = !kids && !tgGreet && B.valOn();
   // New Year's look: "Happy New Year, Ben" in the curly holiday font, with "4 days to 2027" leading the line under it
   const nyGreet = !kids && B.nyOn();
   // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering (html.sw .greet.swg), Kids too
   const swGreet = B.swOn();
-  const greet = kids ? `${swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(swGreet ? B.sw.greeting() : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  const greet = kids ? `${swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(swGreet ? B.sw.greeting() : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
@@ -288,7 +292,7 @@ B.route(/^\/home$/, async (m, nav) => {
   } else {
     const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet || nyGreet ? " tgh" : ""}${swGreet ? " swg" : ""}">${greet}</div>${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || nyGreet || valGreet ? " tgh" : ""}${swGreet ? " swg" : ""}">${greet}</div>${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -595,12 +599,14 @@ const homeNotices = async (c, ready) => {
 let boardParts = { news: [], way: [], facts: [] };
 // New Year's look: each kind of notice gets its own small gold mark (html.ny .brow small::before)
 const nyMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "glass" : k.startsWith("ready") ? "star" : k.startsWith("on the way") ? "clock" : k.includes("live") ? "ball" : "spark"; };
+// Valentine's look: each kind of notice gets its own small mark (html.val .brow small::before)
+const valMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "choc" : k.startsWith("ready") ? "rose" : k.startsWith("on the way") ? "letter" : k.includes("live") ? "balloon" : "choc"; };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}" data-mark="${nyMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -706,6 +712,11 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+// Valentine's look: on from 1 to 14 February unless switched off in Settings › Look (this browser), not on Kids
+B.val = window.BenflixValentine;
+B.valOff = () => { try { return localStorage.getItem("benflix.valOff") === "1"; } catch (e) { return false; } };
+B.setValOff = (off) => { try { localStorage.setItem("benflix.valOff", off ? "1" : "0"); } catch (e) {} };
+B.valOn = () => !!B.val && B.val.season(new Date()) && !B.valOff();
 // New Year's look: on from 27 December to 1 January unless switched off in Settings › Look (this browser), Kids too
 B.ny = window.BenflixNewYear;
 B.nyOff = () => { try { return localStorage.getItem("benflix.nyOff") === "1"; } catch (e) { return false; } };

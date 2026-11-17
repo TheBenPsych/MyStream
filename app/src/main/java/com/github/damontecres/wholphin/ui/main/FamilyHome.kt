@@ -59,9 +59,11 @@ import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
@@ -210,9 +212,9 @@ fun FamilyHome(
                 color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
                 // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font;
-                // Star Wars Day: yellow crawl lettering
+                // Valentine's look too; Star Wars Day: yellow crawl lettering
                 fontWeight =
-                    if (TgLook.on || NyLook.on) {
+                    if (TgLook.on || NyLook.on || ValLook.on) {
                         FontWeight.Normal
                     } else if (SwLook.on) {
                         FontWeight.Bold
@@ -220,7 +222,7 @@ fun FamilyHome(
                         FontWeight.ExtraBold
                     },
                 fontFamily =
-                    if (TgLook.on || NyLook.on) {
+                    if (TgLook.on || NyLook.on || ValLook.on) {
                         HolidayFont
                     } else if (SwLook.on) {
                         StarWarsFont
@@ -460,6 +462,7 @@ private fun FamilyDoor(
                         Modifier
                             .xmasDoorOrnament(door)
                             .tgDoorCharm(door)
+                            .valDoorCharm(door)
                             .nyDoorCharm(door)
                             .swDoorMoment(door)
                     },

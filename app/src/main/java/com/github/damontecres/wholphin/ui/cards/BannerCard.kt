@@ -59,9 +59,11 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.swProgressSaber
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
+import com.github.damontecres.wholphin.ui.theme.valProgressHeart
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -331,6 +333,8 @@ fun BannerCard(
                                     TgLook.Orange
                                 } else if (NyLook.on) {
                                     NyLook.Gold
+                                } else if (ValLook.on) {
+                                    ValLook.Rose
                                 } else {
                                     BenflixRed
                                 },
@@ -347,6 +351,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
+                    )
+                }
+                // Valentine's look: a glossy little red heart bead rides the end of the progress line
+                if (ValLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .valProgressHeart((playPercent / 100).toFloat(), bead = 18.dp),
                     )
                 }
                 // New Year's look: a lit sparkler at the end of the progress line

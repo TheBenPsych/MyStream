@@ -38,6 +38,32 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Valentine's look: instead of a ring, a heart that fills up with rose red from the bottom, over and over
+    if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
+        val pour =
+            androidx.compose.animation.core
+                .rememberInfiniteTransition(label = "valHeart")
+        val fill by pour.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec =
+                androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core
+                        .tween(1600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                ),
+            label = "valHeartFill",
+        )
+        Box(modifier = modifier) {
+            com.github.damontecres.wholphin.ui.theme.ValLoadingHeart(
+                fill = fill,
+                modifier =
+                    Modifier
+                        .fillMaxSize(.9f)
+                        .align(Alignment.Center),
+            )
+        }
+        return
+    }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
     val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
     // New Year's look: the loading ring is a clock face ticking round to midnight
