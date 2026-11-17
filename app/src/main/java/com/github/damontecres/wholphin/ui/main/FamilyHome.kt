@@ -57,9 +57,11 @@ import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
+import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
@@ -206,11 +208,16 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving, New Year's and Easter looks: the greeting is in the curly holiday font (Easter: not on Kids,
-                // which keeps its round letters)
+                // Thanksgiving, New Year's, Valentine's and Easter looks: the greeting is in the curly holiday font (Easter:
+                // not on Kids, which keeps its round letters)
                 fontWeight =
-                    if (TgLook.on || NyLook.on || (EaLook.on && kind != FamilyKind.KIDS)) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on || NyLook.on || (EaLook.on && kind != FamilyKind.KIDS)) HolidayFont else null,
+                    if (TgLook.on || NyLook.on || ValLook.on || (EaLook.on && kind != FamilyKind.KIDS)) {
+                        FontWeight.Normal
+                    } else {
+                        FontWeight.ExtraBold
+                    },
+                fontFamily =
+                    if (TgLook.on || NyLook.on || ValLook.on || (EaLook.on && kind != FamilyKind.KIDS)) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -437,7 +444,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier.nyDoorCharm(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).nyDoorCharm(door))
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .valDoorCharm(door)
+                            .nyDoorCharm(door)
+                    },
+                )
                 // Easter look: Kids gets the charms too
                 .eaDoorCharm(door)
                 .padding(if (small) 14.dp else 22.dp),
