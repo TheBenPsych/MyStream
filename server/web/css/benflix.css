@@ -2367,6 +2367,8 @@ body.nav-on .bk-side { display: none; }
 .brail::after { content: ""; position: fixed; top: 0; bottom: 0; left: var(--nopen); right: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .2s; }
 .brail:hover::after, .brail:focus-within::after, body.nav-panel .brail::after { opacity: 1; }
 .brail.always::after { display: none; }
+/* With a door's place panel open the dim starts where the panel ends, so the panel stays bright */
+body.nav-panel .brail::after { left: calc(var(--nopen) + min(300px, 100vw - var(--nopen))); }
 body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .rl-logo { display: flex; align-items: center; height: 46px; padding: 0 11px; margin-bottom: 8px; border-radius: 14px; flex: none; }
 .rl-logo .logo { font-size: 22px; }
@@ -2457,10 +2459,12 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .top:has(+ .home.spotted) { background: linear-gradient(rgba(var(--trayrgb), .55), rgba(var(--trayrgb), 0)); }
 .spot .sp-pics, .spot .sp-shade { position: absolute; left: 0; right: 0; top: 0; height: min(88vh, 60vw); z-index: -1; overflow: hidden; pointer-events: none; }
 .fam .spot .sp-pics, .fam .spot .sp-shade { height: min(72vh, 52vw); }
-.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease; animation: spzoom 20s ease-out forwards; }
+.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease;
+  /* Smooth zoom: on the graphics card, steady speed, and never snapped to whole pixels (it bounced before) */
+  will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0) scale3d(1,1,1); animation: spzoom 12s linear forwards; }
 .sp-pic.on { opacity: 1; }
 .sp-pic.on.off { opacity: 0; }
-@keyframes spzoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes spzoom { from { transform: translate3d(0,0,0) scale3d(1,1,1); } to { transform: translate3d(0,0,0) scale3d(1.06,1.06,1); } }
 .sp-shade { background: linear-gradient(90deg, rgba(var(--trayrgb), .94) 0%, rgba(var(--trayrgb), .6) 36%, rgba(var(--trayrgb), 0) 66%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb), 0) 45%); }
 .sp-info { position: relative; max-width: min(46%, 640px); margin-top: min(9vh, 7vw); min-height: 290px; }
 .spot.empty .sp-info { min-height: 0; }

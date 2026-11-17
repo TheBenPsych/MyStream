@@ -2,11 +2,8 @@ package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -737,20 +734,18 @@ private val TRIM_BOTTOM = 36.dp
 /** The pick's picture: a tiny copy first, then the sharp one, slowly zooming in (approved hc-q-trailer A) */
 @Composable
 private fun SpotPicture(pick: HomePick?) {
-    val zoom by rememberInfiniteTransition(label = "spotZoom").animateFloat(
-        initialValue = 1f,
-        targetValue = ZOOM,
-        animationSpec = infiniteRepeatable(tween(ZOOM_MS, easing = LinearEasing), RepeatMode.Reverse),
-        label = "spotZoomValue",
-    )
     Crossfade(targetState = pick, animationSpec = tween(FADE_MS), label = "spotPicture") { p ->
+        // Each picture zooms in one way at a steady speed from when it shows (it used to turn round and bounce).
+        // Read only while drawing, so the zoom never rebuilds the screen.
+        val zoom = remember { Animatable(1f) }
+        LaunchedEffect(Unit) { zoom.animateTo(ZOOM, tween(ZOOM_MS, easing = LinearEasing)) }
         Box(
             Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(0.dp))
                 .graphicsLayer {
-                    scaleX = zoom
-                    scaleY = zoom
+                    scaleX = zoom.value
+                    scaleY = zoom.value
                 },
         ) {
             if (p == null) {
@@ -1009,8 +1004,8 @@ private const val KIDS_SCALE = 1.15f
 private const val SLIDE_MS = 10_000L
 private const val OK_GRACE_MS = 1_000L
 private const val FADE_MS = 600
-private const val ZOOM = 1.08f
-private const val ZOOM_MS = 20_000
+private const val ZOOM = 1.06f
+private const val ZOOM_MS = 12_000
 private const val SWIPE_PX = 80f
 private const val FOCUS_TRIES = 10
 private const val FOCUS_RETRY_MS = 60L
