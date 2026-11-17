@@ -296,7 +296,7 @@ message BenflixPreferences {
   // Benflix New Year's look (27 Dec to 1 Jan) is on unless this is set
   bool new_year_look_off = 15;
   // Benflix Valentine's look (1 to 14 Feb) is on unless this is set
-  bool valentines_look_off = 20;
+  bool valentines_look_off = 24;
 }
 
 enum BenflixAccent {
