@@ -42,9 +42,9 @@ object LastRemoteKey {
         }
     }
 
-    /** True if Left/Up/Down was pressed in the last [withinMs] */
     /** True if any arrow, OK, Back or Menu was pressed in the last [withinMs] */
     fun pressedRecently(withinMs: Long): Boolean = android.os.SystemClock.uptimeMillis() - pressAt < withinMs
 
+    /** True if Left/Up/Down was pressed in the last [withinMs] */
     fun movedRecently(withinMs: Long = 900L): Boolean = android.os.SystemClock.uptimeMillis() - moveAt < withinMs
 }
