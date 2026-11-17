@@ -55,10 +55,14 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.ValLook
+import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
+import com.github.damontecres.wholphin.ui.theme.valProgressHeart
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -314,6 +318,10 @@ fun BannerCard(
                             .background(
                                 if (TgLook.on) {
                                     TgLook.Orange
+                                } else if (NyLook.on) {
+                                    NyLook.Gold
+                                } else if (ValLook.on) {
+                                    ValLook.Rose
                                 } else if (PcLook.on) {
                                     PcLook.Butter
                                 } else {
@@ -334,6 +342,17 @@ fun BannerCard(
                                 .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
                     )
                 }
+                // Valentine's look: a glossy little red heart bead rides the end of the progress line
+                if (ValLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .valProgressHeart((playPercent / 100).toFloat(), bead = 18.dp),
+                    )
+                }
                 // Popcorn Day look: a piece of popcorn on the end of the progress line
                 if (PcLook.on) {
                     Box(
@@ -343,6 +362,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .pcProgressPuff((playPercent / 100).toFloat(), puff = 20.dp),
+                    )
+                }
+                // New Year's look: a lit sparkler at the end of the progress line
+                if (NyLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
                     )
                 }
             }

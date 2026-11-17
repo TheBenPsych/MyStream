@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,7 +44,40 @@ fun CircularProgress(modifier: Modifier = Modifier) {
             .PcLoadingRing(modifier)
         return
     }
+    // Valentine's look: instead of a ring, a heart that fills up with rose red from the bottom, over and over
+    if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
+        val pour =
+            androidx.compose.animation.core
+                .rememberInfiniteTransition(label = "valHeart")
+        val fill by pour.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec =
+                androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core
+                        .tween(1600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                ),
+            label = "valHeartFill",
+        )
+        Box(modifier = modifier) {
+            com.github.damontecres.wholphin.ui.theme.ValLoadingHeart(
+                fill = fill,
+                modifier =
+                    Modifier
+                        .fillMaxSize(.9f)
+                        .align(Alignment.Center),
+            )
+        }
+        return
+    }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
+    // New Year's look: the loading ring is a clock face ticking round to midnight
+    if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
+        com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
+            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
+        )
+        return
+    }
     Box(modifier = modifier) {
         CircularProgressIndicator(
             // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside

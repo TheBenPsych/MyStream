@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -328,6 +329,9 @@ class DoorViewModel
                     // Christmas look (1 to 26 Dec): Christmas favourites right after Keep watching
                     if (XmasLook.on) listOf(rows.first(), CHRISTMAS) + rows.drop(1) else rows
                 }.let { rows ->
+                    // Valentine's look (1 to 14 Feb): Date night right after Keep watching
+                    if (ValLook.on && !easy) listOf(rows.first(), DATE_NIGHT) + rows.drop(1) else rows
+                }.let { rows ->
                     // Popcorn Day look (19 Jan): Popcorn movies, big fun crowd-pleasers, right after Keep watching
                     if (com.github.damontecres.wholphin.ui.theme.PcLook.on) listOf(rows.first(), POPCORN) + rows.drop(1) else rows
                 }
@@ -357,22 +361,20 @@ class DoorViewModel
                     val items = data.myList(userId, BaseItemKind.MOVIE)
                     putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
                 }
+                if (DATE_NIGHT in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.dateNight(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        // Only when there are enough to make a proper row
+                        putOrRemove(order, DoorRowData(DATE_NIGHT, "Date night", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
                 if (CHRISTMAS in order) {
                     launch {
                         val dislikes = disliked.await()
                         val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
-                    }
-                }
-                if (POPCORN in order) {
-                    launch {
-                        val dislikes = disliked.await()
-                        val items =
-                            data
-                                .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.POPCORN_DAY, userId, BaseItemKind.MOVIE)
-                                .filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(POPCORN, "Popcorn movies", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 launch {
@@ -589,6 +591,7 @@ class DoorViewModel
         companion object {
             const val KEEP = "keep"
             const val CHRISTMAS = "christmas"
+            const val DATE_NIGHT = "datenight"
             const val POPCORN = "popcorn"
             const val MY_LIST = "mylist"
             const val NEW = "new"
