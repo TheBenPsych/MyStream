@@ -53,7 +53,7 @@ object ChristmasNav {
      * (the usual icon's colour is the muted grey then), so it still "lights up" with the others.
      */
     private fun icon48(block: DrawScope.() -> Unit): HolidayIconArt =
-        { color ->
+        { color, _ ->
             val s = size.minDimension / 48f
             val dim = color == BenflixColors.Muted
             if (dim) drawIntoCanvas { it.saveLayer(Rect(Offset.Zero, size), Paint().apply { alpha = .35f }) }
@@ -196,12 +196,14 @@ object ChristmasNav {
         )
 
     /** A small gold snowflake beside the icon you're on */
-    val mark: HolidayArt = {
+    val mark: HolidayArt = { seconds ->
+        // twinkles softly
+        val tw = .55f + .45f * sin(seconds * 2.6f)
         val c = Offset(size.width / 2f, size.height - size.width / 2f)
         val r = size.width * .48f
         val w = size.width * .11f
         val gold = Color(0xFFFFD976)
-        drawCircle(Brush.radialGradient(listOf(gold.copy(alpha = .5f), Color.Transparent), c, r * 1.5f), r * 1.5f, c)
+        drawCircle(Brush.radialGradient(listOf(gold.copy(alpha = .5f * tw), Color.Transparent), c, r * 1.5f), r * 1.5f, c)
         for (i in 0 until 6) {
             val a = (i * 60f - 90f) * PI.toFloat() / 180f
             val tip = Offset(c.x + cos(a) * r, c.y + sin(a) * r)
@@ -215,7 +217,10 @@ object ChristmasNav {
     }
 
     /** Big glass bulbs hanging from a dark wire across the top of Home's picture */
-    val topTrim: HolidayArt = {
+    val topTrim: HolidayArt = { seconds ->
+        // Christmas Day itself: all the lights twinkle faster (approved xq-day A)
+        val today = java.time.LocalDate.now()
+        val speed = if (today.monthValue == 12 && today.dayOfMonth == 25) 5.5f else 2.6f
         val d = density
         val swag = 150f * d
         val n = (size.width / swag).toInt().coerceAtLeast(1)
@@ -242,7 +247,7 @@ object ChristmasNav {
             listOf(.17f, .5f, .83f).forEachIndexed { j, t ->
                 val k = i * 3 + j
                 val o = at(a, t)
-                drawBulb(o.x, o.y - d, Bulbs[k % Bulbs.size], d)
+                drawBulb(o.x, o.y - d, Bulbs[k % Bulbs.size], d, .55f + .45f * sin(seconds * speed + k * 1.7f))
             }
         }
         for (i in 0..n) drawCircle(Color(0xFF2A3B2F), 2.2f * d, Offset(i * step, top))
@@ -254,9 +259,10 @@ object ChristmasNav {
         y: Float,
         c: Color,
         d: Float,
+        glow: Float = 1f,
     ) {
         val glowC = Offset(x, y + 15f * d)
-        drawCircle(Brush.radialGradient(listOf(c.copy(alpha = .5f), Color.Transparent), glowC, 14f * d), 14f * d, glowC)
+        drawCircle(Brush.radialGradient(listOf(c.copy(alpha = .55f * glow), Color.Transparent), glowC, 14f * d), 14f * d, glowC)
         drawRoundRect(Color(0xFF1C3524), Offset(x - 2.6f * d, y), Size(5.2f * d, 6.4f * d), CornerRadius(1.2f * d))
         val glass = Path()
         glass.moveTo(x, y + 5f * d)
@@ -281,7 +287,7 @@ object ChristmasNav {
     }
 
     /** Soft snow drifts along the bottom of Home, with a few sparkles */
-    val bottomTrim: HolidayArt = {
+    val bottomTrim: HolidayArt = { _ ->
         val w = size.width
         val h = size.height
 

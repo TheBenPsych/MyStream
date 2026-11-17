@@ -199,6 +199,8 @@ object HolidayNavKit {
                 topTrim = ChristmasNav.topTrim,
                 bottomTrim = ChristmasNav.bottomTrim,
                 pickTitles = ChristmasNav.pickTitles,
+                // the bulbs and the snowflake twinkle
+                moving = true,
             ),
         )
 
