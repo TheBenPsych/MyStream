@@ -342,7 +342,7 @@
     const title = s.Name || "";
     const artist = (artistOf(s) || "").split(",")[0].trim();
     const admin = B.me.admin;
-    box.innerHTML = `<p class="dim">Like ${esc(title)}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.</p><div class="np-sim">${B.spinner()}</div>`;
+    box.innerHTML = `<p class="dim">Songs that sound like ${esc(title)} that you don't have yet. The round button plays 30 seconds. Pick one to ask for it.</p><div class="np-sim">${B.spinner()}</div>`;
     let found;
     try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { const l = $(".np-sim", box); if (l) l.innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
     if (M.current() !== s || !document.body.contains(box)) return;
@@ -351,7 +351,7 @@
     const rows = () => songs.length ? songs.map((x, i) => `<div class="np-simrow">${B.previewBtn(x.id)}<button class="opt" ${x.asked ? "disabled" : `data-sim="${i}"`}>
         <span class="np-simc" style="${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"></span>
         <span style="min-width:0"><b>${esc(x.title)}</b><small class="dim">${esc(x.asked || x.artist)}</small></span></button></div>`).join("")
-      : `<p class="dim">Nothing new like this one right now.</p>`;
+      : `<p class="dim">Couldn't find songs like this one that you don't already have. Try another song.</p>`;
     list.innerHTML = rows();
     list.addEventListener("click", (ev) => {
       const one = ev.target.closest("[data-sim]");
@@ -379,6 +379,7 @@
   }
   setInterval(() => {
     if (!bar || !M.current()) return;
+    if (!towersOn && !audio.paused && !document.hidden) towersBack();
     drawNow(false, true);
   }, 500);
 
@@ -558,7 +559,13 @@
   // Browsers pause the sound graph when the tab sleeps; wake it or the music goes silent
   function wakeSound() { try { if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); } catch (e) {} }
   audio.addEventListener("play", () => { wakeSound(); startTowers(); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) wakeSound(); });
+  // Ben 2026-11-17: moving or resizing the window could hide the page for a moment, which stopped the towers for
+  // good. Start them again whenever the page shows, gets focus or changes size (and the half-second check below).
+  const towersBack = () => { if (!document.hidden) { wakeSound(); if (!audio.paused) startTowers(); } };
+  document.addEventListener("visibilitychange", towersBack);
+  window.addEventListener("focus", towersBack);
+  window.addEventListener("resize", towersBack);
+  window.addEventListener("pageshow", towersBack);
   const COLORS = ["#FFB547", "#7AA7FF", "#3DD6C6", "#FF6F91", MUSIC];
   const levels = [];
   let towersOn = false;
