@@ -2494,7 +2494,21 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   .spotted .bitem, .spotted .bmore { min-height: 88px; height: calc(6.4 * var(--u)); border-radius: 14px; background: rgba(22,24,30,.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 14px 30px rgba(0,0,0,.45); }
   .spotted .bitem::before, .spotted .bmore::before { display: none; }
   .spotted .bmore { flex-direction: column; justify-content: center; gap: 6px; }
+  /* Ben 2026-11-17: the cards share the whole width, the cover art fills almost the card's height so you see all of
+     it, the words are smaller (the episode line shows which one), and Did you know shows the fact itself */
+  .spotted .bpanel { display: flex; }
+  .spotted .bitem { flex: 1 1 0; min-width: 0; }
+  .spotted .bmore { flex: 0 0 auto; padding: 0 22px; }
+  .spotted .bitem, .spotted .bmore { height: max(100px, calc(5.4 * var(--u))); }
+  .spotted .brow { height: 100%; padding: 8px; column-gap: 12px; align-items: center; }
+  .spotted .brow .th, .spotted .brow .lgthumb { width: auto; height: 100%; aspect-ratio: 2 / 3; border-radius: 8px; }
+  .spotted .brow .th { background-size: cover; }
+  .spotted .brow .tx small { font-size: 11px; }
+  .spotted .brow .tx b { font-size: clamp(13px, calc(.8 * var(--u)), 16px); line-height: 1.25; -webkit-line-clamp: 3; overflow-wrap: normal; }
+  .spotted .bitem.fact .brow .tx b { font-size: clamp(12px, calc(.7 * var(--u)), 14px); font-weight: 500; -webkit-line-clamp: 5; }
 }
+/* With music playing the cards float just above the player bar */
+@media (min-width: 761px) { body:has(.mbar:not(.hidden)) .home.board.spotted { padding-bottom: 96px; } }
 @media (max-width: 760px) {
   .home.spotted { margin-top: 0; padding-top: 6px; }
   .spot .sp-pics, .fam .spot .sp-pics { position: relative; height: auto; aspect-ratio: 16 / 10; margin: 12px calc(-1 * var(--gutter)) 0; z-index: 0; }
