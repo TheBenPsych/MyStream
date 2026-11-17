@@ -50,6 +50,91 @@
   }, extra || {});
   const is = (name) => () => !!(B[name] && B[name]());
 
+  /* ---------- 4th of July (approved 2026-11-17, sheet july4-nav-1-directions; the app's ui/theme/July4Nav.kt) ----------
+     The rail and phone-tab icons in red, white and blue taken in turn, a twinkling gold star beside the one you're
+     on, pleated fan bunting in swags across the top of Home, lit sparklers along the bottom, bigger fireworks over
+     the bunting on the 4th from 9 PM, and "It's the 4th!" on the day. Kids too. */
+  const july4 = () => {
+    const RD = "#E0404F", RDK = "#9E1E2C", NV = "#24366E", CR = "#F4F0E8", CRS = "#CFC7B8";
+    const f = (n) => Math.round(n * 10) / 10;
+    const starD = (x, y, r, ri = 0.42) => { let d = ""; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * ri : r; d += (k ? "L" : "M") + f(x + Math.cos(a) * rr) + " " + f(y + Math.sin(a) * rr); } return d + "Z"; };
+    const fan = (cx, top, r) => {
+      let o = "";
+      for (let i = 0; i < 10; i++) {
+        const a0 = i * Math.PI / 10, a1 = (i + 1) * Math.PI / 10, am = (a0 + a1) / 2, c = i % 2 ? CR : RD;
+        const P = (a) => `${f(cx + Math.cos(a) * r)} ${f(top + Math.sin(a) * r)}`;
+        o += `<path d="M${cx} ${top}L${P(a0)}L${P(am)}Z" fill="${c}"/><path d="M${cx} ${top}L${P(am)}L${P(a1)}Z" fill="${c === RD ? RDK : CRS}"/>`;
+      }
+      const r2 = r * 0.45;
+      o += `<path d="M${f(cx - r2)} ${top}A${f(r2)} ${f(r2)} 0 0 0 ${f(cx + r2)} ${top}Z" fill="${NV}" stroke="${CR}" stroke-width="${f(r * 0.07)}"/>`;
+      [[-0.55, 0.35], [0, 0.6], [0.55, 0.35]].forEach(([dx, dy]) => { o += `<path d="${starD(cx + dx * r2 * 0.8, top + dy * r2 * 0.8, r2 * 0.24)}" fill="#fff"/>`; });
+      return o + `<rect x="${f(cx - r - 1)}" y="${f(top - r * 0.08)}" width="${f(2 * r + 2)}" height="${f(r * 0.16)}" rx="${f(r * 0.08)}" fill="${NV}"/><circle cx="${cx}" cy="${top + 1}" r="2.6" fill="#E9C46A"/>`;
+    };
+    // Fan bunting in swags, gently swaying. Ben 2026-11-17: the greeting sits top left on the clock's line (clock
+    // top right), so the bunting only hangs in the gap between them (phones: right of the greeting). Drawn for the
+    // screen's own width, so the fans never stretch.
+    const bunting = (W, narrow) => {
+      const x0 = W * (narrow ? 0.66 : 0.34), x1 = W * (narrow ? 1 : 0.86), n = Math.max(1, Math.round((x1 - x0) / 170)), w = (x1 - x0) / n, top = 3;
+      let o = "<style>.j4sw{transform-box:fill-box;transform-origin:50% 0;animation:j4sw 3.4s ease-in-out infinite}@keyframes j4sw{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}@media (prefers-reduced-motion:reduce){.j4sw{animation:none}}</style>";
+      for (let i = 0; i < n; i++) { const x = x0 + i * w; o += `<path d="M${f(x)} ${top}Q${f(x + w / 2)} ${top + 30} ${f(x + w)} ${top}" fill="none" stroke="${NV}" stroke-width="3"/><path d="M${f(x)} ${top}Q${f(x + w / 2)} ${top + 26} ${f(x + w)} ${top}" fill="none" stroke="${CR}" stroke-opacity=".6" stroke-width="1"/>`; }
+      for (let i = 0; i <= n; i++) o += `<g class="j4sw" style="animation-delay:${-i * 0.45}s">${fan(x0 + i * w, top, i % 2 ? 27 : 33)}</g>`;
+      return o;
+    };
+    // The big show on the night of the 4th: bursts blooming one after another over the right of the picture, below
+    // the greeting and clock line and clear of the pick's words
+    const fireworks = (W) => {
+      let o = "<style>.j4fw{transform-box:fill-box;transform-origin:center;animation:j4fw 3.6s ease-out infinite}@keyframes j4fw{0%{transform:scale(.1);opacity:0}8%{opacity:1}45%{transform:scale(1);opacity:1}70%,100%{transform:scale(1.08);opacity:0}}</style>";
+      ["#E0404F", "#FFFFFF", "#7FA0FF", "#FFD25A", "#E0404F"].forEach((c, i) => {
+        const x = W * (0.52 + i * 0.1), y = 110 + ((i * 7) % 3) * 22, r = 34 + 8 * (i % 2);
+        let rays = "";
+        for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; rays += `<path d="M${f(x + Math.cos(a) * r * 0.3)} ${f(y + Math.sin(a) * r * 0.3)}L${f(x + Math.cos(a) * r)} ${f(y + Math.sin(a) * r)}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(x + Math.cos(a) * r * 1.12)}" cy="${f(y + Math.sin(a) * r * 1.12)}" r="1.8" fill="${c}"/>`; }
+        o += `<g class="j4fw" style="animation-delay:${-i * 0.75}s">${rays}</g>`;
+      });
+      return o;
+    };
+    const topTrim = (cls) => {
+      const W = Math.max(320, Math.round(window.innerWidth || 1200)), narrow = W <= 760, d = now();
+      const show = d.getMonth() === 6 && d.getDate() === 4 && d.getHours() >= 21;
+      return `<svg class="${cls || ""}" viewBox="0 0 ${W} 44" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible">${bunting(W, narrow)}${show ? fireworks(W) : ""}</svg>`;
+    };
+    // Sparklers fizzing along the bottom of Home
+    const sparklers = () => {
+      let o = "<style>.j4sp{animation:j4sp .45s steps(2) infinite}.j4sp:nth-of-type(2n){animation-delay:-.22s}@keyframes j4sp{50%{opacity:.5}}@media (prefers-reduced-motion:reduce){.j4sp{animation:none}}</style>";
+      const n = 16;
+      for (let i = 0; i < n; i++) {
+        const x = (i + 0.5) * 1200 / n, lean = (i % 2 ? 1 : -1) * 5, tx = x + lean, ty = 22; // low, so the lit tips show below the Today cards
+        o += `<path d="M${f(x - lean * 0.2)} 40L${f(tx)} ${ty}" stroke="#8A8F9C" stroke-width="1.6"/><path d="M${f(x - lean * 0.2)} 40L${f(x - lean * 0.05)} 32" stroke="#5A4632" stroke-width="3"/><circle cx="${f(tx)}" cy="${ty}" r="7" fill="#FFD25A" fill-opacity=".22"/>`;
+        let sp = "";
+        for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + i, r = k % 2 ? 4.5 : 7.5; sp += `<path d="M${f(tx)} ${ty}L${f(tx + Math.cos(a) * r)} ${f(ty + Math.sin(a) * r)}" stroke="${["#FFF3C4", "#FFD25A", "#fff"][k % 3]}" stroke-width="1"/>`; }
+        o += `<g class="j4sp">${sp}</g><circle cx="${f(tx)}" cy="${ty}" r="2.6" fill="#FFF9E0"/>`;
+      }
+      return o;
+    };
+    // A twinkling gold star beside the icon you're on (drawn a bit bigger than its little box so it reads from the couch)
+    const star = `<style>.rl-mark svg,.bt-mark svg{overflow:visible}</style><g><animateTransform attributeName="transform" type="rotate" values="-10 6 9;10 6 9;-10 6 9" dur="2.2s" repeatCount="indefinite"/><circle cx="6" cy="9" r="11" fill="#FFD25A" fill-opacity=".22"/><path d="${starD(6, 9, 11)}" fill="#FFD25A"/><path d="${starD(6, 9, 5.4)}" fill="#FFF3C4"/></g>`;
+    // The usual icons in red, white and blue. While the rail lights up at start-up they follow the light-up colours.
+    const COL = { home: "#FF5A68", movies: "#FFFFFF", shows: "#7FA0FF", live: "#FF5A68", games: "#FFFFFF", music: "#7FA0FF", books: "#FF5A68", search: "#FFFFFF", requests: "#7FA0FF", more: "#FFFFFF" };
+    const NAME = { home: "home", search: "search", requests: "plus", more: "more" };
+    const usual = (key) => {
+      const n = NAME[key] || (B.DOORS && B.DOORS[key] && B.DOORS[key].icon) || key;
+      let svg = "";
+      try { svg = B.doorIcon ? B.doorIcon(n) : B.I(n); } catch (e) { svg = ""; }
+      return String(svg).replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+    };
+    const icons = {};
+    Object.keys(COL).forEach((k) => Object.defineProperty(icons, k, { enumerable: true, get: () =>
+      `<style>.rl-i.dark .j4i,.rl-i.lit .j4i{stroke:currentColor!important;color:inherit!important}</style><g class="j4i" style="stroke:${COL[k]};color:${COL[k]}">${usual(k)}</g>` }));
+    const h = make("july4", is("j4On"), true, ["#14214A", "#0B1430"], ["#E0404F", "#FFFFFF", "#7FA0FF"], "4th of July pick", {
+      mark: star,
+      bottomTrim: sparklers(),
+      icons,
+      countdown: () => { const d = now(); if (d.getMonth() === 6 && d.getDate() === 4 && is("j4On")()) return "It's the 4th!"; return cd(() => B.j4)(); },
+      pickWords: ["Independence Day", "Sandlot", "Jaws", "1776", "Yankee Doodle", "National Treasure"],
+    });
+    // The bunting, with the big show on the 4th from 9 PM
+    h.topTrim = topTrim;
+    return h;
+  };
   // Earth Day (approved by Ben 2026-11-17, sheet "Earth Day, put together"): an ocean blue rail whose icons turn into
   // Earth Day icons in sea-to-land colours (grey like the others while the rail is still dark at start-up), clouds
   // and birds along the top of Home, and a short meadow with flowers and a bee along the bottom. The app's twin is
@@ -293,7 +378,7 @@
       return o;
     })(),
     make("stpatricks", is("spOn"), true, ["#0F2A17", "#08170D"], ["#2E9E5B", "#7BD389", "#E8C15A"], "St. Patrick's pick", { countdown: cd(() => B.sp), pickTags: ["ireland"], pickWords: ["Irish"] }),
-    make("july4", is("j4On"), true, ["#101A33", "#0A0F1F"], ["#D7263D", "#FFFFFF", "#3F6FD8"], "4th of July pick", { countdown: cd(() => B.j4), pickWords: ["Independence Day"] }),
+    july4(),
     make("newyear", is("nyOn"), true, ["#141A2E", "#0B0E1A"], ["#E8C15A", "#C9D0E0"], "New Year's pick", { countdown: cd(() => B.ny), pickTags: ["new year's eve"], pickWords: ["New Year"] }),
     // Thanksgiving (approved 2026-11-17, sheet nav-13b g2-swag): harvest-brown rail, the rail icons themselves in
     // gold, pumpkin orange and cranberry, a short leaf garland swagging across the top of Home with an acorn at each
