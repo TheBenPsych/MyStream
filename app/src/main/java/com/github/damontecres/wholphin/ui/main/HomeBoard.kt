@@ -64,6 +64,9 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcKindMark
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValKindMark
 import com.github.damontecres.wholphin.ui.theme.ValLook
@@ -71,6 +74,7 @@ import com.github.damontecres.wholphin.ui.theme.ValentineSeason
 import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
+import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
@@ -256,15 +260,26 @@ private fun Greeting(
         val vg = com.github.damontecres.wholphin.ui.theme.VgLook.on
         Text(
             text = greeting,
-            color = BenflixColors.Text,
+            // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering
+            color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = if (vg) BenflixType.pageTitle * .6f else BenflixType.pageTitle,
-            fontWeight = if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || vg) FontWeight.Normal else FontWeight.ExtraBold,
-            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font
+            fontWeight =
+                if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || vg) {
+                    FontWeight.Normal
+                } else if (SwLook.on) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.ExtraBold
+                },
+            // Thanksgiving and New Year's looks: the greeting is in the curly holiday font; Star Wars Day: crawl
+            // lettering; Video Games Day: pixel capitals
             fontFamily =
                 if (vg) {
                     com.github.damontecres.wholphin.ui.theme.PixelFont
                 } else if (TgLook.on || NyLook.on || ValLook.on || PcLook.on) {
                     HolidayFont
+                } else if (SwLook.on) {
+                    StarWarsFont
                 } else {
                     null
                 },
@@ -391,6 +406,7 @@ private fun SquareDoor(
                 .valDoorCharm(door)
                 .nyDoorCharm(door)
                 .vgDoorKeepsake(door)
+                .swDoorMoment(door)
                 .pcDoorSnack(door)
                 .padding(u * 0.85f),
         ) {

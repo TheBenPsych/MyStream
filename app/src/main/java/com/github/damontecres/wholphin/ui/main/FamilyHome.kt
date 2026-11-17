@@ -57,12 +57,16 @@ import com.github.damontecres.wholphin.ui.theme.KidsLook
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PixelFont
+import com.github.damontecres.wholphin.ui.theme.StarWarsDay
+import com.github.damontecres.wholphin.ui.theme.StarWarsFont
+import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.VgLook
 import com.github.damontecres.wholphin.ui.theme.blurb
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
+import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
 import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
@@ -210,16 +214,17 @@ fun FamilyHome(
         Column {
             Text(
                 text = greeting,
-                color = BenflixColors.Text,
+                // Star Wars Day: the greeting is in yellow crawl lettering
+                color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
                 // Video Games Day look (Kids too): the greeting is in pixel capitals, smaller as they're very wide
                 fontSize = BenflixType.pageTitle * scale * (if (VgLook.on) .6f else 1f),
-                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font
-                // Popcorn Day look (Kids too): the curly holiday font as well
+                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font;
+                // Valentine's and Popcorn Day looks too; Star Wars Day: yellow crawl lettering
                 fontWeight =
-                    if (TgLook.on || NyLook.on || ValLook.on || PcLook.on ||
-                        VgLook.on
-                    ) {
+                    if (TgLook.on || NyLook.on || ValLook.on || PcLook.on || VgLook.on) {
                         FontWeight.Normal
+                    } else if (SwLook.on) {
+                        FontWeight.Bold
                     } else {
                         FontWeight.ExtraBold
                     },
@@ -228,6 +233,8 @@ fun FamilyHome(
                         PixelFont
                     } else if (TgLook.on || NyLook.on || ValLook.on || PcLook.on) {
                         HolidayFont
+                    } else if (SwLook.on) {
+                        StarWarsFont
                     } else {
                         null
                     },
@@ -460,13 +467,14 @@ private fun FamilyDoor(
                 .then(
                     // Popcorn Day look: a movie snack stands on every door, Kids too
                     if (kids) {
-                        Modifier.nyDoorCharm(door).pcDoorSnack(door)
+                        Modifier.nyDoorCharm(door).pcDoorSnack(door).swDoorMoment(door)
                     } else {
                         Modifier
                             .xmasDoorOrnament(door)
                             .tgDoorCharm(door)
                             .valDoorCharm(door)
                             .nyDoorCharm(door)
+                            .swDoorMoment(door)
                             .pcDoorSnack(door)
                     },
                 )
