@@ -87,9 +87,26 @@ object StPatricksNav {
         val u = size.minDimension / 24f
         val stroke = Stroke(width = 1.9f * u, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
         val tint = Clover.copy(alpha = color.alpha)
-        val roof = Path().apply { moveTo(3 * u, 11 * u); lineTo(12 * u, 4 * u); lineTo(21 * u, 11 * u) }
-        val walls = Path().apply { moveTo(5 * u, 10 * u); lineTo(5 * u, 20 * u); lineTo(19 * u, 20 * u); lineTo(19 * u, 10 * u) }
-        val door = Path().apply { moveTo(10 * u, 20 * u); lineTo(10 * u, 15 * u); lineTo(14 * u, 15 * u); lineTo(14 * u, 20 * u) }
+        val roof =
+            Path().apply {
+                moveTo(3 * u, 11 * u)
+                lineTo(12 * u, 4 * u)
+                lineTo(21 * u, 11 * u)
+            }
+        val walls =
+            Path().apply {
+                moveTo(5 * u, 10 * u)
+                lineTo(5 * u, 20 * u)
+                lineTo(19 * u, 20 * u)
+                lineTo(19 * u, 10 * u)
+            }
+        val door =
+            Path().apply {
+                moveTo(10 * u, 20 * u)
+                lineTo(10 * u, 15 * u)
+                lineTo(14 * u, 15 * u)
+                lineTo(14 * u, 20 * u)
+            }
         drawPath(roof, tint, style = stroke)
         drawPath(walls, tint, style = stroke)
         drawPath(door, Gold.copy(alpha = color.alpha), style = stroke)
@@ -119,7 +136,12 @@ object StPatricksNav {
             close()
         }
     }
-    private val stem by lazy { Path().apply { moveTo(0f, 0f); cubicTo(2f, -8f, -1f, -14f, 0f, -20f) } }
+    private val stem by lazy {
+        Path().apply {
+            moveTo(0f, 0f)
+            cubicTo(2f, -8f, -1f, -14f, 0f, -20f)
+        }
+    }
 
     /** A shamrock whose stem meets the ground at [at], [s] units big, leaning [lean] degrees */
     private fun DrawScope.shamrock(
@@ -166,7 +188,14 @@ object StPatricksNav {
         translate(at.x, at.y) {
             rotate(lean, pivot = Offset.Zero) {
                 scale(s, s, pivot = Offset.Zero) {
-                    drawPath(Path().apply { moveTo(0f, 0f); cubicTo(2f, -10f, -1f, -20f, 0f, -28f) }, Emerald, style = Stroke(1.6f))
+                    drawPath(
+                        Path().apply {
+                            moveTo(0f, 0f)
+                            cubicTo(2f, -10f, -1f, -20f, 0f, -28f)
+                        },
+                        Emerald,
+                        style = Stroke(1.6f),
+                    )
                     translate(0f, -31f) {
                         drawCircle(Color(0xFFC9C3B0), 5.6f, Offset.Zero)
                         for (i in 0 until 22) {
@@ -200,7 +229,14 @@ object StPatricksNav {
     // ---------- Home: bunting along the top ----------
 
     private val flagColors = listOf(Emerald, Cream, Gold)
-    private val flag by lazy { Path().apply { moveTo(-13f, 0f); lineTo(13f, 0f); lineTo(0f, 34f); close() } }
+    private val flag by lazy {
+        Path().apply {
+            moveTo(-13f, 0f)
+            lineTo(13f, 0f)
+            lineTo(0f, 34f)
+            close()
+        }
+    }
     private val flagShade by lazy {
         Brush.horizontalGradient(
             0f to Color.White.copy(alpha = .18f),
