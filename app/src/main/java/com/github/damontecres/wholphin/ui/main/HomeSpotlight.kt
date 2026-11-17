@@ -426,16 +426,18 @@ class HomePicksViewModel
             viewModelScope.launchIO {
                 val next =
                     try {
-                        api.tvShowsApi
-                            .getNextUp(
-                                GetNextUpRequest(
-                                    seriesId = pick.id,
-                                    userId = serverRepository.currentUser?.id,
-                                    limit = 1,
-                                    enableResumable = true,
-                                ),
-                            ).content.items
-                            .firstOrNull()
+                        com.github.damontecres.wholphin.services.NextEpisode
+                            .find(api, pick.id)
+                            ?: api.tvShowsApi
+                                .getNextUp(
+                                    GetNextUpRequest(
+                                        seriesId = pick.id,
+                                        userId = serverRepository.currentUser?.id,
+                                        limit = 1,
+                                        enableResumable = true,
+                                    ),
+                                ).content.items
+                                .firstOrNull()
                             ?: api.tvShowsApi
                                 .getEpisodes(
                                     GetEpisodesRequest(

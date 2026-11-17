@@ -569,6 +569,7 @@ class LibraryHomeService
                             limit = 60,
                         ),
                     ).content.items
+                    .let { NextEpisode.fixNextUp(api, it, userId, SlimItemFields) }
             val seasonIds = nextUp.mapNotNull { it.seasonId }.distinct()
             if (seasonIds.isEmpty()) return emptyList()
             val almostDone =
