@@ -142,11 +142,19 @@ object HolidayNavKit {
             holiday(
                 "newyear",
                 { NyLook.on },
-                0xFF141A2E,
-                0xFF0B0E1A,
-                listOf(0xFFE8C15A, 0xFFC9D0E0),
-                "New Year's pick",
+                0xFF16224A,
+                0xFF0B1230,
+                listOf(0xFFE8B84A, 0xFFC9D1DE),
+                "New Year pick",
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
+            ).copy(
+                // Ben 2026-11-17 (Midnight Fringe): the rail icons are the New Year charms, foil fringe and confetti
+                icons = NewYearNav.icons,
+                topTrim = NewYearNav.topTrim,
+                bottomTrim = NewYearNav.bottomTrim,
+                moving = true,
+                pickTitles = NewYearNav.pickTitles,
+                accent = Color(0xFFE8B84A),
             ),
             // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
             ThanksgivingNav.entry,
