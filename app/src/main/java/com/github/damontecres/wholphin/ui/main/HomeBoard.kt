@@ -74,6 +74,9 @@ import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcKindMark
 import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.PopcornSeason
+import com.github.damontecres.wholphin.ui.theme.SpKindMark
+import com.github.damontecres.wholphin.ui.theme.SpLook
+import com.github.damontecres.wholphin.ui.theme.StPatricksSeason
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.SwLook
@@ -87,6 +90,7 @@ import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
 import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
 import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
+import com.github.damontecres.wholphin.ui.theme.spDoorCharm
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.valDoorCharm
@@ -274,7 +278,7 @@ private fun Greeting(
             color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on) {
                     FontWeight.Normal
                 } else if (SwLook.on) {
                     FontWeight.Bold
@@ -283,7 +287,7 @@ private fun Greeting(
                 },
             // Thanksgiving, New Year's, Valentine's, Popcorn Day and Earth Day looks: the greeting is in the curly holiday font; Star Wars Day: crawl lettering
             fontFamily =
-                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on) {
+                if (TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || EdLook.on || F13Look.on || SpLook.on) {
                     HolidayFont
                 } else if (SwLook.on) {
                     StarWarsFont
@@ -308,6 +312,9 @@ private fun Greeting(
                 listOfNotNull(ValentineSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (NyLook.on) {
                 listOfNotNull(NewYearSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
+            } else if (SpLook.on) {
+                // St. Patrick's Day look: "3 days to St. Patrick's Day" leads it the same way
+                listOfNotNull(StPatricksSeason.countdown(), weather).joinToString(" · ").ifBlank { null }
             } else if (J4Look.on) {
                 // 4th of July look: "2 days to the Fourth" leads the line under the greeting
                 listOfNotNull(JulySeason.countdown(), weather).joinToString(" · ").ifBlank { null }
@@ -423,6 +430,7 @@ private fun SquareDoor(
                 .j4DoorCharm(door)
                 .swDoorMoment(door)
                 .pcDoorSnack(door)
+                .spDoorCharm(door)
                 .padding(u * 0.85f),
         ) {
             BenflixIconImage(icon = door.icon(), color = door.labelColor, size = u * 1.8f, modifier = Modifier.align(Alignment.TopStart))
@@ -772,6 +780,12 @@ private fun ListRow(
                 } else if (NyLook.on) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NyKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.5f).toDp() })
+                        KindLine(row, words)
+                    }
+                } else if (SpLook.on) {
+                    // St. Patrick's Day look: a horseshoe, pot of gold, rainbow or top hat before the kind line
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SpKindMark(row.kind, size = with(LocalDensity.current) { (words.kind * 1.6f).toDp() })
                         KindLine(row, words)
                     }
                 } else if (HwLook.on) {

@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.J4Look
+import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.ValLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -350,6 +351,9 @@ class DoorViewModel
                         )
                     if (extra.isNotEmpty()) listOf(rows.first()) + extra + rows.drop(1) else rows
                 }.let { rows ->
+                    // St. Patrick's Day look (10 to 17 Mar, Kids too): Irish favourites right after Keep watching
+                    if (SpLook.on) listOf(rows.first(), IRISH) + rows.drop(1) else rows
+                }.let { rows ->
                     // Star Wars Day (4 May): the saga, from your own library, at the very top
                     if (com.github.damontecres.wholphin.ui.theme.SwLook.on) listOf(STAR_WARS) + rows else rows
                 }
@@ -425,6 +429,17 @@ class DoorViewModel
                         val items = data.christmas(userId, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         // Only when there are enough to make a proper row
                         putOrRemove(order, DoorRowData(CHRISTMAS, "Christmas favourites", items.takeIf { it.size >= 4 }.orEmpty()))
+                    }
+                }
+                if (IRISH in order) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items =
+                            data
+                                .themed(com.github.damontecres.wholphin.ui.main.HomeTheme.ST_PATRICKS, userId, BaseItemKind.MOVIE)
+                                .filter { it.id !in dislikes }
+                        // Only when there are at least 4 that fit (Ben)
+                        putOrRemove(order, DoorRowData(IRISH, "Irish favourites", items.takeIf { it.size >= 4 }.orEmpty()))
                     }
                 }
                 if (HALLOWEEN in order) {
@@ -685,6 +700,7 @@ class DoorViewModel
             const val STAR_WARS = "starwars"
             const val DATE_NIGHT = "datenight"
             const val POPCORN = "popcorn"
+            const val IRISH = "irish"
             const val MY_LIST = "mylist"
             const val NEW = "new"
             const val NEW_EPISODES = "newepisodes"

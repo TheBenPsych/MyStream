@@ -1184,6 +1184,10 @@ fun greetingFor(
     if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
         return com.github.damontecres.wholphin.ui.theme.ValentineSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
     }
+    // St. Patrick's Day look (10 to 17 Mar): "Happy St. Patrick's Day, Ben" all week, in the curly holiday font
+    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+        return com.github.damontecres.wholphin.ui.theme.StPatricksSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
+    }
     val holiday = holidayFor(java.time.LocalDate.now())
     if (holiday != null) return holiday.text + if (name.isNotBlank()) ", $name" else ""
     val part =

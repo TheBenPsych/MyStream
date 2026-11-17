@@ -177,6 +177,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + (B.me.kids ? "" : setRow("New Year's look", "From 27 December to 1 January: the party room on Who's watching with a midnight countdown, party charms on the doors, and champagne gold and midnight blue colours.", valBtn("ny", B.nyOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Earth Day look", "Earth week, 22 to 28 April: the plant corner on Who's watching, a living thing on each door, and leaf green and ocean blue colours (Kids too).", valBtn("ed", B.edOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Star Wars Day look", "On 4 May: the desert home on Who's watching, the opening crawl, galaxy moments on the doors, dark side red and black colours, and a Star Wars row on Movies.", valBtn("sw", B.swOff() ? "Off" : "On")))
+      + (B.me.kids ? "" : setRow("St. Patrick's Day look", "From 10 to 17 March: a rainy Irish room on Who's watching with a rainbow on the day, lucky charms on the doors, and clover green and emerald colours.", valBtn("sp", B.spOff() ? "Off" : "On")))
       + setRow("Star Wars Day side", "The colour of your laser swords on 4 May, for this profile.", valBtn("swside", B.swSide(B.me.id) === "dark" ? "Dark side (red)" : "Light side (blue)"));
     sp.onclick = (e) => {
       const p = e.target.closest("[data-pick]");
@@ -190,6 +191,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       if (p && p.dataset.pick === "val") { B.setValOff(!B.valOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "pc") { B.setPcOff(!B.pcOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "ny") { B.setNyOff(!B.nyOff()); B.kidsLook(); B.render(); return; }
+      if (p && p.dataset.pick === "sp") { B.setSpOff(!B.spOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "sw") { B.setSwOff(!B.swOff()); B.kidsLook(); B.render(); return; }
       if (p && p.dataset.pick === "swside") { B.setSwSide(B.me.id, B.swSide(B.me.id) === "dark" ? "light" : "dark"); B.kidsLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
@@ -252,6 +254,8 @@ B.kidsLook = () => {
   root.classList.toggle("j4", !!(B.me && B.j4On && B.j4On()));
   // Popcorn Day look (19 January, unless switched off): butter yellow, cinema red and a snack on every door, Kids too (Ben)
   root.classList.toggle("pc", !!(B.me && B.pcOn && B.pcOn()));
+  // St. Patrick's Day look (10 to 17 March, unless switched off): clover green, emerald and the lucky charms, Kids too (Ben)
+  root.classList.toggle("sp", !!(B.me && B.spOn && B.spOn()));
   // Star Wars Day (4 May, unless switched off): dark side red and black, Kids too; laser swords in this profile's side colour
   const sw = !!(B.me && B.swOn && B.swOn());
   root.classList.toggle("sw", sw);

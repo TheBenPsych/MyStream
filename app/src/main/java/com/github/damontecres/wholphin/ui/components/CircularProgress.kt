@@ -92,6 +92,13 @@ fun CircularProgress(modifier: Modifier = Modifier) {
         )
         return
     }
+    // St. Patrick's Day look: a rainbow sweeps round the ring into a pot of gold in the middle
+    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+        com.github.damontecres.wholphin.ui.theme.SpLoadingRainbow(
+            modifier.then(Modifier.defaultMinSize(40.dp, 40.dp)),
+        )
+        return
+    }
     val ed = com.github.damontecres.wholphin.ui.theme.EdLook.on
     // 4th of July look: the loading ring is a red, white and blue firework blooming round the circle
     if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {

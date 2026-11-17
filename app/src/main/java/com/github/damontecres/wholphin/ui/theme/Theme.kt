@@ -68,6 +68,8 @@ fun WholphinTheme(
         (
             if (NyLook.on) {
                 NyLook.Gold
+            } else if (SpLook.on) {
+                SpLook.Clover
             } else if (J4Look.on) {
                 J4Look.Red
             } else {

@@ -210,6 +210,26 @@ B.popcornMovies = () => B.cached("pcMovies-" + B.uid(), 1800000, async () => {
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id) && ok(x)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Irish favourites (St. Patrick's Day look): hand-picked Irish films, titles with an Irish word in the name, and
+// movies tagged for St. Patrick's Day or Ireland (cached 30 minutes). Same list as the app's HomeTheme.ST_PATRICKS.
+B.irishMovies = () => B.cached("spMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const tags = encodeURIComponent(["st. patrick's day", "saint patrick's day", "ireland", "irish", "leprechaun", "dublin, ireland"].join("|"));
+  // words in the name, and hand-picked films found by their exact name
+  const words = ["Leprechaun", "Irish", "Ireland", "Patrick's"];
+  const titles = ["The Secret of Kells", "Song of the Sea", "Wolfwalkers", "Darby O'Gill and the Little People", "The Quiet Man", "The Commitments", "Sing Street", "The Banshees of Inisherin", "Waking Ned Devine", "Waking Ned", "P.S. I Love You", "Leap Year", "Brooklyn", "Once", "Belfast", "Luck", "The Boondock Saints", "Finian's Rainbow", "Ondine", "The Wind That Shakes the Barley", "Michael Collins", "In Bruges"];
+  const plain = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
+  const find = (term, keep) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(term)}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => keep(plain(x.Name))) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
+    ...words.map((w) => find(w, (n) => ` ${n} `.includes(` ${plain(w)} `))),
+    ...titles.map((t) => find(t, (n) => n === plain(t))),
+  ]);
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Ids of anime titles (anything in a library with "anime" in its name)
 B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
   const libs = (await B.libs(type === "Movie" ? "movies" : "shows")).filter(B.isAnimeLib);
@@ -261,6 +281,8 @@ B.route(/^\/movies$/, async (m, nav) => {
   const dates = !fewer && B.valOn && B.valOn() ? await B.dateNightMovies().catch(() => []) : [];
   // Popcorn Day look (19 January): Popcorn movies right after Keep watching, Kids too
   const pcm = B.pcOn && B.pcOn() ? await B.popcornMovies().catch(() => []) : [];
+  // St. Patrick's Day look (10 to 17 March, Kids too): Irish favourites right after Keep watching
+  const irish = B.spOn && B.spOn() ? await B.irishMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     saga.length >= 3 ? B.row("May the 4th: the saga", saga.map((it) => B.posterCard(it))) : "",
@@ -272,6 +294,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     hwRow.length >= 4 ? B.row("Halloween favourites", hwRow.map((it) => B.posterCard(it))) : "",
     j4.length >= 4 ? B.row("4th of July favourites", j4.map((it) => B.posterCard(it))) : "",
     dates.length >= 4 ? B.row("Date night", dates.map((it) => B.posterCard(it))) : "",
+    irish.length >= 4 ? B.row("Irish favourites", irish.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
     fewer ? "" : B.row("Top 10 movies", B.top10(top)),

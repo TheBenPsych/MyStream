@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
+import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.SwSides
 import com.github.damontecres.wholphin.ui.theme.TgLook
@@ -72,6 +73,7 @@ import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
 import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
 import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
 import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
+import com.github.damontecres.wholphin.ui.theme.spProgressCoin
 import com.github.damontecres.wholphin.ui.theme.swProgressSaber
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.valProgressHeart
@@ -352,6 +354,8 @@ fun BannerCard(
                                     EdLook.Leaf
                                 } else if (J4Look.on) {
                                     J4Look.Red
+                                } else if (SpLook.on) {
+                                    SpLook.Clover
                                 } else if (ValLook.on) {
                                     ValLook.Rose
                                 } else if (PcLook.on) {
@@ -417,6 +421,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
+                    )
+                }
+                // St. Patrick's Day look: a gold coin at the end of the progress line
+                if (SpLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .spProgressCoin((playPercent / 100).toFloat(), coin = 20.dp),
                     )
                 }
                 // 4th of July look: red and white stripes, with a big white star at the end of the progress line

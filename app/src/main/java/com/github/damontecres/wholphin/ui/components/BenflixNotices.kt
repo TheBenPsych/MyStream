@@ -235,6 +235,16 @@ private fun CornerCard(
                                         .Size(4.dp.toPx(), size.height),
                             )
                         }
+                    } else if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                        // St. Patrick's Day look: a clover green edge down the notice's left side
+                        Modifier.drawBehind {
+                            drawRect(
+                                com.github.damontecres.wholphin.ui.theme.SpLook.Clover,
+                                size =
+                                    androidx.compose.ui.geometry
+                                        .Size(4.dp.toPx(), size.height),
+                            )
+                        }
                     } else {
                         Modifier
                     },
@@ -271,6 +281,11 @@ private fun CornerCard(
             }
             // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
             if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
+            // St. Patrick's Day look: the notice's own small mark (a horseshoe, a pot of gold, a rainbow, a top hat)
+            if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .SpKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            }
             // Friday the 13th look: a four-leaf clover on notices without a picture
             if (card.image == null && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
                 com.github.damontecres.wholphin.ui.theme

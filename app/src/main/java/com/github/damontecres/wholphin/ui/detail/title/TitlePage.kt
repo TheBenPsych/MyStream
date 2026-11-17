@@ -75,6 +75,7 @@ import com.github.damontecres.wholphin.ui.theme.HwLook
 import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.PcLook
+import com.github.damontecres.wholphin.ui.theme.SpLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
@@ -84,6 +85,7 @@ import com.github.damontecres.wholphin.ui.theme.hwCandleFlicker
 import com.github.damontecres.wholphin.ui.theme.j4PlayStars
 import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.pcPlayPop
+import com.github.damontecres.wholphin.ui.theme.spPlayClover
 import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.valRosyGlow
@@ -725,6 +727,8 @@ private fun TitleButtonView(
     val sw = SwLook.on
     // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
     val pc = PcLook.on
+    // St. Patrick's Day look: Play is clover green with dark words, a gold four-leaf clover on its corner and a soft sheen
+    val stp = SpLook.on
     val primaryFill =
         if (f13) {
             com.github.damontecres.wholphin.ui.theme.F13Look.Green
@@ -746,6 +750,8 @@ private fun TitleButtonView(
             PcLook.Butter
         } else if (vl) {
             com.github.damontecres.wholphin.ui.theme.ValLook.Rose
+        } else if (stp) {
+            SpLook.Clover
         } else {
             BenflixColors.Text
         }
@@ -764,6 +770,8 @@ private fun TitleButtonView(
                 EdLook.OnLeaf
             } else if (pc) {
                 PcLook.OnButter
+            } else if (stp) {
+                SpLook.OnClover
             } else {
                 BenflixColors.Tray
             }
@@ -798,6 +806,7 @@ private fun TitleButtonView(
                 .then(if (primary && j4) Modifier.j4PlayStars() else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
+                .then(if (primary && stp) Modifier.spPlayClover(corner = 10.dp) else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

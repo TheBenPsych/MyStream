@@ -91,6 +91,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .NyStar()
                 }
+                // St. Patrick's Day look: a white knob with a green shamrock next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .SpKnob()
+                }
                 // Earth Day look: a little Earth next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.EdLook.on) {
                     com.github.damontecres.wholphin.ui.theme

@@ -47,6 +47,7 @@ js/newyear.js
 js/earthday.js
 js/july4.js
 js/popcorn.js
+js/stpatricks.js
 js/starwars.js
 manifest.webmanifest
 reader.html
@@ -172,3 +173,16 @@ img/pc/pc_snack_movies.png
 img/pc/pc_snack_music.png
 img/pc/pc_snack_shows.png
 img/pc/pc_ticket.png
+img/sp/sp_charm_books.png
+img/sp/sp_charm_games.png
+img/sp/sp_charm_live.png
+img/sp/sp_charm_movies.png
+img/sp/sp_charm_music.png
+img/sp/sp_charm_shows.png
+img/sp/sp_coin.png
+img/sp/sp_knob.png
+img/sp/sp_mark_hat.png
+img/sp/sp_mark_horseshoe.png
+img/sp/sp_mark_pot.png
+img/sp/sp_mark_rainbow.png
+img/sp/sp_play_clover.png
