@@ -54,7 +54,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
@@ -202,9 +204,9 @@ fun FamilyHome(
                 text = greeting,
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving look (not Kids): the greeting is in the curly holiday font
-                fontWeight = if (TgLook.on) FontWeight.Normal else FontWeight.ExtraBold,
-                fontFamily = if (TgLook.on) HolidayFont else null,
+                // Thanksgiving look (not Kids) and Popcorn Day look (Kids too): the greeting is in the curly holiday font
+                fontWeight = if (TgLook.on || PcLook.on) FontWeight.Normal else FontWeight.ExtraBold,
+                fontFamily = if (TgLook.on || PcLook.on) HolidayFont else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -431,7 +433,8 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier else Modifier.xmasDoorOrnament(door).tgDoorCharm(door))
+                // Popcorn Day look: a movie snack stands on every door, Kids too
+                .then(if (kids) Modifier.pcDoorSnack(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).pcDoorSnack(door))
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

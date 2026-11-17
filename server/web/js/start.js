@@ -37,11 +37,13 @@ B.route(/^\/who$/, async () => {
   const xmas = B.xmasOn();
   // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
   const feast = !xmas && B.tgOn();
+  // Popcorn Day (approved 2026-11-17): the popcorn cart room, just 19 January, the heap growing through the day
+  const pcRoom = !xmas && !feast && B.pcOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    ${xmas || feast || pcRoom ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : "<h1>Who's watching?</h1>"}
+    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : pcRoom ? `<h1 class="xmas">${esc(B.pc.greeting())}</h1><p class="xcount pcline">${esc(B.pc.line())}</p>` : "<h1>Who's watching?</h1>"}
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -59,10 +61,10 @@ B.route(/^\/who$/, async () => {
     B.go("#/home");
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast) {
+  if (xmas || feast || pcRoom) {
     const svg = $(".who .xroom");
     const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : B.tg;
+    const room = xmas ? B.xmas : feast ? B.tg : B.pc;
     const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide" }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); } svg.scene = scene; };
     draw();
     const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
@@ -246,18 +248,20 @@ B.route(/^\/home$/, async (m, nav) => {
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
   // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
   const tgGreet = !kids && B.tgOn();
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  // Popcorn Day look: "Happy Popcorn Day, Ben" in the curly holiday font (Kids too), "It's National Popcorn Day" under it
+  const pcGreet = B.pcOn();
+  const greet = kids ? `${pcGreet ? "Happy Popcorn Day!" : "Hi there!"}<small class="kq">What do you want to watch?</small>` : `${esc(pcGreet ? "Happy Popcorn Day" : tgGreet ? "Happy Thanksgiving" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
   if (small) {
     const count = doors.length + (more.length ? 1 : 0);
     B.page().innerHTML = B.top("") + `<div class="home fam ${kids ? "kidsh" : "easyh"}">
-      <div class="greet">${greet}</div>
+      <div class="greet${pcGreet ? " tgh" : ""}">${greet}</div>
       <div class="doors fdoors n${count} ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}${more.length ? `<button class="door moredoor" id="moreDoors"><div class="n">More</div><div class="d">${more.length} more door${more.length === 1 ? "" : "s"}</div></button>` : ""}</div>
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
     const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet ? " tgh" : ""}">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
+      <div class="bgreet"><div class="greet${tgGreet || pcGreet ? " tgh" : ""}">${greet}</div>${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}<div class="wx" id="wx">${esc(wx)}</div></div>
       <div class="bmain"><div class="doors sq3 ${grow ? "grow" : ""}" id="doors">${doors.map(doorHtml).join("")}</div><div class="blist" id="blist"></div></div>
     </div>`;
   }
@@ -567,7 +571,7 @@ const rowHtml = (r, n) => {
   return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}" data-pc="${B.pcMark(r.kind)}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -673,6 +677,13 @@ B.tg = window.BenflixFeast;
 B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
 B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
 B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff();
+// Popcorn Day look: just 19 January unless switched off in Settings › Look (this browser), Kids too
+B.pc = window.BenflixPopcorn;
+B.pcOff = () => { try { return localStorage.getItem("benflix.pcOff") === "1"; } catch (e) { return false; } };
+B.setPcOff = (off) => { try { localStorage.setItem("benflix.pcOff", off ? "1" : "0"); } catch (e) {} };
+B.pcOn = () => !!B.pc && B.pc.season(new Date()) && !B.pcOff();
+// the mark for each kind of Home news (html.pc .brow small[data-pc]): ticket, bucket, kernel or film reel
+B.pcMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "ticket" : k.startsWith("ready") || k.includes("is ready") ? "bucket" : k.startsWith("on the way") || k.includes("arrives") ? "kernel" : k.includes("live") ? "reel" : "puff_hull"; };
 
 // Big holidays only, clean and simple
 B.holiday = () => {

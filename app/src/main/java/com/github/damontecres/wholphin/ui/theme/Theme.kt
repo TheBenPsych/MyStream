@@ -69,6 +69,8 @@ fun WholphinTheme(
                 XmasLook.Red
             } else if (TgLook.on) {
                 TgLook.Orange
+            } else if (PcLook.on) {
+                PcLook.Butter
             } else {
                 BenflixRedBase
             }

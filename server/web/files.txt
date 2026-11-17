@@ -38,6 +38,7 @@ js/start.js
 js/title.js
 js/xmas.js
 js/feast.js
+js/popcorn.js
 manifest.webmanifest
 reader.html
 sounds/doors.wav
@@ -57,3 +58,15 @@ img/tg/tg_charm_shows.png
 img/tg/tg_leaf_gold.png
 img/tg/tg_leaf_red.png
 img/tg/tg_tack.png
+img/pc/pc_bucket.png
+img/pc/pc_kernel.png
+img/pc/pc_puff.png
+img/pc/pc_puff_hull.png
+img/pc/pc_reel.png
+img/pc/pc_snack_books.png
+img/pc/pc_snack_games.png
+img/pc/pc_snack_live.png
+img/pc/pc_snack_movies.png
+img/pc/pc_snack_music.png
+img/pc/pc_snack_shows.png
+img/pc/pc_ticket.png

@@ -37,6 +37,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
+    // Popcorn Day look: loading is a ring of kernels popping one after another
+    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+        com.github.damontecres.wholphin.ui.theme
+            .PcLoadingRing(modifier)
+        return
+    }
     val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
     Box(modifier = modifier) {
         CircularProgressIndicator(

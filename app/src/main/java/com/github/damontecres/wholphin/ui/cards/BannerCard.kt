@@ -55,7 +55,9 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
 import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
 import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -309,8 +311,15 @@ fun BannerCard(
                     modifier =
                         Modifier
                             .align(Alignment.BottomStart)
-                            .background(if (TgLook.on) TgLook.Orange else BenflixRed)
-                            .clip(RectangleShape)
+                            .background(
+                                if (TgLook.on) {
+                                    TgLook.Orange
+                                } else if (PcLook.on) {
+                                    PcLook.Butter
+                                } else {
+                                    BenflixRed
+                                },
+                            ).clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
@@ -323,6 +332,17 @@ fun BannerCard(
                                 .fillMaxWidth()
                                 .height(Cards.playedPercentHeight)
                                 .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
+                    )
+                }
+                // Popcorn Day look: a piece of popcorn on the end of the progress line
+                if (PcLook.on) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .height(Cards.playedPercentHeight)
+                                .pcProgressPuff((playPercent / 100).toFloat(), puff = 20.dp),
                     )
                 }
             }

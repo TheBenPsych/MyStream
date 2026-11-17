@@ -70,8 +70,10 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.PcLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.pcPlayPop
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -695,16 +697,31 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // Popcorn Day look: Play is butter yellow with dark words, and popcorn pops out of its top
+    val pc = PcLook.on
     val primaryFill =
         if (xmas) {
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (pc) {
+            PcLook.Butter
         } else {
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) (if (xmas || tg) Color.White else BenflixColors.Tray) else BenflixColors.Text
+    val content =
+        if (primary) {
+            if (xmas || tg) {
+                Color.White
+            } else if (pc) {
+                PcLook.OnButter
+            } else {
+                BenflixColors.Tray
+            }
+        } else {
+            BenflixColors.Text
+        }
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
@@ -725,6 +742,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && pc) Modifier.pcPlayPop() else Modifier)
                 .then(
                     if (primary && xmas) {
                         Modifier.xmasOrnament(XmasLook.GreenBall, ball = if (big) 24.dp else 20.dp, string = 5.dp, fromEnd = 26.dp)

@@ -66,6 +66,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // Popcorn Day look: a popped piece next to switches that are on, a kernel next to ones that are off
+                if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .PcSwitchMark(value)
+                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,

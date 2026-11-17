@@ -31,6 +31,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -60,6 +61,15 @@ fun ChristmasRoom(modifier: Modifier = Modifier) =
  */
 @Composable
 fun FeastRoom(modifier: Modifier = Modifier) = LoopingRoom(FeastVideos, { tall -> if (tall) "tall" else "wide" }, modifier)
+
+/**
+ * Benflix National Popcorn Day: the popcorn cart room behind Who's watching (19 January). Drawn by the web
+ * version (server/web/js/popcorn.js) and recorded as 36-second loops by tools/popcorn/record.js: the heap in the
+ * cart grows through the day (morning, afternoon and evening videos).
+ */
+@Composable
+fun PopcornRoom(modifier: Modifier = Modifier) =
+    LoopingRoom(PopcornVideos, { tall -> "${PopcornSeason.variant()}-${if (tall) "tall" else "wide"}" }, modifier)
 
 /** Plays a holiday room's recorded loop for today, filling the screen and keeping the floor at the bottom */
 @OptIn(UnstableApi::class)
@@ -134,6 +144,9 @@ private fun LoopingRoom(
 
 /** A downloaded video smaller than this is a failed download */
 private const val MIN_BYTES = 10_000L
+
+/** Downloads and keeps the Popcorn Day room videos (extras/scenes/popcorn in the repo: am, pm and eve, wide and tall) */
+object PopcornVideos : RoomVideos("popcorn", version = 1)
 
 /** Downloads and keeps the Christmas room videos (extras/scenes/xmas in the repo) */
 object XmasVideos : RoomVideos("xmas", version = 1) {

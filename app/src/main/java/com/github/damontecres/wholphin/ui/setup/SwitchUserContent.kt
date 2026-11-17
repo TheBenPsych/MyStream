@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
+import com.github.damontecres.wholphin.ui.theme.PopcornSeason
 import com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.LoadingState
@@ -167,10 +168,14 @@ fun SwitchUserContent(
                 val christmas = ChristmasSeason.on()
                 // Thanksgiving (16 to 30 Nov, unless switched off): the feast table room, with the parade past the window
                 val feast = !christmas && ThanksgivingSeason.on()
+                // Popcorn Day (19 Jan, unless switched off): the popcorn cart room, the heap growing through the day
+                val popcorn = !christmas && !feast && PopcornSeason.on()
                 if (christmas) {
                     ChristmasRoom(modifier = Modifier.fillMaxSize())
                 } else if (feast) {
                     FeastRoom(modifier = Modifier.fillMaxSize())
+                } else if (popcorn) {
+                    PopcornRoom(modifier = Modifier.fillMaxSize())
                 } else {
                     PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
                 }
@@ -227,6 +232,24 @@ fun SwitchUserContent(
                             color = BenflixColors.Text,
                             textAlign = TextAlign.Center,
                             style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                    } else if (popcorn) {
+                        Text(
+                            text = PopcornSeason.GREETING,
+                            fontFamily = XmasFont,
+                            fontSize = if (isTvLayout) 54.sp else 40.sp,
+                            color = BenflixColors.Text,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 3f), 14f)),
+                        )
+                        Text(
+                            text = PopcornSeason.WHO_LINE,
+                            fontSize = if (isTvLayout) 20.sp else 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFE0CFC0),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), Offset(0f, 2f), 10f)),
+                            modifier = Modifier.padding(top = 6.dp),
                         )
                     } else {
                         Text(

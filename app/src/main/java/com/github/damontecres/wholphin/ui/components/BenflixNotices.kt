@@ -228,6 +228,11 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
+            // Popcorn Day look: the notice's own mark (a ticket, a full bucket, a kernel, a film reel)
+            if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                com.github.damontecres.wholphin.ui.theme
+                    .PcKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
+            }
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

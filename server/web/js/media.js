@@ -97,6 +97,23 @@ B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () =>
   lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
   return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
 });
+// Popcorn movies (Popcorn Day look, 19 January): big fun crowd-pleasers on Benflix, the same picks as the TV app
+const PC_TITLES = ["Jurassic Park", "Back to the Future", "Star Wars", "Raiders of the Lost Ark", "The Avengers", "Avengers: Endgame", "Top Gun: Maverick", "Spider-Man: Into the Spider-Verse", "Toy Story", "The Lion King", "Jaws", "E.T. the Extra-Terrestrial", "Ghostbusters", "The Princess Bride", "Home Alone", "Finding Nemo", "Shrek", "The Incredibles", "Pirates of the Caribbean", "The Dark Knight", "Guardians of the Galaxy", "Inside Out", "Up", "Ferris Bueller's Day Off", "The Goonies", "Men in Black", "Independence Day", "Titanic", "Frozen", "Paddington 2"];
+B.popcornMovies = () => B.cached("pcMovies-" + B.uid(), 1800000, async () => {
+  const u = B.uid(), F = B.FIELDS;
+  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const byTitle = (t) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(t)}&Limit=10&Fields=${F}`)
+    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => norm(x.Name).startsWith(norm(t))) })).catch(() => null);
+  const lists = await Promise.all([
+    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=blockbuster&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
+    ...PC_TITLES.map(byTitle),
+  ]);
+  // Kids: only films rated for kids
+  const ok = (x) => !B.me.kids || ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG", "U"].includes(String(x.OfficialRating || "").toUpperCase());
+  const seen = new Set(), out = [];
+  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id) && ok(x)) { seen.add(x.Id); out.push(x); } }));
+  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
+});
 // Ids of anime titles (anything in a library with "anime" in its name)
 B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
   const libs = (await B.libs(type === "Movie" ? "movies" : "shows")).filter(B.isAnimeLib);
@@ -134,9 +151,12 @@ B.route(/^\/movies$/, async (m, nav) => {
   const fewer = kids || (B.easyMode && B.easyMode());
   // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
   const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
+  // Popcorn Day look (19 January): Popcorn movies right after Keep watching, Kids too
+  const pcm = B.pcOn && B.pcOn() ? await B.popcornMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
+    pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
     xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
