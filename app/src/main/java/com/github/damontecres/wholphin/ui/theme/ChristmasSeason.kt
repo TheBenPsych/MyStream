@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -88,27 +87,18 @@ object XmasLook {
 }
 
 /**
- * Hangs a glass ornament from a gold pin on this thing's top edge, [fromEnd] in from its right edge.
- * Drawn over the content (outside any clip), so it costs nothing on old TVs.
+ * Used to hang a glass ornament from a gold pin on this thing's top edge. Turned off 2026-11-17: Ben said the
+ * hanging bulb "doesn't properly attach to every kind of button", so Christmas now uses the normal white focus ring
+ * everywhere and its decoration lives on the rail and Home instead (ChristmasNav.kt). Kept so callers stay simple.
  */
+@Suppress("UNUSED_PARAMETER")
 fun Modifier.xmasOrnament(
     color: Color,
     ball: Dp = 22.dp,
     string: Dp = 8.dp,
     fromEnd: Dp = 30.dp,
     band: Boolean = false,
-): Modifier =
-    drawWithContent {
-        drawContent()
-        drawXmasOrnament(
-            x = size.width - fromEnd.toPx(),
-            top = 0f,
-            radius = ball.toPx() / 2f,
-            string = string.toPx(),
-            color = color,
-            band = band,
-        )
-    }
+): Modifier = this
 
 /** The ornament itself: pin, gold thread, cap, glass ball with a soft shine and a shadow */
 fun DrawScope.drawXmasOrnament(
@@ -183,25 +173,10 @@ fun DrawScope.drawXmasOrnament(
     )
 }
 
-/** Christmas look on a Home door: one glass ornament in the door's own colour, hanging from a gold pin on the top edge */
-fun Modifier.xmasDoorOrnament(door: BenflixDoor): Modifier =
-    if (!XmasLook.on) {
-        this
-    } else {
-        drawWithContent {
-            drawContent()
-            val w = minOf(size.width, size.height * 1.4f)
-            drawXmasOrnament(
-                x = size.width - w * .17f,
-                top = 0f,
-                radius = w * .13f,
-                string = size.height * .2f,
-                color = door.ornamentColor,
-                band = true,
-            )
-        }
-    }
+/** Christmas look on a door tile: no hanging ornament any more (see [xmasOrnament]) */
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.xmasDoorOrnament(door: BenflixDoor): Modifier = this
 
-/** Christmas look: the poster or card the remote is on gets a red glass ornament hanging from its top edge */
-fun Modifier.xmasFocusOrnament(focused: Boolean): Modifier =
-    if (focused && XmasLook.on) xmasOrnament(XmasLook.RedBall, ball = 22.dp, string = 6.dp, fromEnd = 24.dp) else this
+/** Christmas look on the poster or card the remote is on: just the normal focus ring now (see [xmasOrnament]) */
+@Suppress("UNUSED_PARAMETER")
+fun Modifier.xmasFocusOrnament(focused: Boolean): Modifier = this

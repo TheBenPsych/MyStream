@@ -167,6 +167,7 @@ object HolidayNavKit {
                 "Easter pick",
                 countdown = { EasterSeason.countdown(LocalDate.now()) },
             ),
+            // Christmas: Classic big bulbs (approved 2026-11-17), art in ChristmasNav.kt
             holiday(
                 "christmas",
                 { XmasLook.on },
@@ -174,7 +175,17 @@ object HolidayNavKit {
                 0xFF0B1912,
                 listOf(0xFFD7263D, 0xFF2E9E5B, 0xFFE8C15A),
                 "Christmas pick",
-                countdown = { ChristmasSeason.countdown(LocalDate.now()) },
+                // On the day itself the card says "Merry Christmas!" (approved xq-day A)
+                countdown = {
+                    val today = LocalDate.now()
+                    if (today.monthValue == 12 && today.dayOfMonth == 25) "Merry Christmas!" else ChristmasSeason.countdown(today)
+                },
+            ).copy(
+                icons = ChristmasNav.icons,
+                mark = ChristmasNav.mark,
+                topTrim = ChristmasNav.topTrim,
+                bottomTrim = ChristmasNav.bottomTrim,
+                pickTitles = ChristmasNav.pickTitles,
             ),
         )
 
