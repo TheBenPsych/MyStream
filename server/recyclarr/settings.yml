@@ -1,0 +1,10 @@
+# Benflix: Recyclarr app settings. Adds Benflix's own custom formats next to the TRaSH ones.
+resource_providers:
+  - name: benflix-sonarr
+    type: custom-formats
+    service: sonarr
+    path: /config/benflix-cfs/sonarr
+  - name: benflix-radarr
+    type: custom-formats
+    service: radarr
+    path: /config/benflix-cfs/radarr

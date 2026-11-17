@@ -204,6 +204,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
 SETUP_VERSION = 13
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
+# 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)

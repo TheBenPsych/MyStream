@@ -12,12 +12,22 @@ HOST_IP=$(ip -4 -o addr show br0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | 
 
 say "Getting the Benflix Recyclarr settings"
 mkdir -p "$APP"
-if ! wget -qO "$APP/recyclarr.yml.new" "$RAW/recyclarr.yml"; then
+# files.txt lists every settings file; Benflix's own custom formats go in benflix-cfs/
+if ! wget -qO /tmp/recyclarr-files.txt "$RAW/files.txt"; then
   echo "  PROBLEM  Couldn't download the settings from GitHub. Check Tower's internet and try again."
   exit 1
 fi
-mv "$APP/recyclarr.yml.new" "$APP/recyclarr.yml"
-echo "  ok  $APP/recyclarr.yml"
+while read -r f; do
+  [ -n "$f" ] || continue
+  dest="$APP/${f/#custom-formats\//benflix-cfs/}"
+  mkdir -p "$(dirname "$dest")"
+  if ! wget -qO "$dest.new" "$RAW/$f"; then
+    echo "  PROBLEM  Couldn't download $f from GitHub. Check Tower's internet and try again."
+    exit 1
+  fi
+  mv "$dest.new" "$dest"
+  echo "  ok  $dest"
+done </tmp/recyclarr-files.txt
 
 say "Finding Sonarr and Radarr (keys stay on Tower in secrets.yml)"
 : >"$APP/secrets.yml"
