@@ -182,9 +182,32 @@ fun DoorFrame(
     phoneChips: Boolean = true,
     /** Easter Sunday: this door's hidden egg is somewhere in the frame (not on pages that aren't doors, like Server) */
     hunt: Boolean = true,
+    /**
+     * Pages that aren't doors (Server) keep their own side menu. A real door's places are in the Benflix rail's
+     * slide-out panel (TV) or the places sheet (phones) instead (navigation redesign, Nov 2026).
+     */
+    ownRail: Boolean = false,
     content: @Composable (Modifier) -> Unit,
 ) {
     val isTv = rememberIsTv()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if (!ownRail) {
+        androidx.compose.runtime.DisposableEffect(state) {
+            DoorPlaces.attach(state)
+            onDispose { DoorPlaces.detach(state) }
+        }
+        LaunchedEffect(sections, ready) {
+            if (ready) DoorPlaces.update(context, state.door, sections)
+        }
+        // A place picked in the rail's panel (or the phone's sheet) before this door was open
+        LaunchedEffect(ready) {
+            if (!ready) return@LaunchedEffect
+            val key = DoorPlaces.takePending(state.door) ?: return@LaunchedEffect
+            if (sections.none { it.key == key }) return@LaunchedEffect
+            delay(PENDING_PICK_MS)
+            if (key == DOOR_HOME) state.toTop() else state.pick(key)
+        }
+    }
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     // A section that's gone (Kids, or a library that emptied) falls back to Home
@@ -208,7 +231,7 @@ fun DoorFrame(
         state.content.tryRequestFocus()
     }
     if (!wide) {
-        val chips = sections.size > 1 && phoneChips
+        val chips = ownRail && sections.size > 1 && phoneChips
         Box(modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
                 if (chips) {
@@ -229,6 +252,19 @@ fun DoorFrame(
                     Modifier.align(Alignment.TopEnd).padding(top = LocalTopBarOverlap.current + 4.dp, end = 8.dp),
                 )
             }
+        }
+        return
+    }
+    if (!ownRail) {
+        // The Benflix rail sits to the left of every page now, so the door fills the rest
+        Box(modifier.fillMaxSize()) {
+            content(
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(state.content)
+                    .focusRestorer(),
+            )
+            if (hunt) EasterHuntEgg(state.door, ITEM_HEIGHT, Modifier.align(Alignment.BottomStart).padding(14.dp))
         }
         return
     }
@@ -478,6 +514,9 @@ private val CONTENT_TUCK = 28.dp
 private val ITEM_HEIGHT = 46.dp
 private const val RAIL_MS = 160
 private const val SECTION_FOCUS_MS = 220L
+
+/** A place picked from the rail waits this long after the door opens, so its first rows are in */
+private const val PENDING_PICK_MS = 120L
 
 /** The menu keeps handing a focus that fell on it back to the page while the page is still filling in */
 private const val STRAY_RETRY_MS = 150L

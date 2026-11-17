@@ -35,11 +35,13 @@ enum class BenflixIcon(
         "M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2",
     ),
 
-    // A classic controller: rounded body with two grips, a plus pad on the left and two buttons on the right
+    // Navigation redesign (Nov 2026): a taller Xbox-style controller, as tall as the other icons. Rounded top,
+    // two grips curving down, a plus pad on the left, a small middle button and two buttons on the right.
+    // Ben: nothing touches the outline (the second stick was dropped).
     PAD(
-        "M8 6h8a5.5 5.5 0 0 1 5.4 4.5l.8 4.6a2.8 2.8 0 0 1-5 2.2L15.5 15.5h-7l-1.7 1.8a2.8 2.8 0 0 1-5-2.2l.8-4.6A5.5 5.5 0 0 1 8 6z",
-        "M8 9v3.5M6.25 10.75h3.5",
-        "M16 9.5h.01M17.6 11.9h.01",
+        "M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z",
+        "M7 9.4v4M5 11.4h4",
+        "M12 8.3h.01M16.6 10h.01M18.2 12.6h.01",
     ),
     SEARCH("M4 10.5a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0-13 0z", "M16 16l5 5"),
     DOWN("M6 9l6 6 6-6"),

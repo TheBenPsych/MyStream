@@ -237,7 +237,7 @@ fun BenflixTopBar(
  * Ben: when the bar sits over a door's picture, a soft dark shadow behind the clock, search and your
  * picture keeps them easy to see on bright pictures. A plain drawing, so it costs nothing on older TVs.
  */
-private fun Modifier.softShadow(): Modifier =
+internal fun Modifier.softShadow(): Modifier =
     drawBehind {
         val w = size.width + 120.dp.toPx()
         val h = size.height + 56.dp.toPx()
@@ -333,7 +333,7 @@ fun BenflixPhoneHeader(
 
 /** "8:42" big, with a small "PM" beside it */
 @Composable
-private fun BigClock(scale: Float) {
+internal fun BigClock(scale: Float) {
     val timeString by LocalClock.current.timeString
     val parts = timeString.trim().split(' ', ' ', ' ')
     val time = parts.firstOrNull().orEmpty()

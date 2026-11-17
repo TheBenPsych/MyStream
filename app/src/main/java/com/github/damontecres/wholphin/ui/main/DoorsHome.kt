@@ -1208,14 +1208,12 @@ fun greetingFor(
 }
 
 /**
- * The redesigned Home. Everyone but Kids and Easy mode gets the approved Today board (f3-panel, 2026-11-10):
- * the greeting with Tower's weather line under it, six square doors 3 by 2, and a soft list panel as tall as
- * the doors with up to 4 rows (news, On the way, Did you know). Phones put the list under the doors.
- * Kids and Easy mode keep the big doors: TV (and phones turned sideways, and tablets) get tall columns, phones
- * a grid, with bigger words and no descriptions or list. Focus always starts on Movies.
+ * Benflix Home (navigation redesign, Nov 2026): the greeting, a carousel of six picks for this profile, and
+ * the Today cards floating under it. The doors live in the rail on the left of every page now. Kids and Guest
+ * get the same Home with titles instead of news. The remote starts on Play.
  *
- * Right after someone is picked on Who's watching, the doors grow out of the logo's squares, one
- * after another, with soft mallet notes; presses wait until they've landed. The list fades in as the last lands.
+ * Right after someone is picked on Who's watching, the rail's door icons light up one after another with the
+ * same soft mallet notes the doors had; presses wait until they're done. The first pick blooms in on the last note.
  */
 @Composable
 fun DoorsHomePage(
@@ -1229,11 +1227,12 @@ fun DoorsHomePage(
     val easyPref = preferences.appPreferences.benflixPreferences.easyRead
     // Kids, Big kids, Guest and Easy mode get their own smaller Home (Redesign 2, section 11)
     val familyKind = remember(kids, guestOn, easyPref) { familyKindNow(easyPref) }
-    val familyDoorSet = remember(familyKind) { familyKind?.let { familyDoors(it, context, viewModel.userId) } }
     val familyData by viewModel.family.collectAsState()
+    // Kids and Guest get titles under the carousel instead of news; Easy mode gets the news like everyone else
+    val smallHome = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
     LifecycleStartEffect(familyKind) {
-        viewModel.load(small = familyKind != null)
-        familyKind?.let { viewModel.loadFamily(it) }
+        viewModel.load(small = smallHome)
+        if (smallHome) familyKind?.let { viewModel.loadFamily(it) }
         onStopOrDispose { }
     }
     // Benflix: the admin's alert (new problem report, disk nearly full) only shows while Home is on screen
@@ -1249,9 +1248,14 @@ fun DoorsHomePage(
         StartupTimer.mark(StartupTimer.HOME_ROWS)
         StartupTimer.finish(context)
     }
-    // Music is the fifth door on the grown-up Home; the smaller Homes pick their own doors
-    val boardDoors = remember(kids) { BenflixDoor.forHome(kids) }
-    val doors = familyDoorSet?.shown ?: boardDoors
+    // Navigation redesign (Nov 2026): the doors are in the rail now, and Home is the carousel of picks with the
+    // Today cards floating under it (approved hm-spot, hc-dots, fl-cards). Kids get the same Home made for them.
+    val doors =
+        when (familyKind) {
+            FamilyKind.KIDS -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
+            FamilyKind.GUEST -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
+            else -> BenflixDoor.entries.toList()
+        }
     val lite =
         remember {
             com.github.damontecres.wholphin.services.LiteMode
@@ -1263,167 +1267,82 @@ fun DoorsHomePage(
     val config = LocalConfiguration.current
     // Phones turned sideways and tablets use the TV layout
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
+    val picksViewModel: HomePicksViewModel = hiltViewModel()
+    LaunchedEffect(Unit) { picksViewModel.load() }
+    val picks by picksViewModel.picks.collectAsState()
 
-    // The doors-grow moment, once, right after a profile is picked
-    val grow = remember { BenflixIntroState.doorsPending }
-    val progress = remember { BenflixDoor.entries.map { mutableFloatStateOf(if (grow) 0f else 1f) } }
-    val doorRects = remember { mutableStateOf(arrayOfNulls<Rect>(BenflixDoor.entries.size)) }
-    var animating by remember { mutableStateOf(grow) }
-    // The doors' spots are only locked in once they've settled and the growing starts
-    var started by remember { mutableStateOf(!grow) }
-    // The list and weather as they were when the doors started growing (null = show the live ones)
-    var frozenRows by remember { mutableStateOf<HomeParts?>(null) }
-    var frozenWeather by remember { mutableStateOf<String?>(null) }
-    val moviesFocus = remember { FocusRequester() }
+    // The start-up light-up (approved in-light), once, right after a profile is picked: the rail's door icons
+    // light up in their colours top to bottom, each on its own note (the same six notes the doors had), and the
+    // first pick blooms in on the last note
+    val lightUp = remember { BenflixIntroState.doorsPending }
+    val bloom = remember { mutableFloatStateOf(if (lightUp) 0f else 1f) }
+    var animating by remember { mutableStateOf(lightUp) }
+    val playFocus = remember { FocusRequester() }
     var focusedOnce by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (grow) {
+        if (lightUp) {
+            com.github.damontecres.wholphin.ui.nav.RailIntro
+                .prepare()
             BenflixIntroState.doorsPending = false
-            // Get everything ready before anything moves, so the doors grow smoothly and the notes
-            // land with them on every TV: the notes in memory, Home's news in (so the doors don't
-            // shift), and the doors and logo measured and settled for a few frames.
-            IntroSounds.awaitReady(context)
-            withTimeoutOrNull(WAIT_FOR_NEWS_MS) { viewModel.loaded.first { it } }
-            waitForSettled(WAIT_FOR_DOORS_MS) {
-                val rects = doors.map { doorRects.value[it.ordinal] }
-                val mark = BenflixIntroState.barMark
-                if (rects.any { it == null } || mark == null) {
-                    null
-                } else {
-                    // One box that changes whenever any door or the logo moves
-                    Rect(
-                        rects.sumOf { it!!.left.toDouble() }.toFloat() + mark.left,
-                        rects.sumOf { it!!.top.toDouble() }.toFloat() + mark.top,
-                        rects.sumOf { it!!.right.toDouble() }.toFloat() + mark.right,
-                        rects.sumOf { it!!.bottom.toDouble() }.toFloat() + mark.bottom,
-                    )
-                }
-            }
-            // Wake the speaker just before the first note (while the pace is measured): some TVs put the sound
-            // output to sleep a few seconds after the notes loaded, and the first notes then came out late
-            IntroSounds.warmUp(context)
-            val pace = IntroPace.measure(context, frames = 6)
-            val f = pace.stretch
-            frozenRows = viewModel.rows.value
-            frozenWeather = viewModel.weather.value
-            started = true
-            // Each door starts growing a moment after the one before, with its own note on that frame
-            val stagger = DOOR_STAGGER_MS * f
-            val growMs = DOOR_GROW_MS * f
-            // Ben: the violet Music door grows out of the small gap in the middle of the logo, one beat
-            // after Games, with its own (slightly louder) note
-            val musicStart = MUSIC_DOOR_START_MS * f
-            val musicGrow = MUSIC_DOOR_GROW_MS * f
-            // Books grows out of the same middle spot one beat after Music (on Music's beat on Kids, which has no Music)
-            val booksStart = if (BenflixDoor.MUSIC in doors) musicStart + stagger else musicStart
-            val starts =
-                doors.map {
-                    when (it) {
-                        BenflixDoor.MUSIC -> musicStart
-                        BenflixDoor.BOOKS -> booksStart
-                        else -> it.ordinal * stagger
+            try {
+                // Everything ready before anything moves, so the notes land with the lights on every TV
+                IntroSounds.awaitReady(context)
+                withTimeoutOrNull(WAIT_FOR_NEWS_MS) { picksViewModel.ready.first { it } }
+                IntroSounds.warmUp(context)
+                val pace = IntroPace.measure(context, frames = 6)
+                val f = pace.stretch
+                val stagger = DOOR_STAGGER_MS * f
+                val light = LIGHT_MS * f
+                val musicStart = MUSIC_DOOR_START_MS * f
+                val booksStart = if (BenflixDoor.MUSIC in doors) musicStart + stagger else musicStart
+                val starts =
+                    doors.map {
+                        when (it) {
+                            BenflixDoor.MUSIC -> musicStart
+                            BenflixDoor.BOOKS -> booksStart
+                            else -> it.ordinal * stagger
+                        }
                     }
-                }
-            val lengths = doors.map { if (it == BenflixDoor.MUSIC || it == BenflixDoor.BOOKS) musicGrow else growMs }
-            val total = doors.indices.maxOf { starts[it] + lengths[it] }
-            var played = 0
-            runIntroTimeline(total, pace) { t ->
-                while (played < doors.size && t >= starts[played]) {
-                    if (doors[played] == BenflixDoor.MUSIC) {
-                        IntroSounds.play(context, IntroSounds.MUSIC_DOOR, MUSIC_NOTE_VOLUME)
-                    } else if (doors[played] == BenflixDoor.BOOKS) {
-                        IntroSounds.play(context, IntroSounds.BOOKS_DOOR, MUSIC_NOTE_VOLUME)
-                    } else {
-                        IntroSounds.DOORS.getOrNull(played)?.let { IntroSounds.play(context, it, DOOR_NOTE_VOLUME) }
+                val lastStart = starts.max()
+                val bloomMs = BLOOM_MS * f
+                val total = maxOf(lastStart + light, lastStart + bloomMs)
+                var played = 0
+                val intro = com.github.damontecres.wholphin.ui.nav.RailIntro
+                runIntroTimeline(total, pace) { t ->
+                    while (played < doors.size && t >= starts[played]) {
+                        if (doors[played] == BenflixDoor.MUSIC) {
+                            IntroSounds.play(context, IntroSounds.MUSIC_DOOR, MUSIC_NOTE_VOLUME)
+                        } else if (doors[played] == BenflixDoor.BOOKS) {
+                            IntroSounds.play(context, IntroSounds.BOOKS_DOOR, MUSIC_NOTE_VOLUME)
+                        } else {
+                            IntroSounds.DOORS.getOrNull(played)?.let { IntroSounds.play(context, it, DOOR_NOTE_VOLUME) }
+                        }
+                        played++
                     }
-                    played++
+                    doors.forEachIndexed { i, door ->
+                        val p = ((t - starts[i]) / light).coerceIn(0f, 1f)
+                        intro.lit[door.ordinal].floatValue = FastOutSlowInEasing.transform(p)
+                        intro.glow[door.ordinal].floatValue = kotlin.math.sin(p * Math.PI).toFloat()
+                    }
+                    bloom.floatValue = FastOutSlowInEasing.transform(((t - lastStart) / bloomMs).coerceIn(0f, 1f))
                 }
-                doors.forEachIndexed { i, door ->
-                    val p = ((t - starts[i]) / lengths[i]).coerceIn(0f, 1f)
-                    progress[door.ordinal].floatValue = FastOutSlowInEasing.transform(p)
-                }
+                // Then the icons settle back to their usual look
+                val settle = SETTLE_MS * f
+                runIntroTimeline(settle, pace) { t -> intro.settle.floatValue = 1f - t / settle }
+            } finally {
+                com.github.damontecres.wholphin.ui.nav.RailIntro
+                    .finish()
+                bloom.floatValue = 1f
+                animating = false
             }
-            animating = false
-            frozenRows = null
-            frozenWeather = null
         }
-        if (!focusedOnce || grow) {
+        if (!focusedOnce || lightUp) {
             focusedOnce = true
-            moviesFocus.tryRequestFocus()
+            focusPlay(playFocus)
         }
     }
 
-    val onDoor: (BenflixDoor) -> Unit = { door ->
-        DoorUse.opened(context, viewModel.userId, door)
-        // Approved door colour fill: the door's colour grows to fill the screen, then the page opens
-        DoorWipe.start(door.color, doorRects.value.getOrNull(door.ordinal)) {
-            viewModel.navigationManager.navigateTo(
-                when (door) {
-                    BenflixDoor.MOVIES -> Destination.MoviesDoor
-                    BenflixDoor.SHOWS -> Destination.ShowsDoor
-                    BenflixDoor.LIVE_TV -> Destination.Channels
-                    BenflixDoor.GAMES -> Destination.Games
-                    BenflixDoor.MUSIC -> Destination.MusicDoor
-                    BenflixDoor.BOOKS -> Destination.BooksDoor
-                },
-            )
-        }
-    }
-
-    val doorModifier: (Int) -> Modifier = { i ->
-        Modifier
-            .onGloballyPositioned { coords ->
-                if (!started || !animating) {
-                    val now = coords.boundsInWindow()
-                    if (doorRects.value[i] != now) {
-                        val copy = doorRects.value.copyOf()
-                        copy[i] = now
-                        doorRects.value = copy
-                    }
-                }
-            }.graphicsLayer {
-                val p = progress[i].value
-                if (p >= 1f) return@graphicsLayer
-                if (lite) {
-                    // Lite mode: a simple fade, nothing moves
-                    alpha = p
-                    return@graphicsLayer
-                }
-                val door = doorRects.value[i]
-                val mark = BenflixIntroState.barMark
-                if (door == null || mark == null || door.width <= 0f) {
-                    alpha = 0f
-                    return@graphicsLayer
-                }
-                // The matching logo square: top left Movies, top right Shows, bottom left Live TV, bottom right
-                // Games. Music starts as a tiny square in the gap at the very middle of the logo.
-                val gap = mark.width * 0.1f
-                // Music and Books both grow out of the tiny gap in the middle of the logo
-                val centre = i == BenflixDoor.MUSIC.ordinal || i == BenflixDoor.BOOKS.ordinal
-                val sq = if (centre) gap else (mark.width - gap) / 2f
-                val sx =
-                    when {
-                        centre -> mark.left + (mark.width - gap) / 2f
-                        i % 2 == 0 -> mark.left
-                        else -> mark.left + sq + gap
-                    }
-                val sy =
-                    when {
-                        centre -> mark.top + (mark.height - gap) / 2f
-                        i < 2 -> mark.top
-                        else -> mark.top + sq + gap
-                    }
-                transformOrigin = TransformOrigin(0f, 0f)
-                scaleX = sq / door.width + (1f - sq / door.width) * p
-                scaleY = sq / door.height + (1f - sq / door.height) * p
-                translationX = (sx - door.left) * (1f - p)
-                translationY = (sy - door.top) * (1f - p)
-            }
-    }
-    // News that arrives while the doors are growing waits until they've landed, so nothing shifts under
-    // the animation (a jump mid-grow was the stutter Ben saw)
-    val rows = frozenRows ?: liveRows
-    val towerWeather = if (frozenRows != null) frozenWeather else liveWeather
+    val rows = liveRows
     // Friday the 13th look: a lucky line under the greeting instead of the weather ("Lucky you: 3 new episodes and
     // 1 request ready")
     val weather =
@@ -1433,25 +1352,25 @@ fun DoorsHomePage(
                 ready = rows.news.count { it.kind == "Ready to watch" },
             )
         } else {
-            towerWeather
+            liveWeather
         }
     // A row with nowhere to go (a note from Ben, "Ben fixed it", a built-in fact) opens a pop-up with all its words
     var reading by remember { mutableStateOf<HomeRow?>(null) }
-    // The row that opened the pop-up is gone after "Got it, clear it", so the remote goes back to the doors
-    var refocusDoors by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    LaunchedEffect(refocusDoors) {
-        if (refocusDoors > 0) {
+    var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(refocus) {
+        if (refocus > 0) {
             kotlinx.coroutines.delay(REFOCUS_DELAY_MS)
-            moviesFocus.tryRequestFocus()
+            playFocus.tryRequestFocus()
         }
     }
+    val onRow: (HomeRow) -> Unit = { row -> if (row.destination == null) reading = row else viewModel.open(row) }
     reading?.let { row ->
         HomeMessageDialog(
             row = row,
             onClear = {
                 viewModel.clear(row)
                 reading = null
-                refocusDoors++
+                refocus++
             },
             onGo = { place ->
                 viewModel.clear(row)
@@ -1461,16 +1380,69 @@ fun DoorsHomePage(
             onClose = { reading = null },
         )
     }
-    val labelAlpha: (Int) -> Float = { i -> ((progress[i].value - 0.75f) / 0.25f).coerceIn(0f, 1f) }
-    // The list fades in as the last door lands
-    val lastDoor = doors.last().ordinal
-    val listAlpha: () -> Float = { ((progress[lastDoor].value - 0.6f) / 0.4f).coerceIn(0f, 1f) }
-
+    // See all: everything new, with Clear and Clear all
+    var seeAll by remember { mutableStateOf(false) }
+    if (seeAll) {
+        LaunchedEffect(Unit) { viewModel.markSeen() }
+        SeeAllPanel(
+            rows = rows.all,
+            lite = lite,
+            onRow = {
+                seeAll = false
+                onRow(it)
+            },
+            onClear = viewModel::clear,
+            onClearAll = {
+                seeAll = false
+                viewModel.clearAll()
+                refocus++
+            },
+            onClose = {
+                seeAll = false
+                refocus++
+            },
+        )
+    }
+    val family = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
+    val cards =
+        if (family) {
+            // Kids and Guest: titles to keep watching (or popular here) instead of news
+            val data = if (familyData.key.endsWith("-" + familyKind?.name)) familyData else FamilyHomeData()
+            (
+                data.picks.map { it to "Picked for you" } +
+                    data.cards.map { it to if (familyKind == FamilyKind.GUEST) "Popular here" else "Keep watching" }
+            ).distinctBy { it.first.id }
+                .take(TODAY_CARDS)
+                .map { (card, kind) ->
+                    TodayCard(
+                        id = card.id,
+                        kind = kind,
+                        kindColor = HomeKind.Ready,
+                        title = card.title,
+                        image = card.image,
+                        square = false,
+                        onClick = { viewModel.navigationManager.navigateTo(card.destination) },
+                    )
+                }
+        } else {
+            arrangeHomeRows(rows, TODAY_CARDS).rows.map { row ->
+                TodayCard(
+                    id = row.id,
+                    kind = row.kind,
+                    kindColor = row.kindColor,
+                    title = row.title,
+                    image = row.image,
+                    square = row.square,
+                    onClick = { onRow(row) },
+                )
+            }
+        }
+    val moreNews = !family && rows.all.size > cards.size
     Box(
         modifier =
             modifier
                 .fillMaxSize()
-                // Presses wait until the doors have landed
+                // Presses wait until the light-up is over
                 .onPreviewKeyEvent { animating }
                 .pointerInput(animating) {
                     if (animating) {
@@ -1480,71 +1452,54 @@ fun DoorsHomePage(
                     }
                 },
     ) {
-        if (familyKind == null || familyDoorSet == null) {
-            // The approved Today board (f3-panel): six square doors 3 by 2, the list beside them (TV) or under them (phone)
-            HomeBoard(
-                greeting = greetingFor(viewModel.userName),
-                weather = weather,
-                doors = doors,
-                rows = rows,
-                wide = wide,
-                labelAlpha = labelAlpha,
-                listAlpha = listAlpha,
-                doorModifier = { door ->
-                    doorModifier(door.ordinal).then(if (door.ordinal == 0) Modifier.focusRequester(moviesFocus) else Modifier)
-                },
-                onDoor = onDoor,
-                onRow = { row -> if (row.destination == null) reading = row else viewModel.open(row) },
-                onClear = viewModel::clear,
-                onClearAll = viewModel::clearAll,
-                onSeen = viewModel::markSeen,
-                lite = lite,
-                focusDoors = { moviesFocus.tryRequestFocus() },
-            )
-        } else {
-            // Kids (kd-family), Easy mode (ez-family) and Guest (gs-family): big doors and one row
-            FamilyHome(
-                kind = familyKind,
-                greeting =
-                    when (familyKind) {
-                        FamilyKind.GUEST -> {
-                            "Welcome"
-                        }
+        HomeSpotlight(
+            greeting =
+                when (familyKind) {
+                    FamilyKind.GUEST -> {
+                        "Welcome"
+                    }
 
-                        // Friday the 13th, Earth week, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
-                        FamilyKind.KIDS -> {
-                            if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-                                "Happy Friday the 13th!"
-                            } else if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
-                                "Happy Earth Day!"
-                            } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-                                "Happy Popcorn Day!"
-                            } else if (SwLook.on) {
-                                "May the 4th be with you!"
-                            } else {
-                                "Hi there!"
-                            }
+                    // Friday the 13th, Earth week, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
+                    FamilyKind.KIDS -> {
+                        if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
+                            "Happy Friday the 13th!"
+                        } else if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
+                            "Happy Earth Day!"
+                        } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
+                            "Happy Popcorn Day!"
+                        } else if (SwLook.on) {
+                            "May the 4th be with you!"
+                        } else {
+                            "Hi there!"
                         }
+                    }
 
-                        else -> {
-                            greetingFor(viewModel.userName)
-                        }
-                    },
-                doors = familyDoorSet,
-                // Never show rows that belong to someone else, even for a moment
-                data = if (familyData.key.endsWith("-" + familyKind.name)) familyData else FamilyHomeData(),
-                wide = wide,
-                labelAlpha = labelAlpha,
-                listAlpha = listAlpha,
-                doorModifier = { door ->
-                    doorModifier(door.ordinal).then(if (door == BenflixDoor.MOVIES) Modifier.focusRequester(moviesFocus) else Modifier)
+                    else -> {
+                        greetingFor(viewModel.userName)
+                    }
                 },
-                onDoor = onDoor,
-                onCard = { card -> viewModel.navigationManager.navigateTo(card.destination) },
-            )
-        }
+            weather = if (family) null else weather,
+            picks = picks,
+            cards = cards,
+            wide = wide,
+            kids = familyKind == FamilyKind.KIDS,
+            bloom = { bloom.floatValue },
+            playFocus = playFocus,
+            onPlay = picksViewModel::play,
+            onInfo = picksViewModel::open,
+            onSeeAll = if (moreNews) ({ seeAll = true }) else null,
+            onCardsSeen = { if (!family) viewModel.markSeen() },
+        )
     }
 }
+
+/** How long each rail icon takes to light up, and the first pick's bloom on the last note */
+private const val LIGHT_MS = 320f
+private const val BLOOM_MS = 520f
+private const val SETTLE_MS = 600f
+
+/** Up to four floating Today cards */
+private const val TODAY_CARDS = 4
 
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f

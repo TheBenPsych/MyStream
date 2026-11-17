@@ -40,10 +40,11 @@ sealed class Destination(
         val id: Long = 0L,
     ) : Destination()
 
+    /** Navigation redesign (approved pg-settings): Settings keeps the Benflix rail */
     @Serializable
     data class Settings(
         val screen: PreferenceScreenOption,
-    ) : Destination(true)
+    ) : Destination()
 
     @Serializable
     data class SubtitleSettings(

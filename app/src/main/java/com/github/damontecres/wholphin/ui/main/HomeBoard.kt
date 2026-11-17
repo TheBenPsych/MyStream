@@ -273,7 +273,7 @@ private class RowLook(
 )
 
 @Composable
-private fun Greeting(
+internal fun Greeting(
     greeting: String,
     weather: String?,
     tv: Boolean,
@@ -668,7 +668,7 @@ private fun MoreLine(
 
 /** See all: everything new in the side panel (TV and web) or a sheet from the bottom (phone), with Clear all */
 @Composable
-private fun SeeAllPanel(
+internal fun SeeAllPanel(
     rows: List<HomeRow>,
     lite: Boolean,
     onRow: (HomeRow) -> Unit,
