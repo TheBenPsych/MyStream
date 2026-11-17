@@ -1,12 +1,10 @@
 package com.github.damontecres.wholphin.ui.music
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,7 +25,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -96,7 +93,12 @@ fun MusicNowPill(
             modifier = Modifier.padding(start = 8.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
         ) {
             CoverImage(audio.imageUrl, Modifier.size(26.dp * scale), shape = RoundedCornerShape(5.dp))
-            PlayingBars(music.status == NowPlayingStatus.PLAYING, size = 13.dp * scale)
+            SmallTowerLine(
+                1f,
+                music.status == NowPlayingStatus.PLAYING,
+                Modifier.size(width = 30.dp * scale, height = 14.dp * scale),
+                towers = 6,
+            )
             Text(
                 text = listOfNotNull(audio.title, audio.artistNames).joinToString(" · "),
                 color = BenflixColors.Text,
@@ -205,17 +207,9 @@ fun MusicMiniBar(
                 }
                 MusicButton(null, if (playing) BenflixIcon.PAUSE else null, filledPlay = !playing, onClick = viewModel::playPause)
             }
-            ThinLine(progress, 2.dp)
+            // Music player 2026-11-17: the same tower progress line as Now playing
+            SmallTowerLine(progress, playing, Modifier.fillMaxWidth().height(10.dp).padding(horizontal = 10.dp), towers = 36)
+            Spacer(Modifier.height(4.dp))
         }
-    }
-}
-
-@Composable
-private fun ThinLine(
-    progress: Float,
-    height: Dp,
-) {
-    Box(Modifier.fillMaxWidth().height(height).background(Color.Transparent)) {
-        Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(BenflixColors.Music))
     }
 }

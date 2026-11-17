@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -320,19 +319,8 @@ fun MusicStrip(
             }
         }
         Text(now, color = BenflixColors.Muted, fontSize = BenflixType.tag, fontWeight = FontWeight.SemiBold)
-        Box(
-            Modifier
-                .weight(1f)
-                .height(4.dp)
-                .background(BenflixColors.Line, RoundedCornerShape(50)),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth(progress)
-                    .fillMaxHeight()
-                    .background(BenflixColors.Music, RoundedCornerShape(50)),
-            )
-        }
+        // Music player 2026-11-17: the same tower progress line as Now playing
+        SmallTowerLine(progress, playing, Modifier.weight(1f).height(18.dp), towers = 60)
         Text(length, color = BenflixColors.Muted, fontSize = BenflixType.tag, fontWeight = FontWeight.SemiBold)
         MusicButton(null, BenflixIcon.PREVIOUS, onClick = viewModel::previous)
         MusicButton(null, if (playing) BenflixIcon.PAUSE else null, filledPlay = !playing, primary = true, onClick = viewModel::playPause)
