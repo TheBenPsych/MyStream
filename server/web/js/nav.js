@@ -81,6 +81,7 @@
         if (at < 0) return;
         if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
         if (e.key === "ArrowRight" && document.activeElement.dataset.door) { e.preventDefault(); openPanel(document.activeElement.dataset.door, true); }
+        if (e.key === "ArrowRight" && document.activeElement.dataset.k === "me" && openDoor !== "me") { e.preventDefault(); B.openMenu(true); }
       });
     }
     rail.hidden = false;
@@ -107,8 +108,13 @@
     if (d) { e.preventDefault(); openPanel(d.dataset.door, e.detail === 0); return; }
     const k = e.target.closest("[data-k]");
     if (!k) return;
+    if (k.dataset.k === "me") {
+      e.preventDefault();
+      if (openDoor === "me") { closePanel(); return; }
+      B.openMenu(e.detail === 0);
+      return;
+    }
     closePanel();
-    if (k.dataset.k === "me") { e.preventDefault(); B.openMenu(); }
   };
 
   // ---------- a door's panel ----------
@@ -117,9 +123,11 @@
     const was = openDoor;
     panel.remove(); panel = null; openDoor = null;
     document.body.classList.remove("nav-panel");
-    if (rail) $$(".rl-door", rail).forEach((x) => x.classList.remove("open"));
+    if (rail) $$(".rl-door, .rl-me", rail).forEach((x) => x.classList.remove("open"));
     return was;
   };
+  // The rail button a panel belongs to (a door, or your picture)
+  const railBtn = (key) => rail && (key === "me" ? $('[data-k="me"]', rail) : $(`[data-door="${key}"]`, rail));
   const placesOf = (door) => {
     const list = (B.doorPlaces ? B.doorPlaces(door) : []).filter(Boolean);
     return list.length ? list : [["Home", "home", "#/" + door]];
@@ -153,10 +161,44 @@
       const items = $$("a", panel);
       const at = items.indexOf(document.activeElement);
       if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); const back = $(`[data-door="${door}"]`, rail); closePanel(); if (back) back.focus(); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn(door); closePanel(); if (back) back.focus(); }
     });
     if (byKeys) { const first = $("a", panel); if (first) first.focus(); }
     fillPanel(door);
+  };
+  // ---------- your picture's panel: the profile menu, sliding out beside the rail like a door's panel ----------
+  // Returns false when there's no rail to slide out from (phone-sized windows, full-window pages): the corner card shows instead
+  B.openMePanel = (byKeys) => {
+    if (!B.me || !rail || rail.hidden || narrow()) return false;
+    closePanel();
+    B.closeAll();
+    openDoor = "me";
+    const me = railBtn("me");
+    if (me) me.classList.add("open");
+    panel = document.createElement("div");
+    panel.className = "npanel np-me";
+    panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", B.me.name);
+    panel.innerHTML = `<div class="np-who">${B.picHtml(B.me, "", 220)}<b>${esc(B.me.name)}</b><small id="npWt">&nbsp;</small>
+        <button type="button" class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div>
+      <div class="np-list">${B.profileItems().map(([where, icon, label]) => `<button type="button" data-go="${esc(where)}">${I(icon)}<span>${esc(label)}</span></button>`).join("")}</div>
+      <div class="np-list np-end"><button type="button" class="np-out" data-go="signout">${I("out")}<span>Sign out</span></button></div>`;
+    document.body.appendChild(panel);
+    document.body.classList.add("nav-panel");
+    panel.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-go]");
+      if (!b) return;
+      closePanel();
+      B.profileGo(b.dataset.go);
+    });
+    panel.addEventListener("keydown", (e) => {
+      const items = $$("button", panel);
+      const at = items.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn("me"); closePanel(); if (back) back.focus(); }
+    });
+    if (byKeys) { const first = $("button", panel); if (first) first.focus(); }
+    if (B.watchTime) B.watchTime().then((w) => { const el = $("#npWt"); if (el && openDoor === "me") el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
+    return true;
   };
   // The picture strip (one of your door's pictures, a new one each day) and Jump back in (up to 3)
   const artCache = {};
@@ -293,7 +335,7 @@
     if (e.key === "Escape" && panel) {
       e.preventDefault(); e.stopPropagation();
       const door = closePanel();
-      const back = rail && $(`[data-door="${door}"]`, rail);
+      const back = railBtn(door);
       if (back) back.focus();
     }
   }, true);
