@@ -66,6 +66,11 @@ fun SwitchPreference(
                     com.github.damontecres.wholphin.ui.theme
                         .TgAcorn()
                 }
+                // New Year's look: a little gold star next to switches that are on
+                if (value && com.github.damontecres.wholphin.ui.theme.NyLook.on) {
+                    com.github.damontecres.wholphin.ui.theme
+                        .NyStar()
+                }
                 // Star Wars Day: a glowing knob in the colour of your side next to switches that are on
                 if (value && com.github.damontecres.wholphin.ui.theme.SwLook.on) {
                     com.github.damontecres.wholphin.ui.theme

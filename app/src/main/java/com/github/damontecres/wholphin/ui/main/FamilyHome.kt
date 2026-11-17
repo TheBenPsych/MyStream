@@ -54,10 +54,12 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.HolidayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.StarWarsDay
 import com.github.damontecres.wholphin.ui.theme.StarWarsFont
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
+import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
 import com.github.damontecres.wholphin.ui.theme.swDoorMoment
 import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
 import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
@@ -207,9 +209,10 @@ fun FamilyHome(
                 // Star Wars Day: the greeting is in yellow crawl lettering
                 color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
                 fontSize = BenflixType.pageTitle * scale,
-                // Thanksgiving look (not Kids): the greeting is in the curly holiday font
+                // Thanksgiving and New Year's looks (not Kids): the greeting is in the curly holiday font;
+                // Star Wars Day: yellow crawl lettering
                 fontWeight =
-                    if (TgLook.on) {
+                    if (TgLook.on || NyLook.on) {
                         FontWeight.Normal
                     } else if (SwLook.on) {
                         FontWeight.Bold
@@ -217,7 +220,7 @@ fun FamilyHome(
                         FontWeight.ExtraBold
                     },
                 fontFamily =
-                    if (TgLook.on) {
+                    if (TgLook.on || NyLook.on) {
                         HolidayFont
                     } else if (SwLook.on) {
                         StarWarsFont
@@ -450,8 +453,17 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                .then(if (kids) Modifier.swDoorMoment(door) else Modifier.xmasDoorOrnament(door).tgDoorCharm(door).swDoorMoment(door))
-                .padding(if (small) 14.dp else 22.dp),
+                .then(
+                    if (kids) {
+                        Modifier.nyDoorCharm(door).swDoorMoment(door)
+                    } else {
+                        Modifier
+                            .xmasDoorOrnament(door)
+                            .tgDoorCharm(door)
+                            .nyDoorCharm(door)
+                            .swDoorMoment(door)
+                    },
+                ).padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(
                 icon = doorIcon(door),

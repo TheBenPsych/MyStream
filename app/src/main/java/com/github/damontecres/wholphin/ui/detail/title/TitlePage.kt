@@ -70,9 +70,11 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.NyLook
 import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.theme.TgLook
 import com.github.damontecres.wholphin.ui.theme.XmasLook
+import com.github.damontecres.wholphin.ui.theme.nyPlayGlint
 import com.github.damontecres.wholphin.ui.theme.swPlayGlow
 import com.github.damontecres.wholphin.ui.theme.tgCandleGlow
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
@@ -697,6 +699,8 @@ private fun TitleButtonView(
     val xmas = XmasLook.on
     // Thanksgiving look: Play is pumpkin orange with white words and a soft candle glow behind it
     val tg = TgLook.on
+    // New Year's look: Play is champagne gold with dark words, and a glint of sparkle sweeps across it now and then
+    val ny = NyLook.on
     // Star Wars Day: Play is laser red with white words, a red glow and light-speed streaks
     val sw = SwLook.on
     val primaryFill =
@@ -704,13 +708,26 @@ private fun TitleButtonView(
             XmasLook.Red
         } else if (tg) {
             TgLook.Orange
+        } else if (ny) {
+            NyLook.Gold
         } else if (sw) {
             SwLook.Red
         } else {
             BenflixColors.Text
         }
     val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
-    val content = if (primary) (if (xmas || tg || sw) Color.White else BenflixColors.Tray) else BenflixColors.Text
+    val content =
+        if (primary) {
+            if (xmas || tg || sw) {
+                Color.White
+            } else if (ny) {
+                NyLook.OnGold
+            } else {
+                BenflixColors.Tray
+            }
+        } else {
+            BenflixColors.Text
+        }
     val off = button.off
     Surface(
         onClick = { if (off != null) onOffTap(off) else button.onClick() },
@@ -731,6 +748,7 @@ private fun TitleButtonView(
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) }
                 .then(if (primary && tg) Modifier.tgCandleGlow() else Modifier)
+                .then(if (primary && ny) Modifier.nyPlayGlint(corner = 10.dp) else Modifier)
                 .then(if (primary && sw) Modifier.swPlayGlow() else Modifier)
                 .then(
                     if (primary && xmas) {
