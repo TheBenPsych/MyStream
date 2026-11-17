@@ -50,6 +50,128 @@
   }, extra || {});
   const is = (name) => () => !!(B[name] && B[name]());
 
+  /* Easter's drawings, made from the approved Easter kit (easter.js loads first) */
+  function easterNav() {
+    const base = { countdown: cd(() => B.ea), pickTags: ["easter", "easter bunny"], pickWords: ["Easter", "Peter Rabbit"] };
+    const K = window.BenflixEaster && window.BenflixEaster.kit;
+    if (!K) return base;
+    const EGGS = [["#FFB8D2", "#7B5BD6", "zig"], ["#BFE6FF", "#3F7FD0", "dots"], ["#FFF1A6", "#F08A24", "stripes"], ["#C9F2C0", "#E8508A", "flowers"], ["#E3D5FF", "#4AA8C8", "waves"], ["#FFD9B8", "#5AAE52", "checks"]];
+    // svg.i draws lines with currentColor and no fill: put the drawing's own defaults back
+    const plain = (s) => `<g fill="#000" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter">${s}</g>`;
+    // the part of each charm (on its 240 x 220 door) that is the thing itself, without the pin and ribbon
+    const CROP = { movies: "144 34 84 102", shows: "140 28 92 106", live: "144 42 84 100", games: "128 18 116 104", music: "136 4 104 140", books: "146 10 80 130" };
+    const icons = {};
+    Object.keys(CROP).forEach((k) => { icons[k] = plain(`<svg x="0" y="0" width="24" height="24" viewBox="${CROP[k]}">${K.CHARM[k]()}</svg>`); });
+    const sway = "<style>.eaSw{transform-box:fill-box;transform-origin:50% 0;animation:eaSw 4.5s ease-in-out infinite}@keyframes eaSw{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}</style>";
+    // A painted egg on a pink ribbon, hanging from a pearl pin (viewBox 0 0 12 18)
+    const mark = plain(`${sway}<g class="eaSw"><path d="M6 1.4V5.6" stroke="#C25A86" stroke-width=".9"/>${K.egg(6, 11.4, 4.6, 6.2, "#FFB8D2", "#7B5BD6", "zig", { nosh: true })}</g><circle cx="6" cy="1.4" r="1.4" fill="#F4F1EA" stroke="#B8B0A0" stroke-width=".3"/>`);
+    // Wide and cut to the screen (slice), so the eggs keep their shape at any width: 2 units = 1 pixel. Ben
+    // 2026-11-17: the greeting now sits top left on the clock's line, so the ribbon stays in a thin band along the
+    // very top with its eggs ending above the greeting's letters, and the grass stays inside its own box so it
+    // never covers the news cards. Phones put the greeting at the top of the picture: eggs there hang only on the
+    // right, past the words
+    const wide = (h, art) => (cls) => `<svg class="${cls || ""}" viewBox="0 0 4800 ${h}" preserveAspectRatio="xMinYMin slice" style="height:${h / 2}px" aria-hidden="true">${plain(art)}</svg>`;
+    let top = sway.replace("</style>", "@media (max-width:700px){.eaL{display:none}}</style>"), rope = "M0 6";
+    const step = 300, pins = [];
+    for (let x = 0; x < 4800; x += step) { rope += `Q${x + step / 2} ${6 + 24} ${x + step} 6`; pins.push(x); }
+    top += `<path d="${rope}" stroke="#C25A86" stroke-width="9" fill="none"/><path d="${rope}" stroke="#F28DB2" stroke-width="6" fill="none"/><path d="${rope}" stroke="#FFD0E2" stroke-width="1.6" fill="none" transform="translate(0 -1.5)"/>`;
+    pins.forEach((x, i) => {
+      const m = x + step / 2, e = EGGS[i % 6];
+      top += `<g class="eaSw${m < 560 ? " eaL" : ""}" style="animation-delay:${(-i * 0.7).toFixed(1)}s"><path d="M${m} 18V25" stroke="#C25A86" stroke-width="2.4"/>${K.egg(m, 39, 11, 15, e[0], e[1], e[2])}</g>`;
+      top += `<circle cx="${x}" cy="6" r="5" fill="#F4F1EA" stroke="#B8B0A0"/><circle cx="${x - 1.6}" cy="4.4" r="1.6" fill="#fff"/>`;
+    });
+    // Spring grass with tulips and eggs half hidden in it
+    let seed = 3;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const grass = (yb, h) => { let s = ""; for (let x = 0; x < 4800; x += 5) { const hh = h * (0.55 + rnd() * 0.6), lean = (rnd() - 0.5) * 18; s += `<path d="M${x} ${yb}q${(lean * 0.3).toFixed(1)} ${(-hh * 0.6).toFixed(1)} ${lean.toFixed(1)} ${(-hh).toFixed(1)}" stroke="${["#3E8A45", "#5AAE52", "#7CCB6A", "#4FA052"][(x / 5) % 4]}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`; } return s; };
+    let bottom = `<rect x="0" y="58" width="4800" height="14" fill="#24502F"/>` + grass(72, 40);
+    for (let i = 0, x = 60; x < 4800; i++, x += 150) {
+      if (i % 2) { const e = EGGS[i % 6]; bottom += K.egg(x, 46, 17, 23, e[0], e[1], e[2]); }
+      else bottom += `<path d="M${x} 32V72" stroke="#3E8A45" stroke-width="3.4"/>` + K.tulip(x, 36, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.2);
+    }
+    bottom += grass(72, 22);
+    return Object.assign(base, { icons, mark, topTrim: wide(56, top), bottomTrim: wide(72, bottom) });
+  }
+  // New Year's (Ben 2026-11-17, "Midnight Fringe"): the rail and phone-tab icons are the New Year party charms,
+  // a gold and silver foil fringe across the top of Home, confetti along the bottom. At midnight the fringe flashes
+  // and fresh confetti falls for half a minute; from New Year's Day the pick is a fresh-start film.
+  const NY = (() => {
+    const G = "#E8B84A", GL = "#F7D98A", GD = "#B98F2E", GE = "#7A5A16", S = "#C9D1DE", SD = "#8E97A8", K = "#1B1B1F";
+    const f = (n) => +n.toFixed(2);
+    const star = (cx, cy, o, i) => {
+      const p = [];
+      for (let k = 0; k < 10; k++) { const r = k % 2 ? i : o, a = -Math.PI / 2 + k * Math.PI / 5; p.push([f(cx + r * Math.cos(a)), f(cy + r * Math.sin(a))]); }
+      let s = `<path d="M${p.map((q) => q.join(" ")).join("L")}Z" fill="${G}"/>`;
+      for (let k = 0; k < 10; k += 2) {
+        s += `<path d="M${cx} ${cy}L${p[k].join(" ")}L${p[(k + 1) % 10].join(" ")}Z" fill="${GD}"/>`;
+        s += `<path d="M${cx} ${cy}L${p[k].join(" ")}L${p[(k + 9) % 10].join(" ")}Z" fill="${GL}" fill-opacity=".7"/>`;
+      }
+      return s + `<path d="M${p.map((q) => q.join(" ")).join("L")}Z" fill="none" stroke="${GE}" stroke-width=".55"/>`;
+    };
+    const spark = (x, y, r, dur) => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z" fill="#fff"><animate attributeName="opacity" values="1;.2;1" dur="${dur}s" repeatCount="indefinite"/></path>`;
+    const balloon = (cx, cy, rx, ry, c, e) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${c}" stroke="${e}" stroke-width=".5"/><ellipse cx="${f(cx - rx * .37)}" cy="${f(cy - ry * .37)}" rx="${f(rx * .25)}" ry="${f(ry * .31)}" fill="#fff" fill-opacity=".55"/><path d="M${f(cx - .9)} ${f(cy + ry + .9)}L${f(cx + .9)} ${f(cy + ry + .9)}L${cx} ${f(cy + ry - .2)}Z" fill="${c}"/>`;
+    const g = (inner) => `<g stroke="none" stroke-linecap="round">${inner}</g>`;
+    // the watch face's ticks
+    let ticks = "";
+    for (let h = 0; h < 12; h++) {
+      const a = h * Math.PI / 6, r1 = h % 3 ? 5.9 : 5.3;
+      ticks += `<line x1="${f(12 + r1 * Math.sin(a))}" y1="${f(14 - r1 * Math.cos(a))}" x2="${f(12 + 6.6 * Math.sin(a))}" y2="${f(14 - 6.6 * Math.cos(a))}" stroke="${K}" stroke-width="${h % 3 ? .4 : .7}"/>`;
+    }
+    // the mirror ball's tiles
+    const TL = ["#D7DDE8", "#AEB7C6", "#6E788A", "#E9EEF5", "#9CC3E6", "#BFC7D4"];
+    let tiles = "";
+    for (let row = 0, y = 5; y < 23; y += 1.85, row++) for (let col = 0, x = 3 + (row % 2) * .9; x < 21; x += 1.85, col++) tiles += `<rect x="${f(x)}" y="${f(y)}" width="1.6" height="1.6" fill="${TL[(row * 7 + col * 3 + row * col) % 6]}"/>`;
+    // the rosette's pleats
+    let pleats = "";
+    for (let k = 0; k < 18; k++) {
+      const a0 = 2 * Math.PI * k / 18 - Math.PI / 2, a1 = 2 * Math.PI * (k + 1) / 18 - Math.PI / 2, am = (a0 + a1) / 2;
+      pleats += `<path d="M12 12L${f(12 + 11.4 * Math.cos(a0))} ${f(12 + 11.4 * Math.sin(a0))}L${f(12 + 10.5 * Math.cos(am))} ${f(12 + 10.5 * Math.sin(am))}L${f(12 + 11.4 * Math.cos(a1))} ${f(12 + 11.4 * Math.sin(a1))}Z" fill="${k % 2 ? K : G}"${k % 2 ? ` stroke="${GD}" stroke-width=".35"` : ""}/>`;
+    }
+    const bell = (cx, cy, tilt) => `<g transform="translate(${cx} ${cy}) rotate(${tilt} 0 -5)"><g><animateTransform attributeName="transform" type="rotate" values="-6 0 -5;6 0 -5;-6 0 -5" dur="2.6s" repeatCount="indefinite"/><path d="M-1.3 -5C-3.8 -4.6 -3.8 -1 -4 1.6L-5.2 4.2L5.2 4.2L4 1.6C3.8 -1 3.8 -4.6 1.3 -5Z" fill="${G}" stroke="${GE}" stroke-width=".45"/><line x1="-2.4" y1="-3" x2="-2.9" y2="2.4" stroke="${GL}" stroke-width=".8"/><circle cx="0" cy="5.1" r="1.1" fill="${GD}"/></g></g>`;
+    const icons = {
+      home: g(star(12, 13, 10.5, 4.4) + spark(20.5, 3.8, 2.6, 2.8)),
+      books: g(`<g><animateTransform attributeName="transform" type="rotate" values="-5 12 1.5;5 12 1.5;-5 12 1.5" dur="4.8s" repeatCount="indefinite"/><line x1="12" y1="1.5" x2="12" y2="7" stroke="${G}" stroke-width=".9"/><circle cx="12" cy="1.5" r="1.5" fill="${GL}" stroke="${GE}" stroke-width=".4"/>${star(12, 15, 8.6, 3.7)}</g>`),
+      movies: g(`<g stroke="#EDEDED" stroke-width=".45"><line x1="7.5" y1="13.6" x2="12.5" y2="22.5"/><line x1="16.8" y1="12.2" x2="12.5" y2="22.5"/><line x1="12.5" y1="17" x2="12.5" y2="22.5"/></g><g><animateTransform attributeName="transform" type="translate" values="0 0;0 -.7;0 0" dur="3.6s" repeatCount="indefinite"/>${balloon(7.5, 7.6, 5.2, 6, G, GE)}</g><g><animateTransform attributeName="transform" type="translate" values="0 -.6;0 .2;0 -.6" dur="3.2s" repeatCount="indefinite"/>${balloon(16.8, 6.6, 4.7, 5.6, S, SD)}</g>${star(12.5, 14.2, 3.9, 1.7)}<circle cx="12.5" cy="22.5" r="1.3" fill="${G}"/>`),
+      shows: g(`<line x1="12" y1="0" x2="12" y2="3" stroke="${G}" stroke-width=".9"/><circle cx="12" cy="2.4" r="1.5" fill="none" stroke="${G}" stroke-width=".7"/><rect x="10.6" y="3.4" width="2.8" height="2.2" fill="${G}"/><circle cx="12" cy="14" r="9.4" fill="${GD}"/><circle cx="12" cy="14" r="8.8" fill="${G}"/><circle cx="12" cy="14" r="7.2" fill="#FBF4E2"/>${ticks}<line x1="12" y1="14" x2="11.86" y2="10" stroke="${K}" stroke-width="1.1"/><line x1="12" y1="14" x2="11.4" y2="8.2" stroke="${K}" stroke-width=".7"/><line x1="12" y1="14" x2="12" y2="8" stroke="#D7263D" stroke-width=".35"><animateTransform attributeName="transform" type="rotate" from="0 12 14" to="360 12 14" dur="60s" repeatCount="indefinite"/></line><circle cx="12" cy="14" r=".7" fill="${K}"/>`),
+      live: g(`<line x1="12" y1="0" x2="12" y2="3.2" stroke="${G}" stroke-width=".7"/><rect x="10.5" y="3" width="3" height="2" fill="${G}"/><clipPath id="nyBall"><circle cx="12" cy="14" r="9"/></clipPath><circle cx="12" cy="14" r="9" fill="${SD}"/><g clip-path="url(#nyBall)">${tiles}</g><circle cx="12" cy="14" r="9" fill="none" stroke="${K}" stroke-opacity=".6" stroke-width=".5"/>${spark(8.2, 10.2, 2.6, 2.4)}${spark(16.4, 17.4, 1.8, 3.1)}`),
+      games: g(`<g><animateTransform attributeName="transform" type="rotate" values="-4 12 12;4 12 12;-4 12 12" dur="7.8s" repeatCount="indefinite"/>${pleats}</g><circle cx="12" cy="12" r="5" fill="${K}"/><circle cx="12" cy="12" r="4.4" fill="none" stroke="${G}" stroke-width=".9"/>${star(12, 12.2, 3, 1.25)}`),
+      music: g(`<line x1="12" y1="4.5" x2="7.6" y2="9" stroke="${G}" stroke-width=".8"/><line x1="12" y1="4.5" x2="16.4" y2="9" stroke="${G}" stroke-width=".8"/>${bell(7.3, 14.6, -14)}${bell(16.7, 14.6, 14)}<ellipse cx="9.3" cy="3.3" rx="2.5" ry="1.7" fill="none" stroke="${G}" stroke-width=".8"/><ellipse cx="14.7" cy="3.3" rx="2.5" ry="1.7" fill="none" stroke="${G}" stroke-width=".8"/><circle cx="12" cy="3.3" r="1.3" fill="${G}"/>`),
+    };
+    // steady 0..1 numbers so the fringe and confetti look the same every time
+    const h = (i, s) => { let x = Math.imul(i, 374761393) + Math.imul(s, 668265263); x = Math.imul(x ^ (x >>> 13), 1274126177); return ((x ^ (x >>> 16)) & 0xffff) / 65535; };
+    const bursting = () => { const d = new Date(); return d.getMonth() === 0 && d.getDate() === 1 && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() < 30; };
+    // Short (about 16px of the 44px strip) so it stays above the greeting, now on the clock's line
+    const fringe = (burst) => {
+      const cols = [G, GL, S, GD, "#fff"];
+      let s = `<style>.nyf{animation:nyf 3.4s ease-in-out infinite}.nyf.b{animation-duration:.25s}@keyframes nyf{50%{opacity:.72}}</style><rect width="1200" height="4" fill="${G}"/>`;
+      for (let i = 0; i < 380; i++) {
+        const x = f(i * 3.16 + h(i, 1)), len = f(22 * (.6 + .4 * h(i, 2))), sw = f(Math.sin(i * .37) * 1.4);
+        s += `<path class="nyf${burst ? " b" : ""}" style="animation-delay:-${f(h(i, 3) * 3.4)}s" d="M${x} 2Q${f(x + sw * .3)} ${f(len / 2)} ${f(x + sw)} ${len}L${f(x + sw + 2.3)} ${f(len - .6)}Q${f(x + 2.3)} ${f(len / 2)} ${f(x + 2.3)} 2Z" fill="${cols[Math.min(4, Math.floor(h(i, 3) * 5))]}"/>`;
+      }
+      return s;
+    };
+    const confetti = (burst) => {
+      const cols = [G, S, GL, "#7FA6FF", "#fff"];
+      const piece = (i, x, y) => (i % 4 === 0
+        ? `<circle cx="${x}" cy="${y}" r="${f(2 + h(i, 6) * 1.2)}" fill="${cols[i % 5]}"/>`
+        : `<rect x="${f(x - 4)}" y="${f(y - 1.6)}" width="${f(6.5 + h(i, 8) * 3)}" height="3.2" fill="${cols[i % 5]}" transform="rotate(${f(h(i, 7) * 180)} ${x} ${y})"/>`);
+      let s = "";
+      for (let i = 0; i < 170; i++) s += piece(i, f(h(i, 4) * 1200), f(40 * (.35 + .6 * h(i, 5))));
+      if (burst) for (let i = 0; i < 90; i++) s += `<g><animateTransform attributeName="transform" type="translate" values="0 -40;0 40" dur="${f(1.6 + h(i, 11))}s" begin="-${f(h(i, 10) * 2)}s" repeatCount="15"/>${piece(i + 1, f(h(i, 9) * 1200), 0)}</g>`;
+      return s;
+    };
+    const eve = ["New Year", "Harry Met Sally", "The Apartment", "Trading Places", "Hudsucker"];
+    const fresh = ["About Time", "Groundhog Day", "Walter Mitty", "Yes Man", "Julie & Julia", "Soul", "Inside Out"];
+    // Getters, so the midnight burst and the New Year's Day pick are worked out each time Home draws
+    return (entry) => Object.defineProperties(entry, {
+      icons: { value: icons, enumerable: true },
+      topTrim: { get: () => fringe(bursting()), enumerable: true },
+      bottomTrim: { get: () => confetti(bursting()), enumerable: true },
+      pickWords: { get: () => (new Date().getMonth() === 0 ? fresh : eve), enumerable: true },
+      pickTags: { get: () => (new Date().getMonth() === 0 ? [] : ["new year's eve"]), enumerable: true },
+    });
+  })();
+
   /* ---------- 4th of July (approved 2026-11-17, sheet july4-nav-1-directions; the app's ui/theme/July4Nav.kt) ----------
      The rail and phone-tab icons in red, white and blue taken in turn, a twinkling gold star beside the one you're
      on, pleated fan bunting in swags across the top of Home, lit sparklers along the bottom, bigger fireworks over
@@ -378,7 +500,7 @@
     })(),
     make("stpatricks", is("spOn"), true, ["#0F2A17", "#08170D"], ["#2E9E5B", "#7BD389", "#E8C15A"], "St. Patrick's pick", { countdown: cd(() => B.sp), pickTags: ["ireland"], pickWords: ["Irish"] }),
     july4(),
-    make("newyear", is("nyOn"), true, ["#141A2E", "#0B0E1A"], ["#E8C15A", "#C9D0E0"], "New Year's pick", { countdown: cd(() => B.ny), pickTags: ["new year's eve"], pickWords: ["New Year"] }),
+    NY(make("newyear", is("nyOn"), true, ["#16224A", "#0B1230"], ["#E8B84A", "#C9D1DE"], "New Year pick", { countdown: cd(() => B.ny) })),
     // Thanksgiving (approved 2026-11-17, sheet nav-13b g2-swag): harvest-brown rail, the rail icons themselves in
     // gold, pumpkin orange and cranberry, a short leaf garland swagging across the top of Home with an acorn at each
     // low point and now and then a leaf drifting down, and only two pumpkins in Home's bottom-right corner.
@@ -455,7 +577,11 @@
       };
     })()),
     make("valentine", is("valOn"), false, ["#2A0F1A", "#170810"], ["#FF5C8A", "#D7263D", "#FFB3C6"], "Valentine's pick", { countdown: cd(() => B.val), pickTags: ["valentine's day"], pickWords: ["Valentine"] }),
-    make("easter", is("eaOn"), true, ["#1F2433", "#121522"], ["#F7B2D9", "#B8E0D2", "#FFE29A", "#C3B1E1"], "Easter pick", { countdown: cd(() => B.ea), pickTags: ["easter"], pickWords: ["Easter"] }),
+    // Easter (approved 2026-11-17, thread "Fit Easter theme to new navigation", direction A "Easter tree ribbon"):
+    // meadow-green rail, the door icons become the Easter tree charms, a painted egg on a ribbon hangs by the icon
+    // you're on, a pink satin ribbon swags across the top of Home with painted eggs swaying, and spring grass with
+    // tulips and eggs runs along the bottom. Kids too. The drawings come from easter.js (BenflixEaster.kit).
+    make("easter", is("eaOn"), true, ["#122019", "#0B150F"], ["#FFB8D2", "#BFE6FF", "#FFF1A6", "#C9F2C0", "#E3D5FF", "#FFD9B8"], "Easter pick", easterNav()),
     // Christmas: Classic big bulbs (approved 2026-11-17), art below (XMAS), the same as the app's ChristmasNav.kt
     make("christmas", is("xmasOn"), false, ["#0F2A1D", "#0B1912"], ["#D7263D", "#2E9E5B", "#E8C15A"], "Christmas pick", { countdown: () => { const d = new Date(); return d.getMonth() === 11 && d.getDate() === 25 ? "Merry Christmas!" : cd(() => B.xmas)(); }, pickTags: ["christmas", "santa claus"], pickWords: ["Christmas", "Santa", "Grinch", "Elf", "Home Alone", "Polar Express", "Klaus"], icons: XMAS.icons, mark: XMAS.mark, topTrim: XMAS.topTrim, bottomTrim: XMAS.bottomTrim }),
   ];

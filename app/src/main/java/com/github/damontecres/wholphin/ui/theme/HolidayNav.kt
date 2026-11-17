@@ -148,11 +148,19 @@ object HolidayNavKit {
             holiday(
                 "newyear",
                 { NyLook.on },
-                0xFF141A2E,
-                0xFF0B0E1A,
-                listOf(0xFFE8C15A, 0xFFC9D0E0),
-                "New Year's pick",
+                0xFF16224A,
+                0xFF0B1230,
+                listOf(0xFFE8B84A, 0xFFC9D1DE),
+                "New Year pick",
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
+            ).copy(
+                // Ben 2026-11-17 (Midnight Fringe): the rail icons are the New Year charms, foil fringe and confetti
+                icons = NewYearNav.icons,
+                topTrim = NewYearNav.topTrim,
+                bottomTrim = NewYearNav.bottomTrim,
+                moving = true,
+                pickTitles = NewYearNav.pickTitles,
+                accent = Color(0xFFE8B84A),
             ),
             // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
             ThanksgivingNav.entry,
@@ -165,14 +173,22 @@ object HolidayNavKit {
                 "Valentine's pick",
                 countdown = { ValentineSeason.countdown(LocalDate.now()) },
             ),
-            holiday(
-                "easter",
-                { EaLook.on },
-                0xFF1F2433,
-                0xFF121522,
-                listOf(0xFFF7B2D9, 0xFFB8E0D2, 0xFFFFE29A, 0xFFC3B1E1),
-                "Easter pick",
-                countdown = { EasterSeason.countdown(LocalDate.now()) },
+            // Easter: direction A "Easter tree ribbon" (Ben 2026-11-17), drawings in EasterNav.kt
+            HolidayNav(
+                key = "easter",
+                isOn = { EaLook.on },
+                railTop = EaLook.Panel,
+                railBottom = Color(0xFF0B150F),
+                lights = EasterNav.Lights,
+                icons = EasterNav.icons,
+                mark = EasterNav.mark,
+                topTrim = EasterNav.topTrim,
+                bottomTrim = EasterNav.bottomTrim,
+                moving = true,
+                countdown = { runCatching { EasterSeason.countdown(LocalDate.now()) }.getOrNull() },
+                pickWhy = "Easter pick",
+                pickTitles = EasterNav.PickTitles,
+                accent = EaLook.Lilac,
             ),
             // Christmas: Classic big bulbs (approved 2026-11-17), art in ChristmasNav.kt
             holiday(
