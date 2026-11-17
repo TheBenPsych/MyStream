@@ -112,14 +112,18 @@ fun SimilarSongsPanel(
                 is SimilarState.Songs -> {
                     Text(
                         text =
-                            "Like ${state.playing}, and not on Benflix yet. " +
-                                "The round button plays 30 seconds. Pick a song to ask for it.",
+                            "Songs that sound like ${state.playing} that you don't have yet. " +
+                                "The round button plays 30 seconds. Pick one to ask for it.",
                         fontSize = BenflixType.small,
                         color = BenflixColors.Muted,
                     )
                     if (!note.isNullOrBlank()) Text(note, fontSize = BenflixType.small, color = BenflixColors.Music)
                     if (state.songs.isEmpty()) {
-                        Text("Nothing new like this one right now.", fontSize = BenflixType.body, color = BenflixColors.Soft)
+                        Text(
+                            "Couldn't find songs like this one that you don't already have. Try another song.",
+                            fontSize = BenflixType.body,
+                            color = BenflixColors.Soft,
+                        )
                     }
                     state.songs.forEachIndexed { i, song ->
                         SimilarLine(

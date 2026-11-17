@@ -765,32 +765,70 @@ def _trending(top_ids):
     return rows
 
 
+def _loose(name):
+    """Names compared with no spaces and $ read as s, so Ke$ha = Kesha and P!nk = Pink"""
+    return re.sub(r"[^a-z0-9]", "", norm(str(name or "").replace("$", "s").replace("!", "i")))
+
+
+def _same_artist(a, b):
+    return same(a, b) or (bool(_loose(a)) and _loose(a) == _loose(b))
+
+
+class _Unreachable(Exception):
+    """The music catalogue didn't answer: nothing is kept, so the next try asks again"""
+
+
 def _seed_row(seed):
     """'Because you have <song>': finds the song in the catalogue, then songs like it from its artist's radio
-    (the artist and artists like them). Kept for a day."""
+    (the artist and artists like them). Kept for a day.
+    Ben 2026-11-17: Kesha's Your Love Is My Drug found nothing. The song has to match closely, but when it
+    doesn't the artist alone is enough, and a catalogue that's out of reach is no longer kept as 'nothing'."""
     artist, title = seed
 
     def load():
         try:
             found = deezer("/search/track", q=f'artist:"{artist}" track:"{title}"', limit=5).get("data") or []
             if not found:
-                found = deezer("/search/track", q=f"{artist} {title}", limit=8).get("data") or []
-        except MusicError:
-            return None
-        t = next((x for x in found if same(x.get("title"), title) and same((x.get("artist") or {}).get("name"), artist)), None)
-        if not t:
-            return None
-        a = t.get("artist") or {}
+                found = deezer("/search/track", q=f"{artist} {title}", limit=15).get("data") or []
+        except MusicError as e:
+            raise _Unreachable() from e
+        by = lambda x: (x.get("artist") or {}).get("name")  # noqa: E731
+        t = next((x for x in found if same(x.get("title"), title) and _same_artist(by(x), artist)), None)
+        t = t or next((x for x in found if _same_artist(by(x), artist)), None)
+        a = (t or {}).get("artist") or {}
+        if not a.get("id"):
+            # The song isn't in the catalogue: start from the artist instead
+            try:
+                hits = deezer("/search/artist", q=artist, limit=5).get("data") or []
+            except MusicError as e:
+                raise _Unreachable() from e
+            a = next((x for x in hits if _same_artist(x.get("name"), artist)), None) or {}
+            if not a.get("id"):
+                return None
         try:
             radio = deezer(f"/artist/{a['id']}/radio", limit=50).get("data") or []
-        except MusicError:
-            return None
+        except MusicError as e:
+            raise _Unreachable() from e
+        mine = lambda x: _same_artist(by(x), a.get("name"))  # noqa: E731
         # Other artists' songs first, so it's something new; a couple from the same artist at the end
-        others = [_song(x) for x in radio if x.get("id") and not same((x.get("artist") or {}).get("name"), a.get("name"))]
-        own = [_song(x) for x in radio if x.get("id") and same((x.get("artist") or {}).get("name"), a.get("name")) and x.get("id") != t.get("id")]
-        return {"artist": a.get("name") or artist, "song": t.get("title") or title, "seed": t.get("id"), "songs": others + own[:3]}
+        others = [_song(x) for x in radio if x.get("id") and not mine(x)]
+        own = [_song(x) for x in radio if x.get("id") and mine(x) and x.get("id") != (t or {}).get("id")]
+        if len(others) < 6:
+            # A thin radio: top songs of artists like this one
+            try:
+                like = (deezer(f"/artist/{a['id']}/related", limit=8).get("data") or [])[:6]
+                for r in like:
+                    for x in (deezer(f"/artist/{r['id']}/top", limit=4).get("data") or [])[:4]:
+                        if x.get("id") and all(x["id"] != y.get("id") for y in others):
+                            others.append(_song(x))
+            except (MusicError, KeyError):
+                pass
+        return {"artist": a.get("name") or artist, "song": (t or {}).get("title") or title, "seed": (t or {}).get("id"), "songs": others + own[:3]}
 
-    return _cached(f"seed-{norm(artist)}-{norm(title)}", load, keep=24 * 3600)
+    try:
+        return _cached(f"seed2-{norm(artist)}-{norm(title)}", load, keep=24 * 3600)
+    except _Unreachable:
+        return None
 
 
 SKIP_SEEDS = re.compile(r"\b(intro|outro|skit|interlude|prelude|untitled|track \d+)\b", re.I)

@@ -675,13 +675,13 @@ fun LikeThisTab(
 
             is SimilarState.Songs -> {
                 Text(
-                    "Like ${state.playing}, and not on Benflix yet. The round button plays 30 seconds. Pick a song to ask for it.",
+                    "Songs that sound like ${state.playing} that you don't have yet. The round button plays 30 seconds. Pick one to ask for it.",
                     fontSize = BenflixType.small,
                     color = BenflixColors.Muted,
                 )
                 if (!note.isNullOrBlank()) Text(note, fontSize = BenflixType.small, color = BenflixColors.Music)
                 if (state.songs.isEmpty()) {
-                    PanelNote("Nothing new right now", "There's nothing like this one to ask for yet. Try again on another song.")
+                    PanelNote("No similar songs found", "Couldn't find songs like this one that you don't already have. Try another song.")
                 }
                 state.songs.forEach { song ->
                     SimilarLine(song = song, onClick = { if (song.asked == null && !song.have) onPick(song) })
