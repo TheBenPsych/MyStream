@@ -165,7 +165,7 @@ B.bookPill = (r) => {
 };
 // One request line for any kind: { key, title, sub, cover, square, pill, acts }
 B.rqLine = (o) => `<div class="item"><div class="rqthumb ${o.square ? "sq" : ""}" style="${o.cover ? `background-image:url('${esc(o.cover)}')` : ""}"></div>
-  <div class="grow"><div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div></div>
+  <div class="grow"><div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div>${o.why ? `<div class="s dim" style="margin-top:4px">${esc(o.why)}</div>` : ""}</div>
   <div class="acts">${o.acts || ""}</div></div>`;
 // Your requests: grouped by the five pills, Ready first. Waiting for you: a flat list with Approve / Decline.
 B.rqLines = (lines, grouped, empty) => {
@@ -429,7 +429,7 @@ B.yoursTab = async (nav) => {
     const lines = mine.filter((r) => !waitIds.has(r.id)).map((r) => B.seerrLine(r, false));
     const wait = waiting.map((r) => B.seerrLine(r, true));
     ((mus && mus.requests) || []).forEach((r) => {
-      const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r) };
+      const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "" };
       if (B.me.admin && r.waiting) wait.push(Object.assign(o, { acts: `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>` }));
       else lines.push(Object.assign(o, { acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
     });
@@ -500,7 +500,7 @@ B.musicTab = async (nav) => {
     ].filter(Boolean);
   };
   const reqLine = (r, answer) => ({
-    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r),
+    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "",
     acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>`
       : `${r.can_retry && admin ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button>`,
   });

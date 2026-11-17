@@ -284,6 +284,8 @@ internal data class AskLine(
     val onNo: (() -> Unit)? = null,
     val onRetry: (() -> Unit)? = null,
     val onRemove: (() -> Unit)? = null,
+    /** Why it couldn't be found, in plain words (music asks), shown under the pill */
+    val why: String = "",
 )
 
 /** Your requests (grouped by the five pills, Ready first) or Waiting for you (flat, with Approve / Decline) */
@@ -359,6 +361,9 @@ internal fun AskLineRow(line: AskLine) {
                 Text(line.sub, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             AskPillChip(line.pill)
+            if (line.why.isNotBlank()) {
+                Text(line.why, fontSize = BenflixType.small, color = BenflixColors.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             line.onYes?.let { MusicButton("Approve", BenflixIcon.CHECK, onClick = it, primary = true) }
@@ -421,6 +426,7 @@ internal fun com.github.damontecres.wholphin.services.MusicRequest.toAskLine(
         onNo = onAnswer?.let { { it(false) } },
         onRetry = if (canRetry) onRetry else null,
         onRemove = onRemove,
+        why = why,
     )
 
 /** A book request as a line. [onAnswer] set = it's waiting for Ben's yes. */
