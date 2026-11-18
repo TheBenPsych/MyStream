@@ -79,7 +79,12 @@ fun MePage(modifier: Modifier = Modifier) {
             modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = if (wide) 32.dp else 0.dp, end = if (wide) 40.dp else 8.dp, top = if (wide) 8.dp else 12.dp, bottom = 32.dp),
+                .padding(
+                    start = if (wide) 32.dp else 0.dp,
+                    end = if (wide) 40.dp else 8.dp,
+                    top = if (wide) 8.dp else 12.dp,
+                    bottom = 32.dp,
+                ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
