@@ -7,7 +7,6 @@ import kotlinx.serialization.UseSerializers
 import org.jellyfin.sdk.model.serializer.UUIDSerializer
 import java.util.UUID
 
-
 /** Where a show page opens: a season (and the episode that was picked). The old season page is gone, see SeriesDetails. */
 @Serializable
 data class SeasonEpisode(
