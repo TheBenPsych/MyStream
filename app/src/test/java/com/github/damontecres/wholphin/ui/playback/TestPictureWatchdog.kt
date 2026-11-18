@@ -46,4 +46,17 @@ class TestPictureWatchdog {
     fun `Paused picture is not judged`() {
         Assert.assertEquals(PictureProblem.NONE, decide(after = PictureSnapshot(10_500, 100, 30)))
     }
+
+    @Test
+    fun `Skip intro while counting is a jump`() {
+        // 3 seconds on the clock, but the video moved 90 seconds (the intro was skipped)
+        Assert.assertTrue(jumpedDuringCheck(movedMs = 93_000, wallMs = 3_000))
+        Assert.assertTrue(jumpedDuringCheck(movedMs = -20_000, wallMs = 3_000))
+    }
+
+    @Test
+    fun `Normal and fast playback are not jumps`() {
+        Assert.assertFalse(jumpedDuringCheck(movedMs = 3_050, wallMs = 3_000))
+        Assert.assertFalse(jumpedDuringCheck(movedMs = 6_000, wallMs = 3_000, speed = 2f))
+    }
 }

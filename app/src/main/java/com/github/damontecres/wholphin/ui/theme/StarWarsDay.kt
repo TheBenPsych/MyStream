@@ -45,9 +45,9 @@ object StarWarsDay {
     /** Settings > Look > Star Wars Day look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isDay(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.MAY && date.dayOfMonth == 4
+    fun isDay(date: LocalDate = Today.date()): Boolean = date.month == Month.MAY && date.dayOfMonth == 4
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isDay(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isDay(date)
 
     const val GREETING = "May the 4th be with you"
 

@@ -160,5 +160,9 @@ fun ApplicationContent(
     }
 }
 
-/** The usual page-to-page fade (the same as the navigation library's own) */
-private const val NAV_FADE_MS = 700
+/**
+ * The usual page-to-page fade. Speed check (Ben 2026-11-18): it was the navigation library's own 0.7 s, and for all
+ * of that time the TV draws both whole pages see-through on top of each other while the new one is still being
+ * built, which is where opening a page stuttered. A quick fade looks the same and is over before it can stutter.
+ */
+private const val NAV_FADE_MS = 250

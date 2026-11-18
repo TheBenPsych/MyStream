@@ -4,14 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.FloatState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import com.github.damontecres.wholphin.ui.util.rememberAmbientClock
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -77,10 +77,16 @@ data class HolidayNav(
     /** Along the bottom of Home (Christmas: snow) */
     val bottomTrim: HolidayArt? = null,
     /**
-     * True when the art above moves (uses its seconds): the icons, mark and trims then redraw every frame on TV and
-     * phone, lite mode included. Leave false for still art so old TVs don't redraw for nothing.
+     * True when the mark and trims move (use their seconds): they then redraw about 20 times a second on TV and
+     * phone ([com.github.damontecres.wholphin.ui.util.AmbientClock]), lite mode included. Leave false for still art
+     * so old TVs don't redraw for nothing. Icons only move with [iconsMove] too.
      */
     val moving: Boolean = false,
+    /**
+     * True when the icons themselves move (use their seconds). Off by default: the icons sit in the rail on every
+     * page, so moving ones keep the whole rail drawing. The mark and trims still follow [moving].
+     */
+    val iconsMove: Boolean = false,
     /** The first Today card on Home ("8 days to Christmas"); null on the day itself or when there's none */
     val countdown: () -> String? = { null },
     /** The small coloured line on that card */
@@ -127,22 +133,26 @@ object HolidayNavKit {
                 countdownKind = "Lucky you",
                 moving = true,
             ),
-            holiday(
-                "videogames",
-                { VgLook.on },
-                0xFF1A1030,
-                0xFF0E0819,
-                listOf(0xFFFF6F91, 0xFF3DD6C6, 0xFFFFE14D, 0xFF7AA7FF),
-                "Game Day pick",
+            // Video Games Day (12 Sep, Kids too): arcade score screen on Home, pixel-art icons, blinking arrow
+            // (art in VideoGamesNav.kt)
+            HolidayNav(
+                key = "videogames",
+                isOn = { VgLook.on },
+                railTop = Color(0xFF1E1238),
+                railBottom = VgLook.Panel,
+                lights = listOf(VideoGamesNav.Flash),
+                icons = VideoGamesNav.icons,
+                mark = VideoGamesNav.mark,
+                topTrim = VideoGamesNav.topTrim,
+                bottomTrim = VideoGamesNav.bottomTrim,
+                moving = true,
+                countdown = { runCatching { VideoGamesNav.countdown() }.getOrNull() },
+                countdownKind = "Video Games Day",
+                pickWhy = "Game night pick",
+                pickTitles = listOf("Free Guy", "Wreck-It Ralph", "Pixels", "Tron", "Ready Player One", "Scott Pilgrim vs. the World"),
+                accent = VgLook.Cyan,
             ),
-            holiday(
-                "earthday",
-                { EdLook.on && !EaLook.on },
-                0xFF12261A,
-                0xFF0A160F,
-                listOf(0xFF5BD18B, 0xFF3FA7D6, 0xFF8BC34A),
-                "Earth Day pick",
-            ),
+            EarthDayNav.entry,
             // Halloween: The charms come along (approved 2026-11-17, sheets spooky-nav-1 and 2), art in SpookyNav.kt
             holiday(
                 "halloween",
@@ -160,55 +170,83 @@ object HolidayNavKit {
                 // the pumpkins glow and the spider bobs
                 moving = true,
             ),
-            holiday("popcorn", { PcLook.on }, 0xFF2A220E, 0xFF17130A, listOf(0xFFF5D76E, 0xFFD7263D, 0xFFFFFFFF), "Popcorn Day pick"),
+            PopcornNav.nav,
             // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)
             StarWarsNav.entry,
+            // St. Patrick's Day: charms for the door icons, bunting and a shamrock patch on Home (StPatricksNav.kt)
             holiday(
                 "stpatricks",
                 { SpLook.on },
-                0xFF0F2A17,
-                0xFF08170D,
-                listOf(0xFF2E9E5B, 0xFF7BD389, 0xFFE8C15A),
+                0xFF0E2B1D,
+                0xFF081710,
+                listOf(0xFF3DBE6C, 0xFFE2B33C, 0xFFF3F0E4),
                 "St. Patrick's pick",
                 countdown = { StPatricksSeason.countdown(LocalDate.now()) },
+            ).copy(
+                icons = StPatricksNav.icons,
+                topTrim = StPatricksNav.bunting,
+                bottomTrim = StPatricksNav.patch,
+                moving = true,
+                pickTitles = StPatricksNav.pickTitles,
+                accent = Color(0xFFE2B33C),
             ),
-            holiday(
-                "july4",
-                { J4Look.on },
-                0xFF101A33,
-                0xFF0A0F1F,
-                listOf(0xFFD7263D, 0xFFFFFFFF, 0xFF3F6FD8),
-                "4th of July pick",
-                countdown = { JulySeason.countdown(LocalDateTime.now()) },
-            ),
+            // 4th of July: its own icons, star, bunting and sparklers (ui/theme/July4Nav.kt)
+            July4Nav.nav(),
             holiday(
                 "newyear",
                 { NyLook.on },
-                0xFF141A2E,
-                0xFF0B0E1A,
-                listOf(0xFFE8C15A, 0xFFC9D0E0),
-                "New Year's pick",
+                0xFF16224A,
+                0xFF0B1230,
+                listOf(0xFFE8B84A, 0xFFC9D1DE),
+                "New Year pick",
                 countdown = { NewYearSeason.countdown(LocalDateTime.now()) },
+            ).copy(
+                // Ben 2026-11-17 (Midnight Fringe): the rail icons are the New Year charms, foil fringe and confetti
+                icons = NewYearNav.icons,
+                topTrim = NewYearNav.topTrim,
+                bottomTrim = NewYearNav.bottomTrim,
+                moving = true,
+                // the charms twinkle and sway themselves (on the shared slow clock)
+                iconsMove = true,
+                pickTitles = NewYearNav.pickTitles,
+                accent = Color(0xFFE8B84A),
             ),
             // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
             ThanksgivingNav.entry,
+            // Valentine's Day: "Love tokens" (art in ValentineNav.kt)
             holiday(
                 "valentine",
                 { ValLook.on },
-                0xFF2A0F1A,
-                0xFF170810,
-                listOf(0xFFFF5C8A, 0xFFD7263D, 0xFFFFB3C6),
+                0xFF3A1226,
+                0xFF200A15,
+                listOf(0xFFE8405E, 0xFFA8284F),
                 "Valentine's pick",
-                countdown = { ValentineSeason.countdown(LocalDate.now()) },
+                countdown = { ValentineNav.countdown(LocalDate.now()) },
+            ).copy(
+                icons = ValentineNav.icons,
+                topTrim = ValentineNav.topTrim,
+                bottomTrim = ValentineNav.bottomTrim,
+                moving = true,
+                countdownKind = "Valentine's Day",
+                pickTitles = ValentineNav.pickTitles,
+                accent = Color(0xFFFF9DB0),
             ),
-            holiday(
-                "easter",
-                { EaLook.on },
-                0xFF1F2433,
-                0xFF121522,
-                listOf(0xFFF7B2D9, 0xFFB8E0D2, 0xFFFFE29A, 0xFFC3B1E1),
-                "Easter pick",
-                countdown = { EasterSeason.countdown(LocalDate.now()) },
+            // Easter: direction A "Easter tree ribbon" (Ben 2026-11-17), drawings in EasterNav.kt
+            HolidayNav(
+                key = "easter",
+                isOn = { EaLook.on },
+                railTop = EaLook.Panel,
+                railBottom = Color(0xFF0B150F),
+                lights = EasterNav.Lights,
+                icons = EasterNav.icons,
+                mark = EasterNav.mark,
+                topTrim = EasterNav.topTrim,
+                bottomTrim = EasterNav.bottomTrim,
+                moving = true,
+                countdown = { runCatching { EasterSeason.countdown(LocalDate.now()) }.getOrNull() },
+                pickWhy = "Easter pick",
+                pickTitles = EasterNav.PickTitles,
+                accent = EaLook.Lilac,
             ),
             // Christmas: Classic big bulbs (approved 2026-11-17), art in ChristmasNav.kt
             holiday(
@@ -305,31 +343,38 @@ object HolidayNavKit {
         }
 }
 
-/** Draws a [HolidayArt] into [modifier]'s box, moving when the holiday's art moves */
+/**
+ * Draws a [HolidayArt] into [modifier]'s box, moving when the holiday's art moves. It sits on its own drawing layer,
+ * so when it moves only the art itself is drawn again, never the posters and pictures around it.
+ */
 @Composable
 fun HolidayArtBox(
     art: HolidayArt,
     modifier: Modifier,
 ) {
     val clock = holidayClock()
-    Canvas(modifier) { art(clock.floatValue) }
+    Canvas(modifier.graphicsLayer()) { art(clock.seconds()) }
+}
+
+/** Seconds since a piece of holiday art showed (see [holidayClock]) */
+class HolidayClock internal constructor(
+    private val ambient: FloatState?,
+    private val start: Float,
+) {
+    /** Read only while drawing */
+    fun seconds(): Float = ambient?.let { it.floatValue - start } ?: 0f
 }
 
 /**
- * Seconds since the art showed, ticking every frame only while the holiday's art moves ([HolidayNav.moving]). It's
- * read while drawing, so a tick only redraws the art and never rebuilds the screen.
+ * Seconds since the art showed, ticking only while the holiday's art moves ([HolidayNav.moving]). It comes from the
+ * one shared [com.github.damontecres.wholphin.ui.util.AmbientClock] (about 20 frames a second, holding still while
+ * you press the remote), and it's read while drawing, so a tick only redraws the art and never rebuilds the screen.
  */
 @Composable
-fun holidayClock(): FloatState {
-    val clock = remember { mutableFloatStateOf(0f) }
-    val moving = remember { HolidayNavKit.current()?.moving == true }
-    if (moving) {
-        LaunchedEffect(Unit) {
-            val start = withFrameMillis { it }
-            while (true) withFrameMillis { clock.floatValue = (it - start) / 1000f }
-        }
-    }
-    return clock
+fun holidayClock(moving: Boolean = remember { HolidayNavKit.current()?.moving == true }): HolidayClock {
+    if (!moving) return remember { HolidayClock(null, 0f) }
+    val ambient = rememberAmbientClock()
+    return remember(ambient) { HolidayClock(ambient, Snapshot.withoutReadObservation { ambient.floatValue }) }
 }
 
 /**
@@ -347,8 +392,10 @@ fun HolidayOrUsualIcon(
     val holiday = remember { HolidayNavKit.current() }
     val art = key?.let { holiday?.icon(it) }
     if (art != null) {
-        val clock = holidayClock()
-        Canvas(modifier.then(Modifier.size(size))) { art(color, clock.floatValue) }
+        // Holiday icons are still unless the holiday says they move ([HolidayNav.iconsMove]): a rail full of icons
+        // ticking used to redraw every page all day long
+        val clock = holidayClock(moving = remember { holiday?.moving == true && holiday.iconsMove })
+        Canvas(modifier.then(Modifier.size(size)).graphicsLayer()) { art(color, clock.seconds()) }
     } else {
         com.github.damontecres.wholphin.ui.components
             .BenflixIconImage(icon, color = color, size = size, contentDescription = null, modifier = modifier)

@@ -49,9 +49,9 @@ object HalloweenSeason {
     /** Settings > Look > Halloween look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.OCTOBER
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.OCTOBER
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** Halloween night: 31 October from 5 PM (the greeting gets a "!" and bats fly across the room) */
     fun isNight(now: LocalDateTime = LocalDateTime.now()): Boolean = now.month == Month.OCTOBER && now.dayOfMonth == 31 && now.hour >= 17

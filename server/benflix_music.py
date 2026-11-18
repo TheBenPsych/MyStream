@@ -12,11 +12,16 @@ How it works, in plain words:
       the same song (live, a cappella, acoustic, instrumental, remix ...) unless that take was asked for,
     * the album gets its cover picture, and Jellyfin is told about the new files.
   If no copy turns up, Benflix tries again by itself (after 1 hour, 6 hours, 1 day and 2 days), then
-  says "Couldn't find it" with a Try again button.
+  says "Couldn't find it" with a Try again button, plus the reason (like "Lidarr found 12 copies but
+  none were 320 MP3 or lossless"), so it's clear what went wrong.
+- Matching: the song's ISRC code (or the album's barcode) is looked up in MusicBrainz, the music list
+  Lidarr uses, so Lidarr gets the exact album even when the names are written differently (98° and
+  98 Degrees, Kanye West and Ye).
 - Soulseek (optional, through the slskd app): a single song Lidarr hasn't found after 20 minutes (or that
   Lidarr can't do at all) is looked for on Soulseek, where people share single songs. Only 320 MP3s,
   lossless files (turned into 320 MP3) or near-320 MP3s of about the right length are taken, then tagged and
-  filed exactly like Lidarr's.
+  filed exactly like Lidarr's. Soulseek is looked at again each time Lidarr tries again. An album Lidarr
+  can't do at all (small artists MusicBrainz doesn't know) is fetched song by song from Soulseek.
 - Playlists: paste a Spotify, YouTube (Music) or Deezer playlist link, or a list of "Artist - Song"
   lines. Only the names are read. Every song is asked for, songs already on Benflix are kept, and the
   playlist is made again in Jellyfin as the songs arrive.
@@ -64,6 +69,12 @@ SLSKD_DIR = os.environ.get("SLSKD_DIR", "/slskd")
 SLSK_AFTER = 20 * 60  # A song Lidarr hasn't found in this long is looked for on Soulseek too
 SLSK_WORDS = ("live", "remix", "instrumental", "karaoke", "cover", "acapella", "a cappella", "acoustic", "demo", "8 bit", "nightcore", "slowed", "sped up", "reverb")
 DEEZER = "https://api.deezer.com"
+MUSICBRAINZ = "https://musicbrainz.org/ws/2"
+MB_UA = "Benflix/1.0 ( https://github.com/thebenpsych/mystream )"
+# Soulseek is looked at again this long after its last look while Lidarr keeps trying
+SLSK_AGAIN = 6 * 3600
+# Old "Couldn't find it" music asks are looked for again once when Tower gets this version
+REFIND_VERSION = 1
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 AUDIO = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".wav", ".wma", ".aiff", ".aif", ".alac", ".ape", ".wv"}
 LOSSLESS = {".flac", ".wav", ".aiff", ".aif", ".alac", ".ape", ".wv"}
@@ -143,6 +154,18 @@ def start(jellyfin_call):
     for r in _state["requests"]:
         if r.get("state") == "problem" and re.search(r"Lidarr answered with an error \((429|50[0234])\)|Couldn't reach Lidarr", r.get("note") or ""):
             _retry(r)
+    # Better matching and Soulseek retries arrived (2026-11-17): every "Couldn't find it" gets one more look
+    seen = _read("refind.json") or {}
+    if seen.get("version", 0) < REFIND_VERSION:
+        n = 0
+        for r in _state["requests"]:
+            if r.get("state") in ("not_found", "problem") and not r.get("parent"):
+                _retry(r)
+                n += 1
+        if n:
+            _save()
+            log(f"looking again for {n} music asks that weren't found before")
+        _write("refind.json", {"version": REFIND_VERSION})
     _state["admin"] = _read("admin.json") or {}
     if os.path.isdir(MEDIA):
         for d in (MUSIC, DROP, LEFT):
@@ -244,12 +267,94 @@ def deezer(path, **params):
     return answer or {}
 
 
-def lidarr(method, path, body=None, **params):
+_mb_last = [0.0]
+
+
+def musicbrainz(path, **params):
+    """MusicBrainz, the music list Lidarr uses (one call a second, as they ask). None when it can't answer."""
+    with _lock:
+        wait = 1.1 - (time.time() - _mb_last[0])
+        _mb_last[0] = time.time() + max(0, wait)
+    if wait > 0:
+        time.sleep(wait)
+    params["fmt"] = "json"
+    try:
+        return _http(MUSICBRAINZ + path + "?" + urllib.parse.urlencode(params), headers={"User-Agent": MB_UA}, timeout=20)
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+
+
+def _mb_best_group(releases, album_title):
+    """From MusicBrainz releases: the release group Lidarr should get (same album name, else the first studio album)"""
+    groups = {}
+    for rel in releases or []:
+        g = rel.get("release-group") or {}
+        if not g.get("id"):
+            continue
+        prim = (g.get("primary-type") or "").lower()
+        sec = [x.lower() for x in g.get("secondary-types") or []]
+        score = (
+            0 if same(rel.get("title") or g.get("title"), album_title) else 1,
+            {"album": 0, "ep": 1, "single": 2}.get(prim, 3),
+            1 if "compilation" in sec else 0,
+            0 if (rel.get("status") or "official").lower() == "official" else 1,
+            rel.get("date") or "9999",
+        )
+        if g["id"] not in groups or score < groups[g["id"]]:
+            groups[g["id"]] = score
+    return min(groups, key=groups.get) if groups else None
+
+
+def _mb_ids(r):
+    """(release group id, artist id) in MusicBrainz for a request, from the song's ISRC or the album's barcode.
+    These are the ids Lidarr uses, so the right album is found however the names are written."""
+    if r.get("mb_checked"):
+        return r.get("mb_group"), r.get("mb_artist_id")
+    r["mb_checked"] = True
+    group = artist = None
+    try:
+        if r["kind"] == "song":
+            isrc = r.get("isrc")
+            if not isrc:
+                isrc = deezer(f"/track/{r['deezer']}").get("isrc")
+                r["isrc"] = isrc
+            found = musicbrainz("/recording", query=f"isrc:{isrc}", limit=10) if isrc else None
+            recs = (found or {}).get("recordings") or []
+            group = _mb_best_group([rel for rec in recs for rel in rec.get("releases") or []], r.get("album"))
+            for rec in recs:
+                credit = rec.get("artist-credit") or []
+                if credit and (credit[0].get("artist") or {}).get("id"):
+                    artist = credit[0]["artist"]["id"]
+                    break
+        else:
+            upc = r.get("upc")
+            if not upc:
+                upc = deezer(f"/album/{r['deezer']}").get("upc")
+                r["upc"] = upc
+            rels = []
+            for code in dict.fromkeys(filter(None, (upc, (upc or "").lstrip("0"), ("0" + upc) if upc and len(upc) == 12 else None))):
+                found = musicbrainz("/release", query=f"barcode:{code}", limit=5)
+                rels = (found or {}).get("releases") or []
+                if rels:
+                    break
+            group = _mb_best_group(rels, r.get("album"))
+            credit = (rels[0].get("artist-credit") or []) if rels else []
+            if credit:
+                artist = (credit[0].get("artist") or {}).get("id")
+    except MusicError:
+        r["mb_checked"] = False  # The catalogue was down: look again next time
+    r["mb_group"], r["mb_artist_id"] = group, artist
+    if group or artist:
+        log(f"MusicBrainz knows {r['artist']} - {r['title']} (album {group}, artist {artist})")
+    return group, artist
+
+
+def lidarr(method, path, body=None, _timeout=60, **params):
     if not LIDARR_URL or not LIDARR_KEY:
         raise MusicError(503, "Lidarr isn't connected yet. Follow the music setup steps, then run the Benflix setup command again.")
     q = ("?" + urllib.parse.urlencode(params, doseq=True)) if params else ""
     try:
-        return _http(LIDARR_URL + "/api/v1" + path + q, method, body, {"X-Api-Key": LIDARR_KEY}, timeout=60)
+        return _http(LIDARR_URL + "/api/v1" + path + q, method, body, {"X-Api-Key": LIDARR_KEY}, timeout=_timeout)
     except urllib.error.HTTPError as e:
         try:
             detail = e.read().decode(errors="replace")[:400]
@@ -309,7 +414,8 @@ def _tell_jellyfin(paths, kind="Created"):
 
 def norm(text):
     """For comparing names: no capitals, accents, edition words in brackets, 'feat.' parts or punctuation"""
-    t = unicodedata.normalize("NFKD", str(text or "")).encode("ascii", "ignore").decode().lower()
+    t = str(text or "").replace("\u00b0", " degrees ")  # 98° = 98 Degrees
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower()
     t = t.replace("&", " and ")
     t = re.sub(r"[\(\[][^\)\]]*[\)\]]", lambda m: "" if any(w in m.group(0) for w in EDITION_WORDS + ("feat", "ft.", "with ", "from ")) else m.group(0), t)
     t = re.sub(r"\s+-\s+(\d{4}\s+)?(remaster(ed)?|mono|stereo|single version|radio edit|live).*$", "", t)
@@ -1091,7 +1197,7 @@ def _owned(song, have):
 def _mark_asked(out, extra_have=None):
     """Adds 'asked' (the words for its request) to anything already asked for"""
     with _lock:
-        by = {(r["kind"], r.get("deezer")): r for r in _state["requests"]}
+        by = {(r["kind"], r.get("deezer")): r for r in _state["requests"] if not r.get("parent")}
     for kind, key in (("song", "songs"), ("album", "albums"), ("album", "new"), ("album", "picks")):
         for x in out.get(key) or []:
             r = by.get((kind, x.get("id")))
@@ -1183,7 +1289,7 @@ def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None, wait=T
     deezer_id = int(deezer_id)
     with _lock:
         for r in _state["requests"]:
-            if r["kind"] == kind and r.get("deezer") == deezer_id:
+            if r["kind"] == kind and r.get("deezer") == deezer_id and not r.get("parent"):
                 if who and not wait and not r.get("user"):
                     # Ben asked for someone who wanted it too: now it's on their list as well
                     r.update({"who": who, "user": user})
@@ -1214,6 +1320,7 @@ def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None, wait=T
             "disc": t.get("disk_number") or 1,
             "number": t.get("track_position") or 0,
             "seconds": t.get("duration") or 0,
+            "isrc": t.get("isrc") or "",
         }
     else:
         a = deezer(f"/album/{deezer_id}")
@@ -1225,6 +1332,7 @@ def ask(kind, deezer_id, playlist=None, quiet=False, who=None, user=None, wait=T
             "cover": a.get("cover_medium") or "",
             "cover_big": a.get("cover_xl") or a.get("cover_big") or "",
             "year": (a.get("release_date") or "")[:4],
+            "upc": a.get("upc") or "",
         }
     r.update({"id": uuid.uuid4().hex[:12], "kind": kind, "deezer": deezer_id, "state": "waiting_ben" if who and wait else "adding", "created": time.time(), "tries": []})
     if who:
@@ -1248,10 +1356,16 @@ def _find(rid):
 
 
 def _retry(r):
-    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time(), "slsk_tried": False, "fails": 0})
+    r.update({"state": "adding" if not r.get("album_id") else "search_now", "tries": [], "note": None, "since": time.time(), "fails": 0})
+    for k in ("slsk_tried", "slsk_at", "slsk_rounds", "slsk_next", "lidarr_note", "mb_checked"):
+        r.pop(k, None)
     _not_busy(r)
-    if not LIDARR_URL and _slsk_on() and r["kind"] == "song":
+    if r.get("slsk_only") or not LIDARR_URL and _slsk_on() and r["kind"] == "song":
         r["state"] = "slsk_search"
+    # An album fetched song by song: its songs that didn't come look again too
+    for k in _kids(r):
+        if k["state"] in ("not_found", "problem", "slsk_wait"):
+            _retry(k)
 
 
 def retry(rid):
@@ -1267,6 +1381,9 @@ def remove(rid):
     with _lock:
         r = _find(rid)
         _state["requests"].remove(r)
+        for k in _kids(r):
+            if k["state"] != "ready":
+                _state["requests"].remove(k)  # Its songs that did arrive stay in Music
         if r["state"] == "slsk_downloading" and (r.get("slsk") or {}).get("cands"):
             try:
                 _slsk_cancel(r["slsk"]["cands"][r["slsk"]["i"]])
@@ -1300,6 +1417,12 @@ def _words(r):
         return "Putting it in your Music folder", 0.97, False
     if s == "slsk_search":
         return "Looking on Soulseek", 0.3, False
+    if s == "slsk_wait":
+        return "Still looking (tries again by itself)", 0.3, False
+    if s == "album_songs":
+        kids = _kids(r)
+        got = sum(1 for k in kids if k["state"] == "ready")
+        return f"Getting it song by song, {got} of {len(kids)}", 0.4 + 0.55 * got / max(1, len(kids)), False
     if s == "slsk_downloading":
         pct = int(r.get("pct") or 0)
         if not pct and r.get("queued"):
@@ -1329,6 +1452,8 @@ def _public(r):
         "bar": round(bar, 3),
         "bad": bad,
         "can_retry": r["state"] in ("not_found", "problem"),
+        # Why it couldn't be found, in plain words (blank when there's nothing more to say)
+        "why": (words if bad and words not in ("Couldn't find it", "Something went wrong") else ""),
         # Redesign 2: one of the five status pills (asked, getting, looking, cant, ready) and how far along
         "pill": _pill(r),
         "pct": int(r.get("pct") or 0),
@@ -1346,9 +1471,9 @@ def _pill(r):
         return "ready"
     if s in ("not_found", "problem"):
         return "cant"
-    if s in ("downloading", "slsk_downloading", "tidying"):
+    if s in ("downloading", "slsk_downloading", "tidying", "album_songs"):
         return "getting"
-    if s in ("searching", "search_now", "slsk_search"):
+    if s in ("searching", "search_now", "slsk_search", "slsk_wait"):
         return "looking"
     return "asked"
 
@@ -1368,7 +1493,7 @@ def status():
     if not _state["admin"].get("token"):
         problems.append("Open Benflix as Ben once so Tower can add new songs to Jellyfin.")
     with _lock:
-        reqs = [_public(r) for r in _state["requests"]]
+        reqs = [_public(r) for r in _state["requests"] if not r.get("parent")]
         pls = [_playlist_public(p) for p in _state["playlists"]]
         drop = list(_drop["lines"][-12:])
     return {
@@ -1450,17 +1575,40 @@ def _quality_profile():
     return lidarr("POST", "/qualityprofile", schema)["id"]
 
 
+# Which kinds of albums Lidarr lists for an artist Benflix adds. Live albums (like CCR's Royal Albert Hall)
+# and DJ mixes were missing before 2026-11-17, so asking for one said "Couldn't find it".
+META_PRIMARY = {"album", "ep", "single", "broadcast", "other"}
+META_SECONDARY = {"studio", "compilation", "soundtrack", "remix", "mixtape/street", "live", "dj-mix", "demo"}
+
+
+def _metadata_types(p):
+    """Turns on the album kinds Benflix wants. True when something changed."""
+    changed = False
+    for key, field, want in (("primaryAlbumTypes", "albumType", META_PRIMARY), ("secondaryAlbumTypes", "albumType", META_SECONDARY)):
+        for it in p.get(key) or []:
+            on = (it.get(field) or {}).get("name", "").lower() in want
+            if on and not it.get("allowed"):
+                it["allowed"] = True
+                changed = True
+    return changed
+
+
 def _metadata_profile():
     for p in lidarr("GET", "/metadataprofile") or []:
         if p.get("name") == METADATA_NAME:
+            if _metadata_types(p):
+                try:
+                    lidarr("PUT", f"/metadataprofile/{p['id']}", p)
+                    log("Lidarr's Benflix profile now lists live albums and DJ mixes too")
+                except MusicError as e:
+                    log(f"couldn't update Lidarr's Benflix profile: {e.message}")
             return p["id"]
     schema = lidarr("GET", "/metadataprofile/schema")
-    primary = {"album", "ep", "single"}
-    secondary = {"studio", "compilation", "soundtrack", "remix", "mixtape/street"}
     for it in schema.get("primaryAlbumTypes") or []:
-        it["allowed"] = (it.get("albumType") or {}).get("name", "").lower() in primary
+        it["allowed"] = False
     for it in schema.get("secondaryAlbumTypes") or []:
-        it["allowed"] = (it.get("albumType") or {}).get("name", "").lower() in secondary
+        it["allowed"] = False
+    _metadata_types(schema)
     for it in schema.get("releaseStatuses") or []:
         it["allowed"] = (it.get("releaseStatus") or {}).get("name", "").lower() == "official"
     schema["name"] = METADATA_NAME
@@ -1578,17 +1726,21 @@ def _tick():
     lidarr_busy = False  # Once Lidarr says it's busy, the rest wait for the next round instead of piling on
     now = time.time()
     for r in todo:
-        uses_lidarr = not r["state"].startswith("slsk_") and lidarr_ok
+        uses_lidarr = not r["state"].startswith("slsk_") and r["state"] != "album_songs" and lidarr_ok
         if uses_lidarr and (lidarr_busy or _lidarr_rest[0] > now or r.get("busy_until", 0) > now):
             continue
         adding = r["state"] == "adding"
         try:
-            if r["state"].startswith("slsk_"):
+            if r["state"] == "album_songs":
+                _album_songs_step(r)
+            elif r["state"].startswith("slsk_"):
                 _slsk_step(r)
             elif lidarr_ok:
                 _step(r, queue)
                 _maybe_soulseek(r)
-            elif r["kind"] == "song" and _slsk_on() and not r.get("slsk_tried"):
+            elif _slsk_on() and r["kind"] == "album":
+                _slsk_album(r)
+            elif r["kind"] == "song" and _slsk_on() and _slsk_due(r):
                 r["state"] = "slsk_search"
                 _slsk_step(r)
             if uses_lidarr:
@@ -1686,8 +1838,8 @@ def _step(r, queue):
         first = (r.get("tries") or [time.time()])[0]
         waited = time.time() - first
         if waited > GIVE_UP_AFTER:
-            r.update({"state": "not_found", "note": "Couldn't find it"})
-            log(f"couldn't find {r['artist']} - {r['title']}")
+            r.update({"state": "not_found", "note": _why_not_found(album_id)})
+            log(f"couldn't find {r['artist']} - {r['title']}: {r['note']}")
             _unmonitor(r)
             return
         tries = len(r.get("tries") or [])
@@ -1704,8 +1856,28 @@ def _add_to_lidarr(r):
     """Finds the exact album in Lidarr (any edition) and adds it, with its artist if needed"""
     q, m = _ready_lidarr["quality"], _ready_lidarr["metadata"]
     root = _ready_lidarr["root"]
-    found = lidarr("GET", "/album/lookup", term=f"{r['artist']} {r['album']}") or []
-    match = next((a for a in found if same(a.get("title"), r["album"]) and same((a.get("artist") or {}).get("artistName"), r["artist"])), None)
+    group, mb_artist = _mb_ids(r)
+    match = None
+    if group:
+        # The exact album by its MusicBrainz id: no name matching needed
+        try:
+            found = lidarr("GET", "/album/lookup", term=f"lidarr:{group}") or []
+        except MusicError as e:
+            if e.busy:
+                raise
+            found = []
+        match = next((a for a in found if a.get("foreignAlbumId") == group), found[0] if found else None)
+    if not match:
+        found = lidarr("GET", "/album/lookup", term=f"{r['artist']} {r['album']}") or []
+        match = next(
+            (
+                a
+                for a in found
+                if same(a.get("title"), r["album"])
+                and (same((a.get("artist") or {}).get("artistName"), r["artist"]) or mb_artist and (a.get("artist") or {}).get("foreignArtistId") == mb_artist)
+            ),
+            None,
+        )
     if match:
         r["mb_album"] = match.get("foreignAlbumId")
         existing = [a for a in lidarr("GET", "/album", foreignAlbumId=match.get("foreignAlbumId")) or [] if a.get("foreignAlbumId") == match.get("foreignAlbumId")]
@@ -1742,18 +1914,20 @@ def _add_to_lidarr(r):
             log(f"adding the album straight away didn't work ({e.message}); adding the artist first")
         r["mb_artist"] = (match.get("artist") or {}).get("foreignArtistId")
     # The artist first, then pick the album (or the album with the song) from their list
+    if not r.get("mb_artist") and mb_artist:
+        r["mb_artist"] = mb_artist
     if not r.get("mb_artist"):
         people = lidarr("GET", "/artist/lookup", term=r["artist"]) or []
         who = next((p for p in people if same(p.get("artistName"), r["artist"])), None)
         if not who:
-            r.update({"state": "not_found", "note": "Lidarr's music list doesn't know this artist"})
+            r.update({"state": "not_found", "note": "Couldn't find it: Lidarr's music list (MusicBrainz) doesn't know this artist"})
             return
         r["mb_artist"] = who.get("foreignArtistId")
     mine = next((a for a in lidarr("GET", "/artist") or [] if a.get("foreignArtistId") == r["mb_artist"]), None)
     if not mine:
         people = lidarr("GET", "/artist/lookup", term=f"lidarr:{r['mb_artist']}") or []
         if not people:
-            r.update({"state": "not_found", "note": "Lidarr's music list doesn't know this artist"})
+            r.update({"state": "not_found", "note": "Couldn't find it: Lidarr's music list (MusicBrainz) doesn't know this artist"})
             return
         body = dict(people[0])
         body.update(
@@ -1778,9 +1952,10 @@ def _pick_album(r):
     albums = lidarr("GET", "/album", artistId=r["artist_id"], includeAllArtistAlbums="true") or []
     if not albums:
         if time.time() - r.get("since", time.time()) > 1800:
-            r.update({"state": "not_found", "note": "Lidarr couldn't load this artist's albums"})
+            r.update({"state": "not_found", "note": "Couldn't find it: Lidarr couldn't load this artist's albums"})
         return
     pick = next((a for a in albums if r.get("mb_album") and a.get("foreignAlbumId") == r["mb_album"]), None)
+    pick = pick or next((a for a in albums if r.get("mb_group") and a.get("foreignAlbumId") == r["mb_group"]), None)
     pick = pick or next((a for a in albums if same(a.get("title"), r["album"])), None)
     if not pick and r["kind"] == "song":
         tracks = lidarr("GET", "/track", artistId=r["artist_id"]) or []
@@ -1792,7 +1967,7 @@ def _pick_album(r):
         if not pick and time.time() - r.get("since", time.time()) < 600:
             return  # Lidarr may still be reading the songs
     if not pick:
-        r.update({"state": "not_found", "note": "Couldn't find that album in Lidarr's music list"})
+        r.update({"state": "not_found", "note": "Couldn't find it: that album isn't in Lidarr's music list (MusicBrainz)"})
         return
     r["album_id"] = pick["id"]
     r["state"] = "search_now"
@@ -1816,6 +1991,120 @@ def _search(r):
     lidarr("POST", "/command", {"name": "AlbumSearch", "albumIds": [album_id]})
     r.setdefault("tries", []).append(time.time())
     r["state"] = "searching"
+
+
+def _why_not_found(album_id):
+    """Asks Lidarr to look once more and says, in plain words, why nothing was taken"""
+    try:
+        found = lidarr("GET", "/release", _timeout=240, albumId=album_id) or []
+    except MusicError:
+        return "Couldn't find it"
+    if not found:
+        return "Couldn't find it: Lidarr's search sites had no copies of this album"
+    if any(x.get("approved") for x in found):
+        return "Couldn't find it: Lidarr found copies but the downloads didn't finish"
+    reasons = {}
+    for x in found:
+        for why in x.get("rejections") or []:
+            w = str(why.get("reason") if isinstance(why, dict) else why).lower()
+            if "quality" in w or "not wanted in profile" in w:
+                k = "weren't 320 MP3 or lossless"
+            elif "seeder" in w or "peers" in w:
+                k = "had nobody sharing them"
+            elif "blocklist" in w:
+                k = "were blocked as bad before"
+            elif "size" in w:
+                k = "were the wrong size"
+            elif "match" in w or "track" in w or "release" in w:
+                k = "didn't match the album's songs"
+            else:
+                k = "were turned down by Lidarr"
+            reasons[k] = reasons.get(k, 0) + 1
+            break
+    top = sorted(reasons.items(), key=lambda kv: -kv[1])[:2]
+    said = " and ".join(f"{n} {k}" for k, n in top)
+    return f"Couldn't find it: Lidarr found {len(found)} copies, but {said}" if said else "Couldn't find it"
+
+
+def _kids(r):
+    """The songs of an album that's being fetched song by song"""
+    if not r.get("kids"):
+        return []
+    with _lock:
+        by = {x["id"]: x for x in _state["requests"]}
+    return [by[k] for k in r["kids"] if k in by]
+
+
+def _slsk_album(r):
+    """Lidarr can't get this album (often a small artist MusicBrainz doesn't know): get its songs one by one from Soulseek"""
+    if r.get("kids"):
+        r["lidarr_note"] = r.get("note")
+        r.update({"state": "album_songs", "note": None})
+        for k in _kids(r):
+            if k["state"] in ("not_found", "problem"):
+                _retry(k)
+        return
+    tracks = (deezer(f"/album/{r['deezer']}/tracks", limit=200) or {}).get("data") or []
+    try:
+        have = set(_have_songs())
+    except OSError:
+        have = set()
+    kids = []
+    with _lock:
+        for t in tracks:
+            one = _song(t)
+            one["artist"] = one["artist"] or r["artist"]
+            if _owned(one, have):
+                continue
+            k = {
+                "id": uuid.uuid4().hex[:12],
+                "kind": "song",
+                "deezer": t.get("id"),
+                "title": t.get("title_short") or t.get("title") or "",
+                "full_title": t.get("title") or "",
+                "artist": (t.get("artist") or {}).get("name") or r["artist"],
+                "album": r.get("album") or r["title"],
+                "album_deezer": r.get("deezer"),
+                "cover": r.get("cover") or "",
+                "cover_big": r.get("cover_big") or "",
+                "disc": t.get("disk_number") or 1,
+                "number": t.get("track_position") or 0,
+                "seconds": t.get("duration") or 0,
+                "state": "slsk_search",
+                "slsk_only": True,
+                "parent": r["id"],
+                "created": time.time(),
+                "tries": [],
+            }
+            _state["requests"].append(k)
+            kids.append(k["id"])
+    if not kids:
+        r.update({"state": "not_found", "note": r.get("note") or "Couldn't find it"})
+        return
+    r["lidarr_note"] = r.get("note")
+    r.update({"kids": kids, "state": "album_songs", "note": None})
+    log(f"getting {r['artist']} - {r['title']} song by song from Soulseek ({len(kids)} songs)")
+
+
+def _album_songs_step(r):
+    kids = _kids(r)
+    if not kids:
+        r.update({"state": "not_found", "note": r.get("lidarr_note") or "Couldn't find it"})
+        return
+    if any(k["state"] not in ("ready", "not_found", "problem") for k in kids):
+        return
+    got = sum(1 for k in kids if k["state"] == "ready")
+    if got == len(kids):
+        r.update({"state": "ready", "ready_at": time.time(), "note": None, "source": "soulseek"})
+        log(f"ready from Soulseek: {r['artist']} - {r['title']} (all {got} songs)")
+    elif got:
+        r.update({"state": "ready", "ready_at": time.time(), "note": None, "source": "soulseek", "partial": f"{got} of {len(kids)}"})
+        log(f"ready from Soulseek: {r['artist']} - {r['title']} ({got} of {len(kids)} songs)")
+    else:
+        why = r.get("lidarr_note") or ""
+        note = why + ", and Soulseek had none of its songs" if why.startswith("Couldn't find it:") else "Couldn't find it on Lidarr or Soulseek"
+        r.update({"state": "not_found", "note": note})
+        log(f"couldn't find {r['artist']} - {r['title']} anywhere")
 
 
 def _album_files(album_id):
@@ -1885,7 +2174,7 @@ def _finish(r, files):
         if r["kind"] == "song" and not _pick_tracks(tracks, _wanted_title(r)):
             # The copy didn't have this song: try once more, then say so
             if len(r.get("tries") or []) >= 3:
-                r.update({"state": "not_found", "note": "The copies found didn't have this song"})
+                r.update({"state": "not_found", "note": "Couldn't find it: the copies found didn't have this song"})
                 _unmonitor(r)
             else:
                 r["state"] = "search_now"
@@ -2206,19 +2495,41 @@ def slskd(method, path, body=None):
         raise MusicError(502, "Couldn't reach slskd (Soulseek).")
 
 
+def _slsk_due(r):
+    """Soulseek hasn't been looked at for this ask yet, or not for a while (people come online at different times)"""
+    last = r.get("slsk_at")
+    if r.get("slsk_tried") and not last:
+        last = r.get("since") or r.get("created") or 0  # asked before Soulseek was looked at more than once
+    return not last or time.time() - last > SLSK_AGAIN
+
+
 def _maybe_soulseek(r):
-    """A song Lidarr couldn't do, or hasn't found in 20 minutes, is looked for on Soulseek (once per try)"""
-    if r["kind"] != "song" or not _slsk_on() or r.get("slsk_tried"):
+    """A song Lidarr couldn't do, or hasn't found in 20 minutes, is looked for on Soulseek, and again every few
+    hours while Lidarr keeps trying. An album Lidarr can't do is fetched song by song from Soulseek."""
+    if not _slsk_on():
+        return
+    if r["kind"] == "album":
+        stuck = r["state"] == "searching" and r.get("tries") and time.time() - r["tries"][0] > 24 * 3600 and not r.get("kids")
+        if r["state"] == "not_found" or stuck:
+            _slsk_album(r)
         return
     stuck = r["state"] == "searching" and r.get("tries") and time.time() - r["tries"][0] > SLSK_AFTER
-    if stuck or r["state"] in ("not_found", "problem"):
+    final = r["state"] in ("not_found", "problem")
+    if (stuck and _slsk_due(r)) or (final and (not r.get("slsk_at") or time.time() - r["slsk_at"] > 3600)):
         r["lidarr_state"] = r["state"]
+        r["lidarr_note"] = r.get("note")
         r.update({"state": "slsk_search", "note": None})
         log(f"looking on Soulseek for {r['artist']} - {r['title']}")
 
 
 def _slsk_step(r):
+    if r["state"] == "slsk_wait":
+        if time.time() >= r.get("slsk_next", 0):
+            r["state"] = "slsk_search"
+        return
     if r["state"] == "slsk_search":
+        if not _slsk_online():
+            return  # Soulseek's network is down for slskd right now: look when it's back, without counting a try
         r["slsk"] = {"cands": _slsk_find(r), "i": 0}
         _slsk_problem[0] = None
         if not r["slsk"]["cands"]:
@@ -2230,15 +2541,44 @@ def _slsk_step(r):
 
 
 def _slsk_gave_up(r):
-    """Soulseek had nothing good: back to Lidarr (which keeps trying), or Couldn't find it"""
+    """Soulseek had nothing good: back to Lidarr (which keeps trying), look again later, or Couldn't find it"""
     r["slsk_tried"] = True
+    r["slsk_at"] = time.time()
     r.pop("slsk", None)
     back = r.pop("lidarr_state", None)
-    if LIDARR_URL and r.get("album_id") and back == "searching":
+    if LIDARR_URL and r.get("album_id") and back == "searching" and not r.get("slsk_only"):
         r["state"] = "searching"
+        return
+    # Lidarr can't help: Soulseek alone tries again later (1 hour, 6 hours, 1 day, 2 days), as Lidarr would
+    rounds = r.get("slsk_rounds", 0)
+    if rounds < len(RETRY_AFTER) and not r.get("album_id"):
+        r["slsk_rounds"] = rounds + 1
+        r.update({"state": "slsk_wait", "slsk_next": time.time() + RETRY_AFTER[rounds], "note": None})
+        return
+    lidarr_why = r.pop("lidarr_note", None)
+    if lidarr_why and lidarr_why.startswith("Couldn't find it:"):
+        note = lidarr_why + ", and Soulseek had no good copy"
+    elif LIDARR_URL and not r.get("slsk_only"):
+        note = "Couldn't find it on Lidarr or Soulseek"
     else:
-        r.update({"state": "not_found", "note": "Couldn't find it (Lidarr and Soulseek)" if LIDARR_URL else "Couldn't find it on Soulseek"})
-        log(f"couldn't find {r['artist']} - {r['title']} on Soulseek either")
+        note = "Couldn't find it: Soulseek had no good copy"
+    r.update({"state": "not_found", "note": note})
+    log(f"couldn't find {r['artist']} - {r['title']} on Soulseek either")
+
+
+def _slsk_online():
+    """slskd is signed in to the Soulseek network (a search while it's offline finds nothing, which isn't a real answer)"""
+    try:
+        st = slskd("GET", "/server") or {}
+    except MusicError:
+        return False
+    if "isLoggedIn" in st or "isConnected" in st:
+        ok = bool(st.get("isLoggedIn", st.get("isConnected")))
+    else:
+        ok = "loggedin" in str(st.get("state") or "").lower().replace(" ", "") or not st.get("state")
+    if not ok:
+        _slsk_problem[0] = "slskd is running but not signed in to Soulseek. Check its Soulseek username and password."
+    return ok
 
 
 def _slsk_find(r):
@@ -2291,8 +2631,8 @@ def _slsk_search(text, r):
             if ext == ".mp3":
                 if rate >= 320:
                     q = 3
-                elif rate == 0 or rate >= 256:
-                    q = 1
+                elif rate == 0 or rate >= 256 or f.get("isVariableBitRate") and rate >= 220:
+                    q = 1  # near-320 (V0 VBR averages about 245), like Lidarr allows
                 else:
                     continue
             elif ext in LOSSLESS or ext == ".m4a" and (f.get("bitDepth") or 0) >= 16:

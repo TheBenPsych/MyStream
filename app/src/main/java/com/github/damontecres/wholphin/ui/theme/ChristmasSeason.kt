@@ -28,15 +28,15 @@ object ChristmasSeason {
     /** The last day of the Christmas look; New Year's runs 27 December to 1 January */
     const val LAST_DAY = 26
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.DECEMBER && date.dayOfMonth <= LAST_DAY
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.DECEMBER && date.dayOfMonth <= LAST_DAY
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /**
      * Which recording of the room plays: presents pile up through December (L1, L2, L3), Santa's sleigh
      * flies past on Christmas Eve, and on Christmas Day the presents are opened.
      */
-    fun variant(date: LocalDate = LocalDate.now()): String {
+    fun variant(date: LocalDate = Today.date()): String {
         if (date.month != Month.DECEMBER) return "AFTER"
         val d = date.dayOfMonth
         return when {
@@ -49,14 +49,14 @@ object ChristmasSeason {
         }
     }
 
-    fun greeting(date: LocalDate = LocalDate.now()): String =
+    fun greeting(date: LocalDate = Today.date()): String =
         when {
             date.dayOfMonth == 24 -> "Merry Christmas Eve"
             else -> "Merry Christmas"
         }
 
     /** "12 sleeps to Christmas", up to Christmas Eve */
-    fun countdown(date: LocalDate = LocalDate.now()): String? {
+    fun countdown(date: LocalDate = Today.date()): String? {
         if (date.month != Month.DECEMBER || date.dayOfMonth > 24) return null
         // Sleeps left: on 23 December it's one more night's sleep, then Santa comes
         return when (val sleeps = 24 - date.dayOfMonth) {

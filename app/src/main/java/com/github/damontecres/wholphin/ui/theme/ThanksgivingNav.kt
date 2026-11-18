@@ -41,7 +41,7 @@ object ThanksgivingNav {
     fun day(year: Int): LocalDate = LocalDate.of(year, 11, 1).with(TemporalAdjusters.dayOfWeekInMonth(4, DayOfWeek.THURSDAY))
 
     /** The first Today card: "9 days to Thanksgiving", "Happy Thanksgiving" on the day, nothing after it */
-    fun countdown(today: LocalDate = LocalDate.now()): String? {
+    fun countdown(today: LocalDate = Today.date()): String? {
         val left = ChronoUnit.DAYS.between(today, day(today.year))
         return when {
             left > 1 -> "$left days to Thanksgiving"
@@ -301,7 +301,8 @@ object ThanksgivingNav {
         val dip = (if (phone) 16f else 15f) * dp
         val leafPx = (if (phone) 32f else 34f) * dp
         val per = if (phone) 6 else 9
-        val y = 6f * dp
+        // Just under the greeting and clock line (it sits at the very top since the calmer Home)
+        val y = (if (phone) 52f else 64f) * dp
         for (i in 0 until swags) {
             val x0 = i * seg + 4f * dp
             val x1 = (i + 1) * seg - 4f * dp
@@ -351,7 +352,8 @@ object ThanksgivingNav {
     private fun DrawScope.corner() {
         val dp = density
         val phone = size.width < 600f * dp
-        val s = if (phone) .85f else 1f
+        // TV: small enough to sit in the gap under the Today cards; phones have room below them
+        val s = if (phone) .85f else .52f
         val base = size.height - 2f * dp
         val right = size.width - (if (phone) 12f else 24f) * dp
         listOf(Triple(-96f, -55f, 0), Triple(-70f, 30f, 2), Triple(-4f, 70f, 1), Triple(-112f, -20f, 3)).forEachIndexed { i, (dx, deg, c) ->

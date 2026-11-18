@@ -42,20 +42,20 @@ object ValentineSeason {
 
     const val LAST_DAY = 14
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth <= LAST_DAY
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth <= LAST_DAY
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** Valentine's Day itself: rose petals fall on Who's watching all day */
-    fun isDay(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth == LAST_DAY
+    fun isDay(date: LocalDate = Today.date()): Boolean = date.month == Month.FEBRUARY && date.dayOfMonth == LAST_DAY
 
     const val GREETING = "Happy Valentine's Day"
 
     /** The big words on Who's watching: the usual question, then "Happy Valentine's Day" on the 14th */
-    fun whoGreeting(date: LocalDate = LocalDate.now()): String? = if (isDay(date)) GREETING else null
+    fun whoGreeting(date: LocalDate = Today.date()): String? = if (isDay(date)) GREETING else null
 
     /** The line under the greetings: "4 days to Valentine's Day", then "It's Valentine's Day" on the 14th */
-    fun countdown(date: LocalDate = LocalDate.now()): String? {
+    fun countdown(date: LocalDate = Today.date()): String? {
         if (!isSeason(date)) return null
         val n = LAST_DAY - date.dayOfMonth
         return when {
@@ -66,10 +66,10 @@ object ValentineSeason {
     }
 
     /** Chocolates left in the box: 13 on 1 February, one fewer each day, the last one stays for the 13th and 14th */
-    fun chocolates(date: LocalDate = LocalDate.now()): Int = (LAST_DAY - date.dayOfMonth.coerceAtMost(LAST_DAY)).coerceAtLeast(1)
+    fun chocolates(date: LocalDate = Today.date()): Int = (LAST_DAY - date.dayOfMonth.coerceAtMost(LAST_DAY)).coerceAtLeast(1)
 
     /** Today's recorded room (extras/scenes/valentine): "c13" to "c1", or "day" on the 14th */
-    fun videoName(date: LocalDate = LocalDate.now()): String = if (isDay(date)) "day" else "c${chocolates(date)}"
+    fun videoName(date: LocalDate = Today.date()): String = if (isDay(date)) "day" else "c${chocolates(date)}"
 }
 
 /**

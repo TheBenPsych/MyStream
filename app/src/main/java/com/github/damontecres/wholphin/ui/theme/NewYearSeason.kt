@@ -50,16 +50,16 @@ object NewYearSeason {
     /** Settings > Look > New Year's look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean =
+    fun isSeason(date: LocalDate = Today.date()): Boolean =
         (date.month == Month.DECEMBER && date.dayOfMonth >= 27) || (date.month == Month.JANUARY && date.dayOfMonth == 1)
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     /** The year being welcomed (on the balloons and in "Happy 2027!") */
-    fun year(date: LocalDate = LocalDate.now()): Int = if (date.month == Month.DECEMBER) date.year + 1 else date.year
+    fun year(date: LocalDate = Today.date()): Int = if (date.month == Month.DECEMBER) date.year + 1 else date.year
 
     /** Which recording of the room plays: "eve" 27 to 31 December (bottle corked), "day" on 1 January (opened) */
-    fun variant(date: LocalDate = LocalDate.now()): String = if (date.month == Month.JANUARY) "day" else "eve"
+    fun variant(date: LocalDate = Today.date()): String = if (date.month == Month.JANUARY) "day" else "eve"
 
     /** Seconds left in the 10-second countdown to midnight on 31 December, else 0 */
     fun countdownSecs(now: LocalDateTime = LocalDateTime.now()): Int {
