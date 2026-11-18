@@ -1957,9 +1957,9 @@ private fun FindShelf(
                                 if (row.ownedCount > 0) {
                                     {
                                         item(key = "owned") {
-                                            OwnedMoreButton(row.ownedCount, ownedOpen == row.title) {
+                                            OwnedMoreButton(row.ownedCount, ownedOpen == row.title, onClick = {
                                                 ownedOpen = if (ownedOpen == row.title) null else row.title
-                                            }
+                                            })
                                         }
                                     }
                                 } else {
