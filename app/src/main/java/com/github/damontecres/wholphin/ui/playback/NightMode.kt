@@ -131,13 +131,16 @@ fun NightModeEffect(player: Player) {
     val context = LocalContext.current
     val on by remember { NightMode.enabled(context) }.collectAsState()
     val sessionId = (player as? ExoPlayer)?.audioSessionId ?: C.AUDIO_SESSION_ID_UNSET
-    val effect = remember(player, sessionId) { NightMode.createEffect(sessionId) }
+    // Only hooked up while Night mode is on. A sound effect sitting on the player, even switched
+    // off, is something stock Wholphin never has, and some TVs' sound chips go quiet with one
+    // attached after a jump (like Skip intro).
+    val effect = remember(player, sessionId, on) { if (on == true) NightMode.createEffect(sessionId) else null }
     DisposableEffect(effect) {
         onDispose { effect?.release() }
     }
-    LaunchedEffect(effect, on) {
+    LaunchedEffect(effect) {
         try {
-            effect?.setEnabled(on == true)
+            effect?.setEnabled(true)
         } catch (ex: Exception) {
             Timber.w(ex, "Could not switch night mode")
         }

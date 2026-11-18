@@ -66,9 +66,10 @@ fun decideSoundProblem(
 internal const val MIN_PROGRESS_MS = 2_000L
 
 /**
- * Benflix sound watchdog. After a skip, a jump, a sound/subtitle switch or a new video, it
- * checks for a few seconds that sound is really coming out. If the picture keeps going but no
- * sound does, it brings the sound back:
+ * Benflix sound fixer. It only runs when someone presses "No sound" in the player's Fix a problem
+ * list. It used to check by itself after every skip, jump and switch, but poking the sound
+ * output right after a jump is what stock Wholphin never does, and on some TVs that poke itself
+ * left the sound silent after Skip intro (Ben, 2026-11-18). When asked, it brings the sound back:
  *  1. first by restarting the sound part of the player (quick, the picture keeps playing),
  *  2. then by asking the server to convert just the sound to a simple format,
  *  3. and last by letting the server convert the whole video.

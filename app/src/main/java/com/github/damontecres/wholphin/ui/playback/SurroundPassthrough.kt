@@ -7,7 +7,6 @@ import android.media.AudioManager
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.core.content.edit
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 
 /**
@@ -18,9 +17,7 @@ import androidx.media3.common.util.UnstableApi
  * the TV's own passthrough goes silent after a pause, a skip or turning subtitles on, while the
  * picture keeps playing (Ben, 2026-11-04/05). So on TCL it is automatically on only when a
  * soundbar or receiver is connected (HDMI ARC/eARC or optical), everywhere else it is on. The
- * player menu switch overrides the automatic choice. When it is turned on on a TCL, the player gives the sound a
- * fresh start (a jump to the same spot) after each pause and subtitle switch (see needsKick).
- * Remembered on this device.
+ * player menu switch overrides the automatic choice. Remembered on this device.
  */
 @OptIn(UnstableApi::class)
 object SurroundPassthrough {
@@ -67,25 +64,6 @@ object SurroundPassthrough {
             AudioDeviceInfo.TYPE_HDMI_EARC,
             AudioDeviceInfo.TYPE_LINE_DIGITAL,
         )
-
-    /** Dolby/DTS formats that go to the sound chip as-is when passthrough is on */
-    private val passthroughFormats =
-        setOf(
-            MimeTypes.AUDIO_AC3,
-            MimeTypes.AUDIO_E_AC3,
-            MimeTypes.AUDIO_E_AC3_JOC,
-            MimeTypes.AUDIO_AC4,
-            MimeTypes.AUDIO_DTS,
-            MimeTypes.AUDIO_DTS_HD,
-            MimeTypes.AUDIO_DTS_EXPRESS,
-            MimeTypes.AUDIO_TRUEHD,
-        )
-
-    /** True when this TV's passthrough needs a fresh start after a pause or subtitle switch */
-    fun needsKick(
-        context: Context,
-        soundMimeType: String?,
-    ): Boolean = soundMimeType in passthroughFormats && badPassthroughDevice() && isOn(context)
 
     fun toggle(context: Context) {
         val on = !isOn(context)

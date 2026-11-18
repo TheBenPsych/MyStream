@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
@@ -66,6 +67,19 @@ fun decidePictureProblem(
     }
     return PictureProblem.NONE
 }
+
+/**
+ * True when the video moved a lot more (or less) than the clock did while counting frames: a skip
+ * or a jump happened in between, so the frame numbers can't be judged.
+ */
+fun jumpedDuringCheck(
+    movedMs: Long,
+    wallMs: Long,
+    speed: Float = 1f,
+): Boolean = movedMs < 0 || movedMs > (wallMs * speed.coerceAtLeast(1f)).toLong() + JUMP_SLACK_MS
+
+/** How far the video may run ahead of the clock before it counts as a jump (fast playback, rounding) */
+internal const val JUMP_SLACK_MS = 2_000L
 
 /** The video must move on at least this much to judge the picture */
 internal const val MIN_PICTURE_PROGRESS_MS = 3_000L
@@ -159,9 +173,18 @@ class PictureWatchdog(
         delay(SETTLE_MS)
         if (!exo.isPlaying || exo.isReleased) return
         val before = snapshot(exo) ?: return
+        val startedAt = SystemClock.elapsedRealtime()
         delay(CHECK_MS)
         if (!exo.isPlaying || exo.isReleased) return
         val after = snapshot(exo) ?: return
+        val wallMs = SystemClock.elapsedRealtime() - startedAt
+        if (jumpedDuringCheck(after.positionMs - before.positionMs, wallMs, exo.playbackParameters.speed)) {
+            // A skip (like Skip intro) or a jump happened while counting, so the numbers say nothing
+            // about the picture. Restarting here used to stop and restart the whole player right
+            // after Skip intro, which could leave the sound silent. Look again from the new spot.
+            Timber.i("Picture check: jumped while checking, looking again")
+            return check(itemId, reason)
+        }
 
         val format = exo.videoFormat
         val decoder = decoderName
