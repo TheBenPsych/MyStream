@@ -19,7 +19,12 @@
     const pageName = opts.title || "";
     B.placeName = pageName;
     const buttons = (opts.buttons || []).filter(Boolean).slice(0, MAX_BUTTONS);
-    const tabs = [{ name: "Overview", id: "tpOverview", keep: true }, ...(opts.tabs || [])].filter((t) => !t.skip);
+    // Glowfin D1 (Ben 2026-11-18): opts.rows = no tab line, the story sits under the info line and every tab is a
+    // row underneath, one after another (Overview becomes "About" near the end)
+    const rows = !!opts.rows;
+    const tabs = rows
+      ? [...(opts.tabs || []), { name: "About", id: "tpOverview", keep: true }].filter((t) => !t.skip)
+      : [{ name: "Overview", id: "tpOverview", keep: true }, ...(opts.tabs || [])].filter((t) => !t.skip);
     if (opts.overviewFirst === false) {
       const o = tabs.shift();
       tabs.splice(1, 0, o);
@@ -35,16 +40,17 @@
       ? `<div class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" style="${opts.cover.url ? `background-image:url('${opts.cover.url}')` : ""}"></div>`
       : "";
     // The whole story on the left, Details (studio, released, the file for you) on the right; one under the other on phones
-    const overview = `<div class="tp-ov"><div class="tp-ovl"><div class="ov">${esc(opts.story || "")}</div>
+    const overview = `${rows ? `<h3 class="tp-h">About</h3>` : ""}<div class="tp-ov"><div class="tp-ovl">${rows ? "" : `<div class="ov">${esc(opts.story || "")}</div>`}
       <div class="scores tp-strip">${opts.strip || ""}</div>${opts.overviewExtra || ""}</div><div class="tp-ovr" id="tpOvDetails"></div></div>`;
-    B.page().innerHTML = B.top("") + `<div class="details tp" style="--door:${opts.color || "var(--ink)"}">
+    B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
         <div class="main">
           <div class="tp-name"><h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : ""}<i class="tp-line"></i></div>
-          <div class="meta">${meta}${opts.infoExtra || ""}</div>
+          <div class="meta">${meta}${rows && opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}${opts.infoExtra || ""}</div>
+          ${rows && opts.story ? `<div class="tp-story">${esc(opts.story)}</div>` : ""}
           <div class="btns">${buttons.map(btn).join("")}</div>
           <div class="tp-why" id="tpWhy">${esc(opts.status || "")}</div>
-          <div class="tp-tabs" role="tablist">${tabs.map((t) => `<button role="tab" class="tp-tab" data-tab="${t.id}">${esc(t.name)}</button>`).join("")}</div>
+          <div class="tp-tabs" role="tablist" ${rows ? "hidden" : ""}>${tabs.map((t) => `<button role="tab" class="tp-tab" data-tab="${t.id}">${esc(t.name)}</button>`).join("")}</div>
         </div>
       </div>
       <div class="tp-panes">${tabs.map((t) => `<div class="tp-pane" id="${t.id}" hidden>${t.id === "tpOverview" ? overview : t.html || ""}</div>`).join("")}</div>
@@ -82,6 +88,12 @@
     };
     const show = (t) => {
       if (!t) return;
+      if (rows) {
+        // Rows: every row shows at once; open() scrolls to it
+        const pane = $("#" + t.id);
+        if (pane) pane.scrollIntoView({ block: "start", behavior: "smooth" });
+        return;
+      }
       $$(".tp-tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === t.id));
       $$(".tp-pane").forEach((p) => { p.hidden = p.id !== t.id; });
       if (t.load && !loaded.has(t.id)) {
@@ -111,8 +123,23 @@
       B.onLeave(() => io.disconnect());
     }
     const opening = tabs.find((t) => t.name === opts.open) || tabs[0];
-    refresh();
-    show(opening);
+    if (rows) {
+      // Every row shows and loads now (each only once); an empty one hides itself
+      watch.disconnect();
+      const refreshRows = () => tabs.forEach((t) => { const pane = $("#" + t.id); if (pane) pane.hidden = !t.keep && empty(pane); });
+      const watchRows = new MutationObserver(() => refreshRows());
+      $$(".tp-pane").forEach((p) => watchRows.observe(p, { childList: true, subtree: true }));
+      B.onLeave(() => watchRows.disconnect());
+      tabs.filter((t) => t.load).forEach((t) => {
+        const go = t.load;
+        t.load = null;
+        Promise.resolve(go($("#" + t.id))).catch(() => {}).then(refreshRows);
+      });
+      refreshRows();
+    } else {
+      refresh();
+      show(opening);
+    }
     if (first) first.focus({ preventScroll: true });
     return {
       root,

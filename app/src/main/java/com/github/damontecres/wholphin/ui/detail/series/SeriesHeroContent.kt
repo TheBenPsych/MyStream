@@ -50,7 +50,8 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
+import com.github.damontecres.wholphin.ui.detail.AskForSimilarRow
+import com.github.damontecres.wholphin.ui.detail.askForSimilarName
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
@@ -94,10 +95,11 @@ class SeriesHeroActions(
 )
 
 /**
- * Benflix Redesign 2: a show's own page on the shared title page frame. It opens on the Episodes tab
- * (season chips and one row of wide episode pictures). Buttons: Resume S2 E4 (or Play), Episodes,
- * Trailer (greyed out when there isn't one), My List, More. Tabs: Episodes, Overview, More like this,
- * Cast, Parents' guide. Anime shows get Characters and voices instead of Parents' guide.
+ * Glowfin D1: a show's own page. Buttons: Resume S2 E4 (or Play), Trailer (greyed out when there isn't
+ * one), My List, More. Right under them: season chips and one row of wide episode pictures, then Cast and
+ * crew, More like this, Ask for similar, About and Parents' guide. Anime shows get Characters and voices
+ * instead of Parents' guide. It is one list, so Down always reaches every row (the remote used to get
+ * stuck on Play here).
  */
 @Composable
 fun SeriesHeroContent(
@@ -157,18 +159,13 @@ fun SeriesHeroContent(
             add(TitleButton(label = "More", icon = BenflixIcon.MORE, onClick = { showMore = true }))
         }
     val scores = rememberScoreParts(series)
-    val strip =
-        remember(series, scores) {
-            buildList {
-                if (!easy) addAll(scores)
-                showMakers(series)?.let { add(it) }
-            }
-        }
+    val strip = remember(series) { listOfNotNull(showMakers(series)) }
+    // Glowfin D1: the rows under the buttons, top to bottom (seasons and episodes first)
     val tabs =
         buildList {
             if (state.inlineEpisodes.isNotEmpty()) {
                 add(
-                    TitleTab("Episodes") { scope ->
+                    TitleTab("Episodes", heading = false) { scope ->
                         EpisodesSection(
                             seasons = state.seasons,
                             seasonIndex = state.inlineSeasonIndex,
@@ -191,29 +188,16 @@ fun SeriesHeroContent(
                     },
                 )
             }
-            add(
-                TitleTab("Overview") { scope ->
-                    TitleOverview(
-                        scope = scope,
-                        title = series.title.orEmpty(),
-                        story = series.data.overview,
-                        strip = strip,
-                        extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
-                        details = remember(series, state.isAdmin) { titleDetails(series, state.isAdmin, show = true) },
-                    )
-                },
-            )
-            if (anime && !easy) {
-                add(TitleTab("Characters and voices") { scope -> AnimeRows(series, Modifier.padding(start = scope.side)) })
+            if (state.people.isNotEmpty()) {
+                add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
             }
             if (state.similar.isNotEmpty()) {
                 add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })
             }
             if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
                 add(
-                    TitleTab("Ask for similar") { scope ->
-                        AskForSimilarTab(
-                            kind = state.askKind,
+                    TitleTab(askForSimilarName(state.askKind, show = true), note = "Not on Glowfin yet") { scope ->
+                        AskForSimilarRow(
                             best = state.discovered,
                             more = state.discoveredMore,
                             side = scope.side,
@@ -223,9 +207,21 @@ fun SeriesHeroContent(
                     },
                 )
             }
-            if (state.people.isNotEmpty()) {
-                add(TitleTab("Cast") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            if (anime && !easy) {
+                add(TitleTab("Characters and voices") { scope -> AnimeRows(series, Modifier.padding(start = scope.side)) })
             }
+            add(
+                TitleTab("About") { scope ->
+                    TitleOverview(
+                        scope = scope,
+                        title = series.title.orEmpty(),
+                        story = null,
+                        strip = strip,
+                        extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
+                        details = remember(series, state.isAdmin) { titleDetails(series, state.isAdmin, show = true) },
+                    )
+                },
+            )
             if (!anime && state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
             }
@@ -239,8 +235,10 @@ fun SeriesHeroContent(
         rating = series.data.officialRating,
         buttons = buttons,
         tabs = tabs,
-        openTab = "Episodes",
         big = easy,
+        rows = true,
+        story = series.data.overview,
+        scores = if (easy) emptyList() else scores,
         modifier = modifier,
     )
 

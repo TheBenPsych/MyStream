@@ -103,9 +103,10 @@
     const path = kind === "movie" ? "movies" : "tv";
     const more = keep(await pages((gs.length ? gs : [null]).flatMap((g) => [1, 2].map((n) => g ? `/discover/${path}/genre/${g}?page=${n}` : `/discover/${path}?page=${n}`)))).slice(0, 30);
     if (!B.alive(nav) || (!best.length && !more.length)) return;
-    const note = `<small class="dim">Only ${esc(label)} · not on Glowfin yet</small>`;
-    add(box, (best.length ? B.row("Closest matches", best.map((r) => B.askCard(r))) : "") +
-      (more.length ? B.row(`More ${label} to ask for`, more.map((r) => B.askCard(r))) : ""));
+    // Glowfin D1 (Ben 2026-11-18): ONE row under More like this, closest matches first
+    const note = `<small class="dim">Not on Glowfin yet</small>`;
+    const name = sort === "live" ? (kind === "movie" ? "movies" : "shows") : label;
+    add(box, B.row(`Ask for similar ${name}`, [...best, ...more].map((r) => B.askCard(r))));
     const h = box.querySelector(".rowx h3");
     if (h) h.insertAdjacentHTML("beforeend", " " + note);
   };

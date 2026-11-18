@@ -108,6 +108,10 @@ class TitleButton(
 /** One tab: [content] is only drawn (and so only fetched) once you land on it */
 class TitleTab(
     val name: String,
+    /** Glowfin rows pages: false leaves out the row name (Episodes brings its own season chips) */
+    val heading: Boolean = true,
+    /** Glowfin rows pages: a quiet note beside the row name ("Not on Glowfin yet") */
+    val note: String? = null,
     val content: @Composable (TitleTabScope) -> Unit,
 )
 
@@ -182,7 +186,56 @@ fun TitlePage(
     /** The tab the page opens on (by name). Falls back to the first tab. */
     openTab: String? = null,
     big: Boolean = false,
+    /**
+     * Glowfin D1 (Ben 2026-11-18): no tab line. The story and buttons sit over the faded picture and every
+     * tab becomes a row underneath, one after another, so Down walks through the whole page.
+     */
+    rows: Boolean = false,
+    /** Rows pages: the story under the info line (3 lines on TV) */
+    story: String? = null,
+    /** Rows pages: "IMDb 7.8   Rotten Tomatoes 91%" after the info line */
+    scores: List<StripPart> = emptyList(),
 ) {
+    if (rows) {
+        // Buttons that only open a tab (Episodes) aren't needed: the rows are right under the buttons
+        val rowButtons = buttons.filter { it.opensTab == null }.take(MAX_BUTTONS)
+        if (rememberTitleWide()) {
+            WideRowsTitlePage(
+                title = title,
+                accent = accent,
+                picture = picture,
+                info = info,
+                rating = rating,
+                scores = scores,
+                story = story,
+                infoExtra = infoExtra,
+                originalTitle = originalTitle,
+                buttons = rowButtons,
+                sections = tabs,
+                statusLine = statusLine,
+                big = big,
+                modifier = modifier,
+            )
+        } else {
+            PhoneRowsTitlePage(
+                title = title,
+                accent = accent,
+                picture = picture,
+                info = info,
+                rating = rating,
+                scores = scores,
+                story = story,
+                infoExtra = infoExtra,
+                originalTitle = originalTitle,
+                buttons = rowButtons,
+                sections = tabs,
+                statusLine = statusLine,
+                big = big,
+                modifier = modifier,
+            )
+        }
+        return
+    }
     val shownTabs = tabs
     // The tab you're on is kept by name, so a tab that turns up later (say Parents' guide) doesn't move you
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
@@ -242,7 +295,7 @@ fun TitlePage(
     }
 }
 
-private const val MAX_BUTTONS = 5
+internal const val MAX_BUTTONS = 5
 
 @Composable
 private fun WideTitlePage(
@@ -513,7 +566,7 @@ private fun PhoneTitlePage(
 
 /** The picture (or cover) behind the words, with the shade that keeps the words readable */
 @Composable
-private fun BoxScope.TitlePictureView(
+internal fun BoxScope.TitlePictureView(
     picture: TitlePicture,
     wide: Boolean,
 ) {
@@ -592,7 +645,7 @@ private fun BoxScope.TitlePictureView(
 
 /** The title (shrinks a little when long, never cut off), the original name and the door colour line */
 @Composable
-private fun TitleWords(
+internal fun TitleWords(
     title: String,
     originalTitle: String?,
     accent: Color,
@@ -614,6 +667,7 @@ private fun TitleWords(
             color = BenflixColors.Text,
             fontSize = size,
             lineHeight = size * 1.1f,
+            fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
             fontWeight = FontWeight.ExtraBold,
             maxLines = if (wide) 2 else 3,
             overflow = TextOverflow.Ellipsis,
@@ -639,7 +693,7 @@ private fun TitleWords(
 
 /** "2024 · [PG-13] · 2h 46m · Sci-fi · Adventure" */
 @Composable
-private fun InfoLine(
+internal fun InfoLine(
     info: String,
     rating: String?,
 ) {
@@ -677,7 +731,7 @@ private fun InfoLine(
  * show why).
  */
 @Composable
-private fun TitleButtonView(
+internal fun TitleButtonView(
     button: TitleButton,
     primary: Boolean,
     big: Boolean,
@@ -738,7 +792,7 @@ private fun TitleButtonView(
 
 /** Phones: the other buttons as an icon with a small word under it */
 @Composable
-private fun PhoneIconButton(
+internal fun PhoneIconButton(
     button: TitleButton,
     onOffTap: (String) -> Unit,
 ) {
