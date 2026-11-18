@@ -165,7 +165,7 @@ B.bookPill = (r) => {
 };
 // One request line for any kind: { key, title, sub, cover, square, pill, acts }
 B.rqLine = (o) => `<div class="item"><div class="rqthumb ${o.square ? "sq" : ""}" style="${o.cover ? `background-image:url('${esc(o.cover)}')` : ""}"></div>
-  <div class="grow"><div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div></div>
+  <div class="grow"><div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div>${o.why ? `<div class="s dim" style="margin-top:4px">${esc(o.why)}</div>` : ""}</div>
   <div class="acts">${o.acts || ""}</div></div>`;
 // Your requests: grouped by the five pills, Ready first. Waiting for you: a flat list with Approve / Decline.
 B.rqLines = (lines, grouped, empty) => {
@@ -429,7 +429,7 @@ B.yoursTab = async (nav) => {
     const lines = mine.filter((r) => !waitIds.has(r.id)).map((r) => B.seerrLine(r, false));
     const wait = waiting.map((r) => B.seerrLine(r, true));
     ((mus && mus.requests) || []).forEach((r) => {
-      const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r) };
+      const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "" };
       if (B.me.admin && r.waiting) wait.push(Object.assign(o, { acts: `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>` }));
       else lines.push(Object.assign(o, { acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
     });
@@ -500,7 +500,7 @@ B.musicTab = async (nav) => {
     ].filter(Boolean);
   };
   const reqLine = (r, answer) => ({
-    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r),
+    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "",
     acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>`
       : `${r.can_retry && admin ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button>`,
   });
@@ -964,10 +964,23 @@ B.animeRequests = (nav, getLists, openList) => {
     const wanted = new Set(c.titles.map(cleanName).filter(Boolean));
     const yearOk = (x, slack) => { const y = +((x.releaseDate || x.firstAirDate || "").slice(0, 4)); return !y || !c.year || Math.abs(y - c.year) <= slack; };
     const nameOf = (x) => cleanName(x.title || x.name || x.originalName || x.originalTitle);
+    // Tower's anime id list first (AniList / MyAnimeList -> TMDB), so it never opens a look-alike like the live-action One Piece
+    const al = c.id > 0 ? c.id : null, mal = c.idMal || (c.id < 0 ? -c.id : null);
+    if (al || mal) {
+      const ids = await B.call("GET", `api/anime/tmdb?${al ? "anilist=" + al : ""}${al && mal ? "&" : ""}${mal ? "mal=" + mal : ""}`).catch(() => null);
+      const key = (ids && ((al && ids.anilist && ids.anilist[al]) || (mal && ids.mal && ids.mal[mal]))) || "";
+      const [kind, tmdb] = key.split(":");
+      if (tmdb && (kind === "movie" || kind === "tv")) {
+        if (btn) btn.classList.remove("busy");
+        if (B.alive(nav)) B.go(`#/ask/${kind}/${tmdb}`);
+        return;
+      }
+    }
     let found = null;
     for (const n of c.titles.filter((t) => /[A-Za-z0-9]/.test(t)).slice(0, 3)) {
       const r = await seerr(`/search?query=${enc(n.replace(/[:!?]/g, " ").trim())}&page=1`).catch(() => null);
-      const res = ((r && r.results) || []).filter((x) => x.mediaType === want);
+      // only cartoons (TMDB genre 16), never a live-action version with the same name
+      const res = ((r && r.results) || []).filter((x) => x.mediaType === want && (x.genreIds || []).includes(16));
       found = res.find((x) => wanted.has(nameOf(x)) && yearOk(x, 1))
         || res.find((x) => { const m = nameOf(x); return m.length >= 4 && [...wanted].some((w) => w.startsWith(m) || m.startsWith(w)) && yearOk(x, 2); })
         || res.find((x) => wanted.has(nameOf(x)));

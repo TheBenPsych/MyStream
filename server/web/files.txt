@@ -28,6 +28,9 @@ js/spot.js
 js/extras.js
 js/fix.js
 js/games.js
+js/bgames.js
+js/barcade.js
+js/bpuzzles.js
 js/livetv.js
 js/lobby.js
 js/me.js
@@ -56,8 +59,17 @@ js/stpatricks.js
 js/starwars.js
 manifest.webmanifest
 reader.html
-sounds/doors.wav
-sounds/opening.wav
+sounds/game_boost.wav
+sounds/game_coin.wav
+sounds/game_crash.wav
+sounds/game_flap.wav
+sounds/game_flip.wav
+sounds/game_go.wav
+sounds/game_miss.wav
+sounds/game_point.wav
+sounds/game_pop.wav
+sounds/game_thud.wav
+sounds/game_tick.wav
 sw.js
 vendor/hls.LICENSE.txt
 vendor/hls.min.js
@@ -232,3 +244,6 @@ img/sp/sp_mark_horseshoe.png
 img/sp/sp_mark_pot.png
 img/sp/sp_mark_rainbow.png
 img/sp/sp_play_clover.png
+fonts/subtitle_atkinson_bold.ttf
+fonts/subtitle_atkinson_bolditalic.ttf
+fonts/atkinson_hyperlegible.LICENSE.txt

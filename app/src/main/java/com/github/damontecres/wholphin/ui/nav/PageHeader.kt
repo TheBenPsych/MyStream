@@ -100,7 +100,9 @@ fun BenflixPageHeader(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.weight(1f).then(if (overPicture) Modifier.softShadow() else Modifier),
+            // Home's left side is empty (Home draws its own greeting there), so no shadow: it showed as a wide
+            // black oval across the top of Home that hid the greeting (Ben 2026-11-17)
+            modifier = Modifier.weight(1f).then(if (overPicture && start !is HeaderStart.None) Modifier.softShadow() else Modifier),
         ) {
             when (start) {
                 is HeaderStart.None -> {

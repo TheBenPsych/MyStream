@@ -1484,6 +1484,9 @@ class Handler(BaseHTTPRequestHandler):
                 except lobby.LobbyError as e:
                     raise HelperError(e.status, e.message)
                 return self.send(status, answer)
+            if method == "GET" and path == "/api/anime/tmdb":
+                # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
+                return self.send(200, anime_tmdb(query))
             if method == "GET" and path == "/api/family":
                 # Ben's "Request for" picker: who he can ask for (grown-ups only, never Kids)
                 if not is_admin:
@@ -1761,6 +1764,184 @@ def tower_addresses():
     return {"id": server_id, "addresses": out, "checked": int(time.time())}
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Request doctor (Ben 2026-11-17): movie and show requests that go through Seerr into Radarr and Sonarr.
+#  - Anime movies: Seerr only knows "anime" for shows, so anime movies went to the normal Movies folder with the
+#    normal movie rules (which block Japanese + English audio). A Seerr override rule now sends Japanese animated
+#    movies to Radarr's anime profile and anime folder. Seerr's Sonarr anime profile/folder are filled in if empty.
+#  - Requests Seerr couldn't hand to Radarr/Sonarr ("failed") are retried every few hours instead of looking declined.
+#  - Anime ids: AniList / MyAnimeList number -> TMDB number, so the Anime tab opens the right title instead of
+#    guessing by name (the live-action One Piece instead of the anime). From Fribb's anime-lists, refreshed daily.
+ANIME_IDS_URL = "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json"
+ANIME_IDS_FILE = os.path.join(SAVES, ".benflix", "anime-tmdb-ids.json")
+DOCTOR_FILE = os.path.join(SAVES, ".benflix", "request-doctor.json")
+RETRY_EVERY_S = 6 * 3600
+_anime_ids = {"at": 0, "al": {}, "mal": {}}
+_anime_ids_lock = threading.Lock()
+
+
+def _doctor_log(text):
+    print(f"Request doctor: {text}", flush=True)
+
+
+def _anime_ids_load():
+    """The AniList/MAL -> TMDB table, from disk or GitHub (once a day)"""
+    with _anime_ids_lock:
+        if _anime_ids["al"] and time.time() - _anime_ids["at"] < 86400:
+            return _anime_ids
+        try:
+            with open(ANIME_IDS_FILE) as f:
+                saved = json.load(f)
+            if time.time() - saved.get("at", 0) < 86400 and saved.get("al"):
+                _anime_ids.update(saved)
+                return _anime_ids
+        except (OSError, ValueError):
+            saved = None
+        try:
+            with urllib.request.urlopen(ANIME_IDS_URL, timeout=60) as r:
+                rows = json.loads(r.read())
+            al, mal = {}, {}
+            for x in rows:
+                t = x.get("themoviedb_id")
+                if not isinstance(t, dict):
+                    continue
+                key = f"movie:{t['movie']}" if t.get("movie") else (f"tv:{t['tv']}" if t.get("tv") else None)
+                if not key:
+                    continue
+                if x.get("anilist_id"):
+                    al[str(x["anilist_id"])] = key
+                if x.get("mal_id"):
+                    mal[str(x["mal_id"])] = key
+            _anime_ids.update({"at": time.time(), "al": al, "mal": mal})
+            try:
+                os.makedirs(os.path.dirname(ANIME_IDS_FILE), exist_ok=True)
+                with open(ANIME_IDS_FILE + ".tmp", "w") as f:
+                    json.dump(_anime_ids, f)
+                os.replace(ANIME_IDS_FILE + ".tmp", ANIME_IDS_FILE)
+            except OSError:
+                pass
+        except Exception as e:  # GitHub down: keep the old table, the apps fall back to names
+            _doctor_log(f"couldn't get the anime id list ({e})")
+            if saved and saved.get("al"):
+                _anime_ids.update(saved)
+        return _anime_ids
+
+
+def anime_tmdb(query):
+    """GET /api/anime/tmdb?anilist=1,21&mal=5 -> {"anilist": {"1": "tv:30991"}, "mal": {...}}"""
+    table = _anime_ids_load()
+
+    def pick(kind, src):
+        ids = [i for i in re.split(r"[,\s]+", ",".join(query.get(kind, []))) if i.isdigit()][:100]
+        return {i: src[i] for i in ids if i in src}
+
+    return {"anilist": pick("anilist", table["al"]), "mal": pick("mal", table["mal"])}
+
+
+def _doctor_state():
+    try:
+        with open(DOCTOR_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _doctor_save(state):
+    try:
+        os.makedirs(os.path.dirname(DOCTOR_FILE), exist_ok=True)
+        with open(DOCTOR_FILE + ".tmp", "w") as f:
+            json.dump(state, f)
+        os.replace(DOCTOR_FILE + ".tmp", DOCTOR_FILE)
+    except OSError:
+        pass
+
+
+def _anime_profile(profiles):
+    return next((p for p in profiles or [] if "anime" in str(p.get("name", "")).lower()), None)
+
+
+def _anime_folder(folders, want_movies):
+    folders = [f for f in folders or [] if "anime" in str(f.get("path", "")).lower()]
+    words = ("movie", "film") if want_movies else ("show", "series", "tv")
+    return next((f for f in folders if any(w in f["path"].lower() for w in words)), folders[0] if len(folders) == 1 else None)
+
+
+def _doctor_anime_routing(link, state):
+    """Anime movies -> Radarr's anime profile and folder; Seerr's Sonarr anime settings filled in when empty"""
+    radarrs = [r for r in (_seerr(link, "GET", "/settings/radarr") or []) if not r.get("is4k")]
+    radarr = next((r for r in radarrs if r.get("isDefault")), radarrs[0] if radarrs else None)
+    if radarr:
+        detail = _seerr(link, "GET", f"/service/radarr/{radarr['id']}") or {}
+        prof, folder = _anime_profile(detail.get("profiles")), _anime_folder(detail.get("rootFolders"), True)
+        if prof and folder:
+            rules = _seerr(link, "GET", "/overrideRule") or []
+            mine = [r for r in rules if r.get("radarrServiceId") == radarr["id"] and "16" in str(r.get("genre") or "").split(",")]
+            if not mine:
+                _seerr(link, "POST", "/overrideRule", {
+                    "radarrServiceId": radarr["id"], "genre": "16", "language": "ja",
+                    "profileId": prof["id"], "rootFolder": folder["path"],
+                })
+                _doctor_log(f"anime movies now go to {folder['path']} with {prof['name']}")
+        elif not state.get("told-radarr"):
+            state["told-radarr"] = True
+            _doctor_log("Radarr has no anime profile or no anime movie folder, so anime movies stay with the normal ones")
+    sonarrs = [x for x in (_seerr(link, "GET", "/settings/sonarr") or []) if not x.get("is4k")]
+    sonarr = next((x for x in sonarrs if x.get("isDefault")), sonarrs[0] if sonarrs else None)
+    if sonarr and (not sonarr.get("activeAnimeProfileId") or not sonarr.get("activeAnimeDirectory")):
+        detail = _seerr(link, "GET", f"/service/sonarr/{sonarr['id']}") or {}
+        prof, folder = _anime_profile(detail.get("profiles")), _anime_folder(detail.get("rootFolders"), False)
+        if prof and folder:
+            fixed = dict(sonarr)
+            fixed.setdefault("animeSeriesType", "anime")
+            if not fixed.get("activeAnimeProfileId"):
+                fixed["activeAnimeProfileId"], fixed["activeAnimeProfileName"] = prof["id"], prof["name"]
+            if not fixed.get("activeAnimeDirectory"):
+                fixed["activeAnimeDirectory"] = folder["path"]
+            _seerr(link, "PUT", f"/settings/sonarr/{sonarr['id']}", fixed)
+            _doctor_log(f"anime shows now go to {fixed['activeAnimeDirectory']} with {prof['name']}")
+
+
+def _doctor_retry_failed(link, state):
+    """Requests Seerr couldn't hand to Radarr/Sonarr get another go every few hours"""
+    tried = state.setdefault("retried", {})
+    now = time.time()
+    answer = _seerr(link, "GET", "/request?take=100&skip=0&filter=failed&sort=modified") or {}
+    for req in answer.get("results") or []:
+        rid = str(req.get("id"))
+        if now - tried.get(rid, 0) < RETRY_EVERY_S:
+            continue
+        tried[rid] = now
+        try:
+            _seerr(link, "POST", f"/request/{rid}/retry")
+            media = req.get("media") or {}
+            _doctor_log(f"retried failed request {rid} ({media.get('mediaType')} {media.get('tmdbId')})")
+        except Exception as e:
+            _doctor_log(f"retry of request {rid} didn't work ({e})")
+    # forget old ones
+    state["retried"] = {k: v for k, v in tried.items() if now - v < 30 * 86400}
+
+
+def request_doctor(admin):
+    """Hourly. admin() gives (token, user id) of Ben's sign-in (needed to read Seerr's address and key)."""
+    time.sleep(120)
+    while True:
+        try:
+            token = (admin() or (None, None))[0]
+            link = _seerr_link(token) if token else None
+            if link:
+                state = _doctor_state()
+                for job in (_doctor_anime_routing, _doctor_retry_failed):
+                    try:
+                        job(link, state)
+                    except Exception as e:  # an older Seerr without override rules, Radarr down, ...
+                        _doctor_log(f"{job.__name__} skipped ({e})")
+                _doctor_save(state)
+            _anime_ids_load()
+        except Exception as e:
+            _doctor_log(f"problem ({e})")
+        time.sleep(3600)
+
+
 def wifi_finder():
     """Benflix: answers "who is JellyfinServer?" on port 7360, so TVs find Tower on the Wi-Fi even when Jellyfin
     (in Docker) can't hear the question or names an old address. The answer says Tower's real address."""
@@ -1826,6 +2007,12 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
+    threading.Thread(
+        target=request_doctor,
+        args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),
+        name="request-doctor",
+        daemon=True,
+    ).start()
     threading.Thread(target=wifi_finder, daemon=True).start()
     print(f"Benflix games helper on port {PORT} (RomM {ROMM_URL}, Jellyfin {JELLYFIN_URL})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

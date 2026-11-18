@@ -317,6 +317,7 @@ class AnimeGenrePageViewModel
         private val aniList: AniListService,
         private val malBrowse: MalBrowse,
         private val ownedIndex: com.github.damontecres.wholphin.ui.discover.OwnedAnimeIndex,
+        private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         /** Benflix (Ben, 2026-11-16): anime already on Benflix is left out of the list */
@@ -541,19 +542,58 @@ class AnimeGenrePageViewModel
         }
 
         private suspend fun findInRequests(item: AniListBrowseItem) =
-            findAnimeInRequests(seerrService, item.titles, item.year, item.isMovie)
+            findAnimeInRequests(
+                seerrService,
+                item.titles,
+                item.year,
+                item.isMovie,
+                anilistId = item.id.takeIf { it > 0 },
+                malId = (-item.id).takeIf { it > 0 },
+                helper = helper,
+            )
     }
 
 /**
- * Benflix: finds an AniList anime in Requests. AniList and Requests (TMDB) don't share numbers, so it's
- * looked up by its names and year. A show AniList splits in seasons is one show in Requests.
+ * Benflix: finds an AniList anime in Requests. AniList and Requests (TMDB) don't share numbers, so Tower's
+ * anime id list (AniList / MyAnimeList -> TMDB) is asked first (Ben 2026-11-17: going by name could open the
+ * live-action One Piece instead of the anime). Only when that list doesn't know it is it looked up by its names
+ * and year, and then only cartoons count. A show AniList splits in seasons is one show in Requests.
  */
 internal suspend fun findAnimeInRequests(
     seerrService: SeerrService,
     titles: List<String>,
     year: Int?,
     isMovie: Boolean,
+    anilistId: Int? = null,
+    malId: Int? = null,
+    helper: com.github.damontecres.wholphin.services.GameLibraryClient? = null,
 ): com.github.damontecres.wholphin.data.model.DiscoverItem? {
+    if (helper != null && (anilistId != null || malId != null)) {
+        try {
+            val answer =
+                helper.getJson(
+                    "/api/anime/tmdb?" +
+                        listOfNotNull(anilistId?.let { "anilist=$it" }, malId?.let { "mal=$it" }).joinToString("&"),
+                )
+            val key =
+                anilistId?.let { answer.optJSONObject("anilist")?.optString(it.toString()) }?.takeIf { it.isNotBlank() }
+                    ?: malId?.let { answer.optJSONObject("mal")?.optString(it.toString()) }?.takeIf { it.isNotBlank() }
+            val kind = key?.substringBefore(':')
+            val tmdbId = key?.substringAfter(':')?.toIntOrNull()
+            if (tmdbId != null) {
+                if (kind == "movie") {
+                    return seerrService.createDiscoverItem(seerrService.api.moviesApi.movieMovieIdGet(movieId = tmdbId))
+                }
+                if (kind == "tv") {
+                    return seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
+                }
+            }
+        } catch (ex: kotlin.coroutines.cancellation.CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            timber.log.Timber.w(ex, "Tower's anime id list didn't answer, finding by name")
+        }
+    }
     val wantedType = if (isMovie) SeerrItemType.MOVIE else SeerrItemType.TV
     val names = titles.filter { name -> name.any { it.isLetterOrDigit() && it.code < 0x2E80 } }.take(3)
     val wanted =
@@ -566,7 +606,7 @@ internal suspend fun findAnimeInRequests(
             seerrService
                 .search(AniListService.searchable(name))
                 .map { seerrService.createDiscoverItem(it) }
-                .filter { it.type == wantedType }
+                .filter { it.type == wantedType && it.isAnimation }
         if (results.isEmpty()) continue
 
         fun yearOk(

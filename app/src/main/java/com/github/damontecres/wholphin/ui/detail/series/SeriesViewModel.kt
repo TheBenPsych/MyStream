@@ -26,6 +26,7 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.NextEpisode
 import com.github.damontecres.wholphin.services.ParentsGuide
 import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.services.PeopleFavorites
@@ -798,7 +799,7 @@ class SeriesViewModel
         ) {
             nextUpReady = episode
             // Benflix look A: the show page's Play button names the episode ("Resume S2 · E4")
-            val started = (episode.userData?.playbackPositionTicks ?: 0L) > 0L
+            val started = episode.userData?.played != true && (episode.userData?.playbackPositionTicks ?: 0L) > 0L
             val where =
                 listOfNotNull(
                     episode.parentIndexNumber?.let { "S$it" },
@@ -823,6 +824,8 @@ class SeriesViewModel
         }
 
         private suspend fun findNextUp(): BaseItemDto? {
+            // Benflix: go by episode order (in progress, else the next unwatched after the last watched)
+            NextEpisode.find(api, seriesId)?.let { return it }
             val result by api.tvShowsApi.getNextUp(seriesId = seriesId)
             return result.items.firstOrNull() ?: api.tvShowsApi
                 .getEpisodes(

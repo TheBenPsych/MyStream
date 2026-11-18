@@ -1423,7 +1423,8 @@ fun BenflixRequestsPage(
         // Ben 2026-11-16: "Request for" someone in the family, at the top of every asking tab
         val canFor = rememberCanRequestFor(admin) && index < 5
         Column(modifier = Modifier.fillMaxSize()) {
-            if (canFor) RequestForBar()
+            // Up from the For button goes back to the tabs (Ben 2026-11-17: it used to get stuck there)
+            if (canFor) RequestForBar(up = tabs[index].tabFocusRequester)
             Box(modifier = Modifier.weight(1f)) {
                 RequestTab(index, viewModel, admin)
             }

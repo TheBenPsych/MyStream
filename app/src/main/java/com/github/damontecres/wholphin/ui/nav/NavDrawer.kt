@@ -155,15 +155,17 @@ class NavDrawerViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val next =
                     try {
-                        api.tvShowsApi
-                            .getNextUp(
-                                org.jellyfin.sdk.model.api.request.GetNextUpRequest(
-                                    seriesId = item.id,
-                                    limit = 1,
-                                    enableResumable = true,
-                                ),
-                            ).content.items
-                            .firstOrNull()
+                        com.github.damontecres.wholphin.services.NextEpisode
+                            .find(api, item.id)
+                            ?: api.tvShowsApi
+                                .getNextUp(
+                                    org.jellyfin.sdk.model.api.request.GetNextUpRequest(
+                                        seriesId = item.id,
+                                        limit = 1,
+                                        enableResumable = true,
+                                    ),
+                                ).content.items
+                                .firstOrNull()
                             ?: api.tvShowsApi
                                 .getEpisodes(
                                     org.jellyfin.sdk.model.api.request.GetEpisodesRequest(
@@ -511,8 +513,6 @@ fun NavDrawer(
     // Benflix: requests waiting for the main profile to say yes or no
     hiltViewModel<RequestsBadgeViewModel>(key = "requests-badge-${user.id}")
     val requestsWaiting by RequestsWaiting.count.collectAsState()
-    // Benflix: searched two weeks with nothing found, so Ben should start looking himself
-    val lookYourself by RequestsWaiting.lookYourself.collectAsState()
     val kids by KidsMode.active.collectAsState()
     val guest by com.github.damontecres.wholphin.services.GuestMode.active
         .collectAsState()
@@ -558,20 +558,7 @@ fun NavDrawer(
                 showMenu = false
                 viewModel.navigationManager.navigateTo(d)
             }
-            add(
-                ProfileMenuItem(
-                    icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.REQUESTS,
-                    title = stringResource(R.string.benflix_requests),
-                    onClick = { go(Destination.Requests) },
-                    note =
-                        when {
-                            requestsWaiting > 0 -> "$requestsWaiting waiting"
-                            lookYourself.isNotEmpty() -> "${lookYourself.size} to look for"
-                            readyCount > 0 -> "$readyCount ready"
-                            else -> null
-                        },
-                ),
-            )
+            // Requests has its own spot on the rail and in the phone's More sheet, so it's not repeated here
             add(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.STATS,
