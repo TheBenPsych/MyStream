@@ -94,7 +94,9 @@ internal const val DROPPED_SHARE = 0.15f
 internal const val RENDERED_SHARE = 0.7f
 
 /**
- * Benflix picture watchdog. Sometimes a video starts with a low, jerky frame rate and only plays
+ * Benflix picture watchdog. Only runs when "Picture stutters" is pressed in Fix a problem (it used to
+ * check by itself after every start; Ben turned that off on 2026-11-18, like the sound fixer).
+ * Sometimes a video starts with a low, jerky frame rate and only plays
  * smoothly after starting it again. That happens when the TV's video chip was still busy (for
  * example with the trailer that was playing on the page before), so the player fell back to the
  * much slower backup decoder. A few seconds after a video starts, this checks the picture; if it

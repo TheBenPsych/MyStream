@@ -2170,7 +2170,6 @@ class PlaybackViewModel
                     withContext(WholphinDispatchers.Main) {
                         player.prepare()
                         player.play()
-                        pictureWatchdog.check(itemNow, "fallback")
                     }
                 }
             }

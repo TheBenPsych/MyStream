@@ -171,7 +171,8 @@ internal fun PlaybackViewModel.benflixStartChecks(
 ) {
     noticeJob?.cancel()
     soundWatchdog.reset()
-    pictureWatchdog.check(item.id, "start")
+    // Benflix (Ben, 2026-11-18): the picture checker only runs when "Picture stutters" is pressed
+    pictureWatchdog.cancel()
     firstReadyAt = 0L
     startPositionMs = positionMs.coerceAtLeast(0L)
     bufferTimes.clear()
