@@ -55,6 +55,7 @@ B.wireDescribe = (first) => {
   show(first);
 };
 const doorTop = () => `<section class="door-top" id="doorTop"><div class="art"></div><div class="info"></div></section>`;
+B.doorTop = doorTop;
 
 // ---------- top 10: what's trending (from Requests), on the server; otherwise the best rated lately ----------
 B.trending = async (type, onlyAnime) => {
@@ -93,100 +94,179 @@ B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
 });
 const q = (path) => B.get(path).then((r) => B.keep((r && r.Items) || r || []));
 
-// ---------- Movies door ----------
+// ---------- Glowfin (ui-7): Movies, Shows and Anime "For you" rows ----------
+// Rows of one kind from some libraries
+const fromLibs = async (libs, type, sort, extra) => {
+  const u = B.uid(), F = B.FIELDS, out = [];
+  const lists = await Promise.all(libs.map((l) => q(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=${type}&Recursive=true&SortBy=${sort}&SortOrder=Descending&Limit=20&ImageTypes=Primary&Fields=${F}${extra || ""}`).catch(() => [])));
+  lists.forEach((l) => out.push(...l));
+  return out;
+};
+const newestFirst = (key) => (a, b) => String(b[key] || "").localeCompare(String(a[key] || ""));
+// "Because you watched": like the last one of this kind watched, kept to [keep]
+const becauseRow = async (type, keep) => {
+  const u = B.uid(), F = B.FIELDS;
+  const played = await q(`/Items?userId=${u}&IncludeItemTypes=${type === "Series" ? "Episode" : "Movie"}&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=20&Fields=SeriesId,SeriesName`).catch(() => []);
+  const seen = new Set();
+  for (const p of played) {
+    const id = type === "Series" ? p.SeriesId : p.Id, name = type === "Series" ? p.SeriesName : p.Name;
+    if (!id || seen.has(id) || !keep(id)) continue;
+    seen.add(id);
+    if (seen.size > 4) break;
+    const like = (await q(`/Items/${id}/Similar?userId=${u}&Limit=20&Fields=${F}`).catch(() => [])).filter((x) => x.Type === type && keep(x.Id));
+    if (like.length >= 5) return { name, items: like };
+  }
+  return null;
+};
+// "Trending, not on Tower": what's trending in Requests that isn't here yet (no anime)
+B.trendingMissing = async (kind) => {
+  try {
+    const kinds = kind ? [kind] : ["movies", "tv"];
+    const pages = await Promise.all(kinds.map((k) => B.cached("trendmiss-" + k, 1800000, () => B.get(`/JellyfinEnhanced/jellyseerr/discover/${k}?page=1&sortBy=popularity.desc`).catch(() => null))));
+    const out = [];
+    pages.forEach((p, i) => ((p && p.results) || []).forEach((r) => {
+      if (r.mediaInfo && (r.mediaInfo.jellyfinMediaId || r.mediaInfo.status === 5)) return;
+      if ((r.genreIds || []).includes(16) && (r.originalLanguage === "ja")) return;
+      out.push({ r, kind: kinds[i] });
+    }));
+    return out.slice(0, 20);
+  } catch (e) { return []; }
+};
+// Request cards (the same as Requests): pressing one opens its Ask for it page
+const missingCards = (list) => list.map(({ r, kind }) => B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)));
+const pageRows = (html) => { $("#rows").innerHTML = html.join(""); };
+
 B.route(/^\/movies$/, async (m, nav) => {
   B.page().innerHTML = B.top("Movies", DOORS.movies.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   const u = B.uid(), F = B.FIELDS;
   const libs = await B.libs("movies");
-  const animeLibs = libs.filter(B.isAnimeLib), standLibs = libs.filter(B.isStandLib);
-  const [resume, mine, fresh, top, recent] = await Promise.all([
-    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => q(`/Users/${u}/Items/Resume?IncludeItemTypes=Movie&Limit=20&Fields=${F}`)),
-    q(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
-    q(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
-    B.trending("Movie").catch(() => []),
-    q(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=1&Fields=${F}`),
+  const main = libs.filter((l) => !B.isAnimeLib(l) && !B.isStandLib(l)), standLibs = libs.filter(B.isStandLib);
+  const anime = await B.animeIds("Movie");
+  const notAnime = (x) => !anime.has(x.Id);
+  const fewer = B.me.kids || (B.easyMode && B.easyMode());
+  const [resume, fresh, top, because, released, best, stand] = await Promise.all([
+    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
+    fromLibs(main.concat(standLibs), "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
+    fewer ? [] : B.trending("Movie").catch(() => []),
+    fewer ? null : becauseRow("Movie", (id) => !anime.has(id)).catch(() => null),
+    fewer ? [] : fromLibs(main.concat(standLibs), "Movie", "PremiereDate").then((l) => l.sort(newestFirst("PremiereDate"))),
+    fewer ? [] : fromLibs(main, "Movie", "CommunityRating", "&IsPlayed=false").then((l) => l.sort((a, b) => (b.CommunityRating || 0) - (a.CommunityRating || 0))),
+    fewer ? [] : fromLibs(standLibs, "Movie", "Random", "&IsPlayed=false"),
   ]);
   if (!B.alive(nav)) return;
-  const because = recent[0] ? await q(`/Items/${recent[0].Id}/Similar?userId=${u}&Limit=20&Fields=${F}`).catch(() => []) : [];
-  const anime = [], stand = [];
-  for (const l of animeLibs) anime.push(...(await q(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Movie&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=24&Fields=${F}`)));
-  for (const l of standLibs) stand.push(...(await q(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Movie&Recursive=true&SortBy=Random&Limit=24&Fields=${F}`)));
-  if (!B.alive(nav)) return;
-  const kids = B.me.kids;
-  // Easy mode: fewer rows, like Kids (Keep watching, My List, New)
-  const fewer = kids || (B.easyMode && B.easyMode());
-  if (!B.alive(nav)) return;
-  $("#rows").innerHTML = [
-    B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
-    B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
-    B.row("New on Glowfin", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
-    fewer ? "" : B.row("Top 10 movies", B.top10(top)),
-    recent[0] && !fewer ? B.row(`Because you watched ${recent[0].Name}`, because.map((it) => B.posterCard(it))) : "",
-    fewer ? "" : B.row("Anime movies", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
-    fewer ? "" : B.row("Stand-up", stand.map((it) => B.posterCard(it))),
-    // Redesign 2: Genres, Collections, Studios and All movies are in the door's side menu (js/doors.js)
-    B.pickerRow ? B.pickerRow("movies") : "",
-  ].join("");
-  B.wireDescribe(resume[0] || mine[0] || fresh[0]);
+  const keep = resume.filter(notAnime);
+  pageRows([
+    B.row("Continue watching", keep.map((it) => B.posterCard(it, { progress: true }))),
+    B.row("Top 10 movies this week", B.top10(top)),
+    because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
+    B.row("Recently added", fresh.slice(0, 20).map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?anime=hide&title=All%20movies" }),
+    B.row("Recently released", released.slice(0, 20).map((it) => B.posterCard(it))),
+    B.row("Top rated you haven't seen", best.slice(0, 20).map((it) => B.posterCard(it))),
+    B.row("Stand-up", stand.map((it) => B.posterCard(it))),
+  ]);
+  B.wireDescribe(keep[0] || top[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
 });
 
-// ---------- Shows door ----------
 B.route(/^\/shows$/, async (m, nav) => {
   B.page().innerHTML = B.top("Shows", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   const u = B.uid(), F = B.FIELDS;
   const libs = await B.libs("shows");
-  const animeLibs = libs.filter(B.isAnimeLib);
-  const [next, resume, mine, newShows, latestEps, top, topAnime] = await Promise.all([
-    q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=true&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep),
+  const main = libs.filter((l) => !B.isAnimeLib(l));
+  const anime = await B.animeIds("Series");
+  const notAnime = (ep) => !anime.has(ep.SeriesId || ep.Id);
+  const fewer = B.me.kids || (B.easyMode && B.easyMode());
+  const [resume, next, latestEps, fresh, because, best, missing] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
-    q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&Filters=IsFavorite&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
-    q(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=${F}`),
-    q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`),
-    B.trending("Series").catch(() => []),
-    B.trending("Series", true).catch(() => []),
+    q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
+    q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`).catch(() => []),
+    fromLibs(main, "Series", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
+    fewer ? null : becauseRow("Series", (id) => !anime.has(id)).catch(() => null),
+    fewer ? [] : fromLibs(main, "Series", "CommunityRating", "&IsPlayed=false").then((l) => l.sort((a, b) => (b.CommunityRating || 0) - (a.CommunityRating || 0))),
+    fewer ? [] : B.trendingMissing("tv"),
   ]);
   if (!B.alive(nav)) return;
-  // Keep watching: halfway-through episodes first, then the next episode of shows you're watching
-  const seen = new Set(), kw = [];
-  [...resume, ...next].forEach((ep) => { if (!seen.has(ep.SeriesId)) { seen.add(ep.SeriesId); kw.push(ep); } });
+  const one = (list) => { const seen = new Set(); return list.filter((e) => notAnime(e) && !seen.has(e.SeriesId) && seen.add(e.SeriesId)); };
+  const cont = one(resume), nextUp = one(next);
+  const watching = new Set(nextUp.map((e) => e.SeriesId));
   const newCount = {};
-  latestEps.filter((e) => B.isNew(e) && seen.has(e.SeriesId)).forEach((e) => { newCount[e.SeriesId] = (newCount[e.SeriesId] || 0) + 1; });
-  // Shows with new episodes jump to the front
-  kw.sort((a, b) => (newCount[b.SeriesId] ? 1 : 0) - (newCount[a.SeriesId] ? 1 : 0));
-  const seriesIds = kw.map((e) => e.SeriesId);
-  const series = seriesIds.length ? await q(`/Items?userId=${u}&Ids=${seriesIds.join(",")}&Fields=${F}`) : [];
-  const sById = {}; series.forEach((s) => { sById[s.Id] = s; });
-  const newEpShows = Object.keys(newCount).map((id) => sById[id]).filter(Boolean);
-  const recentSeries = kw[0] ? sById[kw[0].SeriesId] : null;
-  const because = recentSeries ? await q(`/Items/${recentSeries.Id}/Similar?userId=${u}&Limit=20&Fields=${F}`).catch(() => []) : [];
-  const anime = [];
-  for (const l of animeLibs) anime.push(...(await q(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SortBy=DateLastContentAdded&SortOrder=Descending&Limit=24&Fields=${F}`)));
+  latestEps.filter((e) => B.isNew(e) && watching.has(e.SeriesId)).forEach((e) => { newCount[e.SeriesId] = (newCount[e.SeriesId] || 0) + 1; });
+  const ids = [...new Set(cont.concat(nextUp).map((e) => e.SeriesId).concat(Object.keys(newCount)))];
+  const series = ids.length ? await q(`/Items?userId=${u}&Ids=${ids.join(",")}&Fields=${F}`).catch(() => []) : [];
   if (!B.alive(nav)) return;
-  const kwCard = (ep) => {
-    const s = sById[ep.SeriesId];
+  const sById = {}; series.forEach((x) => { sById[x.Id] = x; });
+  const epCard = (ep) => {
+    const sh = sById[ep.SeriesId];
     B.items[ep.Id] = ep;
-    const card = B.posterCard(s || ep, { href: `#/show/${ep.SeriesId}?ep=${ep.Id}`, sub: `S${ep.ParentIndexNumber} E${ep.IndexNumber}`, noTick: true, newCount: newCount[ep.SeriesId] });
-    return card.replace(`data-id="${esc((s || ep).Id)}"`, `data-id="${esc(ep.Id)}"`);
+    const card = B.posterCard(sh || ep, { href: `#/show/${ep.SeriesId}?ep=${ep.Id}`, sub: `S${ep.ParentIndexNumber} E${ep.IndexNumber}`, noTick: true, progress: true, newCount: newCount[ep.SeriesId] });
+    return card.replace(`data-id="${esc((sh || ep).Id)}"`, `data-id="${esc(ep.Id)}"`);
   };
-  // Easy mode: fewer rows, like Kids (Keep watching, My List, New shows)
-  const fewerShows = B.me.kids || (B.easyMode && B.easyMode());
-  $("#rows").innerHTML = [
-    B.row("Keep watching", kw.map(kwCard)),
-    B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?mine=1&title=My%20List" }),
-    fewerShows ? "" : B.row("New episodes", newEpShows.map((s) => B.posterCard(s, { newCount: newCount[s.Id] }))),
-    B.row("New shows", newShows.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?sort=newshow&title=New%20shows" }),
-    fewerShows ? "" : B.row("Top 10 shows", B.top10(top)),
-    recentSeries && !fewerShows ? B.row(`Because you watched ${recentSeries.Name}`, because.map((it) => B.posterCard(it))) : "",
-    fewerShows ? "" : B.row("Anime", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?anime=only&title=Anime" }),
-    fewerShows || topAnime.length < 3 ? "" : B.row("Top 10 anime", B.top10(topAnime)),
-    // Redesign 2: Genres, Networks and All shows are in the door's side menu (js/doors.js)
-    B.pickerRow ? B.pickerRow("shows") : "",
-  ].join("");
-  B.wireDescribe(kw[0] || mine[0] || newShows[0]);
+  pageRows([
+    B.row("Continue watching", cont.map(epCard)),
+    B.row("Next up", nextUp.map(epCard)),
+    fewer ? "" : B.row("New episodes", Object.keys(newCount).map((id) => sById[id]).filter(Boolean).map((sh) => B.posterCard(sh, { newCount: newCount[sh.Id] }))),
+    because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
+    B.row("Recently added", fresh.slice(0, 20).map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?anime=hide&sort=newshow&title=All%20shows" }),
+    B.row("Top rated you haven't seen", best.slice(0, 20).map((it) => B.posterCard(it))),
+    B.row("Trending, not on Tower", missingCards(missing)),
+  ]);
+  B.wireDescribe(cont[0] || nextUp[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
+});
+
+// Glowfin (ui-7, Ben's pick A): Anime's own page. Anime shows and movies together, no requests tab
+B.route(/^\/anime$/, async (m, nav) => {
+  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
+  B.wireTop();
+  const u = B.uid(), F = B.FIELDS;
+  const showLibs = (await B.libs("shows")).filter(B.isAnimeLib), movieLibs = (await B.libs("movies")).filter(B.isAnimeLib);
+  const [showIds, movieIds] = await Promise.all([B.animeIds("Series"), B.animeIds("Movie")]);
+  const [resumeM, resumeE, next, airing, top, because, gems, films, freshShows] = await Promise.all([
+    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
+    q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
+    q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
+    fromLibs(showLibs, "Series", "DateLastContentAdded", "&SeriesStatus=Continuing"),
+    B.trending("Series", true).catch(() => []),
+    becauseRow("Series", (id) => showIds.has(id)).catch(() => null),
+    fromLibs(showLibs, "Series", "Random", "&IsPlayed=false&MinCommunityRating=7.5"),
+    fromLibs(movieLibs, "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
+    fromLibs(showLibs, "Series", "DateCreated"),
+  ]);
+  if (!B.alive(nav)) return;
+  const seen = new Set();
+  const cont = resumeM.filter((x) => movieIds.has(x.Id)).concat(resumeE.concat(next).filter((e) => showIds.has(e.SeriesId)))
+    .filter((x) => { const k = x.SeriesId || x.Id; if (seen.has(k)) return false; seen.add(k); return true; });
+  const card = (it) => (it.Type === "Episode"
+    ? B.posterCard(Object.assign({}, it, { Name: it.SeriesName }), { href: B.hrefOf(it), sub: `S${it.ParentIndexNumber} E${it.IndexNumber}`, noTick: true, progress: true })
+    : B.posterCard(it, { progress: true }));
+  const fresh = freshShows.concat(films).sort(newestFirst("DateCreated")).slice(0, 20);
+  pageRows([
+    B.row("Continue watching", cont.map(card)),
+    B.row("Airing this season", airing.map((it) => B.posterCard(it))),
+    top.length >= 3 ? B.row("Top 10 anime", B.top10(top)) : "",
+    because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
+    B.row("Hidden gem anime", gems.map((it) => B.posterCard(it))),
+    B.row("Anime movies", films.slice(0, 20).map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
+    B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
+  ]);
+  B.wireDescribe(cont[0] || airing[0] || fresh[0]);
+  const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
+});
+
+// The Anime page's Genres and tags tab: genres found in the anime libraries
+B.route(/^\/browse\/anime\/genres$/, async (m, nav) => {
+  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + `<div class="wrap"><div class="h1">Genres and tags</div><div id="t">${B.spinner()}</div></div>`;
+  B.wireTop();
+  const libs = (await B.libs("shows")).filter(B.isAnimeLib);
+  const names = new Set();
+  for (const l of libs) {
+    const r = await B.get(`/Genres?userId=${B.uid()}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SortBy=SortName`).catch(() => ({}));
+    (r.Items || []).forEach((g) => names.add(g.Name));
+  }
+  if (!B.alive(nav)) return;
+  $("#t").innerHTML = `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${[...names].sort().map((g) => `<a class="tile2" style="width:auto" href="#/grid/shows?anime=only&genre=${enc(g)}&title=${enc(g)}">${esc(g)}</a>`).join("") || '<div class="empty">Nothing here yet.</div>'}</div>`;
 });
 
 // ---------- Genres / Studios / Networks tiles ----------
@@ -221,7 +301,7 @@ B.route(/^\/grid\/(movies|shows)/, async (m, nav) => {
     <div class="gridbar" style="--accent:${door.color}">
       <button class="chip on" id="gSort"></button>
       ${type === "BoxSet" ? "" : `<button class="chip ${st.genre ? "on" : ""}" id="gGenre">${esc(st.genre || "Genre")}</button>
-      <button class="chip ${st.anime !== "all" ? "on" : ""}" id="gAnime"></button>
+      ${B.q("anime") ? "" : `<button class="chip ${st.anime !== "all" ? "on" : ""}" id="gAnime"></button>`}
       ${doorKey === "shows" ? `<button class="chip" id="gWatched"></button>` : ""}`}
       <input class="search-in" id="gText" placeholder="Search ${esc(door.name.toLowerCase())}" value="${esc(st.text)}">
     </div>

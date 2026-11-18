@@ -63,6 +63,8 @@ fonts/subtitle_atkinson_bold.ttf
 fonts/subtitle_atkinson_bolditalic.ttf
 fonts/atkinson_hyperlegible.LICENSE.txt
 img/glowfin-mark.svg
+fonts/glowfin_anton.ttf
+fonts/anton.LICENSE.txt
 fonts/glowfin_sora_light.ttf
 fonts/glowfin_sora_semibold.ttf
 fonts/glowfin_sora_regular.ttf
