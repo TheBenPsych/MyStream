@@ -873,7 +873,7 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json):
         body = read_json() or {}
         kind = str(body.get("kind") or "")
         if kind not in FIX_KINDS:
-            return 400, {"error": "That isn't a fix Benflix knows."}
+            return 400, {"error": "That isn't a fix Glowfin knows."}
         try:
             at = float(body.get("at") or 0)
         except (TypeError, ValueError):

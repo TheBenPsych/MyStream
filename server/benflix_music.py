@@ -70,7 +70,7 @@ SLSK_AFTER = 20 * 60  # A song Lidarr hasn't found in this long is looked for on
 SLSK_WORDS = ("live", "remix", "instrumental", "karaoke", "cover", "acapella", "a cappella", "acoustic", "demo", "8 bit", "nightcore", "slowed", "sped up", "reverb")
 DEEZER = "https://api.deezer.com"
 MUSICBRAINZ = "https://musicbrainz.org/ws/2"
-MB_UA = "Benflix/1.0 ( https://github.com/thebenpsych/mystream )"
+MB_UA = "Glowfin/1.0 ( https://github.com/thebenpsych/mystream )"
 # Soulseek is looked at again this long after its last look while Lidarr keeps trying
 SLSK_AGAIN = 6 * 3600
 # Old "Couldn't find it" music asks are looked for again once when Tower gets this version
@@ -351,7 +351,7 @@ def _mb_ids(r):
 
 def lidarr(method, path, body=None, _timeout=60, **params):
     if not LIDARR_URL or not LIDARR_KEY:
-        raise MusicError(503, "Lidarr isn't connected yet. Follow the music setup steps, then run the Benflix setup command again.")
+        raise MusicError(503, "Lidarr isn't connected yet. Follow the music setup steps, then run the Glowfin setup command again.")
     q = ("?" + urllib.parse.urlencode(params, doseq=True)) if params else ""
     try:
         return _http(LIDARR_URL + "/api/v1" + path + q, method, body, {"X-Api-Key": LIDARR_KEY}, timeout=_timeout)
@@ -361,7 +361,7 @@ def lidarr(method, path, body=None, _timeout=60, **params):
         except OSError:
             detail = ""
         if e.code == 401:
-            raise MusicError(502, "Lidarr didn't accept the key. Run the Benflix setup command again.")
+            raise MusicError(502, "Lidarr didn't accept the key. Run the Glowfin setup command again.")
         if e.code in LIDARR_BUSY_CODES:
             raise MusicError(503, f"Lidarr is busy right now ({e.code}). {_lidarr_reason(detail)}".strip(), busy=True)
         raise MusicError(502, f"Lidarr answered with an error ({e.code}). {_lidarr_reason(detail)}".strip())
@@ -573,7 +573,7 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
     if not is_admin:
         return _family_route(method, path, query, user_id, user_name, read_json, token=token)
     if not _dir:
-        return 503, {"error": "Music is off: the helper has no folder to save requests in. Run the Benflix setup command again."}
+        return 503, {"error": "Music is off: the helper has no folder to save requests in. Run the Glowfin setup command again."}
     remember_admin(token, user_id)
     q = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
     try:
@@ -1481,17 +1481,17 @@ def _pill(r):
 def status():
     problems = []
     if not LIDARR_URL and not SLSKD_URL:
-        problems.append("Lidarr isn't connected yet. Follow the music setup steps, then run the Benflix setup command again.")
+        problems.append("Lidarr isn't connected yet. Follow the music setup steps, then run the Glowfin setup command again.")
     elif _ready_lidarr.get("problem"):
         problems.append(_ready_lidarr["problem"])
     if SLSKD_URL and _slsk_problem[0]:
         problems.append(_slsk_problem[0])
     if not _has_ffmpeg():
-        problems.append("ffmpeg is missing on Tower, so lossless files can't become MP3s. Run the Benflix setup command again.")
+        problems.append("ffmpeg is missing on Tower, so lossless files can't become MP3s. Run the Glowfin setup command again.")
     if not os.path.isdir(MUSIC):
-        problems.append("The Music folder isn't there. Run the Benflix setup command again.")
+        problems.append("The Music folder isn't there. Run the Glowfin setup command again.")
     if not _state["admin"].get("token"):
-        problems.append("Open Benflix as Ben once so Tower can add new songs to Jellyfin.")
+        problems.append("Open Glowfin as Ben once so Tower can add new songs to Jellyfin.")
     with _lock:
         reqs = [_public(r) for r in _state["requests"] if not r.get("parent")]
         pls = [_playlist_public(p) for p in _state["playlists"]]
@@ -1622,7 +1622,7 @@ def _lidarr_music_path():
     for r in lidarr("GET", "/rootfolder") or []:
         if r.get("path", "").rstrip("/").lower().endswith("/music"):
             return r["path"].rstrip("/")
-    raise MusicError(503, "Couldn't work out where Lidarr sees the Music folder. Check Lidarr's folders match the setup steps, then run the Benflix setup command again.")
+    raise MusicError(503, "Couldn't work out where Lidarr sees the Music folder. Check Lidarr's folders match the setup steps, then run the Glowfin setup command again.")
 
 
 def _root_folder():
@@ -2368,7 +2368,7 @@ def redo_song(item_id, token, user_id):
         try:
             os.remove(real)
         except OSError:
-            raise MusicError(500, "Tower wouldn't let Benflix delete the file. Check the Music folder's permissions.")
+            raise MusicError(500, "Tower wouldn't let Glowfin delete the file. Check the Music folder's permissions.")
     _quiet_remove(os.path.splitext(real)[0] + ".lrc")
     _tell_jellyfin([path], kind="Deleted")
     _have_reset()
@@ -2445,7 +2445,7 @@ def delete_song(item_id, token, user_id):
         try:
             os.remove(real)
         except OSError:
-            raise MusicError(500, "Tower wouldn't let Benflix delete the file. Check the Music folder's permissions.")
+            raise MusicError(500, "Tower wouldn't let Glowfin delete the file. Check the Music folder's permissions.")
     _quiet_remove(os.path.splitext(real)[0] + ".lrc")
     # The album folder has no songs left: its cover and extras go too (never a folder that still has music)
     folder = os.path.dirname(real)
@@ -2488,7 +2488,7 @@ def slskd(method, path, body=None):
         return _http(SLSKD_URL + "/api/v0" + path, method, body, {"X-API-Key": SLSKD_KEY}, timeout=30)
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
-            _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Benflix setup command again."
+            _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Glowfin setup command again."
         raise MusicError(502, f"slskd (Soulseek) answered with an error ({e.code}).")
     except (urllib.error.URLError, OSError, ValueError):
         _slsk_problem[0] = "Couldn't reach slskd (Soulseek). Check it's running on Tower."
@@ -2748,7 +2748,7 @@ def _slsk_finish(r, c):
         if time.time() - r["slsk"].get("since", 0) > 3600:
             _slsk_next(r, "the finished file couldn't be found in slskd's download folder")
         else:
-            _slsk_problem[0] = "A Soulseek download finished but Benflix can't see slskd's download folder. Run the Benflix setup command again."
+            _slsk_problem[0] = "A Soulseek download finished but Glowfin can't see slskd's download folder. Run the Glowfin setup command again."
         return
     r["state"] = "tidying"
     tags = {"artist": r["artist"], "album_artist": r["artist"], "album": r.get("album") or "Singles", "title": r["title"]}
@@ -3919,7 +3919,7 @@ def _playlist_public(p):
     if p.get("state") == "reading":
         words = f"Reading the songs ({sum(1 for s in songs if s.get('state'))} of {len(songs)})"
     elif p.get("state") == "done":
-        words = (f"Ready in Jellyfin: {here} songs" if p.get("make", True) else f"Songs are on Benflix: {here}") + (f", {missing} couldn't be found" if missing else "")
+        words = (f"Ready in Jellyfin: {here} songs" if p.get("make", True) else f"Songs are on Glowfin: {here}") + (f", {missing} couldn't be found" if missing else "")
     else:
         words = f"{here} of {len(songs)} songs here" + (f", {missing} couldn't be found" if missing else "")
     return {"id": p["id"], "name": p.get("name") or "", "words": words, "bar": round(here / len(songs), 3) if songs else 0, "done": p.get("state") == "done", "songs": len(songs), "here": here, "missing": missing}
@@ -4198,7 +4198,7 @@ def mixes_for(token, user_id):
     new = keep(_songs(token, user_id, "SortBy=DateCreated&SortOrder=Descending&Limit=120"))
     cut = (now - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
     new = [x for x in new if (x.get("DateCreated") or "")[:10] >= cut]
-    later = [_mix("fresh", "Fresh on Benflix", "Songs that came in over the last 2 weeks", new, limit=60)]
+    later = [_mix("fresh", "Fresh on Glowfin", "Songs that came in over the last 2 weeks", new, limit=60)]
     # Your top songs of the year: all December, and the first week of January for the year before
     if now.month == 12 or (now.month == 1 and now.day <= 7):
         year = now.year if now.month == 12 else now.year - 1
