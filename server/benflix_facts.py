@@ -331,6 +331,28 @@ def fun_score(s):
     return 2 * sum(1 for p in STRONG if p.search(s)) + sum(1 for p in WEAK if p.search(s))
 
 
+# Plain information that is never a fun fact, even in the hand-checked list (a safety net, Ben 2026-11-18:
+# "The 5th Wave is based on Rick Yancey's young adult novel." showed on Home)
+PLAIN = [re.compile(p, re.IGNORECASE) for p in (
+    r"\b(?:is|was) (?:loosely )?based on\b",
+    r"\b(?:is|was) (?:written and )?directed by\b",
+    r"\bwas (?:mostly |partly )?filmed (?:in|on location in)\b",
+    r"\b(?:is|was) (?:a|the) remake of\b",
+    r"\bwas (?:made|produced|created) by\b",
+    r"\bstarted as a (?:free )?web ?novel\b",
+)]
+
+
+def plain_info(fact):
+    """True for a short, one-part 'based on / directed by / filmed in / remake of' line with no story"""
+    f = (fact or "").strip()
+    if len(f) > 90 or any(c in f.rstrip(".") for c in ",;:!?") or " and " in f or " but " in f:
+        return False
+    if re.search(r"\b(?:real|own|true|actor|actress)\b", f, re.IGNORECASE):
+        return False  # "based on a real team", "directed by actor Bill Paxton" can still be a story
+    return any(p.search(f) for p in PLAIN)
+
+
 def _still_fun(name, fact):
     """A saved Wikipedia fact still passes today's rules (so old dull ones stop showing straight away)"""
     if fact.startswith((name or "") + ": "):
@@ -451,12 +473,21 @@ def gather(why="night"):
 
 
 def _nightly():
-    time.sleep(600)
+    # The hand-checked list is small, so it's downloaded soon after start and then every hour. Before,
+    # it only came with the nightly gather, so a cleaned-up list could take a day or more to show.
+    time.sleep(60)
+    _refresh_checked()
+    last_list = time.time()
+    time.sleep(540)
     if _admin()[0]:
         gather("start")
+        last_list = time.time()
     done_day = None
     while True:
         time.sleep(600)
+        if time.time() - last_list >= 3600 and not _gathering.is_set():
+            _refresh_checked()
+            last_list = time.time()
         now = time.localtime()
         if not (4 <= now.tm_hour < 6) or done_day == now.tm_yday:
             continue
@@ -496,7 +527,7 @@ def facts_for(item_id, token):
             t = info
     if not t or t.get("type") not in ("Movie", "Series"):
         return {"facts": [], "ready": True}
-    checked = _checked_for(t)
+    checked = [f for f in _checked_for(t) if not plain_info(f)]
     auto = (_auto.get(item_id) or {}).get("facts")
     if auto is not None:
         auto = [f for f in auto if _still_fun(t.get("name"), f)]
@@ -569,7 +600,7 @@ def home_facts(token, user_id, count=2, skip=(), longest=MAX_LEN):
     out = []
     for item_id in ids[:60]:
         t = _titles[item_id]
-        checked = _checked_for(t)
+        checked = [f for f in _checked_for(t) if not plain_info(f)]
         auto = [f for f in ((_auto.get(item_id) or {}).get("facts") or []) if _still_fun(t.get("name"), f)]
         pool = list(checked) + [f for f in auto if _norm(f) not in {_norm(c) for c in checked}]
         # Home's rows are small: only the shorter facts
