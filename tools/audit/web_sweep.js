@@ -147,7 +147,7 @@ async function sweepSize(browser, vp, size, isPhone) {
   }
   await snap(page, vp, "home");
 
-  const queue = ["#/home", "#/search", "#/movies", "#/shows", "#/live", "#/games", "#/music", "#/books", "#/requests", "#/mine", "#/settings", "#/help", "#/server", "#/songs", "#/liked", "#/upnext", "#/mlibrary", "#/msearch", "#/browse/movies/genres", "#/browse/shows/genres", "#/browse/movies/studios", "#/grid/movies", "#/grid/shows"];
+  const queue = ["#/home", "#/search", "#/movies", "#/shows", "#/live", "#/games", "#/music", "#/books", "#/requests", "#/mine", "#/settings", "#/help", "#/server", "#/songs", "#/liked", "#/upnext", "#/mlibrary", "#/live?v=fav", "#/live?v=recent", "#/browse/movies/genres", "#/browse/shows/genres", "#/browse/movies/studios", "#/grid/movies", "#/grid/shows"];
   const visited = new Set();
   const kinds = {};
   const pressedOnce = new Set(); // the top bar and things that are on many pages: press once per size

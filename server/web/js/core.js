@@ -625,7 +625,7 @@ B.hrefOf = (it) => {
   if (it.Type === "Season") return `#/show/${it.SeriesId}?season=${it.Id}`;
   if (it.Type === "BoxSet") return `#/collection/${it.Id}`;
   if (it.Type === "Person") return `#/person/${it.Id}`;
-  if (it.Type === "TvChannel") return `#/live?play=${it.Id}`;
+  if (it.Type === "TvChannel") return `#/watch/${it.Id}`;
   return `#/movie/${it.Id}`;
 };
 // Redesign 2 (rows, posters and covers): the door colour for the short line on a card with no picture
@@ -859,7 +859,7 @@ document.addEventListener("click", (e) => {
 // Glowfin Top 10 (Ben's T1 pick): tall glowing Anton numbers, each in the same width box fully BESIDE its poster
 B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.posterCard(it)}</div>`);
 
-// Glowfin (ui-7): the word tabs along the top of Movies, Shows and Anime (the same places as the TV and phones)
+// Glowfin (ui-7): the word tabs along the top of every page (Movies, Shows, Anime, Live TV, Music, Games, Books) (the same places as the TV and phones)
 B.PAGE_TABS = {
   movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
   shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
@@ -868,13 +868,15 @@ B.PAGE_TABS = {
   music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
   // Glowfin Books (B1)
   books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
+  // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
+  live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
   games: [["For you", "#/games"], ["Consoles", "#/games?p=consoles"], ["Movie games", "#/games?p=movie"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {
   hash = hash || location.hash;
-  for (const page of ["anime", "movies", "shows", "music", "books", "games"]) {
+  for (const page of ["anime", "movies", "shows", "music", "books", "games", "live"]) {
     const list = B.PAGE_TABS[page];
     const on = list.findIndex(([, link]) => hash === link || (link !== "#/" + page && hash.split("&")[0] === link.split("&")[0]));
     if (on >= 0) return { page, on };
@@ -893,7 +895,7 @@ B.pageTabs = (hash) => {
   if (!t) return "";
   const kids = B.me && B.me.kids;
   const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && label === "Collections"));
-  const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l);
+  const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l === "Recently watched" ? "Recent" : l);
   return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
 };
 B.scores = (it) => {

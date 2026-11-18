@@ -125,8 +125,12 @@ fun BenflixDoor.glowIcon(): GlowfinIcon =
         BenflixDoor.ANIME -> GlowfinIcon.ANIME
     }
 
-/** Glowfin (ui-7): these pages show their places as tabs along their top, so the menu opens them straight away */
-fun BenflixDoor.hasPageTabs(): Boolean = this == BenflixDoor.MOVIES || this == BenflixDoor.SHOWS || this == BenflixDoor.ANIME
+/**
+ * Glowfin (ui-7): these pages show their places as tabs along their top, so the menu opens them straight away.
+ * Ben 2026-11-18: every page now (Live TV, Music, Games and Books too), so no page opens a slide-out menu.
+ */
+@Suppress("UnusedReceiverParameter")
+fun BenflixDoor.hasPageTabs(): Boolean = true
 
 /** Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books */
 private val GlowfinDoorOrder =
@@ -543,7 +547,7 @@ fun BenflixRail(
                             onClick = {
                                 profileOpen = false
                                 if (door.hasPageTabs()) {
-                                    // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, no panel
+                                    // Glowfin (ui-7): every page has its places as tabs on the page, no panel
                                     leaveFor { model.onPlace(door, com.github.damontecres.wholphin.ui.door.DOOR_HOME) }
                                 } else {
                                     panelDoor = door

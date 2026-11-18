@@ -74,7 +74,8 @@ const chCard = (c) => {
 B.chCard = chCard;
 const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()) / 60000));
 
-B.route(/^\/live$/, async (m, nav) => {
+// Ben 2026-11-18: tabs along the top (Guide, Favourites, Recently watched) instead of the slide-out menu
+B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   // Kids don't get live channels, like the TV and phone app: live programmes have no age ratings
   if (B.me.kids) return B.go("#/home");
   B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner()}</div>`;
@@ -90,7 +91,10 @@ B.route(/^\/live$/, async (m, nav) => {
   const hidden = new Set(prefs.hidden);
   // Ben (2026-11-16): no separate Favourites row; favourites are the first channels in the guide
   // (and the "★ Favourites" chip shows just them)
-  const shown = [...favs, ...list.filter((c) => !hidden.has(c._type) && !favs.includes(c))];
+  const view = new URLSearchParams(m[1] || "").get("v") || "guide";
+  const onlyFavs = view === "fav", onlyRecent = view === "recent";
+  // Favourites and Recently watched show only those channels; Guide shows everything (favourites first)
+  const shown = onlyFavs ? favs : onlyRecent ? recent : [...favs, ...list.filter((c) => !hidden.has(c._type) && !favs.includes(c))];
   const describe = (c) => {
     if (!$("#liveInfo")) return; // already left the page
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
@@ -118,11 +122,12 @@ B.route(/^\/live$/, async (m, nav) => {
     }).join("")}<i class="nowl" style="left:${nowLeft()}%"></i></div></div>`).join("");
   const types = [...new Set(list.map((c) => c._type))];
   $("#rows").innerHTML = [
-    B.row("Recently watched", recent.map(chCard)),
-    `<section class="rowx"><h3>Guide</h3>
+    view === "guide" ? B.row("Recently watched", recent.map(chCard)) : "",
+    `<section class="rowx"><h3>${onlyFavs ? "Favourites" : onlyRecent ? "Recently watched" : "Guide"}</h3>
       <div class="gridbar" style="--accent:${DOORS.live.color};top:var(--bar)"><input class="search-in" id="chSearch" placeholder="Channel name or number">
-      ${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
-      <button class="chip" id="editTypes">Edit types</button></div>
+      ${view === "guide" ? `${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
+      <button class="chip" id="editTypes">Edit types</button>` : ""}</div>
+      ${!shown.length ? `<div class="wrap empty">${onlyFavs ? "No favourites yet. Click a programme in the Guide and pick Add to favourites." : "No channels watched lately."}</div>` : ""}
       <div class="guide${narrow ? " nn" : ""}"><div class="ghead">${narrow ? `<span>Channel</span><span>Now</span><span>Next</span>` : `<span></span>`}<div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
   ].join("");
   describe(favs[0] || recent[0] || shown[0] || list[0]);
@@ -135,7 +140,7 @@ B.route(/^\/live$/, async (m, nav) => {
   const redraw = () => { $("#gRows").innerHTML = guideRows(filtered.slice(0, 300)); };
   $("#chSearch").oninput = (e) => {
     const v = e.target.value.trim().toLowerCase();
-    filtered = v ? list.filter((c) => (c.Name || "").toLowerCase().includes(v) || String(c.ChannelNumber || "").startsWith(v) || ((nowOn(c) || {}).Name || "").toLowerCase().includes(v)) : shown;
+    filtered = v ? (view === "guide" ? list : shown).filter((c) => (c.Name || "").toLowerCase().includes(v) || String(c.ChannelNumber || "").startsWith(v) || ((nowOn(c) || {}).Name || "").toLowerCase().includes(v)) : shown;
     redraw();
   };
   $("#rows").addEventListener("click", async (e) => {

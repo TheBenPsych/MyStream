@@ -87,7 +87,7 @@
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
       ${kids ? "" : item("search", "search", "Search")}
       ${item("home", "home", "Home")}
-      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}" aria-haspopup="true">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
+      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
       ${kids ? "" : item("requests", "requests", "Requests", "", `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <div class="rl-gap"></div>
       <button type="button" class="rl-i rl-me ${spot === "me" ? "on" : ""}" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
@@ -110,7 +110,8 @@
         const at = items.indexOf(document.activeElement);
         if (at < 0) return;
         if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
-        if (e.key === "ArrowRight" && document.activeElement.dataset.door) { e.preventDefault(); openPanel(document.activeElement.dataset.door, true); }
+        // Ben 2026-11-18: no slide-out menus for pages any more, so Right goes into the page you're on
+        if (e.key === "ArrowRight" && document.activeElement.dataset.door) { e.preventDefault(); landOnPage(true); }
       });
     }
     rail.hidden = false;
@@ -147,9 +148,9 @@
   };
   const onRail = (e) => {
     const d = e.target.closest("[data-door]");
-    // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, so they open straight away
-    if (d && (d.dataset.door === "movies" || d.dataset.door === "shows")) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); landOnPage(e.detail === 0); return; }
-    if (d) { e.preventDefault(); openPanel(d.dataset.door, e.detail === 0); return; }
+    // Glowfin (ui-7) + Ben 2026-11-18: every page has its places as tabs along its top, so it opens straight away
+    // (Live TV, Music, Games and Books no longer slide out a second menu)
+    if (d) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); landOnPage(e.detail === 0); return; }
     const k = e.target.closest("[data-k]");
     if (!k) return;
     if (k.dataset.k === "me") {
@@ -162,7 +163,7 @@
     landOnPage(e.detail === 0 && k.dataset.k !== "search");
   };
 
-  // ---------- a door's panel ----------
+  // ---------- the slide-out panel (only your picture's menu now: pages have tabs along their top) ----------
   const closePanel = () => {
     if (!panel) return;
     const was = openDoor;
@@ -173,58 +174,6 @@
   };
   // The rail button a panel belongs to (a door, or your picture)
   const railBtn = (key) => rail && (key === "me" ? $('[data-k="me"]', rail) : $(`[data-door="${key}"]`, rail));
-  const placesOf = (door) => {
-    const list = (B.doorPlaces ? B.doorPlaces(door) : []).filter(Boolean);
-    return list.length ? list : [["Home", "home", "#/" + door]];
-  };
-  const openPanel = (door, byKeys) => {
-    if (openDoor === door) { closePanel(); return; }
-    closePanel();
-    const d = B.DOORS[door];
-    if (!d) return;
-    if (narrow()) return placesSheet(door);
-    openDoor = door;
-    $$(".rl-door", rail).forEach((x) => x.classList.toggle("open", x.dataset.door === door));
-    panel = document.createElement("div");
-    panel.className = "npanel"; panel.style.setProperty("--c", d.color);
-    panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", d.name);
-    const places = placesOf(door);
-    panel.innerHTML = `<div class="np-title"><b>${esc(d.name)}</b></div>
-      <div class="np-list">${places.map(([label, icon, link, , count], i) => `<a href="${link.startsWith("jump:") ? "#/" + door : esc(link)}" ${link.startsWith("jump:") ? `data-jump="${esc(link.slice(5))}"` : ""}>${I(icon)}<span>${esc(i === 0 ? d.name + " home" : label)}</span>${count ? `<small>${esc(count)}</small>` : ""}</a>`).join("")}</div>
-      <div class="np-back" id="npBack"></div>`;
-    document.body.appendChild(panel);
-    document.body.classList.add("nav-panel");
-    panel.addEventListener("click", (e) => {
-      const a = e.target.closest("a");
-      if (!a) return;
-      const jump = a.dataset.jump;
-      closePanel();
-      landOnPage(e.detail === 0);
-      if (jump) { e.preventDefault(); B.doorJump ? B.doorJump(door, jump) : B.go("#/" + door); }
-    });
-    panel.addEventListener("keydown", (e) => {
-      // Jump back in is a row: Left and Right move along it first, and Left only goes back to the rail from its first poster
-      const list = $$(".np-list a", panel);
-      const posters = $$(".np-posters a", panel);
-      const p = posters.indexOf(document.activeElement);
-      if (p >= 0) {
-        if (e.key === "ArrowRight") { e.preventDefault(); if (posters[p + 1]) posters[p + 1].focus(); return; }
-        if (e.key === "ArrowLeft" && p > 0) { e.preventDefault(); posters[p - 1].focus(); return; }
-        if (e.key === "ArrowUp") { e.preventDefault(); if (list.length) list[list.length - 1].focus(); return; }
-        if (e.key === "ArrowDown") { e.preventDefault(); return; }
-      }
-      const at = list.indexOf(document.activeElement);
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        const n = e.key === "ArrowDown" ? (list[at + 1] || (at >= 0 && posters[0])) : list[at - 1];
-        if (n) n.focus();
-      }
-      if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn(door); closePanel(); if (back) back.focus(); }
-    });
-    if (byKeys) { const first = $("a", panel); if (first) first.focus(); }
-  };
-  // ---------- your picture's panel: the profile menu, sliding out beside the rail like a door's panel ----------
-  // Returns false when there's no rail to slide out from (phone-sized windows, full-window pages): the corner card shows instead
   // ---------- phones: the bottom bar ----------
   // Glowfin (Ben, 2026-11-18): Home, Movies, Shows, Anime and More (Kids: Games in Anime's place)
   const tabs = () => {
@@ -257,24 +206,9 @@
     if (k === "home") return B.go("#/home");
     if (k === "more") return moreSheet();
     if (k === "anime") return B.go(ANIME);
-    // Approved rx-phonepanel: tapping the door you're already in opens its places
-    if (doorOf(location.hash || "") === k && k !== "movies" && k !== "shows") return placesSheet(k);
     B.go("#/" + k);
   };
   const sheetRow = (href, icon, label, color, note) => `<a class="sh-row" href="${esc(href)}" style="--c:${color || "var(--ink2)"}">${G(icon)}<span>${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ""}</a>`;
-  const placesSheet = (door) => {
-    const d = B.DOORS[door];
-    const places = placesOf(door);
-    const p = B.side(`<h3 style="color:${d.color}">${esc(d.name)}</h3><div class="sheet">${places.map(([label, icon, link], i) => (link.startsWith("jump:")
-      ? `<a class="sh-row" href="#/${door}" data-jump="${esc(link.slice(5))}">${I(icon)}<span>${esc(label)}</span></a>`
-      : sheetRow(link, icon, i === 0 ? d.name + " home" : label))).join("")}</div>`);
-    p.classList.add("navsheet");
-    p.addEventListener("click", (e) => {
-      const a = e.target.closest("a"); if (!a) return;
-      B.closeAll();
-      if (a.dataset.jump) { e.preventDefault(); B.doorJump ? B.doorJump(door, a.dataset.jump) : B.go("#/" + door); }
-    });
-  };
   const moreSheet = () => {
     const kids = !!(B.me && B.me.kids);
     const shown = tabs().map((t) => t.key);

@@ -27,6 +27,8 @@ jobs:
         python-version: '3.14'
     - name: Run pre-commit
       uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+    - name: Check every browser link opens a real page
+      run: node tools/audit/web_links.js
 
   build:
     runs-on: ubuntu-latest
