@@ -1600,6 +1600,8 @@ body.nav-on #page { padding-left: var(--nrail); }
 body.nav-on .drail { left: var(--nrail); }
 body.nav-on .mbar { left: calc(var(--nrail) + 12px); }
 body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
+/* Full-screen pages that sit under the rail (Now playing, the game lobby, a title page's sticky bar) start right of it, so nothing on their left edge is hidden */
+body.nav-on .np, body.nav-on .lb, body.nav-on .tp .tp-bar { left: var(--nrail); }
 .brail { position: fixed; z-index: 70; left: 0; top: 0; bottom: 0; width: var(--nrail); display: flex; flex-direction: column; gap: 4px; padding: 16px 10px; overflow: hidden auto; scrollbar-width: none;
   background: linear-gradient(90deg, var(--tray) 72%, rgba(var(--trayrgb), .0)); transition: width .2s ease, background .2s ease, box-shadow .2s ease; }
 .brail[hidden], .bbar[hidden] { display: none; }
@@ -1611,6 +1613,7 @@ body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
 /* With a door's place panel open the dim starts where the panel ends, so the panel stays bright */
 body.nav-panel .brail::after { left: calc(var(--nopen) + min(300px, 100vw - var(--nopen))); }
 body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
+body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav-on:has(.brail.always) .tp .tp-bar { left: var(--nopen); }
 .rl-logo { display: flex; align-items: center; height: 46px; padding: 0 11px; margin-bottom: 8px; border-radius: 14px; flex: none; }
 .rl-logo .logo { font-size: 22px; }
 .rl-logo:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
@@ -1700,6 +1703,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 @media (max-width: 900px) {
   body.nav-on #page { padding-left: 0; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
   body.nav-on .brail { display: none; }
+  body.nav-on .np, body.nav-on .lb, body.nav-on .tp .tp-bar { left: 0; }
   body.nav-on .drail { left: 0; }
   body.nav-on .mbar { left: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); }
   body.nav-on .tp .tp-bar { bottom: calc(66px + env(safe-area-inset-bottom)); }
