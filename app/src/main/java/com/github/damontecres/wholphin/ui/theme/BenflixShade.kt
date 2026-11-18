@@ -51,6 +51,25 @@ object BenflixShade {
             1f to BenflixColors.Tray.copy(alpha = .9f),
         )
 
+    /** Wholphin-style top-right picture (Ben 2026-11-18): a strong fade from the left so the words and the menu stay clear */
+    val portionSide: Brush
+        get() =
+            Brush.horizontalGradient(
+                0f to BenflixColors.Tray,
+                0.18f to BenflixColors.Tray.copy(alpha = .85f),
+                0.45f to BenflixColors.Tray.copy(alpha = .25f),
+                0.7f to Color.Transparent,
+            )
+
+    /** ...and its bottom edge melts into the page, so there's no hard line under it */
+    val portionBottom: Brush
+        get() =
+            Brush.verticalGradient(
+                0.5f to Color.Transparent,
+                0.82f to BenflixColors.Tray.copy(alpha = .7f),
+                1f to BenflixColors.Tray,
+            )
+
     /** The fade into the page at the bottom of any big picture, starting [from] of the way down */
     fun bottom(from: Float = 0.4f): Brush =
         Brush.verticalGradient(

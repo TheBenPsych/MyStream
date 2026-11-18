@@ -2266,3 +2266,22 @@ body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) { width: var(
 body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within)::after { opacity: 0; }
 body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-t { opacity: 0; }
 body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-logo .logo { color: transparent; }
+
+/* Ben 2026-11-18: side menu tightened, Wholphin-style picture.
+   The tucked menu has no background of its own (the icons sit on the page), the page you're on has its icon in the
+   Glowfin blue instead of the small dot, and Home / Movies / Shows / Anime start right next to the menu. */
+.brail, body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) { background: none; }
+.rl-i.on { color: var(--shows); }
+.rl-i.on::before { display: none; }
+@media (min-width: 901px) {
+  .home.ghome { padding-left: 0; padding-right: 0; }
+  #doorTop, #doorTop ~ .rows { --gutter: 16px; }
+  /* The picture only fills the top right, fading out to the left and at the bottom so there are no hard lines */
+  #doorTop .art { inset: 0 0 auto auto; width: 72vw; height: 66vh; background-position: center top;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,.15) 18%, rgba(0,0,0,.75) 45%, #000 70%), linear-gradient(0deg, transparent 0, rgba(0,0,0,.3) 18%, #000 50%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,.15) 18%, rgba(0,0,0,.75) 45%, #000 70%), linear-gradient(0deg, transparent 0, rgba(0,0,0,.3) 18%, #000 50%);
+    mask-composite: intersect; }
+  #doorTop .art::after { background: none; }
+}
+.rl-i.on:hover, .rl-i.on:focus-visible { color: #fff; }
