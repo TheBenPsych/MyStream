@@ -495,18 +495,6 @@ fun DestinationContent(
                 .TrailerShufflePage(modifier)
         }
 
-        is Destination.ThisOrThat -> {
-            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            com.github.damontecres.wholphin.ui.main
-                .ThisOrThatPage(destination.door, modifier)
-        }
-
-        is Destination.MoodQuiz -> {
-            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            com.github.damontecres.wholphin.ui.main
-                .MoodQuizPage(destination.door, modifier)
-        }
-
         Destination.Requests -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             if (com.github.damontecres.wholphin.services.KidsMode.isActive ||

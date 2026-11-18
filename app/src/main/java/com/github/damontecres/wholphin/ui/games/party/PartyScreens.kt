@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -35,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -68,12 +71,67 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGold
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGreen
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePanel
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.setup.SeaColours
+import com.github.damontecres.wholphin.ui.setup.SeaFriend
+import com.github.damontecres.wholphin.ui.setup.SeaFriendImage
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
+
+/**
+ * Glowfin G1 party lobby: one card per player with a sea friend (picked from their name, so it stays the same
+ * each time), then dashed open spots up to 4 on TV (2 on phones), so you can see room for more.
+ */
+@Composable
+private fun LobbyCards(
+    names: List<String>,
+    isTv: Boolean,
+) {
+    val perRow = if (isTv) 4 else 2
+    val open = (perRow - names.size % perRow).takeIf { names.size < 8 && it > 0 } ?: 0
+    val spots: List<String?> = names + List(if (names.isEmpty()) perRow else open) { null }
+    val shape = RoundedCornerShape(14.dp)
+    spots.chunked(perRow).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+            row.forEach { name ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .aspectRatio(if (isTv) 1.6f else 1.2f)
+                            .then(
+                                if (name != null) {
+                                    Modifier.background(Glowfin.Raise, shape)
+                                } else {
+                                    Modifier.border(2.dp, Glowfin.Line, shape)
+                                },
+                            ).padding(10.dp),
+                ) {
+                    if (name != null) {
+                        val pick = name.lowercase().hashCode().let { if (it < 0) -it else it }
+                        SeaFriendImage(
+                            friend = SeaFriend.entries[pick % SeaFriend.entries.size],
+                            colour = (pick / 7) % SeaColours.size,
+                            contentDescription = null,
+                            modifier = Modifier.size(if (isTv) 64.dp else 52.dp).clip(CircleShape),
+                        )
+                        Text(name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Glowfin.Text, maxLines = 1)
+                    } else {
+                        Text("Open spot", fontSize = 16.sp, color = Glowfin.Dim)
+                        Text("Join party on a phone", fontSize = 13.sp, color = Glowfin.Dim, textAlign = TextAlign.Center)
+                    }
+                }
+            }
+            repeat(perRow - row.size) { Box(Modifier.weight(1f)) }
+        }
+    }
+}
 
 /** The TV (or phone) hosting a party game: lobby, questions, scores */
 @Composable
@@ -135,14 +193,15 @@ private fun Lobby(
             color = Color.White,
         )
     }
-    Panel {
-        Text("PLAYERS (${ui.players.size})", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .6f))
-        if (ui.players.isEmpty()) {
-            Text("Nobody yet…", fontSize = 18.sp, color = Color.White.copy(alpha = .7f))
-        } else {
-            PlayerChips(ui.players.map { it.name })
-        }
-    }
+    // Glowfin G1: a card per player with their sea friend, and open spots still to fill
+    Text(
+        "PLAYERS (${ui.players.size}) · ${ui.kind.minPlayers} TO 8",
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Glowfin.Dim,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    LobbyCards(ui.players.map { it.name }, isTv)
     ui.error?.let { Text(it, fontSize = 16.sp, color = BenflixRed) }
     val need = ui.kind.minPlayers - ui.players.size
     Button(
@@ -150,7 +209,7 @@ private fun Lobby(
         modifier = Modifier.focusRequester(focus),
         scale = ButtonDefaults.scale(focusedScale = 1f),
     ) {
-        Text(if (need > 0) "Needs $need more ${if (need == 1) "player" else "players"}" else "▶ Start with ${ui.players.size}")
+        Text(if (need > 0) "Needs $need more ${if (need == 1) "player" else "players"}" else "Start with ${ui.players.size}")
     }
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,7 @@ import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
+import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.games.LocalGames
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
@@ -44,6 +46,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.Dialog
 
 /** What the game details page shows besides the buttons */
@@ -99,9 +102,9 @@ fun playTimeText(ms: Long): String {
 }
 
 /**
- * The game's own page (Benflix Redesign 2): the shared title page frame with the box art where the
- * picture goes. Buttons: Play / Resume, Start over, Favourite, More (keep for trips, remove from this
- * device). Tabs: Overview (the story and who made it) and Your saves.
+ * The game's own page (Glowfin G1): the movie-page rows layout with the box art where the picture goes.
+ * Buttons: Keep playing (or Play), the heart, More (keep for trips, remove from this device). What it works
+ * with sits under the buttons. Rows underneath: Your saves (with a New game tile), More like this, About.
  */
 @Composable
 fun GameDetailsPage(
@@ -117,6 +120,11 @@ fun GameDetailsPage(
     onKeep: (Boolean) -> Unit,
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
+    /** Other games on the same console that share a genre */
+    moreLike: List<GameRef> = emptyList(),
+    moreLikeCard: @Composable (GameRef) -> Unit = {},
+    /** "Works with: Remote · Controller · Phone" */
+    worksWith: String? = null,
 ) {
     val context = LocalContext.current
     val ref = choice.ref
@@ -139,7 +147,8 @@ fun GameDetailsPage(
             val played = playTimeMs.takeIf { it >= 60_000 }?.let { "Played ${playTimeText(it)}" }
             if (choice.resume) {
                 add(TitleButton("Keep playing", BenflixIcon.PLAY, { onPlay(true) }, note = played))
-                add(TitleButton("Start over", BenflixIcon.REFRESH, { onPlay(false) }))
+                // With save slots, starting over is the New game tile in Your saves instead
+                if (saves.isEmpty()) add(TitleButton("Start over", BenflixIcon.REFRESH, { onPlay(false) }))
             } else {
                 add(
                     TitleButton(
@@ -150,7 +159,7 @@ fun GameDetailsPage(
                     ),
                 )
             }
-            add(TitleButton(if (favourite) "Favourite" else "Add to favourites", BenflixIcon.HEART, onFavourite))
+            add(TitleButton(if (favourite) "Favourite" else "Favourite it", BenflixIcon.HEART, onFavourite))
             add(
                 TitleButton(
                     "More",
@@ -162,17 +171,44 @@ fun GameDetailsPage(
         }
     val tabs =
         buildList {
+            if (saves.isNotEmpty()) {
+                add(
+                    TitleTab("Your saves") { scope ->
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = scope.side)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                                saves.forEach { spot -> SaveTile(spot, token, scope.wide) }
+                                NewGameTile(scope.wide) { onPlay(false) }
+                            }
+                            Text(
+                                "Keep playing picks up where you last stopped. Load a slot from the game menu (hold Back, or press Menu).",
+                                fontSize = BenflixType.tag,
+                                color = BenflixColors.Muted,
+                            )
+                        }
+                    },
+                )
+            }
+            if (moreLike.isNotEmpty()) {
+                add(
+                    TitleTab("More like this") { scope ->
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            contentPadding =
+                                androidx.compose.foundation.layout
+                                    .PaddingValues(horizontal = scope.side, vertical = 8.dp),
+                        ) {
+                            items(moreLike.size, key = { "like-${moreLike[it].id}" }) { moreLikeCard(moreLike[it]) }
+                        }
+                    },
+                )
+            }
             add(
-                TitleTab("Overview") { scope ->
+                TitleTab("About this game") { scope ->
                     TitleOverview(
                         scope = scope,
                         title = ref.name,
-                        story =
-                            when {
-                                info == null -> "Loading the story…"
-                                info.summary.isNotBlank() -> info.summary
-                                else -> null
-                            },
+                        // The story sits under the name now (rows layout), so this row has who made it
+                        story = null,
                         strip =
                             listOfNotNull(
                                 info?.companies?.takeIf { it.isNotEmpty() }?.let { StripPart("Made by", it.joinToString(", ")) },
@@ -193,22 +229,6 @@ fun GameDetailsPage(
                     )
                 },
             )
-            if (saves.isNotEmpty()) {
-                add(
-                    TitleTab("Your saves") { scope ->
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = scope.side)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                saves.forEach { spot -> SaveTile(spot, token, scope.wide) }
-                            }
-                            Text(
-                                "Keep playing picks up where you last stopped. Load a slot from the game menu (hold Back, or the ☰ button).",
-                                fontSize = BenflixType.tag,
-                                color = BenflixColors.Muted,
-                            )
-                        }
-                    },
-                )
-            }
         }
     val infoLine =
         listOfNotNull(
@@ -225,6 +245,9 @@ fun GameDetailsPage(
                 info = infoLine,
                 buttons = buttons,
                 tabs = tabs,
+                rows = true,
+                story = info?.summary?.takeIf { it.isNotBlank() },
+                statusLine = worksWith,
             )
         }
         if (showMore) {
@@ -308,5 +331,55 @@ private fun savedAgoText(time: Long): String {
         min < 60 -> "Saved $min min ago"
         min < 24 * 60 -> "Saved ${min / 60} h ago"
         else -> "Saved ${min / (24 * 60)} days ago"
+    }
+}
+
+/** Glowfin G1: the dashed "+ New game" tile at the end of Your saves: starts the game from the beginning */
+@Composable
+private fun NewGameTile(
+    isTv: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(shape),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f),
+        border =
+            androidx.tv.material3.ClickableSurfaceDefaults.border(
+                border =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(2.dp, com.github.damontecres.wholphin.ui.theme.Glowfin.Line),
+                        shape = shape,
+                    ),
+                focusedBorder =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
+                        shape = shape,
+                    ),
+            ),
+        colors =
+            androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.Glowfin.Raise,
+            ),
+        modifier =
+            Modifier
+                .glowFocus(shape)
+                .width(if (isTv) 170.dp else 96.dp)
+                .aspectRatio(4f / 3f),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "+ New game",
+                fontSize = if (isTv) BenflixType.small else BenflixType.tag,
+                fontWeight = FontWeight.Bold,
+                color = BenflixColors.Soft,
+            )
+        }
     }
 }

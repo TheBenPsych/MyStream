@@ -108,24 +108,42 @@
   const describe = (g) => {
     const t = g.board ? top3(g.board) : [];
     const best = g.board ? B.bgBest(g.board) : 0;
-    return `<div class="t">${esc(g.title)}</div><div class="meta">${[g.kind === "arcade" ? "Arcade · Play alone" : g.kind === "party" ? "Party · Needs the TV and phones" : "Movie puzzle", best ? `Your best ${best.toLocaleString()}` : ""].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="ov">${esc(g.about || g.short)}</div>${t.length ? `<div class="bg-top3">${t.map((s, i) => `<span>${["🥇", "🥈", "🥉"][i]} ${esc(s.name)} ${s.score.toLocaleString()}</span>`).join("")}</div>` : ""}`;
+    const kick = [g.kind === "arcade" ? "Arcade · Play alone" : g.kind === "party" ? "Party · 3 to 8 players" : "Movie puzzle", best ? `Your best ${best.toLocaleString()}` : ""].filter(Boolean).join(" · ");
+    const works = g.kind === "arcade" ? ["Remote", "Controller", "Phone"] : g.kind === "party" ? ["Phone"] : ["Remote", "Phone"];
+    return `<div class="kick">${esc(kick)}</div><div class="t">${esc(g.title)}</div><div class="ov">${esc(g.about || g.short)}</div>${t.length ? `<div class="bg-top3">${t.map((s, i) => `<span>${i + 1}. ${esc(s.name)} ${s.score.toLocaleString()}</span>`).join("")}</div>` : ""}<span class="gw-chips">${works.map((x) => `<span class="gw-chip">${x}</span>`).join("")}</span>`;
   };
 
-  /** The Benflix rows on the Games page (js/games.js puts them above your console games) */
-  B.bgRows = async (box, infoBox) => {
+  /** Glowfin's own rows for the Games tabs (js/games.js): any of "puzzles", "party", "arcade", "ember", as HTML */
+  B.bgRows = async (keys) => {
     await loadServer();
     const puzzles = PUZZLES.filter((g) => !kids() || g.kids);
     const party = PARTY.filter((g) => !kids() || g.kids);
-    box.innerHTML = [
-      B.row("Movie puzzles", puzzles.map((g) => tile(g, badge(g.board)))),
-      B.row("Party", party.map((g) => tile(g, "Needs the TV and phones"))),
-      B.row("Arcade", [...ARCADE.map((g) => tile(g, badge(g.key))), `<a class="poster bgm" href="#/playb/surprise" title="Surprise me"><div class="im"><img class="art" src="${art({ title: "Surprise me", colors: ["#3A3A44", "#16161B"] })}" alt=""></div><div class="cap"><span class="nm">Surprise me</span><small>Random</small></div></a>`]),
-      `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Glowfin's own adventure game. Plays on the TV with your phone.</span></a></div>`,
-    ].join("");
-    if (infoBox && !infoBox.innerHTML.trim() && puzzles[0]) infoBox.innerHTML = describe(find(puzzles[0].key));
-    const point = (e) => { const c = e.target.closest("[data-bg]"); if (!c) return; const g = find(c.dataset.bg); if (g && infoBox) infoBox.innerHTML = describe(g); };
+    const parts = {
+      puzzles: () => B.row("Movie puzzles", puzzles.map((g) => tile(g, badge(g.board)))),
+      party: () => B.row("Party · needs phones", party.map((g) => tile(g, "Needs the TV and phones"))),
+      arcade: () => B.row("Arcade", [...ARCADE.map((g) => tile(g, badge(g.key))), `<a class="poster bgm" href="#/playb/surprise" title="Surprise me"><div class="im"><img class="art" src="${art({ title: "Surprise me", colors: ["#262A45", "#12152A"] })}" alt=""></div><div class="cap"><span class="nm">Surprise me</span><small>Random</small></div></a>`]),
+      ember: () => `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Glowfin's own adventure game. Plays on the TV with your phone.</span></a></div>`,
+    };
+    return (keys || Object.keys(parts)).map((k) => (parts[k] ? parts[k]() : "")).join("");
+  };
+  /** The top area follows the Glowfin game you point at (For you) */
+  B.bgWire = (box, infoBox) => {
+    if (!infoBox) return;
+    const point = (e) => { const c = e.target.closest("[data-bg]"); if (!c) return; const g = find(c.dataset.bg); if (g) infoBox.innerHTML = describe(g); };
     box.addEventListener("mouseover", point);
     box.addEventListener("focusin", point);
+    if (!infoBox.innerHTML.trim()) { const f = box.querySelector("[data-bg]"); const g = f && find(f.dataset.bg); if (g) infoBox.innerHTML = describe(g); }
+  };
+  /** The Scores tab: every game's board, all time: the top 5 and your best */
+  B.bgScores = async () => {
+    await loadServer();
+    const games = [...PUZZLES.filter((g) => !kids() || g.kids).map((g) => [g.board, g.title, g.key]), ...ARCADE.map((g) => [g.key, g.title, g.key])];
+    const card = ([board, title, key]) => {
+      const top = ((server && server.board[board]) || []).slice().sort((a, b) => b.score - a.score).slice(0, 5);
+      const mine = B.bgBest(board);
+      return `<a class="gscore" href="#/bgame/${key}"><b>${esc(title)}</b>${top.length ? `<ol>${top.map((e) => `<li><span>${esc(e.name.toUpperCase())}</span><span>${e.score.toLocaleString()}</span></li>`).join("")}</ol>` : `<span class="dim">No scores yet</span>`}<small>${mine ? `Your best ${mine.toLocaleString()}` : "You haven't played yet"}</small></a>`;
+    };
+    return `<section class="rowx"><h3>Leaderboards · all time</h3><div class="gscores">${games.map(card).join("")}</div></section>`;
   };
 
   // ---------- a game's page ----------

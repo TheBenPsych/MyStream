@@ -272,24 +272,6 @@ sealed class Destination(
     @Serializable
     data object TrailerShuffle : Destination(true)
 
-    /**
-     * Two quick questions for a group, then picks everyone will like.
-     * [door] = the BenflixDoor name it was opened from (Movies or Shows picks only that kind); blank = both.
-     */
-    @Serializable
-    data class MoodQuiz(
-        val door: String = "",
-    ) : Destination(false)
-
-    /**
-     * Benflix "This or that": pick one of two posters, 8 rounds, the winner is tonight's pick.
-     * [door] = the BenflixDoor name it was opened from (Movies or Shows picks only that kind); blank = both.
-     */
-    @Serializable
-    data class ThisOrThat(
-        val door: String = "",
-    ) : Destination(false)
-
     /** Your own page on the TV: continue watching, My List, liked, watch history */
     @Serializable
     data object MyBenflix : Destination(false)

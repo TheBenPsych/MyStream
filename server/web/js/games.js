@@ -31,16 +31,39 @@ const gameCard = (g, sub) => {
 const favKey = () => "benflix.gamefavs." + B.me.id;
 const favs = () => loadJson(favKey(), []);
 
-const describeGame = (g) => `<div class="t">${esc(g.name)}</div><div class="meta">${[g.console, g.year || "", (g.genres || []).join(", ")].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="ov">Plays in your browser. Use the keyboard or plug in a controller.</div>`;
+// Glowfin G1 (Ben's pick, Nov 2026): the same word tabs as Movies and Music: For you | Consoles | Movie games |
+// Party | Scores. For you = the top area (the game you're on and what it works with), then Continue playing,
+// Movie puzzles, Favourites and Arcade. Each other tab holds one kind of game.
+const GAME_PLACES = ["home", "consoles", "movie", "party", "scores"];
+const worksWith = (remote) => `<span class="gw-chips">${[remote ? "Remote" : "", "Controller", "Phone"].filter(Boolean).map((x) => `<span class="gw-chip">${x}</span>`).join("")}</span>`;
+const describeGame = (g, kick) => `<div class="kick">${esc(kick || [g.console, g.year || ""].filter(Boolean).join(" · "))}</div><div class="t">${esc(g.name)}</div><div class="ov">Plays in your browser. Use the keyboard or plug in a controller.</div>${worksWith(false)}`;
 
-B.route(/^\/games$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Games", DOORS.games.color) + `<section class="door-top" id="gTop" style="height:auto;min-height:250px;padding-bottom:16px"><div class="art"></div><div class="info" id="gInfo"></div></section><div class="rows" id="bRows"></div><div class="rows" id="rows">${B.spinner()}</div>`;
+B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
+  const place = GAME_PLACES.includes(B.q("p")) ? B.q("p") : "home";
+  const home = place === "home";
+  B.page().innerHTML = B.top("Games", DOORS.games.color) + (home ? `<section class="door-top gtop" id="gTop"><div class="art"></div><div class="info" id="gInfo"></div></section>` : "") + `<div class="rows gpage" id="rows">${B.spinner()}</div>`;
   B.wireTop();
-  // Benflix's own games (puzzles, party games, arcade, Ember Road) come first and don't need RomM
-  if (B.bgRows) B.bgRows($("#bRows"), $("#gInfo")).catch((e) => console.warn("Benflix games", e));
+  const rows = $("#rows");
+  // Glowfin's own games (puzzles, party games, arcade, Ember Road) don't need RomM
+  if (place === "movie" || place === "party" || place === "scores") {
+    if (!B.bgRows) { rows.innerHTML = ""; return; }
+    try {
+      rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade", "ember"] : ["party"]);
+    } catch (e) { rows.innerHTML = `<div class="wrap empty">${esc(e.message)}</div>`; }
+    if (place === "party") rows.insertAdjacentHTML("beforeend", `<div class="wrap"><p class="dim" style="max-width:62ch">Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and presses Join a party, then answers on the phone. 3 to 8 players.</p></div>`);
+    if (B.bgWire) B.bgWire(rows, null);
+    return;
+  }
   let data, recent;
   try { [data, recent] = await Promise.all([B.gamesList(), B.call("GET", "api/saves/recent").catch(() => ({ games: [] }))]); }
-  catch (e) { $("#rows").innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>`; return; }
+  catch (e) {
+    if (!B.alive(nav)) return;
+    // For you still has Glowfin's own games when the console games can't load
+    const own = home && B.bgRows ? await B.bgRows(["puzzles", "arcade"]).catch(() => "") : "";
+    rows.innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>` + own;
+    if (own && B.bgWire) B.bgWire(rows, $("#gInfo"));
+    return;
+  }
   if (!B.alive(nav)) return;
   const consoles = data.consoles.filter(playableHere).map((c) => Object.assign({}, c, { games: c.games.map((g) => Object.assign({ console: c.name, slug: c.slug }, g)) }));
   const all = consoles.flatMap((c) => c.games);
@@ -48,21 +71,35 @@ B.route(/^\/games$/, async (m, nav) => {
   const text = (B.q("q") || "").toLowerCase();
   const cont = (recent.games || []).map((r) => byId[r.id]).filter(Boolean);
   const fav = favs().map((id) => byId[id]).filter(Boolean);
-  const arcade = consoles.filter((c) => EJS_CORES[c.slug] === "arcade").flatMap((c) => c.games);
-  $("#rows").innerHTML = text ? B.row(`Games matching “${B.q("q")}”`, all.filter((g) => g.name.toLowerCase().includes(text)).slice(0, 60).map((g) => gameCard(g))) || `<div class="wrap empty">No games match that.</div>` : [
-    B.row("Continue playing", cont.map((g) => gameCard(g))),
-    B.row("Favourites", fav.map((g) => gameCard(g))),
-    // Idea Box 25: the best-loved games two or more can play at once
-    B.row("Games for two", all.filter((g) => g.players >= 2).sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20).map((g) => gameCard(g))),
-    all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin" style="white-space:normal;max-width:100%">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· can't decide? Spin</span></button></div>` : "",
-    `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end"><span class="tname">${esc(c.name)}</span><small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
-    B.row("Arcade machines", arcade.slice(0, 30).map((g) => gameCard(g))),
-    ...consoles.filter((c) => EJS_CORES[c.slug] !== "arcade").slice(0, 6).map((c) => B.row(c.name, c.games.slice(0, 24).map((g) => gameCard(g, c.year)), { seeAll: `#/console/${enc(c.slug)}` })),
-  ].join("");
-  const first = cont[0] || fav[0];
-  if (first) $("#gInfo").innerHTML = describeGame(first);
-  if ($("#gSpin")) $("#gSpin").onclick = () => B.gameRoulette(all);
-  const point = (e) => { const c = e.target.closest("[data-id^='g']"); if (!c) return; const g = B.items[c.dataset.id]; if (g) $("#gInfo").innerHTML = describeGame(g); };
+  if (text) {
+    rows.innerHTML = B.row(`Games matching “${B.q("q")}”`, all.filter((g) => g.name.toLowerCase().includes(text)).slice(0, 60).map((g) => gameCard(g))) || `<div class="wrap empty">No games match that.</div>`;
+    return;
+  }
+  if (home) {
+    const own = B.bgRows ? await B.bgRows(["puzzles"]).catch(() => "") : "";
+    const arc = B.bgRows ? await B.bgRows(["arcade"]).catch(() => "") : "";
+    if (!B.alive(nav)) return;
+    rows.innerHTML = [
+      B.row("Continue playing", cont.map((g) => gameCard(g, "Continue playing"))),
+      own,
+      B.row("Favourites", fav.map((g) => gameCard(g))),
+      arc,
+    ].join("");
+    if (B.bgWire) B.bgWire(rows, $("#gInfo"));
+    const first = cont[0] || fav[0];
+    if (first) $("#gInfo").innerHTML = describeGame(first, "Continue playing · " + first.console);
+  } else {
+    const arcade = consoles.filter((c) => EJS_CORES[c.slug] === "arcade").flatMap((c) => c.games);
+    rows.innerHTML = [
+      `<section class="rowx"><h3>Consoles</h3><div class="tiles2">${consoles.map((c) => `<a class="tile2" href="#/console/${enc(c.slug)}" style="flex-direction:column;align-items:flex-start;justify-content:flex-end"><span class="tname">${esc(c.name)}</span><small class="dim" style="font-size:14px;font-weight:600">${c.games.length} games</small></a>`).join("") || '<div class="empty">No consoles that play in a browser yet.</div>'}</div></section>`,
+      all.length > 1 ? `<div class="wrap"><button class="btn" id="gSpin" style="white-space:normal;max-width:100%">${I("pad")} Game roulette <span class="dim" style="font-weight:500">· spin for a random game</span></button></div>` : "",
+      // Idea Box 25: the best-loved games two or more can play at once
+      B.row("Games for two", all.filter((g) => g.players >= 2).sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 20).map((g) => gameCard(g))),
+      B.row("Arcade machines", arcade.slice(0, 30).map((g) => gameCard(g))),
+    ].join("");
+    if ($("#gSpin")) $("#gSpin").onclick = () => B.gameRoulette(all);
+  }
+  const point = (e) => { const c = e.target.closest("[data-id^='g']"); if (!c || !$("#gInfo")) return; const g = B.items[c.dataset.id]; if (g) $("#gInfo").innerHTML = describeGame(g); };
   B.page().addEventListener("mouseover", point);
   B.page().addEventListener("focusin", point);
   B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
@@ -134,30 +171,41 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
   if (!g) return B.go("#/games");
   const isFav = favs().includes(id);
   const ok = !!EJS_CORES[c.slug];
-  // Redesign 2: the shared title page, the box art where the picture goes
+  // Glowfin G1 game page: movie-page rows. Keep playing first, then Saves, the heart and More; what it works with
+  // under the buttons; Your saves (+ New game) and More like this underneath.
   const kept = saves.srm || saves.state;
+  const genres = info.genres || g.genres || [];
+  const like = c.games.filter((x) => x.id !== id && (x.genres || []).some((gg) => genres.includes(gg))).slice(0, 20).map((x) => Object.assign({ console: c.name, slug: c.slug }, x));
+  const saveCards = kept ? `<div class="gsaves"><a class="gsave" href="#/playgame/${id}"><b>${saves.srm ? "In-game save" : "Where you stopped"}</b><small>On Tower · plays on any TV, phone or here</small></a></div>` : "";
   const tp = B.titlePage({
     title: g.name,
     color: DOORS.games.color,
+    rows: true,
     cover: { url: cover(g), ratio: 3 / 4 },
-    info: [c.name, info.year || g.year || "", info.players ? `${info.players} players` : ""],
+    info: [c.name, info.year || g.year || "", genres.slice(0, 2).join(", "), info.players ? `${info.players} player${info.players > 1 ? "s" : ""}` : "1 player"],
+    story: info.summary || "",
+    status: "Works with: Keyboard · Controller",
     buttons: [
       { label: kept ? "Keep playing" : "Play", icon: "play", href: ok ? `#/playgame/${id}` : "", off: ok ? "" : "This console doesn't play in a browser. Play it on the TV or phone.", note: "Arrow keys move. Z and X are the main buttons, Enter is Start. A controller works too." },
-      { id: "gFav", label: isFav ? "Favourite" : "Add to favourites", icon: isFav ? "check" : "star", onClick: (e, el) => {
+      kept ? { label: "Saves", icon: "list", onClick: () => { const r = $("#tpSaves"); if (r) r.scrollIntoView({ behavior: "smooth", block: "center" }); } } : null,
+      { id: "gFav", label: isFav ? "Favourite" : "Add to favourites", icon: isFav ? "check" : "heart", onClick: (e, el) => {
         const l = favs(), i = l.indexOf(id);
         i >= 0 ? l.splice(i, 1) : l.unshift(id);
         store(favKey(), JSON.stringify(l));
-        el.innerHTML = `${I(i >= 0 ? "star" : "check")} <span>${i >= 0 ? "Add to favourites" : "Favourite"}</span>`;
+        el.innerHTML = `${I(i >= 0 ? "heart" : "check")} <span>${i >= 0 ? "Add to favourites" : "Favourite"}</span>`;
       } },
-    ],
-    story: info.summary || "",
+      { label: "More", icon: "more", onClick: () => B.tpMore(g.name, [
+        { label: "See all " + c.name + " games", icon: "pad", href: `#/console/${enc(c.slug)}` },
+        { label: "Back to Games", icon: "left", href: "#/games" },
+      ]) },
+    ].filter(Boolean),
     strip: B.tpStrip([
       (info.companies || []).length ? ["Made by", info.companies.slice(0, 2).join(", "), true] : null,
-      (info.genres || g.genres || []).length ? [(info.genres || g.genres).slice(0, 3).join(", "), ""] : null,
       g.size ? ["MB", (g.size / 1048576).toFixed(1)] : null,
     ]),
     tabs: [
-      { name: "Your saves", id: "tpSaves", html: kept ? `<div class="wrap0"><p>${saves.srm ? "You have an in-game save on Tower." : "Glowfin kept where you stopped."} Keep playing picks it up on any TV, phone or here.</p></div>` : "" },
+      { name: "Your saves", id: "tpSaves", html: saveCards, skip: !saveCards },
+      { name: "More like this", id: "tpLike", html: like.length ? `<div class="grid">${like.map((x) => gameCard(x)).join("")}</div>` : "", skip: !like.length },
     ],
   });
 });

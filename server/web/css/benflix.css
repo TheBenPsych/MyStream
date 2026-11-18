@@ -904,43 +904,6 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .spotted .brow .tx b { font-size: 14px; -webkit-line-clamp: 3; overflow-wrap: normal; }
 }
 
-/* ---------- "Can't decide?" games (Movies and Shows doors) ---------- */
-.pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px var(--gutter) 10px; max-width: 980px; }
-.pickt { display: flex; gap: 14px; align-items: center; background: var(--pg2); border-radius: var(--r); padding: 16px 18px; color: var(--ink); text-decoration: none; min-width: 0; }
-.pickt:hover, .pickt:focus-visible { box-shadow: 0 0 0 3px #fff; background: var(--pg3); outline: 0; }
-.pickt .mk { flex: none; width: 40px; height: 40px; border-radius: 8px; background: var(--accent); color: var(--dark); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
-.pickt b { display: block; font-size: 18px; }
-.pickt small { display: block; color: var(--ink2); font-size: 14px; line-height: 1.3; }
-.pickpage { padding-top: 12px; }
-.pickpage .lbl { font-size: 13px; font-weight: 700; letter-spacing: .1em; color: var(--accent); margin: 10px 0 6px; }
-.pickpage .btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
-.totrow { display: flex; justify-content: center; align-items: center; gap: 36px; margin: 18px 0 6px; }
-.totrow .or { font-size: 24px; font-weight: 800; color: var(--accent); }
-.totp { background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); width: min(300px, 40vw); display: flex; flex-direction: column; gap: 8px; text-align: center; font: inherit; }
-.totp .im { aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; background: var(--pg2); display: grid; place-items: center; }
-.totp .im img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.totp:hover .im, .totp:focus-visible .im { box-shadow: 0 0 0 3px #fff; }
-.totp:focus-visible { outline: 0; }
-.totp .cap { font-weight: 600; font-size: 15px; }
-.center0 { text-align: center; }
-.totwin { display: flex; gap: 32px; align-items: center; margin-top: 16px; }
-.totwin .im { flex: none; width: min(260px, 38vw); aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; background: var(--pg2); }
-.totwin .im img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.totwin .sub { max-width: 60ch; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.qchips { display: flex; flex-wrap: wrap; gap: 10px; max-width: 760px; }
-.qchips .chip { font-size: 16px; padding: 10px 18px; }
-.qchips .chip.on { background: var(--pg4); border-color: var(--accent); color: var(--ink); }
-.qhead { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.qgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
-.qgrid .poster { width: 100%; }
-.fitall { font-size: 13px; font-weight: 700; color: var(--accent); margin-top: 4px; }
-@media (max-width: 600px) {
-  .pickers { grid-template-columns: 1fr; }
-  .totrow { gap: 12px; }
-  .totp { width: 42vw; }
-  .totwin { flex-direction: column; align-items: flex-start; }
-  .qgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-}
 /* Song previews: the round play button beside Ask for it, and on song covers */
 .circle.pv { width: 38px; height: 38px; flex: none; }
 .circle.pv svg.i { width: 18px; height: 18px; }
@@ -2210,3 +2173,30 @@ svg.gi path.gd { stroke-width: 3.6; }
   .bk-mbar .mbar-ctl { overflow-x: auto; scrollbar-width: none; }
   .bk-chlist { right: 16px; bottom: 84px; }
 }
+
+/* ---------- Glowfin Games (G1, Ben 2026-11-18) ----------
+   Tabs along the top like Movies and Music (For you, Consoles, Movie games, Party, Scores). For you: a top area
+   about the game you're on with what it works with (Remote, Controller, Phone), then Continue playing, Movie
+   puzzles, Favourites and Arcade. Scores: one card per game, its top 5 and your best. */
+.gtop { height: auto; min-height: 250px; padding-bottom: 16px; }
+.gtop .kick, .door-top .kick { color: var(--ink2); font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.gtop .t { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 700; }
+.gw-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.gw-chip { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: var(--raise); border: 1px solid #262A45; color: var(--ink); font-size: 13px; font-weight: 600; }
+.bg-top3 { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--ink2); font-size: 14px; font-weight: 700; }
+.gscores { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding: 4px var(--gutter) 10px; }
+.gscore { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: var(--raise); color: var(--ink); text-decoration: none; }
+.gscore:hover, .gscore:focus-visible { box-shadow: var(--glowring); outline: 0; }
+.gscore b { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 17px; }
+.gscore ol { margin: 0; padding: 0; list-style: none; counter-reset: g; display: flex; flex-direction: column; gap: 4px; }
+.gscore li { counter-increment: g; display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 700; }
+.gscore li span:first-child::before { content: counter(g) ". "; color: var(--ink2); }
+.gscore small { color: var(--aqua); font-size: 13px; font-weight: 600; }
+@media (max-width: 600px) {
+  .gtop { display: none; }
+  .gscores { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+.gsaves { display: flex; flex-wrap: wrap; gap: 14px; }
+.gsave { display: flex; flex-direction: column; gap: 4px; min-width: 220px; padding: 16px 18px; border-radius: 12px; background: var(--raise); color: var(--ink); text-decoration: none; }
+.gsave:hover, .gsave:focus-visible { box-shadow: var(--glowring); outline: 0; }
+.gsave small { color: var(--ink2); }

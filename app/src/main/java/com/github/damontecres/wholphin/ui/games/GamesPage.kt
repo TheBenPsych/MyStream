@@ -27,7 +27,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -44,8 +43,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -78,15 +75,18 @@ import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
-import com.github.damontecres.wholphin.ui.door.doorHome
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
@@ -99,8 +99,10 @@ import kotlinx.coroutines.withContext
 
 /**
  * The Games tab: quick built-in games, plus your own game collection from RomM on the server.
- * Redesign 2 (section 6): the page sits in the shared door frame; its side menu (chips on phones)
- * jumps to Movie puzzles, Arcade, Favourites, Consoles and Leaderboards further down the page.
+ * Glowfin G1 (Ben's pick, Nov 2026): the same word tabs as Movies and Music along the top: For you, Consoles,
+ * Movie games, Party, Scores. For you: on TV and wide screens a top area about the game you're on (what it is and
+ * what it works with: Remote, Controller, Phone), then Continue playing, Movie puzzles, Favourites and Arcade.
+ * Each other tab holds one kind of game, so nothing gets lost in a long scroll.
  */
 @Composable
 fun GamesPage(
@@ -117,7 +119,7 @@ fun GamesPage(
     val isTv = rememberIsTv()
     val context = LocalContext.current
     val config = LocalConfiguration.current
-    val wide = isTv || config.screenWidthDp > config.screenHeightDp
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     val library by viewModel.library.collectAsState()
     // Opening from Home: the door colour waits for the game list, then fades onto the page
     val libraryLoaded = library !is LibraryState.Loading
@@ -203,30 +205,18 @@ fun GamesPage(
     // Ben: while your games are still loading, Continue playing shows as a grey row in its place
     val waitingRecent = remember(library) { library is LibraryState.Loading && viewModel.recentPlayed().isNotEmpty() }
     LaunchedEffect(hasRecent, waitingRecent) {
-        if (userMoved) return@LaunchedEffect
+        if (userMoved || !forYou) return@LaunchedEffect
         // Hold focus for the real Continue playing row (this wait stops as soon as it arrives)
         if (waitingRecent && !hasRecent) delay(FIRST_FOCUS_WAIT_MS)
         pageScroll.scrollTo(0)
         delay(FIRST_FOCUS_SETTLE_MS)
         if (isTv) focusRequester.tryRequestFocus()
     }
-    // Redesign 2: the side menu's places, each a part of this long page
-    val frame = rememberDoorFrameState(BenflixDoor.GAMES, jumps = true)
+    // Glowfin G1: the tabs (opening Games again within 10 minutes starts on the tab you were on)
+    val frame = rememberDoorFrameState(BenflixDoor.GAMES)
     val scope = rememberCoroutineScope()
-    val anchorY = remember { mutableStateMapOf<String, Int>() }
-    val anchorFocus = remember { mutableMapOf<String, FocusRequester>() }
-
-    fun anchor(key: String): Modifier =
-        Modifier
-            .onGloballyPositioned { anchorY[key] = it.positionInParent().y.toInt() }
-            .focusRequester(anchorFocus.getOrPut(key) { FocusRequester() })
-    frame.onJump = { key ->
-        scope.launch {
-            pageScroll.animateScrollTo(if (key == DOOR_HOME) 0 else anchorY[key] ?: 0)
-            delay(JUMP_SETTLE_MS)
-            if (key == DOOR_HOME) focusRequester.tryRequestFocus() else anchorFocus[key]?.tryRequestFocus()
-        }
-    }
+    val tab = frame.section
+    val forYou = tab == DOOR_HOME
     frame.toTop = {
         scope.launch {
             pageScroll.animateScrollTo(0)
@@ -234,6 +224,8 @@ fun GamesPage(
             if (isTv) focusRequester.tryRequestFocus()
         }
     }
+    // A new tab starts at its top
+    LaunchedEffect(frame.picks) { if (frame.picks > 0) pageScroll.scrollTo(0) }
     LaunchedEffect(Unit) { snapshotFlow { pageScroll.value < TOP_SLACK_PX }.collect { frame.atTop = it } }
     DisposableEffect(Unit) {
         onDispose { DoorMemory.keep(BenflixDoor.GAMES, DoorMemory.Spot(section = frame.section, scroll = pageScroll.value)) }
@@ -243,22 +235,16 @@ fun GamesPage(
         delay(RETURN_WAIT_MS)
         pageScroll.scrollTo(spot.scroll)
         delay(JUMP_SETTLE_MS)
-        // Focus the part of the page you were in
-        val at = anchorY.filter { it.value <= spot.scroll + TOP_SLACK_PX }.maxByOrNull { it.value }?.key
-        if (isTv) (at?.let { anchorFocus[it] } ?: focusRequester).tryRequestFocus()
+        if (isTv) focusRequester.tryRequestFocus()
     }
-    val hasFavourites = remember(refs, favourites) { favourites.any { it in refs } }
     val sections =
-        remember(hasFavourites, playable.isNotEmpty(), library) {
+        remember(library) {
             buildList {
-                add(doorHome())
-                add(DoorSection("puzzles", "Movie puzzles", BenflixIcon.FILM))
-                add(DoorSection("arcade", "Arcade", BenflixIcon.PAD))
-                if (hasFavourites) add(DoorSection("favourites", "Favourites", BenflixIcon.HEART))
-                if (library is LibraryState.Ready && playable.isNotEmpty()) {
-                    add(DoorSection("consoles", "Consoles", BenflixIcon.TV, count = playable.size))
-                }
-                add(DoorSection("leaderboards", "Leaderboards", BenflixIcon.STATS))
+                add(DoorSection(DOOR_HOME, "For you", BenflixIcon.HOME))
+                if (library != LibraryState.Hidden) add(DoorSection(TAB_CONSOLES, "Consoles", BenflixIcon.PAD))
+                add(DoorSection(TAB_MOVIE, "Movie games", BenflixIcon.FILM))
+                add(DoorSection(TAB_PARTY, "Party", BenflixIcon.PHONE))
+                add(DoorSection(TAB_SCORES, "Scores", BenflixIcon.STATS))
             }
         }
     // A game picked in Search opens its page as soon as the game list is here
@@ -333,9 +319,27 @@ fun GamesPage(
         }
     }
 
-    DoorFrame(frame, sections, modifier, phoneInset = true) { inner ->
-        Column(modifier = inner.fillMaxSize().onFirstUserMove { userMoved = true }) {
-            if (wide) {
+    val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
+
+    @Composable
+    fun FavouritesRow() {
+        if (favRefs.isEmpty()) return
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+            RowName("Favourites", isTv)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+            ) {
+                items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
+            }
+        }
+    }
+
+    DoorFrame(frame, sections, modifier, tabs = true) { inner ->
+        // TV and wide screens: the tabs sit over the top of the page, so the page starts under them
+        val top = if (wide) LocalTopBarOverlap.current else 0.dp
+        Column(modifier = inner.fillMaxSize().padding(top = top).onFirstUserMove { userMoved = true }) {
+            if (wide && forYou) {
                 val first =
                     recent.firstOrNull()?.let { refPreview(it.first, it.second) }
                 GamesTopArea(
@@ -353,15 +357,15 @@ fun GamesPage(
                         .focusRequester(focusRequester)
                         .verticalScroll(pageScroll)
                         .padding(
-                            start = if (isTv) 48.dp else 0.dp,
-                            end = if (isTv) 48.dp else 8.dp,
-                            top = if (isTv) 8.dp else 8.dp,
+                            start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
+                            end = if (isTv) BenflixSpace.tvEdge else 8.dp,
+                            top = 8.dp,
                             bottom = 24.dp,
                         ),
             ) {
-                // Order: Continue playing, Movie puzzles, Party, Arcade, Ember Road, Favourites, Consoles, Leaderboards.
+                // For you (G1): Continue playing, Movie puzzles, Favourites, Arcade.
                 // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
-                val keep = if (!wide) recent.firstOrNull() else null
+                val keep = if (!wide && forYou) recent.firstOrNull() else null
                 if (keep != null) {
                     val (ref, time) = keep
                     KeepPlayingCard(
@@ -376,16 +380,10 @@ fun GamesPage(
                             },
                         onPlay = { viewModel.playHere(context, ref, resume = true) },
                         onOpen = { viewModel.choose(ref) },
-                        modifier = Modifier.padding(start = 16.dp, end = 8.dp),
                     )
                 }
-                if (recent.isEmpty() && waitingRecent) {
-                    Text(
-                        text = "Continue playing",
-                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
+                if (forYou && recent.isEmpty() && waitingRecent) {
+                    RowName("Continue playing", isTv)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
                         modifier =
@@ -398,16 +396,18 @@ fun GamesPage(
                         }
                     }
                 }
-                val rowRecent = if (keep != null) recent.drop(1) else recent
+                val rowRecent =
+                    if (!forYou) {
+                        emptyList()
+                    } else if (keep != null) {
+                        recent.drop(1)
+                    } else {
+                        recent
+                    }
                 if (rowRecent.isNotEmpty()) {
                     // TV: the row name comes into view with the row
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
-                        Text(
-                            text = "Continue playing",
-                            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
+                        RowName("Continue playing", isTv)
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
@@ -431,17 +431,26 @@ fun GamesPage(
                         }
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = anchor("puzzles")) {
-                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles", "party"), board = board, onFocus = onFocus)
+                if (forYou || tab == TAB_MOVIE) {
+                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles"), board = board, onFocus = onFocus)
                 }
-                // Ben: the Arcade games come before your Favourites and Consoles
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = anchor("arcade")) {
+                if (forYou) FavouritesRow()
+                if (forYou || tab == TAB_MOVIE) {
                     GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
                 }
-                EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) }, onFocus = onFocus)
+                if (tab == TAB_MOVIE) {
+                    EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) }, onFocus = onFocus)
+                }
+                if (tab == TAB_PARTY) {
+                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("party"), board = board, onFocus = onFocus)
+                    InfoText(
+                        "Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and " +
+                            "presses Join a party, then answers on the phone. 3 to 8 players.",
+                    )
+                }
 
                 // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
-                if (library != LibraryState.Hidden) {
+                if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
                     when (val state = library) {
                         LibraryState.Hidden -> {}
 
@@ -511,26 +520,6 @@ fun GamesPage(
                                             ).padding(horizontal = 14.dp, vertical = 6.dp),
                                 )
                             }
-                            val favRefs = remember(refs, favourites) { favourites.mapNotNull { refs[it] }.sortedBy { it.name.lowercase() } }
-                            if (favRefs.isNotEmpty()) {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = anchor("favourites").scrollAsOneBlock(),
-                                ) {
-                                    Text(
-                                        text = "Favourites",
-                                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                                    ) {
-                                        items(favRefs, key = { "fav-${it.id}" }) { Card(it) }
-                                    }
-                                }
-                            }
                             // Idea Box 25 "Games for two": the best-loved games two or more can play at once
                             val forTwo =
                                 remember(ready, refs) {
@@ -549,12 +538,7 @@ fun GamesPage(
                                     verticalArrangement = Arrangement.spacedBy(16.dp),
                                     modifier = Modifier.scrollAsOneBlock(),
                                 ) {
-                                    Text(
-                                        text = "Games for two",
-                                        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
+                                    RowName("Games for two", isTv)
                                     LazyRow(
                                         horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                                         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
@@ -587,7 +571,7 @@ fun GamesPage(
                                 if (spinGames.size > 1) {
                                     ActionTile(
                                         title = "Game roulette",
-                                        subtitle = "Can't decide? Spin for a random game",
+                                        subtitle = "Spin for a random game",
                                         onClick = { spinning = true },
                                     )
                                 }
@@ -609,16 +593,9 @@ fun GamesPage(
                                 // A grid of consoles: photo, name and how many games. Press one to see its games.
                                 Column(
                                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = anchor("consoles").scrollAsOneBlock(),
+                                    modifier = Modifier.scrollAsOneBlock(),
                                 ) {
-                                    if (playable.isNotEmpty()) {
-                                        Text(
-                                            text = "Consoles",
-                                            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                        )
-                                    }
+                                    if (playable.isNotEmpty()) RowName("Consoles", isTv)
                                     ConsoleGrid(
                                         playable = playable,
                                         isTv = isTv,
@@ -722,35 +699,35 @@ fun GamesPage(
                         }
                     }
                 }
-                // Leaderboards last: every game, its top 3 and your place, all time
-                val boardGames =
-                    remember(board) {
-                        BuiltInGame.entries.map { g ->
-                            BoardGame(
-                                g.name,
-                                g.title,
-                                { viewModel.navigationManager.navigateTo(Destination.GameInfo("arcade:${g.name}")) },
-                                viewModel.best(g),
-                            )
-                        } +
-                            if (KidsMode.isActive) {
-                                emptyList()
-                            } else {
-                                MovieGame.entries.filter { it.boardKey != null && it.visibleNow(false) }.map { g ->
-                                    BoardGame(
-                                        g.boardKey!!,
-                                        g.title,
-                                        { viewModel.navigationManager.navigateTo(Destination.GameInfo("movie:${g.name}")) },
-                                        viewModel.bestExtra(g.boardKey),
-                                    )
+                // Scores: every game, its top 3 and your place, all time
+                if (tab == TAB_SCORES) {
+                    val boardGames =
+                        remember(board) {
+                            BuiltInGame.entries.map { g ->
+                                BoardGame(
+                                    g.name,
+                                    g.title,
+                                    { viewModel.navigationManager.navigateTo(Destination.GameInfo("arcade:${g.name}")) },
+                                    viewModel.best(g),
+                                )
+                            } +
+                                if (KidsMode.isActive) {
+                                    emptyList()
+                                } else {
+                                    MovieGame.entries.filter { it.boardKey != null && it.visibleNow(false) }.map { g ->
+                                        BoardGame(
+                                            g.boardKey!!,
+                                            g.title,
+                                            { viewModel.navigationManager.navigateTo(Destination.GameInfo("movie:${g.name}")) },
+                                            viewModel.bestExtra(g.boardKey),
+                                        )
+                                    }
                                 }
-                            }
-                    }
-                val myName = remember { viewModel.myBoardName() }
-                Box(anchor("leaderboards")) {
+                        }
+                    val myName = remember { viewModel.myBoardName() }
                     LeaderboardRow(games = boardGames, board = board, myName = myName, isTv = isTv, onFocus = onFocus)
                 }
-                if (library != LibraryState.Hidden) {
+                if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
                     DeviceCard(power, isTv)
                     // Refreshes after a game is downloaded or removed, not only when the library reloads
                     val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
@@ -793,6 +770,38 @@ fun GamesPage(
             onKeep = { keep -> viewModel.setKeep(context, c.ref, keep) },
             onRemove = { viewModel.removeDownload(context, c.ref) },
             onDismiss = { viewModel.closeChoice() },
+            moreLike =
+                remember(c.ref.id, ready) {
+                    val all =
+                        ready
+                            ?.consoles
+                            ?.firstOrNull { it.slug == c.ref.slug }
+                            ?.games
+                            .orEmpty()
+                    val genres =
+                        all
+                            .firstOrNull { it.id == c.ref.id }
+                            ?.genres
+                            .orEmpty()
+                            .toSet()
+                    if (genres.isEmpty()) {
+                        emptyList()
+                    } else {
+                        all
+                            .filter { it.id != c.ref.id && it.genres.any { g -> g in genres } }
+                            .sortedByDescending { it.rating }
+                            .mapNotNull { refs[it.id] }
+                            .take(MORE_LIKE_ROW)
+                    }
+                },
+            moreLikeCard = { Card(it) },
+            worksWith =
+                "Works with: " +
+                    listOfNotNull(
+                        if (LocalConsole.forSlug(c.ref.slug)?.remoteFriendly == true) "Remote" else null,
+                        "Controller",
+                        "Phone",
+                    ).joinToString(" · "),
         )
     }
 
@@ -839,14 +848,14 @@ internal fun ActionTile(
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF2A2A2A), focusedContainerColor = Color(0xFF3A3A3A)),
-        modifier = Modifier.size(width = 280.dp, height = 84.dp),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Glowfin.Raise, focusedContainerColor = Glowfin.FocusRow),
+        modifier = Modifier.glowFocus(shape).size(width = 280.dp, height = 84.dp),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Glowfin.Text)
             Text(subtitle, fontSize = BenflixType.small, color = BenflixColors.Soft)
         }
     }
@@ -877,7 +886,7 @@ private fun KeepPlayingCard(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.glowFocus(shape).fillMaxWidth(),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -887,7 +896,7 @@ private fun KeepPlayingCard(
             Box(
                 Modifier
                     .size(width = 100.dp, height = 140.dp)
-                    .background(Color(0xFF1F1F1F), RoundedCornerShape(10.dp)),
+                    .background(Glowfin.Raise, RoundedCornerShape(10.dp)),
             ) {
                 if (ref.coverUrl != null) {
                     AsyncImage(
@@ -980,8 +989,9 @@ internal fun ServerGameCard(
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape),
             ),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1F1F1F), focusedContainerColor = Color(0xFF1F1F1F)),
-        modifier = modifier,
+        colors = ClickableSurfaceDefaults.colors(containerColor = Glowfin.Raise, focusedContainerColor = Glowfin.Raise),
+        // Glowfin glow ring: aqua ring and a soft violet glow, nothing grows
+        modifier = Modifier.glowFocus(shape).then(modifier),
     ) {
         Box(Modifier.fillMaxSize()) {
             // Redesign 2 (rc-p-noart): no box art = the dark card with the big white name and a pink line
@@ -1084,6 +1094,28 @@ internal fun playedAgo(time: Long): String {
     }
 }
 
+/** Glowfin G1 tab keys (For you is the frame's own Home) */
+private const val TAB_CONSOLES = "consoles"
+private const val TAB_MOVIE = "movie"
+private const val TAB_PARTY = "party"
+private const val TAB_SCORES = "scores"
+
+/** A row's name in the Glowfin look (the same as Music and Books rows) */
+@Composable
+internal fun RowName(
+    text: String,
+    isTv: Boolean,
+) {
+    Text(
+        text = text,
+        fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
+        fontWeight = FontWeight.Bold,
+        color = BenflixColors.Text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 private const val FIRST_FOCUS_SETTLE_MS = 80L
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
 
@@ -1098,6 +1130,9 @@ private const val RETURN_WAIT_MS = 450L
 
 /** Idea Box 25: how often the Games page checks controller batteries */
 private const val BATTERY_CHECK_MS = 60_000L
+
+/** Glowfin G1: how many games a game page's More like this row shows */
+private const val MORE_LIKE_ROW = 20
 
 /** Idea Box 25: how many games the "Games for two" row shows */
 private const val FOR_TWO_ROW = 20
