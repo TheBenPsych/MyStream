@@ -796,20 +796,13 @@ button.np-ly:hover::after, button.np-ly:focus-visible::after { content: "Play fr
 .fixer-acts h3 { margin: 4px 0 0; font-size: 22px; }
 .fixer-acts .btn { width: 100%; }
 
-/* ---------- Books (the lime sixth door) ---------- */
-:root { --books: #B9E36A; }
+/* ---------- Books (Glowfin aqua, B1) ---------- */
+:root { --books: #3FE0E8; }
 .doors.six { grid-template-columns: repeat(6, 1fr); }
 /* Six doors side by side: the words under the name shrink with the window so they never run past the door */
 @media (min-width: 901px) { .doors.six .door { padding: 26px 20px; } .doors.six .door .d { font-size: min(18px, 1.15vw); } }
 .doors.grow .door:nth-child(6) { animation-delay: .35s; }
-.bk-page { display: flex; gap: 8px; padding-top: var(--bar); min-height: 100vh; }
-.bk-side { position: sticky; top: calc(var(--bar) + 8px); align-self: flex-start; width: 220px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 8px 0 0 var(--gutter); }
-.bk-side a { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; color: var(--ink2); font-weight: 600; border-left: 4px solid transparent; }
-.bk-side a:hover, .bk-side a:focus-visible { background: var(--pg3); color: var(--ink); }
-.bk-side a.on { color: var(--books); border-left-color: var(--books); background: var(--pg2); font-weight: 800; }
-.bk-side small { margin-left: auto; color: var(--ink3); font-weight: 600; }
-.bk-main { flex: 1; min-width: 0; }
-.bk-main .rowx h3 { padding-left: 8px; } .bk-main .strip { padding-left: 8px; }
+.bk-main { min-width: 0; }
 .bk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 18px 14px; }
 .bk-grid .poster { width: auto; }
 .poster.bk .im { display: grid; place-items: center; }
@@ -817,7 +810,7 @@ button.np-ly:hover::after, button.np-ly:focus-visible::after { content: "Play fr
 .poster.bk .tag { position: absolute; left: 6px; top: 6px; }
 .bk-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(0,0,0,.6); }
 .bk-bar i { display: block; height: 100%; background: var(--books); }
-.bk-tick { position: absolute; right: 6px; bottom: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--books); color: #141C05; display: grid; place-items: center; }
+.bk-tick { position: absolute; right: 6px; bottom: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--books); color: #05222A; display: grid; place-items: center; }
 .bk-tick svg { width: 14px; height: 14px; }
 .bk-ears { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(5,6,8,.72); display: grid; place-items: center; }
 .bk-ears svg { width: 15px; height: 15px; }
@@ -826,15 +819,6 @@ button.np-ly:hover::after, button.np-ly:focus-visible::after { content: "Play fr
 .bk-hero .kick { font-size: 13px; font-weight: 800; letter-spacing: .14em; margin-bottom: 6px; }
 .bk-desc { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 .bk-cover { width: 280px; aspect-ratio: 2/3; flex: none; border-radius: 12px; background: var(--pg3) center/cover no-repeat; align-self: flex-start; }
-.bk-pages { position: fixed; inset: 0; z-index: 90; background: #000; outline: none; overflow: auto; }
-.bk-spread { height: calc(100vh - 56px); display: flex; justify-content: center; align-items: center; cursor: pointer; }
-.bk-spread.rtl { flex-direction: row-reverse; }
-.bk-spread img { max-height: 100%; max-width: 100%; object-fit: contain; min-width: 0; }
-.bk-spread img + img { max-width: 50%; } .bk-spread img:has(+ img) { max-width: 50%; }
-.bk-pbar { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 var(--gutter); background: #121318; color: var(--ink2); }
-.bk-pbar span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bk-strip { max-width: 900px; margin: 0 auto; }
-.bk-strip img { display: block; width: 100%; min-height: 200px; }
 .bk-mini { width: 44px; aspect-ratio: 2/3; border-radius: 6px; background: var(--pg3) center/cover no-repeat; flex: none; }
 body.has-bkbar { padding-bottom: 84px; }
 body.has-mbar.has-bkbar .bk-mbar { bottom: 90px; }
@@ -843,16 +827,9 @@ body.has-mbar.has-bkbar .bk-mbar { bottom: 90px; }
 body.reading .mbar { display: none; }
 @media (max-width: 900px) {
   .doors.six { grid-template-columns: 1fr 1fr; }
-  .bk-page { flex-direction: column; gap: 0; }
-  .bk-side { position: static; width: auto; flex-direction: row; overflow-x: auto; padding: 4px var(--gutter) 8px; scrollbar-width: none; }
-  .bk-side a { border-left: 0; border-radius: 99px; border: 1px solid var(--line); padding: 7px 14px; white-space: nowrap; }
-  .bk-side a.on { background: var(--books); color: #141C05; border-color: var(--books); }
-  .bk-side small { display: none; }
-  .bk-main .rowx h3, .bk-main .strip { padding-left: var(--gutter); }
-  .bk-main > .wrap { padding-left: var(--gutter); }
   .bk-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 14px 10px; }
   .bk-cover { width: 50vw; align-self: center; order: -1; }
-  .bk-mbar .bk-speed, .bk-mbar [data-a=sleep] { display: none; }
+  .bkpage .bktop { display: none; }
 }
 
 /* ---------- Home (Redesign 2, approved hm-tall). Everything is measured in --u (about 1.4% of the window's width,
@@ -1286,8 +1263,6 @@ img.art.in { opacity: 1; }
 .drail a.on { background: var(--door); color: var(--ondoor); font-weight: 800; }
 .drail a.on small { color: var(--ondoor); }
 body.has-rail #page > :not(.top):not(.drail) { margin-left: calc(var(--rail) - var(--gutter) + 8px); }
-/* Books: the door's menu replaces its own side menu */
-body.has-rail .bk-side { display: none; }
 @media (max-width: 700px) {
   .drail { position: sticky; top: var(--bar); bottom: auto; width: auto; flex-direction: row; gap: 8px; padding: 4px var(--gutter) 10px; overflow-x: auto; background: var(--tray); }
   .drail a { border: 1px solid var(--line); padding: 7px 14px; font-size: 14px; gap: 0; }
@@ -1296,7 +1271,6 @@ body.has-rail .bk-side { display: none; }
   body.has-rail #page > :not(.top):not(.drail) { margin-left: 0; }
   /* The chips sit between the top bar and the picture, so the picture no longer goes up behind the bar */
   body.has-rail .door-top { margin-top: 0; padding-top: 24px; }
-  body.has-rail .bk-page { padding-top: 0; }
 }
 
 /* Redesign 2, section 11: the Kids and Easy mode Homes (big doors, one Keep watching row) and the Kids badge */
@@ -1653,8 +1627,6 @@ body.nav-on #page { padding-left: var(--nrail); }
 body.nav-on .drail { left: var(--nrail); }
 body.nav-on .mbar { left: calc(var(--nrail) + 12px); }
 body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
-/* Books: its places are in the panel now */
-body.nav-on .bk-side { display: none; }
 .brail { position: fixed; z-index: 70; left: 0; top: 0; bottom: 0; width: var(--nrail); display: flex; flex-direction: column; gap: 4px; padding: 16px 10px; overflow: hidden auto; scrollbar-width: none;
   background: linear-gradient(90deg, var(--tray) 72%, rgba(var(--trayrgb), .0)); transition: width .2s ease, background .2s ease, box-shadow .2s ease; }
 .brail[hidden], .bbar[hidden] { display: none; }
@@ -2215,4 +2187,26 @@ svg.gi path.gd { stroke-width: 3.6; }
   .mbar { height: auto; }
   .mbar-ctl .circle { width: 40px; height: 40px; }
   .mtop { display: none; }
+}
+
+/* ---------- Glowfin Books (B1, Ben 2026-11-18) ----------
+   Tabs along the top like Movies (For you, Books, Audiobooks, Series, Want to read). For you: a top area about the
+   book you're on (its cover fades in on the right; it uses Music's .mtop), then Keep going, New for you and the top
+   lists. Book pages: About this book in big words under the buttons, the place line in aqua. The audiobook bar keeps
+   every button (Back 15, Pause, Ahead 30, Speed, Sleep, Chapters, volume, Stop) on every screen size. */
+.bktop .art { aspect-ratio: 2 / 3; right: var(--gutter); }
+.bktop .art span { display: block; height: 100%; border-radius: 10px; }
+.bk-chips { margin: 4px 0 18px; flex-wrap: wrap; gap: 8px; }
+.tp-about { font-size: 20px; line-height: 1.55; color: var(--ink); max-width: 820px; }
+.tp-why.bk-place { color: var(--books); }
+.bk-mbar [data-a=sleep].on { color: var(--books); }
+.bk-chlist { position: fixed; right: 24px; bottom: 96px; z-index: 95; width: min(360px, calc(100vw - 32px)); max-height: 50vh; overflow-y: auto; background: #12152A; border: 1px solid #262A45; border-radius: 14px; padding: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, .5); }
+.bk-chlist b { display: block; padding: 4px 8px 8px; font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.bk-chlist button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--ink2); font: inherit; text-align: left; cursor: pointer; }
+.bk-chlist button span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-chlist button:hover, .bk-chlist button:focus-visible { background: #222645; color: var(--ink); }
+.bk-chlist button.on { color: var(--books); font-weight: 700; }
+@media (max-width: 700px) {
+  .bk-mbar .mbar-ctl { overflow-x: auto; scrollbar-width: none; }
+  .bk-chlist { right: 16px; bottom: 84px; }
 }

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.github.damontecres.wholphin.services.AudiobookService
 import com.github.damontecres.wholphin.services.BenflixBooks
 import com.github.damontecres.wholphin.services.BookPage
-import com.github.damontecres.wholphin.services.BookVolume
 import com.github.damontecres.wholphin.services.CoverChoice
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.launchIO
@@ -56,10 +55,6 @@ class BookTitleViewModel
         fun start(p: BookPage) {
             val t = p.tile
             when {
-                t.isManga -> {
-                    p.next?.let { navigationManager.navigateTo(Destination.PageReader(it)) }
-                }
-
                 t.isAudio -> {
                     listen(p, null)
                 }
@@ -139,10 +134,6 @@ class BookTitleViewModel
                     note.value = "Couldn't mark it."
                 }
             }
-        }
-
-        fun openVolume(v: BookVolume) {
-            navigationManager.navigateTo(Destination.PageReader(v.id))
         }
 
         fun sendToPhone(p: BookPage) {

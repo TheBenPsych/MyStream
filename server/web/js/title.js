@@ -22,8 +22,10 @@
     // Glowfin D1 (Ben 2026-11-18): opts.rows = no tab line, the story sits under the info line and every tab is a
     // row underneath, one after another (Overview becomes "About" near the end)
     const rows = !!opts.rows;
+    // Books (B1): opts.aboutFirst puts "About this book" (opts.aboutName) right under the buttons, story in big text
+    const about = { name: opts.aboutName || "About", id: "tpOverview", keep: true };
     const tabs = rows
-      ? [...(opts.tabs || []), { name: "About", id: "tpOverview", keep: true }].filter((t) => !t.skip)
+      ? (opts.aboutFirst ? [about, ...(opts.tabs || [])] : [...(opts.tabs || []), about]).filter((t) => !t.skip)
       : [{ name: "Overview", id: "tpOverview", keep: true }, ...(opts.tabs || [])].filter((t) => !t.skip);
     if (opts.overviewFirst === false) {
       const o = tabs.shift();
@@ -40,7 +42,7 @@
       ? `<div class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" style="${opts.cover.url ? `background-image:url('${opts.cover.url}')` : ""}"></div>`
       : "";
     // The whole story on the left, Details (studio, released, the file for you) on the right; one under the other on phones
-    const overview = `${rows ? `<h3 class="tp-h">About</h3>` : ""}<div class="tp-ov"><div class="tp-ovl">${rows ? "" : `<div class="ov">${esc(opts.story || "")}</div>`}
+    const overview = `${rows ? `<h3 class="tp-h">${esc(about.name)}</h3>` : ""}<div class="tp-ov"><div class="tp-ovl">${rows ? (opts.aboutStory ? `<div class="ov tp-about">${esc(opts.aboutStory)}</div>` : "") : `<div class="ov">${esc(opts.story || "")}</div>`}
       <div class="scores tp-strip">${opts.strip || ""}</div>${opts.overviewExtra || ""}</div><div class="tp-ovr" id="tpOvDetails"></div></div>`;
     B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}

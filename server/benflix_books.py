@@ -1,8 +1,8 @@
 """
-Benflix Books: manga, comics, ebooks and audiobooks, all from Tower's own folders.
+Benflix Books: ebooks and audiobooks, all from Tower's own folders (manga removed by Ben 2026-11-18).
 
 How it works, in plain words:
-- Tower looks through Homelab/Media/Books, Audiobooks, Manga and Comics every few minutes and makes a list
+- Tower looks through Homelab/Media/Books and Audiobooks every few minutes and makes a list
   of everything there. Benflix (TV, phone and browser) reads that list from here.
     * Books: every .epub or .pdf (other ebook files are listed too, but only EPUB and PDF open in Benflix).
       The title and author come from the book itself (or a metadata.opf file next to it),
@@ -10,15 +10,12 @@ How it works, in plain words:
     * Audiobooks: each folder of sound files is one audiobook (Audiobooks/Author/Author - Title), or one
       .m4b file. The FOLDER names win over the song info inside the files, because downloaded audiobooks
       often say the narrator is the "artist". Each file is a chapter (or the chapters inside one .m4b).
-    * Manga and comics: Manga/Series/ with one file (.cbz, .zip, .cbr, .pdf) or one folder of pictures
-      per volume or chapter.
-- Descriptions, genres, years and scores come from Open Library (books) and AniList / MyAnimeList (manga),
-  looked up once and saved.
+- Descriptions, genres, years and scores come from Open Library, looked up once and saved.
 - Your place in every book, what you want to read and what you've finished are saved here for each
   profile, so they follow you from the TV to the phone to the browser.
 - Asking for a book: Benflix searches Open Library, and the request goes to Chaptarr (which finds an
   ebook and/or audiobook the same way Sonarr and Radarr do). Ben's requests go straight through; anyone
-  else's wait for Ben to say yes. Manga requests go on a "Manga to add" list for Ben.
+  else's wait for Ben to say yes.
 
 Settings from the setup command: CHAPTARR_URL and CHAPTARR_KEY (Chaptarr, the Readarr-style app Ben picked,
 which keeps ebooks in /data/Books and audiobooks in /data/Audiobooks, renamed into Author/Title folders).
@@ -53,8 +50,6 @@ MEDIA = "/media"
 SECTIONS = (
     ("book", ("Books", "Ebooks", "eBooks")),
     ("audiobook", ("Audiobooks", "AudioBooks", "Audio Books")),
-    ("manga", ("Manga",)),
-    ("comic", ("Comics",)),
 )
 DATA_DIRS = ("/booksdata", "/musicdata/books", "/skips/books")
 CH_URL = os.environ.get("CHAPTARR_URL", "").rstrip("/")
@@ -1056,7 +1051,7 @@ def audio_book(t):
     return {"chapters": chapters, "seconds": total, "narrator": narrator, "missing": missing, "files": [os.path.basename(f) for f in t["files"]]}
 
 
-# ---------- Looking things up (Open Library, AniList, MyAnimeList) ----------
+# ---------- Looking things up (Open Library) ----------
 
 
 def meta_key(t):
@@ -1075,7 +1070,7 @@ def look_up_some(limit=6):
             break
         key = meta_key(t)
         try:
-            info = look_up_manga(t["name"]) if t["kind"] in ("manga", "comic") else look_up_book(t["name"], t["author"], t.get("isbn"))
+            info = look_up_book(t["name"], t["author"], t.get("isbn"))
         except Exception as e:
             log(f"Couldn't look up {t['name']}: {e!r}")
             info = {"failed": int(time.time())}
@@ -1154,53 +1149,6 @@ def _book_genres(subjects):
         out.remove("Kids")
         out.append("Kids")
     return out[:4]
-
-
-ANILIST_Q = """query ($q: String) { Page(perPage: 5) { media(search: $q, type: MANGA, sort: SEARCH_MATCH) {
-  id idMal title { romaji english } description(asHtml: false) genres tags { name rank isAdult } averageScore
-  volumes chapters status startDate { year } isAdult format countryOfOrigin
-  coverImage { extraLarge large } staff(perPage: 3) { edges { role node { name { full } } } } } } }"""
-
-
-def look_up_manga(name):
-    body = json.dumps({"query": ANILIST_Q, "variables": {"q": name}}).encode()
-    j = _json("https://graphql.anilist.co", data=body, headers={"Content-Type": "application/json"})
-    media = ((j or {}).get("data") or {}).get("Page", {}).get("media") or []
-    media = [m for m in media if m.get("format") != "NOVEL"] or media
-    if not media:
-        return {"none": True}
-    n = norm(name)
-    best = sorted(media, key=lambda m: (norm((m.get("title") or {}).get("english")) != n and norm((m.get("title") or {}).get("romaji")) != n))[0]
-    author = ""
-    for e in ((best.get("staff") or {}).get("edges") or []):
-        if "story" in (e.get("role") or "").lower() or not author:
-            author = ((e.get("node") or {}).get("name") or {}).get("full") or author
-    info = {
-        "anilist": best.get("id"),
-        "mal": best.get("idMal"),
-        "desc": clean_html(best.get("description")),
-        "genres": (best.get("genres") or [])[:4],
-        "subjects": (best.get("genres") or []) + [t["name"] for t in best.get("tags") or [] if (t.get("rank") or 0) >= 60][:12],
-        "anilistScore": round(best["averageScore"] / 10, 1) if best.get("averageScore") else None,
-        "year": (best.get("startDate") or {}).get("year"),
-        "cover": (best.get("coverImage") or {}).get("extraLarge") or (best.get("coverImage") or {}).get("large"),
-        "totalVols": best.get("volumes"),
-        "status": best.get("status"),
-        "author": author,
-        "adult": bool(best.get("isAdult")),
-        "origin": best.get("countryOfOrigin"),
-        "english": (best.get("title") or {}).get("english"),
-    }
-    g = set(x.lower() for x in info["subjects"])
-    info["kids"] = (not info["adult"]) and bool(g & {"kids", "kodomo", "children"}) and not (g & set(ADULT_WORDS))
-    if info["mal"]:
-        try:
-            time.sleep(0.5)
-            m = _json(f"https://api.jikan.moe/v4/manga/{info['mal']}")
-            info["malScore"] = (m.get("data") or {}).get("score")
-        except Exception:
-            pass
-    return info
 
 
 def meta_of(t):
@@ -1316,10 +1264,15 @@ def library(user_id, is_kids):
     tiles = _fill_series([tile(t, u, now) for t in titles if visible(is_kids, t)])
     tiles.sort(key=lambda x: natural(x["name"]))
     kinds = {k: sum(1 for x in tiles if x["kind"] == k) for k, _ in SECTIONS}
+    # Want to read also holds books you asked for that aren't on Tower yet (shown dimmed, "Not on Glowfin yet")
+    asked = []
+    for key, w in sorted(u["want"].items(), key=lambda kv: -(kv[1].get("at") or 0)):
+        if key.startswith("ol:"):
+            asked.append({"id": key, "kind": w.get("kind") or "book", "name": w.get("name") or "", "author": w.get("author") or "", "cover": w.get("cover"), "notHere": True, "status": "not", "progress": 0, "line": w.get("author") or "", "want": True, "added": w.get("at") or 0})
     return {
         "titles": tiles,
+        "asked": asked,
         "counts": kinds,
-        "vols": {k: sum(x["vols"] for x in tiles if x["kind"] == k) for k in ("manga", "comic")},
         "scanned": _lib["scanned"],
         "folders": {k: [os.path.relpath(p, MEDIA) for p in section_dirs(k)] for k, _ in SECTIONS},
         "requests": can_ask(),
@@ -1413,7 +1366,8 @@ def _home_extra_rows(tiles, user_id, is_kids):
 
 
 def home(user_id, is_kids):
-    """The rows on Books Home: On deck, New for you, Want to read, Recently added"""
+    """The rows on Books For you (Glowfin B1): Keep going (books and audiobooks), New for you, the top lists, then
+    Recently added and a few more. Want to read has its own tab now."""
     lib = library(user_id, is_kids)
     tiles = {t["id"]: t for t in lib["titles"]}
     u = _user(user_id)
@@ -1422,22 +1376,16 @@ def home(user_id, is_kids):
     for tid, _ in sorted(u["sent"].items(), key=lambda kv: -kv[1]):
         if tid in tiles and tiles[tid]["status"] != "done":
             deck.append(dict(tiles[tid], sent=True))
-    started = [t for t in tiles.values() if t["status"] == "reading" or (t["kind"] in ("manga", "comic") and t["status"] != "done" and t["lastAt"])]
+    started = [t for t in tiles.values() if t["status"] == "reading"]
     for t in sorted(started, key=lambda t: -t["lastAt"]):
         if t["id"] not in {d["id"] for d in deck}:
             deck.append(t)
     out = _one_per_book(deck)
     newf = _one_per_book(sorted([t for t in tiles.values() if t["new"] or t["newCount"]], key=lambda t: -t["added"]))[:30]
-    want = [t for t in tiles.values() if t["want"]]
-    asked = []
-    for key, w in sorted(u["want"].items(), key=lambda kv: -(kv[1].get("at") or 0)):
-        if key.startswith(("ol:", "al:")):
-            asked.append({"id": key, "kind": w.get("kind") or "book", "name": w.get("name") or "", "author": w.get("author") or "", "cover": w.get("cover"), "notHere": True, "status": "not", "progress": 0, "line": w.get("author") or ""})
     recent = _one_per_book(sorted(tiles.values(), key=lambda t: -t["added"]))[:30]
     rows = [
-        {"key": "deck", "title": "On deck", "tiles": out[:30]},
+        {"key": "deck", "title": "Keep going", "tiles": out[:30]},
         {"key": "new", "title": "New for you", "tiles": newf},
-        {"key": "want", "title": "Want to read", "tiles": want + asked},
     ]
     # The top lists (NYT, Hardcover, Apple Books, Open Library, award winners), only books on Benflix
     if booklists is not None:
@@ -1957,17 +1905,12 @@ def cover(tid, w):
 
 
 def cover_choices(tid):
-    """Ben's cover picker: covers of every edition (books) or every volume (manga), labelled"""
+    """Ben's cover picker: covers of every edition, labelled"""
     t = _lib["titles"].get(tid) or (_lib["titles"].get(_lib["vols"][tid]["title"]) if tid in _lib["vols"] else None)
     if not t:
         raise BooksError(404, "No such book.")
     out = []
-    if t["kind"] in ("manga", "comic"):
-        out = _mangadex_covers(t)
-        m = meta_of(t)
-        if m.get("cover"):
-            out.insert(0, {"url": m["cover"], "label": "AniList", "edition": "anilist"})
-    else:
+    if True:
         m = meta_of(t)
         if not m.get("ol") and t.get("linked") in _lib["titles"]:
             m = meta_of(_lib["titles"][t["linked"]])
@@ -2000,36 +1943,6 @@ def cover_choices(tid):
             # English editions first
             out.sort(key=lambda c: (c.get("lang") not in ("eng", ""), c["label"]))
     return {"covers": out[:80], "series": bool(t.get("series") or t["kind"] in ("manga", "comic"))}
-
-
-def _mangadex_covers(t):
-    try:
-        found = _json("https://api.mangadex.org/manga?" + urllib.parse.urlencode({"title": t["name"], "limit": 1}))
-        data = (found or {}).get("data") or []
-        if not data:
-            return []
-        mid = data[0]["id"]
-        covers = _json(f"https://api.mangadex.org/cover?manga[]={mid}&limit=100&order[volume]=asc")
-        out = []
-        for c in (covers or {}).get("data") or []:
-            a = c.get("attributes") or {}
-            f = a.get("fileName")
-            if not f:
-                continue
-            loc = a.get("locale") or ""
-            out.append(
-                {
-                    "url": f"https://uploads.mangadex.org/covers/{mid}/{f}",
-                    "thumb": f"https://uploads.mangadex.org/covers/{mid}/{f}.256.jpg",
-                    "label": ("Vol " + a["volume"] if a.get("volume") else "Cover") + (f" · {loc.upper()}" if loc else ""),
-                    "edition": loc or "unknown",
-                    "volume": a.get("volume"),
-                }
-            )
-        return out
-    except Exception as e:
-        log(f"MangaDex covers for {t['name']}: {e!r}")
-        return []
 
 
 def pick_cover(body):
@@ -2126,10 +2039,10 @@ def kids_allow(body):
 
 
 def search(text, is_kids):
-    """Books to ask for (Open Library) and manga (AniList), marked when they're already on Benflix"""
+    """Books to ask for (Open Library), marked when they're already on Benflix"""
     text = (text or "").strip()
     if len(text) < 2:
-        return {"books": [], "manga": []}
+        return {"books": []}
     have = {norm(t["name"]): t for t in _lib["titles"].values()}
     books = []
     try:
@@ -2155,31 +2068,7 @@ def search(text, is_kids):
             )
     except Exception as e:
         log(f"Book search: {e!r}")
-    manga = []
-    if not is_kids:
-        try:
-            body = json.dumps({"query": "query ($q: String) { Page(perPage: 8) { media(search: $q, type: MANGA, isAdult: false) { id title { romaji english } startDate { year } coverImage { large } volumes averageScore staff(perPage: 1) { edges { node { name { full } } } } } } }", "variables": {"q": text}}).encode()
-            j = _json("https://graphql.anilist.co", data=body, headers={"Content-Type": "application/json"})
-            for m in ((j or {}).get("data") or {}).get("Page", {}).get("media") or []:
-                name = (m.get("title") or {}).get("english") or (m.get("title") or {}).get("romaji") or ""
-                here = have.get(norm(name)) or have.get(norm((m.get("title") or {}).get("romaji")))
-                edges = (m.get("staff") or {}).get("edges") or []
-                manga.append(
-                    {
-                        "key": f"al:{m['id']}",
-                        "name": name,
-                        "author": ((edges[0].get("node") or {}).get("name") or {}).get("full", "") if edges else "",
-                        "year": (m.get("startDate") or {}).get("year"),
-                        "cover": (m.get("coverImage") or {}).get("large"),
-                        "score": round(m["averageScore"] / 10, 1) if m.get("averageScore") else None,
-                        "volumes": m.get("volumes"),
-                        "have": here["id"] if here else None,
-                        "asked": _asked_words(f"al:{m['id']}"),
-                    }
-                )
-        except Exception as e:
-            log(f"Manga search: {e!r}")
-    return {"books": books, "manga": manga}
+    return {"books": books}
 
 
 def _asked_words(key):
@@ -2196,7 +2085,6 @@ def words_for(r):
         "downloading": "Downloading",
         "ready": "Ready",
         "cant": "Couldn't find it",
-        "manga": "On Ben's manga list",
         "no": "Ben said no",
         "problem": "Waiting for Tower",
     }.get(r["state"], "Searching")
@@ -2217,12 +2105,12 @@ def ask(user_id, user_name, is_admin, body, for_person=None):
     if not key:
         raise BooksError(400, "Which book?")
     types = [x for x in (body.get("types") or ["ebook", "audiobook"]) if x in ("ebook", "audiobook")] or ["ebook", "audiobook"]
-    manga = key.startswith("al:")
+    if key.startswith("al:"):
+        raise BooksError(400, "Manga can't be asked for any more. Books and audiobooks can.")
     with _lock:
         for r in _state["requests"]:
             if r["key"] == key and r["state"] not in ("no", "cant"):
-                if not manga:
-                    r["types"] = sorted(set(r["types"]) | set(types))
+                r["types"] = sorted(set(r["types"]) | set(types))
                 return {"request": request_view(r, is_admin), "words": "Already asked for."}
         r = {
             "id": uuid.uuid4().hex[:10],
@@ -2231,11 +2119,11 @@ def ask(user_id, user_name, is_admin, body, for_person=None):
             "author": str(body.get("author") or "")[:200],
             "year": body.get("year"),
             "cover": body.get("cover"),
-            "types": types if not manga else ["manga"],
+            "types": types,
             "user": user_id,
             "who": user_name,
             "at": int(time.time()),
-            "state": "manga" if manga and is_admin else "waiting" if not is_admin else "searching",
+            "state": "waiting" if not is_admin else "searching",
         }
         _state["requests"].insert(0, r)
         del _state["requests"][300:]
@@ -2243,12 +2131,10 @@ def ask(user_id, user_name, is_admin, body, for_person=None):
     if r["state"] == "searching":
         threading.Thread(target=_send, args=(r,), daemon=True).start()
         words = f"Asked for {user_name}. Tower is looking for it." if for_person else "Asked for. Tower is looking for it."
-    elif r["state"] == "manga":
-        words = "Added to your manga list."
     else:
         words = "Asked Ben."
     # Asking also puts it on your Want to read list
-    set_want(user_id, {"id": key, "name": r["name"], "author": r["author"], "cover": r["cover"], "kind": "manga" if manga else "book"})
+    set_want(user_id, {"id": key, "name": r["name"], "author": r["author"], "cover": r["cover"], "kind": "book"})
     return {"request": request_view(r, is_admin), "words": words}
 
 
@@ -2262,8 +2148,6 @@ def answer(body):
             raise BooksError(404, "That request is gone.")
         if not yes:
             r["state"] = "no"
-        elif r["key"].startswith("al:"):
-            r["state"] = "manga"
         else:
             r["state"] = "searching"
             r["at"] = int(time.time())
@@ -2875,18 +2759,15 @@ def ready_check():
     for t in _lib["titles"].values():
         have.setdefault(norm(t["name"]), []).append(t)
     for r in _state["requests"]:
-        if r["state"] in ("ready", "no", "waiting"):
+        if r["state"] in ("ready", "no", "waiting", "manga"):
             continue
         hits = have.get(norm(r["name"])) or []
-        if r["state"] == "manga":
-            hits = [t for t in hits if t["kind"] in ("manga", "comic")]
-        else:
-            hits = [t for t in hits if t["kind"] in ("book", "audiobook")]
+        hits = [t for t in hits if t["kind"] in ("book", "audiobook")]
         if not hits:
             continue
         kinds = {t["kind"] for t in hits}
         need = {"book" if k == "ebook" else k for k in r["types"] if k != "manga"}
-        if r["state"] == "manga" or need <= kinds or (need and kinds and time.time() - r["at"] > 3 * 86400):
+        if need <= kinds or (need and kinds and time.time() - r["at"] > 3 * 86400):
             r["state"] = "ready"
             r["title"] = hits[0]["id"]
             r["readyAt"] = int(time.time())
@@ -2902,12 +2783,12 @@ def ready_check():
 
 
 def requests_view(user_id, is_admin):
-    mine = [request_view(r, is_admin) for r in _state["requests"] if r.get("user") == user_id and r["state"] != "no"]
+    # Old manga requests (manga was removed 2026-11-18) are left out everywhere
+    mine = [request_view(r, is_admin) for r in _state["requests"] if r.get("user") == user_id and r["state"] not in ("no", "manga")]
     out = {"mine": mine[:60], "connected": can_ask(), "problems": []}
     if is_admin:
         out["waiting"] = [request_view(r, True) for r in _state["requests"] if r["state"] == "waiting"]
-        out["others"] = [request_view(r, True) for r in _state["requests"] if r.get("user") != user_id and r["state"] not in ("waiting", "no")][:60]
-        out["mangaToAdd"] = [request_view(r, True) for r in _state["requests"] if r["state"] == "manga"]
+        out["others"] = [request_view(r, True) for r in _state["requests"] if r.get("user") != user_id and r["state"] not in ("waiting", "no", "manga")][:60]
         if not can_ask():
             out["problems"].append("Chaptarr isn't connected. Set it up, then run the Glowfin setup command again.")
         elif _ch_setup.get("indexers") == 0:

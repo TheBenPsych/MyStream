@@ -668,7 +668,6 @@ class BookAboutViewModel
                             null,
                             null,
                             null,
-                            false,
                         ),
                         listOf("ebook", "audiobook"),
                     )

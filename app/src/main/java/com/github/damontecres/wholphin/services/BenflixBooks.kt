@@ -7,8 +7,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * One book on the Books door: a manga or comic series, an ebook or an audiobook. Comes from the Benflix helper
- * on Tower (benflix_books.py), which looks through Tower's Books, Audiobooks, Manga and Comics folders.
+ * One book on the Books page: an ebook or an audiobook. Comes from the Glowfin helper on Tower
+ * (benflix_books.py), which looks through Tower's Books and Audiobooks folders.
  */
 data class BookTile(
     val id: String,
@@ -61,6 +61,8 @@ data class BooksHome(
 
 data class BookLibrary(
     val titles: List<BookTile>,
+    /** Want to read books you asked for that aren't on Tower yet */
+    val asked: List<BookTile> = emptyList(),
     val counts: Map<String, Int>,
     val vols: Map<String, Int>,
 )
@@ -163,7 +165,6 @@ data class BookFound(
     val have: String?,
     /** Already asked for: its words, like "Downloading" */
     val asked: String?,
-    val manga: Boolean,
 )
 
 data class BookRequest(
@@ -173,7 +174,7 @@ data class BookRequest(
     val author: String,
     val cover: String?,
     val types: List<String>,
-    /** waiting, searching, downloading, ready, cant, manga, no, problem */
+    /** waiting, searching, downloading, ready, cant, no, problem */
     val state: String,
     val words: String,
     val titleId: String?,
@@ -186,7 +187,6 @@ data class BookRequests(
     val mine: List<BookRequest>,
     val waiting: List<BookRequest>,
     val others: List<BookRequest>,
-    val mangaToAdd: List<BookRequest>,
     val connected: Boolean,
     val problems: List<String>,
 )
@@ -252,7 +252,7 @@ data class BookCard(
     /** Asking picks Audiobook (the Audiobooks row) */
     val audioOnly: Boolean,
 ) {
-    fun toFound() = BookFound(key, name, author, year, cover, score, null, have, asked, manga = false)
+    fun toFound() = BookFound(key, name, author, year, cover, score, null, have, asked)
 
     /** What hold OK (or the quick Ask) asks for */
     val quickTypes: List<String> get() = if (audioOnly) listOf("audiobook") else listOf("ebook", "audiobook")
@@ -394,6 +394,7 @@ class BenflixBooks
             val j = helper.getJson("/api/books/library")
             return BookLibrary(
                 titles = j.optJSONArray("titles").objects().map(::tile),
+                asked = j.optJSONArray("asked").objects().map(::tile),
                 counts = counts(j.optJSONObject("counts")),
                 vols = counts(j.optJSONObject("vols")),
             )
@@ -591,9 +592,9 @@ class BenflixBooks
 
         // ---------- Asking for books ----------
 
-        suspend fun search(text: String): Pair<List<BookFound>, List<BookFound>> {
+        suspend fun search(text: String): List<BookFound> {
             val j = helper.getJson("/api/books/search?q=" + Uri.encode(text))
-            return j.optJSONArray("books").objects().map { found(it, false) } to j.optJSONArray("manga").objects().map { found(it, true) }
+            return j.optJSONArray("books").objects().map(::found)
         }
 
         suspend fun requests(): BookRequests {
@@ -602,13 +603,12 @@ class BenflixBooks
                 mine = j.optJSONArray("mine").objects().map(::request),
                 waiting = j.optJSONArray("waiting").objects().map(::request),
                 others = j.optJSONArray("others").objects().map(::request),
-                mangaToAdd = j.optJSONArray("mangaToAdd").objects().map(::request),
                 connected = j.optBoolean("connected"),
                 problems = j.optJSONArray("problems").strings(),
             )
         }
 
-        /** [types] is any of "ebook" and "audiobook" (manga ignores it). Returns Tower's words. */
+        /** [types] is any of "ebook" and "audiobook". Returns Tower's words. */
         suspend fun ask(
             found: BookFound,
             types: List<String>,
@@ -857,21 +857,18 @@ class BenflixBooks
                 titles = j.optJSONArray("titles").objects().map(::tile),
             )
 
-        private fun found(
-            j: JSONObject,
-            manga: Boolean,
-        ) = BookFound(
-            key = j.optString("key"),
-            name = j.optString("name"),
-            author = j.optString("author"),
-            year = if (j.isNull("year")) null else j.optInt("year"),
-            cover = j.text("cover"),
-            score = if (j.isNull("score")) null else j.optDouble("score"),
-            volumes = if (j.isNull("volumes")) null else j.optInt("volumes"),
-            have = j.text("have"),
-            asked = j.text("asked"),
-            manga = manga,
-        )
+        private fun found(j: JSONObject) =
+            BookFound(
+                key = j.optString("key"),
+                name = j.optString("name"),
+                author = j.optString("author"),
+                year = if (j.isNull("year")) null else j.optInt("year"),
+                cover = j.text("cover"),
+                score = if (j.isNull("score")) null else j.optDouble("score"),
+                volumes = if (j.isNull("volumes")) null else j.optInt("volumes"),
+                have = j.text("have"),
+                asked = j.text("asked"),
+            )
 
         private fun request(j: JSONObject) =
             BookRequest(

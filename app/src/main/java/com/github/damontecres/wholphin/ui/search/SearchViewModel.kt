@@ -109,7 +109,7 @@ class SearchViewModel
 
         private val _books = MutableStateFlow<List<com.github.damontecres.wholphin.services.BookTile>>(emptyList())
 
-        /** Redesign 2 search: books, manga and audiobooks on Tower are their own door (never on Kids) */
+        /** Redesign 2 search: books and audiobooks on Tower are their own door (never on Kids) */
         val books: StateFlow<List<com.github.damontecres.wholphin.services.BookTile>> = _books
         private var bookLibrary: List<com.github.damontecres.wholphin.services.BookTile>? = null
 

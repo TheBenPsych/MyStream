@@ -10,8 +10,8 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // Server isn't a door: its menu (Redesign 2, approved sv2-glance) uses a white pill
-  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#A55BE0", books: "#B9E36A", server: "#F1F2F5" };
-  const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#141C05", server: "#0B0C10" };
+  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#A55BE0", books: "#3FE0E8", server: "#F1F2F5" };
+  const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#05222A", server: "#0B0C10" };
   const ICON = {
     home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
@@ -20,7 +20,7 @@
   };
   const I = (name) => (ICON[name] ? `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : B.I(name));
   B.doorIcon = I;
-  // Books counts (and which of Manga / Comics exist), filled in once the Books page has asked Tower
+  // Books counts, filled in once the Books page has asked Tower
   let bookCounts = null;
 
   // Each section: [label, icon, link, how to tell it's the one you're on]. A link starting "jump:" scrolls
@@ -70,12 +70,11 @@
     ];
     const place = () => has("p") || "home";
     const c = bookCounts || {};
+    // Glowfin B1: the same places as the Books tabs
     const books = [
-      ["home", "Home", "home"], ["manga", "Manga", "book"], ["comic", "Comics", "book"], ["book", "Books", "book"],
-      ["audiobook", "Audiobooks", "ears"], ["series", "Series", "list"], ["authors", "Authors", "user"],
-      ["want", "Want to read", "star"], ["finished", "Finished", "check"],
-    ].filter(([k]) => (k !== "manga" && k !== "comic") || (bookCounts ? c[k] : false))
-      .map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
+      ["home", "For you", "home"], ["book", "Books", "book"], ["audiobook", "Audiobooks", "ears"],
+      ["series", "Series", "list"], ["want", "Want to read", "star"],
+    ].map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
     const srv = (id) => location.hash.startsWith(`#/server/${id}`);
     const server = [
       ["Overview", "home", "#/server/overview", () => srv("overview")],
@@ -154,7 +153,7 @@
     }
   };
 
-  // The Books page tells the menu how many of each there are (and whether there are any manga or comics)
+  // The Books page tells the menu how many of each there are
   B.railCounts = (door, counts) => {
     if (door !== "books") return;
     const same = JSON.stringify(counts || {}) === JSON.stringify(bookCounts || {});

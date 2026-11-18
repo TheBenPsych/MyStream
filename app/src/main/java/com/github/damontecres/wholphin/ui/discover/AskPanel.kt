@@ -173,18 +173,13 @@ fun BookAskPanel(
     admin: Boolean,
     onDismiss: () -> Unit,
     onAsk: (List<String>) -> Unit,
-    manga: Boolean = false,
 ) {
     val choices =
-        if (manga) {
-            listOf(AskChoice(if (admin) "Ask for it" else "Ask Ben", { onAsk(emptyList()) }, primary = true))
-        } else {
-            listOf(
-                AskChoice("Ebook and audiobook", { onAsk(listOf("ebook", "audiobook")) }, primary = true),
-                AskChoice("Ebook", { onAsk(listOf("ebook")) }),
-                AskChoice("Audiobook", { onAsk(listOf("audiobook")) }),
-            )
-        }
+        listOf(
+            AskChoice("Ebook and audiobook", { onAsk(listOf("ebook", "audiobook")) }, primary = true),
+            AskChoice("Ebook", { onAsk(listOf("ebook")) }),
+            AskChoice("Audiobook", { onAsk(listOf("audiobook")) }),
+        )
     AskForItPanel(
         title = title,
         line = author,

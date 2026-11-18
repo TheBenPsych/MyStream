@@ -71,7 +71,7 @@ B.route(/^\/search/, async (m, nav) => {
     // Plain-words searches say so; a typo offers the closest name
     $("#best").innerHTML = described.length ? `<span class="idea">Searching by idea</span> <b>${esc(words.label)}</b> <span class="dim">· ${described.length} found</span>`
       : typo ? `Did you mean <a href="${B.hrefOf(typo)}"><b>${esc(typo.Name)}</b></a>? <span class="dim">· ${esc([typo.Type === "Series" ? "Show" : "Movie", typo.ProductionYear].filter(Boolean).join(" · "))}</span>` : "";
-    // Books, manga and audiobooks on Tower: the name, author or series has the words
+    // Books and audiobooks on Tower: the name, author or series has the words
     const pt = plain(t);
     const books = shelf.filter((b) => [b.name, b.author, b.series].some((x) => plain(x).includes(pt)))
       .sort((a, b) => (plain(a.name).startsWith(pt) ? 0 : 1) - (plain(b.name).startsWith(pt) ? 0 : 1) || a.name.length - b.name.length).slice(0, 40);
@@ -98,7 +98,7 @@ B.route(/^\/search/, async (m, nav) => {
     const titleLine = (r) => { B.askCard(r); return line(null, `data-ask="${esc(r.mediaType)}:${esc(r.id)}"`, r.posterPath ? `https://image.tmdb.org/t/p/w154${r.posterPath}` : "", r.title || r.name || "", [r.mediaType === "tv" ? "Show" : "Movie", (r.releaseDate || r.firstAirDate || "").slice(0, 4)].filter(Boolean).join(" · "), false, r.mediaInfo && r.mediaInfo.status > 1); };
     const musicAskLine = (x) => line(null, `data-mask="${x.kind}:${x.id}"`, x.cover, x.title, `${x.kind === "album" ? "Album" : "Song"} · ${x.artist}`, true, !!x.asked);
     const bookPic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
-    const bookLine = (b) => line(`#/book/${enc(b.id)}`, "", bookPic(b.cover), b.name, [({ manga: "Manga", comic: "Comic", audiobook: "Audiobook" })[b.kind] || "Book", b.author].filter(Boolean).join(" · "));
+    const bookLine = (b) => line(`#/book/${enc(b.id)}`, "", bookPic(b.cover), b.name, [b.kind === "audiobook" ? "Audiobook" : "Book", b.author].filter(Boolean).join(" · "));
     const personLine = (x) => line(`#/person/${x.Id}`, "", x.ImageTags && x.ImageTags.Primary ? B.img(x.Id, "Primary", { h: 120, tag: x.ImageTags.Primary }) : "", x.Name, "Person");
     // Ask for it: movies, shows, songs and albums together, closest names first (movies and shows win a tie)
     const askAll = [...ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) })), ...mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) }))]
@@ -115,7 +115,7 @@ B.route(/^\/search/, async (m, nav) => {
       ...(kids ? [] : [[{ name: "Music", color: "#A55BE0" }, mine.map(itemLine)]]),
       [DOORS.live, chans.map(chLine)],
       [DOORS.games, gl.map(gameLine)],
-      ...(kids ? [] : [[{ name: "Books", color: "#B9E36A" }, books.map(bookLine)]]),
+      ...(kids ? [] : [[{ name: "Books", color: "#3FE0E8" }, books.map(bookLine)]]),
     ];
     const below = kids ? [] : [[{ name: "Ask for it", color: "#F1F2F5", ask: true }, askAll], [{ name: "People", color: "#9AA0AE" }, people.map(personLine)]];
     const all = [...doors, ...below];

@@ -74,9 +74,9 @@ object BenflixColors {
     val Music = Glowfin.Violet
     val OnMusic = Color(0xFF160F26)
 
-    /** Books, the sixth door: lime with dark words */
-    val Books = Color(0xFFB9E36A)
-    val OnBooks = Color(0xFF141C05)
+    /** Books: Glowfin's aqua (B1, Nov 2026), with dark words on it */
+    val Books = Glowfin.Aqua
+    val OnBooks = Color(0xFF05222A)
 }
 
 /** The Home doors, in their fixed order (Music is the fifth) */

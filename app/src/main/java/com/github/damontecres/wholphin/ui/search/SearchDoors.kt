@@ -525,8 +525,6 @@ private fun subLine(line: ResultLine): String =
             listOf(
                 when (b.kind) {
                     "audiobook" -> "Audiobook"
-                    "manga" -> "Manga"
-                    "comic" -> "Comic"
                     else -> "Book"
                 },
                 b.author,
