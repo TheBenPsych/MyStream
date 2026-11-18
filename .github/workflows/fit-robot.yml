@@ -33,6 +33,7 @@ jobs:
         run: |
           # One more try when the first one fails (downloading Gradle plugins sometimes fails on GitHub)
           for attempt in 1 2; do
+            rm -rf app/build/fit-robot
             if ./gradlew testDefaultDebugUnitTest --tests '*FitRobotTest*' -PbenflixFit=1 --no-daemon --continue; then
               echo "ROBOT_FAILED=0" >> $GITHUB_ENV; break
             fi

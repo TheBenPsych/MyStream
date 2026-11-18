@@ -24,7 +24,7 @@ import org.robolectric.annotation.GraphicsMode
 /** The fit robot on a pretend 1080p TV (960 x 540 dp at 2x). See [FitRobot]. */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(application = Application::class, sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi-television")
+@Config(application = Application::class, sdk = [34], qualifiers = "w960dp-h540dp-land-television-xhdpi")
 class TvFitRobotTest(
     private val scene: String,
 ) {
