@@ -96,6 +96,7 @@ fun WhereAmILine(
         val measurer = rememberTextMeasurer()
         val density = LocalDensity.current
         val maxPx = constraints.maxWidth
+        val nameMax = maxWidth * .45f
         val steps =
             remember(all, maxPx, fontSize) {
                 val gap = with(density) { 6.dp.roundToPx() }
@@ -127,7 +128,7 @@ fun WhereAmILine(
                             Modifier.weight(1f, fill = false).then(if (last) Modifier else Modifier.clickable { onPick(index) })
                         } else {
                             Modifier
-                                .widthIn(max = maxWidth * .45f)
+                                .widthIn(max = nameMax)
                                 .clickable { onPick(index) }
                         },
                 )

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -212,6 +213,7 @@ class TitleMoreItem(
  * The TV title page's tab area: it scrolls only as far as needed to show the focused thing (no "slide the
  * row up to near the top"), so a row's name above its posters stays in view.
  */
+@OptIn(ExperimentalFoundationApi::class)
 private object TabAreaBringIntoViewSpec : BringIntoViewSpec {
     @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override val scrollAnimationSpec: AnimationSpec<Float>
@@ -321,6 +323,7 @@ fun TitlePage(
 
 private const val MAX_BUTTONS = 5
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WideTitlePage(
     title: String,
