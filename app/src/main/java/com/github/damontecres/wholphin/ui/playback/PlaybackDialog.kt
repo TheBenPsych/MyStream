@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import android.media.AudioManager
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +60,9 @@ enum class PlaybackDialogType {
 
     /** Benflix (Idea Box 25): someone watching with you on your profile gets the same progress */
     ALSO_COUNTS,
+
+    /** Glowfin player (P1): Louder, Quieter and Sound off, the same as the remote's own buttons */
+    VOLUME,
 }
 
 data class PlaybackSettings(
@@ -422,6 +429,10 @@ fun PlaybackDialog(
 
         PlaybackDialogType.NIGHT_MODE -> {}
 
+        PlaybackDialogType.VOLUME -> {
+            VolumePanel(onDismissRequest = dismissAndPulse)
+        }
+
         PlaybackDialogType.SURROUND_PASSTHROUGH -> {}
 
         PlaybackDialogType.EPISODES -> {}
@@ -665,3 +676,49 @@ private fun skipFixHint(fix: SkipFix): String? =
         SkipFix.NO_INTRO_SHOW -> "Stops the Skip intro button on every episode"
         SkipFix.UNDO -> null
     }
+
+/**
+ * Glowfin player (P1): the Volume button. It moves the TV's (or phone's) own volume, like the remote's volume
+ * buttons, and the TV shows its usual volume bar. A soundbar on HDMI follows along the same way. Nothing
+ * about the sound itself changes.
+ */
+@Composable
+private fun VolumePanel(onDismissRequest: () -> Unit) {
+    val context = LocalContext.current
+    val audio = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager }
+    val stream = AudioManager.STREAM_MUSIC
+
+    fun read(): Pair<Int, Boolean> {
+        val level = runCatching { audio?.getStreamVolume(stream) ?: 0 }.getOrDefault(0)
+        val muted = runCatching { audio?.isStreamMute(stream) == true }.getOrDefault(false)
+        return level to muted
+    }
+    var now by remember { mutableStateOf(read()) }
+    val max = remember { runCatching { audio?.getStreamMaxVolume(stream) ?: 0 }.getOrDefault(0) }
+    val change = { direction: Int ->
+        runCatching { audio?.adjustStreamVolume(stream, direction, AudioManager.FLAG_SHOW_UI) }
+        now = read()
+    }
+    val (level, muted) = now
+    PlayerPanel(
+        title = "Volume",
+        subtitle =
+            when {
+                audio == null -> "Use your remote's volume buttons"
+                muted -> "Sound is off"
+                max > 0 -> "Level $level of $max"
+                else -> null
+            },
+        lines =
+            listOf(
+                PanelLine.Row(label = "Louder", closes = false, onClick = { change(AudioManager.ADJUST_RAISE) }),
+                PanelLine.Row(label = "Quieter", closes = false, onClick = { change(AudioManager.ADJUST_LOWER) }),
+                PanelLine.Row(
+                    label = if (muted) "Turn the sound back on" else "Sound off",
+                    closes = false,
+                    onClick = { change(if (muted) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE) },
+                ),
+            ),
+        onDismissRequest = onDismissRequest,
+    )
+}

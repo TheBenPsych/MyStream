@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,15 +39,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -85,7 +92,10 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Button
+import com.github.damontecres.wholphin.ui.components.GlowfinIcon
+import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
+import com.github.damontecres.wholphin.ui.components.centreShiftY
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
@@ -96,6 +106,7 @@ import com.github.damontecres.wholphin.ui.seekForward
 import com.github.damontecres.wholphin.ui.skipStringRes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -272,8 +283,9 @@ fun PlaybackControls(
 }
 
 /**
- * Benflix player buttons (approved redesign): play/pause, back and forward (plus Next episode) on the left,
- * the Skip pill and small round Episodes, Subtitles, Audio and Settings buttons on the right.
+ * Glowfin player buttons (P1 "Wholphin bar", Ben 2026-11-18): Back 10, Pause, Ahead 10 and Next episode on the
+ * left, the Skip / LIVE pills in the middle, and labelled round Subtitles, Audio, Episodes, Settings and Volume
+ * on the right. The same on TV and phones (phones sideways get the same buttons, a little smaller).
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -293,160 +305,172 @@ fun NetflixControlRow(
     episodesEnabled: Boolean = false,
     live: Boolean = false,
 ) {
-    val roundButtons: @Composable () -> Unit = {
-        // Approved redesign order: play/pause first, then back and forward
-        PlayerCircleButton(
-            faIcon = if (showPlay) R.string.fa_play else R.string.fa_pause,
-            label = null,
-            size = 60.dp,
-            onClick = {
-                onControllerInteraction.invoke()
-                if (showPlay) {
-                    player.play()
-                    skipBackOnResume?.let {
-                        player.seekBack(it)
-                    }
-                } else {
-                    player.pause()
-                }
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier.focusRequester(initialFocusRequester),
-        )
-        PlayerCircleButton(
-            faIcon = R.string.fa_rotate_left,
-            label = seekBack.inWholeSeconds.toString(),
-            size = 48.dp,
-            onClick = {
-                onControllerInteraction.invoke()
-                player.seekBack(seekBack)
-            },
-            onControllerInteraction = onControllerInteraction,
-        )
-        PlayerCircleButton(
-            faIcon = R.string.fa_rotate_right,
-            label = seekForward.inWholeSeconds.toString(),
-            size = 48.dp,
-            onClick = {
-                onControllerInteraction.invoke()
-                player.seekForward(seekForward)
-            },
-            onControllerInteraction = onControllerInteraction,
-        )
-    }
-    // Labeled buttons that only show when they matter: the white Skip pill, Start from the beginning
-    val pillButtons: @Composable () -> Unit = {
-        // Live TV (approved pl-family): a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
-        if (live) {
-            PlayerPillButton(
-                text = "● LIVE",
-                faIcon = null,
-                tint = Color(0xFFD93A3A),
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekToDefaultPosition()
-                    player.play()
-                },
-                onControllerInteraction = onControllerInteraction,
-                modifier = Modifier.semantics { contentDescription = "Live. Press to jump to live" },
-            )
-        }
-        currentSegment?.let { segment ->
-            PlayerPillButton(
-                text = stringResource(segment.type.skipStringRes),
-                faIcon = R.string.fa_arrow_right_long,
-                onClick = {
-                    player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
-                },
-                onControllerInteraction = onControllerInteraction,
-                highlighted = true,
-            )
-        }
-        // Benflix's own channels (approved bc-same): start the show on now from the beginning
-        if (com.github.damontecres.wholphin.services.ChannelSession
-                .isOwnChannelProgram(player.currentMediaItem?.mediaId)
-        ) {
-            PlayerPillButton(
-                text = "Start from the beginning",
-                faIcon = R.string.fa_rotate_left,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekTo(0L)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-        }
-    }
-    // Approved redesign: small round icon buttons on the right (same on TV and phone)
-    val iconButtons: @Composable (Dp) -> Unit = { size ->
-        if (episodesEnabled) {
-            PlayerCircleButton(
-                faIcon = R.string.fa_list_ul,
-                label = null,
-                size = size,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onClickPlaybackDialogType.invoke(PlaybackDialogType.EPISODES)
-                },
-                onControllerInteraction = onControllerInteraction,
-                modifier = Modifier.semantics { contentDescription = "Episodes" },
-            )
-        }
-        PlayerCircleButton(
-            faIcon = R.string.fa_closed_captioning,
-            label = null,
-            size = size,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.CAPTIONS)
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier.semantics { contentDescription = "Subtitles" },
-        )
-        // Redesign 2 (pl-family): Audio, Subtitle timing, Quality and the Fix a problem list all live in the
-        // one settings panel behind the gear, the same on every video player
-        PlayerCircleButton(
-            faIcon = R.string.fa_gear,
-            label = null,
-            size = size,
-            onClick = {
-                onControllerInteraction.invoke()
-                onClickPlaybackDialogType.invoke(PlaybackDialogType.SETTINGS)
-            },
-            onControllerInteraction = onControllerInteraction,
-            modifier = Modifier.semantics { contentDescription = "Settings" },
-        )
-    }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(modifier = modifier.focusGroup()) {
-            // Phones sideways use the same one-line layout as the TV, just a little smaller
             val compact = maxWidth < WIDE_CONTROLS_MIN_WIDTH
+            val sizes = if (compact) PlayerButtonSizes.Compact else PlayerButtonSizes.Wide
+            val gap = if (compact) 6.dp else 14.dp
+            val open = { type: PlaybackDialogType ->
+                onControllerInteraction.invoke()
+                onClickPlaybackDialogType.invoke(type)
+            }
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(gap),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                roundButtons()
+                PlayerGlowButton(
+                    icon = GlowfinIcon.BACK,
+                    number = seekBack.inWholeSeconds.toString(),
+                    label = null,
+                    sizes = sizes,
+                    contentDescription = "Back ${seekBack.inWholeSeconds} seconds",
+                    onClick = {
+                        onControllerInteraction.invoke()
+                        player.seekBack(seekBack)
+                    },
+                    onControllerInteraction = onControllerInteraction,
+                )
+                PlayerGlowButton(
+                    icon = if (showPlay) GlowfinIcon.PLAY else GlowfinIcon.PAUSE,
+                    number = null,
+                    label = null,
+                    sizes = sizes,
+                    big = true,
+                    contentDescription = if (showPlay) "Play" else "Pause",
+                    onClick = {
+                        onControllerInteraction.invoke()
+                        if (showPlay) {
+                            player.play()
+                            skipBackOnResume?.let {
+                                player.seekBack(it)
+                            }
+                        } else {
+                            player.pause()
+                        }
+                    },
+                    onControllerInteraction = onControllerInteraction,
+                    modifier = Modifier.focusRequester(initialFocusRequester),
+                )
+                PlayerGlowButton(
+                    icon = GlowfinIcon.AHEAD,
+                    number = seekForward.inWholeSeconds.toString(),
+                    label = null,
+                    sizes = sizes,
+                    contentDescription = "Ahead ${seekForward.inWholeSeconds} seconds",
+                    onClick = {
+                        onControllerInteraction.invoke()
+                        player.seekForward(seekForward)
+                    },
+                    onControllerInteraction = onControllerInteraction,
+                )
                 if (nextEnabled) {
-                    PlayerPillButton(
-                        text = if (compact) null else stringResource(R.string.player_next_episode),
-                        faIcon = R.string.fa_caret_right,
+                    PlayerGlowButton(
+                        icon = GlowfinIcon.NEXT,
+                        number = null,
+                        label = "Next episode",
+                        sizes = sizes,
                         onClick = {
                             onControllerInteraction.invoke()
                             onPlaybackActionClick.invoke(PlaybackAction.Next)
                         },
                         onControllerInteraction = onControllerInteraction,
-                        modifier = Modifier.semantics { contentDescription = "Next episode" },
                     )
                 }
+                // The pills that only show when they matter, lined up with the middle of the round buttons
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp, Alignment.End),
+                    horizontalArrangement = Arrangement.spacedBy(gap, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .height(sizes.big),
                 ) {
-                    pillButtons()
-                    iconButtons(if (compact) 40.dp else 44.dp)
+                    // Live TV (approved pl-family): a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
+                    if (live) {
+                        PlayerPillButton(
+                            text = "● LIVE",
+                            faIcon = null,
+                            tint = Color(0xFFD93A3A),
+                            onClick = {
+                                onControllerInteraction.invoke()
+                                player.seekToDefaultPosition()
+                                player.play()
+                            },
+                            onControllerInteraction = onControllerInteraction,
+                            modifier = Modifier.semantics { contentDescription = "Live. Press to jump to live" },
+                        )
+                    }
+                    currentSegment?.let { segment ->
+                        PlayerPillButton(
+                            text = stringResource(segment.type.skipStringRes),
+                            faIcon = R.string.fa_arrow_right_long,
+                            onClick = {
+                                player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
+                            },
+                            onControllerInteraction = onControllerInteraction,
+                            highlighted = true,
+                        )
+                    }
+                    // Benflix's own channels (approved bc-same): start the show on now from the beginning
+                    if (com.github.damontecres.wholphin.services.ChannelSession
+                            .isOwnChannelProgram(player.currentMediaItem?.mediaId)
+                    ) {
+                        PlayerPillButton(
+                            text = if (compact) null else "Start from the beginning",
+                            faIcon = R.string.fa_rotate_left,
+                            onClick = {
+                                onControllerInteraction.invoke()
+                                player.seekTo(0L)
+                            },
+                            onControllerInteraction = onControllerInteraction,
+                        )
+                    }
                 }
+                PlayerGlowButton(
+                    icon = GlowfinIcon.SUBTITLES,
+                    number = null,
+                    label = "Subtitles",
+                    sizes = sizes,
+                    onClick = { open(PlaybackDialogType.CAPTIONS) },
+                    onControllerInteraction = onControllerInteraction,
+                )
+                PlayerGlowButton(
+                    icon = GlowfinIcon.AUDIO,
+                    number = null,
+                    label = "Audio",
+                    sizes = sizes,
+                    onClick = { open(PlaybackDialogType.AUDIO) },
+                    onControllerInteraction = onControllerInteraction,
+                )
+                if (episodesEnabled) {
+                    PlayerGlowButton(
+                        icon = GlowfinIcon.EPISODES,
+                        number = null,
+                        label = "Episodes",
+                        sizes = sizes,
+                        onClick = { open(PlaybackDialogType.EPISODES) },
+                        onControllerInteraction = onControllerInteraction,
+                    )
+                }
+                // Redesign 2 (pl-family): Subtitle timing, Quality and the Fix a problem list all live in the
+                // one settings list behind the gear, in 3 groups, the same on every video player
+                PlayerGlowButton(
+                    icon = GlowfinIcon.SETTINGS,
+                    number = null,
+                    label = "Settings",
+                    sizes = sizes,
+                    onClick = { open(PlaybackDialogType.SETTINGS) },
+                    onControllerInteraction = onControllerInteraction,
+                )
+                PlayerGlowButton(
+                    icon = GlowfinIcon.VOLUME,
+                    number = null,
+                    label = "Volume",
+                    sizes = sizes,
+                    onClick = { open(PlaybackDialogType.VOLUME) },
+                    onControllerInteraction = onControllerInteraction,
+                )
             }
         }
     }
@@ -455,8 +479,137 @@ fun NetflixControlRow(
 /** Narrower than this (phones sideways), the player buttons get a little smaller */
 private val WIDE_CONTROLS_MIN_WIDTH = 820.dp
 
+/** How big the player's round buttons are: [normal] ones, the [big] Play/Pause, and the label under them */
+internal data class PlayerButtonSizes(
+    val normal: Dp,
+    val big: Dp,
+    val labelSize: androidx.compose.ui.unit.TextUnit,
+) {
+    companion object {
+        val Wide = PlayerButtonSizes(normal = 48.dp, big = 60.dp, labelSize = 13.sp)
+        val Compact = PlayerButtonSizes(normal = 40.dp, big = 50.dp, labelSize = 11.sp)
+    }
+}
+
+/**
+ * One of the player's round buttons (P1): see-through until the remote is on it, then white with the Glowfin
+ * glow ring (a thin dark gap, an aqua ring and a soft violet glow, drawn once, no blur, cheap on older TVs).
+ * Every button sits in a box as tall as Play/Pause, so all their middles line up, with its label (if any) below.
+ */
+@Composable
+internal fun PlayerGlowButton(
+    icon: GlowfinIcon,
+    number: String?,
+    label: String?,
+    sizes: PlayerButtonSizes,
+    onClick: () -> Unit,
+    onControllerInteraction: () -> Unit,
+    modifier: Modifier = Modifier,
+    big: Boolean = false,
+    contentDescription: String? = label,
+) {
+    val size = if (big) sizes.big else sizes.normal
+    var focused by remember { mutableStateOf(false) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(sizes.big)) {
+            TvButton(
+                onClick = onClick,
+                shape = ButtonDefaults.shape(CircleShape),
+                contentPadding = PaddingValues(0.dp),
+                colors =
+                    ButtonDefaults.colors(
+                        containerColor = Color.White.copy(alpha = .12f),
+                        contentColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Glowfin.Ink,
+                    ),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+                modifier =
+                    modifier
+                        .playerGlowRing { focused }
+                        .size(size)
+                        .onFocusChanged {
+                            focused = it.isFocused
+                            onControllerInteraction.invoke()
+                        }.semantics { contentDescription?.let { this.contentDescription = it } },
+            ) {
+                val tint = if (focused) Glowfin.Ink else Color.White
+                val iconSize = size * if (number != null) .62f else .5f
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    GlowfinIconImage(icon = icon, color = tint, size = iconSize)
+                    number?.let {
+                        // The number sits in the middle of the round arrow, which is moved down to look centred
+                        Text(
+                            text = it,
+                            color = tint,
+                            fontSize = (iconSize.value * .3f).sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            modifier = Modifier.offset(y = iconSize * (icon.centreShiftY() / 24f)),
+                        )
+                    }
+                }
+            }
+        }
+        if (label != null) {
+            Text(
+                text = label,
+                color = if (focused) Glowfin.Text else PlayerLabelColor,
+                fontSize = sizes.labelSize,
+                fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+private val PlayerLabelColor = Color(0xFFD6D9EC)
+
+/**
+ * The Glowfin glow ring round a round (or pill) player button while [focused] says so: a thin dark gap, an aqua
+ * ring and a soft violet glow, all just outlines (no blur), so it costs almost nothing on older TVs.
+ */
+internal fun Modifier.playerGlowRing(
+    corner: Dp? = null,
+    focused: () -> Boolean,
+): Modifier =
+    drawBehind {
+        if (!focused()) return@drawBehind
+        val gap = 2.5.dp.toPx()
+        val ring = 2.5.dp.toPx()
+        val glow = 10.dp.toPx()
+        val r = corner?.toPx()
+
+        fun shape(
+            grow: Float,
+            color: Color,
+            width: Float,
+        ) {
+            val stroke = Stroke(width = width)
+            if (r == null) {
+                drawCircle(color = color, radius = size.minDimension / 2 + grow, style = stroke)
+            } else {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(-grow, -grow),
+                    size = Size(size.width + grow * 2, size.height + grow * 2),
+                    cornerRadius = CornerRadius(r + grow),
+                    style = stroke,
+                )
+            }
+        }
+        for (i in 1..4) {
+            shape(gap + ring + glow * i / 4f, Glowfin.Violet.copy(alpha = .3f * (1f - (i - 1) / 4f)), glow / 4f + 1f)
+        }
+        shape(gap / 2f, Color(0xFF05060D), gap)
+        shape(gap + ring / 2f, Glowfin.Aqua, ring)
+    }
+
 /**
  * Round see-through button that turns white when selected, with an optional number (like "10") under the icon
+ * (YouTube trailers). Same Glowfin glow ring as the video player's buttons.
  */
 @Composable
 fun PlayerCircleButton(
@@ -467,22 +620,27 @@ fun PlayerCircleButton(
     onControllerInteraction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var focused by remember { mutableStateOf(false) }
     TvButton(
         onClick = onClick,
         shape = ButtonDefaults.shape(CircleShape),
         contentPadding = PaddingValues(0.dp),
         colors =
             ButtonDefaults.colors(
-                containerColor = Color.White.copy(alpha = .14f),
+                containerColor = Color.White.copy(alpha = .12f),
                 contentColor = Color.White,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Glowfin.Ink,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
+                .playerGlowRing { focused }
                 .size(size)
-                .onFocusChanged { onControllerInteraction.invoke() },
+                .onFocusChanged {
+                    focused = it.isFocused
+                    onControllerInteraction.invoke()
+                },
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -508,7 +666,7 @@ fun PlayerCircleButton(
 }
 
 /**
- * Labeled button like "Subtitles" or "Next episode": see-through until selected, then white with black text
+ * Labeled button like "Skip intro" or "● LIVE": see-through until selected, then white with the Glowfin glow ring
  */
 @Composable
 fun PlayerPillButton(
@@ -521,27 +679,32 @@ fun PlayerPillButton(
     /** A colour of its own (the red LIVE pill) */
     tint: Color? = null,
 ) {
+    var focused by remember { mutableStateOf(false) }
     TvButton(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = ButtonDefaults.shape(RoundedCornerShape(21.dp)),
         contentPadding =
             if (text == null) {
                 PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             } else {
-                PaddingValues(start = 14.dp, end = 18.dp, top = 8.dp, bottom = 8.dp)
+                PaddingValues(start = 16.dp, end = 18.dp, top = 8.dp, bottom = 8.dp)
             },
         colors =
             ButtonDefaults.colors(
-                containerColor = tint ?: if (highlighted) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
-                contentColor = if (highlighted && tint == null) Color.Black else Color.White,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+                containerColor = tint ?: if (highlighted) Color.White.copy(alpha = .9f) else Color.White.copy(alpha = .12f),
+                contentColor = if (highlighted && tint == null) Glowfin.Ink else Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Glowfin.Ink,
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
+                .playerGlowRing(corner = 21.dp) { focused }
                 .height(42.dp)
-                .onFocusChanged { onControllerInteraction.invoke() },
+                .onFocusChanged {
+                    focused = it.isFocused
+                    onControllerInteraction.invoke()
+                },
     ) {
         if (faIcon != null) {
             Text(
@@ -675,7 +838,7 @@ fun SeekTimecodes(
                 remember(positionSec) { resources.formatDuration(positionSec.seconds) }
             val remainingText =
                 remember(remainingSec, endsAtSpeed) {
-                    val left = "-${resources.formatDuration(remainingSec.seconds)}"
+                    val left = "−${resources.formatDuration(remainingSec.seconds)}"
                     if (endsAtSpeed == null || remainingSec < 0) {
                         left
                     } else {
@@ -687,7 +850,7 @@ fun SeekTimecodes(
                                     .now()
                                     .plusSeconds(realSec),
                             )
-                        "$left · ends $ends"
+                        "Ends at $ends · $left"
                     }
                 }
             CompositionLocalProvider(LocalLayoutDirection provides currentLayoutDirection) {

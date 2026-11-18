@@ -45,6 +45,9 @@ const P = {
   mute: '<path d="M11 5 6 9H2v6h4l5 4V5ZM22 9l-6 6M16 9l6 6"/>',
   full: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
   pip: '<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="7" rx="1"/>',
+  // Glowfin player (P1): Audio = a speech bubble with sound lines, Episodes = a screen with a stand under it
+  audio: '<path d="M4 6.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6.5L7 20v-3.5H6a2 2 0 0 1-2-2z"/><path d="M9 9v3M12 8v5M15 9v3"/>',
+  eps: '<rect x="3" y="4" width="18" height="11" rx="2"/><path d="M6 19h12"/><path d="M10.5 7.6v3.8l3.2-1.9z" fill="currentColor"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   dl: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   trailer: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/>',

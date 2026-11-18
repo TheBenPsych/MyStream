@@ -1999,3 +1999,55 @@ svg.gi path.gd { stroke-width: 3.6; }
 .whatsnew .bmore { flex: none; display: flex; align-items: center; }
 @media (max-width: 720px) { .whatsnew .bitem { width: 250px; } .whatsnew .bpanel { padding: 0 12px 6px; } }
 .whatsnew:not(:has(.bitem)) { display: none; }
+
+/* ---------- Glowfin player (P1, Ben 2026-11-18): the Wholphin bar in Glowfin colours, same as the TV ----------
+   Name top left, the glow progress line cut into chapters, then Back 10, Pause, Ahead 10, Next episode on the
+   left and labelled round Subtitles, Audio, Episodes, Settings and Volume on the right. */
+.player .topline .tt { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+.player .topline .rating { color: #D6D9EC; font-size: 16px; margin-top: 2px; }
+.player .topline .rating:empty { display: none; }
+.player .shadeB { height: 300px; background: linear-gradient(rgba(11,13,26,0), rgba(11,13,26,.92)); }
+.player .shadeT { background: linear-gradient(rgba(11,13,26,.8), rgba(11,13,26,0)); }
+.player .bar .segs i { background: rgba(255,255,255,.22); }
+.player .bar .segs i u { background: rgba(255,255,255,.3); }
+.player .bar .segs i b { background: linear-gradient(90deg, var(--violet), var(--blue) 60%, var(--aqua)) fixed; }
+.player .bar .knob { box-shadow: 0 0 0 3px var(--aqua), 0 0 14px 2px rgba(165,91,224,.55); }
+.player .times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 15px; color: #D6D9EC; font-variant-numeric: tabular-nums; }
+.player .row2 { gap: 12px; margin-top: 8px; align-items: flex-start; }
+.player .pbtn { background: rgba(255,255,255,.12); width: 48px; height: 48px; flex: none; }
+.player .pbtn svg.i { display: block; width: 24px; height: 24px; }
+.player .pbtn.play { width: 60px; height: 60px; margin-top: -6px; }
+.player .pbtn.play svg.i { width: 30px; height: 30px; }
+.player .pbtn:hover, .player .pbtn:focus-visible { outline: none; background: #fff; color: #0B0D1A; box-shadow: 0 0 0 3px var(--aqua), 0 0 18px 3px rgba(165,91,224,.5); }
+.player .pbtn.lab { position: relative; width: 48px; height: 48px; margin-bottom: 22px; }
+.player .pbtn.lab em, .player .vlab > em { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 13px; color: #D6D9EC; white-space: nowrap; pointer-events: none; }
+.player .vlab { position: relative; display: inline-flex; flex: none; }
+.player .vlab > em { left: 24px; }
+.player .extra { display: flex; gap: 8px; margin-left: 6px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.16); }
+.player .extra .pbtn { width: 40px; height: 40px; background: none; font-weight: 700; }
+.player .extra .pbtn svg.i { width: 22px; height: 22px; }
+.player .keytip { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); display: flex; gap: 18px; padding: 10px 18px; border-radius: 999px; background: rgba(18,21,42,.94); border: 1px solid #262A45; font-size: 14px; color: #D6D9EC; z-index: 5; pointer-events: none; }
+.player .keytip span { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.player .keytip kbd { font: inherit; font-weight: 700; color: #ECEEFB; background: #1A1E38; border: 1px solid #262A45; border-radius: 6px; padding: 2px 8px; }
+.player .panel { background: rgba(18,21,42,.97); border-left-color: #262A45; }
+.player .skip { box-shadow: 0 0 0 3px #05060D, 0 0 0 6px var(--aqua), 0 0 22px 4px rgba(165,91,224,.5); }
+.player .upnext { background: rgba(18,21,42,.96); border-color: #262A45; }
+@media (max-width: 760px) {
+  .player .topline, .player .controls { padding: 0 14px; }
+  .player .topline .tt { font-size: 20px; }
+  .player .row2 { gap: 8px 14px; flex-wrap: wrap; }
+  .player .pbtn, .player .pbtn.lab { width: 40px; height: 40px; }
+  .player .pbtn.play { width: 50px; height: 50px; margin-top: -5px; }
+  .player .pbtn.lab em, .player .vlab > em { top: 44px; font-size: 11px; }
+  .player .vlab > em { left: 20px; }
+  .player .extra { padding-left: 6px; margin-left: 0; gap: 2px; }
+  .player .keytip { display: none; }
+  .player .extra { width: 100%; justify-content: flex-end; border-left: 0; }
+}
+/* Upright phones: Back 10, Pause, Ahead 10 and Next on one line, the labelled buttons spread out on the next */
+@media (max-width: 480px) {
+  .player .row2 { justify-content: center; column-gap: 22px; row-gap: 6px; }
+  .player .row2 .grow { flex-basis: 100%; height: 0; }
+  .player .pbtn.lab em, .player .vlab > em { font-size: 11px; }
+  .player .extra { margin-top: -4px; }
+}

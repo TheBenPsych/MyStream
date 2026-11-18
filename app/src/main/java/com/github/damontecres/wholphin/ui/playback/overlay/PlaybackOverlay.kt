@@ -56,7 +56,6 @@ import com.github.damontecres.wholphin.ui.playback.AnalyticsState
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.CurrentPlayback
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.MediaSegmentDto
@@ -128,8 +127,10 @@ fun PlaybackOverlay(
                         colors =
                             listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.80f),
+                                com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
+                                    .copy(alpha = 0.5f),
+                                com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
+                                    .copy(alpha = 0.88f),
                             ),
                     )
                 }
@@ -242,16 +243,12 @@ fun PlaybackOverlay(
             }
         }
 
-        // Top left: the name in plain words (approved redesign, same on TV and phone).
-        // Movies: name + "2023 · PG-13". Episodes: "Show · S2 E5 · Episode" on one line.
+        // Top left: the name in plain words (Glowfin P1, same on TV and phone).
+        // Movies: name, then "2023 · PG-13". Episodes: the show's name, then 'S2 E5 · "Episode"'.
         val topTitle =
             remember(item) {
                 if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
-                    listOfNotNull(
-                        item.data.seriesName,
-                        item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
-                        item.data.name,
-                    ).joinToString(" · ")
+                    item.data.seriesName?.takeIf { it.isNotBlank() } ?: item.title
                 } else {
                     item?.title
                 }
@@ -261,7 +258,12 @@ fun PlaybackOverlay(
                 if (live != null) {
                     live.topLine()
                 } else if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
-                    null
+                    listOfNotNull(
+                        item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
+                        item.data.name
+                            ?.takeIf { it.isNotBlank() && it != item.data.seriesName }
+                            ?.let { "\u201C$it\u201D" },
+                    ).joinToString(" · ").ifBlank { null }
                 } else {
                     listOfNotNull(
                         item?.data?.productionYear?.toString(),
@@ -292,16 +294,17 @@ fun PlaybackOverlay(
                     Text(
                         text = topTitle.orEmpty(),
                         color = Color.White,
-                        fontSize = BenflixType.rowName,
-                        fontWeight = FontWeight.Bold,
+                        fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                        fontSize = BenflixType.rowName * 1.25f,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     topLine?.let {
                         Text(
                             text = it,
-                            color = BenflixColors.Soft,
-                            fontSize = BenflixType.small,
+                            color = Color(0xFFD6D9EC),
+                            fontSize = BenflixType.body,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
