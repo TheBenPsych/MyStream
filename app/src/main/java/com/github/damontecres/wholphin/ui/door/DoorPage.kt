@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -380,13 +381,14 @@ internal fun WideDoor(
             } else {
                 (topGap + WHOLPHIN_HEADER + WHOLPHIN_BOTTOM_GAP).coerceAtMost(maxHeight * 0.52f)
             }
-        // Ben 2026-11-18 (Fade down): the picture fills the whole page behind the rows, bright at the top and
-        // slowly darker going down. It stays still while the rows move over it.
+        // Ben 2026-11-18 (side menu tightened): like Wholphin, the picture only fills the top right of the page and
+        // fades out to the left and at the bottom (no hard lines). The left side stays plain dark for the menu.
         PageBackdrop(
             item = preview,
             pageHeight = maxHeight,
             brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.7f),
             overlap = overlap,
+            portion = true,
         )
         Column(Modifier.fillMaxSize()) {
             PreviewArea(item = preview, easy = easy, height = topHeight, overlap = if (easy) overlap else topGap, topAligned = !easy)
@@ -623,6 +625,8 @@ internal fun PageBackdrop(
     pageHeight: Dp,
     brightUntil: Float,
     overlap: Dp = 0.dp,
+    /** Wholphin style: the picture only in the top right of the page, its left and bottom edges faded away */
+    portion: Boolean = false,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -642,6 +646,32 @@ internal fun PageBackdrop(
             delay(PICTURE_GAP_MS)
         }
         shownUrl = url
+    }
+    if (portion) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .fillMaxWidth(PORTION_WIDTH)
+                    .fillMaxHeight(PORTION_HEIGHT),
+            ) {
+                Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
+                    if (picture != null) {
+                        AsyncImage(
+                            model = picture,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.TopCenter,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+                // Plain painted fades into the page colour (cheap on older TVs): strong from the left, soft at the bottom
+                Box(Modifier.fillMaxSize().background(BenflixShade.portionSide))
+                Box(Modifier.fillMaxSize().background(BenflixShade.portionBottom))
+            }
+        }
+        return
     }
     Box(Modifier.fillMaxSize()) {
         Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
@@ -1021,7 +1051,12 @@ internal fun EmptyDoor(
 }
 
 /** TV side margin */
-private val SIDE = BenflixSpace.tvEdge
+// Ben 2026-11-18: the page starts right next to the side menu (was the 48dp TV edge, which left a big empty gap)
+private val SIDE = 16.dp
+
+/** Wholphin-style picture: this much of the page's width and height, in the top right */
+private const val PORTION_WIDTH = 0.72f
+private const val PORTION_HEIGHT = 0.66f
 private val PHONE_SIDE = BenflixSpace.phoneEdge
 
 private const val PICTURE_FADE_MS = 800
