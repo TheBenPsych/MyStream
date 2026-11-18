@@ -66,7 +66,7 @@ B.I = I;
 const DOORS = {
   movies: { key: "movies", name: "Movies", desc: "Films for any night", color: "#FFB547", icon: "film" },
   shows: { key: "shows", name: "Shows", desc: "Series and episodes", color: "#7AA7FF", icon: "tv" },
-  live: { key: "live", name: "Live TV", desc: "Channels playing now", color: "#3DD6C6", icon: "live" },
+  live: { key: "live", name: "Live TV", desc: "Channels playing now", color: "#3FE0E8", icon: "live" },
   games: { key: "games", name: "Games", desc: "Play in your browser", color: "#FF6F91", icon: "pad" },
 };
 B.DOORS = DOORS;

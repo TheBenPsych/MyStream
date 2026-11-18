@@ -67,17 +67,13 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
-import com.github.damontecres.wholphin.services.BENFLIX_GROUP
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelReminder
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.ChannelSession
-import com.github.damontecres.wholphin.services.CustomChannel
-import com.github.damontecres.wholphin.services.DiskCache
 import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.services.MakeChannelPick
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -94,10 +90,11 @@ import com.github.damontecres.wholphin.ui.door.doorHome
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
@@ -108,14 +105,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
-import org.jellyfin.sdk.api.client.extensions.genresApi
-import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.time.Instant
 import java.time.ZoneId
@@ -129,7 +121,6 @@ class ChannelsViewModel
     constructor(
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
-        private val diskCache: DiskCache,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         /** null while loading */
@@ -148,7 +139,6 @@ class ChannelsViewModel
                             api,
                             serverRepository.currentUser?.id,
                             KidsMode.isActive,
-                            diskCache,
                             // The guide shows up as soon as the first channels are ready
                             onProgress = { if (it.isNotEmpty()) _channels.value = it },
                         )
@@ -162,57 +152,6 @@ class ChannelsViewModel
         }
 
         fun watch(schedule: ChannelSchedule) = ChannelSession.tune(navigationManager, schedule)
-
-        /** Make a channel, step 2: the shows, genres or collections on the server, A to Z */
-        suspend fun loadPicks(kind: CustomChannel.Kind): List<MakeChannelPick> =
-            withContext(WholphinDispatchers.IO) {
-                val userId = serverRepository.currentUser?.id
-                try {
-                    when (kind) {
-                        CustomChannel.Kind.GENRE -> {
-                            api.genresApi
-                                .getGenres(userId = userId, includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES))
-                                .content.items
-                                .mapNotNull { dto -> dto.name?.let { MakeChannelPick(null, it) } }
-                                .distinctBy { it.name.lowercase() }
-                                .sortedBy { it.name.lowercase() }
-                        }
-
-                        else -> {
-                            api.itemsApi
-                                .getItems(
-                                    GetItemsRequest(
-                                        userId = userId,
-                                        includeItemTypes =
-                                            listOf(if (kind == CustomChannel.Kind.SHOW) BaseItemKind.SERIES else BaseItemKind.BOX_SET),
-                                        recursive = true,
-                                        sortBy = listOf(ItemSortBy.SORT_NAME),
-                                        enableImages = false,
-                                        enableUserData = false,
-                                        limit = 3000,
-                                    ),
-                                ).content.items
-                                .map { MakeChannelPick(it.id, it.name.orEmpty()) }
-                        }
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not list things for Make a channel")
-                    emptyList()
-                }
-            }
-
-        /** Saves a made channel and builds today's guide again with it in */
-        fun makeChannel(channel: CustomChannel) {
-            ChannelPrefs.addMine(channel)
-            reload()
-        }
-
-        fun removeChannel(channel: CustomChannel) {
-            ChannelPrefs.removeMine(channel.id)
-            reload()
-        }
     }
 
 /** What a program is called in the guide: the show's name for an episode */
@@ -243,8 +182,9 @@ private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 private fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /**
- * Channels: a TV guide of Benflix channels made from your own library (no ads, always something on),
- * then the server's free live TV channels grouped by type, with chips up top to jump to a group.
+ * Live TV (Glowfin L1): the top area tells you what's on the channel you're on, then Recently watched,
+ * then the full 2-hour guide of the server's free live channels, favourites first, grouped by type.
+ * Real live channels only (Ben, Nov 2026): the old home-made channels and "Make a channel" are gone.
  * Pick what's on now to jump in where the channel is; in the player, Up/Down changes channel.
  */
 @Composable
@@ -264,7 +204,12 @@ fun ChannelsPage(
         return
     }
     if (list.isEmpty()) {
-        Text("No channels yet. Add some movies or shows first.", fontSize = BenflixType.lead, modifier = modifier.padding(32.dp))
+        Text(
+            if (KidsMode.isActive) "Live TV isn't on for Kids." else "No live channels yet. Tower adds them when Live TV is set up.",
+            fontSize = BenflixType.lead,
+            color = Glowfin.Dim,
+            modifier = modifier.padding(32.dp),
+        )
         return
     }
     // Easy mode: three big choices first (My channels opens the normal page)
@@ -278,9 +223,9 @@ fun ChannelsPage(
         )
         return
     }
-    // Benflix redesign: one page. The top area describes what's focused; Recently watched comes
-    // first, then the full guide. Ben (2026-11-16): no separate Favourites or Benflix channels rows,
-    // because the guide already has them: favourites are its first group, Benflix channels their own type.
+    // Glowfin L1: one page. The top area describes what's focused; Recently watched comes
+    // first, then the full guide. Ben (2026-11-16): no separate Favourites row, because the guide
+    // already has it as its first group.
     // Hidden channel types ("Edit types") are left out of the guide.
     val hidden by ChannelPrefs.hidden.collectAsState()
     val shown = remember(list, hidden) { list.filter { it.group() !in hidden } }
@@ -304,7 +249,16 @@ fun ChannelsPage(
             // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
             val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
             val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
-            GuideGrid(all = list, list = shown, halfHours = halfHours, dpm = dpm, viewModel = viewModel, frame = frame)
+            GuideGrid(
+                all = list,
+                list = shown,
+                halfHours = halfHours,
+                dpm = dpm,
+                viewModel = viewModel,
+                frame = frame,
+                // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+                nowNext = maxWidth < 600.dp,
+            )
         }
     }
 }
@@ -326,6 +280,7 @@ private fun GuideGrid(
     dpm: Float,
     viewModel: ChannelsViewModel,
     frame: DoorFrameState,
+    nowNext: Boolean = false,
 ) {
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
@@ -372,6 +327,15 @@ private fun GuideGrid(
             }
         }
     val firstEntry = remember(entries) { entries.firstOrNull { it is GuideEntry.Channel } }
+    // Glowfin L1: the type chips beside "Guide" jump to that type's first channel
+    val groupStarts =
+        remember(entries) {
+            entries
+                .mapIndexedNotNull { i, e -> if (e is GuideEntry.Heading) e.name to i else null }
+                .mapNotNull { (name, i) -> (entries.getOrNull(i + 1) as? GuideEntry.Channel)?.let { Triple(name, i, it) } }
+        }
+    val groupFocus = remember(groupStarts) { groupStarts.associate { (_, _, entry) -> entry to FocusRequester() } }
+    var pickedGroup by remember { mutableStateOf<String?>(null) }
     val firstTypeEntry = remember(entries) { entries.firstOrNull { it is GuideEntry.Channel && !it.favourite } }
     val onRowFocus = { schedule: ChannelSchedule ->
         schedule.programAt(System.currentTimeMillis())?.let { focused = schedule to it }
@@ -379,9 +343,6 @@ private fun GuideGrid(
     var digits by remember { mutableStateOf("") }
     var showTypes by remember { mutableStateOf(false) }
     var addChannels by remember { mutableStateOf(false) }
-    var makeChannel by remember { mutableStateOf(false) }
-    var mineMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
-    val mine by ChannelPrefs.mine.collectAsState()
     var favouriteMenu by remember { mutableStateOf<ChannelSchedule?>(null) }
     var laterMenu by remember { mutableStateOf<Pair<ChannelSchedule, ChannelProgram>?>(null) }
     var channelPage by remember { mutableStateOf<ChannelSchedule?>(null) }
@@ -486,7 +447,7 @@ private fun GuideGrid(
                 .padding(top = 12.dp, start = if (isTv) 40.dp else 8.dp, end = if (isTv) 16.dp else 0.dp)
                 .onPreviewKeyEvent { event ->
                     val digit = digitOf(event) ?: return@onPreviewKeyEvent false
-                    if (addChannels || makeChannel) return@onPreviewKeyEvent false
+                    if (addChannels) return@onPreviewKeyEvent false
                     if (event.type == KeyEventType.KeyUp && digits.length < 4) digits += digit
                     true
                 },
@@ -511,7 +472,7 @@ private fun GuideGrid(
                             items(recentChannels, key = { "r-${it.key}" }) { schedule ->
                                 RecentCard(
                                     schedule = schedule,
-                                    width = if (isTv) 220.dp else 160.dp,
+                                    width = if (isTv) 176.dp else 132.dp,
                                     onClick = { viewModel.watch(schedule) },
                                     onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
                                     modifier =
@@ -524,26 +485,45 @@ private fun GuideGrid(
                     }
                 }
             }
-            // The full guide: a heading with "Edit types", then the time ruler that stays at the top
+            // The full guide: "Guide", a chip for each type (favourites first), Edit types and Add channels,
+            // then the time ruler that stays at the top
             item(key = "guide-title") {
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        // Phones: the buttons slide sideways rather than squash
-                        modifier = Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        // Phones: the chips slide sideways rather than squash
+                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()),
                     ) {
                         Text(
-                            text = "GUIDE",
-                            fontSize = BenflixType.tag,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp,
-                            color = Color(0xFFB8B8C0),
+                            text = "Guide",
+                            fontFamily = GlowfinDisplayFont,
+                            fontSize = BenflixType.rowName,
+                            fontWeight = FontWeight.Bold,
+                            color = Glowfin.Text,
+                            modifier = Modifier.padding(end = 8.dp),
                         )
-                        if (all.any { it.live != null }) GuideChip("Edit types", onClick = { showTypes = true })
-                        // These used to be tiles at the ends of the Favourites and Benflix channels rows
-                        GuideChip("+  Add channels", onClick = { addChannels = true }, modifier = Modifier.focusRequester(addFocus))
-                        if (mine.size < CustomChannel.MAX) GuideChip("+  Make a channel", onClick = { makeChannel = true })
+                        groupStarts.forEach { (name, index, entry) ->
+                            LiveChip(
+                                label = groupLabel(name),
+                                selected = pickedGroup == name,
+                                onClick = {
+                                    pickedGroup = name
+                                    scope.launch {
+                                        listState.animateScrollToItem(titleIndex + 2 + index)
+                                        delay(JUMP_SETTLE_MS)
+                                        groupFocus[entry]?.tryRequestFocus()
+                                    }
+                                },
+                            )
+                        }
+                        LiveChip("Edit types", selected = false, onClick = { showTypes = true })
+                        LiveChip(
+                            "+  Add channels",
+                            selected = false,
+                            onClick = { addChannels = true },
+                            modifier = Modifier.focusRequester(addFocus),
+                        )
                     }
                     // Watched a channel 3 times and it isn't a favourite yet: offer to add it
                     suggested?.let { schedule ->
@@ -561,6 +541,10 @@ private fun GuideGrid(
                 }
             }
             stickyHeader(key = "ruler") {
+                if (nowNext) {
+                    NowNextHeader()
+                    return@stickyHeader
+                }
                 Row(Modifier.background(BenflixColors.Tray).padding(vertical = 2.dp)) {
                     Box(Modifier.width(CHANNEL_COL))
                     var t = windowStart
@@ -568,7 +552,7 @@ private fun GuideGrid(
                         Text(
                             text = clock(t),
                             fontSize = BenflixType.tag,
-                            color = Color(0xFF8B8B94),
+                            color = Glowfin.Dim,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.width(widthFor(HALF_HOUR)),
                         )
@@ -586,11 +570,8 @@ private fun GuideGrid(
 
                         is GuideEntry.Channel -> {
                             (if (it.favourite) "fav-" else "") +
-                                (
-                                    it.schedule.live
-                                        ?.id
-                                        ?.toString() ?: "b-${it.schedule.number}"
-                                )
+                                it.schedule.live.id
+                                    .toString()
                         }
                     }
                 },
@@ -604,6 +585,18 @@ private fun GuideGrid(
                     Modifier
                         .then(if (entry === firstEntry) Modifier.focusRequester(firstFocus) else Modifier)
                         .then(if (entry === firstTypeEntry) Modifier.focusRequester(guideFocus) else Modifier)
+                        .then(groupFocus[entry]?.let { Modifier.focusRequester(it) } ?: Modifier)
+                if (nowNext) {
+                    NowNextRow(
+                        schedule = schedule,
+                        now = now,
+                        starred = schedule.key in favourites,
+                        onClick = { viewModel.watch(schedule) },
+                        onLongClick = { channelPage = schedule },
+                        modifier = entryFocus.onFocusChanged { if (it.isFocused) onRowFocus(schedule) },
+                    )
+                    return@items
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.height(ROW_HEIGHT),
@@ -612,18 +605,18 @@ private fun GuideGrid(
                     val starred = schedule.key in favourites
                     Surface(
                         onClick = { channelPage = schedule },
-                        onLongClick = {
-                            // A home-made channel can also be taken away again
-                            if (schedule.custom != null) mineMenu = schedule else ChannelPrefs.toggleFavourite(schedule.key)
-                        },
+                        onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors =
                             ClickableSurfaceDefaults.colors(
-                                containerColor = Color(0xFF17171B),
-                                contentColor = Color.White,
-                                focusedContainerColor = Color(0xFF3A3A42),
-                                focusedContentColor = Color.White,
+                                containerColor = Color.Transparent,
+                                contentColor = Glowfin.Dim,
+                                focusedContainerColor = Glowfin.FocusRow,
+                                focusedContentColor = Glowfin.Text,
                             ),
+                        border =
+                            com.github.damontecres.wholphin.ui.nav
+                                .focusRing(RoundedCornerShape(6.dp)),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier = Modifier.width(CHANNEL_COL).fillMaxHeight(),
                     ) {
@@ -632,40 +625,29 @@ private fun GuideGrid(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
                         ) {
+                            // Glowfin L1: an aqua star for favourites, the number, the logo, the name
                             Text(
-                                text = if (starred) "★" else "☆",
+                                text = if (starred) "★" else " ",
                                 fontSize = BenflixType.small,
-                                color = if (starred) StarGold else BenflixColors.Muted,
+                                color = StarGold,
+                                modifier = Modifier.width(12.dp),
                             )
                             Text(
                                 text = "${schedule.number}",
-                                fontFamily = BenflixFont,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = BenflixType.rowName,
-                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = BenflixType.small,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.width(36.dp),
                             )
-                            val live = schedule.live
-                            ChannelLogo(schedule, size = 24.dp)
-                            Column {
-                                Text(
-                                    text = schedule.title,
-                                    fontSize = BenflixType.tag,
-                                    fontWeight = FontWeight.Bold,
-                                    lineHeight = BenflixType.tag * 1.3f,
-                                    maxLines = if (live == null) 1 else 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                if (live == null) {
-                                    Text(
-                                        text = "NO ADS",
-                                        fontSize = BenflixType.tag,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = .8.sp,
-                                        color = NoAdsGreen,
-                                        lineHeight = BenflixType.tag * 1.3f,
-                                    )
-                                }
-                            }
+                            ChannelLogo(schedule, size = 26.dp, wide = true)
+                            Text(
+                                text = schedule.title,
+                                fontSize = BenflixType.tag,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = BenflixType.tag * 1.3f,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                     Box(modifier = Modifier.width(4.dp))
@@ -693,26 +675,25 @@ private fun GuideGrid(
                                     }
                                 },
                                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                // Glowfin L1: on now sits on the raised colour, later ones on the deep one;
+                                // the remote's show turns white with an aqua ring
                                 colors =
                                     ClickableSurfaceDefaults.colors(
-                                        containerColor = if (live) Color(0xFF26262D) else Color(0xFF1C1C21),
-                                        contentColor = Color.White,
-                                        focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                                        focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+                                        containerColor = if (live) Glowfin.Raise else Glowfin.Deep,
+                                        contentColor = if (live) Glowfin.Text else Glowfin.Dim,
+                                        focusedContainerColor = Color.White,
+                                        focusedContentColor = Glowfin.Ink,
                                     ),
                                 border =
-                                    if (isSelected) {
-                                        ClickableSurfaceDefaults.border(
-                                            border = Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp)),
-                                            focusedBorder =
-                                                Border(
-                                                    BorderStroke(3.dp, BenflixColors.Focus),
-                                                    shape = RoundedCornerShape(6.dp),
-                                                ),
-                                        )
-                                    } else {
-                                        ClickableSurfaceDefaults.border()
-                                    },
+                                    ClickableSurfaceDefaults.border(
+                                        border =
+                                            if (isSelected) {
+                                                Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp))
+                                            } else {
+                                                Border.None
+                                            },
+                                        focusedBorder = Border(BorderStroke(2.5.dp, Glowfin.Aqua), shape = RoundedCornerShape(6.dp)),
+                                    ),
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 modifier =
                                     Modifier
@@ -722,7 +703,7 @@ private fun GuideGrid(
                                         .then(if (isFirst) entryFocus else Modifier)
                                         .onFocusChanged { if (it.isFocused) focused = schedule to program },
                             ) {
-                                // On now: a thin red bar along the bottom up to where the show is
+                                // On now: a thin glow line along the bottom up to where the show is
                                 if (live && to > from) {
                                     Box(
                                         modifier =
@@ -731,7 +712,7 @@ private fun GuideGrid(
                                                 .wrapContentHeight(Alignment.Bottom)
                                                 .fillMaxWidth(((now - from).toFloat() / (to - from)).coerceIn(0f, 1f))
                                                 .height(3.dp)
-                                                .background(BenflixRed),
+                                                .background(Glowfin.GlowAcross),
                                     )
                                 }
                                 // A show that's nearly over is only a sliver: no squashed "Ki…" and cut-off time in it
@@ -770,14 +751,14 @@ private fun GuideGrid(
                                 }
                             }
                         }
-                        // The "now" line
+                        // The "now" line (aqua)
                         Box(
                             modifier =
                                 Modifier
                                     .offset(x = widthFor(now - windowStart))
                                     .width(2.dp)
                                     .fillMaxHeight()
-                                    .background(BenflixRed),
+                                    .background(Glowfin.Aqua),
                         )
                     }
                 }
@@ -791,34 +772,6 @@ private fun GuideGrid(
     }
     if (addChannels) {
         AddChannelsDialog(list = all, favourites = favourites, onDismiss = { addChannels = false })
-    }
-    if (makeChannel) {
-        MakeChannelFlow(
-            loadPicks = viewModel::loadPicks,
-            onMake = {
-                makeChannel = false
-                viewModel.makeChannel(it)
-            },
-            onDismiss = { makeChannel = false },
-        )
-    }
-    mineMenu?.let { schedule ->
-        val custom = schedule.custom
-        if (custom != null) {
-            val starred = schedule.key in favourites
-            BenflixChoiceDialog(
-                title = schedule.title,
-                choices =
-                    listOf(
-                        BenflixChoice(
-                            label = if (starred) "Take off Favourites" else "Add to Favourites",
-                            onClick = { ChannelPrefs.toggleFavourite(schedule.key) },
-                        ),
-                        BenflixChoice("Remove this channel", { viewModel.removeChannel(custom) }),
-                    ),
-                onDismissRequest = { mineMenu = null },
-            )
-        }
     }
     // Ben (2026-11-08): no "Pick your channels" pop-up when Live TV opens. Favourites are added
     // from a channel or the Add channels box instead.
@@ -857,11 +810,6 @@ private fun GuideGrid(
                         if (starred) "Remove from favourites" else "Add to favourites",
                         { ChannelPrefs.toggleFavourite(schedule.key) },
                     ),
-                    if (schedule.live == null) {
-                        BenflixChoice("Open its page", { viewModel.navigationManager.navigateTo(program.item.destination()) })
-                    } else {
-                        null
-                    },
                 ),
             onDismissRequest = { laterMenu = null },
         )
@@ -899,47 +847,17 @@ private fun ChannelTileRow(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp).scrollAsOneBlock()) {
         Text(
-            text = title.uppercase(),
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp,
-            color = Color(0xFFB8B8C0),
+            text = title,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.SemiBold,
+            color = BenflixColors.Soft,
         )
         androidx.compose.foundation.lazy.LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding =
                 androidx.compose.foundation.layout
                     .PaddingValues(end = 32.dp),
             content = content,
-        )
-    }
-}
-
-/** A small round button beside the guide's heading ("Edit types", "+ Add channels", "+ Make a channel") */
-@Composable
-private fun GuideChip(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = Color(0xFF17171B),
-                contentColor = Color(0xFFB8B8C0),
-                focusedContainerColor = BenflixColors.LiveTv,
-                focusedContentColor = BenflixColors.OnLiveTv,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        Text(
-            text = label,
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
@@ -957,7 +875,7 @@ private fun SuggestFavouriteTile(
         modifier =
             Modifier
                 .height(64.dp)
-                .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
+                .background(Glowfin.Raise, RoundedCornerShape(10.dp))
                 .padding(horizontal = 12.dp),
     ) {
         Text(
@@ -968,34 +886,8 @@ private fun SuggestFavouriteTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        SuggestButton("Add", onAdd)
-        SuggestButton("No thanks", onNo)
-    }
-}
-
-@Composable
-private fun SuggestButton(
-    text: String,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = Color(0xFF26262C),
-                contentColor = Color.White,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Text(
-            text,
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        LiveChip("Add", selected = true, onClick = onAdd)
+        LiveChip("No thanks", selected = false, onClick = onNo)
     }
 }
 
@@ -1064,54 +956,131 @@ private fun AddChannelsDialog(
     }
 }
 
+/** Glowfin L1: the aqua LIVE pill */
+@Composable
+internal fun LivePill(modifier: Modifier = Modifier) {
+    Text(
+        text = "● LIVE",
+        fontSize = BenflixType.tag,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = .8.sp,
+        color = Glowfin.Ink,
+        modifier =
+            modifier
+                .background(Glowfin.Aqua, RoundedCornerShape(50))
+                .padding(horizontal = 8.dp, vertical = 1.dp),
+    )
+}
+
+/**
+ * Glowfin L1 top area: what's on the channel (or show) the remote is on. The words sit on the left;
+ * the show's picture (or the station's logo) fills the right and fades into the page.
+ */
 @Composable
 private fun GuideHeader(
     focused: () -> Pair<ChannelSchedule, ChannelProgram>?,
     now: Long,
 ) {
     val imageUrlService = LocalImageUrlService.current
-    // Phones get a smaller picture and title, so the title isn't squeezed by a TV-sized picture
+    // Phones get a smaller picture and title
     val isTv = rememberIsTv()
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(if (isTv) 28.dp else 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(if (isTv) HEADER_HEIGHT else PHONE_HEADER_HEIGHT)
-                .padding(end = if (isTv) 32.dp else 8.dp),
+                .height(if (isTv) HEADER_HEIGHT else PHONE_HEADER_HEIGHT),
     ) {
         val pair = focused()
+        if (pair != null) {
+            val (schedule, program) = pair
+            // The guide loads its shows without picture info (to stay fast), so ask the server
+            // for the show's own picture by its id, else the station's logo
+            val urls =
+                remember(program.item.id) {
+                    fun url(itemId: java.util.UUID) =
+                        imageUrlService.getItemImageUrl(
+                            itemId = itemId,
+                            imageType = ImageType.PRIMARY,
+                            fillWidth = 480,
+                            fillHeight = 270,
+                        )
+                    listOfNotNull(if (program.noGuide) null else url(program.item.id), url(schedule.live.id))
+                }
+            var attempt by remember(program.item.id) { mutableIntStateOf(0) }
+            val isLogo = attempt == urls.lastIndex
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .aspectRatio(16f / 9f),
+            ) {
+                AsyncImage(
+                    model = urls.getOrNull(attempt),
+                    contentDescription = null,
+                    contentScale = if (isLogo) ContentScale.Fit else ContentScale.Crop,
+                    onError = { if (attempt < urls.lastIndex) attempt++ },
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(if (isLogo) 28.dp else 0.dp),
+                )
+                // The fade into the page on the left and along the bottom
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Brush.horizontalGradient(0f to BenflixColors.Tray, .55f to Color.Transparent)),
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(.6f to Color.Transparent, 1f to BenflixColors.Tray)),
+                )
+            }
+        }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(if (isTv) .56f else .62f),
         ) {
             if (pair == null) return@Column
             val (schedule, program) = pair
             val live = now >= program.startMs && now < program.endMs
-            Text(
-                text =
-                    if (program.noGuide) {
-                        "${schedule.number}  ·  ${schedule.title.uppercase()}  ·  LIVE"
-                    } else {
-                        "${schedule.number}  ·  ${schedule.title.uppercase()}  ·  " +
-                            (if (live) "ON NOW  ·  " else "") +
-                            "${clock(program.startMs)} – ${clock(program.endMs)}" +
-                            (if (schedule.live == null) "  ·  NO ADS" else "")
-                    },
-                fontSize = BenflixType.tag,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.2.sp,
-                color = if (live) BenflixRed else Color(0xFF8B8B94),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (live) LivePill()
+                Text(
+                    text = "${schedule.number}  ·  ${schedule.title}",
+                    fontSize = BenflixType.tag,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Glowfin.Dim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = program.name(),
+                fontFamily = GlowfinDisplayFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = if (isTv) BenflixType.pageTitle else BenflixType.lead,
                 lineHeight = if (isTv) 32.sp else 22.sp,
+                color = Glowfin.Text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (!program.noGuide) {
+                val next = schedule.programs.firstOrNull { it.startMs >= program.endMs && !it.noGuide }
+                Text(
+                    text =
+                        "${clock(program.startMs)} – ${clock(program.endMs)}" +
+                            (next?.let { "  ·  Next: ${it.name()}" } ?: ""),
+                    fontSize = BenflixType.small,
+                    color = BenflixColors.Soft,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (program.item.type == BaseItemKind.EPISODE) {
                 val season = program.item.data.parentIndexNumber
                 val episode = program.item.data.indexNumber
@@ -1121,8 +1090,9 @@ private fun GuideHeader(
                             if (season != null && episode != null) "S$season E$episode" else null,
                             program.item.name,
                         ).joinToString("  ·  "),
-                    fontSize = BenflixType.body,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
+                    color = Glowfin.Text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1134,7 +1104,6 @@ private fun GuideHeader(
                     color = BenflixColors.Soft,
                     maxLines = if (isTv) 2 else 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 620.dp),
                 )
             }
             if (live && !program.noGuide) {
@@ -1145,88 +1114,13 @@ private fun GuideHeader(
                             .padding(top = 4.dp)
                             .width(220.dp)
                             .height(4.dp)
-                            .background(Color(0xFF333338), RoundedCornerShape(6.dp)),
+                            .background(Color.White.copy(alpha = .14f), RoundedCornerShape(6.dp)),
                 ) {
                     Box(
                         Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(progress)
-                            .background(BenflixRed, RoundedCornerShape(6.dp)),
-                    )
-                }
-            }
-        }
-        // The picture window: the episode's own still, or the movie's backdrop
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(16f / 9f)
-                    .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
-                    .clip(RoundedCornerShape(10.dp)),
-        ) {
-            if (pair != null) {
-                val (schedule, program) = pair
-                // The guide loads its shows without picture info (to stay fast), so ask the server
-                // for pictures by the show's id alone, trying the next kind if one is missing
-                val urls =
-                    remember(program.item.id) {
-                        val id = program.item.id
-                        val seriesId = program.item.data.seriesId
-
-                        fun url(
-                            itemId: java.util.UUID,
-                            type: ImageType,
-                        ) = imageUrlService.getItemImageUrl(
-                            itemId = itemId,
-                            imageType = type,
-                            fillWidth = 480,
-                            fillHeight = 270,
-                        )
-                        val liveId = schedule.live?.id
-                        if (liveId != null) {
-                            // A live show's own picture, else the station's logo
-                            listOfNotNull(
-                                if (program.noGuide) null else url(id, ImageType.PRIMARY),
-                                url(liveId, ImageType.PRIMARY),
-                            )
-                        } else if (program.item.type == BaseItemKind.EPISODE) {
-                            listOfNotNull(
-                                url(id, ImageType.PRIMARY),
-                                seriesId?.let { url(it, ImageType.BACKDROP) },
-                                seriesId?.let { url(it, ImageType.THUMB) },
-                                seriesId?.let { url(it, ImageType.PRIMARY) },
-                            )
-                        } else {
-                            listOfNotNull(
-                                url(id, ImageType.BACKDROP),
-                                url(id, ImageType.THUMB),
-                                url(id, ImageType.PRIMARY),
-                            )
-                        }
-                    }
-                var attempt by remember(program.item.id) { mutableIntStateOf(0) }
-                val isLogo = schedule.live != null && attempt == urls.lastIndex
-                AsyncImage(
-                    model = urls.getOrNull(attempt),
-                    contentDescription = null,
-                    contentScale = if (isLogo) ContentScale.Fit else ContentScale.Crop,
-                    onError = { if (attempt < urls.lastIndex) attempt++ },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                if (now >= program.startMs && now < program.endMs) {
-                    Text(
-                        text = "ON NOW",
-                        fontSize = BenflixType.tag,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
-                        color = BenflixColors.OnLiveTv,
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(8.dp)
-                                .background(BenflixRed, RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                            .background(Glowfin.GlowAcross, RoundedCornerShape(6.dp)),
                     )
                 }
             }
@@ -1234,11 +1128,88 @@ private fun GuideHeader(
     }
 }
 
+/** Glowfin L1 phones: the Now / Next list's column names (stays at the top while scrolling) */
+@Composable
+private fun NowNextHeader() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().background(BenflixColors.Tray).padding(vertical = 4.dp),
+    ) {
+        Text("Channel", fontSize = BenflixType.tag, color = Glowfin.Dim, modifier = Modifier.width(NOW_NEXT_CHANNEL))
+        Text("Now", fontSize = BenflixType.tag, color = Glowfin.Dim, modifier = Modifier.weight(1.3f))
+        Text("Next", fontSize = BenflixType.tag, color = Glowfin.Dim, modifier = Modifier.weight(1f))
+    }
+}
+
+/** Glowfin L1 phones: one channel in the Now / Next list. Tap to watch, hold for the channel's page */
+@Composable
+private fun NowNextRow(
+    schedule: ChannelSchedule,
+    now: Long,
+    starred: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val on = schedule.programAt(now)
+    val next = on?.let { current -> schedule.programs.firstOrNull { it.startMs >= current.endMs && !it.noGuide } }
+    Surface(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = Glowfin.Text,
+                focusedContainerColor = Glowfin.FocusRow,
+                focusedContentColor = Glowfin.Text,
+            ),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(RoundedCornerShape(8.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.fillMaxWidth().height(52.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.width(NOW_NEXT_CHANNEL),
+            ) {
+                ChannelLogo(schedule, size = 28.dp, wide = true)
+                Text(
+                    text = (if (starred) "★ " else "") + schedule.number,
+                    fontSize = BenflixType.tag,
+                    color = if (starred) StarGold else Glowfin.Dim,
+                    maxLines = 1,
+                )
+            }
+            Text(
+                text = on?.name().orEmpty(),
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1.3f).padding(end = 6.dp),
+            )
+            Text(
+                text = next?.name().orEmpty(),
+                fontSize = BenflixType.small,
+                color = Glowfin.Dim,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = 6.dp),
+            )
+        }
+    }
+}
+
+private val NOW_NEXT_CHANNEL = 100.dp
+
 /**
- * Benflix redesign (wt-banner): the watching banner along the bottom after you change channel. The
- * channel number and name (with a star if it's a favourite), what's on with the time left and a thin
- * line, and what's next. While the channel starts it says "Tuning in…"; it hides 5 seconds after
- * the picture starts.
+ * Glowfin L1 watching banner along the bottom after you change channel: the logo and number, the LIVE
+ * pill, the channel's name (an aqua star if it's a favourite), what's on with a thin glow line, and
+ * what's next. While the channel starts it says "Tuning in…"; it hides 5 seconds after the picture starts.
  */
 @Composable
 fun ChannelBanner(
@@ -1260,6 +1231,7 @@ fun ChannelBanner(
         }
     }
     val favourites by ChannelPrefs.favourites.collectAsState()
+    val imageUrlService = LocalImageUrlService.current
     AnimatedVisibility(
         visible = banner != null,
         enter = fadeIn(BenflixMotion.enter()),
@@ -1268,83 +1240,98 @@ fun ChannelBanner(
     ) {
         val info = banner ?: return@AnimatedVisibility
         val now = remember(info) { System.currentTimeMillis() }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .85f))))
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Glowfin.Ink.copy(alpha = .92f))))
                     .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 40.dp, bottom = 28.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(info.number.toString(), fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                Text(
-                    info.name,
-                    fontSize = BenflixType.rowName,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (info.key in favourites) Text("★", fontSize = BenflixType.rowName, color = Color.White)
-                if (info.own) {
-                    Text(
-                        text = "NO ADS",
-                        fontSize = BenflixType.tag,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = .6.sp,
-                        color = Color(0xFF04150B),
-                        modifier =
-                            Modifier
-                                .background(NoAdsGreen, RoundedCornerShape(6.dp))
-                                .padding(horizontal = 7.dp, vertical = 2.dp),
-                    )
-                }
-            }
-            if (!playing) {
-                Text("Tuning in…", fontSize = BenflixType.lead, color = BenflixColors.Soft)
-            } else if (info.now != null) {
-                val left = ((info.endMs - now) / 60_000L).coerceAtLeast(0L)
-                Text(
-                    text = "${info.now}  ·  ${if (left >= 60) "${left / 60} h ${left % 60} min" else "$left min"} left",
-                    fontSize = BenflixType.lead,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val length = (info.endMs - info.startMs).coerceAtLeast(1L)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val logo =
+                    remember(info.channelId) {
+                        imageUrlService.getItemImageUrl(itemId = info.channelId, imageType = ImageType.PRIMARY, maxWidth = 160)
+                    }
                 Box(
                     Modifier
-                        .widthIn(max = 420.dp)
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = .25f)),
+                        .width(84.dp)
+                        .height(56.dp)
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .padding(4.dp),
                 ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(((now - info.startMs).toFloat() / length).coerceIn(0f, 1f))
-                            .height(3.dp)
-                            .background(Color.White),
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-                info.next?.let { next ->
-                    val at =
-                        java.time.Instant
-                            .ofEpochMilli(info.nextStartMs)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalTime()
-                            .format(
-                                java.time.format.DateTimeFormatter
-                                    .ofPattern("h:mm"),
-                            )
+                Text(info.number.toString(), fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Glowfin.Text)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LivePill()
                     Text(
-                        "Next at $at  ·  $next",
+                        info.name,
                         fontSize = BenflixType.small,
-                        color = BenflixColors.Muted,
+                        color = Glowfin.Dim,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (info.key in favourites) Text("★", fontSize = BenflixType.body, color = StarGold)
+                }
+                if (!playing) {
+                    Text("Tuning in…", fontSize = BenflixType.lead, color = BenflixColors.Soft)
+                } else if (info.now != null) {
+                    val left = ((info.endMs - now) / 60_000L).coerceAtLeast(0L)
+                    Text(
+                        text = info.now,
+                        fontFamily = GlowfinDisplayFont,
+                        fontSize = BenflixType.pageTitle,
+                        fontWeight = FontWeight.Bold,
+                        color = Glowfin.Text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val length = (info.endMs - info.startMs).coerceAtLeast(1L)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(clock(info.startMs), fontSize = BenflixType.small, color = BenflixColors.Soft)
+                        Box(
+                            Modifier
+                                .widthIn(max = 420.dp)
+                                .weight(1f, fill = false)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.White.copy(alpha = .2f)),
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(((now - info.startMs).toFloat() / length).coerceIn(0f, 1f))
+                                    .height(4.dp)
+                                    .background(Glowfin.GlowAcross),
+                            )
+                        }
+                        Text(clock(info.endMs), fontSize = BenflixType.small, color = BenflixColors.Soft)
+                        Text(
+                            text = (if (left >= 60) "${left / 60} h ${left % 60} min" else "$left min") + " left",
+                            fontSize = BenflixType.small,
+                            color = Glowfin.Dim,
+                            maxLines = 1,
+                        )
+                    }
+                    info.next?.let { next ->
+                        Text(
+                            "Next at ${clock(info.nextStartMs)}  ·  $next",
+                            fontSize = BenflixType.small,
+                            color = Glowfin.Dim,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -1355,66 +1342,25 @@ private const val HALF_HOUR = 30L * 60_000L
 private const val GUIDE_HOURS = 2L
 private const val NUMBER_WAIT_MS = 1_500L
 private const val BANNER_MS = 5_000L
-private val CHANNEL_COL = 176.dp
+private val CHANNEL_COL = 196.dp
 private val HEADER_HEIGHT = 170.dp
 
 /** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */
 private val PHONE_HEADER_HEIGHT = 110.dp
 private val BenflixRed = BenflixColors.LiveTv
 
-/** Each channel's badge colours */
-internal val BadgeColors =
-    listOf(
-        Color(0xFF7A2A1C) to Color(0xFFD98B3A),
-        Color(0xFF1C3A6B) to Color(0xFF4AA3C9),
-        Color(0xFF5A1C5E) to Color(0xFFE05AA0),
-        Color(0xFF1D4D3A) to Color(0xFF7AD0A0),
-        Color(0xFF3B2A12) to Color(0xFFD9B04A),
-        Color(0xFF14444A) to Color(0xFF3FB8C4),
-        Color(0xFF4A1A2A) to Color(0xFFD9506E),
-    )
 private val ROW_HEIGHT = 56.dp
-private val NoAdsGreen = Color(0xFF3FBF7A)
 
-/** "No ads · Benflix channels" or "Live · free with ads · News" between the groups */
+/** Glowfin L1: a type's name between the groups in the guide (an aqua star for Favourites) */
 @Composable
 private fun GroupHeading(name: String) {
-    if (name == FAVOURITES_GROUP) {
-        Text(
-            text = "★  FAVOURITES",
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp,
-            color = StarGold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-        )
-        return
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-    ) {
-        val own = name == BENFLIX_GROUP
-        Text(
-            text = if (own) "NO ADS" else "LIVE · FREE WITH ADS",
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = .6.sp,
-            color = if (own) Color(0xFF04150B) else Color.White,
-            modifier =
-                Modifier
-                    .background(if (own) NoAdsGreen else Color(0xFF3A3A42), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-        )
-        Text(
-            text = if (own) "BENFLIX CHANNELS · FROM YOUR SERVER" else name.uppercase(),
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp,
-            color = Color(0xFF8B8B94),
-        )
-    }
+    Text(
+        text = if (name == FAVOURITES_GROUP) "★  Favourites" else name,
+        fontSize = BenflixType.small,
+        fontWeight = FontWeight.SemiBold,
+        color = if (name == FAVOURITES_GROUP) StarGold else BenflixColors.Soft,
+        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+    )
 }
 
 /** Easy mode's Live TV: three big buttons (approved f2-easy) */
@@ -1426,7 +1372,6 @@ private fun EasyChoices(
     modifier: Modifier = Modifier,
 ) {
     val news = remember(list) { list.firstOrNull { it.group() == "News" } }
-    val benflix = remember(list) { list.firstOrNull { it.group() == BENFLIX_GROUP } }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         delay(80)
@@ -1439,7 +1384,6 @@ private fun EasyChoices(
     ) {
         EasyButton("My channels", "Your favourites and the full guide", onMyChannels, Modifier.focusRequester(first))
         if (news != null) EasyButton("Put the news on", news.title, { onWatch(news) })
-        if (benflix != null) EasyButton("Glowfin channels", "No ads, from your own movies and shows", { onWatch(benflix) })
     }
 }
 

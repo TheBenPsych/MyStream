@@ -412,20 +412,6 @@ fun NetflixControlRow(
                             highlighted = true,
                         )
                     }
-                    // Benflix's own channels (approved bc-same): start the show on now from the beginning
-                    if (com.github.damontecres.wholphin.services.ChannelSession
-                            .isOwnChannelProgram(player.currentMediaItem?.mediaId)
-                    ) {
-                        PlayerPillButton(
-                            text = if (compact) null else "Start from the beginning",
-                            faIcon = R.string.fa_rotate_left,
-                            onClick = {
-                                onControllerInteraction.invoke()
-                                player.seekTo(0L)
-                            },
-                            onControllerInteraction = onControllerInteraction,
-                        )
-                    }
                 }
                 PlayerGlowButton(
                     icon = GlowfinIcon.SUBTITLES,

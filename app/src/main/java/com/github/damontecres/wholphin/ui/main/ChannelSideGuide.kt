@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,13 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelSession
@@ -47,6 +41,8 @@ import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -125,9 +121,16 @@ private fun SideGuideContent(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color(0xF00B0B0D))
+                .background(Glowfin.Ink.copy(alpha = .94f))
                 .padding(12.dp),
     ) {
+        Text(
+            "Guide",
+            fontFamily = GlowfinDisplayFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = BenflixType.rowName,
+            color = Glowfin.Text,
+        )
         SearchEditTextBox(
             value = query,
             onValueChange = { query = it },
@@ -137,27 +140,7 @@ private fun SideGuideContent(
         if (query.isBlank()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(groups, key = { it }) { name ->
-                    Surface(
-                        onClick = { group = name },
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-                        colors =
-                            ClickableSurfaceDefaults.colors(
-                                containerColor = if (name == group) Color(0xFF3A3A42) else Color(0xFF1C1C21),
-                                contentColor = Color.White,
-                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
-                            ),
-                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                    ) {
-                        Text(
-                            text = groupLabel(name),
-                            fontSize = BenflixType.tag,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                        )
-                    }
+                    LiveChip(label = groupLabel(name), selected = name == group, onClick = { group = name })
                 }
             }
         }
@@ -165,7 +148,7 @@ private fun SideGuideContent(
             Text(
                 if (query.isBlank()) "No channels here." else "No channel called \"${query.trim()}\"",
                 fontSize = BenflixType.small,
-                color = Color(0xFF8B8B94),
+                color = Glowfin.Dim,
             )
         }
         Box(Modifier.weight(1f)) {
