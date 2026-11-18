@@ -680,7 +680,14 @@ class DoorDataService
         private suspend fun items(request: GetItemsRequest): List<BaseItem> =
             safe {
                 api.itemsApi
-                    .getItems(request.copy(enableTotalRecordCount = false))
+                    // Jellyfin's "Group movies into collections" would swap movies for their box sets in library
+                    // lists (All movies and rows), so ask for plain movies. Box sets only show on the Collections tab.
+                    .getItems(
+                        request.copy(
+                            enableTotalRecordCount = false,
+                            collapseBoxSetItems = request.collapseBoxSetItems ?: false,
+                        ),
+                    )
                     .content.items
                     .map { BaseItem(it) }
             }
