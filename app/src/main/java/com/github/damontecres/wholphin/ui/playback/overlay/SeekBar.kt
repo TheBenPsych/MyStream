@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.KeyEventType
@@ -54,7 +55,7 @@ import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.calculateSeekAccelerationMultiplier
 import com.github.damontecres.wholphin.ui.playback.isDpadLeft
 import com.github.damontecres.wholphin.ui.playback.isDpadRight
-import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -220,8 +221,8 @@ private fun SeekBarDisplay(
     onTouchSeek: ((Float) -> Unit)? = null,
     chapterMarks: List<Float> = emptyList(),
 ) {
-    // Benflix redesign: a white progress line, cut into chapters when the file has them
-    val color = BenflixRed
+    // Glowfin (P1): the progress line in the logo's violet > blue > aqua glow, cut into chapters when the file
+    // has them, with a white knob in an aqua ring
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -369,7 +370,14 @@ private fun SeekBarDisplay(
                     cap = StrokeCap.Round,
                 )
                 drawLine(
-                    color = color,
+                    brush =
+                        Brush.horizontalGradient(
+                            0f to Glowfin.Violet,
+                            0.6f to Glowfin.Blue,
+                            1f to Glowfin.Aqua,
+                            startX = 0f,
+                            endX = size.width,
+                        ),
                     start = Offset(x = 0f, y = yOffset),
                     end =
                         Offset(
@@ -389,15 +397,11 @@ private fun SeekBarDisplay(
                         size = Size(gap, size.height),
                     )
                 }
-                drawCircle(
-                    color = color,
-                    radius = size.height + 2,
-                    center =
-                        Offset(
-                            x = size.width.times(shownProgress),
-                            y = yOffset,
-                        ),
-                )
+                val knob = Offset(x = size.width.times(shownProgress), y = yOffset)
+                val knobRadius = size.height + 2
+                drawCircle(color = Glowfin.Violet.copy(alpha = .35f), radius = knobRadius + 6.dp.toPx(), center = knob)
+                drawCircle(color = Glowfin.Aqua, radius = knobRadius + 2.5.dp.toPx(), center = knob)
+                drawCircle(color = Color.White, radius = knobRadius, center = knob)
             },
         )
     }

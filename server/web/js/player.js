@@ -90,28 +90,30 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="shadeT"></div><div class="shadeB"></div>
     <div class="center-msg" id="msg"></div>
     <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button>
-      <div><div class="tt">${esc(isEp ? `${it.SeriesName} · S${it.ParentIndexNumber} E${it.IndexNumber} · ${it.Name}` : it.Name)}</div>${it.OfficialRating ? `<div class="rating">Rated ${esc(it.OfficialRating)}</div>` : ""}</div></div>
+      <div><div class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</div><div class="rating">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</div></div></div>
     <button class="skip hidden" id="pSkip"></button>
     <div class="upnext hidden" id="pNext"></div>
     <div class="eprow hidden" id="pEps"></div>
     <div class="controls">
       <div class="chap" id="pChap"></div>
       <div class="bar" id="pBar"><div class="segs" id="pSegs"></div><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
+      <div class="times"><span id="pTime">0:00</span><span id="pEnds"></span></div>
       <div class="row2">
-        <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
         <button class="pbtn" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}</button>
-        <button class="pbtn" id="pFw" title="Forward 10 seconds (right arrow)">${I("fwd10")}</button>
-        ${isEp ? `<button class="pbtn" id="pNx" title="Next episode">${I("next")}</button>` : ""}
-        <span class="time" id="pTime">0:00</span>
+        <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
+        <button class="pbtn" id="pFw" title="Ahead 10 seconds (right arrow)">${I("fwd10")}</button>
+        ${isEp ? `<button class="pbtn" id="pNx" title="Next episode (N)">${I("next")}</button>` : ""}
         <span class="grow"></span>
-        <span class="time" id="pEnds"></span>
-        ${isEp ? `<button class="pbtn" id="pList" title="Episodes">${I("list")}</button>` : ""}
-        <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
-        <button class="pbtn" id="pSub" title="Subtitles (S turns them on and off)">${I("sub")}</button>
-        <button class="pbtn" id="pGear" title="Settings: audio, subtitle timing, quality and Fix a problem">${I("gear")}</button>
-        ${B.volume("pVol")}
-        ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
-        <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
+        <button class="pbtn lab" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}<em>Subtitles</em></button>
+        <button class="pbtn lab" id="pAud" title="Audio: pick the language or sound track">${I("audio")}<em>Audio</em></button>
+        ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
+        <button class="pbtn lab" id="pGear" title="Settings: audio, subtitle timing, quality and Fix a problem">${I("gear")}<em>Settings</em></button>
+        <span class="lab vlab">${B.volume("pVol")}<em>Volume</em></span>
+        <span class="extra">
+          <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
+          ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
+          <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
+        </span>
       </div>
     </div>
   </div>`;
@@ -244,8 +246,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       el.querySelector("u").style.width = Math.max(0, Math.min(100, ((buf - s.start) / w) * 100)) + "%";
     });
     $("#pKnob").style.left = (t / T) * 100 + "%";
-    $("#pTime").textContent = `${B.hms(t)} / ${B.hms(T)}`;
-    $("#pEnds").textContent = `Ends at ${B.clock(new Date(Date.now() + (T - t) * 1000))}`;
+    $("#pTime").textContent = B.hms(t);
+    $("#pEnds").textContent = `Ends at ${B.clock(new Date(Date.now() + ((T - t) / (v.playbackRate || 1)) * 1000))} · −${B.hms(Math.max(0, T - t))}`;
     const ch = segs.find((s) => t >= s.start && t < s.end);
     $("#pChap").textContent = ch ? ch.name || "" : "";
   };
@@ -317,6 +319,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   B.wireVolume($("#pVol").parentNode, v, "volume");
   $("#pBack").onclick = () => leave();
   $("#pSub").onclick = () => openPanel("subs");
+  $("#pAud").onclick = () => openPanel("audio");
   $("#pGear").onclick = () => openPanel();
   $("#pKeys").onclick = () => showKeys();
   v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(); report("/Progress"); });
@@ -483,7 +486,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Settings</h3>
       <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(B.lastPlayed.title || "")}</p>
       <h4 id="psSubs">Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}${s.IsTextSubtitleStream === false ? "<small>pictures, can't be moved</small>" : ""}</button>`).join("")}
-      <h4>Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
+      <h4 id="psAudio">Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
       <h4>Subtitle timing</h4>${canMove ? `<p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later. Words come after? Press −. (Keys: G sooner, H later.) <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-10, "−10 s"], [-1, "−1 s"], [-0.5, "−½ s"], [0.5, "+½ s"], [1, "+1 s"], [10, "+10 s"], [0, "Reset"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : `<p class="dim" style="font-size:13px;margin:-4px 0 8px">${subOn ? "These subtitles are pictures, so they can't be moved here. Try Subtitles wrong below." : "Turn subtitles on first (just above)."}</p>`}
       <h4>Quality</h4>${QUALITY_STEPS.map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${QUALITY_WORDS[k]}</button>`).join("")}
       <h4>Play speed</h4><div class="delay-row">${SPEEDS.map((r) => `<button class="opt ${v.playbackRate === r ? "on" : ""}" data-speed="${r}">${r === 1 ? "Normal" : r + "×"}</button>`).join("")}</div>
@@ -501,6 +504,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     pl.classList.add("ui");
     if (alsoOk) drawAlso(p);
     if (focus === "subs") { const on = $(".opt.on[data-s]", p) || $("[data-s]", p); if (on) on.focus(); }
+    if (focus === "audio") { const h = $("#psAudio", p); if (h) h.scrollIntoView({ block: "start" }); const on = $(".opt.on[data-a]", p) || $("[data-a]", p); if (on) on.focus({ preventScroll: true }); }
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
@@ -601,7 +605,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if (k === "l") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "f" || k === "F") full();
     else if (k === "m" || k === "M") $("#pVol").click();
-    else if (k === "s" || k === "S") toggleSubs();
+    else if (k === "s" || k === "S" || k === "c" || k === "C") toggleSubs();
     else if (k === "g" || k === "G") nudgeSubs(-0.5);
     else if (k === "h" || k === "H") nudgeSubs(0.5);
     else if (k === "Enter") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); else return; }
@@ -628,7 +632,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   };
   const KEYS = [
     ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
-    ["F", "Full screen"], ["M", "Sound on / off"], ["S", "Subtitles on / off"], ["G / H", "Subtitles earlier / later"], ["Enter", "Skip intro or credits"],
+    ["F", "Full screen"], ["M", "Sound on / off"], ["C or S", "Subtitles on / off"], ["G / H", "Subtitles earlier / later"], ["Enter", "Skip intro or credits"],
     ["N", "Next episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
   ];
   const showKeys = () => {
@@ -643,6 +647,17 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     pl.classList.add("ui");
   };
   document.addEventListener("keydown", keys);
+  // Glowfin (W1): the main keys, shown once on this browser, then never again (? still lists them all)
+  try {
+    if (!localStorage.getItem("glowfin.playerKeysShown")) {
+      localStorage.setItem("glowfin.playerKeysShown", "1");
+      const tip = document.createElement("div");
+      tip.className = "keytip";
+      tip.innerHTML = [["Space", "Pause"], ["← →", "10 seconds"], ["F", "Full screen"], ["C", "Subtitles"]].map(([k, w]) => `<span><kbd>${k}</kbd>${w}</span>`).join("");
+      pl.appendChild(tip);
+      setTimeout(() => tip.remove(), 7000);
+    }
+  } catch (e) {}
 
   // ---------- stopping ----------
   const popped = () => !stopped && document.pictureInPictureElement === v;

@@ -23,6 +23,8 @@ enum class GlowfinIcon(
     val title: String,
     val body: List<String>,
     val lines: List<String> = emptyList(),
+    /** Filled all the way (the player's Play, Pause and Next), not the soft two-tone fill */
+    val solid: Boolean = false,
 ) {
     SEARCH("Search", listOf("M10.8 4.2a6.6 6.6 0 1 0 0 13.2a6.6 6.6 0 1 0 0-13.2z"), listOf("M15.7 15.7l4.6 4.6")),
     HOME("Home", listOf("M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.6v-5.4H9.6V20H5a1 1 0 0 1-1-1z")),
@@ -82,6 +84,34 @@ enum class GlowfinIcon(
         listOf("M12 9.3a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z"),
     ),
 
+    // The video player's buttons (P1, Ben 2026-11-18). Back and Ahead get their "10" drawn in the middle by
+    // the button; every shape here is measured so its outline sits exactly in the middle of the box.
+    PLAY("Play", listOf("M6.8 5.6 17.2 12 6.8 18.4z"), solid = true),
+    PAUSE("Pause", listOf("M6.6 5.4h3.6v13.2H6.6z", "M13.8 5.4h3.6v13.2h-3.6z"), solid = true),
+    BACK("Back", emptyList(), listOf("M12 4.4A7.6 7.6 0 1 1 4.86 9.4", "M14 2.6 12 4.4 14 6.2")),
+    AHEAD("Ahead", emptyList(), listOf("M12 4.4A7.6 7.6 0 1 0 19.14 9.4", "M10 2.6 12 4.4 10 6.2")),
+    NEXT("Next episode", listOf("M5.6 5.6 14.6 12 5.6 18.4z"), listOf("M18.4 5.6v12.8"), solid = true),
+    SUBTITLES(
+        "Subtitles",
+        listOf("M5 5.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"),
+        listOf("M7 12.2h3.6", "M13 12.2h4", "M7 15.2h10"),
+    ),
+    AUDIO(
+        "Audio",
+        listOf("M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6.5L7.5 20v-3.5h-2a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"),
+        listOf("M8.8 9v3", "M12 8v5", "M15.2 9v3"),
+    ),
+    EPISODES(
+        "Episodes",
+        listOf("M5 4h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"),
+        listOf("M6.5 19h11"),
+    ),
+    VOLUME(
+        "Volume",
+        listOf("M3.8 9.4h3.4l4.8-4v13.2l-4.8-4H3.8z"),
+        listOf("M15.4 9.2a4 4 0 0 1 0 5.6", "M18.2 6.6a7.8 7.8 0 0 1 0 10.8"),
+    ),
+
     /** Phone bar: the rest of the menu */
     MORE("More", emptyList(), listOf("M5 12h.01", "M12 12h.01", "M19 12h.01")),
     ;
@@ -101,7 +131,7 @@ enum class GlowfinIcon(
         val (dx, dy) = CentreShift[this] ?: (0f to 0f)
         builder.addGroup(translationX = dx, translationY = dy)
         body.forEach { d ->
-            builder.addPath(pathData = addPathNodes(d), fill = SolidColor(Color.White), fillAlpha = FILL_ALPHA)
+            builder.addPath(pathData = addPathNodes(d), fill = SolidColor(Color.White), fillAlpha = if (solid) 1f else FILL_ALPHA)
         }
         (body + lines).forEach { d ->
             builder.addPath(
@@ -126,7 +156,15 @@ private val CentreShift: Map<GlowfinIcon, Pair<Float, Float>> =
         GlowfinIcon.MUSIC to (.4f to -.2f),
         GlowfinIcon.GAMES to (0f to -.97f),
         GlowfinIcon.BOOKS to (0f to -.7f),
+        GlowfinIcon.BACK to (0f to .9f),
+        GlowfinIcon.AHEAD to (0f to .9f),
+        GlowfinIcon.AUDIO to (0f to -.25f),
+        GlowfinIcon.EPISODES to (0f to .5f),
+        GlowfinIcon.VOLUME to (-.09f to 0f),
     )
+
+/** How far [icon] is moved down to sit in the middle, in 24ths of its size (Back and Ahead move their "10" with it) */
+fun GlowfinIcon.centreShiftY(): Float = CentreShift[this]?.second ?: 0f
 
 private const val FILL_ALPHA = .28f
 private const val LINE_WIDTH = 1.8f
