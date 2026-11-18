@@ -35,7 +35,6 @@ import com.github.damontecres.wholphin.ui.detail.episode.EpisodeDetails
 import com.github.damontecres.wholphin.ui.detail.movie.MovieDetails
 import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
-import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
 import com.github.damontecres.wholphin.ui.door.DoorBrowsePage
 import com.github.damontecres.wholphin.ui.door.DoorPage
@@ -257,11 +256,13 @@ fun DestinationContent(
         }
 
         is Destination.SeriesOverview -> {
-            SeriesOverview(
-                preferences = preferences,
-                destination = destination,
-                initialSeasonEpisode = destination.seasonEpisode,
-                modifier = modifier,
+            // Glowfin (Ben 2026-11-18): an episode or season opens the show page at that season, same as the
+            // browser. The old separate season page (big season title, episode list on the right) is gone.
+            SeriesDetails(
+                preferences,
+                Destination.MediaItem(destination.itemId, BaseItemKind.SERIES),
+                modifier.swipeDownToClose(),
+                startSeasonId = destination.seasonEpisode?.seasonId,
             )
         }
 
