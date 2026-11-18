@@ -1316,7 +1316,7 @@ body.has-rail .bk-side { display: none; }
 .fmore { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .fmore .door { min-height: 110px; padding: 18px 20px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 16px; }
 .fmore .door .n { font-size: 26px; }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .home.fam .fdoors { height: auto; min-height: 0; }
   .home.fam .fdoors.n3 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 150px; }
   .home.fam .fdoors.n3 .door .d { display: none; }
@@ -1754,7 +1754,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .sh-sep { height: 1px; background: var(--line); margin: 8px 0; }
 .sh-me .pic { width: 40px; height: 40px; }
 .sh-me > svg.i:last-child { margin-left: auto; color: var(--ink3); }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   body.nav-on #page { padding-left: 0; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
   body.nav-on .brail { display: none; }
   body.nav-on .drail { left: 0; }
@@ -1819,7 +1819,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 }
 /* With music playing the cards float just above the player bar */
 @media (min-width: 761px) { body:has(.mbar:not(.hidden)) .home.board.spotted { padding-bottom: 96px; } }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .home.spotted { margin-top: 0; padding-top: 6px; }
   .spot .sp-pics, .fam .spot .sp-pics { position: relative; height: auto; aspect-ratio: 16 / 10; margin: 12px calc(-1 * var(--gutter)) 0; z-index: 0; }
   .spot .sp-shade { display: none; }
@@ -1901,7 +1901,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 .bg-cell.done img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
 .bg-cell.done b { position: relative; font-size: 13px; padding: 4px; text-shadow: 0 1px 3px #000; }
 .bg-pickcell { position: fixed; inset: 0; z-index: 4; background: rgba(11,12,16,.94); display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px max(16px, calc(50% - 490px)); }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .bgq-choices { grid-template-columns: repeat(2, 1fr); }
   .bgq-pic.tall { height: 36vh; }
   .bg-hlq { max-width: 80px; font-size: 14px; }
@@ -2032,7 +2032,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .player .panel { background: rgba(18,21,42,.97); border-left-color: #262A45; }
 .player .skip { box-shadow: 0 0 0 3px #05060D, 0 0 0 6px var(--aqua), 0 0 22px 4px rgba(165,91,224,.5); }
 .player .upnext { background: rgba(18,21,42,.96); border-color: #262A45; }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .player .topline, .player .controls { padding: 0 14px; }
   .player .topline .tt { font-size: 20px; }
   .player .row2 { gap: 8px 14px; flex-wrap: wrap; }
@@ -2050,4 +2050,52 @@ svg.gi path.gd { stroke-width: 3.6; }
   .player .row2 .grow { flex-basis: 100%; height: 0; }
   .player .pbtn.lab em, .player .vlab > em { font-size: 11px; }
   .player .extra { margin-top: -4px; }
+}
+
+/* ---------- Glowfin Settings, Help and Server (Ben's pick S1, 2026-11-18): the same plain side list as the TV ---------- */
+.split { padding-left: 0; gap: 32px; }
+.split nav { background: var(--deep); border-right: 1px solid var(--line); padding: 18px 14px; min-height: calc(100vh - var(--bar) - 10px); }
+.split nav .splith { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; font-size: 26px; padding: 2px 8px 14px; color: var(--ink); }
+.split nav .navsearch { border-radius: 99px; background: var(--raise); padding: 10px 16px; font-size: 15px; }
+.split nav .navsearch:focus { outline: none; border-color: var(--aqua); }
+.split nav a { gap: 0; padding: 11px 14px; color: var(--ink); font-weight: 400; position: relative; }
+.split nav a:hover, .split nav a:focus-visible { background: var(--pg4); color: var(--ink); outline: none; }
+.split nav a.on { background: var(--raise); font-weight: 600; }
+.split nav a.on::before, .split nav a:hover::before, .split nav a:focus-visible::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--aqua); border-radius: 10px 0 0 10px; }
+.split nav a.admin { color: var(--check); }
+.split main { padding-top: 18px; }
+.split h2 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; font-size: 26px; }
+.setrow { background: none; padding: 13px 16px; margin-bottom: 2px; border-radius: 10px; }
+.setrow .t { font-weight: 400; }
+.setrow .s { display: none; color: var(--ink2); font-size: 13px; }
+.setrow:hover, .setrow:focus-within { background: var(--raise); }
+.setrow:hover .t, .setrow:focus-within .t { font-weight: 600; }
+.setrow:hover .s, .setrow:focus-within .s { display: block; }
+.setrow:hover::before, .setrow:focus-within::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--aqua); border-radius: 10px 0 0 10px; }
+.setrow button.valbtn, .setrow a.valbtn, .setrow label.valbtn { background: none; color: var(--aqua); font-weight: 600; min-width: 0; padding: 6px 4px; text-align: right; }
+.setrow button.valbtn:hover, .setrow a.valbtn:hover, .setrow label.valbtn:hover { background: none; text-decoration: underline; }
+.setrow .valbtn:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; border-radius: 6px; }
+.dropdown.sidelist { right: 24px; top: calc(var(--bar) + 12px); bottom: 24px; left: auto; width: min(360px, calc(100vw - 32px)); max-height: none; background: var(--deep); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
+.dropdown.sidelist .sl-h { font-family: "Glowfin Sora", sans-serif; font-weight: 600; font-size: 20px; padding: 4px 8px 12px; }
+.dropdown.sidelist button { position: relative; padding: 11px 14px; font-weight: 400; flex: none; }
+.dropdown.sidelist button.on { background: var(--raise); box-shadow: none; font-weight: 600; }
+.dropdown.sidelist button.on::after { content: "✓"; position: absolute; right: 14px; color: var(--aqua); }
+.dropdown.sidelist button:hover, .dropdown.sidelist button:focus-visible { background: var(--pg4); outline: none; }
+.dropdown.sidelist button.on::before, .dropdown.sidelist button:hover::before, .dropdown.sidelist button:focus-visible::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--aqua); border-radius: 8px 0 0 8px; }
+.dropdown.sidelist .sl-f { margin-top: auto; color: var(--ink2); font-size: 12px; padding: 8px; }
+.srv-split main.srv { padding: 18px 0 0; }
+.srv-box { flex-direction: column; align-items: flex-start; gap: 0; border-radius: 12px; background: var(--raise); padding: 9px 14px; min-width: 132px; }
+.srv-box small { color: var(--ink2); font-size: 12px; }
+.srv-box b { font-size: 17px; color: var(--ok); }
+.srv-box.warn b { color: var(--check); }
+.srv-box.bad b { color: var(--bad); }
+.srv-box.off b { color: var(--ink3); }
+.srv-box em { font-style: normal; font-size: 12px; color: var(--ink); }
+@media (max-width: 900px) {
+  .split nav { min-height: 0; border-right: 0; background: none; padding: 0 16px; }
+  .split nav .splith { display: none; }
+  .split nav a.on::before, .split nav a:hover::before { display: none; }
+  .split main { padding: 0 16px; }
+  .setrow .s { display: block; }
+  .dropdown.sidelist { right: 8px; left: 8px; width: auto; top: auto; max-height: 70vh; }
 }

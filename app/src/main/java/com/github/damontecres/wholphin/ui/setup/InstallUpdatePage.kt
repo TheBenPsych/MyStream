@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -57,7 +58,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.DownloadCallback
@@ -72,11 +72,13 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingSpinner
-import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.dimAndBlur
 import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.preferences.GlowfinTextButton
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -396,8 +398,12 @@ fun InstallUpdatePage(
             if (release != null) {
                 // Came here from the "Update" button on the pop-up, so start right away
                 LaunchedEffect(release) {
-                    if (viewModel.updater.installWhenOpened) {
+                    // ...or "After this show" was pressed and the show has ended
+                    if (viewModel.updater.installWhenOpened ||
+                        com.github.damontecres.wholphin.services.UpdateAfterShow.startWhenOpened
+                    ) {
                         viewModel.updater.installWhenOpened = false
+                        com.github.damontecres.wholphin.services.UpdateAfterShow.startWhenOpened = false
                         if (release.version.isGreaterThan(viewModel.currentVersion)) startUpdate(release)
                     }
                 }
@@ -453,10 +459,10 @@ fun InstallUpdatePageContent(
     modifier: Modifier = Modifier,
     alreadyDownloaded: Boolean = false,
 ) {
-    // Benflix: only offer the download when it's really newer than what's installed
+    // Only offer the download when it's really newer than what's installed
     val newer = release.version.isGreaterThan(currentVersion)
     if (!rememberIsTv()) {
-        // Phones: heading, version and buttons on top, the release notes below, all scrolling together
+        // Phones: version and buttons on top, What's new below, all scrolling together
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier =
@@ -474,24 +480,24 @@ fun InstallUpdatePageContent(
                 onCancel = onCancel,
                 modifier = Modifier.fillMaxWidth(),
             )
-            ReleaseNotes(
-                release,
-                installed = currentVersion,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                            shape = RoundedCornerShape(16.dp),
-                        ).padding(16.dp),
-            )
+            WhatsNewBox(release, currentVersion, Modifier.fillMaxWidth())
         }
         return
     }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = modifier,
+    // Glowfin (S1): Updates first: the version and buttons on top, What's new (the plain-English list) under them
+    Column(
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+        modifier = modifier.padding(top = 18.dp, end = 8.dp, bottom = 16.dp),
     ) {
+        UpdateActions(
+            currentVersion = currentVersion,
+            release = release,
+            newer = newer,
+            alreadyDownloaded = alreadyDownloaded,
+            onInstallRelease = onInstallRelease,
+            onCancel = onCancel,
+            modifier = Modifier.fillMaxWidth(),
+        )
         val scrollAmount = 100f
         val columnState = rememberLazyListState()
         val scope = rememberCoroutineScope()
@@ -503,25 +509,19 @@ fun InstallUpdatePageContent(
         }
         val columnInteractionSource = remember { MutableInteractionSource() }
         val columnFocused by columnInteractionSource.collectIsFocusedAsState()
-        val columnColor =
-            if (columnFocused) {
-                MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-            } else {
-                MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
-            }
+        val shape = RoundedCornerShape(14.dp)
         LazyColumn(
             state = columnState,
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
                 Modifier
                     .focusable(interactionSource = columnInteractionSource)
-                    .fillMaxHeight()
-                    .fillMaxWidth(.6f)
-                    .background(
-                        columnColor,
-                        shape = RoundedCornerShape(16.dp),
-                    ).onKeyEvent {
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(Glowfin.Deep, shape)
+                    .border(if (columnFocused) 2.dp else 1.dp, if (columnFocused) Glowfin.Aqua else Glowfin.Line, shape)
+                    .onKeyEvent {
                         if (it.type == KeyEventType.KeyUp) {
                             return@onKeyEvent false
                         }
@@ -530,32 +530,60 @@ fun InstallUpdatePageContent(
                             return@onKeyEvent true
                         }
                         if (it.key == Key.DirectionUp) {
-                            scroll(true)
-                            return@onKeyEvent true
+                            if (columnState.canScrollBackward) {
+                                scroll(true)
+                                return@onKeyEvent true
+                            }
                         }
                         return@onKeyEvent false
                     },
         ) {
             item {
+                Text(
+                    text = "What's new",
+                    color = Glowfin.Text,
+                    fontFamily = GlowfinDisplayFont,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                )
+            }
+            item {
                 ReleaseNotes(release, installed = currentVersion)
             }
         }
-        UpdateActions(
-            currentVersion = currentVersion,
-            release = release,
-            newer = newer,
-            alreadyDownloaded = alreadyDownloaded,
-            onInstallRelease = onInstallRelease,
-            onCancel = onCancel,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterVertically),
-        )
     }
 }
 
-/** The heading, versions and buttons of the update page ("You're up to date" when nothing is newer) */
+@Composable
+private fun WhatsNewBox(
+    release: Release,
+    currentVersion: Version,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .background(Glowfin.Deep, shape)
+                .border(1.dp, Glowfin.Line, shape)
+                .padding(16.dp),
+    ) {
+        Text(
+            text = "What's new",
+            color = Glowfin.Text,
+            fontFamily = GlowfinDisplayFont,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp,
+        )
+        ReleaseNotes(release, installed = currentVersion)
+    }
+}
+
+/**
+ * Glowfin (S1): "You have version 4.12", then "Version 4.13 is ready" with Install now and After this show
+ * ("You're up to date" when nothing is newer).
+ */
 @Composable
 private fun UpdateActions(
     currentVersion: Version,
@@ -566,41 +594,66 @@ private fun UpdateActions(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var waiting by remember { mutableStateOf(com.github.damontecres.wholphin.services.UpdateAfterShow.pending) }
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier =
-            modifier
-                .background(
-                    MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                    shape = RoundedCornerShape(16.dp),
-                ).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
     ) {
         Text(
-            text = if (newer) stringResource(R.string.update_available) else "You're up to date",
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            text = "You have version $currentVersion",
+            color = Glowfin.Dim,
+            fontSize = 14.sp,
         )
         Text(
-            text = if (newer) "$currentVersion => " + release.version.toString() else currentVersion.toString(),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            text = if (newer) "Version ${release.version} is ready" else "You're up to date",
+            color = Glowfin.Text,
+            fontFamily = GlowfinDisplayFont,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 26.sp,
         )
-        // Start on the Download button (or Cancel when there's nothing to get), so one OK press works
-        val firstFocus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { firstFocus.requestFocusWhenReady() }
-        if (newer) {
-            TextButton(
-                stringRes = if (alreadyDownloaded) R.string.install_now else R.string.download_and_update,
-                onClick = onInstallRelease,
-                modifier = Modifier.focusRequester(firstFocus),
+        if (newer && waiting) {
+            Text(
+                text = "It installs by itself when what you're watching ends.",
+                color = Glowfin.Aqua,
+                fontSize = 14.sp,
             )
         }
-        TextButton(
-            stringRes = R.string.cancel,
-            onClick = onCancel,
-            modifier = if (newer) Modifier else Modifier.focusRequester(firstFocus),
-        )
+        // Start on Install now (or Back when there's nothing to get), so one OK press works
+        val firstFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { firstFocus.requestFocusWhenReady() }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(top = 10.dp),
+        ) {
+            if (newer) {
+                GlowfinTextButton(
+                    label = if (alreadyDownloaded) stringResource(R.string.install_now) else "Install now",
+                    primary = true,
+                    onClick = {
+                        com.github.damontecres.wholphin.services.UpdateAfterShow.pending = false
+                        waiting = false
+                        onInstallRelease()
+                    },
+                    modifier = Modifier.focusRequester(firstFocus),
+                )
+                GlowfinTextButton(
+                    label = "After this show",
+                    onClick = {
+                        com.github.damontecres.wholphin.services.UpdateAfterShow.pending = true
+                        waiting = true
+                        com.github.damontecres.wholphin.ui.components.BenflixNotices
+                            .pill("Glowfin installs it when what you're watching ends")
+                        onCancel()
+                    },
+                )
+            } else {
+                GlowfinTextButton(
+                    label = "Back",
+                    onClick = onCancel,
+                    modifier = Modifier.focusRequester(firstFocus),
+                )
+            }
+        }
     }
 }
 

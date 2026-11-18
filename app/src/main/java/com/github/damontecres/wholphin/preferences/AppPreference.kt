@@ -1500,7 +1500,8 @@ val basicPreferences =
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_phone,
-            preferences = listOf(AppPreference.MobileDataQualityPref, AppPreference.HapticsPref),
+            // Glowfin (S1): Phones and TVs also holds "Sign in a TV or phone" (Quick Connect)
+            preferences = listOf(AppPreference.QuickConnect, AppPreference.MobileDataQualityPref, AppPreference.HapticsPref),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_help,
@@ -1517,8 +1518,7 @@ val basicPreferences =
             title = R.string.more,
             preferences =
                 buildList {
-                    // The Server page lives in the profile menu
-                    add(AppPreference.QuickConnect)
+                    // The Server page lives in the profile menu; Quick Connect is in Phones and TVs
                     add(AppPreference.AdvancedSettings)
                 },
         ),

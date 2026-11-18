@@ -527,21 +527,28 @@ B.side = (html, onClose) => {
 // Small list that pops out beside a button. It sits above Now playing and side panels, opens upwards when
 // there's no room below, and closes with a click anywhere else, Esc, or a second click on the same button.
 let dropFrom = null;
-B.dropdown = (anchor, options, current, onPick) => {
+// opts.side (Glowfin S1 Settings): a small list fixed on the right with the setting's name on top
+B.dropdown = (anchor, options, current, onPick, opts = {}) => {
   const again = dropFrom === anchor && $(".dropdown");
   B.closeAll();
   dropFrom = null;
   if (again) return;
   const d = document.createElement("div");
-  d.className = "dropdown";
-  d.innerHTML = options.map((o, i) => `<button data-i="${i}" class="${o.value === current ? "on" : ""}">${esc(o.label)}</button>`).join("");
-  const r = anchor.getBoundingClientRect();
-  d.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + "px";
-  d.style.visibility = "hidden";
-  document.body.appendChild(d);
-  const h = d.offsetHeight, below = window.innerHeight - r.bottom - 12;
-  d.style.top = (h > below && r.top > below ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
-  d.style.visibility = "";
+  d.className = "dropdown" + (opts.side ? " sidelist" : "");
+  d.innerHTML = (opts.side && opts.title ? `<div class="sl-h">${esc(opts.title)}</div>` : "")
+    + options.map((o, i) => `<button data-i="${i}" class="${o.value === current ? "on" : ""}">${esc(o.label)}</button>`).join("")
+    + (opts.side ? `<div class="sl-f">Saves straight away.</div>` : "");
+  if (opts.side) {
+    document.body.appendChild(d);
+  } else {
+    const r = anchor.getBoundingClientRect();
+    d.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + "px";
+    d.style.visibility = "hidden";
+    document.body.appendChild(d);
+    const h = d.offsetHeight, below = window.innerHeight - r.bottom - 12;
+    d.style.top = (h > below && r.top > below ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+    d.style.visibility = "";
+  }
   dropFrom = anchor;
   const done = () => { d.remove(); dropFrom = null; document.removeEventListener("click", away, true); document.removeEventListener("keydown", esc_, true); window.removeEventListener("scroll", done); };
   const away = (e) => { if (!d.isConnected) return done(); if (!d.contains(e.target) && !anchor.contains(e.target)) done(); };

@@ -876,6 +876,7 @@ fun ServerStatusPage(
         sections = if (isAdmin) ServerSection.entries.map { it.railItem(lights[it]) } else emptyList(),
         modifier = modifier.fillMaxSize().serverLookABackground(),
         ownRail = true,
+        sideListTitle = "Server",
     ) { inner ->
         if (isTv) {
             LazyColumn(
@@ -1051,15 +1052,7 @@ private fun agoText(at: Long): String? {
 
 /** Benflix look A: a soft blue band across the top of the Server page, fading into the dark */
 @Composable
-private fun Modifier.serverLookABackground(): Modifier =
-    this
-        .background(MaterialTheme.colorScheme.background)
-        .background(
-            androidx.compose.ui.graphics.Brush.verticalGradient(
-                0f to Color(0xFF12406B).copy(alpha = .45f),
-                .4f to Color.Transparent,
-            ),
-        )
+private fun Modifier.serverLookABackground(): Modifier = this.background(com.github.damontecres.wholphin.ui.theme.Glowfin.Ink)
 
 @Composable
 internal fun Dot(
