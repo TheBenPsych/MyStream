@@ -82,6 +82,7 @@ fun FirstServerScreen(
             .fillMaxSize()
             .background(BenflixColors.Tray),
     ) {
+        NightSea(modifier = Modifier.fillMaxSize())
         BenflixWordLogo(
             height = if (isTv) 26.dp else 22.dp,
             modifier =
