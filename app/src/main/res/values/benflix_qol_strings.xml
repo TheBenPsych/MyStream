@@ -65,6 +65,7 @@
     <string name="benflix_fan_favourites">Fan favourite episodes</string>
     <string name="benflix_auto_mpv">Fancy subtitles player (test)</string>
     <string name="benflix_auto_mpv_on">Anime-style subtitles play in MPV so they look right. Falls back to the normal player if MPV has trouble</string>
+    <string name="benflix_trailer_app">YouTube trailers</string>
     <string name="benflix_english_subs_only">Only English subtitles in menus</string>
     <string name="benflix_english_subs_only_on">Other languages are hidden from the subtitle menus. Nothing is removed from your files</string>
     <string name="benflix_english_subs_only_off">Off: every subtitle language shows</string>

@@ -86,6 +86,39 @@ object YouTubeTrailer {
 
     internal var current by mutableStateOf<Request?>(null)
 
+    /** A trailer waiting on "Play YouTube trailers in…" (nothing picked yet on this device) */
+    internal var asking by mutableStateOf<Request?>(null)
+
+    /**
+     * Plays a YouTube trailer where this device's person picked (Settings > Watching > YouTube trailers):
+     * a YouTube app such as SmartTube, or the pop-up inside Benflix. Nothing picked yet: asks once.
+     * No YouTube app on the device at all: the pop-up, no question.
+     */
+    fun play(
+        context: Context,
+        videoId: String,
+        title: String,
+        url: String,
+    ) {
+        val request = Request(videoId, title, url)
+        when (val saved = TrailerApps.saved(context)) {
+            TrailerApps.INSIDE -> {
+                current = request
+            }
+
+            TrailerApps.ASK -> {
+                if (TrailerApps.installed(context).isEmpty()) current = request else asking = request
+            }
+
+            else -> {
+                if (!TrailerApps.open(context, saved, url, videoId)) {
+                    // The picked app was removed: ask again (or the pop-up when there's nothing else)
+                    if (TrailerApps.installed(context).isEmpty()) current = request else asking = request
+                }
+            }
+        }
+    }
+
     fun show(
         videoId: String,
         title: String,
@@ -161,6 +194,9 @@ object YouTubeTrailer {
 /** Put once at the top of the app, above everything else. Shows the pop-up while a trailer is asked for */
 @Composable
 fun YouTubeTrailerLayer() {
+    YouTubeTrailer.asking?.let { asked ->
+        TrailerAppQuestion(request = asked, onDone = { YouTubeTrailer.asking = null })
+    }
     val request = YouTubeTrailer.current ?: return
     // Trailer players on the page behind let go of the video decoder first (cheap TVs have only one)
     LaunchedEffect(request) { PreviewPlayers.freeAll() }
@@ -285,6 +321,7 @@ private fun YouTubeTrailerPopup(
     val failed = bridge.error != 0 || noWebView
     val playFocus = remember { FocusRequester() }
     var settingsOpen by remember(request) { mutableStateOf(false) }
+    val otherApps = remember(request) { TrailerApps.installed(context) }
     LaunchedEffect(failed) {
         delay(150)
         try {
@@ -308,16 +345,22 @@ private fun YouTubeTrailerPopup(
                         note = "Works once YouTube shows its Skip button on the ad",
                         onClick = { tapSkipAd() },
                     ),
-                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
-                        label = "Open in YouTube",
-                        note = "Plays it in the YouTube app instead",
-                        onClick = { if (YouTubeTrailer.openOutside(context, request.url)) onClose() },
+                ) +
+                    otherApps.map { app ->
+                        com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                            label = "Play in ${app.name}",
+                            note = "Smoother on slower TVs. Settings > Watching > YouTube trailers makes it the usual",
+                            onClick = {
+                                if (TrailerApps.open(context, app.packageName, request.url, request.videoId)) onClose()
+                            },
+                        )
+                    } +
+                    listOf(
+                        com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                            label = "Close the trailer",
+                            onClick = onClose,
+                        ),
                     ),
-                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
-                        label = "Close the trailer",
-                        onClick = onClose,
-                    ),
-                ),
             onDismissRequest = {
                 settingsOpen = false
                 try {
@@ -333,7 +376,7 @@ private fun YouTubeTrailerPopup(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = if (isTv) .92f else .96f))
+                .background(if (isTv) Color.Black else Color.Black.copy(alpha = .96f)) // solid on TV: less for the TV to blend each frame
                 .focusRequester(keyFocus)
                 .onKeyEvent { event ->
                     if (failed || event.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -641,7 +684,7 @@ private fun playerPage(
         if (player && player.getCurrentTime) {
           Benflix.onTime(player.getCurrentTime() || 0, player.getDuration() || 0);
         }
-      }, 500);
+      }, 1000);
     }
     </script>
     <script src="https://www.youtube.com/iframe_api" onerror="Benflix.onError(0)"></script>

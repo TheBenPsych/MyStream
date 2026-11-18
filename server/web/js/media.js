@@ -585,7 +585,7 @@ B.trailer = async (it) => {
   B.closeAll(); B.shade();
   const mdl = document.createElement("div");
   mdl.className = "modal"; mdl.style.width = "min(1100px, calc(100vw - 32px))"; mdl.style.padding = "0"; mdl.style.overflow = "hidden";
-  mdl.innerHTML = id ? `<iframe style="display:block;width:100%;aspect-ratio:16/9;border:0" src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe>` : `<p style="padding:20px"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the trailer</a></p>`;
+  mdl.innerHTML = id ? `<iframe style="display:block;width:100%;aspect-ratio:16/9;border:0" src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe><p style="margin:0;padding:10px 16px;text-align:right"><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Stuttering? Open on YouTube</a></p>` : `<p style="padding:20px"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the trailer</a></p>`;
   document.body.appendChild(mdl);
 };
 B.peopleRow = (it) => {

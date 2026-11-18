@@ -591,6 +591,14 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.TrailerAppPref -> {
+                                        com.github.damontecres.wholphin.ui.components.TrailerAppSetting(
+                                            title = stringResource(pref.title),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
                                     AppPreference.OmdbKey -> {
                                         OmdbKeySetting(
                                             title = stringResource(pref.title),
