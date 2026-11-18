@@ -54,12 +54,13 @@
       ["Recently watched", "restart", "jump:Recently watched"],
       ["Guide", "cal", "jump:Guide"],
     ];
+    // Glowfin G1: the same places as the Games tabs
     const games = [
-      ["Home", "home", "#/games", () => location.hash === "#/games"],
-      ["Continue playing", "play", "jump:Continue playing"],
-      ["Favourites", "heart", "jump:Favourites"],
-      ["Consoles", "pad", "jump:Consoles", () => location.hash.startsWith("#/console/")],
-      ["Arcade", "pad", "jump:Arcade"],
+      ["For you", "home", "#/games", () => location.hash === "#/games"],
+      ["Consoles", "pad", "#/games?p=consoles", () => has("p") === "consoles" || location.hash.startsWith("#/console/")],
+      ["Movie games", "film", "#/games?p=movie", () => has("p") === "movie"],
+      ["Party", "phone", "#/games?p=party", () => has("p") === "party"],
+      ["Scores", "chart", "#/games?p=scores", () => has("p") === "scores"],
     ];
     // Music redesign 3 (approved g2-places): the same four places as the TV and phones
     const music = [
@@ -91,7 +92,7 @@
     if (/^#\/(movies$|grid\/movies|browse\/movies)/.test(hash)) return "movies";
     if (/^#\/(shows$|grid\/shows|browse\/shows)/.test(hash)) return "shows";
     if (/^#\/live$/.test(hash)) return "live";
-    if (/^#\/(games$|console\/)/.test(hash)) return "games";
+    if (/^#\/(games(\?|$)|console\/)/.test(hash)) return "games";
     if (/^#\/(music$|msearch|mlibrary|mthemes\/|songs$|liked$|mgrid\/)/.test(hash)) return "music";
     if (/^#\/books(\?|$)/.test(hash)) return "books";
     if (/^#\/server(\/|$)/.test(hash)) return "server";

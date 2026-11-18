@@ -33,7 +33,6 @@ js/lobby.js
 js/me.js
 js/media.js
 js/music.js
-js/pickers.js
 js/player.js
 js/reader.js
 js/requests.js

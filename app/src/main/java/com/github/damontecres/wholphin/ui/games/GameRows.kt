@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
@@ -170,7 +171,7 @@ internal fun GameRows(
         )
     }
     if ("puzzles" in only) GameRow("Movie puzzles", puzzles, isTv, focus)
-    if ("party" in only && party.isNotEmpty()) GameRow("Party", party, isTv, focus)
+    if ("party" in only && party.isNotEmpty()) GameRow("Party · needs phones", party, isTv, focus)
     if ("arcade" in only) GameRow("Arcade", arcade, isTv, focus)
 }
 
@@ -184,12 +185,7 @@ private fun GameRow(
     if (games.isEmpty()) return
     // TV: the row name always comes into view with the tiles
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.scrollAsOneBlock()) {
-        Text(
-            title,
-            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-            fontWeight = FontWeight.SemiBold,
-            color = BenflixColors.Text,
-        )
+        RowName(title, isTv)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
             // Ben: tall cards like movie and show posters, with room for the whole name (up to three lines)
@@ -268,7 +264,7 @@ private fun RowTile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
-        modifier = modifier,
+        modifier = Modifier.glowFocus(shape).then(modifier),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),

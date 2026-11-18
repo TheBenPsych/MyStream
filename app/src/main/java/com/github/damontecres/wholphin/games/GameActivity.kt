@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -79,6 +80,8 @@ import androidx.palette.graphics.Palette
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
 import timber.log.Timber
 import java.io.File
@@ -1604,23 +1607,24 @@ class GameActivity : ComponentActivity() {
                         .align(Alignment.CenterEnd)
                         .width(sheetWidth)
                         .fillMaxHeight()
-                        // Approved: a plain grey side sheet (game screens are only white, grey and black)
-                        .background(Color(0xF516181E))
+                        // Glowfin G1: the same side list as the video player's Settings (deep night blue)
+                        .background(Glowfin.Deep.copy(alpha = 0.96f))
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp, vertical = 24.dp),
             ) {
                 Text(
                     gameName,
-                    color = Color.White,
+                    color = Glowfin.Text,
+                    fontFamily = GlowfinDisplayFont,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    listOfNotNull(console.title, (playedTodayMs() / 60_000).takeIf { it > 0 }?.let { "played $it min today" })
+                    listOfNotNull(console.title, (playedTodayMs() / 60_000).takeIf { it > 0 }?.let { "$it min today" })
                         .joinToString(" · "),
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = Glowfin.Dim,
                     fontSize = 14.sp,
                 )
                 when (page) {
@@ -1716,10 +1720,10 @@ class GameActivity : ComponentActivity() {
                             )
                         }
                         Group("Game")
-                        MenuButton("Resume", BenflixPlayFilled, Modifier.focusRequester(focus)) { closeMenu() }
-                        MenuButton("Save", BenflixIcon.PLUS.vector) { page = MenuPage.SAVE }
+                        MenuButton("Back to the game", BenflixPlayFilled, Modifier.focusRequester(focus)) { closeMenu() }
+                        MenuButton("Save to a slot", BenflixIcon.PLUS.vector) { page = MenuPage.SAVE }
                         if (hasSpot || (1..3).any { GameSaves.file(saveDir, "state$it").exists() }) {
-                            MenuButton("Load", BenflixIcon.CALENDAR.vector) { page = MenuPage.LOAD }
+                            MenuButton("Load a slot", BenflixIcon.CALENDAR.vector) { page = MenuPage.LOAD }
                         }
                         MenuButton("Restart game", BenflixIcon.REFRESH.vector) {
                             onGameThread { RetroNative.reset() }
@@ -1734,7 +1738,7 @@ class GameActivity : ComponentActivity() {
                         if (sideShow != null && canSideShow) {
                             Group("Watch")
                             if (!showOn) {
-                                MenuButton("Watch a show on the side", BenflixIcon.PERSON.vector) { page = MenuPage.PICK }
+                                MenuButton("Watch a show beside it", BenflixIcon.PERSON.vector) { page = MenuPage.PICK }
                             } else {
                                 MenuButton("Change the show", BenflixIcon.PERSON.vector) { page = MenuPage.PICK }
                                 MenuButton("Size: ${showSize.label.removePrefix("Show: ")}", BenflixIcon.MENU.vector) { nextShowSize() }
@@ -1763,7 +1767,7 @@ class GameActivity : ComponentActivity() {
                             MenuButton("Press Start", BenflixIcon.ARROW.vector) { tapFromMenu(RetroButton.START) }
                             MenuButton("Press Select", BenflixIcon.ARROW.vector) { tapFromMenu(RetroButton.SELECT) }
                         }
-                        MenuButton("Quit and save", BenflixIcon.SIGN_OUT.vector) { quit() }
+                        MenuButton("Quit (saves first)", BenflixIcon.SIGN_OUT.vector) { quit() }
                     }
                 }
             }
@@ -1832,7 +1836,7 @@ class GameActivity : ComponentActivity() {
     private fun Group(title: String) {
         Text(
             title.uppercase(),
-            color = Color.White.copy(alpha = 0.55f),
+            color = Glowfin.Dim,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp,
@@ -1867,8 +1871,8 @@ class GameActivity : ComponentActivity() {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .background(if (focused) Color.White else Color(0xFF242424), shape)
-                    .border(2.dp, if (focused) Color.White else Color(0xFF3A3A3A), shape)
+                    .background(if (focused) Glowfin.FocusRow else Glowfin.Raise, shape)
+                    .border(2.dp, if (focused) Glowfin.Aqua else Glowfin.Line, shape)
                     .clickable(interactionSource = interaction, indication = null, onClick = onClick)
                     .padding(8.dp),
         ) {
@@ -1892,10 +1896,10 @@ class GameActivity : ComponentActivity() {
                 }
             }
             Column {
-                Text(title, color = if (focused) Color.Black else Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(title, color = Glowfin.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(
                     if (state.exists()) savedAgo(state.lastModified()) else "Empty",
-                    color = (if (focused) Color.Black else Color.White).copy(alpha = 0.65f),
+                    color = Glowfin.Dim,
                     fontSize = 13.sp,
                 )
             }
@@ -1921,17 +1925,27 @@ class GameActivity : ComponentActivity() {
     ) {
         val interaction = remember { MutableInteractionSource() }
         val focused by interaction.collectIsFocusedAsState()
-        val shape = RoundedCornerShape(28.dp)
-        val fg = if (focused) Color.Black else Color.White
+        // Glowfin G1: a plain list row like the player's Settings; the one you're on gets the raised colour and an
+        // aqua bar on its left
+        val shape = RoundedCornerShape(10.dp)
+        val fg = if (focused) Glowfin.Text else Glowfin.Text.copy(alpha = 0.85f)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (icon == null) Arrangement.Center else Arrangement.spacedBy(14.dp),
             modifier =
                 modifier
                     .fillMaxWidth()
-                    .background(if (focused) Color.White else Color(0xFF242424), shape)
-                    .border(2.dp, if (focused) Color.White else Color(0xFF3A3A3A), shape)
-                    .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                    .background(if (focused) Glowfin.FocusRow else Color.Transparent, shape)
+                    .drawBehind {
+                        if (focused) {
+                            drawRect(
+                                Glowfin.Aqua,
+                                size =
+                                    androidx.compose.ui.geometry
+                                        .Size(4.dp.toPx(), size.height),
+                            )
+                        }
+                    }.clickable(interactionSource = interaction, indication = null, onClick = onClick)
                     .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             if (icon != null) Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(22.dp))

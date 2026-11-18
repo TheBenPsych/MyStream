@@ -865,16 +865,20 @@ B.PAGE_TABS = {
   music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
   // Glowfin Books (B1)
   books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
+  // Glowfin Games (G1)
+  games: [["For you", "#/games"], ["Consoles", "#/games?p=consoles"], ["Movie games", "#/games?p=movie"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {
   hash = hash || location.hash;
-  for (const page of ["anime", "movies", "shows", "music", "books"]) {
+  for (const page of ["anime", "movies", "shows", "music", "books", "games"]) {
     const list = B.PAGE_TABS[page];
     const on = list.findIndex(([, link]) => hash === link || (link !== "#/" + page && hash.split("&")[0] === link.split("&")[0]));
     if (on >= 0) return { page, on };
   }
   if (/^#\/books(\?|$)/.test(hash)) return { page: "books", on: 0 };
+  if (/^#\/console\//.test(hash)) return { page: "games", on: 1 };
+  if (/^#\/games(\?|$)/.test(hash)) return { page: "games", on: 0 };
   if (/^#\/grid\/(movies|shows)\?(.*&)?anime=only/.test(hash)) return { page: "anime", on: /movies/.test(hash) ? 2 : 1 };
   if (/^#\/browse\/anime/.test(hash)) return { page: "anime", on: 3 };
   const m = hash.match(/^#\/(?:grid|browse)\/(movies|shows)/);

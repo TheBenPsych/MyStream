@@ -49,6 +49,8 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /**
@@ -193,9 +195,10 @@ internal fun GamesTopArea(
                 Text(
                     text = preview.title,
                     color = BenflixColors.Text,
+                    fontFamily = GlowfinDisplayFont,
                     fontSize = BenflixType.pageTitle,
                     lineHeight = BenflixType.pageTitle * 1.15f,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -210,7 +213,12 @@ internal fun GamesTopArea(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    preview.playWith.forEach { PlayIcon(it) }
+                }
+                // Glowfin G1: what it works with, as word chips under the name
+                if (preview.playWith.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        preview.playWith.forEach { Badge(it, playWithWord(it)) }
+                    }
                 }
                 preview.about?.takeIf { it.isNotBlank() }?.let {
                     Text(
@@ -268,12 +276,7 @@ internal fun LeaderboardRow(
 ) {
     if (games.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.scrollAsOneBlock()) {
-        Text(
-            "Leaderboards",
-            fontSize = if (isTv) BenflixType.rowName else BenflixType.lead,
-            fontWeight = FontWeight.SemiBold,
-            color = BenflixColors.Text,
-        )
+        RowName("Leaderboards · all time", isTv)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -296,6 +299,7 @@ internal fun LeaderboardRow(
                         ),
                     modifier =
                         Modifier
+                            .glowFocus(shape)
                             .width(if (isTv) 220.dp else 180.dp)
                             .onFocusChanged {
                                 if (it.isFocused) {
@@ -399,3 +403,11 @@ object PendingGameOpen {
     @Volatile
     var id: Int? = null
 }
+
+/** The word on a "works with" chip */
+internal fun playWithWord(kind: PlayWith): String =
+    when (kind) {
+        PlayWith.REMOTE -> "Remote"
+        PlayWith.CONTROLLER -> "Controller"
+        PlayWith.PHONE -> "Phone"
+    }
