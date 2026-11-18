@@ -687,8 +687,7 @@ class DoorDataService
                             enableTotalRecordCount = false,
                             collapseBoxSetItems = request.collapseBoxSetItems ?: false,
                         ),
-                    )
-                    .content.items
+                    ).content.items
                     .map { BaseItem(it) }
             }
 
