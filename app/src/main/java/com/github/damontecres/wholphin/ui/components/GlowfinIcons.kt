@@ -96,6 +96,10 @@ enum class GlowfinIcon(
                 viewportWidth = 24f,
                 viewportHeight = 24f,
             )
+        // Each shape is moved so its outline sits exactly in the middle of the 24 x 24 box, so it looks centred
+        // inside the round glow and the phone bar's pill (Ben, 2026-11-18)
+        val (dx, dy) = CentreShift[this] ?: (0f to 0f)
+        builder.addGroup(translationX = dx, translationY = dy)
         body.forEach { d ->
             builder.addPath(pathData = addPathNodes(d), fill = SolidColor(Color.White), fillAlpha = FILL_ALPHA)
         }
@@ -108,9 +112,21 @@ enum class GlowfinIcon(
                 strokeLineJoin = StrokeJoin.Round,
             )
         }
+        builder.clearGroup()
         builder.build()
     }
 }
+
+/** How far each icon's drawing is off the middle of its box (measured from its outline), to move it back */
+private val CentreShift: Map<GlowfinIcon, Pair<Float, Float>> =
+    mapOf(
+        GlowfinIcon.SEARCH to (-.25f to -.25f),
+        GlowfinIcon.MOVIES to (.15f to .35f),
+        GlowfinIcon.SHOWS to (0f to .6f),
+        GlowfinIcon.MUSIC to (.4f to -.2f),
+        GlowfinIcon.GAMES to (0f to -.97f),
+        GlowfinIcon.BOOKS to (0f to -.7f),
+    )
 
 private const val FILL_ALPHA = .28f
 private const val LINE_WIDTH = 1.8f

@@ -668,7 +668,8 @@ private fun RailButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(start = 10.dp * scale, end = 12.dp * scale),
+                // Closed: the icon sits exactly in the middle of the round glow ((42 - 22) / 2 = 10 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 10.dp * scale, end = if (open) 12.dp * scale else 0.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
                     GlowfinIconImage(
@@ -790,7 +791,8 @@ private fun ProfileRailButton(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().padding(start = 8.dp * scale, end = 10.dp * scale),
+            // Closed: your picture sits exactly in the middle of the round glow ((42 - 28) / 2 = 7 each side)
+            modifier = Modifier.fillMaxSize().padding(start = 7.dp * scale, end = if (open) 10.dp * scale else 0.dp),
         ) {
             Box {
                 UserIconCardImage(

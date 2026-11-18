@@ -1957,3 +1957,5 @@ svg.gi path.gd { stroke-width: 3.6; }
 .seadot.on { box-shadow: 0 0 0 3px var(--tray), 0 0 0 5px #fff; }
 .seadot:hover, .seadot:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tray), 0 0 0 5px var(--aqua); }
 @media (max-width: 760px) { .seapick { grid-template-columns: repeat(4, 1fr); } .seabtn { width: 100%; height: auto; aspect-ratio: 1; } }
+/* Kids' wider rail: the icons sit exactly in the middle of the tucked rail ((80 - 20 - 28) / 2 = 16) */
+.brail.kids .rl-i { padding: 0 16px; }

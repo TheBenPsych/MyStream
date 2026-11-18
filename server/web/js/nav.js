@@ -39,10 +39,13 @@
     settings: [["M12.74 2.83L14.83 3.25L15.19 5.77L16.54 6.67L19.00 6.04L20.19 7.81L18.66 9.85L18.98 11.44L21.17 12.74L20.75 14.83L18.23 15.19L17.33 16.54L17.96 19.00L16.19 20.19L14.15 18.66L12.56 18.98L11.26 21.17L9.17 20.75L8.81 18.23L7.46 17.33L5.00 17.96L3.81 16.19L5.34 14.15L5.02 12.56L2.83 11.26L3.25 9.17L5.77 8.81L6.67 7.46L6.04 5.00L7.81 3.81L9.85 5.34L11.44 5.02Z"], ["M12 9.3a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z"]],
     more: [[], ["M5 12h.01", "M12 12h.01", "M19 12h.01"]],
   };
+  const SHIFT = { search: [-0.25, -0.25], movies: [0.15, 0.35], shows: [0, 0.6], music: [0.4, -0.2], games: [0, -0.97], books: [0, -0.7] };
   const G = (n) => {
     const g = GI[n];
     if (!g) return I(n);
-    return `<svg class="i gi" viewBox="0 0 24 24" aria-hidden="true">${g[0].map((d) => `<path d="${d}" class="gf"/>`).join("")}${g[0].concat(g[1]).map((d) => `<path d="${d}"${n === "more" ? ' class="gd"' : ""}/>`).join("")}</svg>`;
+    // Moved so each drawing sits exactly in the middle of its box (looks centred in the round glow)
+    const [dx, dy] = SHIFT[n] || [0, 0];
+    return `<svg class="i gi" viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(${dx} ${dy})">${g[0].map((d) => `<path d="${d}" class="gf"/>`).join("")}${g[0].concat(g[1]).map((d) => `<path d="${d}"${n === "more" ? ' class="gd"' : ""}/>`).join("")}</g></svg>`;
   };
   B.glowIcon = G;
 
