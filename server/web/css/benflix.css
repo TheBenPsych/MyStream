@@ -329,6 +329,8 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .grid-head { font-size: 18px; font-weight: 700; margin: 18px 0 10px; color: var(--ink2); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
 .grid .poster { width: auto; }
+/* Ben 2026-11-18: Anime's Shows and Movies grids use the same card size as its For you rows */
+.big-cards .grid { grid-template-columns: repeat(auto-fill, minmax(var(--poster-w), 1fr)); }
 .letters { position: sticky; top: calc(var(--bar) + 60px); align-self: flex-start; display: flex; flex-direction: column; gap: 1px; }
 .letters button { background: none; border: 0; color: var(--ink3); font-weight: 700; font-size: 12px; cursor: pointer; padding: 1px 6px; }
 .letters button:hover { color: var(--ink); }
