@@ -40,6 +40,7 @@ fun SeriesDetails(
     preferences: UserPreferences,
     destination: Destination.MediaItem,
     modifier: Modifier = Modifier,
+    startSeasonId: UUID? = null,
     viewModel: SeriesViewModel =
         hiltViewModel<SeriesViewModel, SeriesViewModel.Factory>(
             creationCallback = {
@@ -127,9 +128,11 @@ fun SeriesDetails(
             val played = series.data.userData?.played ?: false
             LaunchedEffect(state.seasons) {
                 if (state.inlineSeasonIndex < 0 && state.seasons.isNotEmpty()) {
+                    // Opened from an episode or season: that season, else the first one not finished
+                    val picked = startSeasonId?.let { id -> state.seasons.indexOfFirst { it?.id == id } } ?: -1
                     val firstUnwatched =
                         state.seasons.indexOfFirst { it?.data?.userData?.played == false }
-                    viewModel.showSeasonEpisodes(firstUnwatched.coerceAtLeast(0))
+                    viewModel.showSeasonEpisodes(if (picked >= 0) picked else firstUnwatched.coerceAtLeast(0))
                 }
             }
             val kids by KidsMode.active.collectAsState()
