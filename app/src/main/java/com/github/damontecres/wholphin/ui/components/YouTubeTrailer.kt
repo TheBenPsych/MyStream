@@ -356,11 +356,11 @@ private fun YouTubeTrailerPopup(
                         )
                     } +
                     listOf(
-                    com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
-                        label = "Close the trailer",
-                        onClick = onClose,
+                        com.github.damontecres.wholphin.ui.playback.PanelLine.Row(
+                            label = "Close the trailer",
+                            onClick = onClose,
+                        ),
                     ),
-                ),
             onDismissRequest = {
                 settingsOpen = false
                 try {

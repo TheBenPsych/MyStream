@@ -177,7 +177,8 @@ private fun AppLabel(
         if (icon != null) {
             Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(32.dp))
         } else {
-            androidx.compose.foundation.layout.Box(Modifier.width(32.dp))
+            androidx.compose.foundation.layout
+                .Box(Modifier.width(32.dp))
         }
         Text(name)
     }
