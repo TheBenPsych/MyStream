@@ -64,7 +64,7 @@
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
     const place = PLACES.some(([k]) => k === B.q("p")) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
-    B.page().innerHTML = B.top("Books", LIME) + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
     B.wireTop();
     let home;
     try {
@@ -134,12 +134,15 @@
       if (!t || t === shown) return;
       shown = t;
       $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(t))}</div><h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p>`;
+      top.dataset.href = t.notHere ? "#/requests?tab=books" : "#/book/" + enc(t.id);
+      B.coverGlow(t.cover ? pic(t.cover) : null);
       const art = $(".art", top);
       art.classList.remove("on");
       art.innerHTML = t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "";
       requestAnimationFrame(() => art.classList.add("on"));
     };
     const pointAt = (e) => {
+      if (B.phoneTop()) return;
       const a = e.target.closest("#bkMain .poster.bk");
       if (!a) return;
       const id = decodeURIComponent((a.getAttribute("href") || "").replace(/^#\/book\//, ""));
@@ -149,6 +152,8 @@
     B.page().addEventListener("mouseover", pointAt);
     B.page().addEventListener("focusin", pointAt);
     B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+    top.onclick = () => { if (B.phoneTop() && top.dataset.href) B.go(top.dataset.href); };
+    B.wireCoverGlow();
     show(first);
   }
   // ---------- a book's page ----------

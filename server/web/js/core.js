@@ -1052,3 +1052,82 @@ document.addEventListener("keydown", (e) => {
   }
   B.go(B.hrefOf(it));
 });
+
+// ---------- Cover glow (Music and Books For you tops, Ben 2026-11-18) ----------
+// A square album or a tall book can't fill a wide screen, so instead of the cover as a picture behind the page,
+// the cover's own two main colours make a soft glow across the top that fades into the dark page. The colours
+// are worked out once per cover from a tiny 24 by 24 copy; dull, grey or black covers get a faint Glowfin blue.
+(() => {
+  const PLAIN = ["rgba(122,167,255,.30)", "rgba(122,167,255,.16)"];
+  const seen = new Map();
+  const hsl = (r, g, b) => {
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    if (!d) return [0, 0, l];
+    const s = d / (1 - Math.abs(2 * l - 1));
+    const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [(h * 60 + 360) % 360, s, l];
+  };
+  // Dark enough for white words on top (like the app's forPageTop)
+  const tone = (c, a) => {
+    const most = Math.max(c[0], c[1], c[2]) / 255, k = most > 0.55 ? 0.55 / most : 1;
+    return `rgba(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)},${a})`;
+  };
+  const colours = (img) => {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 24;
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, 24, 24);
+    const px = cx.getImageData(0, 0, 24, 24).data;
+    const bins = Array.from({ length: 12 }, () => ({ w: 0, r: 0, g: 0, b: 0, h: 0 }));
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      const [h, s, l] = hsl(r / 255, g / 255, b / 255);
+      if (s < 0.18 || l < 0.1 || l > 0.92) continue;
+      const bin = bins[Math.floor(h / 30) % 12], w = s;
+      bin.w += w; bin.r += r * w; bin.g += g * w; bin.b += b * w; bin.h = h;
+    }
+    const ranked = bins.map((x, i) => ({ ...x, i })).filter((x) => x.w > 4).sort((a, b) => b.w - a.w);
+    if (!ranked.length) return PLAIN;
+    const avg = (x) => [x.r / x.w, x.g / x.w, x.b / x.w];
+    const main = ranked[0];
+    const gap = (x) => { const d = Math.abs(x.i - main.i) % 12; return Math.min(d, 12 - d); };
+    const second = ranked.find((x) => gap(x) >= 1 && x.w > main.w * 0.15) || main;
+    return [tone(avg(main), 0.62), tone(avg(second), 0.44)];
+  };
+  const read = (url) => {
+    if (!url) return Promise.resolve(PLAIN);
+    if (seen.has(url)) return seen.get(url);
+    const p = new Promise((done) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => { try { done(colours(img)); } catch (e) { done(PLAIN); } };
+      img.onerror = () => done(PLAIN);
+      img.src = url;
+    });
+    seen.set(url, p);
+    return p;
+  };
+  // Paints the glow behind the top of the page in the colours of this cover (null = faint blue)
+  B.coverGlow = (url) => {
+    const glow = $("#coverGlow");
+    if (!glow) return;
+    glow.dataset.want = url || "";
+    read(url).then((c) => {
+      if (glow.dataset.want !== (url || "")) return;
+      glow.style.setProperty("--g1", c[0]);
+      glow.style.setProperty("--g2", c[1]);
+    });
+  };
+  // The page's glow layer; the header above it is see-through while you're at the very top
+  B.coverGlowHtml = () => '<div class="cglow" id="coverGlow" aria-hidden="true"></div>';
+  B.wireCoverGlow = () => {
+    const head = $("#page > .top");
+    if (!head) return;
+    const on = () => head.classList.toggle("attop", window.scrollY < 40);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    B.onLeave(() => window.removeEventListener("scroll", on));
+  };
+  // Phones can't point at cards, so the top stays on the first one and a tap on it opens it
+  B.phoneTop = () => matchMedia("(max-width: 760px)").matches;
+})();
