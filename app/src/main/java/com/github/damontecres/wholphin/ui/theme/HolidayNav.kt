@@ -166,14 +166,23 @@ object HolidayNavKit {
             ),
             // Thanksgiving: harvest icons, short leaf garland, pumpkin corner (art in ThanksgivingNav.kt)
             ThanksgivingNav.entry,
+            // Valentine's Day: "Love tokens" (art in ValentineNav.kt)
             holiday(
                 "valentine",
                 { ValLook.on },
-                0xFF2A0F1A,
-                0xFF170810,
-                listOf(0xFFFF5C8A, 0xFFD7263D, 0xFFFFB3C6),
+                0xFF3A1226,
+                0xFF200A15,
+                listOf(0xFFE8405E, 0xFFA8284F),
                 "Valentine's pick",
-                countdown = { ValentineSeason.countdown(LocalDate.now()) },
+                countdown = { ValentineNav.countdown(LocalDate.now()) },
+            ).copy(
+                icons = ValentineNav.icons,
+                topTrim = ValentineNav.topTrim,
+                bottomTrim = ValentineNav.bottomTrim,
+                moving = true,
+                countdownKind = "Valentine's Day",
+                pickTitles = ValentineNav.pickTitles,
+                accent = Color(0xFFFF9DB0),
             ),
             // Easter: direction A "Easter tree ribbon" (Ben 2026-11-17), drawings in EasterNav.kt
             HolidayNav(

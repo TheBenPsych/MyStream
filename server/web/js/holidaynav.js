@@ -381,6 +381,64 @@
 
   // Most important first: when two are on at once the first wins (Friday the 13th takes over any season look,
   // Earth Day comes after Easter week)
+
+  // ---------- Valentine's Day: "Love tokens" (Ben 2026-11-17, sheet valentines-3-navigation; same as the app's
+  // ui/theme/ValentineNav.kt). The six love tokens are the door icons; Home, Search, Requests and More stay their
+  // usual shapes in rose; paper hearts on twine sway across the top of Home, a satin ribbon and bow along the bottom.
+  const VAL = (() => {
+    const ROSE = "#E8405E", BLUSH = "#F7A3BA", PALE = "#FFE6EA", DEEP = "#C2264A";
+    const HP = "M12 21.3C6.2 17.1 2.5 13.6 2.5 9.3 2.5 6.3 4.8 4 7.6 4c1.8 0 3.4.9 4.4 2.4C13 4.9 14.6 4 16.4 4c2.8 0 5.1 2.3 5.1 5.3 0 4.3-3.7 7.8-9.5 12z";
+    const heart = (x, y, s, fill, extra) => `<path d="${HP}" transform="translate(${x} ${y}) scale(${(s / 24).toFixed(4)})" fill="${fill}" ${extra || ""}/>`;
+    const defs = `<defs><linearGradient id="vlGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A3"/><stop offset=".45" stop-color="#E8C15A"/><stop offset="1" stop-color="#9C6E1E"/></linearGradient><radialGradient id="vlFoil" cx=".3" cy=".25" r=".9"><stop offset="0" stop-color="#FFC2CC"/><stop offset=".35" stop-color="#F0506B"/><stop offset=".8" stop-color="#B11F3F"/><stop offset="1" stop-color="${ROSE}"/></radialGradient><linearGradient id="vlSatin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A90"/><stop offset=".35" stop-color="${ROSE}"/><stop offset="1" stop-color="#9E1838"/></linearGradient></defs>`;
+    // the drawings are 32 units; the rail's icons are 24, drawn a little big so they read from the couch
+    const big = (inner) => `${defs}<g transform="translate(12 12) scale(.82) translate(-16 -16)">${inner}</g>`;
+    const T = {
+      movies: `<g transform="rotate(-14 16 16)"><path d="M3 9h26v4.3a2.7 2.7 0 0 0 0 5.4V23H3v-4.3a2.7 2.7 0 0 0 0-5.4z" fill="${ROSE}" stroke="#FFD5DC" stroke-width=".8"/><path d="M21.5 10v12" stroke="#FFE3E8" stroke-width="1" stroke-dasharray="1.4 1.2"/>${heart(7.2, 10.6, 10, "#fff")}<path d="M23.5 13.5h3.5M23.5 16h3.5M23.5 18.5h3.5" stroke="#FFE3E8" stroke-width="1"/></g>`,
+      shows: `<path d="M6 1.5 16 12 26 1.5" stroke="#E8C15A" stroke-width="1.4" stroke-dasharray="1.6 .9" fill="none"/>${heart(4, 9, 24, "url(#vlGold)", 'stroke="#8A5D12" stroke-width=".9"')}<path d="M16 15v13" stroke="#8A5D12" stroke-width=".7" opacity=".7"/>${heart(9.5, 14, 13, "none", 'stroke="#FFF2C4" stroke-width="1.4" opacity=".9"')}<circle cx="16" cy="12.6" r="1.6" fill="url(#vlGold)" stroke="#8A5D12" stroke-width=".6"/>`,
+      live: `<g>${heart(3, 0, 26, "url(#vlFoil)", 'stroke="#8E0F2E" stroke-width=".6"')}<ellipse cx="10.5" cy="7.5" rx="2.6" ry="3.6" fill="#fff" opacity=".55" transform="rotate(-30 10.5 7.5)"/><path d="M15.2 22.6l.8 1.4.8-1.4z" fill="#B11F3F"/></g><path d="M16 24c-2 2 2 3 0 5s1.5 2 .5 3" stroke="#F4E9D8" stroke-width=".9" fill="none"/>`,
+      games: `<g transform="rotate(10 16 16)"><rect x="7" y="2.5" width="18" height="26" rx="2.4" fill="#FFFDF7" stroke="#D9CFC2" stroke-width=".8"/>${heart(9.5, 9.5, 13, ROSE)}<path d="M9.4 9 L11 3.6 L12.6 9 M10 7.2 H12 M22.6 23.4 L21 28.8 L19.4 23.4 M22 25.2H20" stroke="${ROSE}" stroke-width="1.1" stroke-linecap="round" fill="none"/></g>`,
+      music: `${heart(1, 1.5, 30, "#B5173A")}${heart(5, 5.5, 22, "none", 'stroke="#7A0E28" stroke-width=".8"')}${heart(8.5, 9, 15, "none", 'stroke="#7A0E28" stroke-width=".8"')}<path d="M7 9.5c1.5-2.5 4-3 6-1.5" stroke="#fff" stroke-width="1.1" opacity=".45" fill="none"/><circle cx="16" cy="15.5" r="4" fill="#FFE3E8"/><circle cx="16" cy="15.5" r="1" fill="#2a0a14"/>`,
+      books: `<g transform="rotate(-8 16 16)"><rect x="2.5" y="7" width="27" height="18" rx="1.6" fill="#F6EBDD" stroke="#CDBBA5" stroke-width=".7"/><path d="M2.8 7.6 16 17.5 29.2 7.6" stroke="#CDBBA5" stroke-width=".9" fill="none"/><path d="M2.8 24.4 12.5 15M29.2 24.4 19.5 15" stroke="#E0D2BF" stroke-width=".7"/><path d="M16 12.2c2.7 0 5 1.8 5 4.6s-2.3 5-5 5-5.2-2-5-5 2.3-4.6 5-4.6z" fill="#B11F3F"/>${heart(12.6, 13.6, 6.8, "#7E0F2B")}</g>`,
+    };
+    const icons = {};
+    Object.keys(T).forEach((k) => { icons[k] = big(T[k]); });
+    const line = (d) => `<path d="${d}" fill="none" stroke="${ROSE}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+    icons.home = line("M3 11l9-7 9 7M5 10v10h14V10M10 20v-5h4v5");
+    icons.search = line("M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0zM20 20l-4.5-4.5");
+    icons.requests = line("M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6");
+    icons.more = `<g fill="${ROSE}"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></g>`;
+
+    // Home's trims are drawn in real pixels (whole SVGs that crop instead of stretching), and kept shallow so the
+    // greeting on the clock's line stays clear (Ben 2026-11-17): the top string hangs within the top ~20 px, the
+    // ribbon sits low with its bow at the right-hand end.
+    const cols = [ROSE, PALE, BLUSH, DEEP];
+    const topTrim = (cls) => {
+      let out = "";
+      const span = 120, sag = 3;
+      for (let i = 0; i < 24; i++) out += `${i ? "" : "M0 1 "}Q${i * span + span / 2} ${1 + sag * 2} ${(i + 1) * span} 1 `;
+      out = `<path d="${out}" stroke="#C9A47A" stroke-width="1.4" fill="none"/>`;
+      let k = 0;
+      for (let i = 0; i < 24; i++) {
+        for (let j = 1; j < 4; j++) {
+          const f = j / 4, x = i * span + span * f, y = 1 + 2 * (1 - f) * f * sag * 2;
+          const tilt = ((k * 37) % 13) - 6;
+          out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${tilt})"><g><path d="M0 0v3" stroke="#C9A47A" stroke-width="1"/>${heart(-8, 1.5, 16, cols[k % 4], 'stroke="rgba(0,0,0,.18)" stroke-width=".6"')}<animateTransform attributeName="transform" type="rotate" values="-5;5;-5" dur="${(4 + (k % 3) * 0.6).toFixed(1)}s" begin="-${(k * 0.4).toFixed(1)}s" repeatCount="indefinite"/></g></g>`;
+          k++;
+        }
+      }
+      return `<svg class="${cls || ""}" viewBox="0 0 2880 44" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible">${out}</svg>`;
+    };
+    const bottomTrim = (cls) => `<svg class="${cls || ""}" viewBox="0 0 2880 36" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" style="overflow:visible">${defs}`
+      + `<rect x="0" y="11" width="2880" height="7" fill="url(#vlSatin)"/><path d="M0 12.5h2880" stroke="#FFB0BD" stroke-width=".8" opacity=".6"/>`
+      + `<g transform="translate(1100 16) scale(.5)"><path d="M-4 4l-22 30 10-2 4 8 16-30z" fill="${DEEP}"/><path d="M4 4l20 30-10-2-4 8-14-30z" fill="${DEEP}"/><path d="M0 0c-30-26-62-18-58 4s34 18 58-4z" fill="url(#vlSatin)" stroke="#8E0F2E" stroke-width="2.4"/><path d="M0 0c30-26 62-18 58 4s-34 18-58-4z" fill="url(#vlSatin)" stroke="#8E0F2E" stroke-width="2.4"/><rect x="-9" y="-9" width="18" height="18" rx="5" fill="${ROSE}" stroke="#8E0F2E" stroke-width="2.4"/></g>`.replace('translate(1100 16) scale(.5)', 'translate(2790 14) scale(.5)') + "</svg>";
+    const countdown = () => {
+      const v = B.val; const d = now();
+      if (!v) return "";
+      return v.variant(d) === "day" ? "Happy Valentine’s Day" : v.countdown(d);
+    };
+    return { icons, topTrim, bottomTrim, countdown };
+  })();
+
   const ALL = [
     make("friday13", is("f13On"), true, ["#141414", "#0A0A0A"], ["#9BE15D", "#C9D0E0"], "Friday the 13th pick", { pickWords: ["Friday the 13th"], pickTags: ["slasher"] }),
     make("videogames", is("vgOn"), true, ["#1A1030", "#0E0819"], ["#FF6F91", "#3DD6C6", "#FFE14D", "#7AA7FF"], "Game Day pick", { pickTags: ["video game"], pickWords: ["Game"] }),
@@ -576,7 +634,7 @@
         pickWords: ["Thanksgiving", "Planes, Trains", "Home for the Holidays", "Pieces of April", "Free Birds"],
       };
     })()),
-    make("valentine", is("valOn"), false, ["#2A0F1A", "#170810"], ["#FF5C8A", "#D7263D", "#FFB3C6"], "Valentine's pick", { countdown: cd(() => B.val), pickTags: ["valentine's day"], pickWords: ["Valentine"] }),
+    make("valentine", is("valOn"), false, ["#3A1226", "#200A15"], ["#E8405E", "#A8284F"], "Valentine's pick", { icons: VAL.icons, topTrim: VAL.topTrim, bottomTrim: VAL.bottomTrim, countdown: VAL.countdown, pickTags: ["valentine's day"], pickWords: ["Valentine", "Princess Bride", "Notting Hill", "Harry Met Sally"] }),
     // Easter (approved 2026-11-17, thread "Fit Easter theme to new navigation", direction A "Easter tree ribbon"):
     // meadow-green rail, the door icons become the Easter tree charms, a painted egg on a ribbon hangs by the icon
     // you're on, a pink satin ribbon swags across the top of Home with painted eggs swaying, and spring grass with
