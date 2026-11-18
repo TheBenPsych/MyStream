@@ -328,14 +328,14 @@ class AnimeGenrePageViewModel
         private val _owned = MutableStateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?>(null)
         val owned: StateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?> = _owned
 
-        /**
-         * Benflix (Ben, 2026-11-18): shows that are on Benflix but missing aired episodes come back, tagged
-         * MISSING EPISODES, like the rest of Requests. AniList id -> the show's TMDB number.
-         */
         /** null while the first page loads */
         private val _items = MutableStateFlow<List<AniListBrowseItem>?>(null)
         val items: StateFlow<List<AniListBrowseItem>?> = _items
 
+        /**
+         * Benflix (Ben, 2026-11-18): shows that are on Benflix but missing aired episodes come back, tagged
+         * MISSING EPISODES, like the rest of Requests. AniList id -> the show's TMDB number.
+         */
         private val _missing = MutableStateFlow<Map<Int, Int>>(emptyMap())
         val missing: StateFlow<Map<Int, Int>> = _missing
         private val checked = mutableSetOf<Int>()
@@ -644,6 +644,7 @@ internal suspend fun findAnimeInRequests(
         }
     }
     val wantedType = if (isMovie) SeerrItemType.MOVIE else SeerrItemType.TV
+
     fun latin(name: String) = name.any { it.isLetterOrDigit() && it.code < 0x2E80 }
     // Benflix (Ben, 2026-11-18): "Slime Season 2" is the show "Slime" in Requests, so its name without the season is tried too
     val bases = titles.mapNotNull { AniListService.seasonBase(it) }
@@ -932,7 +933,9 @@ private fun AnimePoster(
                 )
                 if (missingEpisodes) {
                     Text(
-                        text = androidx.compose.ui.res.stringResource(com.github.damontecres.wholphin.R.string.badge_some_on_benflix),
+                        text =
+                            androidx.compose.ui.res
+                                .stringResource(com.github.damontecres.wholphin.R.string.badge_some_on_benflix),
                         color = Color.White,
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Bold,
