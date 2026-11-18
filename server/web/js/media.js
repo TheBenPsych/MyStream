@@ -474,7 +474,7 @@ B.trailer = async (it) => {
 B.peopleRow = (it) => {
   const cast = (it.People || []).filter((p) => p.Type === "Actor").slice(0, 20);
   if (!cast.length) return "";
-  return `<section class="rowx people-row"><h3>Cast</h3><div class="strip">${cast.map((p) => `<a class="person-c" href="#/person/${p.Id}"><span class="pic" style="${p.PrimaryImageTag ? `background-image:url('${B.img(p.Id, "Primary", { h: 240, tag: p.PrimaryImageTag })}')` : ""}">${p.PrimaryImageTag ? "" : esc(B.initials(p.Name))}</span>${esc(p.Name)}<small>${esc(p.Role || "")}</small></a>`).join("")}</div></section>`;
+  return `<section class="rowx people-row"><h3>Cast and crew</h3><div class="strip">${cast.map((p) => `<a class="person-c" href="#/person/${p.Id}"><span class="pic" style="${p.PrimaryImageTag ? `background-image:url('${B.img(p.Id, "Primary", { h: 240, tag: p.PrimaryImageTag })}')` : ""}">${p.PrimaryImageTag ? "" : esc(B.initials(p.Name))}</span>${esc(p.Name)}<small>${esc(p.Role || "")}</small></a>`).join("")}</div></section>`;
 };
 B.facts = async (it) => {
   const f = [];
@@ -530,15 +530,18 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
       B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
       { label: "More", icon: "more", onClick: () => movieMore(it) },
     ].filter(Boolean),
+    // Glowfin D1: story + scores up top, then rows: Cast and crew, More like this (+ collection), Ask for similar
+    rows: true,
     story: it.Overview,
-    strip: B.tpStrip([...scores, audio ? [audio] : null, directors.length ? ["Director", directors.join(", "), true] : null]),
+    scores: B.tpStrip(scores),
+    strip: B.tpStrip([audio ? [audio] : null, directors.length ? ["Director", directors.join(", "), true] : null]),
     tabs: [
+      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "More like this", id: "below", load: async (pane) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
-      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
     ],
   });
@@ -635,25 +638,25 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     info: [...plainBits.map(String), (it.Genres || [])[0]],
     buttons: [
       target ? { label: resumeLabel, icon: "play", href: `#/play/${target.Id}?resume=1` } : { label: "Play", icon: "play", off: "No episodes on Glowfin yet" },
-      { label: "Episodes", icon: "list", onClick: () => tp.open("Episodes") },
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
       { label: "More", icon: "more", id: "bMore" },
     ],
+    // Glowfin D1: story + scores up top, then rows: seasons and episodes, Cast and crew, More like this, Ask for similar
+    rows: true,
     story: it.Overview,
-    strip: B.tpStrip([...scores, maker]),
-    overviewFirst: false,
-    open: "Episodes",
+    scores: B.tpStrip(scores),
+    strip: B.tpStrip([maker]),
     tabs: [
       { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
         <div class="seasons" id="groups"></div><div id="eps">${B.spinner()}</div>` },
-      { name: "Characters and voices", id: "tpChars" },
+      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "More like this", id: "below2", load: async (pane) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
-      { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
+      { name: "Characters and voices", id: "tpChars" },
       { name: "Parents' guide", id: "tpParents" },
     ],
   });

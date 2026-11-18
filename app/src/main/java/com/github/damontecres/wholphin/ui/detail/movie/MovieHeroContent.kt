@@ -31,8 +31,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.QrCode
-import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
+import com.github.damontecres.wholphin.ui.detail.AskForSimilarRow
 import com.github.damontecres.wholphin.ui.detail.HeroButton
+import com.github.damontecres.wholphin.ui.detail.askForSimilarName
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
@@ -75,9 +76,9 @@ class MovieHeroActions(
 )
 
 /**
- * Benflix Redesign 2: a movie's own page on the shared title page frame. Buttons: Resume (or Play),
- * Trailer (greyed out when there isn't one), My List, Rate, More. Tabs: Overview, More like this (with
- * In this collection, Ask for more like this and More from the director), Cast and Parents' guide.
+ * Glowfin D1: a movie's own page. Buttons: Resume (or Play), Trailer (greyed out when there isn't one),
+ * My List, Rate, More. Rows under them: Cast and crew, More like this, Ask for similar, Finish the
+ * collection, More from the director, About (details) and Parents' guide.
  * Kids and Easy read get bigger buttons and no Rate or asking.
  */
 @Composable
@@ -152,69 +153,25 @@ fun MovieHeroContent(
         }
     val scores = rememberScoreParts(movie)
     val strip =
-        remember(movie, state.chosenStreams, scores) {
+        remember(movie, state.chosenStreams) {
             buildList {
-                if (!easy) addAll(scores)
                 audioLanguage(movie, state)?.let { add(StripPart(it)) }
                 directors(movie)?.let { add(StripPart("Director", it)) }
             }
         }
+    // Glowfin D1: the rows under the buttons, top to bottom
     val tabs =
         buildList {
-            add(
-                TitleTab("Overview") { scope ->
-                    TitleOverview(
-                        scope = scope,
-                        title = movie.title.orEmpty(),
-                        story = dto.overview,
-                        strip = strip,
-                        details = remember(movie, isAdmin) { titleDetails(movie, isAdmin) },
-                    )
-                },
-            )
-            val hasMore =
-                state.similar.isNotEmpty() || collection != null ||
-                    (!easy && state.fromDirector.isNotEmpty())
-            if (hasMore) {
-                add(
-                    TitleTab("More like this") { scope ->
-                        val several =
-                            listOf(
-                                state.similar.isNotEmpty(),
-                                collection != null,
-                                !easy && state.fromDirector.isNotEmpty(),
-                            ).count { it } > 1
-                        TitlePosterRow(
-                            scope = scope,
-                            items = state.similar,
-                            onClick = actions.openItem,
-                            name = if (several) "More like this" else null,
-                        )
-                        if (collection != null) {
-                            TitlePosterRow(
-                                scope = scope,
-                                items = collection.items,
-                                onClick = actions.openItem,
-                                name = "In this collection",
-                                current = movie,
-                            )
-                        }
-                        if (!easy) {
-                            TitlePosterRow(
-                                scope = scope,
-                                items = state.fromDirector,
-                                onClick = actions.openItem,
-                                name = "More from ${state.directorName ?: "the director"}",
-                            )
-                        }
-                    },
-                )
+            if (state.people.isNotEmpty()) {
+                add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            }
+            if (state.similar.isNotEmpty()) {
+                add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })
             }
             if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
                 add(
-                    TitleTab("Ask for similar") { scope ->
-                        AskForSimilarTab(
-                            kind = state.askKind,
+                    TitleTab(askForSimilarName(state.askKind, show = false), note = "Not on Glowfin yet") { scope ->
+                        AskForSimilarRow(
                             best = state.discovered,
                             more = state.discoveredMore,
                             side = scope.side,
@@ -224,9 +181,31 @@ fun MovieHeroContent(
                     },
                 )
             }
-            if (state.people.isNotEmpty()) {
-                add(TitleTab("Cast") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            if (collection != null && collection.items.size > 1) {
+                add(
+                    TitleTab("Finish the collection", note = collection.name) { scope ->
+                        TitlePosterRow(scope = scope, items = collection.items, onClick = actions.openItem, current = movie)
+                    },
+                )
             }
+            if (!easy && state.fromDirector.isNotEmpty()) {
+                add(
+                    TitleTab("More from ${state.directorName ?: "the director"}") { scope ->
+                        TitlePosterRow(scope, state.fromDirector, actions.openItem)
+                    },
+                )
+            }
+            add(
+                TitleTab("About") { scope ->
+                    TitleOverview(
+                        scope = scope,
+                        title = movie.title.orEmpty(),
+                        story = null,
+                        strip = strip,
+                        details = remember(movie, isAdmin) { titleDetails(movie, isAdmin) },
+                    )
+                },
+            )
             if (state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
             }
@@ -247,6 +226,9 @@ fun MovieHeroContent(
         buttons = buttons,
         tabs = tabs,
         big = easy,
+        rows = true,
+        story = dto.overview,
+        scores = if (easy) emptyList() else scores,
         modifier = modifier,
     )
 

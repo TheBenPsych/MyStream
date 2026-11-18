@@ -1188,6 +1188,29 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .tp .tp-ovr .facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .tp .tp-panes { padding-bottom: 90px; }
 }
+/* Glowfin D1 title pages (Ben 2026-11-18): story + buttons over the faded picture, every part a row underneath */
+.tp.tp-rows .tp-hero { height: auto; min-height: 66vh; }
+.tp.tp-rows .main { position: relative; inset: auto; min-height: 66vh; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: calc(var(--bar) + 4vh) var(--gutter) 8px; }
+.tp.tp-rows .tp-name { max-width: 55%; }
+.tp.tp-rows .tp-name .t { font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 600; }
+.tp.tp-rows .meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.tp.tp-rows .tp-scores { display: inline-flex; gap: 14px; }
+.tp.tp-rows .tp-scores span { color: var(--ink3); font-size: 14px; font-weight: 600; }
+.tp.tp-rows .tp-scores span b { color: var(--ink); font-weight: 800; margin-right: 4px; }
+.tp.tp-rows .tp-story { max-width: min(50%, 760px); color: var(--ink2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tp.tp-rows .btns { margin-top: 6px; }
+.tp.tp-rows .tp-tabs { display: none; }
+.tp.tp-rows .tp-panes { padding-top: 8px; }
+.tp.tp-rows .tp-pane { margin-bottom: 18px; }
+.tp.tp-rows .tp-pane[hidden] { display: none; }
+.tp.tp-rows .tp-h { font-size: 21px; font-weight: 600; margin: 0 0 10px; padding: 0 var(--gutter); }
+@media (max-width: 700px) {
+  .tp.tp-rows .tp-hero { min-height: 0; }
+  .tp.tp-rows .main { min-height: 0; padding: 0 16px; justify-content: flex-start; }
+  .tp.tp-rows .tp-name { max-width: none; }
+  .tp.tp-rows .tp-story { max-width: none; -webkit-line-clamp: 5; order: 10; }
+  .tp.tp-rows .tp-h { padding: 0 16px; }
+}
 /* volume button + slider (web players): hover slides it out, touch screens tap to open */
 .volw { position: relative; display: inline-flex; align-items: center; flex: none; }
 .volw .vslide { width: 0; overflow: hidden; display: flex; align-items: center; transition: width .2s ease; }

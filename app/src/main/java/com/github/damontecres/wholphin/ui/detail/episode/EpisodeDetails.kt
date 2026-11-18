@@ -37,7 +37,6 @@ import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.detail.series.EpisodeCard
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
-import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
@@ -301,11 +300,6 @@ fun EpisodeDetailsContent(
     val scores = rememberScoreParts(ep)
     val tabs =
         buildList {
-            add(
-                TitleTab("Overview") { scope ->
-                    TitleOverview(scope = scope, title = ep.title.orEmpty(), story = dto.overview, strip = scores)
-                },
-            )
             if (nextEpisodes.isNotEmpty()) {
                 add(
                     TitleTab("Next episodes") { scope ->
@@ -329,7 +323,7 @@ fun EpisodeDetailsContent(
                 )
             }
             if (people.isNotEmpty()) {
-                add(TitleTab("Cast") { scope -> TitleCastRow(scope, people, openPerson) })
+                add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, people, openPerson) })
             }
         }
     TitlePage(
@@ -344,6 +338,9 @@ fun EpisodeDetailsContent(
             },
         buttons = buttons,
         tabs = tabs,
+        rows = true,
+        story = dto.overview,
+        scores = scores,
         modifier = modifier,
     )
 }
