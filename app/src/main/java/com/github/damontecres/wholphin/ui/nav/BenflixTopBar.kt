@@ -29,8 +29,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -45,8 +47,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.LocalTextStyle
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinUser
@@ -154,9 +156,9 @@ internal fun BigClock(scale: Float) {
     val shadowed =
         LocalTextStyle.current.copy(
             shadow =
-                androidx.compose.ui.graphics.Shadow(
+                Shadow(
                     color = Color.Black.copy(alpha = .6f),
-                    offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                    offset = Offset(0f, 2f),
                     blurRadius = 10f,
                 ),
         )
