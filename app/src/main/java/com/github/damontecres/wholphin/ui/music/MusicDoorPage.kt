@@ -550,10 +550,23 @@ private fun rememberTileGlowUrl(tile: MusicTile): String? {
     val imageUrlService = LocalImageUrlService.current
     return remember(tile) {
         when (tile) {
-            is MusicTile.Item -> imageUrlService.musicCover(tile.item, 64)
-            is MusicTile.Mix -> tile.mix.coverAlbumIds.firstOrNull()?.let { imageUrlService.albumCover(it, 64) }
-            is MusicTile.Browse -> tile.coverAlbumIds.firstNotNullOfOrNull { it.toUUIDOrNull() }?.let { imageUrlService.albumCover(it, 64) }
-            else -> null
+            is MusicTile.Item -> {
+                imageUrlService.musicCover(tile.item, 64)
+            }
+
+            is MusicTile.Mix -> {
+                tile.mix.coverAlbumIds
+                    .firstOrNull()
+                    ?.let { imageUrlService.albumCover(it, 64) }
+            }
+
+            is MusicTile.Browse -> {
+                tile.coverAlbumIds.firstNotNullOfOrNull { it.toUUIDOrNull() }?.let { imageUrlService.albumCover(it, 64) }
+            }
+
+            else -> {
+                null
+            }
         }
     }
 }

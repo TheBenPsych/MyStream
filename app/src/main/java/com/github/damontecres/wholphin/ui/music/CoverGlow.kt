@@ -144,7 +144,14 @@ private fun DrawScope.glowBlob(
     val top = Offset(centreX, 0f)
     scale(scaleX = 1f, scaleY = size.height / radius, pivot = top) {
         drawCircle(
-            brush = Brush.radialGradient(0f to color, .55f to color.copy(alpha = color.alpha * .45f), 1f to Color.Transparent, center = top, radius = radius),
+            brush =
+                Brush.radialGradient(
+                    0f to color,
+                    .55f to color.copy(alpha = color.alpha * .45f),
+                    1f to Color.Transparent,
+                    center = top,
+                    radius = radius,
+                ),
             radius = radius,
             center = top,
         )
