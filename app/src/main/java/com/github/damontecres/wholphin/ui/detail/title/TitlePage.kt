@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -27,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -102,6 +106,7 @@ import com.github.damontecres.wholphin.ui.theme.vgPlayPixel
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.SnappyScrollAnimationSpec
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
@@ -202,6 +207,30 @@ class TitleMoreItem(
     val onClick: () -> Unit,
     val youOnly: Boolean = false,
 )
+
+/**
+ * The TV title page's tab area: it scrolls only as far as needed to show the focused thing (no "slide the
+ * row up to near the top"), so a row's name above its posters stays in view.
+ */
+private object TabAreaBringIntoViewSpec : BringIntoViewSpec {
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override val scrollAnimationSpec: AnimationSpec<Float>
+        get() = SnappyScrollAnimationSpec
+
+    override fun calculateScrollDistance(
+        offset: Float,
+        size: Float,
+        containerSize: Float,
+    ): Float {
+        val end = offset + size
+        return when {
+            offset >= 0f && end <= containerSize -> 0f
+            offset < 0f && end > containerSize -> 0f
+            size > containerSize || offset < 0f -> offset
+            else -> end - containerSize
+        }
+    }
+}
 
 /** True when the page should use the fixed TV layout (TVs, and phones or tablets turned on their side) */
 @Composable
@@ -411,13 +440,21 @@ private fun WideTitlePage(
                     .fillMaxWidth()
                     .height(contentHeight),
             ) {
+                // The TV rule "slide the focused row up to near the top" is made for full pages. In this short
+                // area it slid every row's name off the top ("Closest matches" cut in half, Ben's TV
+                // 2026-11-18), so here the area only scrolls when the focused thing isn't fully in view.
+                val outer = LocalBringIntoViewSpec.current
                 androidx.compose.runtime.key(tab) {
-                    Column(
-                        Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        tabs.getOrNull(tab)?.content?.invoke(TitleTabScope(side = side, wide = true, height = contentHeight))
+                    CompositionLocalProvider(LocalBringIntoViewSpec provides TabAreaBringIntoViewSpec) {
+                        Column(
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            CompositionLocalProvider(LocalBringIntoViewSpec provides outer) {
+                                tabs.getOrNull(tab)?.content?.invoke(TitleTabScope(side = side, wide = true, height = contentHeight))
+                            }
+                        }
                     }
                 }
             }
