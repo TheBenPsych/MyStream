@@ -216,20 +216,7 @@ fun SongMenu(
     var pickPlaylist by remember { mutableStateOf(false) }
     var confirmRedo by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    var sendTo by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
-    if (sendTo) {
-        SendToDialog(
-            place =
-                com.github.damontecres.wholphin.services
-                    .MusicPlace("song", song.id.toString(), song.title.orEmpty()),
-            onDismiss = {
-                sendTo = false
-                onDismiss()
-            },
-        )
-        return
-    }
     if (confirmRedo) {
         ConfirmDialog(
             title = "Delete and find again?",
@@ -349,8 +336,6 @@ fun SongMenu(
                     }),
                 )
             }
-            // Music redesign 3: Send to a profile (it shows in their Home news)
-            add(DialogItem(headlineContent = { Text("Send to someone") }, onClick = { sendTo = true }))
             add(
                 DialogItem(headlineContent = { Text("Start a radio") }, onClick = {
                     actions.startRadio(song)

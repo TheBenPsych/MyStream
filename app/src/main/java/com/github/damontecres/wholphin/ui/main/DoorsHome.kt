@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.main
 
-import android.content.Context
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -17,7 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
@@ -35,19 +33,13 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.IntroPace
-import com.github.damontecres.wholphin.ui.components.HomeNewsDot
-import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
-import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -58,179 +50,26 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.imageApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
-import org.jellyfin.sdk.api.client.extensions.tvShowsApi
-import org.jellyfin.sdk.api.client.extensions.userLibraryApi
-import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.api.ItemFields
-import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import timber.log.Timber
-import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
 
 /**
- * One row of Home's news panel (Redesign 2 Home, approved hm-tall 2026-11-10): a small square poster, a small
- * coloured line saying what it is ([kind], like "New episode · S3 E12"), then the name on up to 2 lines.
- * [destination] is where pressing it goes (null = nowhere, just reading). News goes away once opened.
- */
-data class HomeRow(
-    val id: String,
-    /** The small coloured line: "New episode · S3 E12", "Ready to watch", "On the way · 2h left" */
-    val kind: String,
-    /** The name, up to 2 lines; a longer one slides by when the row is picked */
-    val title: String,
-    /** Green = ready to watch, amber = on the way, grey = everything else */
-    val kindColor: Color,
-    val image: String?,
-    val destination: Destination?,
-    /** A square picture (music) instead of a poster */
-    val square: Boolean = false,
-    val news: Boolean = false,
-    /** The whole message, shown in a pop-up when the row has nowhere to go (a note from Ben) */
-    val fullText: String? = null,
-    /** A note that talks about one part of Benflix gets a button in its pop-up to go there ("Open Live TV") */
-    val goTo: Pair<String, Destination>? = null,
-    /** When it happened, so news is newest first */
-    val at: Long = 0L,
-)
-
-/** The colours of the small kind line on Home's rows */
-object HomeKind {
-    val Ready = BenflixColors.Ok
-    val OnTheWay = BenflixColors.Movies
-    val Other = BenflixColors.Muted
-}
-
-/** Everything Home could show: your news (newest first), and your requests on the way */
-data class HomeParts(
-    val news: List<HomeRow> = emptyList(),
-    val onTheWay: List<HomeRow> = emptyList(),
-) {
-    fun without(ids: Set<String>) = HomeParts(news.filter { it.id !in ids }, onTheWay.filter { it.id !in ids })
-
-    /** Everything See all lists */
-    val all: List<HomeRow> get() = news + onTheWay
-
-    val isEmpty: Boolean get() = news.isEmpty() && onTheWay.isEmpty()
-}
-
-/** What the panel shows: [rows], and how many more are under See all */
-data class HomeList(
-    val rows: List<HomeRow>,
-    val more: Int,
-)
-
-/** The tab is called Live TV now, so old notes that say "under Channels" read right */
-fun liveTvWording(text: String): String {
-    val where = Regex("\\s*\\b(under|in|on|to) (the )?Channels\\b( (tab|page|door|section))?", RegexOption.IGNORE_CASE)
-    val without = text.replace(where, "")
-    return if (Regex("live ?tv", RegexOption.IGNORE_CASE).containsMatchIn(without)) {
-        without
-    } else {
-        text.replace(where) { " ${it.groupValues[1]} Live TV" }
-    }
-}
-
-/** Which part of Benflix a note from Ben talks about, if any */
-fun noteLink(
-    text: String,
-    kids: Boolean,
-): Pair<String, Destination>? {
-    val t = text.lowercase()
-
-    fun has(pattern: String) = Regex(pattern).containsMatchIn(t)
-    return when {
-        has("live ?tv|\\bchannels?\\b") -> "Open Live TV" to Destination.Channels
-        has("\\bmusic\\b|\\bsongs?\\b|\\balbums?\\b") && !kids -> "Open Music" to Destination.MusicDoor
-        has("\\bbooks?\\b|\\baudiobooks?\\b") -> "Open Books" to Destination.BooksDoor
-        has("\\bgames?\\b") -> "Open Games" to Destination.Games
-        has("\\brequests?\\b") -> "Open Requests" to Destination.Requests
-        has("\\bshows?\\b|\\bepisodes?\\b|\\bseries\\b") -> "Open Shows" to Destination.ShowsDoor
-        has("\\bmovies?\\b|\\bfilms?\\b") -> "Open Movies" to Destination.MoviesDoor
-        else -> null
-    }
-}
-
-/**
- * Home's greeting, weather and list (approved f3-panel, 2026-11-10): up to 4 rows. News about new episodes of
- * shows you watch, a new season of a show you watched, new music from artists you follow, a new book volume,
- * a request that's ready, and an app update; then your own requests that are still on the way. Nothing from Live TV or Games. A news row goes away
- * once opened, after 3 days, or when newer news of the same kind pushes it out. Each profile only sees its own.
- * The weather comes from Tower (a town typed once on the Server page), never from the TV's or phone's location.
+ * Home's data. Grown-ups get the Glowfin Home (its rows come from DoorViewModel). Kids and Guest get their own
+ * smaller Home, and this looks up what goes on it. Home has no news list any more (Ben 2026-11-18).
  */
 @HiltViewModel
 class HomeDoorsViewModel
     @Inject
     constructor(
-        @param:ApplicationContext private val context: Context,
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
-        private val requestReadyService: RequestReadyService,
-        private val books: com.github.damontecres.wholphin.services.BenflixBooks,
         private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
-        private val displayPreferencesService: com.github.damontecres.wholphin.services.DisplayPreferencesService,
-        private val notes: com.github.damontecres.wholphin.services.BenflixNotes,
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
         private val localGames: com.github.damontecres.wholphin.games.LocalGames,
         val navigationManager: NavigationManager,
-        private val setupCheck: com.github.damontecres.wholphin.services.TowerSetupCheck,
-        private val cantFind: com.github.damontecres.wholphin.services.BenflixCantFind,
-        private val seerrServerRepository: com.github.damontecres.wholphin.services.SeerrServerRepository,
-        private val seerrService: com.github.damontecres.wholphin.services.SeerrService,
-        private val musicMe: com.github.damontecres.wholphin.services.MusicMe,
     ) : ViewModel() {
-        private val _rows = MutableStateFlow(HomeParts())
-        val rows: StateFlow<HomeParts> = _rows
-
-        private val _weather = MutableStateFlow<String?>(null)
-
-        /** "Tuesday · 52°, cloudy · rain after 6 pm", or null when Tower has no town set */
-        val weather: StateFlow<String?> = _weather
-
-        /** The list has been looked up (or there is none to look up), so Home's layout won't shift */
-        private val _loaded = MutableStateFlow(false)
-        val loaded: StateFlow<Boolean> = _loaded
-
-        val userName: String
-            get() =
-                when {
-                    KidsMode.isActive -> KidsMode.displayName
-                    GuestMode.isActive -> "Guest"
-                    else -> serverRepository.currentUser?.name.orEmpty()
-                }
-
-        private val prefs get() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-        private fun openedKey() = "opened-" + (serverRepository.currentUser?.id?.toString() ?: "none")
-
-        /**
-         * Rows this profile cleared (the X, Clear all, or opening news). Saved on the server with the profile, so
-         *the TV, phone and web all hide the same rows.
-         */
-        private var cleared: Set<String> = emptySet()
-        private val clearedNow = mutableSetOf<String>()
-
-        private fun shown(rows: List<HomeRow>) = rows.filter { it.id !in cleared && it.id !in clearedNow }
-
-        private fun seenKey() = "seen-" + (serverRepository.currentUser?.id?.toString() ?: "none")
-
-        /** The white dot on your picture: news on Home you haven't looked at yet */
-        private fun updateDot() {
-            val seen = prefs.getStringSet(seenKey(), emptySet()).orEmpty()
-            HomeNewsDot.set(_rows.value.news.any { it.id !in seen })
-        }
-
-        /** You looked at Home's list (moved into it, scrolled past it, or opened See all): the dot goes */
-        fun markSeen() {
-            val ids = _rows.value.news.map { it.id }
-            HomeNewsDot.set(false)
-            if (ids.isEmpty()) return
-            val seen = prefs.getStringSet(seenKey(), emptySet()).orEmpty()
-            if (seen.containsAll(ids)) return
-            prefs.edit().putStringSet(seenKey(), (seen + ids).toList().takeLast(MAX_SEEN).toSet()).apply()
-        }
-
         private fun familyKey(kind: FamilyKind) = "${serverRepository.currentUser?.id}-${KidsMode.level}-${kind.name}"
 
         private val _family = MutableStateFlow(FamilyHomeData())
@@ -385,182 +224,6 @@ class HomeDoorsViewModel
         /** This profile's id (Easy mode's door order is kept per profile) */
         val userId: java.util.UUID? get() = serverRepository.currentUser?.id
 
-        /** [small]: Kids, Easy mode and Guest have no news list, so nothing is looked up for it */
-        fun load(small: Boolean = false) {
-            if (small || KidsMode.isActive || GuestMode.isActive) {
-                HomeNewsDot.set(false)
-                _rows.value = HomeParts()
-                _weather.value = null
-                _loaded.value = true
-                return
-            }
-            // The last weather Tower gave shows straight away (if it's from the last 3 hours), so nothing pops in
-            _weather.value = savedWeather()
-            viewModelScope.launchIO {
-                var news: List<HomeRow> = emptyList()
-                try {
-                    val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
-                    clearedNow.clear()
-                    // Benflix speed: everything is asked at the same time, so a slow Tower can't hold the doors up
-                    coroutineScope {
-                        val episodes = async { episodeNews() }
-                        val music = async { musicNews() + sentMusicNews() }
-                        val bookRows = async { bookNews() }
-                        val requests = async { requestNews() }
-                        val notFound = async { withTimeoutOrNull(CANT_FIND_WAIT_MS) { cantFindNews() }.orEmpty() }
-                        val weather = async { withTimeoutOrNull(WEATHER_WAIT_MS) { towerWeather() } }
-                        val saved = async { withTimeoutOrNull(PREFS_WAIT_MS) { savedPrefs() }.orEmpty() }
-                        val setup = async { withTimeoutOrNull(WEATHER_WAIT_MS) { setupNews() }.orEmpty() }
-                        val custom = saved.await()
-                        cleared = clearedFrom(custom)
-                        news =
-                            shown(
-                                setup.await() + benNews(custom) + episodes.await() + music.await() + bookRows.await() +
-                                    requests.await() + notFound.await() + updateNews(),
-                            ).filter { it.id !in opened }
-                                .sortedByDescending { it.at }
-                                .take(MAX_NEWS)
-                        weather.await()?.let { _weather.value = it.ifBlank { null } }
-                    }
-                    _rows.value = HomeParts(news, shown(onTheWayRows()))
-                    updateDot()
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not load Home's list")
-                } finally {
-                    _loaded.value = true
-                }
-                // Then, quietly: a fresh look at your requests, so On the way is up to date (the list only
-                // changes if something did)
-                try {
-                    requestReadyService.refresh(minGapMs = REQUESTS_GAP_MS)
-                    val again = HomeParts(shown(news), shown(onTheWayRows()))
-                    if (again != _rows.value) _rows.value = again
-                    if (_weather.value == null) towerWeather()?.let { _weather.value = it.ifBlank { null } }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.d(ex, "Home: second look")
-                }
-            }
-        }
-
-        fun open(row: HomeRow) {
-            if (row.news) {
-                val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
-                // Keep the list short: only the newest 60 opened rows are remembered
-                prefs.edit().putStringSet(openedKey(), (opened + row.id).toList().takeLast(60).toSet()).apply()
-                _rows.value = _rows.value.without(setOf(row.id))
-                saveCleared(listOf(row.id))
-            }
-            row.destination?.let { navigationManager.navigateTo(it) }
-        }
-
-        /** The X on a row: it goes away, and stays away on every TV, phone and browser for this profile */
-        fun clear(row: HomeRow) {
-            _rows.value = _rows.value.without(setOf(row.id))
-            clearedNow += row.id
-            saveCleared(listOf(row.id))
-        }
-
-        /** Clear all: the whole list goes away (new news still shows when it comes) */
-        fun clearAll() {
-            val parts = _rows.value
-            val ids = parts.all.map { it.id }
-            HomeNewsDot.set(false)
-            _rows.value = HomeParts()
-            clearedNow += ids
-            saveCleared(ids)
-        }
-
-        private fun saveCleared(keep: List<String>) {
-            if (keep.isEmpty()) return
-            cleared = cleared + keep
-            val userId = serverRepository.currentUser?.id ?: return
-            viewModelScope.launchIO {
-                try {
-                    displayPreferencesService.updateDisplayPreferences(userId) {
-                        val old = get(CLEARED_KEY).orEmpty().split("\n").filter { it.isNotBlank() }
-                        put(CLEARED_KEY, ((old - keep.toSet()) + keep).takeLast(MAX_CLEARED).joinToString("\n"))
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not save the cleared Home rows")
-                }
-            }
-        }
-
-        /** This profile's saved settings on the server (the note from Ben, "Ben fixed it", cleared rows) */
-        private suspend fun savedPrefs(): Map<String, String?> {
-            val userId = serverRepository.currentUser?.id ?: return emptyMap()
-            return try {
-                displayPreferencesService.getDisplayPreferences(userId).customPrefs
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Home: saved settings")
-                emptyMap()
-            }
-        }
-
-        private fun clearedFrom(custom: Map<String, String?>): Set<String> =
-            custom[CLEARED_KEY]
-                .orEmpty()
-                .split("\n")
-                .filter { it.isNotBlank() }
-                .toSet()
-
-        /** A note from Ben (Server page) and "Ben fixed it" after a problem report, newest first */
-        private fun benNews(custom: Map<String, String?>): List<HomeRow> {
-            val out = mutableListOf<HomeRow>()
-            val userId = serverRepository.currentUser?.id
-            notes
-                .parse(custom[com.github.damontecres.wholphin.services.NoteKind.NOTE.key])
-                // Closed on this TV or phone before the list could be cleared
-                ?.takeUnless { userId != null && notes.isDismissed(userId, it) }
-                ?.let { note ->
-                    val text = liveTvWording(note.text)
-                    out +=
-                        HomeRow(
-                            id = "note-${note.id}",
-                            kind = "A note from Ben",
-                            title = text.lineSequence().first(),
-                            kindColor = HomeKind.Other,
-                            image = null,
-                            destination = null,
-                            news = true,
-                            fullText = text,
-                            goTo = noteLink(text, KidsMode.isActive),
-                            // A note from Ben always leads
-                            at = Long.MAX_VALUE,
-                        )
-                }
-            custom["benflix.fixed"]
-                .orEmpty()
-                .split("\n")
-                .lastOrNull { it.isNotBlank() }
-                ?.let { line ->
-                    val at = line.substringBefore("|").toLongOrNull() ?: return@let
-                    val title = line.substringAfter("|").substringBefore("|")
-                    if (System.currentTimeMillis() - at > NEWS_DAYS * DAY_MS) return@let
-                    out +=
-                        HomeRow(
-                            id = "fixed-$at",
-                            kind = "Ben fixed it",
-                            title = title,
-                            kindColor = HomeKind.Ready,
-                            image = null,
-                            destination = null,
-                            news = true,
-                            fullText = "Ben fixed $title. Try it again!",
-                            at = at,
-                        )
-                }
-            return out
-        }
-
         private fun poster(id: java.util.UUID?): String? =
             id?.let {
                 runCatching {
@@ -568,488 +231,14 @@ class HomeDoorsViewModel
                 }.getOrNull()
             }
 
-        /** A new episode (or a new season) of a show you're watching, added in the last 3 days */
-        private suspend fun episodeNews(): List<HomeRow> {
-            val cutoff = LocalDateTime.now().minusDays(NEWS_DAYS)
-            val nextUp =
-                try {
-                    api.tvShowsApi
-                        .getNextUp(
-                            GetNextUpRequest(
-                                userId = serverRepository.currentUser?.id,
-                                fields = listOf(ItemFields.DATE_CREATED),
-                                limit = 30,
-                                enableResumable = false,
-                                enableUserData = true,
-                            ),
-                        ).content.items
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Home news: next up")
-                    emptyList()
-                }
-            return nextUp
-                .filter { it.dateCreated?.isAfter(cutoff) == true }
-                .sortedByDescending { it.dateCreated }
-                .distinctBy { it.seriesId }
-                .take(MAX_NEWS)
-                .map { ep ->
-                    val season = ep.parentIndexNumber
-                    val newSeason = ep.indexNumber == 1 && (season ?: 1) > 1
-                    val show = ep.seriesName ?: ep.name.orEmpty()
-                    HomeRow(
-                        id = "ep-${ep.id}",
-                        // The episode number sits in the small line, so the name gets the whole width
-                        kind =
-                            when {
-                                newSeason -> "New season"
-                                season != null && ep.indexNumber != null -> "New episode · S$season E${ep.indexNumber}"
-                                else -> "New episode"
-                            },
-                        title = if (newSeason) "$show · Season $season" else show,
-                        kindColor = HomeKind.Other,
-                        image = poster(ep.seriesId ?: ep.id),
-                        destination = BaseItem(ep).destination(),
-                        news = true,
-                        at =
-                            ep.dateCreated
-                                ?.atZone(java.time.ZoneId.systemDefault())
-                                ?.toInstant()
-                                ?.toEpochMilli() ?: 0L,
-                    )
-                }
-        }
-
-        /** Benflix music: a new album or single from an artist you follow (Follow on the artist page) */
-        private suspend fun musicNews(): List<HomeRow> {
-            val cutoff = LocalDateTime.now().minusDays(NEWS_DAYS)
-            return try {
-                val followed =
-                    api.itemsApi
-                        .getItems(
-                            org.jellyfin.sdk.model.api.request.GetItemsRequest(
-                                userId = serverRepository.currentUser?.id,
-                                includeItemTypes = listOf(org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST),
-                                recursive = true,
-                                filters = listOf(org.jellyfin.sdk.model.api.ItemFilter.IS_FAVORITE),
-                                limit = 200,
-                            ),
-                        ).content.items
-                        .map { it.id }
-                if (followed.isEmpty()) return emptyList()
-                api.itemsApi
-                    .getItems(
-                        org.jellyfin.sdk.model.api.request.GetItemsRequest(
-                            userId = serverRepository.currentUser?.id,
-                            includeItemTypes = listOf(org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ALBUM),
-                            recursive = true,
-                            albumArtistIds = followed,
-                            sortBy = listOf(org.jellyfin.sdk.model.api.ItemSortBy.DATE_CREATED),
-                            sortOrder = listOf(org.jellyfin.sdk.model.api.SortOrder.DESCENDING),
-                            fields = listOf(ItemFields.DATE_CREATED),
-                            limit = 10,
-                        ),
-                    ).content.items
-                    .filter { it.dateCreated?.isAfter(cutoff) == true }
-                    .distinctBy { it.albumArtist }
-                    .take(2)
-                    .map { album ->
-                        HomeRow(
-                            id = "music-${album.id}",
-                            kind = "New music",
-                            title = listOfNotNull(album.albumArtist, album.name).joinToString(" · "),
-                            kindColor = HomeKind.Other,
-                            image = poster(album.id),
-                            destination = BaseItem(album).destination(),
-                            square = true,
-                            news = true,
-                            at =
-                                album.dateCreated
-                                    ?.atZone(java.time.ZoneId.systemDefault())
-                                    ?.toInstant()
-                                    ?.toEpochMilli() ?: 0L,
-                        )
-                    }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Home news: music")
-                emptyList()
-            }
-        }
-
-        /** Music redesign 3: a song, album, playlist or artist someone sent you (Send to a profile) */
-        private suspend fun sentMusicNews(): List<HomeRow> {
-            if (KidsMode.isActive || GuestMode.isActive) return emptyList()
-            return try {
-                withTimeoutOrNull(BOOK_NEWS_WAIT_MS) { musicMe.load(force = true) }
-                musicMe.state.value.sent.take(3).mapNotNull { sent ->
-                    val id = runCatching { java.util.UUID.fromString(sent.place.id) }.getOrNull() ?: return@mapNotNull null
-                    val kind =
-                        when (sent.place.kind) {
-                            "song" -> org.jellyfin.sdk.model.api.BaseItemKind.AUDIO
-                            "album" -> org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ALBUM
-                            "playlist" -> org.jellyfin.sdk.model.api.BaseItemKind.PLAYLIST
-                            "artist" -> org.jellyfin.sdk.model.api.BaseItemKind.MUSIC_ARTIST
-                            else -> return@mapNotNull null
-                        }
-                    HomeRow(
-                        id = "sent-${sent.sentId}",
-                        kind = if (sent.from.isBlank()) "Sent to you" else "From ${sent.from}",
-                        title = sent.place.name,
-                        kindColor = HomeKind.Other,
-                        image = poster(id),
-                        destination = Destination.MediaItem(id, kind),
-                        square = true,
-                        news = true,
-                        at = (sent.place.at * 1000).toLong(),
-                    )
-                }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.d(ex, "Home news: music sent to you")
-                emptyList()
-            }
-        }
-
-        /** Books: a new volume of a manga you read, or a book you asked for is here (Tower works these out) */
-        private suspend fun bookNews(): List<HomeRow> =
-            try {
-                withTimeoutOrNull(BOOK_NEWS_WAIT_MS) { books.news() }.orEmpty().take(2).map {
-                    val (kind, title) = bookWords(it)
-                    HomeRow(
-                        id = "book-${it.id}",
-                        kind = kind,
-                        title = title,
-                        kindColor = if (it.id.startsWith("bkr-")) HomeKind.Ready else HomeKind.Other,
-                        image = books.url(it.cover),
-                        destination = Destination.BookTitle(it.titleId),
-                        news = true,
-                        at = it.at,
-                    )
-                }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                // Tower's helper isn't set up for books yet (or can't be reached): no book news
-                Timber.d(ex, "Home news: books")
-                emptyList()
-            }
-
-        /** Something you asked for in Requests is here */
-        private suspend fun requestNews(): List<HomeRow> =
-            requestReadyService.ready.value
-                .mapNotNull { it.jellyfinId }
-                .take(3)
-                .mapIndexedNotNull { i, id ->
-                    try {
-                        val item = api.userLibraryApi.getItem(id).content
-                        HomeRow(
-                            id = "req-$id",
-                            kind = "Ready to watch",
-                            title = "${item.name.orEmpty()} · you asked",
-                            kindColor = HomeKind.Ready,
-                            image = poster(item.id),
-                            destination = BaseItem(item).destination(),
-                            news = true,
-                            at =
-                                item.dateCreated
-                                    ?.atZone(java.time.ZoneId.systemDefault())
-                                    ?.toInstant()
-                                    ?.toEpochMilli()
-                                    ?: (System.currentTimeMillis() - i),
-                        )
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        null
-                    }
-                }
-
-        /**
-         * Something you asked for that Ben couldn't find (Ben 2026-11-15: a Home news row, not a pop-up). Pressing
-         * it opens a small pop-up with Ben's note and a See details button. Stays for [CANT_FIND_DAYS] days, or until
-         * cleared. Ben marks these himself, so he isn't told. Ones the old pop-up already showed aren't shown again.
-         */
-        private suspend fun cantFindNews(): List<HomeRow> {
-            if (serverRepository.currentUserDto?.policy?.isAdministrator == true) return emptyList()
-            if (!seerrService.active.first()) return emptyList()
-            val seerrUserId = seerrServerRepository.currentUserId.first() ?: return emptyList()
-            cantFind.refresh()
-            val told =
-                OrderedSeen
-                    .read(
-                        context.getSharedPreferences(CantFindNoticeViewModel.PREFS, Context.MODE_PRIVATE),
-                        CantFindNoticeViewModel.toldKey(serverRepository.currentUser?.id),
-                    ).toSet()
-            val today = java.time.LocalDate.now()
-            val recent =
-                cantFind.entries.value.values
-                    .filter { seerrUserId in it.askedBy && "${it.key}|${it.date}" !in told }
-                    .mapNotNull { entry ->
-                        val day = runCatching { java.time.LocalDate.parse(entry.date) }.getOrNull()
-                        if (day == null || java.time.temporal.ChronoUnit.DAYS
-                                .between(day, today) > CANT_FIND_DAYS
-                        ) {
-                            null
-                        } else {
-                            entry to day
-                        }
-                    }.sortedByDescending { it.second }
-                    .take(2)
-            return recent.mapNotNull { (entry, day) ->
-                val item = cantFindItem(entry)
-                // It turned up in the meantime: nothing to say sorry about
-                if (item?.availability == com.github.damontecres.wholphin.data.model.SeerrAvailability.AVAILABLE) {
-                    return@mapNotNull null
-                }
-                val title = item?.title ?: entry.title ?: "Something you asked for"
-                val why =
-                    if (entry.auto) {
-                        "We looked for $title for a week but couldn't find a copy yet."
-                    } else {
-                        "Ben looked for $title but couldn't find a copy yet."
-                    }
-                val note = entry.note?.let { "\n\nBen's note: \u201C$it\u201D" }.orEmpty()
-                HomeRow(
-                    id = "cant-${entry.key}-${entry.date}",
-                    kind = "Couldn't find it",
-                    title = title,
-                    kindColor = com.github.damontecres.wholphin.ui.discover.CANT_FIND_COLOR,
-                    image = item?.posterUrl ?: entry.posterUrl,
-                    destination = null,
-                    news = true,
-                    fullText = "$why If one turns up, it'll come to Glowfin by itself.$note",
-                    goTo = ("See details" to (item?.destination ?: Destination.Requests)),
-                    at =
-                        day
-                            .atStartOfDay(java.time.ZoneId.systemDefault())
-                            .toInstant()
-                            .toEpochMilli(),
-                )
-            }
-        }
-
-        private suspend fun cantFindItem(entry: com.github.damontecres.wholphin.services.CantFindEntry) =
-            try {
-                val tmdbId = entry.key.substringAfter('-').toIntOrNull()
-                when {
-                    tmdbId == null -> {
-                        null
-                    }
-
-                    entry.key.startsWith("MOVIE") -> {
-                        seerrService.createDiscoverItem(seerrService.api.moviesApi.movieMovieIdGet(movieId = tmdbId))
-                    }
-
-                    else -> {
-                        seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdbId))
-                    }
-                }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.d(ex, "Home news: couldn't look up %s", entry.key)
-                null
-            }
-
-        /**
-         * Redesign 2 (approved ss-p-setup): Ben's note when Tower's helper is older than this app needs.
-         * Pressing it opens Server, where the yellow card has the command with Copy. Clearing it hides it until
-         * the next time a new setup is needed.
-         */
-        private suspend fun setupNews(): List<HomeRow> {
-            if (serverRepository.currentUserDto?.policy?.isAdministrator != true) return emptyList()
-            val need = setupCheck.check() ?: return emptyList()
-            return listOf(
-                HomeRow(
-                    id = "setup-${need.need}",
-                    kind = "Tower needs the setup command",
-                    title = "New things are waiting. Open Server to copy the command",
-                    kindColor = BenflixColors.Warning,
-                    at = System.currentTimeMillis(),
-                    image = null,
-                    destination = Destination.ServerStatus,
-                    news = true,
-                ),
-            )
-        }
-
-        /**
-         * A new Benflix version. The main profile sees it right away; everyone else once this TV or phone
-         * has been a day behind (Kids and Guest never get news). After 3 days the update screen asks too.
-         */
-        private fun updateNews(): List<HomeRow> {
-            val admin = serverRepository.currentUserDto?.policy?.isAdministrator == true
-            val version = UpdateNotice.version.value ?: return emptyList()
-            if (!admin && UpdateNotice.daysBehind.value < 1) return emptyList()
-            return listOf(
-                HomeRow(
-                    id = "update-$version",
-                    kind = "Glowfin update",
-                    title = "A new version is ready to install",
-                    kindColor = HomeKind.Other,
-                    image = null,
-                    destination = Destination.UpdateApp,
-                    news = true,
-                    at = System.currentTimeMillis() - UpdateNotice.daysBehind.value * DAY_MS,
-                ),
-            )
-        }
-
-        /** Your own requests still on the way (pressing one opens Requests) */
-        private fun onTheWayRows(): List<HomeRow> =
-            requestReadyService.onTheWay.value.map {
-                HomeRow(
-                    id = "way-${it.requestId}",
-                    kind = onTheWayKind(it.line),
-                    title = it.title,
-                    kindColor = HomeKind.OnTheWay,
-                    image = it.posterUrl,
-                    destination = Destination.Requests,
-                )
-            }
-
-        /** Tower's weather line with today's name in front ("" = no town set), saved for next time */
-        private suspend fun towerWeather(): String? =
-            try {
-                val j = helper.getJson("/api/home/weather")
-                val line =
-                    if (j.optBoolean("ready")) {
-                        java.time.LocalDate
-                            .now()
-                            .dayOfWeek
-                            .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault()) + " · " +
-                            j.optString("line")
-                    } else {
-                        ""
-                    }
-                prefs
-                    .edit()
-                    .putString(WEATHER_KEY, line)
-                    .putLong(WEATHER_AT_KEY, System.currentTimeMillis())
-                    .apply()
-                line
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                // An older Tower helper (no weather yet) or Tower can't be reached
-                Timber.d(ex, "Home: weather")
-                null
-            }
-
-        private fun savedWeather(): String? {
-            val at = prefs.getLong(WEATHER_AT_KEY, 0L)
-            if (System.currentTimeMillis() - at > WEATHER_KEEP_MS) return null
-            val line = prefs.getString(WEATHER_KEY, null)?.takeIf { it.isNotBlank() } ?: return null
-            // The day name is put in front when it's saved, so a line from yesterday evening isn't shown
-            val today =
-                java.time.LocalDate
-                    .now()
-                    .dayOfWeek
-                    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
-            return line.takeIf { it.startsWith(today) }
-        }
-
         companion object {
             /** The smaller Homes' rows, kept per profile while Benflix is open */
             private val familyMemory = java.util.concurrent.ConcurrentHashMap<String, FamilyHomeData>()
             private const val FAMILY_ROW = 12
             private const val POPULAR_MIN = 5
-            private const val PREFS = "benflix_home_news"
-            private const val WEATHER_KEY = "weather-line"
-            private const val WEATHER_AT_KEY = "weather-at"
-            private const val WEATHER_KEEP_MS = 3 * 3_600_000L
-            private const val NEWS_DAYS = 3L
-            private const val CANT_FIND_DAYS = 14L
-            private const val CANT_FIND_WAIT_MS = 2_500L
-            private const val DAY_MS = 86_400_000L
-            private const val PREFS_WAIT_MS = 2_000L
-
-            /** Shared with Benflix on the web (server/web/js/start.js) */
-            const val CLEARED_KEY = "benflix.cleared"
-            private const val MAX_CLEARED = 80
-            private const val BOOK_NEWS_WAIT_MS = 1_200L
-            private const val WEATHER_WAIT_MS = 1_200L
-            private const val REQUESTS_GAP_MS = 5 * 60_000L
-
             private const val POSTER_HEIGHT = 240
-            const val MAX_NEWS = 12
-            private const val MAX_SEEN = 80
         }
     }
-
-/**
- * Home's news panel (approved hm-tall): up to [slots] lines (6 on a TV, 5 on phones). Your news newest first, then
- * On the way. A busy day shows what fits and keeps the last line
- * for "4 more" and See all.
- */
-fun arrangeHomeRows(
-    parts: HomeParts,
-    slots: Int,
-): HomeList {
-    val all = parts.all
-    if (all.size > slots) return HomeList(all.take(slots - 1), all.size - (slots - 1))
-    return HomeList(all.take(slots), 0)
-}
-
-/** "On the way, about 20 minutes left" becomes the small line "On the way · 20 min left" */
-fun onTheWayKind(line: String): String {
-    val l = line.lowercase()
-    val short =
-        when {
-            "waiting for a yes" in l -> {
-                "waiting for a yes"
-            }
-
-            "looking for a copy" in l -> {
-                "searching"
-            }
-
-            "almost here" in l -> {
-                "almost here"
-            }
-
-            "an hour left" in l -> {
-                "1h left"
-            }
-
-            else -> {
-                Regex("about (\\d+) (minutes|hours) left").find(l)?.let {
-                    it.groupValues[1] + if (it.groupValues[2] == "hours") "h left" else " min left"
-                } ?: Regex("(\\d+)% downloaded").find(l)?.let { "${it.groupValues[1]}%" }
-            }
-        }
-    return if (short == null) "On the way" else "On the way · $short"
-}
-
-/** Books news: the small line and the name ("New volume", "One Piece · Vol. 109") */
-fun bookWords(news: com.github.damontecres.wholphin.services.BookNews): Pair<String, String> {
-    val name = news.name ?: news.text
-    return when {
-        news.id.startsWith("bkr-") -> {
-            "Ready to read" to name
-        }
-
-        news.id.startsWith("bks-") -> {
-            "On your phone" to name
-        }
-
-        else -> {
-            val vol =
-                news.line
-                    ?.removePrefix("New: ")
-                    ?.removeSuffix(" is here")
-                    ?.takeIf { it.isNotBlank() && it != news.line }
-            "New volume" to (if (vol != null) "$name · $vol" else name)
-        }
-    }
-}
-
-/** Lets the pop-up finish closing before the remote's focus moves back to the doors */
-private const val REFOCUS_DELAY_MS = 150L
 
 /** "Good morning", "Good afternoon" or "Good evening" */
 fun greetingFor(
@@ -1066,9 +255,8 @@ fun greetingFor(
 }
 
 /**
- * Benflix Home (navigation redesign, Nov 2026): the greeting, a carousel of six picks for this profile, and
- * the Today cards floating under it. The doors live in the rail on the left of every page now. Kids and Guest
- * get the same Home with titles instead of news. The remote starts on Play.
+ * Glowfin Home: grown-ups get the top area + rows Home ([GlowfinHome]); Kids and Guest get their own smaller Home.
+ * The doors live in the rail on the left of every page.
  *
  * Right after someone is picked on Who's watching, the rail's door icons light up one after another with the
  * same soft mallet notes the doors had; presses wait until they're done. The first pick blooms in on the last note.
@@ -1085,10 +273,9 @@ fun DoorsHomePage(
     // Kids, Big kids and Guest get their own Home (Glowfin K1, ui-17). Easy mode is gone.
     val familyKind = remember(kids, guestOn) { familyKindNow() }
     val familyData by viewModel.family.collectAsState()
-    // Kids and Guest get titles instead of news
+    // Kids and Guest get their own smaller Home
     val smallHome = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
     LifecycleStartEffect(familyKind) {
-        viewModel.load(small = smallHome)
         if (smallHome) familyKind?.let { viewModel.loadFamily(it) }
         onStopOrDispose { }
     }
@@ -1105,25 +292,17 @@ fun DoorsHomePage(
         StartupTimer.mark(StartupTimer.HOME_ROWS)
         StartupTimer.finish(context)
     }
-    // Navigation redesign (Nov 2026): the doors are in the rail now, and Home is the carousel of picks with the
-    // Today cards floating under it (approved hm-spot, hc-dots, fl-cards). Kids get the same Home made for them.
+    // The rail's doors that light up at start-up
     val doors =
         when (familyKind) {
             FamilyKind.KIDS -> KidsDoors
             FamilyKind.GUEST -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS)
             else -> BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
         }
-    val lite =
-        remember {
-            com.github.damontecres.wholphin.services.LiteMode
-                .isOn(context)
-        }
-    val liveRows by viewModel.rows.collectAsState()
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     // Phones turned sideways and tablets use the TV layout
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
-    val picksViewModel: HomePicksViewModel = hiltViewModel()
 
     // The start-up light-up (approved in-light), once, right after a profile is picked: the rail's door icons
     // light up in their colours top to bottom, one after another, and the
@@ -1140,9 +319,7 @@ fun DoorsHomePage(
             BenflixIntroState.doorsPending = false
             try {
                 // Everything ready before anything moves (no sound: Ben wants it clean and plain)
-                withTimeoutOrNull(WAIT_FOR_NEWS_MS) {
-                    if (smallHome) viewModel.family.first { it.loaded } else picksViewModel.ready.first { it }
-                }
+                if (smallHome) withTimeoutOrNull(WAIT_FOR_ROWS_MS) { viewModel.family.first { it.loaded } }
                 val pace = IntroPace.measure(context, frames = 6)
                 val f = pace.stretch
                 val stagger = DOOR_STAGGER_MS * f
@@ -1185,56 +362,6 @@ fun DoorsHomePage(
         }
     }
 
-    val rows = liveRows
-    // A row with nowhere to go (a note from Ben, "Ben fixed it") opens a pop-up with all its words
-    var reading by remember { mutableStateOf<HomeRow?>(null) }
-    var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    LaunchedEffect(refocus) {
-        if (refocus > 0) {
-            kotlinx.coroutines.delay(REFOCUS_DELAY_MS)
-            playFocus.tryRequestFocus()
-        }
-    }
-    val onRow: (HomeRow) -> Unit = { row -> if (row.destination == null) reading = row else viewModel.open(row) }
-    reading?.let { row ->
-        HomeMessageDialog(
-            row = row,
-            onClear = {
-                viewModel.clear(row)
-                reading = null
-                refocus++
-            },
-            onGo = { place ->
-                viewModel.clear(row)
-                reading = null
-                viewModel.navigationManager.navigateTo(place)
-            },
-            onClose = { reading = null },
-        )
-    }
-    // See all: everything new, with Clear and Clear all
-    var seeAll by remember { mutableStateOf(false) }
-    if (seeAll) {
-        LaunchedEffect(Unit) { viewModel.markSeen() }
-        SeeAllPanel(
-            rows = rows.all,
-            lite = lite,
-            onRow = {
-                seeAll = false
-                onRow(it)
-            },
-            onClear = viewModel::clear,
-            onClearAll = {
-                seeAll = false
-                viewModel.clearAll()
-                refocus++
-            },
-            onClose = {
-                seeAll = false
-                refocus++
-            },
-        )
-    }
     val family = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
     Box(
         modifier =
@@ -1251,24 +378,8 @@ fun DoorsHomePage(
                 },
     ) {
         if (!family) {
-            // Glowfin (ui-6): the top area + rows Home, with the news as its "What's new" row
-            val news =
-                arrangeHomeRows(rows, WHATS_NEW_CARDS).rows.map { row ->
-                    TodayCard(
-                        id = row.id,
-                        kind = row.kind,
-                        kindColor = row.kindColor,
-                        title = row.title,
-                        image = row.image,
-                        square = row.square,
-                        onClick = { onRow(row) },
-                    )
-                }
-            GlowfinHome(
-                news = news,
-                onSeeAllNews = if (rows.all.size > news.size) ({ seeAll = true }) else null,
-                onNewsSeen = { viewModel.markSeen() },
-            )
+            // Glowfin (ui-6): the top area + rows Home
+            GlowfinHome()
             return@Box
         }
         // Glowfin K1 (ui-17): the Kids Home and the Guest Home
@@ -1302,9 +413,6 @@ private const val LIGHT_MS = 320f
 private const val BLOOM_MS = 520f
 private const val SETTLE_MS = 600f
 
-/** Glowfin Home's "What's new" row holds a few more */
-private const val WHATS_NEW_CARDS = 10
-
 private const val DOOR_STAGGER_MS = 70f
 
 /**
@@ -1313,5 +421,5 @@ private const val DOOR_STAGGER_MS = 70f
  */
 private const val MUSIC_DOOR_START_MS = 4 * DOOR_STAGGER_MS
 
-/** The longest Home waits for its news before the doors grow (a slow server goes on anyway) */
-private const val WAIT_FOR_NEWS_MS = 1500L
+/** The longest the Kids and Guest Home wait for their rows before the light-up (a slow server goes on anyway) */
+private const val WAIT_FOR_ROWS_MS = 1500L

@@ -8,7 +8,6 @@ import com.github.damontecres.wholphin.services.LatestNextUpService
 import com.github.damontecres.wholphin.services.NextEpisode
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.SlimItemFields
-import com.github.damontecres.wholphin.ui.main.trendingCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -723,3 +722,6 @@ class DoorDataService
             val rowLimit: Int get() = if (KidsMode.isActive) 15 else ROW
         }
     }
+
+/** Benflix: Seerr's trending list and when it was fetched */
+@Volatile private var trendingCache: Pair<Long, List<DiscoverItem>>? = null

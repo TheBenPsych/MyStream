@@ -192,18 +192,6 @@ data class KidsBook(
     val cover: String?,
 )
 
-data class BookNews(
-    val id: String,
-    val text: String,
-    val titleId: String,
-    /** For Home's list: the book's name, the words under it, and its cover (older Tower helpers send none) */
-    val name: String? = null,
-    val line: String? = null,
-    val cover: String? = null,
-    /** When it arrived (milliseconds), so Home's news is newest first */
-    val at: Long = 0L,
-)
-
 data class BookStats(
     /** Minutes read and listened for each of the last 7 days, oldest first */
     val days: List<Pair<Int, Int>>,
@@ -535,19 +523,6 @@ class BenflixBooks
         }
 
         suspend fun sendToPhone(id: String): String = helper.postJson("/api/books/send/" + Uri.encode(id)).optString("words", "Sent.")
-
-        suspend fun news(): List<BookNews> =
-            helper.getJson("/api/books/news").optJSONArray("news").objects().map {
-                BookNews(
-                    it.optString("id"),
-                    it.optString("text"),
-                    it.optString("title"),
-                    name = it.optString("name").takeIf { s -> s.isNotBlank() },
-                    line = it.optString("line").takeIf { s -> s.isNotBlank() },
-                    cover = it.optString("cover").takeIf { s -> s.isNotBlank() },
-                    at = (it.optDouble("at", 0.0) * 1000).toLong(),
-                )
-            }
 
         suspend fun stats(): BookStats {
             val j = helper.getJson("/api/books/stats")

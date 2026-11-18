@@ -381,7 +381,6 @@ fun ServerStatusPage(
                     }
 
                     ServerToolGroup.PEOPLE -> {
-                        toolsViewModel.loadNotes()
                         toolsViewModel.loadVersions()
                     }
 
@@ -862,7 +861,6 @@ fun ServerStatusPage(
                             showScan = false,
                         )
                         driveHealthItems()
-                        homeWeatherItems()
                         bookListItems()
                     }
                 }

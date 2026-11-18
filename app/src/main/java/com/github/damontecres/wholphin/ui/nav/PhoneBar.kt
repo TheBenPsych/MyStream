@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -90,7 +88,6 @@ fun phoneTabFor(
 fun PhoneBottomBar(
     tabs: List<PhoneTab>,
     selected: String,
-    moreDot: Boolean,
     onTab: (PhoneTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -147,16 +144,6 @@ fun PhoneBottomBar(
                             size = 24.dp,
                             contentDescription = null,
                         )
-                        // Approved ix-badges: on phones the white dot for new notices sits on More
-                        if (tab.key == TAB_MORE && moreDot) {
-                            Box(
-                                Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-12).dp, y = 1.dp)
-                                    .size(10.dp)
-                                    .background(BenflixColors.Text, CircleShape),
-                            )
-                        }
                     }
                     Text(
                         text = tab.label,

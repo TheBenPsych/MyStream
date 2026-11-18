@@ -75,11 +75,6 @@ try:  # Parents' guide for the web version, in benflix_facts.py ("Did you know" 
 except ImportError:
     facts = None
 
-try:  # Home's weather line (a town typed once on the Server page), in benflix_home.py
-    import benflix_home as home
-except ImportError:
-    home = None
-
 try:  # Better copies from Radarr/Sonarr keep their first "date added", so they don't show as new, in benflix_arrivals.py
     import benflix_arrivals as arrivals
 except ImportError:
@@ -1359,7 +1354,6 @@ class Handler(BaseHTTPRequestHandler):
                         "care": care is not None and care.ffmpeg_ok(),
                         "facts": facts is not None,
                         "books": books is not None,
-                        "home": home is not None,
                         "lobby": lobby is not None,
                         # Which setup the helper came from (the app and web show the yellow setup card when it's older)
                         "setup": SETUP_VERSION,
@@ -1464,14 +1458,6 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Facts aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = facts.route(method, path, query, token, user_id, is_admin)
                 return self.send(status, answer)
-            if path.startswith("/api/home/") or path.startswith("/api/admin/home/"):
-                # Home's weather line (everyone signed in); setting the town is admin only (and at home only, above)
-                if home is None:
-                    raise HelperError(503, "Home's weather isn't on the server yet. Run the Glowfin setup command again.")
-                answer = home.route(method, path, self.read_json, is_admin)
-                if answer is None:
-                    raise HelperError(404, "Not found")
-                return self.send(answer[0], answer[1])
             if path.startswith("/api/lobby/"):
                 # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
                 if lobby is None:
@@ -1997,8 +1983,6 @@ if __name__ == "__main__":
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
         )
-    if home is not None:
-        home.start()
     if facts is not None:
         facts.start(
             jellyfin_call,

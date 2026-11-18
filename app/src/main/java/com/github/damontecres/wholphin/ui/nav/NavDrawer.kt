@@ -2,9 +2,6 @@ package com.github.damontecres.wholphin.ui.nav
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +26,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -57,7 +53,6 @@ import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
-import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -526,11 +521,6 @@ fun NavDrawer(
     val readyCount =
         com.github.damontecres.wholphin.ui.components
             .rememberRequestReadyCount()
-    // Notices redesign (2026-11-10): the white dot on your picture only means "news on Home". Updates are a Home
-    // row, server problems live on the Server page, and the menu still says "Update ready", "3 waiting" and so on.
-    val homeNews by com.github.damontecres.wholphin.ui.components.HomeNewsDot.on
-        .collectAsState()
-    val badge = !kids && !guest && homeNews
 
     var showMenu by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -603,20 +593,6 @@ fun NavDrawer(
                     note = if (updateAlert) "Update ready" else null,
                 ),
             )
-            if (badge) {
-                add(
-                    ProfileMenuItem(
-                        icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.CHECK,
-                        title = "Mark all as seen",
-                        onClick = {
-                            showMenu = false
-                            menuViewModel.markAllSeen()
-                            com.github.damontecres.wholphin.ui.components.HomeNewsDot
-                                .set(false)
-                        },
-                    ),
-                )
-            }
             add(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.FLAG,
@@ -791,7 +767,6 @@ fun NavDrawer(
                     PhoneBottomBar(
                         tabs = tabs,
                         selected = phoneTabFor(destination, tabs),
-                        moreDot = badge,
                         onTab = { tab ->
                             when {
                                 tab.key == TAB_HOME -> {
@@ -913,7 +888,6 @@ fun NavDrawer(
             requestsCount = if (requestsWaiting > 0) requestsWaiting else readyCount,
             user = user,
             userImageUrl = userImageUrl,
-            badge = badge,
             big = easy,
             alwaysOpen = alwaysOpen,
             profileItems = profileItems,

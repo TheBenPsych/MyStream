@@ -248,7 +248,7 @@ class MusicArtistViewModel
             }
         }
 
-        /** Follow: new music from them shows as a news pill on Home */
+        /** Follow: they're one of your artists */
         fun toggleFollow() {
             val artist = _state.value.artist ?: return
             viewModelScope.launchIO {

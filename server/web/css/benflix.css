@@ -855,75 +855,6 @@ body.reading .mbar { display: none; }
   .bkpage .bktop { display: none; }
 }
 
-/* ---------- Home (Redesign 2, approved hm-tall). Everything is measured in --u (about 1.4% of the window's width,
-   smaller on short windows): doors 13u squares 1.1u apart, the news panel 2.4u to the right, exactly as tall as the doors.
-   The panel: Clear all at its top right, then up to 5 rows (small square poster, small coloured line, name on 2 lines) ---------- */
-.board { --u: min(calc((100vw - 2 * var(--gutter)) / 69.6), calc((100vh - var(--bar) - 190px) / 27.1)); }
-.board .bgreet { margin: 8px 0 18px; }
-.board .greet { margin: 0; }
-.board .wx { color: var(--ink2); font-size: 18px; font-weight: 500; margin-top: 4px; min-height: 1.4em; }
-.board .bmain { margin-top: auto; display: grid; grid-template-columns: calc(41.2 * var(--u)) 1fr; column-gap: calc(2.4 * var(--u)); height: calc(27.1 * var(--u)); }
-.doors.sq3 { flex: none; display: grid; grid-template-columns: repeat(3, calc(13 * var(--u))); grid-auto-rows: calc(13 * var(--u)); gap: calc(1.1 * var(--u)); min-height: 0; max-height: none; }
-.doors.sq3 .door { padding: calc(.9 * var(--u)); border-radius: calc(.85 * var(--u)); grid-column: auto; min-height: 0; }
-.doors.sq3 .door svg.i { width: calc(1.9 * var(--u)); height: calc(1.9 * var(--u)); }
-.doors.sq3 .door .n { font-size: clamp(13px, calc(1.6 * var(--u)), 32px); line-height: 1.1; white-space: nowrap; }
-.doors.sq3 .door .d { font-size: clamp(11px, calc(1 * var(--u)), 18px); line-height: 1.22; min-height: 2.44em; margin-top: calc(.2 * var(--u)); font-weight: 600; }
-.doors.sq3 .door:focus-visible { outline-width: max(3px, calc(.22 * var(--u))); outline-offset: 0; border-radius: calc(.85 * var(--u)); }
-.blist { min-width: 0; display: flex; flex-direction: column; position: relative; }
-.bpanel { --fs: 1; height: 100%; background: #111319; border-radius: calc(.9 * var(--u)); padding: calc(.35 * var(--u)); display: grid; grid-template-rows: calc(2.3 * var(--u)) repeat(5, minmax(0, 1fr)); }
-.bhead { display: flex; justify-content: flex-end; align-items: center; }
-.bitem { display: grid; grid-template-columns: 1fr calc(2.1 * var(--u)); column-gap: calc(.3 * var(--u)); align-items: center; min-height: 0; position: relative; }
-.bitem + .bitem::before, .bmore::before { content: ""; position: absolute; top: 0; left: calc(.6 * var(--u)); right: calc(.6 * var(--u)); border-top: 1px solid #262A34; }
-.bitem:hover::before, .bitem:focus-within::before, .bitem:hover + .bitem::before, .bitem:focus-within + .bitem::before { display: none; }
-.brow { display: grid; grid-template-columns: auto 1fr; column-gap: calc(.8 * var(--u)); align-items: center; padding: calc(.35 * var(--u)) calc(.6 * var(--u)); border-radius: calc(.6 * var(--u)); min-height: 0; align-self: stretch; overflow: hidden; position: relative; }
-button.brow { width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.brow:hover, .brow:focus-visible { background: var(--pg4); outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
-/* The X beside each row (clears it for this profile), Clear all, and See all on a busy day */
-.bx { width: calc(2.1 * var(--u)); height: calc(2.1 * var(--u)); border-radius: 50%; border: 0; background: none; color: var(--ink2); cursor: pointer; display: grid; place-items: center; padding: 0; }
-.bx svg { width: 45%; height: 45%; }
-.bx:hover, .bx:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2.5px #fff; }
-.bclear, .bsee { background: none; border: 0; color: var(--ink2); font: inherit; font-size: 14px; font-weight: 600; padding: 5px 12px; border-radius: 99px; cursor: pointer; }
-.bclear:hover, .bclear:focus-visible, .bsee:hover, .bsee:focus-visible { background: var(--pg4); color: #fff; outline: none; box-shadow: inset 0 0 0 2px #fff; }
-.bmore { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 calc(.6 * var(--u)); color: var(--ink2); font-weight: 600; font-size: 15px; }
-.brow .tx { min-width: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: center; }
-.brow .tx small { display: block; font-size: calc(clamp(10px, calc(.7 * var(--u)), 15px) * var(--fs)); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.brow .tx b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: calc(clamp(13px, calc(1 * var(--u)), 22px) * var(--fs)); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-.brow .tx b i { font-style: normal; }
-/* A name too long for 2 lines slides by on one line while the row is picked */
-.brow.long:hover .tx b, .brow.long:focus-visible .tx b { display: block; white-space: nowrap; -webkit-line-clamp: none; }
-.brow.long:hover .tx b i, .brow.long:focus-visible .tx b i { display: inline-block; padding-right: 3em; animation: slidename 9s linear .7s infinite; }
-@keyframes slidename { 0%, 8% { transform: translateX(0); } 92%, 100% { transform: translateX(-100%); } }
-.brow .th, .lgthumb { width: calc(var(--rowh, 3.8) * var(--u)); aspect-ratio: 1; border-radius: calc(.4 * var(--u)); }
-.brow .th { background: var(--pg3) center/cover no-repeat; }
-.lgthumb { background: var(--pg3); display: grid; place-items: center; }
-.lgthumb img { width: 70%; height: auto; display: block; }
-.board.grow .blist { animation: fadein .4s .6s both; }
-/* See all: the same rows in the side panel */
-.seeall { --u: 16px; --fs: 1; margin-top: 10px; }
-.seeall .sarows { display: flex; flex-direction: column; gap: 2px; }
-.seeall .brow { padding: 8px 10px; }
-.seeall .brow .th, .seeall .lgthumb { width: 52px; }
-@media (max-width: 900px) {
-  .board { --u: calc((100vw - 2 * var(--gutter) - 20px) / 39); }
-  .board .wx { font-size: 14px; }
-  .board .bmain { margin-top: 4px; display: block; height: auto; }
-  .doors.sq3 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 10px; }
-  .doors.sq3 .door { aspect-ratio: 1; grid-column: auto !important; min-height: 0 !important; }
-  .doors.sq3 .door .n { font-size: clamp(13px, calc(1.6 * var(--u)), 22px); }
-  .doors.sq3 .door .d { font-size: clamp(10.5px, calc(1 * var(--u)), 14px); }
-  .blist { margin-top: 18px; }
-  .bpanel { height: auto; display: block; border-radius: 16px; padding: 5px; }
-  .bitem { grid-template-columns: 1fr 36px; column-gap: 4px; }
-  .brow { column-gap: 12px; padding: 9px 10px; border-radius: 11px; }
-  .bitem + .bitem::before, .bmore::before { left: 12px; right: 12px; }
-  .bmore { padding: 8px 10px; font-size: 13px; }
-  .bx { width: 36px; height: 36px; }
-  .bclear, .bsee { font-size: 13px; }
-  .brow .tx small { font-size: 11px; } .brow .tx b { font-size: 15px; }
-  .brow .th, .lgthumb { width: 46px; border-radius: 6px; }
-  .lgthumb { grid-template-rows: repeat(2, 10px); }
-}
-
 /* Song previews: the round play button beside Ask for it, and on song covers */
 .circle.pv { width: 38px; height: 38px; flex: none; }
 .circle.pv svg.i { width: 18px; height: 18px; }
@@ -1668,7 +1599,6 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .rl-door.open, .rl-me.open { background: var(--pg3); color: var(--c); }
 .rl-gap { flex: 1; min-height: 12px; }
 .rl-me .pic { width: 30px; height: 30px; font-size: 13px; margin-left: -4px; }
-.rl-dot { position: absolute; left: 32px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tray); }
 .rl-count { position: absolute; left: 28px; top: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--live); color: #081B19; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
 .rl-count[hidden] { display: none; }
 /* Start-up: each icon lights up in its door colour, top to bottom */
@@ -1727,7 +1657,6 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bt svg.i { width: 24px; height: 24px; }
 .bt.on { color: var(--ink); font-weight: 800; }
 .bt.on i { background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--c); }
-.bt .rl-dot { left: auto; right: 12px; top: 1px; }
 .navsheet .sheet { display: flex; flex-direction: column; gap: 2px; }
 .sh-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 10px; border-radius: 12px; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .sh-row svg.i { color: var(--c, var(--ink2)); width: 22px; height: 22px; }
@@ -1911,13 +1840,6 @@ svg.gi path.gd { stroke-width: 3.6; }
   .ptabs a .lg { display: none; }
   .ptabs a .sm { display: inline; }
 }
-/* Glowfin Home: What's new is one row of cards */
-.whatsnew .bpanel { display: flex; gap: 12px; overflow-x: auto; padding: 0 var(--edge, 40px) 6px; background: none; border: 0; box-shadow: none; max-height: none; }
-.whatsnew .bpanel .bhead, .whatsnew .bpanel .bmore span { display: none; }
-.whatsnew .bitem { flex: none; width: 300px; }
-.whatsnew .bmore { flex: none; display: flex; align-items: center; }
-@media (max-width: 720px) { .whatsnew .bitem { width: 250px; } .whatsnew .bpanel { padding: 0 12px 6px; } }
-.whatsnew:not(:has(.bitem)) { display: none; }
 
 /* ---------- Glowfin player (P1, Ben 2026-11-18): the Wholphin bar in Glowfin colours, same as the TV ----------
    Name top left, the glow progress line cut into chapters, then Back 10, Pause, Ahead 10, Next episode on the

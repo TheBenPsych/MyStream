@@ -785,7 +785,6 @@
   const songMenu = (anchor, s, extra) => {
     const opts = [{ label: "Play next", value: "next" }, { label: "Add to Up next", value: "add" }, { label: "Add to a playlist", value: "pl" }, { label: M.liked.has(s.Id) || (s.UserData || {}).IsFavorite ? "Unlike" : "Like", value: "like" }];
     opts.push({ label: "Start a radio", value: "radio" });
-    opts.push({ label: "Send to someone", value: "send" });
     if (s.AlbumArtists && s.AlbumArtists[0]) opts.push({ label: "Go to artist", value: "artist" });
     if (s.AlbumId) opts.push({ label: "Go to album", value: "album" });
     (extra || []).forEach((o) => opts.push(o));
@@ -803,31 +802,9 @@
       else if (v === "redo") redoSong(s);
       else if (v === "delete") deleteSong(s);
       else if (v === "radio") startRadio(s);
-      else if (v === "send") sendTo(anchor, { kind: "song", id: s.Id, name: s.Name || "" });
       else (extra || []).forEach((o) => { if (o.value === v && o.run) o.run(); });
     });
   };
-  // Music redesign 3: Send to a profile. It shows in their Home news (everyone but Kids).
-  const sendTo = async (anchor, place) => {
-    const j = await B.call("GET", "api/music/people").catch(() => null);
-    const people = (j && j.people) || [];
-    if (!people.length) return B.toast("There's no one else to send music to yet.");
-    B.dropdown(anchor, people.map((x) => ({ label: x.name, value: x.id })), null, async (to) => {
-      const who = people.find((x) => x.id === to);
-      try {
-        await B.call("POST", "api/music/me/send", Object.assign({}, place, { to, from_name: (B.me && B.me.name) || "" }));
-        B.toast(`Sent to ${who ? who.name : "them"}. It shows on their Home.`);
-      } catch (e) { B.toast(e.message || "Couldn't send that right now. Try again in a minute."); }
-    });
-  };
-  // A song someone sent you (Home news): it plays, and its album opens
-  B.route(/^\/song\/([\w-]+)/, async (m) => {
-    const s = await B.get(`/Users/${B.uid()}/Items/${enc(m[1])}`).catch(() => null);
-    if (!s || s.Type !== "Audio") return B.go("#/music");
-    M.playList([s], 0, false, "Sent to you"); M.sourceId = null;
-    B.go(s.AlbumId ? `#/album/${s.AlbumId}` : "#/music");
-    setTimeout(openNow, 200);
-  });
   // Ben 2026-11-16: this song, then songs like it from your music
   const startRadio = async (s) => {
     try {
@@ -1424,11 +1401,9 @@
       if (b.dataset.h === "heart") { const on = !b.classList.contains("on"); M.like(o.sourceId, on).then(() => b.classList.toggle("on", on)); }
       if (b.dataset.h === "more") {
         const menu = [{ label: "Add all to Up next", value: "all" }, { label: "Add all to a playlist", value: "pl" }].concat(o.menu || []);
-        if (o.place && (o.place.kind === "album" || o.place.kind === "playlist")) menu.push({ label: "Send to someone", value: "send" });
         if (o.place && (o.place.kind === "playlist" || o.place.kind === "liked") && shown.length > 3) menu.unshift({ label: "Smart shuffle (adds songs like these)", value: "smart" });
         B.dropdown(b, menu, null, (v) => {
-          if (v === "send") setTimeout(() => sendTo(b, o.place), 0);
-          else if (v === "smart") smartShuffle(shown, o);
+          if (v === "smart") smartShuffle(shown, o);
           else if (v === "all") shown.forEach((s) => M.addToUpNext(s));
           else if (v === "pl") addToPlaylist(b, shown);
           else (o.menu || []).forEach((x) => { if (x.value === v && x.run) x.run(); });
@@ -1747,10 +1722,10 @@
         b.classList.toggle("on", follow);
         b.innerHTML = follow ? I("check") + " Following" : I("plus") + " Follow";
         $("#mcounts").textContent = counts();
-        B.toast(follow ? `Following ${ar.Name}: new music shows up on Home` : `Stopped following ${ar.Name}`);
+        B.toast(follow ? `Following ${ar.Name}` : `Stopped following ${ar.Name}`);
       }
       if (b.dataset.h === "more") {
-        const menu = [{ label: noMix ? `Play ${ar.Name} in my mixes again` : "Don't play this artist in my mixes", value: "nomix" }, { label: "Add all to Up next", value: "all" }, { label: "Send to someone", value: "send" }];
+        const menu = [{ label: noMix ? `Play ${ar.Name} in my mixes again` : "Don't play this artist in my mixes", value: "nomix" }, { label: "Add all to Up next", value: "all" }];
         if (cat && cat.artist) menu.push({ label: `Ask for more by ${ar.Name}`, value: "ask" });
         B.dropdown(b, menu, null, async (v) => {
           if (v === "nomix") {
@@ -1759,7 +1734,6 @@
             B.toast(noMix ? `${ar.Name} won't play in your mixes any more` : `${ar.Name} can play in your mixes again`);
           }
           if (v === "all") (await allSongs().catch(() => [])).forEach((x) => M.addToUpNext(x));
-          if (v === "send") setTimeout(() => sendTo(b, arPlace), 0);
           if (v === "ask") B.go(`#/requests?tab=music&mopen=artist:${cat.artist.id}`);
         });
       }

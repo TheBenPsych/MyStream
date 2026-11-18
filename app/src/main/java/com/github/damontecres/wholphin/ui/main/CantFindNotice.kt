@@ -16,13 +16,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Benflix: "Couldn't find it". People who asked for something Ben couldn't find are told on Home, as a news row
- * (HomeDoorsViewModel.cantFindNews, Ben 2026-11-15: no more pop-up). This only runs the week-old
- * "Still looking" check from Ben's own device, so people hear even if he never opens Requests.
+ * Benflix: "Couldn't find it". People see it on their Requests page. This only runs the week-old
+ * "Still looking" check from Ben's own device, so it happens even if he never opens Requests.
  */
 @HiltViewModel
 class CantFindNoticeViewModel
@@ -45,13 +43,6 @@ class CantFindNoticeViewModel
                         }
                     }
             }
-        }
-
-        companion object {
-            /** Where the old pop-up remembered what it already showed, so Home doesn't tell people twice */
-            const val PREFS = "benflix_cant_find"
-
-            fun toldKey(userId: UUID?): String = "told-" + (userId?.toString() ?: "none")
         }
     }
 

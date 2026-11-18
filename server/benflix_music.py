@@ -539,12 +539,10 @@ def route(method, path, query, token, user_id, is_admin, read_json, is_kids=Fals
         one = lambda k: (query.get(k) or [""])[0].strip()  # noqa: E731
         found = album_find(one("artist"), one("album"))
         return 200, {"songs": found["songs"], "id": found["id"]}
-    if method == "GET" and path in ("/api/music/people", "/api/music/lyricsearch"):
-        # Send to a profile, and search by the words of a song (Music redesign 3; everyone but Kids)
+    if method == "GET" and path == "/api/music/lyricsearch":
+        # Search by the words of a song (Music redesign 3; everyone but Kids)
         if is_kids:
             return 403, {"error": "No music on the Kids profile."}
-        if path == "/api/music/people":
-            return 200, {"people": music_people(user_id)}
         return 200, lyrics_search((query.get("q") or [""])[0])
     if method == "GET" and path == "/api/music/artistfind":
         # Artist pages (Music redesign 3): Popular worldwide, every album and Fans also like (everyone but Kids)
@@ -4390,7 +4388,6 @@ def me_get(user_id):
         "pins": (mine.get("pins") or [])[:ME_PIN_MAX],
         "noartists": mine.get("noartists") or [],
         "adds": mine.get("adds") or {},
-        "sent": [x for x in mine.get("sent") or [] if (x.get("at") or 0) >= time.time() - 14 * 86400],
     }
 
 
@@ -4481,17 +4478,6 @@ def me_route(method, path, user_id, read_json):
             if n == SKIPS_OUT:
                 with _mix_lock:
                     _mixes.pop(user_id, None)
-        elif path == "/api/music/me/send":
-            # Send to a profile (Music redesign 3): it shows in their Home news
-            to = str(body.get("to") or "")
-            if not re.fullmatch(r"[\w-]{8,64}", to) or to == user_id:
-                raise MusicError(400, "Who should it go to?")
-            if to not in {u["id"] for u in music_people(user_id)}:
-                raise MusicError(403, "You can't send music to that profile.")
-            entry = _me_clean(body)
-            entry.update({"at": now, "from": str(body.get("from_name") or "")[:60], "id_sent": uuid.uuid4().hex[:10]})
-            theirs = everyone.setdefault(to, {})
-            theirs["sent"] = ([entry] + [x for x in theirs.get("sent") or [] if now - (x.get("at") or 0) < 14 * 86400])[:20]
         elif path == "/api/music/me/noartist":
             # Don't play this artist in my mixes (Music redesign 3): Made for you leaves them out from now on
             name = " ".join(str(body.get("name") or "").split())[:120]
@@ -4554,20 +4540,6 @@ def artist_find(name):
         related = []
     out["related"] = [_artist(a) for a in related]
     return out
-
-
-def music_people(user_id):
-    """The profiles you can send music to: everyone else on Benflix except Kids, hidden and switched-off profiles"""
-    j = _jellyfin("GET", "/Users") or []
-    out = []
-    for u in j if isinstance(j, list) else []:
-        pol = u.get("Policy") or {}
-        if not u.get("Id") or u["Id"].replace("-", "") == str(user_id).replace("-", ""):
-            continue
-        if pol.get("IsDisabled") or pol.get("IsHidden") or pol.get("MaxParentalRating") is not None or (u.get("Name") or "").lower() in ("kids", "guest"):
-            continue
-        out.append({"id": u["Id"], "name": u.get("Name") or ""})
-    return sorted(out, key=lambda x: x["name"].lower())
 
 
 _lrc = {"at": 0, "songs": []}

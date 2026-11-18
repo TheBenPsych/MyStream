@@ -45,8 +45,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.services.GuestMode
-import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
@@ -60,7 +58,7 @@ import kotlinx.coroutines.flow.update
 /**
  * Benflix notices (Redesign 2, section 3, approved nt-levels 2026-11-10). Every notice is one of three levels,
  * and each level always looks the same and sits in the same place:
- *  - Quiet: a row in Home's list plus the white dot on your picture ([HomeNewsDot]).
+ *  - Quiet: Home has no news list any more (Ben 2026-11-18), so nothing uses this level.
  *  - Tap on the shoulder: a small [Card] under the top bar on the right for 7 seconds, with a thin timer line.
  *    It never takes the remote's focus; pressing OK while it shows opens it (or just ignore it). One at a time,
  *    oldest first. While something plays, only reminders and messages show.
@@ -141,19 +139,6 @@ object BenflixNotices {
 
     const val CARD_MS = 7_000L
     const val PILL_MS = 3_000L
-}
-
-/**
- * The white dot on your picture. It only means "there's news on Home you haven't looked at yet". Server problems
- * live on the Server page and updates are a Home row, so nothing else lights it.
- */
-object HomeNewsDot {
-    private val _on = MutableStateFlow(false)
-    val on: StateFlow<Boolean> = _on
-
-    fun set(on: Boolean) {
-        _on.value = on && !KidsMode.isActive && !GuestMode.isActive
-    }
 }
 
 /**
