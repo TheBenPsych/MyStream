@@ -273,7 +273,7 @@ fun BooksShelf(
         return
     }
     val d = shelves
-    val r = requests ?: BookRequests(emptyList(), emptyList(), emptyList(), emptyList(), true, emptyList())
+    val r = requests ?: BookRequests(emptyList(), emptyList(), emptyList(), true, emptyList())
     // The lists, in the approved order. Book of the week shows the NYT Fiction list (it's that list's #1).
     val nytFiction = d?.rows?.firstOrNull { it.items.isNotEmpty() && it.title.contains("Fiction") && !it.title.contains("Nonfiction") }
     val bookLists =
