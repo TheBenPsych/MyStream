@@ -49,9 +49,9 @@ object VideoGamesDay {
     /** Settings > Look > Video Games Day look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isDay(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.SEPTEMBER && date.dayOfMonth == 12
+    fun isDay(date: LocalDate = Today.date()): Boolean = date.month == Month.SEPTEMBER && date.dayOfMonth == 12
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isDay(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isDay(date)
 
     const val GREETING = "Happy Video Games Day"
 

@@ -54,21 +54,25 @@ object EasterSeason {
         return LocalDate.of(year, n / 31, (n % 31) + 1)
     }
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean {
-        val sunday = easterSunday(date.year)
-        val start = maxOf(sunday.minusDays(6), LocalDate.of(date.year, 3, 18))
-        val end = minOf(sunday, LocalDate.of(date.year, 4, 21))
-        return !date.isBefore(start) && !date.isAfter(end)
-    }
+    fun isSeason(date: LocalDate = Today.date()): Boolean = seasonAnswer(date)
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    // Working out Easter's date for every colour on screen added up, so the answer is kept for the day
+    private val seasonAnswer =
+        DayAnswer { date ->
+            val sunday = easterSunday(date.year)
+            val start = maxOf(sunday.minusDays(6), LocalDate.of(date.year, 3, 18))
+            val end = minOf(sunday, LocalDate.of(date.year, 4, 21))
+            !date.isBefore(start) && !date.isAfter(end)
+        }
 
-    fun isSunday(date: LocalDate = LocalDate.now()): Boolean = date == easterSunday(date.year)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+
+    fun isSunday(date: LocalDate = Today.date()): Boolean = date == easterSunday(date.year)
 
     const val GREETING = "Happy Easter"
 
     /** The line under the greeting: "5 days to Easter", or on the day, how the egg hunt is going */
-    fun countdown(date: LocalDate = LocalDate.now()): String? {
+    fun countdown(date: LocalDate = Today.date()): String? {
         if (isSunday(date)) {
             val found = EasterHunt.found.size
             return when {

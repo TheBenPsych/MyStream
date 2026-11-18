@@ -48,9 +48,9 @@ object PopcornSeason {
     /** Settings > Look > Popcorn Day look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.JANUARY && date.dayOfMonth == 19
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.JANUARY && date.dayOfMonth == 19
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date)
 
     const val GREETING = "Happy Popcorn Day"
 

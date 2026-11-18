@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -395,37 +394,50 @@ fun PlayingBars(
     size: Dp = 16.dp,
     color: Color = BenflixColors.Music,
 ) {
-    val t = rememberInfiniteTransition(label = "playingBars")
-    val phases = listOf(0, 180, 360)
+    // Speed check (Ben 2026-11-18): the bars used to be rebuilt and laid out again 60 times a second; now they're
+    // only drawn, and when the music is paused nothing runs at all
     val heights =
-        phases.map { delay ->
-            t.animateFloat(
-                initialValue = 0.3f,
-                targetValue = 1f,
-                animationSpec =
-                    infiniteRepeatable(
-                        animation = tween(durationMillis = 420, delayMillis = delay, easing = LinearEasing),
-                        repeatMode = RepeatMode.Reverse,
-                    ),
-                label = "bar$delay",
-            )
+        if (playing) {
+            val t = rememberInfiniteTransition(label = "playingBars")
+            listOf(0, 180, 360).map { delay ->
+                t.animateFloat(
+                    initialValue = 0.3f,
+                    targetValue = 1f,
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 420, delayMillis = delay, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                    label = "bar$delay",
+                )
+            }
+        } else {
+            null
         }
-    Row(
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(size * 0.12f),
-        modifier = modifier.size(size),
-    ) {
-        heights.forEachIndexed { i, h ->
-            val f = if (playing) h.value else listOf(0.5f, 0.8f, 0.35f)[i]
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight(f)
-                    .background(color, RoundedCornerShape(1.dp)),
+    androidx.compose.foundation.Canvas(modifier.size(size)) {
+        val gap = size.toPx() * 0.12f
+        val barWidth = (this.size.width - gap * 2) / 3f
+        val corner =
+            androidx.compose.ui.geometry
+                .CornerRadius(1.dp.toPx())
+        for (i in 0 until 3) {
+            val f = heights?.get(i)?.value ?: PAUSED_BARS[i]
+            val h = this.size.height * f
+            drawRoundRect(
+                color = color,
+                topLeft =
+                    androidx.compose.ui.geometry
+                        .Offset(i * (barWidth + gap), this.size.height - h),
+                size =
+                    androidx.compose.ui.geometry
+                        .Size(barWidth, h),
+                cornerRadius = corner,
             )
         }
     }
 }
+
+private val PAUSED_BARS = floatArrayOf(0.5f, 0.8f, 0.35f)
 
 /** "3:45" */
 fun songLength(d: Duration?): String {

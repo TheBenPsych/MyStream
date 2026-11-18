@@ -38,9 +38,9 @@ object ThanksgivingSeason {
     /** Settings > Look > Thanksgiving look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.NOVEMBER && date.dayOfMonth >= 16
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.NOVEMBER && date.dayOfMonth >= 16
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date) && !Friday13.on(date)
 
     const val GREETING = "Happy Thanksgiving"
 }

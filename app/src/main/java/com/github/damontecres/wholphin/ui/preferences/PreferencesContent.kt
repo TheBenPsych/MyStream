@@ -1120,6 +1120,25 @@ private fun SpeedMeter(ping: Long?) {
     val context = LocalContext.current
     var lite by remember { mutableStateOf(LiteMode.isOn(context)) }
 
+    // Speed check (Ben 2026-11-18): after each update Android runs the app slower until it has prepared it, which
+    // it does while the TV sleeps. This says whether that has happened yet for the version installed now.
+    val spedUp by androidx.compose.runtime.produceState<String?>(null) {
+        value =
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val status =
+                        androidx.profileinstaller.ProfileVerifier
+                            .getCompilationStatusAsync()
+                            .get()
+                    when {
+                        status.isCompiledWithProfile -> "yes"
+                        status.hasProfileEnqueuedForCompilation() -> "not yet (Android does it while the TV sleeps)"
+                        else -> "no"
+                    }
+                }.getOrNull() ?: "unknown"
+            }
+    }
+
     fun ms(value: Long?) = value?.let { if (it < 0) "failed" else "$it ms" } ?: "not measured yet"
     val lines =
         listOf(
@@ -1127,6 +1146,7 @@ private fun SpeedMeter(ping: Long?) {
             "Home top rows" to ms(SpeedStats.homeTopRowsMs),
             "Home shown from last time" to if (SpeedStats.homeFromSaved) "yes" else "no",
             "First Clips video" to ms(SpeedStats.clipsFirstMs),
+            "Sped up by Android" to (spedUp ?: "checking..."),
         )
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),

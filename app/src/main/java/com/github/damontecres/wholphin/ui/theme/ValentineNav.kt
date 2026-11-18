@@ -281,7 +281,7 @@ object ValentineNav {
     }
 
     /** The first Today card: the countdown, then "Happy Valentine's Day" on the 14th */
-    fun countdown(date: LocalDate = LocalDate.now()): String? =
+    fun countdown(date: LocalDate = Today.date()): String? =
         if (ValentineSeason.isDay(date)) ValentineSeason.GREETING else ValentineSeason.countdown(date)
 
     /** Hand-picked romances for the Valentine's pick, added to the Date night list */

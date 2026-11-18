@@ -166,7 +166,9 @@ fun Backdrop(
                     },
         )
     }
-    if (backdropStyle != BackdropStyle.BACKDROP_NONE) {
+    // Speed check (Ben 2026-11-18): Home and the door pages clear the picture, but the empty see-through layer it sits
+    // in was still drawn over most of the screen on every frame. No picture now means nothing is drawn at all.
+    if (backdropStyle != BackdropStyle.BACKDROP_NONE && !backdrop.imageUrl.isNullOrBlank()) {
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
