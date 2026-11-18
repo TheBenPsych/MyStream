@@ -132,8 +132,7 @@ fun SwitchUserContent(
         }
 
         LoadingState.Success -> {
-            // Benflix redesign 2 (su-family, 2026-11-10): the dim wall of posters is back behind (one still
-            // picture, fast on old TVs), the grown-ups are big round pictures in one row, and Kids, Big kids
+            // Benflix redesign 2 (su-family, 2026-11-10): the grown-ups are big round pictures in one row, and Kids, Big kids
             // and Guest sit a little smaller at the end with the names lined up. No fun facts.
             val introRunning by BenflixIntroState.running.collectAsState()
             androidx.compose.runtime.DisposableEffect(Unit) {
@@ -149,8 +148,8 @@ fun SwitchUserContent(
                         .background(BenflixColors.Tray)
                         .dimAndBlur(showAddUser || switchUserWithPin != null),
             ) {
-                // The profiles show first; the wall fills in behind them once its pictures are ready
-                PosterWall(posters = state.posterWall, modifier = Modifier.fillMaxSize())
+                // Ben 2026-11-18: the still "night sea" sits behind the profiles (drawn, nothing to load)
+                NightSea(modifier = Modifier.fillMaxSize())
                 // Ben: the logo sits top left, exactly where the top bar's logo is, so after you pick a
                 // profile the doors grow out of it in place. The intro's logo glides into this spot,
                 // so it stays hidden until it lands

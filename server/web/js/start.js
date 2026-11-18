@@ -17,7 +17,7 @@ B.intro = () => new Promise((done) => {
 });
 
 // ---------- Who's watching ----------
-// Redesign 2 (su-family): the dim wall of posters behind, the grown-ups as big round pictures in one row,
+// Redesign 2 (su-family): the night sea behind, the grown-ups as big round pictures in one row,
 // and Kids profiles a little smaller at the end with the names lined up.
 B.route(/^\/who$/, async () => {
   // Switching profile stops the last person's music and forgets their hearts
@@ -28,7 +28,7 @@ B.route(/^\/who$/, async () => {
   const last = load("benflix.last");
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    <div class="wall" aria-hidden="true"></div>
+    ${B.nightSea()}
     ${B.logo()}
     <h1>Who's watching?</h1>
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
@@ -51,26 +51,24 @@ B.route(/^\/who$/, async () => {
     open();
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  whoWall(list);
 });
 
-// 12 still posters (PG-13 or lower), picked once a day and kept, so the wall costs nothing most days
-async function whoWall(list) {
-  const el = $(".who .wall");
-  const who = list.find((p) => !p.expired && !p.kids) || list.find((p) => !p.expired);
-  if (!el || !who) return;
-  let wall = loadJson("benflix.wall", null);
-  if (!wall || wall.by !== who.id || Date.now() - wall.t > 864e5 || !(wall.items || []).length) {
-    try {
-      const r = await B.call("GET", `api/web/jf/Users/${enc(who.id)}/Items?IncludeItemTypes=Movie,Series&Recursive=true&SortBy=Random&Limit=12&MaxOfficialRating=PG-13&HasParentalRating=true&ImageTypes=Primary&Fields=PrimaryImageAspectRatio`, undefined, { profile: who, quiet401: true });
-      wall = { t: Date.now(), by: who.id, items: ((r && r.Items) || []).filter((it) => it.ImageTags && it.ImageTags.Primary).map((it) => [it.Id, it.ImageTags.Primary]) };
-      try { localStorage.setItem("benflix.wall", JSON.stringify(wall)); } catch (e) {}
-    } catch (e) { return; }
-  }
-  if (!$(".who .wall")) return;
-  el.innerHTML = wall.items.slice(0, 12).map(([id, tag]) => `<i style="background-image:url('api/web/jf/Items/${enc(id)}/Images/Primary?fillHeight=300&quality=80&tag=${enc(tag)}&api_key=${enc(who.token)}')"></i>`).join("");
-  requestAnimationFrame(() => el.classList.add("on"));
-}
+// Ben 2026-11-18: the still "night sea" behind Who's watching and sign-in (same as the TV and phone app).
+// Night sky + faint stars, violet glow on the horizon, calm water, and the Glowfin fin with its mirror
+// image in the water. No animations and no lines on the water (Ben). Nothing to load from the Tower.
+B.nightSea = () => {
+  const fin = "M17 64 C29 45 46 24 79 13 C72 31 70 48 81 64 Z";
+  return `<div class="nsea" aria-hidden="true"><div class="sky"></div><div class="haze"></div>
+    <div class="water"><div class="pool"></div><div class="line"></div></div>
+    <svg class="far" viewBox="8 8 80 104"><defs>
+      <linearGradient id="nsG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#a55be0"/><stop offset=".6" stop-color="#1fa8e6"/><stop offset="1" stop-color="#3fe0e8"/></linearGradient>
+      <linearGradient id="nsF" gradientUnits="userSpaceOnUse" x1="0" y1="64" x2="0" y2="108"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".45" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <mask id="nsM" maskUnits="userSpaceOnUse" x="0" y="64" width="100" height="50"><rect x="0" y="64" width="100" height="50" fill="url(#nsF)"/></mask>
+      <radialGradient id="nsR"><stop offset="0" stop-color="#1fa8e6" stop-opacity=".45"/><stop offset="1" stop-color="#1fa8e6" stop-opacity="0"/></radialGradient></defs>
+      <ellipse cx="50" cy="64" rx="48" ry="9" fill="url(#nsR)"/>
+      <g mask="url(#nsM)"><path d="${fin}" transform="matrix(1 0 0 -0.85 0 118.4)" fill="url(#nsG)"/></g>
+      <path d="${fin}" fill="url(#nsG)"/></svg></div>`;
+};
 
 // ---------- sign in ----------
 // Redesign 2 (su-s-quick): on a wide screen the left half is "Sign in with your phone" (a Quick Connect
@@ -112,7 +110,7 @@ B.route(/^\/signin/, async () => {
         ${wide() ? "" : `<button class="btn" type="button" id="useForm">Type it in instead</button>`}
       </div>`;
     const inner = wide() ? `${phone}<div class="divider"></div>${form}` : (codeOnPhone ? phone : form);
-    B.page().innerHTML = `<div class="signin"><div class="card ${wide() ? "two" : ""} fade-in">${B.logo()}<div class="halves">${inner}</div><div style="margin-top:22px">${back}</div></div></div>`;
+    B.page().innerHTML = `<div class="signin">${B.nightSea()}<div class="card ${wide() ? "two" : ""} fade-in">${B.logo()}<div class="halves">${inner}</div><div style="margin-top:22px">${back}</div></div></div>`;
     const w = $("#toWho"); if (w) w.onclick = () => { gen++; B.go("#/who"); };
     const uc = $("#useCode"); if (uc) uc.onclick = () => { codeOnPhone = true; draw(); };
     const uf = $("#useForm"); if (uf) uf.onclick = () => { codeOnPhone = false; draw(); };

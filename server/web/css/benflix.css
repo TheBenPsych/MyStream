@@ -147,12 +147,20 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .who .person:hover, .who .person:focus-visible { color: var(--ink); outline: none; }
 .who .person .gone { font-size: 12px; color: var(--ink3); margin-top: -8px; }
 .who .add { margin-top: 24px; }
-/* redesign 2 (su-family): dim poster wall behind, Kids a little smaller with names lined up */
+/* redesign 2 (su-family): night sea behind, Kids a little smaller with names lined up */
 .who { position: relative; isolation: isolate; }
-.who .wall { position: absolute; inset: 0; z-index: -1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 1fr); overflow: hidden; opacity: 0; transition: opacity .6s; }
-.who .wall.on { opacity: 1; }
-.who .wall i { background: #1c1c22 center / cover no-repeat; }
-.who .wall::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(0,0,0,.72), rgba(0,0,0,.95) 62%); }
+.signin { position: relative; isolation: isolate; }
+/* Night sea (Ben 2026-11-18): still picture, no animations, no lines on the water */
+.nsea { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --hz: 74%; background: #070811; }
+.nsea .sky { position: absolute; inset: 0 0 calc(100% - var(--hz)) 0; background: radial-gradient(1px 1px at 12% 18%, #fff8, transparent), radial-gradient(1px 1px at 28% 40%, #fff5, transparent), radial-gradient(1.2px 1.2px at 47% 12%, #fff7, transparent),
+  radial-gradient(1px 1px at 66% 30%, #fff5, transparent), radial-gradient(1.3px 1.3px at 83% 15%, #fff8, transparent), radial-gradient(1px 1px at 91% 44%, #fff4, transparent),
+  radial-gradient(1px 1px at 6% 52%, #fff4, transparent), radial-gradient(1px 1px at 36% 8%, #fff4, transparent), linear-gradient(180deg, #0b0d1a 0%, #10132a 55%, #1b1c40 100%); }
+.nsea .haze { position: absolute; left: 0; right: 0; top: calc(var(--hz) - 30%); height: 30%; background: radial-gradient(60% 90% at 50% 100%, rgba(165,91,224,.30), rgba(31,168,230,.12) 45%, transparent 75%); }
+.nsea .water { position: absolute; left: 0; right: 0; top: var(--hz); bottom: 0; background: linear-gradient(180deg, #0a0c1c, #070811); }
+.nsea .pool { position: absolute; left: 10%; right: 10%; top: 0; height: 70%; background: radial-gradient(50% 55% at 50% 0%, rgba(165,91,224,.22), rgba(31,168,230,.08) 55%, transparent 85%); }
+.nsea .line { position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(63,224,232,.55) 30%, rgba(165,91,224,.55) 70%, transparent); }
+.nsea .far { position: absolute; width: 9%; right: 8%; top: var(--hz); transform: translateY(-53.85%); }
+@media (max-aspect-ratio: 1/1) { .nsea { --hz: 78%; } .nsea .far { width: 20%; right: 10%; } }
 .who .people { align-items: flex-start; }
 .who .person .pic { width: 150px; height: 150px; }
 .who .person { width: 160px; }
@@ -620,7 +628,6 @@ textarea.field { min-height: 90px; resize: vertical; }
   .who .person .pic { width: 92px; height: 92px; font-size: 36px; }
   .who .person.small { width: 84px; padding-top: 20px; }
   .who .person.small .pic { width: 72px; height: 72px; font-size: 28px; }
-  .who .wall { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); }
   .player .topline, .player .controls { padding: 0 16px; }
   .player .pcorner { right: 16px; left: 16px; }
   .player .upnext { width: 100%; }
