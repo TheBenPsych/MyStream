@@ -194,8 +194,11 @@ fun SearchDoorResults(
                 musicAsk
                     .filter { (plain(it.title) + "|" + plain(it.artist)) !in have }
                     .map { AskEntry.Music(it) }
-            // Closest names first; movies and shows win a tie
-            (titles + music).withIndex().sortedBy { (i, e) -> closeness(e.title, query) * 10_000 + i }.map { it.value }
+            // Ben 2026-11-18: movies, shows and anime always come first, songs and albums after them.
+            // Inside each group the closest names come first.
+            fun closestFirst(list: List<AskEntry>) =
+                list.withIndex().sortedBy { (i, e) -> closeness(e.title, query) * 10_000 + i }.map { it.value }
+            closestFirst(titles) + closestFirst(music)
         }
     val lines =
         remember(library, ask, games, books) {
