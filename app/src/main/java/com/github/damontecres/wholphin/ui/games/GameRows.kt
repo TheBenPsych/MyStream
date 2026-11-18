@@ -198,7 +198,7 @@ private fun GameRow(
             val tileHeight = maxOf(width / GAME_COVER_RATIO, posterTileHeight(isTv))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
-                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
+                contentPadding = PaddingValues(vertical = if (isTv) 4.dp else 8.dp, horizontal = 4.dp),
             ) {
                 items(
                     games,

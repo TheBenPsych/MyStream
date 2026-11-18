@@ -13,6 +13,11 @@ object LastRemoteKey {
     var moveAt: Long = 0L
         private set
 
+    /** When Left was last pressed (the only arrow that means "open the side menu") */
+    @Volatile
+    var leftAt: Long = 0L
+        private set
+
     /** When any arrow, OK or Back was last pressed (the ambient art holds still for a moment while you move) */
     @Volatile
     var pressAt: Long = 0L
@@ -30,6 +35,12 @@ object LastRemoteKey {
             KeyEvent.KEYCODE_BACK,
             KeyEvent.KEYCODE_MENU,
             -> pressAt = android.os.SystemClock.uptimeMillis()
+        }
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+            event.keyCode == KeyEvent.KEYCODE_DPAD_UP_LEFT ||
+            event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN_LEFT
+        ) {
+            leftAt = android.os.SystemClock.uptimeMillis()
         }
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT,

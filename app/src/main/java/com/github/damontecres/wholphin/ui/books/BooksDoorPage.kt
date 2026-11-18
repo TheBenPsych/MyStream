@@ -3,11 +3,12 @@ package com.github.damontecres.wholphin.ui.books
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -84,6 +86,8 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -245,6 +249,7 @@ private fun Title(text: String) {
 /** How wide a card is: TV and tablets fit about 7 across, phones 3 */
 private fun cardWidth(wide: Boolean): Dp = if (wide) 140.dp else 108.dp
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BooksForYou(
     rows: List<BookRow>,
@@ -256,8 +261,9 @@ private fun BooksForYou(
     modifier: Modifier,
 ) {
     val edge = side(wide)
-    val w = cardWidth(wide)
     val isTv = rememberIsTv()
+    // Ben 2026-11-18: on TV the same size as Movies and Shows posters (120 wide), so a whole row fits under the top
+    val w = if (isTv) 120.dp else cardWidth(wide)
     val shownRows = remember(rows) { forYouRows(rows) }
     val listState = rememberLazyListState()
     val first = remember { FocusRequester() }
@@ -295,55 +301,73 @@ private fun BooksForYou(
         if (wide) {
             BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), LocalTopBarOverlap.current)
         }
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
-            contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-        ) {
-            if (!wide) {
-                shownRows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
-                    item(key = "phoneTop") { BooksPhoneTop(top) { onTile(top) } }
-                }
-            }
-            itemsIndexed(shownRows, key = { _, row -> row.key }) { rowIndex, row ->
-                Column {
-                    MusicRowName(row.title, Modifier.padding(start = edge, bottom = 8.dp))
-                    val rowState = rememberLazyListState()
-                    if (rowIndex == 0) {
-                        LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
+        // Ben 2026-11-18: like Movies and Shows on TV, the row you move to jumps up whole (name and all) right
+        // under the top area, and rows sit the same distance apart. The rows inside still slide sideways as before.
+        val defaultSpec = LocalBringIntoViewSpec.current
+        val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
+        CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        if (isTv) {
+                            14.dp
+                        } else if (wide) {
+                            26.dp
+                        } else {
+                            20.dp
+                        },
+                    ),
+                contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) {
+                if (!wide) {
+                    shownRows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
+                        item(key = "phoneTop") { BooksPhoneTop(top) { onTile(top) } }
                     }
-                    LazyRow(
-                        state = rowState,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(horizontal = edge),
-                    ) {
-                        itemsIndexed(row.tiles, key = { _, it -> row.key + it.id }) { i, tile ->
-                            BookCard(
-                                tile,
-                                w,
-                                onClick = { onTile(tile) },
-                                onFocus = {
-                                    lit.value = tile
-                                    focusedRow = rowIndex
-                                },
-                                modifier = if (rowIndex == 0 && i == 0) Modifier.focusRequester(first) else Modifier,
-                            )
+                }
+                itemsIndexed(shownRows, key = { _, row -> row.key }) { rowIndex, row ->
+                    CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                        // TV: the row name always comes into view with the books
+                        Column(Modifier.scrollAsOneBlock()) {
+                            MusicRowName(row.title, Modifier.padding(start = edge, bottom = 8.dp))
+                            val rowState = rememberLazyListState()
+                            if (rowIndex == 0) {
+                                LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
+                            }
+                            LazyRow(
+                                state = rowState,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                contentPadding = PaddingValues(horizontal = edge),
+                            ) {
+                                itemsIndexed(row.tiles, key = { _, it -> row.key + it.id }) { i, tile ->
+                                    BookCard(
+                                        tile,
+                                        w,
+                                        onClick = { onTile(tile) },
+                                        onFocus = {
+                                            lit.value = tile
+                                            focusedRow = rowIndex
+                                        },
+                                        modifier = if (rowIndex == 0 && i == 0) Modifier.focusRequester(first) else Modifier,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
-            if (canAsk) {
-                item(key = "ask") {
-                    MusicButton(
-                        label = "Ask for a book",
-                        icon = BenflixIcon.PLUS,
-                        onClick = {
-                            RequestsJump.books = true
-                            viewModel.navigationManager.navigateTo(Destination.Requests)
-                        },
-                        modifier = Modifier.padding(start = edge),
-                    )
+                if (canAsk) {
+                    item(key = "ask") {
+                        MusicButton(
+                            label = "Ask for a book",
+                            icon = BenflixIcon.PLUS,
+                            onClick = {
+                                RequestsJump.books = true
+                                viewModel.navigationManager.navigateTo(Destination.Requests)
+                            },
+                            modifier = Modifier.padding(start = edge),
+                        )
+                    }
                 }
             }
         }
@@ -373,8 +397,11 @@ private fun BooksTopArea(
     val tile = shown ?: first ?: return
     val edge = side(true)
     val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val height = (maxWidth * 0.2f).coerceIn(150.dp, 230.dp) + overlap
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    Box(Modifier.fillMaxWidth()) {
+        // Ben 2026-11-18: sized like the Movies and Shows top area (Wholphin's 48 gap + 180 tall + 32 gap, never more
+        // than about half the screen), so the first row of books shows whole under it
+        val height = (maxOf(overlap, 48.dp) + 212.dp).coerceAtMost(screenHeight * 0.52f).coerceAtLeast(overlap + 120.dp)
         Box(Modifier.fillMaxWidth().height(height)) {
             // The glow reaches up under the tabs and a little way down behind the first row
             CoverGlow(
