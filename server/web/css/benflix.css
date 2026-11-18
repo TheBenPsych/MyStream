@@ -1917,6 +1917,46 @@ svg.gi path.gd { stroke-width: 3.6; }
   .player .extra { margin-top: -4px; }
 }
 
+/* ---------- Player clean-up (Ben 2026-11-18, v4): icons only, compact ----------
+   One line (name, episode, "Ends at"), the times on each side of the bar, then Settings + Episodes on the left,
+   Previous / Back 10 / Pause / Ahead 10 / Next in the exact middle, Subtitles + Audio (and the small extras) right. */
+.player .controls.p4 { bottom: 20px; }
+.player .p4 .tline { display: flex; align-items: baseline; gap: 12px; padding: 0 4px 2px; min-width: 0; }
+.player .p4 .tline .tt { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.player .p4 .tline .st { color: #D6D9EC; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.player .p4 .tline .ends { color: #D6D9EC; font-size: 15px; white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; }
+.player .p4 .srow { display: flex; align-items: center; gap: 14px; font-size: 15px; color: #D6D9EC; font-variant-numeric: tabular-nums; }
+.player .p4 .srow .bar { flex: 1; min-width: 0; }
+.player .p4 .row2.p1row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; margin-top: 4px; align-items: center; }
+.player .p4 .row2 .p1l, .player .p4 .row2 .p1c, .player .p4 .row2 .p1r { display: flex; align-items: center; gap: 12px; height: auto; margin-top: 0; }
+.player .p4 .row2 .p1r { justify-content: flex-end; margin-left: 0; }
+.player .p4 .pbtn.play { margin-top: 0; }
+.player .p4 .pbtn:disabled { opacity: .35; cursor: default; background: rgba(255,255,255,.12); color: inherit; box-shadow: none; }
+.player .shadeB { height: 210px; }
+.player .shadeT { height: 110px; }
+.player .panel .pvol { display: flex; align-items: center; gap: 12px; margin: 4px 0 8px; }
+.player .panel .pvol input { flex: 1; accent-color: var(--aqua); }
+.player .panel .pvol b { font-size: 14px; color: #D6D9EC; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 1599px) {
+  .player .p4 .row2.p1row { display: grid; }
+  .player .p4 .row2 .p1l { display: flex; }
+}
+@media (max-width: 900px) {
+  .player .p4 .row2.p1row { gap: 8px; }
+  .player .p4 .row2 .p1l, .player .p4 .row2 .p1c, .player .p4 .row2 .p1r { gap: 8px; flex-wrap: nowrap; }
+  .player .p4 .extra { width: auto; }
+  .player .p4 .tline .tt { font-size: 18px; }
+}
+/* Upright phones: the middle five on their own line, Settings/Episodes left and Subtitles/Audio right under it */
+@media (max-width: 560px) {
+  .player .p4 .row2.p1row { grid-template-columns: 1fr 1fr; row-gap: 6px; }
+  .player .p4 .row2 .p1c { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+  .player .p4 .row2 .p1l { grid-row: 2; }
+  .player .p4 .row2 .p1r { grid-row: 2; flex-basis: auto; }
+  .player .p4 #pKeys { display: none; }
+  .player .p4 .tline .st { display: none; }
+}
+
 /* ---------- Glowfin Settings, Help and Server (Ben's pick S1, 2026-11-18): the same plain side list as the TV ---------- */
 .split { padding-left: 0; gap: 32px; }
 .split nav { background: var(--deep); border-right: 1px solid var(--line); padding: 18px 14px; min-height: calc(100vh - var(--bar) - 10px); }

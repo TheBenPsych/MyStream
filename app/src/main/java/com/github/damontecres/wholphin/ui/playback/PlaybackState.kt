@@ -31,6 +31,8 @@ data class PlaybackState(
     val recap: BenflixRecap? = null,
     /** Benflix: a similar movie offered in the corner when a movie's credits start (never autoplays) */
     val movieNext: BaseItem? = null,
+    /** Benflix: the episode before this one in the show (for the player's Previous episode button), or null */
+    val previousEpisodeId: java.util.UUID? = null,
     /** Benflix: a small heads-up card (skipped an episode, filler, keeps stopping, busy) */
     val notice: PlayerNotice? = null,
     /** Benflix: "You finished the show!" */

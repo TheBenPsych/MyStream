@@ -40,6 +40,9 @@ enum class PlaybackDialogType {
     PLAYBACK_SPEED,
     VIDEO_SCALE,
     SUBTITLE_DELAY,
+
+    /** Benflix: "Subtitle timing" asks: let Tower line them up, or move them yourself */
+    SUBTITLE_TIMING,
     BITRATE,
     NIGHT_MODE,
 
@@ -151,25 +154,15 @@ fun PlaybackDialog(
                     add(PanelLine.Heading("Something off?"))
                     // Benflix: these rows always show (greyed-out rows stay reachable and say why, ground rule 1)
                     val turnOnFirst = { Toast.makeText(context, "Pick a subtitle above first, then try again.", Toast.LENGTH_LONG).show() }
-                    if (enableSubtitleDelay) {
-                        add(
-                            PanelLine.Row(
-                                label = "Subtitle timing",
-                                value = if (subtitlesOn) delayWords(settings.subtitleDelay) else null,
-                                note = if (subtitlesOn) "Move the words earlier or later yourself" else "Turn subtitles on above first",
-                                closes = !subtitlesOn,
-                                onClick = {
-                                    if (subtitlesOn) onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) else turnOnFirst()
-                                },
-                            ),
-                        )
-                    }
+                    // Clean-up (Ben 2026-11-18): one Subtitle timing row; it asks whether Tower lines them up or you move them
                     add(
                         PanelLine.Row(
-                            label = "Subtitles are early or late",
-                            note = if (subtitlesOn) "Tower lines them up with the voices" else "Turn subtitles on above first",
+                            label = "Subtitle timing",
+                            value = if (subtitlesOn && enableSubtitleDelay) delayWords(settings.subtitleDelay) else null,
+                            note = if (subtitlesOn) "Let Tower line them up, or move them yourself" else "Turn subtitles on above first",
+                            closes = !subtitlesOn,
                             onClick = {
-                                if (subtitlesOn) onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) else turnOnFirst()
+                                if (subtitlesOn) onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_TIMING) else turnOnFirst()
                             },
                         ),
                     )
@@ -187,63 +180,10 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.SETTINGS -> {
-            val subtitleName =
-                when (settings.subtitleIndex) {
-                    TrackIndex.ONLY_FORCED -> {
-                        "Other languages only"
-                    }
-
-                    null, TrackIndex.DISABLED, TrackIndex.UNSPECIFIED -> {
-                        "Off"
-                    }
-
-                    else -> {
-                        settings.subtitleStreams
-                            .firstOrNull { it.index == settings.subtitleIndex }
-                            ?.let { it.streamTitle ?: it.displayTitle } ?: "On"
-                    }
-                }
-            val audioName =
-                settings.audioStreams.firstOrNull { it.index == settings.audioIndex }?.let { it.streamTitle ?: it.displayTitle }
             val lines =
                 buildList {
-                    add(
-                        PanelLine.Row(
-                            label = "Subtitles",
-                            value = subtitleName,
-                            closes = false,
-                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.CAPTIONS) },
-                        ),
-                    )
-                    add(
-                        PanelLine.Row(
-                            label = "Audio",
-                            value = audioName ?: "One sound track",
-                            closes = false,
-                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.AUDIO) },
-                        ),
-                    )
-                    if (enableSubtitleDelay) {
-                        add(
-                            PanelLine.Row(
-                                label = "Subtitle timing",
-                                value = if (subtitlesOn) delayWords(settings.subtitleDelay) else "Subtitles are off",
-                                closes = false,
-                                onClick = {
-                                    if (subtitlesOn) {
-                                        onClickPlaybackDialogType(PlaybackDialogType.SUBTITLE_DELAY)
-                                    } else {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "Turn subtitles on first (Subtitles, just above).",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    }
-                                },
-                            ),
-                        )
-                    }
+                    // Clean-up (Ben 2026-11-18): Subtitles, Audio and Subtitle timing have their own buttons now, so they
+                    // are not repeated here
                     add(
                         PanelLine.Row(
                             label = "Quality",
@@ -285,15 +225,6 @@ fun PlaybackDialog(
                             note = "Glowfin brings the sound back",
                             icon = BenflixIcon.WARNING,
                             onClick = { onPlaybackActionClick(PlaybackAction.FixNoSound) },
-                        ),
-                    )
-                    add(
-                        PanelLine.Row(
-                            label = "Subtitles wrong",
-                            note = "Wrong language, early or late",
-                            icon = BenflixIcon.WARNING,
-                            closes = false,
-                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.CAPTIONS) },
                         ),
                     )
                     if (settings.canFixSkips) {
@@ -370,12 +301,37 @@ fun PlaybackDialog(
                     }
                     add(
                         PanelLine.Row(
-                            label = stringResource(if (settings.showDebugInfo) R.string.hide_debug_info else R.string.show_debug_info),
+                            label = if (settings.showDebugInfo) "Hide playback info" else "Show playback info",
                             onClick = { onPlaybackActionClick.invoke(PlaybackAction.ShowDebug) },
                         ),
                     )
                 }
             PlayerPanel(title = "Settings", subtitle = settings.title, lines = lines, onDismissRequest = onDismissRequest)
+        }
+
+        PlaybackDialogType.SUBTITLE_TIMING -> {
+            val lines =
+                buildList {
+                    add(
+                        PanelLine.Row(
+                            label = "Let Tower line them up",
+                            note = "Tower matches the words to the voices",
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.FixSubtitleTiming) },
+                        ),
+                    )
+                    if (enableSubtitleDelay) {
+                        add(
+                            PanelLine.Row(
+                                label = "Move them myself",
+                                value = delayWords(settings.subtitleDelay),
+                                note = "Earlier or later, a little at a time",
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType.invoke(PlaybackDialogType.SUBTITLE_DELAY) },
+                            ),
+                        )
+                    }
+                }
+            PlayerPanel(title = "Subtitle timing", lines = lines, onDismissRequest = dismissAndPulse)
         }
 
         PlaybackDialogType.AUDIO -> {

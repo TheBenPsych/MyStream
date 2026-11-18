@@ -14,6 +14,8 @@ data class SimpleMediaStream(
     val index: Int,
     val streamTitle: String?,
     val displayTitle: String,
+    /** The file format, like "subrip", "pgssub" or "ass" (Benflix: styled ASS/SSA subtitles are never moved) */
+    val codec: String? = null,
 ) {
     companion object {
         fun from(
@@ -25,6 +27,7 @@ data class SimpleMediaStream(
                 index = mediaStream.index,
                 streamTitle = mediaStream.title?.takeIf { it.isNotNullOrBlank() },
                 displayTitle = mediaStreamDisplayTitle(resources, mediaStream, includeFlags),
+                codec = mediaStream.codec?.lowercase(),
             )
     }
 }
