@@ -1169,25 +1169,6 @@ private fun SpeedMeter(ping: Long?) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // Ben 2026-11-18: after a fresh install, put Benflix back in with its speed-up list so it's fast right away
-        if (spedUp != null && spedUp != "yes") {
-            val scope = rememberCoroutineScope()
-            ClickPreference(
-                title = "Speed up now",
-                summary = "Android prepares Benflix for this TV. Press Install on the next screen; it takes a moment.",
-                onClick = {
-                    scope.launch {
-                        val handed =
-                            com.github.damontecres.wholphin.services.SpeedUpInstall
-                                .speedUpNow(context)
-                        if (!handed) {
-                            com.github.damontecres.wholphin.ui.components.BenflixNotices
-                                .pill("Couldn't speed up from here. It still happens while the TV sleeps.")
-                        }
-                    }
-                },
-            )
-        }
         SwitchPreference(
             title = "Lite mode",
             value = lite,
