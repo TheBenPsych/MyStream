@@ -61,7 +61,6 @@ See [Credits and license](#credits-and-license).
 ### 🟧 Movies and 🟦 Shows
 - Each door opens on a big **Picked for you** banner, then **Keep watching**, **My List**, **Top 10**, collections and more
 - Clean title pages with **IMDb** and **Rotten Tomatoes** scores, a trailer that fades in, and **More like this**
-- **Did you know?** fun facts on hundreds of movie and show pages
 - **Ask for more like this**: a row of similar titles you don't have yet, ready to ask for
 - Can't decide? **This or that** and the **Mood quiz** at the bottom of Movies and Shows pick something for you
 - Shows list every season and episode, with "New episode" news on Home

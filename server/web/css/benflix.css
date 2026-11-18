@@ -304,12 +304,6 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .details .side-col { width: 300px; color: var(--ink2); font-size: 15px; display: flex; flex-direction: column; gap: 14px; }
 .details .side-col b { display: block; color: var(--ink3); font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 .details .side-col span { color: var(--ink); }
-.details .side-col .dyk { border-left: 2px solid; padding-left: 10px; margin-top: 4px; }
-.details .side-col .dyk b { font-size: 12px; font-weight: 800; letter-spacing: .08em; }
-.details .side-col .dyk p { margin: 2px 0 0; color: var(--ink); line-height: 1.4; min-height: 4.2em; }
-.details .side-col .dyk .dots { display: flex; gap: 4px; margin-top: 6px; }
-.details .side-col .dyk .dots i { width: 4px; height: 4px; border-radius: 2px; background: var(--line); }
-.details .side-col .dyk .dots i.on { width: 12px; background: var(--ink2); }
 .details .below { position: relative; padding-top: 12px; background: var(--tray); }
 .details .hint { color: var(--ink3); font-size: 14px; margin-top: 14px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0 var(--gutter); }
@@ -928,7 +922,6 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   /* Ben 2026-11-17 (Home news cards, phones too): the whole poster, smaller words, the fact in full */
   .spotted .brow .th, .spotted .brow .lgthumb { width: 54px; aspect-ratio: 2 / 3; }
   .spotted .brow .tx b { font-size: 14px; -webkit-line-clamp: 3; overflow-wrap: normal; }
-  .spotted .bitem.fact .brow .tx b { font-size: 13px; font-weight: 500; line-height: 1.3; -webkit-line-clamp: 6; }
 }
 
 /* ---------- "Can't decide?" games (Movies and Shows doors) ---------- */
@@ -1161,8 +1154,6 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .tp .tp-ovr > p { margin: 0; }
 .tp .tp-ovr .facts .fact-file { grid-column: 1 / -1; }
 @media (max-width: 1000px) { .tp .tp-pane > .tp-ov { grid-template-columns: minmax(0, 1fr); } }
-.tp .tp-facts { margin: 0 var(--gutter); max-width: 900px; display: flex; flex-direction: column; gap: 12px; }
-.tp .tp-facts p { margin: 0; padding-left: 12px; border-left: 3px solid var(--door); line-height: 1.5; color: var(--ink2); }
 .tp .tp-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--pg2); }
 .tp .tp-bar[hidden] { display: none; }
 .tp .tp-bar b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1186,7 +1177,7 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .tp .tp-why { white-space: normal; }
   .tp .tp-tabs { gap: 22px; margin: 0 -16px; padding: 0 16px; }
   .tp .tp-tab { font-size: 16px; }
-  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-facts, .tp .tp-pane > .tp-ov { margin-left: 16px; margin-right: 16px; }
+  .tp .tp-pane > .ov, .tp .tp-pane > .tp-more, .tp .tp-pane > .tp-strip, .tp .tp-pane > .anitags, .tp .tp-pane > .wrap0, .tp .tp-pane > .tp-ov { margin-left: 16px; margin-right: 16px; }
   .tp .tp-pane .ov { -webkit-line-clamp: 3; }
   .tp .tp-pane .tp-ov .ov { -webkit-line-clamp: unset; }
   .tp .tp-ovr .facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
@@ -1787,7 +1778,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   .spotted .bitem::before, .spotted .bmore::before { display: none; }
   .spotted .bmore { flex-direction: column; justify-content: center; gap: 6px; }
   /* Ben 2026-11-17: the cards share the whole width, the cover art fills almost the card's height so you see all of
-     it, the words are smaller (the episode line shows which one), and Did you know shows the fact itself */
+     it, the words are smaller (the episode line shows which one) */
   .spotted .bpanel { display: flex; }
   .spotted .bitem { flex: 1 1 0; min-width: 0; }
   .spotted .bmore { flex: 0 0 auto; padding: 0 22px; }
@@ -1797,7 +1788,6 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   .spotted .brow .th { background-size: cover; }
   .spotted .brow .tx small { font-size: 11px; }
   .spotted .brow .tx b { font-size: clamp(13px, calc(.8 * var(--u)), 16px); line-height: 1.25; -webkit-line-clamp: 3; overflow-wrap: normal; }
-  .spotted .bitem.fact .brow .tx b { font-size: clamp(12px, calc(.7 * var(--u)), 14px); font-weight: 500; -webkit-line-clamp: 5; }
 }
 /* With music playing the cards float just above the player bar */
 @media (min-width: 761px) { body:has(.mbar:not(.hidden)) .home.board.spotted { padding-bottom: 96px; } }

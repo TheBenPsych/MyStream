@@ -424,32 +424,6 @@ B.audioLine = (it) => {
 const langName = (code) => { try { return new Intl.DisplayNames(["en"], { type: "language" }).of(code); } catch (e) { return code; } };
 B.langName = langName;
 
-// ---------- "Did you know" on movie and show pages ----------
-// One fact about this title at a time from Tower (hand-checked first, then Wikipedia), fading to the next
-// every 10 seconds, with small dots. Nothing shows when the title has no facts.
-B.didYouKnow = async (it, color, nav) => {
-  const box = $("#dyk");
-  if (!box) return;
-  const got = await B.call("GET", `/api/facts/${it.Id}`).catch(() => null);
-  const facts = ((got && got.facts) || []).map((f) => f.text).filter(Boolean);
-  if (!facts.length || !B.alive(nav)) return;
-  let i = 0;
-  const dots = Math.min(facts.length, 8);
-  const draw = () => {
-    box.innerHTML = `<b style="color:${color}">DID YOU KNOW</b><p class="fade-in">${esc(facts[i])}</p>` +
-      (facts.length > 1 ? `<div class="dots">${Array.from({ length: dots }, (_, d) => `<i class="${d === i % dots ? "on" : ""}"></i>`).join("")}</div>` : "");
-  };
-  box.style.borderColor = color;
-  box.hidden = false;
-  draw();
-  if (facts.length < 2) return;
-  const timer = setInterval(() => {
-    if (!B.alive(nav) || !document.body.contains(box)) return clearInterval(timer);
-    i = (i + 1) % facts.length;
-    draw();
-  }, 10000);
-};
-
 // ---------- movie page (Redesign 2 title page: js/title.js) ----------
 B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   const it = await B.get(`/Users/${B.uid()}/Items/${m[1]}?Fields=${B.FIELDS},People,Studios,MediaSources,ProductionLocations,RemoteTrailers,LocalTrailerCount,Chapters`).catch(() => B.get(`/Items/${m[1]}?userId=${B.uid()}&Fields=${B.FIELDS},People,MediaSources,RemoteTrailers`));
@@ -486,23 +460,13 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
-      { name: "Did you know", id: "tpFacts" },
     ],
   });
   // Details (studio, release date, the file for you) under the whole story
   B.facts(it).then((html) => tp.setStoryExtra(html));
-  B.tpFacts(it, tp.pane("tpFacts"), nav);
   // In this collection, Ask for similar, anime extras and the parents' guide (extras.js)
   if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
 });
-// The Did you know tab: every fact about this title from Tower
-B.tpFacts = async (it, pane, nav) => {
-  if (!pane) return;
-  const got = await B.call("GET", `/api/facts/${it.Id}`).catch(() => null);
-  const facts = [...new Set(((got && got.facts) || []).map((f) => f.text).filter(Boolean))];
-  if (!facts.length || !B.alive(nav)) return;
-  pane.innerHTML = `<div class="tp-facts">${facts.map((f) => `<p>${esc(f)}</p>`).join("")}</div>`;
-};
 const movieMore = (it) => {
   const ud = it.UserData || {};
   const ids = it.ProviderIds || {};
@@ -611,10 +575,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Parents' guide", id: "tpParents" },
-      { name: "Did you know", id: "tpFacts" },
     ],
   });
-  B.tpFacts(it, tp.pane("tpFacts"), nav);
   B.facts(it).then((html) => tp.setStoryExtra(html));
   B.catchUp(it, target, nav);
   $("#bMore").onclick = () => B.tpMore(it.Name, [

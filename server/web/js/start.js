@@ -194,7 +194,7 @@ B.route(/^\/signin/, async () => {
 
 // ---------- Home ----------
 // Everyone but Kids and Easy mode gets the approved Today board (f3-panel): the greeting with Tower's weather line,
-// six square doors 3 by 2, and a soft list panel as tall as the doors (news, On the way, Did you know).
+// six square doors 3 by 2, and a soft list panel as tall as the doors (news, On the way).
 // Kids (kd-family): three big doors (Movies, Shows, Games) that name a couple of titles, then one Keep watching row.
 // Easy mode (ez-family, Settings > Look): the four doors this person opens most (the rest under More), 25% bigger,
 // then one Keep watching row.
@@ -306,19 +306,15 @@ B.savedWeather = () => {
 };
 
 // Home's news panel (Redesign 2, approved hm-tall): up to 5 lines on the web. Your news newest first, then
-// On the way, then one Did you know at the bottom. A quiet day fills up with On the way and Did you know (a second
-// fact when there's very little); a busy day keeps the last line for "4 more" and See all (like the TV and phone).
+// On the way; a busy day keeps the last line for "4 more" and See all (like the TV and phone).
 const HOME_SLOTS = 5;
-B.arrangeRows = (news, way, facts) => {
+B.arrangeRows = (news, way) => {
   const all = news.concat(way);
   if (all.length > HOME_SLOTS) return { rows: all.slice(0, HOME_SLOTS - 1), more: all.length - (HOME_SLOTS - 1), all };
-  const out = all.slice();
-  if (out.length < HOME_SLOTS && facts.length) out.push(facts[0]);
-  if (out.length < 4 && facts.length > 1) out.push(facts[1]);
-  return { rows: out.slice(0, HOME_SLOTS), more: 0, all };
+  return { rows: all.slice(0, HOME_SLOTS), more: 0, all };
 };
-// The small coloured line's colours: green ready, amber on the way, teal Did you know, grey everything else
-const KIND_READY = "#5BD18B", KIND_WAY = "#FFB547", KIND_FACT = "#3DD6C6", KIND_OTHER = "#9497A3", KIND_CANT = "#F07A3E";
+// The small coloured line's colours: green ready, amber on the way, grey everything else
+const KIND_READY = "#5BD18B", KIND_WAY = "#FFB547", KIND_OTHER = "#9497A3", KIND_CANT = "#F07A3E";
 // "On the way, about 20 minutes left" becomes "On the way · 20 min left"
 const wayKind = (line) => {
   const l = String(line || "").toLowerCase();
@@ -398,7 +394,6 @@ const cantFindRows = async () => {
   return rows.filter(Boolean);
 };
 
-let lastFacts = "";
 // A note from Ben that talks about one part of Benflix gets a button in its pop-up to go there
 const noteLink = (text) => {
   const t = text.toLowerCase();
@@ -417,7 +412,7 @@ const noteLink = (text) => {
 let clearedNow = new Set();
 const CLEARED = "benflix.cleared";
 const saveCleared = (ids) => {
-  const keep = ids.filter((id) => id && !id.startsWith("fact-"));
+  const keep = ids.filter(Boolean);
   ids.forEach((id) => clearedNow.add(id));
   if (!keep.length) return;
   B.savePrefs((c) => {
@@ -429,7 +424,7 @@ B.loadBoard = async (nav) => {
   clearedNow = new Set();
   const news = [];
   const add = (row) => news.push(row);
-  const [prefs, nextUp, music, books, reqs, facts, weather, cant] = await Promise.all([
+  const [prefs, nextUp, music, books, reqs, weather, cant] = await Promise.all([
     B.prefs().catch(() => null),
     B.get(`/Shows/NextUp?userId=${B.uid()}&limit=24&fields=DateCreated&enableResumable=false&enableRewatching=false&disableFirstEpisode=true`).catch(() => null),
     (async () => {
@@ -439,7 +434,6 @@ B.loadBoard = async (nav) => {
     })().catch(() => null),
     DOORS.books ? B.call("GET", "api/books/news").catch(() => null) : null,
     myRequests().catch(() => ({ ready: [], way: [] })),
-    B.call("GET", `api/facts/home?n=2&max=130&skip=${lastFacts}`).catch(() => null),
     B.call("GET", "api/home/weather").catch(() => null),
     cantFindRows().catch(() => []),
   ]);
@@ -503,16 +497,8 @@ B.loadBoard = async (nav) => {
   });
   reqs.ready.forEach(add);
   cant.forEach(add);
-  // Did you know: about a movie or show this person can watch (Tower picks them)
-  const factRows = ((facts && facts.facts) || []).map((f) => {
-    let text = f.fact;
-    if (f.name && !text.toLowerCase().includes(f.name.split(":")[0].trim().toLowerCase())) text = `${f.name}: ${text}`;
-    const show = f.type === "Series";
-    return { kind: "Did you know", title: text, kc: KIND_FACT, img: B.img(f.id, "Primary", { h: 240 }), href: `#/${show ? "show" : "movie"}/${f.id}`, id: `fact-${f.id}`, fid: f.id };
-  });
-  lastFacts = factRows.map((f) => f.fid).join(",");
   const keep = (r) => !cleared.has(r.id) && !clearedNow.has(r.id);
-  boardParts = { news: news.filter(keep).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 12), way: reqs.way.filter(keep), facts: factRows.filter(keep) };
+  boardParts = { news: news.filter(keep).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 12), way: reqs.way.filter(keep) };
   drawBoard();
   homeNotices(c, reqs.ready);
 };
@@ -540,10 +526,10 @@ const homeNotices = async (c, ready) => {
 
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
-let boardParts = { news: [], way: [], facts: [] };
+let boardParts = { news: [], way: [] };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><img src="web/img/glowfin-mark.svg" alt=""></span>`;
-  return `<div class="bitem${r.kc === KIND_FACT ? " fact" : ""}">
+  return `<div class="bitem">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
     <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
@@ -553,7 +539,7 @@ const live = (list) => list.filter((r) => !clearedNow.has(r.id));
 const drawBoard = () => {
   const list = $("#blist");
   if (!list) return;
-  const shown = B.arrangeRows(live(boardParts.news), live(boardParts.way), live(boardParts.facts));
+  const shown = B.arrangeRows(live(boardParts.news), live(boardParts.way));
   const rows = shown.rows;
   list.innerHTML = rows.length ? `<div class="bpanel"><div class="bhead"><button type="button" class="bclear">Clear all</button></div>
     ${rows.map(rowHtml).join("")}
@@ -563,7 +549,7 @@ const drawBoard = () => {
   if (see) see.onclick = () => seeAll();
   const all = $(".bclear", list);
   if (all) all.onclick = () => {
-    saveCleared(boardParts.news.concat(boardParts.way, boardParts.facts).map((r) => r.id));
+    saveCleared(boardParts.news.concat(boardParts.way).map((r) => r.id));
     drawBoard();
     const d = $(".door"); if (d) d.focus({ preventScroll: true });
   };
