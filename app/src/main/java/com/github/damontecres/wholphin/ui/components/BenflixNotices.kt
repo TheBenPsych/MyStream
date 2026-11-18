@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -52,21 +51,6 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.EaKindMark
-import com.github.damontecres.wholphin.ui.theme.EaLook
-import com.github.damontecres.wholphin.ui.theme.EdLook
-import com.github.damontecres.wholphin.ui.theme.HwKindMark
-import com.github.damontecres.wholphin.ui.theme.HwLook
-import com.github.damontecres.wholphin.ui.theme.J4KindMark
-import com.github.damontecres.wholphin.ui.theme.J4Look
-import com.github.damontecres.wholphin.ui.theme.NyKindMark
-import com.github.damontecres.wholphin.ui.theme.NyLook
-import com.github.damontecres.wholphin.ui.theme.XmasLook
-import com.github.damontecres.wholphin.ui.theme.edPlaySprout
-import com.github.damontecres.wholphin.ui.theme.swNoticeSaber
-import com.github.damontecres.wholphin.ui.theme.tgTack
-import com.github.damontecres.wholphin.ui.theme.vgNoticeEdge
-import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -216,44 +200,8 @@ private fun CornerCard(
         modifier =
             Modifier
                 .then(if (isTv) Modifier.widthIn(min = 300.dp, max = 400.dp) else Modifier.fillMaxWidth())
-                // Christmas look: a red glass ornament hangs from the notice's top edge
-                .then(if (XmasLook.on) Modifier.xmasOrnament(XmasLook.RedBall, ball = 24.dp, string = 6.dp, fromEnd = 34.dp) else Modifier)
-                // Thanksgiving look: the notice is pinned with a brass tack
-                .tgTack()
-                // Earth Day look: a little sprout grows up out of the notice's top edge
-                .then(if (EdLook.on) Modifier.edPlaySprout(tall = 30.dp) else Modifier)
-                // Star Wars Day: a little laser sword lies along the notice's top edge
-                .swNoticeSaber()
                 .clip(shape)
                 .background(BenflixColors.Panel)
-                // New Year's look: a gold edge down the notice's left side
-                .then(
-                    if (NyLook.on || J4Look.on) {
-                        // 4th of July look: a flag red edge instead
-                        Modifier.drawBehind {
-                            drawRect(
-                                if (J4Look.on) J4Look.Red else NyLook.Gold,
-                                size =
-                                    androidx.compose.ui.geometry
-                                        .Size(4.dp.toPx(), size.height),
-                            )
-                        }
-                    } else if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
-                        // St. Patrick's Day look: a clover green edge down the notice's left side
-                        Modifier.drawBehind {
-                            drawRect(
-                                com.github.damontecres.wholphin.ui.theme.SpLook.Clover,
-                                size =
-                                    androidx.compose.ui.geometry
-                                        .Size(4.dp.toPx(), size.height),
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
-                )
-                // Video Games Day look: a cyan edge down the left, like a lit-up game menu
-                .vgNoticeEdge()
                 .border(1.dp, BenflixColors.Line, shape)
                 // Never takes the remote's focus: on a TV, OK opens it; on a phone, a tap does
                 .focusProperties { canFocus = false }
@@ -273,34 +221,6 @@ private fun CornerCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(12.dp),
         ) {
-            // Easter look: the notice's own small mark (a painted egg, a hatching chick, paw prints or a tulip)
-            if (EaLook.on) EaKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
-            // Halloween look: the notice's own mark (a moon, a sweet, a spider or a cauldron)
-            if (HwLook.on) HwKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
-            // Valentine's look: the notice's own small mark (a heart chocolate, a rose, a sealed letter...)
-            if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
-                com.github.damontecres.wholphin.ui.theme
-                    .ValKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
-            }
-            // Popcorn Day look: the notice's own mark (a ticket, a full bucket, a kernel, a film reel)
-            if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-                com.github.damontecres.wholphin.ui.theme
-                    .PcKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
-            }
-            // New Year's look: the notice's own small gold mark (a star, a clock, a glass...)
-            if (NyLook.on) NyKindMark(card.title, size = if (isTv) 26.dp else 22.dp)
-            // St. Patrick's Day look: the notice's own small mark (a horseshoe, a pot of gold, a rainbow, a top hat)
-            if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
-                com.github.damontecres.wholphin.ui.theme
-                    .SpKindMark(card.title, size = if (isTv) 30.dp else 26.dp)
-            }
-            // Friday the 13th look: a four-leaf clover on notices without a picture
-            if (card.image == null && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-                com.github.damontecres.wholphin.ui.theme
-                    .F13Clover(size = if (isTv) 28.dp else 24.dp)
-            }
-            // 4th of July look: the notice's own small mark (a flag, a star, a rocket, a firework)
-            if (J4Look.on) J4KindMark(card.title, size = if (isTv) 28.dp else 24.dp)
             if (card.image != null) {
                 AsyncImage(
                     model = card.image,

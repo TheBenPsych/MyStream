@@ -8,7 +8,6 @@ import com.github.damontecres.wholphin.services.Celebration
 import com.github.damontecres.wholphin.services.CelebrationNow
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LogoEffect
-import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.HomeRowFields
 import com.github.damontecres.wholphin.ui.premiereDay
@@ -499,7 +498,7 @@ internal suspend fun HomeViewModel.loadServerTop(userDto: ServerUserConfig): Lis
     }
 
 /**
- * Birthday banner on the profile's birthday, otherwise a holiday banner
+ * Birthday banner on the profile's birthday
  */
 internal suspend fun HomeViewModel.loadCelebration(userDto: ServerUserConfig) {
     val today = LocalDate.now()
@@ -513,7 +512,7 @@ internal suspend fun HomeViewModel.loadCelebration(userDto: ServerUserConfig) {
                 LogoEffect.CONFETTI,
             )
         } else {
-            holidayFor(today)
+            null
         }
     CelebrationNow.set(celebration)
     mutableState.update { it.copy(celebration = celebration) }

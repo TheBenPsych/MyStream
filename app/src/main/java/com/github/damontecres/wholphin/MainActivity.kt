@@ -283,9 +283,6 @@ class MainActivity : AppCompatActivity() {
         // Benflix: learn TV or phone before anything draws, so the shared text sizes are right
         com.github.damontecres.wholphin.ui.touch
             .isTvDevice(this)
-        // Benflix Star Wars Day: each profile's side (light or dark), kept on this TV or phone
-        com.github.damontecres.wholphin.ui.theme.SwSides
-            .init(this)
         setContent {
             PhoneFit {
                 MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
@@ -302,13 +299,6 @@ class MainActivity : AppCompatActivity() {
                                     com.github.damontecres.wholphin.ui.GetReady
                                         .needed(this@MainActivity)
                                 }
-                        }
-                        // Benflix Star Wars Day: the opening crawl, the first time Benflix opens on 4 May
-                        var showCrawl by rememberSaveable {
-                            mutableStateOf(
-                                com.github.damontecres.wholphin.ui.StarWarsCrawlDay
-                                    .due(this@MainActivity),
-                            )
                         }
                         if (userPreferences == null) {
                             // Show loading page if it is taking a while to get app preferences
@@ -355,33 +345,6 @@ class MainActivity : AppCompatActivity() {
                                     LocalImageUrlService provides imageUrlService,
                                     androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides snappyBringIntoView,
                                 ) {
-                                    // Christmas look switch (Settings > Look), read before the theme picks its colours
-                                    com.github.damontecres.wholphin.ui.theme.ChristmasSeason.lookOff =
-                                        appPreferences.benflixPreferences.christmasLookOff
-                                    com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.lookOff =
-                                        appPreferences.benflixPreferences.thanksgivingLookOff
-                                    com.github.damontecres.wholphin.ui.theme.EasterSeason.lookOff =
-                                        appPreferences.benflixPreferences.easterLookOff
-                                    com.github.damontecres.wholphin.ui.theme.Friday13.lookOff =
-                                        appPreferences.benflixPreferences.friday13LookOff
-                                    com.github.damontecres.wholphin.ui.theme.HalloweenSeason.lookOff =
-                                        appPreferences.benflixPreferences.halloweenLookOff
-                                    com.github.damontecres.wholphin.ui.theme.ValentineSeason.lookOff =
-                                        appPreferences.benflixPreferences.valentinesLookOff
-                                    com.github.damontecres.wholphin.ui.theme.NewYearSeason.lookOff =
-                                        appPreferences.benflixPreferences.newYearLookOff
-                                    com.github.damontecres.wholphin.ui.theme.VideoGamesDay.lookOff =
-                                        appPreferences.benflixPreferences.videogamesLookOff
-                                    com.github.damontecres.wholphin.ui.theme.EarthDaySeason.lookOff =
-                                        appPreferences.benflixPreferences.earthDayLookOff
-                                    com.github.damontecres.wholphin.ui.theme.JulySeason.lookOff =
-                                        appPreferences.benflixPreferences.julyLookOff
-                                    com.github.damontecres.wholphin.ui.theme.StarWarsDay.lookOff =
-                                        appPreferences.benflixPreferences.starWarsLookOff
-                                    com.github.damontecres.wholphin.ui.theme.PopcornSeason.lookOff =
-                                        appPreferences.benflixPreferences.popcornLookOff
-                                    com.github.damontecres.wholphin.ui.theme.StPatricksSeason.lookOff =
-                                        appPreferences.benflixPreferences.stpatricksLookOff
                                     WholphinTheme(
                                         true,
                                         // Benflix always uses its own red and black look
@@ -452,12 +415,6 @@ class MainActivity : AppCompatActivity() {
                         } else if (finishing) {
                             com.github.damontecres.wholphin.ui
                                 .FinishingUpdateScreen(onDone = { finishing = false })
-                        } else if (showCrawl &&
-                            com.github.damontecres.wholphin.ui.theme.StarWarsDay
-                                .on()
-                        ) {
-                            com.github.damontecres.wholphin.ui
-                                .StarWarsCrawl(onDone = { showCrawl = false })
                         } else if (showIntro) {
                             BenflixIntro(onFinished = { showIntro = false })
                         }

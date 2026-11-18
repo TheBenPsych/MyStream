@@ -61,49 +61,7 @@ fun WholphinTheme(
     // everything when Kids is switched on or off.
     val kidsPalette = KidsLook.palette
     val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
-    // Christmas look (December until New Year's): highlights and progress lines turn ornament red;
-    // Thanksgiving look (16 to 30 Nov): pumpkin orange; New Year's look (27 Dec to 1 Jan): champagne gold;
-    // 4th of July look (1 to 4 Jul, Kids too): flag red
-    val accentColor =
-        (if (VgLook.on) VgLook.Cyan else null) ?: (
-            if (NyLook.on) {
-                NyLook.Gold
-            } else if (SpLook.on) {
-                SpLook.Clover
-            } else if (J4Look.on) {
-                J4Look.Red
-            } else {
-                null
-            }
-        ) ?: kidsPalette?.accent ?: (
-            if (F13Look.on) {
-                // Friday the 13th look (that day only): lucky clover green
-                F13Look.Green
-            } else if (XmasLook.on) {
-                XmasLook.Red
-            } else if (TgLook.on) {
-                TgLook.Orange
-            } else if (EaLook.on) {
-                EaLook.Lilac
-            } else if (HwLook.on) {
-                HwLook.Orange
-            } else if (NyLook.on) {
-                NyLook.Gold
-            } else if (EdLook.on) {
-                // Earth Day look (Earth week, Kids too): leaf green
-                EdLook.Leaf
-            } else if (PcLook.on) {
-                // Popcorn Day look (19 Jan): butter yellow
-                PcLook.Butter
-            } else if (ValLook.on) {
-                // Valentine's look (1 to 14 Feb): rose red
-                ValLook.Rose
-            } else if (SwLook.on) {
-                SwLook.Red
-            } else {
-                BenflixRedBase
-            }
-        )
+    val accentColor = kidsPalette?.accent ?: BenflixRedBase
     // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
     val density = LocalDensity.current
     val readDensity =

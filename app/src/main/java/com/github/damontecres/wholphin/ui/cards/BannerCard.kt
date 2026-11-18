@@ -30,10 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
@@ -51,37 +48,9 @@ import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.appendAnimeScores
-import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
-import com.github.damontecres.wholphin.ui.theme.EaLook
-import com.github.damontecres.wholphin.ui.theme.EdLook
-import com.github.damontecres.wholphin.ui.theme.F13Look
-import com.github.damontecres.wholphin.ui.theme.HwLook
-import com.github.damontecres.wholphin.ui.theme.J4Look
-import com.github.damontecres.wholphin.ui.theme.NyLook
-import com.github.damontecres.wholphin.ui.theme.PcLook
-import com.github.damontecres.wholphin.ui.theme.SpLook
-import com.github.damontecres.wholphin.ui.theme.SwLook
-import com.github.damontecres.wholphin.ui.theme.SwSides
-import com.github.damontecres.wholphin.ui.theme.TgLook
-import com.github.damontecres.wholphin.ui.theme.ValLook
-import com.github.damontecres.wholphin.ui.theme.VgLook
-import com.github.damontecres.wholphin.ui.theme.eaProgressEgg
-import com.github.damontecres.wholphin.ui.theme.edProgressBloom
-import com.github.damontecres.wholphin.ui.theme.f13ProgressMoon
-import com.github.damontecres.wholphin.ui.theme.hwProgressGhost
-import com.github.damontecres.wholphin.ui.theme.j4ProgressStar
-import com.github.damontecres.wholphin.ui.theme.j4ProgressStripes
-import com.github.damontecres.wholphin.ui.theme.nyProgressSparkler
-import com.github.damontecres.wholphin.ui.theme.pcProgressPuff
-import com.github.damontecres.wholphin.ui.theme.spProgressCoin
-import com.github.damontecres.wholphin.ui.theme.swProgressSaber
-import com.github.damontecres.wholphin.ui.theme.tgProgressLeaf
-import com.github.damontecres.wholphin.ui.theme.valProgressHeart
-import com.github.damontecres.wholphin.ui.theme.vgProgressBlocks
-import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -187,8 +156,7 @@ fun BannerCard(
             modifier
                 .playButtonPlays(item)
                 .bringIntoViewRequester(bringIntoView)
-                .size(cardWidth, cardHeight)
-                .xmasFocusOrnament(focused),
+                .size(cardWidth, cardHeight),
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
         interactionSource = cardInteractionSource,
@@ -328,175 +296,16 @@ fun BannerCard(
                             .padding(6.dp),
                 )
             }
-            if (playPercent > 0 && playPercent < 100 && SwLook.on) {
-                // Star Wars Day: the progress line is a laser sword in the colour of your side
-                val blade = SwSides.currentBlade
+            if (playPercent > 0 && playPercent < 100) {
                 Box(
                     modifier =
                         Modifier
                             .align(Alignment.BottomStart)
-                            .padding(start = 6.dp, end = 6.dp, bottom = 6.dp)
-                            .fillMaxWidth()
-                            .height(Cards.playedPercentHeight)
-                            .swProgressSaber((playPercent / 100).toFloat(), blade),
-                )
-            } else if (playPercent > 0 && playPercent < 100) {
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .background(
-                                if (F13Look.on) {
-                                    F13Look.Green
-                                } else if (TgLook.on) {
-                                    TgLook.Orange
-                                } else if (EaLook.on) {
-                                    EaLook.Lilac
-                                } else if (HwLook.on) {
-                                    HwLook.Orange
-                                } else if (NyLook.on) {
-                                    NyLook.Gold
-                                } else if (EdLook.on) {
-                                    EdLook.Leaf
-                                } else if (J4Look.on) {
-                                    J4Look.Red
-                                } else if (SpLook.on) {
-                                    SpLook.Clover
-                                } else if (ValLook.on) {
-                                    ValLook.Rose
-                                } else if (VgLook.on) {
-                                    Color.Transparent
-                                } else if (PcLook.on) {
-                                    PcLook.Butter
-                                } else {
-                                    BenflixRed
-                                },
-                            ).j4ProgressStripes()
+                            .background(BenflixRed)
                             .clip(RectangleShape)
                             .height(Cards.playedPercentHeight)
                             .fillMaxWidth((playPercent / 100).toFloat()),
                 )
-                // Video Games Day look: the progress line is an XP bar of blocks, with a pixel coin where you are
-                if (VgLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .vgProgressBlocks((playPercent / 100).toFloat(), coin = 16.dp),
-                    )
-                }
-                // Halloween look: a little ghost bobs on the end of the progress line
-                if (HwLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .hwProgressGhost((playPercent / 100).toFloat(), ghost = 22.dp),
-                    )
-                }
-                // Thanksgiving look: a gold maple leaf rides the end of the progress line
-                if (TgLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .tgProgressLeaf((playPercent / 100).toFloat(), leaf = 20.dp),
-                    )
-                }
-                // Valentine's look: a glossy little red heart bead rides the end of the progress line
-                if (ValLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .valProgressHeart((playPercent / 100).toFloat(), bead = 18.dp),
-                    )
-                }
-                // Popcorn Day look: a piece of popcorn on the end of the progress line
-                if (PcLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .pcProgressPuff((playPercent / 100).toFloat(), puff = 20.dp),
-                    )
-                }
-                // New Year's look: a lit sparkler at the end of the progress line
-                if (NyLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .nyProgressSparkler((playPercent / 100).toFloat(), spark = 22.dp),
-                    )
-                }
-                // St. Patrick's Day look: a gold coin at the end of the progress line
-                if (SpLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .spProgressCoin((playPercent / 100).toFloat(), coin = 20.dp),
-                    )
-                }
-                // 4th of July look: red and white stripes, with a big white star at the end of the progress line
-                if (J4Look.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .j4ProgressStar((playPercent / 100).toFloat(), star = 20.dp),
-                    )
-                }
-                // Earth Day look: a little flower opens at the end of the progress line
-                if (EdLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .edProgressBloom((playPercent / 100).toFloat(), flower = 18.dp, leaves = false),
-                    )
-                }
-                // Friday the 13th look: a little full moon on the end of the progress line
-                if (F13Look.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .f13ProgressMoon((playPercent / 100).toFloat(), moon = 14.dp),
-                    )
-                }
-                // Easter look: a painted egg rolls along as the knob at the end of the progress line
-                if (EaLook.on) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(Cards.playedPercentHeight)
-                                .eaProgressEgg((playPercent / 100).toFloat(), egg = 22.dp),
-                    )
-                }
             }
         }
     }

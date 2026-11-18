@@ -61,66 +61,6 @@ fun SwitchPreference(
                     androidx.compose.foundation.layout.Arrangement
                         .spacedBy(8.dp),
             ) {
-                // Thanksgiving look: a small acorn next to switches that are on
-                // Halloween look: a tiny pumpkin next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.HwLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .HwPumpkin()
-                }
-                if (value && com.github.damontecres.wholphin.ui.theme.TgLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .TgAcorn()
-                }
-                // Easter look: a small daisy next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.EaLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .EaDaisy()
-                }
-                // Friday the 13th look: a little "13" knob next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .F13Knob()
-                }
-                // Valentine's look: a white knob with a red heart in it next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.ValLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .ValKnobHeart()
-                }
-                // Popcorn Day look: a popped piece next to switches that are on, a kernel next to ones that are off
-                if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .PcSwitchMark(value)
-                }
-                // New Year's look: a little gold star next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.NyLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .NyStar()
-                }
-                // Video Games Day look: a shiny round arcade button next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.VgLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .VgKnob()
-                }
-                // St. Patrick's Day look: a white knob with a green shamrock next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.SpLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .SpKnob()
-                }
-                // Earth Day look: a little Earth next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.EdLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .EdGlobe()
-                }
-                // 4th of July look: a little striped switch with a navy star knob next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.J4Look.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .J4Switch()
-                }
-                // Star Wars Day: a glowing knob in the colour of your side next to switches that are on
-                if (value && com.github.damontecres.wholphin.ui.theme.SwLook.on) {
-                    com.github.damontecres.wholphin.ui.theme
-                        .SwSwitchGlow()
-                }
                 androidx.tv.material3.Text(
                     text = if (value) "On" else "Off",
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -136,15 +76,6 @@ fun SwitchPreference(
 @Composable
 fun SwitchColors(): SwitchColors {
     val theme = LocalTheme.current
-    // Christmas look: switches that are on are pine green with a white knob
-    if (com.github.damontecres.wholphin.ui.theme.XmasLook.on) {
-        return SwitchDefaults.colors(
-            checkedThumbColor = androidx.compose.ui.graphics.Color.White,
-            checkedTrackColor =
-                com.github.damontecres.wholphin.ui.theme.XmasLook.Pine,
-            uncheckedThumbColor = MaterialTheme.colorScheme.onPrimary,
-        )
-    }
     return when (theme) {
         AppThemeColors.UNRECOGNIZED,
         AppThemeColors.PURPLE,

@@ -8,7 +8,6 @@ import com.github.damontecres.wholphin.services.isFriday13
 import com.github.damontecres.wholphin.services.lunarNewYear
 import com.github.damontecres.wholphin.services.midAutumn
 import com.github.damontecres.wholphin.services.nthSunday
-import com.github.damontecres.wholphin.ui.theme.ChristmasSeason
 import java.text.Normalizer
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -1522,8 +1521,8 @@ data class HomeTheme(
 
                 month == 7 && day <= 7 -> TANABATA
 
-                // Benflix Christmas look: the row stays up until the look's last day (never overlapping New Year's)
-                (month == 12 && day <= ChristmasSeason.LAST_DAY) || (month == 11 && day >= 25) -> CHRISTMAS
+                // Christmas row: late November until 26 Dec
+                (month == 12 && day <= 26) || (month == 11 && day >= 25) -> CHRISTMAS
 
                 month == 2 && day <= 14 -> VALENTINES
 

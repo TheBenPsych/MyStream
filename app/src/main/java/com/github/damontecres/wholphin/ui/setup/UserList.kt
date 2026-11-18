@@ -5,7 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -57,7 +55,6 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.JellyfinUser
-import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
@@ -70,7 +67,6 @@ import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -408,43 +404,6 @@ private fun UserIconCard(
 
     // Card dimensions - circular card
     val cardSize = LocalProfileTileSize.current
-    // Christmas (December until New Year's): the focused profile gets a soft warm glow around its white ring
-    val focused by interactionSource.collectIsFocusedAsState()
-    val xmasGlow =
-        focused &&
-            (
-                com.github.damontecres.wholphin.ui.theme.ChristmasSeason
-                    .on() ||
-                    com.github.damontecres.wholphin.ui.theme.ValentineSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.EasterSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.Friday13
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.HalloweenSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.NewYearSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.VideoGamesDay
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.EarthDaySeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.JulySeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.StarWarsDay
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.PopcornSeason
-                        .on() ||
-                    com.github.damontecres.wholphin.ui.theme.StPatricksSeason
-                        .on()
-            )
-    // Star Wars Day: the room's laser sword turns the colour of the side of the profile the remote is on
-    if (focused) {
-        androidx.compose.runtime.SideEffect { SwRoomFocus.user = user.user.id }
-    }
-
     // A picture picked in Benflix wins, and shows right away when it changes
     AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
     val chosen = AvatarChoices.get(user.user.id)?.let { BenflixAvatars.getOrNull(it) }
@@ -461,8 +420,7 @@ private fun UserIconCard(
             interactionSource = interactionSource,
             modifier =
                 Modifier
-                    .size(cardSize)
-                    .then(if (xmasGlow) Modifier.drawBehind { drawXmasGlow() } else Modifier),
+                    .size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
@@ -823,14 +781,9 @@ private fun GuestProfileCard(
     }
 }
 
-/**
- * The outline around the chosen profile: white normally, the holiday's color on a holiday
- */
+/** The outline around the chosen profile */
 @Composable
-private fun profileBorderColor(): Color {
-    val holiday = remember { holidayFor(LocalDate.now()) }
-    return holiday?.let { Color(it.color) } ?: MaterialTheme.colorScheme.onSurface
-}
+private fun profileBorderColor(): Color = MaterialTheme.colorScheme.onSurface
 
 /** How many see-through layers make up the profile glow */
 private const val GLOW_LAYERS = 3
@@ -846,20 +799,3 @@ val ReadableTextShadow =
                 .Offset(0f, 2f),
         blurRadius = 16f,
     )
-
-/** Benflix Christmas: a soft warm glow behind the focused profile */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawXmasGlow() {
-    val r = size.minDimension * 0.82f
-    drawCircle(
-        brush =
-            androidx.compose.ui.graphics.Brush.radialGradient(
-                0.55f to
-                    androidx.compose.ui.graphics
-                        .Color(0x52FFE3B0),
-                1f to androidx.compose.ui.graphics.Color.Transparent,
-                center = center,
-                radius = r,
-            ),
-        radius = r,
-    )
-}
