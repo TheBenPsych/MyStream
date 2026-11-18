@@ -441,7 +441,100 @@
 
   const ALL = [
     make("friday13", is("f13On"), true, ["#141414", "#0A0A0A"], ["#9BE15D", "#C9D0E0"], "Friday the 13th pick", { pickWords: ["Friday the 13th"], pickTags: ["slasher"] }),
-    make("videogames", is("vgOn"), true, ["#1A1030", "#0E0819"], ["#FF6F91", "#3DD6C6", "#FFE14D", "#7AA7FF"], "Game Day pick", { pickTags: ["video game"], pickWords: ["Game"] }),
+    // Video Games Day (12 Sep, Kids too): arcade score screen on Home, full-colour pixel icons, blinking arrow by the
+    // icon you're on (Ben 2026-11-17, themes/videogames-3-navigation.html + videogames-4-rail-icons.html). Same art
+    // as the app's ui/theme/VideoGamesNav.kt.
+    make("videogames", is("vgOn"), true, ["#1E1238", "#170E2C"], ["#3FE0FF", "#FFFFFF"], "Game night pick", (() => {
+      const PIX = {
+        home: ["....RR......", "...RRRR.CC..", "..RRRRRR.C..", ".RRRRRRRR...", "RRRRRRRRRR..", ".WWWWWWWW...", ".WBBWWWDDW..", ".WBBWWWDDW..", ".WWWWWWDDW..", ".WWWWWWDDW..", "GGGGGGGGGGGG", "............"],
+        movies: ["............", ".WKWKWKWKWK.", ".KWKWKWKWKW.", "............", ".AAAAAAAAAA.", ".AKKKKKKKKA.", ".AKAAAAAAKA.", ".AKAAAAAAKA.", ".AKKKKKKKKA.", ".AAAAAAAAAA.", ".AA......AA.", "............"],
+        shows: ["..K......K..", "...K....K...", "....K..K....", ".SSSSSSSSSS.", ".SCCCCCCCSS.", ".SCWCCCCCSY.", ".SCCCCCCCSS.", ".SCCCCCCCSY.", ".SCCCCCCCSS.", ".SSSSSSSSSS.", "..SS....SS..", "............"],
+        live: ["............", "T....RR....T", ".T...RR...T.", "T.T..TT..T.T", ".T...TT...T.", "T...TTTT...T", "....T..T....", "....TTTT....", "...T....T...", "...TTTTTT...", "..T......T..", ".TT......TT."],
+        games: ["............", "............", "..PPP..PPP..", ".PPPPPPPPPP.", "PPWPPPPPYPPP", "PWWWPPPBPRPP", "PPWPPPPPLPPP", "PPPPPPPPPPPP", "PPPP....PPPP", ".PP......PP.", "............", "............"],
+        music: ["............", "....MMMMMMMM", "....MMMMMMMM", "....M......M", "....M......M", "....M......M", "....M......M", "..MMM....MMM", ".MMMM...MMMM", ".MMMM...MMMM", "..MM.....MM.", "............"],
+        books: ["............", ".LLLL..LLLL.", "LWWWWLLWWWWL", "LWKKWLLWKKWL", "LWWWWLLWWWWL", "LWKKWLLWKKWL", "LWWWWLLWWWWL", "LWKKWLLWKKWL", "LWWWWLLWWWWL", "LLLLLLLLLLLL", ".....LL.....", "............"],
+        search: ["............", "...WWWW.....", "..W....W....", ".W......W...", ".W......W...", ".W......W...", ".W......W...", "..W....W....", "...WWWWWW...", "........WW..", ".........WW.", "..........W."],
+        requests: ["............", ".....YY.....", ".....YY.....", "..Y..YY..Y..", "...Y.YY.Y...", "YYYY.YY.YYYY", "...Y.YY.Y...", "..Y..YY..Y..", ".....YY.....", ".....YY.....", "............", "............"],
+        more: ["............", "............", "............", "............", "............", ".WW..WW..WW.", ".WW..WW..WW.", "............", "............", "............", "............", "............"],
+      };
+      const INK = { R: "#FF5F6D", W: "#F4F1FF", B: "#3FE0FF", D: "#9A5B2E", C: "#B8B8C8", G: "#5BD86A", K: "#22183C", A: "#FFB547", S: "#7AA7FF", Y: "#FFD45A", T: "#3DD6C6", M: "#B69CFF", L: "#B9E36A", P: "#FF6F91" };
+      // Grey while the rail waits to light up, a white flash as it lights (vi-q-start A), then its own colours.
+      // Inline SVG styles apply to the whole page, so every rule is tied to this holiday's own classes.
+      const STYLE = "<style>.rl-i.dark .vgi rect:not(.k){fill:currentColor}.rl-i.lit .vgi rect:not(.k){fill:#fff}" +
+        ".rl-mark:has(.vgm){top:12px;left:0;width:14px;height:21px}.bt-mark:has(.vgm){top:5px;left:3px}</style>";
+      const icon = (rows) => {
+        let r = "";
+        rows.forEach((row, y) => [...row].forEach((ch, x) => {
+          if (ch !== ".") r += `<rect${ch === "K" ? ' class="k"' : ""} x="${x * 2}" y="${y * 2}" width="2.05" height="2.05" fill="${INK[ch]}"/>`;
+        }));
+        return `${STYLE}<g class="vgi" shape-rendering="crispEdges" stroke="none">${r}</g>`;
+      };
+      const icons = {};
+      Object.keys(PIX).forEach((k) => { icons[k] = icon(PIX[k]); });
+      // The blinking ▶ pointing at the icon you're on
+      const ARROW = ["X.....", "XX....", "XXX...", "XXXX..", "XXXX..", "XXX...", "XX....", "X....."];
+      let arrow = "";
+      ARROW.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") arrow += `<rect x="${0.4 + x * 1.25}" y="${5 + y * 1.25}" width="1.3" height="1.3"/>`; }));
+      const mark = `<g class="vgm" shape-rendering="crispEdges"><g fill="#06222B" transform="translate(.7 .7)">${arrow}</g><g fill="#3FE0FF">${arrow}<animate attributeName="opacity" values="1;.3" keyTimes="0;.7" dur="1s" calcMode="discrete" repeatCount="indefinite"/></g></g>`;
+      // Home's score screen. The trims are stretched to the page's width, which would squash the letters, so they
+      // start as an empty marker and are drawn here at the trim's real size (and again if the window changes size).
+      const PX = "font-family:'Press Start 2P',monospace";
+      const hud = (svg) => {
+        const w = Math.round(svg.getBoundingClientRect().width), h = Math.round(svg.getBoundingClientRect().height);
+        if (!w || !h) return;
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+        const top = svg.querySelector(".vgh").dataset.k === "top";
+        // Phones keep the greeting at the top of the picture, so there the score moves to the bottom strip
+        const narrow = w < 600;
+        const fs = 11;
+        const t = (x, y, fill, s, anchor) => `<text x="${x}" y="${y}" fill="${fill}" font-size="${fs}" text-anchor="${anchor || "start"}" style="${PX};paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:2px">${s}</text>`;
+        const score = (x, y) => t(x, y, "#FF5FB0", "1UP") + `<text class="vgs" x="${x + fs * 4}" y="${y}" fill="#fff" font-size="${fs}" style="${PX}">012900</text>`;
+        const blink = (inner) => `<g>${inner}<animate attributeName="opacity" values="1;0" keyTimes="0;.62" dur="1s" calcMode="discrete" repeatCount="indefinite"/></g>`;
+        let out = `<g class="vgh" data-k="${top ? "top" : "bottom"}" data-w="${w}"></g>`;
+        if (top && narrow) {
+          out += `<rect width="${w}" height="4" fill="rgba(10,6,24,.88)"/><line x1="0" x2="${w}" y1="4" y2="4" stroke="rgba(63,224,255,.7)" stroke-width="2" stroke-dasharray="7 5"/>`;
+        } else if (top) {
+          // A slim bar along the very top edge, above the greeting and clock's line, so it never crowds them
+          const band = 18, y = 13;
+          out += `<rect width="${w}" height="${band}" fill="rgba(10,6,24,.88)"/><rect y="${band - 2}" width="${w}" height="2" fill="rgba(63,224,255,.6)"/>`;
+          out += score(18, y);
+          if (w > 900) out += t(w / 2, y, "#FFD45A", 'HI-SCORE <tspan fill="#fff">091200</tspan>', "middle");
+          out += t(w - 18, y, "#fff", "×12", "end") + `<circle cx="${w - 18 - fs * 3.9}" cy="${y - fs * .42}" r="${fs * .5}" fill="#FFD45A" stroke="#C48A1E" stroke-width="1.5"/>`;
+          out += t(w - 18 - fs * 5.2, y, "#FF5FB0", "♥♥♥", "end");
+        } else {
+          // A 20px strip along the very bottom, below the floating Today cards
+          const top0 = h - 20, y = h - 6;
+          out += `<rect y="${top0}" width="${w}" height="20" fill="rgba(10,6,24,.88)"/><line x1="0" x2="${w}" y1="${top0}" y2="${top0}" stroke="rgba(63,224,255,.65)" stroke-width="2" stroke-dasharray="7 5"/>`;
+          if (narrow) out += score(16, y) + blink(t(w - 16, y, "#FFD45A", "PRESS START", "end"));
+          else out += blink(t(w / 2, y, "#FFD45A", "PRESS START", "middle")) + t(16, y, "#AAB0C4", "LEVEL 09·12") + t(w - 16, y, "#AAB0C4", "CREDIT 01", "end");
+        }
+        svg.innerHTML = out;
+      };
+      const fit = () => document.querySelectorAll("svg.sp-trim .vgh").forEach((g) => {
+        const svg = g.ownerSVGElement;
+        if (svg && String(Math.round(svg.getBoundingClientRect().width)) !== g.dataset.w) hud(svg);
+      });
+      let score = 12900;
+      try {
+        new MutationObserver(() => { if (document.querySelector("svg.sp-trim .vgh:not([data-w])")) fit(); }).observe(document.documentElement, { childList: true, subtree: true });
+        addEventListener("resize", fit);
+        setInterval(() => {
+          const s = document.querySelectorAll("svg.sp-trim .vgs");
+          if (!s.length) return;
+          score = (score + 50) % 1000000;
+          s.forEach((x) => { x.textContent = String(score).padStart(6, "0"); });
+        }, 400);
+      } catch (e) { /* older browsers: the trims just stay empty */ }
+      return {
+        icons,
+        mark,
+        topTrim: '<g class="vgh" data-k="top"></g>',
+        bottomTrim: '<g class="vgh" data-k="bottom"></g>',
+        countdown: () => (is("vgOn")() || /videogames/.test(location.search + (localStorage.getItem("benflix.holidayPreview") || "")) ? "Today is Video Games Day · Player 1 ready" : ""),
+        pickTags: ["video game", "video games"],
+        pickWords: ["Game", "Arcade", "Pixels", "Tron", "Wreck-It Ralph", "Free Guy", "Player One", "Scott Pilgrim"],
+      };
+    })()),
     make("earthday", () => is("edOn")() && !is("eaOn")(), true, ["#0E2C44", "#0B1A26"], ["#A8DCF7", "#A8DCF7", "#7FC8F2", "#56BDEB", "#7CD36B", "#8FD86F", "#B5E37A", "#E8F5A0", "#7CD36B"], "Earth Day pick", {
       pickTags: ["nature", "environmentalism", "wildlife", "nature documentary"], pickWords: ["Earth", "Planet"],
       icons: ed.icons, topTrim: ed.top, bottomTrim: ed.bottom,
