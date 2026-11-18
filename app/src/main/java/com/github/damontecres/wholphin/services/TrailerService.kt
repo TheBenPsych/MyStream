@@ -97,10 +97,11 @@ class TrailerService
                     }
 
                     is RemoteTrailer -> {
-                        // Benflix: YouTube trailers play in a pop-up inside the app
+                        // Benflix: YouTube trailers play in the app picked for them (SmartTube, YouTube...)
+                        // or the pop-up inside Benflix
                         val videoId = YouTubeTrailer.videoId(trailer.url)
                         if (videoId != null) {
-                            YouTubeTrailer.show(videoId, trailer.name, trailer.url)
+                            YouTubeTrailer.play(context, videoId, trailer.name, trailer.url)
                         } else {
                             YouTubeTrailer.openOutside(context, trailer.url)
                         }

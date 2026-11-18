@@ -1078,6 +1078,12 @@ sealed interface AppPreference<Pref, T> {
             )
 
         /** Benflix (admins): the free OMDb key for IMDb and Rotten Tomatoes scores on the Requests pages */
+        /** Benflix: which app plays YouTube trailers on this device (saved on the device, see TrailerApps) */
+        val TrailerAppPref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_trailer_app,
+            )
+
         val OmdbKey =
             AppClickablePreference<AppPreferences>(
                 title = R.string.benflix_omdb_key,
@@ -1630,6 +1636,7 @@ val basicPreferences =
                     AppPreference.SkipForward,
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
+                    AppPreference.TrailerAppPref,
                 ),
         ),
         PreferenceGroup(

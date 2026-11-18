@@ -39,6 +39,15 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="video/*" />
         </intent>
+        <!-- Benflix: YouTube apps that can play trailers (SmartTube, YouTube, NewPipe...) -->
+        <package android:name="com.teamsmart.videomanager.tv" />
+        <package android:name="com.liskovsoft.smarttubetv.beta" />
+        <package android:name="com.liskovsoft.smarttubetv" />
+        <package android:name="com.google.android.youtube.tv" />
+        <package android:name="com.amazon.firetv.youtube" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="app.revanced.android.youtube" />
+        <package android:name="org.schabi.newpipe" />
         <!-- Benflix: a web browser for signing in to AniList -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
