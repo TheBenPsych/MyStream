@@ -149,6 +149,11 @@
                 tools:node="remove" />
         </provider>
 
+        <!-- Benflix updates: hears back from Android when an update goes in already sped up -->
+        <receiver
+            android:name=".services.SpeedUpInstallReceiver"
+            android:exported="false" />
+
         <!-- Benflix music: keeps songs playing with the screen off, with controls on the phone's lock screen -->
         <service
             android:name=".services.BenflixMusicPlaybackService"

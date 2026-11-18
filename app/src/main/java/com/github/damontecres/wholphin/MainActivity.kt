@@ -294,6 +294,15 @@ class MainActivity : AppCompatActivity() {
                         // Benflix startup animation, every time the app is opened fresh
                         var showIntro by rememberSaveable { mutableStateOf(true) }
                         var finishing by rememberSaveable { mutableStateOf(finishingUpdate) }
+                        // Ben 2026-11-18: after a fresh install, the first screen gets Benflix ready for this TV
+                        var getReady by rememberSaveable { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            getReady =
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    com.github.damontecres.wholphin.ui.GetReady
+                                        .needed(this@MainActivity)
+                                }
+                        }
                         // Benflix Star Wars Day: the opening crawl, the first time Benflix opens on 4 May
                         var showCrawl by rememberSaveable {
                             mutableStateOf(
@@ -437,7 +446,10 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
-                        if (finishing) {
+                        if (getReady) {
+                            com.github.damontecres.wholphin.ui
+                                .GetReadyScreen(onDone = { getReady = false })
+                        } else if (finishing) {
                             com.github.damontecres.wholphin.ui
                                 .FinishingUpdateScreen(onDone = { finishing = false })
                         } else if (showCrawl &&
