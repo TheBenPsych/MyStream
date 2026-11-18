@@ -71,6 +71,17 @@ for e in 1 2 3; do
     -c:v libx264 -preset ultrafast -b:v 800k -c:a aac "$d/Season 01/Test Show S01E0$e.mkv"
   printf '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<episodedetails><title>Episode number %s</title><season>1</season><episode>%s</episode><plot>Test episode %s.</plot></episodedetails>\n' "$e" "$e" "$e" > "$d/Season 01/Test Show S01E0$e.nfo"
 done
+# An anime show with two seasons (like the shows on Tower's anime shelf): the anime tabs and season chips
+d="$MEDIA/Shows/Robot Anime Test (2024)"
+for s in 1 2; do
+  mkdir -p "$d/Season 0$s"
+  for e in 1 2 3; do
+    ffmpeg -loglevel error -y -f lavfi -i "testsrc=size=1280x720:rate=12:duration=30" -f lavfi -i "sine=frequency=$((200 + e * 50)):duration=30" \
+      -c:v libx264 -preset ultrafast -b:v 500k -c:a aac "$d/Season 0$s/Robot Anime Test S0${s}E0$e.mkv"
+    printf '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<episodedetails><title>Anime episode %s</title><season>%s</season><episode>%s</episode><plot>Anime test episode %s.</plot></episodedetails>\n' "$e" "$s" "$e" "$e" > "$d/Season 0$s/Robot Anime Test S0${s}E0$e.nfo"
+  done
+done
+printf '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<tvshow><title>Robot Anime Test</title><year>2024</year><mpaa>TV-14</mpaa><genre>Anime</genre><genre>Fantasy</genre><plot>A Benflix robot anime test.</plot></tvshow>\n' > "$d/tvshow.nfo"
 du -sh "$MEDIA"
 
 docker run -d --name jellyfin -p 8096:8096 -v "$MEDIA:/media:ro" jellyfin/jellyfin:10.10.7 >/dev/null
