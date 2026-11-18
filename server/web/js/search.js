@@ -100,9 +100,9 @@ B.route(/^\/search/, async (m, nav) => {
     const bookPic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
     const bookLine = (b) => line(`#/book/${enc(b.id)}`, "", bookPic(b.cover), b.name, [b.kind === "audiobook" ? "Audiobook" : "Book", b.author].filter(Boolean).join(" · "));
     const personLine = (x) => line(`#/person/${x.Id}`, "", x.ImageTags && x.ImageTags.Primary ? B.img(x.Id, "Primary", { h: 120, tag: x.ImageTags.Primary }) : "", x.Name, "Person");
-    // Ask for it: movies, shows, songs and albums together, closest names first (movies and shows win a tie)
-    const askAll = [...ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) })), ...mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) }))]
-      .map((e, i) => ({ e, i, s: score(e.name) })).sort((a, b) => a.s - b.s || a.i - b.i).map((x) => x.e.html);
+    // Ask for it (Ben 2026-11-18): movies, shows and anime always first, songs and albums after. Closest names first inside each group
+    const closestFirst = (list) => list.map((e, i) => ({ e, i, s: score(e.name) })).sort((a, b) => a.s - b.s || a.i - b.i).map((x) => x.e.html);
+    const askAll = [...closestFirst(ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) }))), ...closestFirst(mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) })))];
     // What the words describe joins the names (first when few names match, like the TV app)
     const withWords = (list, type) => {
       const have = new Set(list.map((x) => x.Id));
