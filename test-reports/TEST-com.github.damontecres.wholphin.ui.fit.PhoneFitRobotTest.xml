@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-18T03:46:03.390Z" hostname="runnervmccnms" time="16.12">
+  <properties/>
+  <testcase name="allTextFits[anime-ask]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="6.893"/>
+  <testcase name="allTextFits[anime-episodes]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.819"/>
+  <testcase name="allTextFits[anime-overview]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.41"/>
+  <testcase name="allTextFits[anime-more-like-this]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.387"/>
+  <testcase name="allTextFits[anime-did-you-know]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.341"/>
+  <testcase name="allTextFits[anime-parents-guide]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.308"/>
+  <testcase name="allTextFits[movie-very-long-title]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.349"/>
+  <testcase name="allTextFits[movie-long-title-and-original]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.305"/>
+  <testcase name="allTextFits[easy-big]" classname="com.github.damontecres.wholphin.ui.fit.PhoneFitRobotTest" time="0.299"/>
+  <system-out><![CDATA[fit robot phone-anime-ask:
+## phone-anime-ask: all text fits
+
+fit robot phone-anime-episodes:
+## phone-anime-episodes: all text fits
+
+fit robot phone-anime-overview:
+## phone-anime-overview: all text fits
+
+fit robot phone-anime-more-like-this:
+## phone-anime-more-like-this: all text fits
+
+fit robot phone-anime-did-you-know:
+## phone-anime-did-you-know: all text fits
+
+fit robot phone-anime-parents-guide:
+## phone-anime-parents-guide: all text fits
+
+fit robot phone-movie-very-long-title:
+## phone-movie-very-long-title: all text fits
+
+fit robot phone-movie-long-title-and-original:
+## phone-movie-long-title-and-original: all text fits
+
+fit robot phone-easy-big:
+## phone-easy-big: all text fits
+
+]]></system-out>
+  <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/home/runner/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.18.2/62f38a6faf7f069d661b79a07d566f504b0b20c4/byte-buddy-agent-1.18.2.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
+</testsuite>

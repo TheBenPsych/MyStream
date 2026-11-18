@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-11-18T03:46:19.522Z" hostname="runnervmccnms" time="4.299">
+  <properties/>
+  <testcase name="allTextFits[anime-ask-focused]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.504"/>
+  <testcase name="allTextFits[anime-ask]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.317"/>
+  <testcase name="allTextFits[anime-ask-second-row]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.321"/>
+  <testcase name="allTextFits[anime-episodes-focused]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.389"/>
+  <testcase name="allTextFits[anime-long-season-focused]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.356"/>
+  <testcase name="allTextFits[anime-more-like-this-focused]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.295"/>
+  <testcase name="allTextFits[anime-episodes]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.3"/>
+  <testcase name="allTextFits[anime-overview]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.261"/>
+  <testcase name="allTextFits[anime-more-like-this]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.319"/>
+  <testcase name="allTextFits[anime-did-you-know]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.229"/>
+  <testcase name="allTextFits[anime-parents-guide]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.253"/>
+  <testcase name="allTextFits[movie-very-long-title]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.265"/>
+  <testcase name="allTextFits[movie-long-title-and-original]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.205"/>
+  <testcase name="allTextFits[easy-big]" classname="com.github.damontecres.wholphin.ui.fit.TvFitRobotTest" time="0.251"/>
+  <system-out><![CDATA[fit robot tv-anime-ask-focused:
+## tv-anime-ask-focused: all text fits
+
+fit robot tv-anime-ask:
+## tv-anime-ask: all text fits
+
+fit robot tv-anime-ask-second-row:
+## tv-anime-ask-second-row: all text fits
+
+fit robot tv-anime-episodes-focused:
+## tv-anime-episodes-focused: all text fits
+
+fit robot tv-anime-long-season-focused:
+## tv-anime-long-season-focused: all text fits
+
+fit robot tv-anime-more-like-this-focused:
+## tv-anime-more-like-this-focused: all text fits
+
+fit robot tv-anime-episodes:
+## tv-anime-episodes: all text fits
+
+fit robot tv-anime-overview:
+## tv-anime-overview: all text fits
+
+fit robot tv-anime-more-like-this:
+## tv-anime-more-like-this: all text fits
+
+fit robot tv-anime-did-you-know:
+## tv-anime-did-you-know: all text fits
+
+fit robot tv-anime-parents-guide:
+## tv-anime-parents-guide: all text fits
+
+fit robot tv-movie-very-long-title:
+## tv-movie-very-long-title: all text fits
+
+fit robot tv-movie-long-title-and-original:
+## tv-movie-long-title-and-original: all text fits
+
+fit robot tv-easy-big:
+## tv-easy-big: all text fits
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
