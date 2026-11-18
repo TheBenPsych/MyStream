@@ -2146,3 +2146,18 @@ svg.gi path.gd { stroke-width: 3.6; }
 .gsave { display: flex; flex-direction: column; gap: 4px; min-width: 220px; padding: 16px 18px; border-radius: 12px; background: var(--raise); color: var(--ink); text-decoration: none; }
 .gsave:hover, .gsave:focus-visible { box-shadow: var(--glowring); outline: 0; }
 .gsave small { color: var(--ink2); }
+
+/* Easier-to-see Live TV logos (2026-11-18): bigger plates everywhere, and white logos (spotted by
+   livetv.js) get a dark slate plate so they don't vanish on white */
+.chcard .im img { max-width: 64%; max-height: 62%; padding: 6px; }
+.guide .ghead, .guide .grow-ch { grid-template-columns: 270px minmax(0, 1fr); }
+.guide .ch img { width: 78px; height: 52px; padding: 4px; border-radius: 7px; }
+.guide.nn .ghead, .nnrow { grid-template-columns: 132px minmax(0, 1.3fr) minmax(0, 1fr); }
+.nnrow { min-height: 60px; }
+.nnrow img { width: 66px; height: 44px; padding: 3px; border-radius: 6px; }
+.sideguide img { width: 72px; height: 48px; background: #fff; border-radius: 6px; padding: 3px; }
+#pl .topline img.chlogo { height: 56px; width: 84px; object-fit: contain; background: #fff; border-radius: 8px; padding: 5px; flex: none; }
+.chcard .im img.lightlogo, .guide .ch img.lightlogo, .nnrow img.lightlogo, .sideguide img.lightlogo, #pl .topline img.chlogo.lightlogo { background: #3A4064; }
+@media (max-width: 600px) {
+  .guide .ghead, .guide .grow-ch { grid-template-columns: minmax(0, 1fr); }
+}

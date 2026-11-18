@@ -626,7 +626,7 @@ private fun GuideGrid(
                                 textAlign = TextAlign.End,
                                 modifier = Modifier.width(36.dp),
                             )
-                            ChannelLogo(schedule, size = 26.dp, wide = true)
+                            ChannelLogo(schedule, size = 38.dp, wide = true)
                             Text(
                                 text = schedule.title,
                                 fontSize = BenflixType.tag,
@@ -1163,7 +1163,7 @@ private fun NowNextRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.width(NOW_NEXT_CHANNEL),
             ) {
-                ChannelLogo(schedule, size = 28.dp, wide = true)
+                ChannelLogo(schedule, size = 36.dp, wide = true)
                 Text(
                     text = (if (starred) "★ " else "") + schedule.number,
                     fontSize = BenflixType.tag,
@@ -1191,7 +1191,7 @@ private fun NowNextRow(
     }
 }
 
-private val NOW_NEXT_CHANNEL = 100.dp
+private val NOW_NEXT_CHANNEL = 116.dp
 
 /**
  * Glowfin L1 watching banner along the bottom after you change channel: the logo and number, the LIVE
@@ -1239,23 +1239,14 @@ fun ChannelBanner(
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val logo =
                     remember(info.channelId) {
-                        imageUrlService.getItemImageUrl(itemId = info.channelId, imageType = ImageType.PRIMARY, maxWidth = 160)
+                        imageUrlService.getItemImageUrl(itemId = info.channelId, imageType = ImageType.PRIMARY, maxWidth = 300)
                     }
-                Box(
-                    Modifier
-                        .width(84.dp)
-                        .height(56.dp)
-                        .background(Color.White, RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(4.dp),
-                ) {
-                    AsyncImage(
-                        model = logo,
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                LogoPlate(
+                    url = logo,
+                    modifier = Modifier.width(108.dp).height(72.dp),
+                    corner = 8.dp,
+                    inset = 6.dp,
+                )
                 Text(info.number.toString(), fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Glowfin.Text)
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
@@ -1329,7 +1320,7 @@ private const val HALF_HOUR = 30L * 60_000L
 private const val GUIDE_HOURS = 2L
 private const val NUMBER_WAIT_MS = 1_500L
 private const val BANNER_MS = 5_000L
-private val CHANNEL_COL = 196.dp
+private val CHANNEL_COL = 232.dp
 private val HEADER_HEIGHT = 170.dp
 
 /** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */

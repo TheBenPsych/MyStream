@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -46,6 +49,9 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
@@ -108,7 +114,12 @@ private fun tileBorder() =
         focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
     )
 
-/** A live channel's logo, on a white plate so every station's colours show */
+/**
+ * A live channel's logo on a plate, sized so it reads from the sofa. Most stations have dark or
+ * coloured logos, so they sit on white. Some (Bloomberg, CBS...) send a white logo with a see-through
+ * background, which vanished on white, so those get a dark slate plate instead. The check looks at
+ * the small logo picture once and remembers the answer.
+ */
 @Composable
 internal fun ChannelLogo(
     schedule: ChannelSchedule,
@@ -118,25 +129,102 @@ internal fun ChannelLogo(
 ) {
     val live = schedule.live
     val imageUrlService = LocalImageUrlService.current
-    val logo = remember(live.id) { imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 120) }
-    Box(
+    val logo = remember(live.id) { imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 300) }
+    LogoPlate(
+        url = logo,
         modifier =
             Modifier
                 .height(size)
-                .width(if (wide) size * 1.5f else size)
-                .background(Color.White, RoundedCornerShape(6.dp))
-                .clip(RoundedCornerShape(6.dp))
-                .padding(2.dp),
+                .width(if (wide) size * 1.5f else size),
+        corner = 6.dp,
+        inset = if (size >= 36.dp) 4.dp else 2.dp,
+    )
+}
+
+/** The plate itself: white for dark/coloured logos, dark slate for white ones */
+@Composable
+internal fun LogoPlate(
+    url: String?,
+    modifier: Modifier = Modifier,
+    corner: Dp = 6.dp,
+    inset: Dp = 3.dp,
+) {
+    val context = LocalContext.current
+    var light by remember(url) { mutableStateOf(url?.let { LogoTone.known[it] } ?: false) }
+    val request =
+        remember(url) {
+            // Software pictures so the colours can be read; logos are tiny so this costs nothing
+            ImageRequest
+                .Builder(context)
+                .data(url)
+                .allowHardware(false)
+                .build()
+        }
+    Box(
+        modifier =
+            modifier
+                .background(if (light) LogoTone.DarkPlate else Color.White, RoundedCornerShape(corner))
+                .clip(RoundedCornerShape(corner))
+                .padding(inset),
     ) {
         AsyncImage(
-            model =
-                com.github.damontecres.wholphin.ui.cards
-                    .rememberFadeIn(logo),
+            model = request,
             contentDescription = null,
             contentScale = ContentScale.Fit,
+            onSuccess = { state ->
+                if (url != null && url !in LogoTone.known) {
+                    val isLight = LogoTone.isLightLogo(state.result.image.toBitmap())
+                    LogoTone.known[url] = isLight
+                    light = isLight
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
     }
+}
+
+internal object LogoTone {
+    /** A soft slate, lighter than the cards, so white logos stand out and coloured ones still show */
+    val DarkPlate = Color(0xFF3A4064)
+    val known = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /**
+     * True when the logo is mostly white/very light marks on a see-through background. Logos that
+     * fill their own box (no see-through parts) already carry their background, so they stay on white.
+     */
+    fun isLightLogo(bitmap: Bitmap): Boolean =
+        try {
+            val w = bitmap.width
+            val h = bitmap.height
+            if (w <= 0 || h <= 0) {
+                false
+            } else {
+                val step = maxOf(1, maxOf(w, h) / 48)
+                var total = 0
+                var solid = 0
+                var lightCount = 0
+                var y = 0
+                while (y < h) {
+                    var x = 0
+                    while (x < w) {
+                        val c = bitmap.getPixel(x, y)
+                        total++
+                        if (android.graphics.Color.alpha(c) > 140) {
+                            solid++
+                            val r = android.graphics.Color.red(c)
+                            val g = android.graphics.Color.green(c)
+                            val b = android.graphics.Color.blue(c)
+                            if (r * 299 + g * 587 + b * 114 > 205_000) lightCount++
+                        }
+                        x += step
+                    }
+                    y += step
+                }
+                solid > 0 && solid < total * .92f && lightCount > solid * .55f
+            }
+        } catch (_: Exception) {
+            false
+        }
 }
 
 /** One line for a channel: logo, number and name, and what's on now. Used by search and the side guide */
@@ -172,7 +260,7 @@ internal fun ChannelRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
         ) {
-            ChannelLogo(schedule, size = 30.dp)
+            ChannelLogo(schedule, size = 36.dp, wide = true)
             Column(Modifier.weight(1f)) {
                 Text(
                     text = "${schedule.number}  ${schedule.title}",
@@ -228,7 +316,7 @@ internal fun RecentCard(
                     .aspectRatio(16f / 9f),
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ChannelLogo(schedule, size = width * .24f, wide = true)
+                ChannelLogo(schedule, size = width * .38f, wide = true)
                 if (on != null && !on.noGuide && on.endMs > on.startMs) {
                     Box(
                         Modifier
