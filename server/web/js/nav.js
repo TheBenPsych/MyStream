@@ -22,7 +22,8 @@
   // Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books
   const ORDER = ["movies", "shows", "live", "music", "games", "books"];
   const TEAL = "#3DD6C6";
-  const ANIME = "#/grid/shows?anime=only&title=Anime";
+  // Glowfin (ui-7): Anime has its own page with its own tabs
+  const ANIME = "#/anime";
   // Glowfin's two-tone menu icons (ui-2, the same shapes as the TV and phone app): a soft see-through fill
   // under each body shape, then an outline
   const GI = {
@@ -66,7 +67,7 @@
   };
   const spotOf = (hash) => {
     if (/^#\/home/.test(hash)) return "home";
-    if (/^#\/grid\/shows\?(.*&)?anime=only/.test(hash)) return "anime";
+    if (/^#\/(anime$|browse\/anime)/.test(hash) || /^#\/grid\/(shows|movies)\?(.*&)?anime=only/.test(hash)) return "anime";
     if (/^#\/settings/.test(hash)) return "settings";
     if (/^#\/search/.test(hash)) return "search";
     if (/^#\/requests/.test(hash)) return "requests";
@@ -129,6 +130,8 @@
 
   const onRail = (e) => {
     const d = e.target.closest("[data-door]");
+    // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, so they open straight away
+    if (d && (d.dataset.door === "movies" || d.dataset.door === "shows")) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); return; }
     if (d) { e.preventDefault(); openPanel(d.dataset.door, e.detail === 0); return; }
     const k = e.target.closest("[data-k]");
     if (!k) return;
@@ -269,7 +272,7 @@
     if (k === "more") return moreSheet();
     if (k === "anime") return B.go(ANIME);
     // Approved rx-phonepanel: tapping the door you're already in opens its places
-    if (doorOf(location.hash || "") === k) return placesSheet(k);
+    if (doorOf(location.hash || "") === k && k !== "movies" && k !== "shows") return placesSheet(k);
     B.go("#/" + k);
   };
   const sheetRow = (href, icon, label, color, note) => `<a class="sh-row" href="${esc(href)}" style="--c:${color || "var(--ink2)"}">${G(icon)}<span>${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ""}</a>`;

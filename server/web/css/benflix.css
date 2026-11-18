@@ -34,6 +34,7 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 :focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 6px; }
 
 /* ---------- logo ---------- */
+@font-face { font-family: "Glowfin Anton"; src: url("../fonts/glowfin_anton.ttf") format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
 @font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
 /* Glowfin logo (approved 2026-11-18): the fin mark, "Glow" light white + "fin" in the purple-to-cyan fade; Kids adds a small tag on the bottom line */
@@ -277,10 +278,14 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .wide.soon { opacity: .45; cursor: default; }
 .wide .tag { position: absolute; left: 8px; top: 8px; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 99px; letter-spacing: .03em; }
 .top10 { display: flex; align-items: flex-end; flex: none; }
-.top10 .num { font-size: 210px; font-weight: 800; line-height: .78; color: var(--tray); -webkit-text-stroke: 4px #7B7E86; margin-right: -30px; letter-spacing: -.06em; position: relative; z-index: 0; font-family: "Outfit", sans-serif; }
-.top10 .num.ten { letter-spacing: -.12em; margin-right: -22px; }
+/* Glowfin Top 10 (T1): tall Anton numbers in the violet > blue > aqua glow, each in the same width box fully
+   BESIDE its poster (never tucked behind), so the thin "1" is as easy to see as "10" */
+.top10 { gap: 6px; }
+.top10 .num { flex: none; width: var(--t10w, 96px); text-align: center; font-family: "Glowfin Anton", Impact, sans-serif; font-weight: 400; font-size: calc(var(--t10w, 96px) * 1.16); line-height: .86; letter-spacing: 0; padding-top: .06em;
+  background: linear-gradient(160deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 0; margin-right: 0; filter: drop-shadow(0 0 6px rgba(165,91,224,.45)); position: static; }
+.top10 .num.ten { letter-spacing: -.03em; margin-right: 0; }
 .top10 .poster { z-index: 1; }
-.top10:hover .num { -webkit-text-stroke-color: #fff; }
+
 .tiles2 { display: flex; gap: 12px; overflow-x: auto; padding: 6px var(--gutter) 10px; scrollbar-width: none; }
 .tile2 { flex: none; width: 220px; height: 110px; border-radius: var(--r); background: var(--pg2); border: 0; color: var(--ink); font-size: 20px; font-weight: 700; display: flex; align-items: flex-end; padding: 16px; cursor: pointer; text-align: left; }
 .tile2:hover { box-shadow: 0 0 0 3px #fff; }
@@ -564,7 +569,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .door-top .ov { -webkit-line-clamp: 2; font-size: 14px; }
   .rowx h3 { font-size: 17px; }
   .poster .cap { display: block; }
-  .top10 .num { font-size: 120px; -webkit-text-stroke-width: 3px; margin-right: -18px; }
+  .top10 { --t10w: 58px; }
   .wide { width: 240px; }
   .details .hero-in { flex-direction: column; align-items: stretch; gap: 18px; padding-bottom: 24px; }
   .details .t { font-size: 32px; }
@@ -1949,3 +1954,25 @@ svg.gi path.gd { stroke-width: 3.6; }
 @media (max-width: 760px) { .seapick { grid-template-columns: repeat(4, 1fr); } .seabtn { width: 100%; height: auto; aspect-ratio: 1; } }
 /* Kids' wider rail: the icons sit exactly in the middle of the tucked rail ((80 - 20 - 28) / 2 = 16) */
 .brail.kids .rl-i { padding: 0 16px; }
+
+/* Glowfin (ui-7): Movies, Shows and Anime tabs along the top. The one you're on is white with the glow line under it */
+.ptabs { display: flex; gap: 6px; padding: 10px var(--edge, 40px) 4px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 3; }
+.ptabs::-webkit-scrollbar { display: none; }
+.ptabs a { flex: none; position: relative; padding: 8px 14px 12px; border-radius: 999px; color: #9AA0C3; font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 600; font-size: 16px; text-decoration: none; white-space: nowrap; }
+.ptabs a .sm { display: none; }
+.ptabs a:hover, .ptabs a:focus-visible { background: #222645; color: #ECEEFB; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: 0 0 0 6px rgba(165,91,224,.25); }
+.ptabs a.on { color: #ECEEFB; font-weight: 700; }
+.ptabs a.on::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 26px; height: 3px; margin-left: -13px; border-radius: 2px; background: linear-gradient(90deg, #A55BE0, #1FA8E6 60%, #3FE0E8); }
+@media (max-width: 720px) {
+  .ptabs { padding: 6px 12px 2px; gap: 2px; }
+  .ptabs a { font-size: 14px; padding: 7px 12px 11px; }
+  .ptabs a .lg { display: none; }
+  .ptabs a .sm { display: inline; }
+}
+/* Glowfin Home: What's new is one row of cards */
+.whatsnew .bpanel { display: flex; gap: 12px; overflow-x: auto; padding: 0 var(--edge, 40px) 6px; background: none; border: 0; box-shadow: none; max-height: none; }
+.whatsnew .bpanel .bhead, .whatsnew .bpanel .bmore span { display: none; }
+.whatsnew .bitem { flex: none; width: 300px; }
+.whatsnew .bmore { flex: none; display: flex; align-items: center; }
+@media (max-width: 720px) { .whatsnew .bitem { width: 250px; } .whatsnew .bpanel { padding: 0 12px 6px; } }
+.whatsnew:not(:has(.bitem)) { display: none; }

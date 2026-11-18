@@ -13,7 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -33,7 +32,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
-import java.util.UUID
 
 /** A door's "Browse by" page: Genres, Collections, Studios / Networks, or everything */
 @Composable
@@ -44,15 +42,29 @@ fun DoorBrowsePage(
     viewModel: DoorViewModel = hiltViewModel(key = "browse-${destination.door}-${destination.what}"),
 ) {
     val door = BenflixDoor.entries.firstOrNull { it.name == destination.door } ?: BenflixDoor.MOVIES
+    val anime = door == BenflixDoor.ANIME
     val movies = door == BenflixDoor.MOVIES
-    if (destination.what == DoorViewModel.BROWSE_ALL) {
-        AllTitlesPage(door, viewModel, modifier)
-        return
+    when (destination.what) {
+        DoorViewModel.BROWSE_ALL -> {
+            AllTitlesPage(door, movies, viewModel, modifier)
+            return
+        }
+
+        // Glowfin Anime page: its Shows and Movies tabs
+        DoorViewModel.BROWSE_ANIME_SHOWS -> {
+            AllTitlesPage(door, false, viewModel, modifier)
+            return
+        }
+
+        DoorViewModel.BROWSE_ANIME_MOVIES -> {
+            AllTitlesPage(door, true, viewModel, modifier)
+            return
+        }
     }
     var library by remember { mutableStateOf<Library?>(null) }
     var looked by remember { mutableStateOf(false) }
     LaunchedEffect(door) {
-        library = viewModel.mainLibrary(door)
+        library = if (anime) viewModel.animeLibrary() else viewModel.mainLibrary(door)
         looked = true
     }
     val lib = library
@@ -68,7 +80,7 @@ fun DoorBrowsePage(
     val collectionType = if (movies) CollectionType.MOVIES else CollectionType.TVSHOWS
     val title =
         when (destination.what) {
-            DoorViewModel.BROWSE_GENRES -> "Genres"
+            DoorViewModel.BROWSE_GENRES -> if (anime) "Genres and tags" else "Genres"
             DoorViewModel.BROWSE_STUDIOS -> if (movies) "Studios" else "Networks"
             else -> "Collections"
         }
@@ -79,7 +91,7 @@ fun DoorBrowsePage(
             DoorViewModel.BROWSE_GENRES -> {
                 GenreCardGrid(
                     itemId = lib.itemId,
-                    includeItemTypes = listOf(type),
+                    includeItemTypes = if (anime) listOf(BaseItemKind.SERIES, BaseItemKind.MOVIE) else listOf(type),
                     collectionType = collectionType,
                     modifier = content,
                 )
@@ -108,23 +120,33 @@ fun DoorBrowsePage(
     }
 }
 
-/** Benflix redesign: All movies / All shows, in the shared [TitleGrid] */
+/**
+ * Benflix redesign: All movies / All shows, in the shared [TitleGrid] (Sort, Filter and the letter jump).
+ * Glowfin: the Anime page uses the same grid for its Shows and Movies tabs.
+ */
 @Composable
 private fun AllTitlesPage(
     door: BenflixDoor,
+    movies: Boolean,
     viewModel: DoorViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val movies = door == BenflixDoor.MOVIES
-    var loaded by remember { mutableStateOf<Pair<List<BaseItem>, Set<UUID>>?>(null) }
-    LaunchedEffect(door) { loaded = viewModel.everything(door) }
-    val (items, animeIds) = loaded ?: return LoadingPage(modifier.fillMaxSize())
+    var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
+    LaunchedEffect(door, movies) { loaded = viewModel.everything(door, movies) }
+    val items = loaded ?: return LoadingPage(modifier.fillMaxSize())
+    val anime = door == BenflixDoor.ANIME
     TitleGrid(
-        title = if (movies) "All movies" else "All shows",
+        title =
+            when {
+                anime && movies -> "Anime movies"
+                anime -> "Anime shows"
+                movies -> "All movies"
+                else -> "All shows"
+            },
         items = items,
-        animeIds = animeIds,
+        animeIds = emptySet(),
         movies = movies,
-        rememberKey = viewModel.gridKey(door, "all"),
+        rememberKey = viewModel.gridKey(door, if (anime && movies) "allmovies" else "all"),
         sorts =
             if (movies) {
                 listOf(TitleSort.NEWEST, TitleSort.A_TO_Z, TitleSort.YEAR, TitleSort.SCORE, TitleSort.LENGTH)
@@ -144,7 +166,7 @@ fun DoorRowGridPage(
     viewModel: DoorViewModel = hiltViewModel(key = "grid-${destination.door}-${destination.key}"),
 ) {
     val door = BenflixDoor.entries.firstOrNull { it.name == destination.door } ?: BenflixDoor.MOVIES
-    val movies = door == BenflixDoor.MOVIES
+    val movies = door == BenflixDoor.MOVIES || destination.key == DoorViewModel.ANIME_MOVIES
     var items by remember { mutableStateOf<List<BaseItem>?>(null) }
     LaunchedEffect(destination) { items = viewModel.fullRow(door, destination.key).distinctBy { it.id } }
     val list = items ?: return LoadingPage(modifier.fillMaxSize())

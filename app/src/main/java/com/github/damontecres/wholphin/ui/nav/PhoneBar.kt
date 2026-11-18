@@ -71,7 +71,7 @@ fun phoneTabs(
     return buildList {
         add(PhoneTab(TAB_HOME, "Home", GlowfinIcon.HOME, BenflixColors.Text))
         shown.forEach { add(PhoneTab(it.name, it.title, it.glowIcon(), BenflixColors.Text, it)) }
-        if (anime) add(PhoneTab(TAB_ANIME, "Anime", GlowfinIcon.ANIME, BenflixColors.Text))
+        if (anime) add(PhoneTab(TAB_ANIME, "Anime", GlowfinIcon.ANIME, BenflixColors.Text, BenflixDoor.ANIME))
         add(PhoneTab(TAB_MORE, "More", GlowfinIcon.MORE, BenflixColors.Text))
     }
 }

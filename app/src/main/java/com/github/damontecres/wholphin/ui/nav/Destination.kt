@@ -172,6 +172,10 @@ sealed class Destination(
     @Serializable
     data object ShowsDoor : Destination(false)
 
+    /** Glowfin (ui-7): Anime's own page, with its own tabs (For you, Shows, Movies, Genres and tags) */
+    @Serializable
+    data object AnimeDoor : Destination(false)
+
     /** Benflix music: the Music door (violet) */
     @Serializable
     data object MusicDoor : Destination(false)

@@ -148,60 +148,77 @@ fun DoorPage(
             )
         }
     }
-    val rowKeys = state.rows.map { it.key }
-    val sections = remember(door, easy, rowKeys) { doorSections(door, easy, rowKeys) }
+    val sections = remember(door, easy) { doorSections(door, easy) }
 
     if (state.loaded && state.rows.isEmpty()) {
-        EmptyDoor(door, state.offline, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
+        EmptyDoor(door.title, state.offline, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
-    DoorFrame(frame, sections, modifier, ready = state.loaded) { inner ->
+    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true) { inner ->
         when {
             frame.section != DOOR_HOME -> {
                 DoorSectionPage(door, frame.section, preferences, wide, inner)
             }
 
             wide -> {
-                WideDoor(door, state, easy, isTv, viewModel, frame, onClick, onSeeAll, inner)
+                WideDoor(state, easy, isTv, viewModel, frame, onClick, onSeeAll, inner)
             }
 
             else -> {
-                PhoneDoor(door, state, easy, frame, onClick, onSeeAll, { viewModel.navigationManager.navigateTo(it) }, inner)
+                PhoneDoor(state, easy, frame, onClick, onSeeAll, { viewModel.navigationManager.navigateTo(it) }, inner)
             }
         }
     }
 }
 
-/** Section keys in the Movies and Shows menus */
+/** Section keys in the Movies, Shows and Anime tabs */
 private const val SEC_ALL = "all"
 private const val SEC_GENRES = "genres"
 private const val SEC_COLLECTIONS = "collections"
-private const val SEC_STUDIOS = "studios"
 private const val SEC_MY_LIST = "mylist"
 
-/** The anime part of Shows (Glowfin: the menu's Anime spot opens it) */
-const val SEC_ANIME = "anime"
-private const val SEC_STAND_UP = "standup"
+/** The Anime page's Shows and Movies tabs */
+private const val SEC_ANIME_SHOWS = "animeshows"
+private const val SEC_ANIME_MOVIES = "animemovies"
 
 /**
- * What's in the Movies and Shows menus (Ben: everything the old "Browse by" tiles opened, plus My List,
- * Anime and Stand-up). Kids and Easy read get fewer: Home, All, Genres and My List.
+ * Glowfin's tabs (ui-7, Wholphin-like). Movies: For you, All movies, Collections, Genres, My List.
+ * Shows: For you, All shows, Genres, My List (no Networks). Anime: For you, Shows, Movies, Genres and tags.
+ * Kids and Easy read: no Collections.
  */
 internal fun doorSections(
     door: BenflixDoor,
     easy: Boolean,
-    rowKeys: List<String>,
 ): List<DoorSection> {
-    val movies = door == BenflixDoor.MOVIES
-    return buildList {
-        add(doorHome())
-        add(DoorSection(SEC_ALL, if (movies) "All movies" else "All shows", if (movies) BenflixIcon.FILM else BenflixIcon.TV))
-        add(DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST))
-        if (!easy && movies) add(DoorSection(SEC_COLLECTIONS, "Collections", BenflixIcon.IMAGE))
-        if (!easy) add(DoorSection(SEC_STUDIOS, if (movies) "Studios" else "Networks", BenflixIcon.FLAG))
-        add(DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS))
-        if (!easy && DoorViewModel.ANIME in rowKeys) add(DoorSection(SEC_ANIME, "Anime", BenflixIcon.STAR))
-        if (!easy && movies && DoorViewModel.STAND_UP in rowKeys) add(DoorSection(SEC_STAND_UP, "Stand-up", BenflixIcon.PERSON))
+    val forYou = DoorSection(DOOR_HOME, "For you", BenflixIcon.HOME)
+    return when (door) {
+        BenflixDoor.ANIME -> {
+            listOf(
+                forYou,
+                DoorSection(SEC_ANIME_SHOWS, "Shows", BenflixIcon.TV),
+                DoorSection(SEC_ANIME_MOVIES, "Movies", BenflixIcon.FILM),
+                DoorSection(SEC_GENRES, "Genres and tags", BenflixIcon.LIST),
+            )
+        }
+
+        BenflixDoor.MOVIES -> {
+            listOfNotNull(
+                forYou,
+                DoorSection(SEC_ALL, "All movies", BenflixIcon.FILM),
+                if (easy) null else DoorSection(SEC_COLLECTIONS, "Collections", BenflixIcon.IMAGE),
+                DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
+            )
+        }
+
+        else -> {
+            listOf(
+                forYou,
+                DoorSection(SEC_ALL, "All shows", BenflixIcon.TV),
+                DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
+            )
+        }
     }
 }
 
@@ -214,7 +231,6 @@ private fun DoorSectionPage(
     wide: Boolean,
     modifier: Modifier,
 ) {
-    val movies = door == BenflixDoor.MOVIES
     val inner =
         modifier.padding(
             top = if (wide) LocalTopBarOverlap.current else 0.dp,
@@ -235,27 +251,22 @@ private fun DoorSectionPage(
             DoorBrowsePage(browse(DoorViewModel.BROWSE_COLLECTIONS), preferences, inner)
         }
 
-        SEC_STUDIOS -> {
-            DoorBrowsePage(browse(DoorViewModel.BROWSE_STUDIOS), preferences, inner)
-        }
-
         SEC_MY_LIST -> {
             DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.MY_LIST, "My List"), inner)
         }
 
-        SEC_ANIME -> {
-            DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.ANIME, if (movies) "Anime movies" else "Anime"), inner)
+        SEC_ANIME_SHOWS -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_ANIME_SHOWS), preferences, inner)
         }
 
-        SEC_STAND_UP -> {
-            DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.STAND_UP, "Stand-up"), inner)
+        SEC_ANIME_MOVIES -> {
+            DoorBrowsePage(browse(DoorViewModel.BROWSE_ANIME_MOVIES), preferences, inner)
         }
     }
 }
 
 @Composable
-private fun WideDoor(
-    door: BenflixDoor,
+internal fun WideDoor(
     state: DoorPageState,
     easy: Boolean,
     isTv: Boolean,
@@ -264,7 +275,10 @@ private fun WideDoor(
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
     modifier: Modifier,
+    /** Glowfin Home: rows the page draws itself (What's new), by key, in their spot in the row order */
+    extra: Map<String, @Composable () -> Unit> = emptyMap(),
 ) {
+    val onOpen: (Destination) -> Unit = { viewModel.navigationManager.navigateTo(it) }
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
     // Speed check (Ben 2026-11-18): the poster you're on is only watched here, never read while building the page,
     // so moving along a row no longer rebuilds the whole door on every press. Only the top area changes, once you stop.
@@ -282,11 +296,7 @@ private fun WideDoor(
         }
     }
     // Before anything is focused (or on a touch screen), describe the first poster
-    val first =
-        state.rows
-            .firstOrNull()
-            ?.items
-            ?.firstOrNull()
+    val first = state.rows.firstNotNullOfOrNull { it.items.firstOrNull() }
     val preview = shown ?: first
 
     val restore = remember { FocusRequester() }
@@ -294,13 +304,7 @@ private fun WideDoor(
     // press a button the door keeps going back to the top row as rows arrive above it.
     val firstKey = state.rows.firstOrNull()?.key
     val savedRow = viewModel.focusedRow.takeIf { viewModel.userMoved }
-    // the "Can't decide?" cards at the bottom count as a row too, so Back from a game lands on them again
-    val targetRow =
-        if (savedRow == PICKERS_KEY && door.hasPickers() && state.rows.isNotEmpty()) {
-            PICKERS_KEY
-        } else {
-            state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
-        }
+    val targetRow = state.rows.firstOrNull { it.key == savedRow }?.key ?: firstKey
     val targetIndex = if (savedRow != null && targetRow == savedRow) viewModel.focusedIndex else 0
     var restored by remember { mutableStateOf(false) }
     // Back (approved dr-p-back): first back up to the top row's first card, then out of the door
@@ -326,12 +330,7 @@ private fun WideDoor(
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(
-            initialFirstVisibleItemIndex =
-                if (targetRow == PICKERS_KEY) {
-                    state.entries().size
-                } else {
-                    state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0)
-                },
+            initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0),
         )
     LaunchedEffect(firstKey) {
         snapshotFlow { columnState.firstVisibleItemIndex == 0 && (focusedKey == null || focusedKey == firstKey) }
@@ -393,9 +392,13 @@ private fun WideDoor(
                             rowsHaveFocus = it.hasFocus
                         },
             ) {
-                state.entries().forEach { entry ->
+                state.entries(extra.keys).forEach { entry ->
                     val row = (entry as? DoorEntry.Real)?.row
                     item(key = entry.key) {
+                        if (entry is DoorEntry.Extra) {
+                            extra[entry.key]?.invoke()
+                            return@item
+                        }
                         if (row == null) {
                             WaitingRow(posterWidth = posterWidth, showName = !isTv)
                             return@item
@@ -404,6 +407,7 @@ private fun WideDoor(
                             row = row,
                             posterWidth = posterWidth,
                             showName = !isTv,
+                            onOpen = onOpen,
                             startIndex = if (row.key == targetRow) targetIndex else 0,
                             focusRequester = if (row.key == targetRow) restore else null,
                             focusIndex = targetIndex,
@@ -419,25 +423,7 @@ private fun WideDoor(
                         )
                     }
                 }
-                // Ben: the "Can't decide?" games sit at the very bottom, and only pick from this door
-                if (door.hasPickers() && state.rows.isNotEmpty()) {
-                    item(key = PICKERS_KEY) {
-                        PickerRow(
-                            door = door,
-                            easy = easy,
-                            compact = false,
-                            onOpen = { viewModel.navigationManager.navigateTo(it) },
-                            modifier = Modifier.padding(start = SIDE, end = SIDE),
-                            focusRequester = if (targetRow == PICKERS_KEY) restore else null,
-                            focusIndex = targetIndex,
-                            onFocus = { index ->
-                                focusedKey = PICKERS_KEY
-                                viewModel.focusedRow = PICKERS_KEY
-                                viewModel.focusedIndex = index
-                            },
-                        )
-                    }
-                }
+                // (Ben 2026-11-18: the "Can't decide?" pickers are gone everywhere)
             }
         }
     }
@@ -456,20 +442,30 @@ private sealed interface DoorEntry {
     data class Waiting(
         override val key: String,
     ) : DoorEntry
+
+    /** A row the page draws itself (Home's What's new) */
+    data class Extra(
+        override val key: String,
+    ) : DoorEntry
 }
 
 /**
  * Ben: grey placeholder rows hold each row's place until it loads, so rows don't pop in above
  * each other. A row that turns out empty just goes away. Same key as the real row, so it swaps in place.
  */
-private fun DoorPageState.entries(): List<DoorEntry> {
+private fun DoorPageState.entries(extra: Set<String> = emptySet()): List<DoorEntry> {
     if (order.isEmpty()) {
         // Before the door knows its rows (it's still finding the libraries): a few grey rows
         return if (!loaded && rows.isEmpty()) List(WAITING_ROWS) { DoorEntry.Waiting("waiting-$it") } else rows.map { DoorEntry.Real(it) }
     }
     val byKey = rows.associateBy { it.key }
     return order.mapNotNull { key ->
-        byKey[key]?.let { DoorEntry.Real(it) } ?: if (key in pending) DoorEntry.Waiting(key) else null
+        byKey[key]?.let { DoorEntry.Real(it) }
+            ?: when (key) {
+                in extra -> DoorEntry.Extra(key)
+                in pending -> DoorEntry.Waiting(key)
+                else -> null
+            }
     }
 }
 
@@ -533,6 +529,8 @@ private fun DoorRow(
     side: Dp = SIDE,
     /** Changes when Back sends you to the top: the row scrolls back to the card focus goes to */
     scrollKey: Int = 0,
+    /** Request cards (Trending, not on Tower) open their own page */
+    onOpen: (Destination) -> Unit = {},
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
     LaunchedEffect(scrollKey) {
@@ -552,8 +550,25 @@ private fun DoorRow(
         LazyRow(
             state = listState,
             contentPadding = PaddingValues(horizontal = side),
-            horizontalArrangement = Arrangement.spacedBy(if (row.style == DoorRowStyle.TOP10) 0.dp else 12.dp),
+            // Glowfin T1: each Top 10 number has its own box beside its poster, so the posters keep a gap too
+            horizontalArrangement = Arrangement.spacedBy(if (row.style == DoorRowStyle.TOP10) 14.dp else 12.dp),
         ) {
+            if (row.style == DoorRowStyle.DISCOVER) {
+                itemsIndexed(row.discover, key = { _, it -> "d-${it.type}-${it.id}" }) { index, item ->
+                    com.github.damontecres.wholphin.ui.cards.DiscoverItemCard(
+                        item = item,
+                        onClick = { onOpen(item.destination) },
+                        onLongClick = {},
+                        width = posterWidth,
+                        modifier =
+                            if (focusRequester != null && index == focusIndex.coerceAtMost(row.discover.size - 1)) {
+                                Modifier.focusRequester(focusRequester)
+                            } else {
+                                Modifier
+                            },
+                    )
+                }
+            }
             itemsIndexed(row.items, key = { _, it -> it.id.toString() }) { index, item ->
                 val mod =
                     if (focusRequester != null && index == focusIndex.coerceAtMost(row.items.size - 1)) {
@@ -839,8 +854,7 @@ private fun minutesLeft(item: BaseItem): String? {
 }
 
 @Composable
-private fun PhoneDoor(
-    door: BenflixDoor,
+internal fun PhoneDoor(
     state: DoorPageState,
     easy: Boolean,
     frame: DoorFrameState,
@@ -848,6 +862,7 @@ private fun PhoneDoor(
     onSeeAll: (DoorRowData) -> Unit,
     onOpen: (Destination) -> Unit,
     modifier: Modifier,
+    extra: Map<String, @Composable () -> Unit> = emptyMap(),
 ) {
     // Ben: open at the very top. The picked card and rows load in one by one; until you touch the
     // page, go back to the top whenever something new arrives above what's showing.
@@ -887,9 +902,13 @@ private fun PhoneDoor(
                     )
                 }
             }
-            state.entries().forEach { entry ->
+            state.entries(extra.keys).forEach { entry ->
                 val row = (entry as? DoorEntry.Real)?.row
                 item(key = entry.key) {
+                    if (entry is DoorEntry.Extra) {
+                        extra[entry.key]?.invoke()
+                        return@item
+                    }
                     if (row == null) {
                         WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
                         return@item
@@ -898,6 +917,7 @@ private fun PhoneDoor(
                         row = row,
                         posterWidth = posterWidth,
                         showName = true,
+                        onOpen = onOpen,
                         startIndex = 0,
                         focusRequester = null,
                         focusIndex = 0,
@@ -906,11 +926,6 @@ private fun PhoneDoor(
                         onFocus = { _, _ -> },
                         side = PHONE_SIDE,
                     )
-                }
-            }
-            if (door.hasPickers() && state.rows.isNotEmpty()) {
-                item(key = "pickers") {
-                    PickerRow(door, easy, compact = true, onOpen = onOpen, modifier = Modifier.padding(horizontal = PHONE_SIDE))
                 }
             }
         }
@@ -987,8 +1002,8 @@ private fun PickedCard(
 
 /** Nothing in this door yet: a short note (and Try again when the server can't be reached) */
 @Composable
-private fun EmptyDoor(
-    door: BenflixDoor,
+internal fun EmptyDoor(
+    name: String,
     offline: Boolean,
     onRetry: () -> Unit,
     modifier: Modifier,
@@ -1002,7 +1017,7 @@ private fun EmptyDoor(
                 .padding(horizontal = SIDE, vertical = 32.dp),
     ) {
         Text(
-            text = if (offline) "Can't reach the server right now" else "Nothing in ${door.title} yet",
+            text = if (offline) "Can't reach the server right now" else "Nothing in $name yet",
             color = BenflixColors.Text,
             fontSize = BenflixType.pageTitle,
             fontWeight = FontWeight.ExtraBold,
@@ -1044,5 +1059,3 @@ private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
-
-private const val PICKERS_KEY = "pickers"

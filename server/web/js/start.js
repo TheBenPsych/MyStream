@@ -237,12 +237,12 @@ B.route(/^\/home$/, async (m, nav) => {
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
-    const wx = B.savedWeather();
-    B.page().innerHTML = B.top("") + `<div class="home board spotted ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
-      ${B.spotHtml()}
-      <div class="bmain"><div class="blist" id="blist"></div></div>
-    </div>`;
+    // Glowfin Home (ui-6): the same top area and rows as Movies and Shows; the news is one "What's new" row.
+    // No greeting or clock line, no sliding pictures.
+    B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner()}</div></div>`;
+    B.wireTop();
+    B.loadHomeRows(nav);
+    return;
   }
   B.wireTop();
   const mb = $("#moreDoors");
@@ -256,6 +256,54 @@ B.route(/^\/home$/, async (m, nav) => {
   focusPlay(0);
   if (small) B.loadFamilyRow(nav, kids); else B.loadBoard(nav);
 });
+
+// Glowfin Home rows: Continue watching, Next up, What's new, then Recently added, Top 10 this week, Because you
+// watched, Trending not on Tower, Anime airing this season and Watch it again
+B.loadHomeRows = async (nav) => {
+  const u = B.uid(), F = B.FIELDS;
+  const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
+  const animeShows = (await B.libs("shows")).filter(B.isAnimeLib);
+  const [movies, eps, next, freshM, freshS, topM, topS, again, missing] = await Promise.all([
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`),
+    get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))),
+    get(`/Shows/NextUp?userId=${u}&Limit=24&Fields=${F}&enableResumable=false&enableRewatching=false`),
+    get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=20&Fields=${F}`),
+    get(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=20&Fields=${F}`),
+    B.trending ? B.trending("Movie").catch(() => []) : [],
+    B.trending ? B.trending("Series").catch(() => []) : [],
+    get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&Filters=IsPlayed&MinCommunityRating=7&SortBy=Random&Limit=20&ImageTypes=Primary&Fields=${F}`),
+    B.trendingMissing ? B.trendingMissing() : [],
+  ]);
+  const airing = [];
+  for (const l of animeShows) airing.push(...(await get(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SeriesStatus=Continuing&SortBy=DateLastContentAdded&SortOrder=Descending&Limit=20&ImageTypes=Primary&Fields=${F}`)));
+  const played = await get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=1&Fields=${F}`);
+  const because = played[0] ? await get(`/Items/${played[0].Id}/Similar?userId=${u}&Limit=20&Fields=${F}`) : [];
+  if (!B.alive(nav) || !$("#rows")) return;
+  const seen = new Set();
+  const cont = movies.concat(eps)
+    .sort((a, b) => String((b.UserData || {}).LastPlayedDate || "").localeCompare(String((a.UserData || {}).LastPlayedDate || "")))
+    .filter((it) => { const k = it.SeriesId || it.Id; if (seen.has(k)) return false; seen.add(k); return true; });
+  const card = (it) => (it.Type === "Episode"
+    ? B.posterCard(Object.assign({}, it, { Name: it.SeriesName }), { href: B.hrefOf(it), sub: `S${it.ParentIndexNumber} E${it.IndexNumber}`, noTick: true, progress: true })
+    : B.posterCard(it, { progress: true }));
+  const top = [];
+  for (let i = 0; i < 10 && top.length < 10; i++) { if (topM[i]) top.push(topM[i]); if (topS[i]) top.push(topS[i]); }
+  const fresh = freshM.concat(freshS).sort((a, b) => String(b.DateCreated || "").localeCompare(String(a.DateCreated || ""))).slice(0, 20);
+  $("#rows").innerHTML = [
+    B.row("Continue watching", cont.slice(0, 20).map(card)),
+    B.row("Next up", next.map(card)),
+    `<section class="rowx whatsnew"><h3>What's new</h3><div id="blist"></div></section>`,
+    B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
+    B.row("Top 10 this week", B.top10(top.slice(0, 10))),
+    played[0] && because.length >= 5 ? B.row(`Because you watched ${played[0].Name}`, because.map((it) => B.posterCard(it))) : "",
+    B.row("Trending, not on Tower", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
+    B.row("Anime airing this season", airing.slice(0, 20).map((it) => B.posterCard(it))),
+    B.row("Watch it again", again.map((it) => B.posterCard(it))),
+  ].join("");
+  B.wireDescribe(cont[0] || next[0] || fresh[0]);
+  const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
+  B.loadBoard(nav);
+};
 
 // Kids and Easy mode: one Keep watching row with names under the pictures, and (Kids) a couple of titles on each door
 B.loadFamilyRow = async (nav, kids) => {

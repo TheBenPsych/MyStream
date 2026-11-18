@@ -144,12 +144,14 @@ fun familyDoors(
         }
 
         FamilyKind.EASY -> {
-            val ranked = BenflixDoor.entries.sortedByDescending { DoorUse.count(context, userId, it) }
+            // (Anime has its own spot under Shows, not a door tile here)
+            val doors = BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
+            val ranked = doors.sortedByDescending { DoorUse.count(context, userId, it) }
             // Movies always stays, so the remote always starts in the same place
             val top = (listOf(BenflixDoor.MOVIES) + ranked).distinct().take(EASY_DOORS)
             FamilyDoors(
-                shown = BenflixDoor.entries.filter { it in top },
-                more = BenflixDoor.entries.filter { it !in top },
+                shown = doors.filter { it in top },
+                more = doors.filter { it !in top },
             )
         }
     }
@@ -167,6 +169,7 @@ private fun doorIcon(door: BenflixDoor): BenflixIcon =
         BenflixDoor.GAMES -> BenflixIcon.PAD
         BenflixDoor.MUSIC -> BenflixIcon.NOTE
         BenflixDoor.BOOKS -> BenflixIcon.BOOK
+        BenflixDoor.ANIME -> BenflixIcon.STAR
     }
 
 @Composable

@@ -108,6 +108,7 @@ fun BenflixDoor.railIcon(): BenflixIcon =
         BenflixDoor.GAMES -> BenflixIcon.PAD
         BenflixDoor.MUSIC -> BenflixIcon.NOTE
         BenflixDoor.BOOKS -> BenflixIcon.BOOK
+        BenflixDoor.ANIME -> BenflixIcon.STAR
     }
 
 /** Glowfin's two-tone menu icon for each door */
@@ -119,7 +120,11 @@ fun BenflixDoor.glowIcon(): GlowfinIcon =
         BenflixDoor.GAMES -> GlowfinIcon.GAMES
         BenflixDoor.MUSIC -> GlowfinIcon.MUSIC
         BenflixDoor.BOOKS -> GlowfinIcon.BOOKS
+        BenflixDoor.ANIME -> GlowfinIcon.ANIME
     }
+
+/** Glowfin (ui-7): these pages show their places as tabs along their top, so the menu opens them straight away */
+fun BenflixDoor.hasPageTabs(): Boolean = this == BenflixDoor.MOVIES || this == BenflixDoor.SHOWS || this == BenflixDoor.ANIME
 
 /** Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books */
 private val GlowfinDoorOrder =
@@ -134,12 +139,14 @@ fun BenflixDoor.destination(): Destination =
         BenflixDoor.GAMES -> Destination.Games
         BenflixDoor.MUSIC -> Destination.MusicDoor
         BenflixDoor.BOOKS -> Destination.BooksDoor
+        BenflixDoor.ANIME -> Destination.AnimeDoor
     }
 
 /** The door's own first page (not a page inside it) */
 fun Destination.isDoorRoot(): Boolean =
     this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
+        this is Destination.AnimeDoor ||
         this is Destination.Channels ||
         this is Destination.Games ||
         this is Destination.MusicDoor ||
@@ -490,7 +497,14 @@ fun BenflixRail(
                         highlighted = panelDoor == door,
                         onClick = {
                             profileOpen = false
-                            panelDoor = door
+                            if (door.hasPageTabs()) {
+                                // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, no panel
+                                panelDoor = null
+                                model.onPlace(door, com.github.damontecres.wholphin.ui.door.DOOR_HOME)
+                                contentFocus.tryRequestFocus()
+                            } else {
+                                panelDoor = door
+                            }
                         },
                         modifier = Modifier.focusRequester(doorFocus.getValue(door)),
                     )
@@ -500,7 +514,7 @@ fun BenflixRail(
                             label = "Anime",
                             open = open,
                             scale = scale,
-                            on = false,
+                            on = current == BenflixDoor.ANIME,
                             onClick = {
                                 panelDoor = null
                                 profileOpen = false

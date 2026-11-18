@@ -459,7 +459,7 @@ B.top = (place, color, opts) => {
     <div class="right">
       <span class="clock" id="clock">${esc(t[0])}<small>${esc(t[1] || "")}</small></span>
     </div>
-  </header>`;
+  </header>${B.pageTabs ? B.pageTabs(location.hash) : ""}`;
 };
 B.wireTop = () => {};
 setInterval(() => {
@@ -843,7 +843,37 @@ document.addEventListener("click", (e) => {
   const strip = a.parentElement.querySelector(".strip");
   strip.scrollBy({ left: +a.dataset.scroll * strip.clientWidth * 0.8, behavior: "smooth" });
 });
+// Glowfin Top 10 (Ben's T1 pick): tall glowing Anton numbers, each in the same width box fully BESIDE its poster
 B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.posterCard(it)}</div>`);
+
+// Glowfin (ui-7): the word tabs along the top of Movies, Shows and Anime (the same places as the TV and phones)
+B.PAGE_TABS = {
+  movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
+  shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
+  anime: [["For you", "#/anime"], ["Shows", "#/grid/shows?anime=only&title=Anime%20shows"], ["Movies", "#/grid/movies?anime=only&title=Anime%20movies"], ["Genres and tags", "#/browse/anime/genres"]],
+};
+// Which page's tabs a link belongs to, and which tab is on
+B.tabsFor = (hash) => {
+  hash = hash || location.hash;
+  for (const page of ["anime", "movies", "shows"]) {
+    const list = B.PAGE_TABS[page];
+    const on = list.findIndex(([, link]) => hash === link || (link !== "#/" + page && hash.split("&")[0] === link.split("&")[0]));
+    if (on >= 0) return { page, on };
+  }
+  if (/^#\/grid\/(movies|shows)\?(.*&)?anime=only/.test(hash)) return { page: "anime", on: /movies/.test(hash) ? 2 : 1 };
+  if (/^#\/browse\/anime/.test(hash)) return { page: "anime", on: 3 };
+  const m = hash.match(/^#\/(?:grid|browse)\/(movies|shows)/);
+  if (m) return { page: m[1], on: /genre/.test(hash) ? (m[1] === "movies" ? 3 : 2) : /mine=1/.test(hash) ? (m[1] === "movies" ? 4 : 3) : /BoxSet/.test(hash) ? 2 : 1 };
+  return null;
+};
+B.pageTabs = (hash) => {
+  const t = B.tabsFor(hash);
+  if (!t) return "";
+  const kids = B.me && B.me.kids;
+  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && label === "Collections"));
+  const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l);
+  return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
+};
 B.scores = (it) => {
   const out = [];
   if (it.CommunityRating) out.push(`<span><b>${(+it.CommunityRating).toFixed(1)}</b>IMDb</span>`);

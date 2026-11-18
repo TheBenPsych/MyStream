@@ -89,6 +89,7 @@ fun Destination.door(): BenflixDoor? =
     when (this) {
         is Destination.MoviesDoor -> BenflixDoor.MOVIES
         is Destination.ShowsDoor -> BenflixDoor.SHOWS
+        is Destination.AnimeDoor -> BenflixDoor.ANIME
         is Destination.Channels -> BenflixDoor.LIVE_TV
         is Destination.Games -> BenflixDoor.GAMES
         is Destination.MusicDoor -> BenflixDoor.MUSIC

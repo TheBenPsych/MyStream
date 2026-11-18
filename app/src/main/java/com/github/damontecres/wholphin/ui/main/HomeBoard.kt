@@ -392,6 +392,7 @@ private fun BenflixDoor.icon(): BenflixIcon =
         BenflixDoor.GAMES -> BenflixIcon.PAD
         BenflixDoor.MUSIC -> BenflixIcon.NOTE
         BenflixDoor.BOOKS -> BenflixIcon.BOOK
+        BenflixDoor.ANIME -> BenflixIcon.STAR
     }
 
 /** Does [text] fit in [lines] lines of [width] pixels at [sizeSp]? */

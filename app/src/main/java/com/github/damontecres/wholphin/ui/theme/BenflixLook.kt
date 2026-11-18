@@ -92,6 +92,9 @@ enum class BenflixDoor(
 
     /** Ben: the Books door always says "Read and listen" */
     BOOKS("Books", "Read and listen"),
+
+    /** Glowfin (ui-7, Ben's pick A): anime shows and movies in one place, under Shows in the menu */
+    ANIME("Anime", "Anime shows and movies"),
     ;
 
     /** The door's colour (Movies, Shows and Games change on Kids, see [KidsLook]) */
@@ -104,6 +107,7 @@ enum class BenflixDoor(
                 GAMES -> BenflixColors.Games
                 MUSIC -> BenflixColors.Music
                 BOOKS -> BenflixColors.Books
+                ANIME -> BenflixColors.Shows
             }
 
     /** The words on the door itself */
@@ -120,6 +124,7 @@ enum class BenflixDoor(
                 GAMES -> BenflixColors.OnGames
                 MUSIC -> BenflixColors.OnMusic
                 BOOKS -> BenflixColors.OnBooks
+                ANIME -> BenflixColors.OnShows
             }
 
     companion object {

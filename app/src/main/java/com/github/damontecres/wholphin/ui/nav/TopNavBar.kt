@@ -63,6 +63,7 @@ fun Destination.underTopBar(): Boolean =
     this is Destination.Home ||
         this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
+        this is Destination.AnimeDoor ||
         this is Destination.MusicDoor ||
         isMusicHero()
 
@@ -97,5 +98,6 @@ fun Destination.isDoorPage(): Boolean =
     this is Destination.Home ||
         this is Destination.MoviesDoor ||
         this is Destination.ShowsDoor ||
+        this is Destination.AnimeDoor ||
         this is Destination.MusicDoor ||
         this is Destination.BooksDoor

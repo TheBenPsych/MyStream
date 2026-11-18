@@ -86,6 +86,10 @@ fun DestinationContent(
             DoorPage(BenflixDoor.SHOWS, preferences, onClearBackdrop, modifier)
         }
 
+        Destination.AnimeDoor -> {
+            DoorPage(BenflixDoor.ANIME, preferences, onClearBackdrop, modifier)
+        }
+
         Destination.MusicDoor -> {
             // No music on Kids profiles
             if (com.github.damontecres.wholphin.services.KidsMode.isActive) {

@@ -185,6 +185,8 @@ fun DoorFrame(
      * slide-out panel (TV) or the places sheet (phones) instead (navigation redesign, Nov 2026).
      */
     ownRail: Boolean = false,
+    /** Glowfin (ui-7): the places as word tabs along the page's top (Movies, Shows, Anime) */
+    tabs: Boolean = false,
     content: @Composable (Modifier) -> Unit,
 ) {
     val isTv = rememberIsTv()
@@ -224,9 +226,44 @@ fun DoorFrame(
     }
     // A section picked from the menu: focus moves onto its page (jump doors do that themselves)
     LaunchedEffect(state.picks) {
-        if (state.picks == 0 || state.jumps || !isTv) return@LaunchedEffect
+        // (Glowfin tabs keep the focus on the tab you picked, like Wholphin; Down goes into the page)
+        if (state.picks == 0 || state.jumps || !isTv || tabs) return@LaunchedEffect
         delay(SECTION_FOCUS_MS)
         state.content.tryRequestFocus()
+    }
+    if (tabs && sections.size > 1) {
+        val overlap = LocalTopBarOverlap.current
+        val tabsHeight = doorTabsHeight(wide)
+        if (!wide) {
+            // Phones: the tabs, then the page under them
+            Column(modifier.fillMaxSize()) {
+                DoorTabs(state, sections, wide = false, modifier = Modifier.padding(top = overlap).height(tabsHeight))
+                content(Modifier.weight(1f).fillMaxWidth())
+            }
+            return
+        }
+        // TV and wide screens: the tabs sit over the top of the page, whose picture goes up behind them
+        Box(modifier.fillMaxSize()) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides overlap + tabsHeight) {
+                content(
+                    Modifier
+                        .fillMaxSize()
+                        .focusRequester(state.content)
+                        .focusRestorer(),
+                )
+            }
+            DoorTabs(
+                state,
+                sections,
+                wide = true,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = overlap)
+                        .height(tabsHeight),
+            )
+        }
+        return
     }
     if (!wide) {
         val chips = ownRail && sections.size > 1 && phoneChips

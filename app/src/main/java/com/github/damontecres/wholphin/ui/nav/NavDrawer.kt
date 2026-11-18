@@ -693,8 +693,11 @@ fun NavDrawer(
         remember(kids, guest) {
             when {
                 kids -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
+
                 guest -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
-                else -> BenflixDoor.entries.toList()
+
+                // Anime isn't in this list: it has its own spot just under Shows (showAnime)
+                else -> BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
             }
         }
     val nav = viewModel.navigationManager
@@ -798,11 +801,9 @@ fun NavDrawer(
                                     moreOpen = true
                                 }
 
-                                tab.key == TAB_ANIME -> {
-                                    goPlace(BenflixDoor.SHOWS, com.github.damontecres.wholphin.ui.door.SEC_ANIME)
-                                }
-
-                                tab.door != null && tab.door == placesDoor -> {
+                                // Glowfin: Movies, Shows and Anime have their tabs on the page itself, so tapping
+                                // their bar spot again just goes back to the top of For you
+                                tab.door != null && tab.door == placesDoor && !tab.door.hasPageTabs() -> {
                                     // Tapping the door's tab again slides up its places (approved rx-phonepanel)
                                     placesFor = tab.door
                                 }
@@ -921,7 +922,7 @@ fun NavDrawer(
             onProfile = onProfileTap,
             onSwitchProfile = onSwitchProfile,
             showAnime = !easy && BenflixDoor.SHOWS in railDoors,
-            onAnime = { goPlace(BenflixDoor.SHOWS, com.github.damontecres.wholphin.ui.door.SEC_ANIME) },
+            onAnime = { goPlace(BenflixDoor.ANIME, com.github.damontecres.wholphin.ui.door.DOOR_HOME) },
             onSettings = { nav.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC)) },
         )
     val header: @Composable () -> Unit = {
