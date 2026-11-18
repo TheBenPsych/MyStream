@@ -112,7 +112,27 @@ object HolidayNavKit {
      */
     val all: List<HolidayNav> =
         listOf(
-            holiday("friday13", { F13Look.on }, 0xFF141414, 0xFF0A0A0A, listOf(0xFF9BE15D, 0xFFC9D0E0), "Friday the 13th pick"),
+            // Friday the 13th: Crows on the wire (approved 2026-11-17, sheet spooky-nav-2), art in SpookyNav.kt.
+            // Night purple and black with green highlights (approved hn2-q-col A)
+            holiday(
+                "friday13",
+                { F13Look.on },
+                0xFF1D1530,
+                0xFF0D0A16,
+                listOf(0xFFA6E36A, 0xFFC9B8FF),
+                "Spooky but fun",
+                // Approved hn-q-f13card A: a one-day holiday has nothing to count down, so the first card is the
+                // lucky line ("3 new episodes and 1 request ready")
+                countdown = { Friday13.lastLucky ?: "Spooky but fun films are on Movies today" },
+            ).copy(
+                icons = Friday13Nav.icons,
+                mark = Friday13Nav.mark,
+                topTrim = Friday13Nav.topTrim,
+                bottomTrim = Friday13Nav.bottomTrim,
+                pickTitles = Friday13Nav.pickTitles,
+                countdownKind = "Lucky you",
+                moving = true,
+            ),
             // Video Games Day (12 Sep, Kids too): arcade score screen on Home, pixel-art icons, blinking arrow
             // (art in VideoGamesNav.kt)
             HolidayNav(
@@ -133,14 +153,22 @@ object HolidayNavKit {
                 accent = VgLook.Cyan,
             ),
             EarthDayNav.entry,
+            // Halloween: The charms come along (approved 2026-11-17, sheets spooky-nav-1 and 2), art in SpookyNav.kt
             holiday(
                 "halloween",
                 { HwLook.charmsOn },
-                0xFF24140A,
-                0xFF120A05,
-                listOf(0xFFFF8A1F, 0xFF8E44AD, 0xFF7CFC00),
+                0xFF24123A,
+                0xFF150B22,
+                listOf(0xFFF07A1E, 0xFFB07CFF),
                 "Halloween pick",
                 countdown = { HalloweenSeason.countdown(LocalDateTime.now()) },
+            ).copy(
+                icons = HalloweenNav.icons,
+                mark = HalloweenNav.mark,
+                topTrim = HalloweenNav.topTrim,
+                bottomTrim = HalloweenNav.bottomTrim,
+                // the pumpkins glow and the spider bobs
+                moving = true,
             ),
             PopcornNav.nav,
             // Star Wars Day: saga icons, a laser sword beside the place you're on, plain Home (ui/theme/StarWarsNav.kt)

@@ -632,7 +632,7 @@ B.loadBoard = async (nav) => {
   // Holiday marks (approved hq-count A): the first card counts down to the day (js/holidaynav.js)
   const hol = B.holidayNav ? B.holidayNav() : null;
   const left = hol ? hol.countdown() : "";
-  if (left) add({ id: `holiday-${hol.key}-${new Date().toDateString()}`, kind: "Countdown", title: left, full: left, kc: hol.lights[0], href: "", t: Infinity });
+  if (left) add({ id: `holiday-${hol.key}-${new Date().toDateString()}`, kind: hol.countdownKind || "Countdown", title: left, full: left, kc: hol.lights[0], href: "", t: Infinity });
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
     let text = f.fact;
@@ -886,7 +886,11 @@ B.setF13Off = (off) => { try { localStorage.setItem("benflix.f13Off", off ? "1" 
 B.f13On = () => !!B.f13 && B.f13.season(new Date()) && !B.f13Off();
 B.f13Lucky = (eps, ready) => {
   const parts = [eps ? `${eps} new episode${eps === 1 ? "" : "s"}` : "", ready ? `${ready} request${ready === 1 ? "" : "s"} ready` : ""].filter(Boolean);
-  return parts.length ? `Lucky you: ${parts.join(" and ")}` : "Lucky you: the couch is a black-cat-free zone";
+  const line = parts.length ? `Lucky you: ${parts.join(" and ")}` : "Lucky you: the couch is a black-cat-free zone";
+  // kept for the first Today card on the day (js/holidaynav.js, approved hn-q-f13card A)
+  const rest = line.replace(/^Lucky you: /, "");
+  B.f13LastLucky = rest.charAt(0).toUpperCase() + rest.slice(1);
+  return line;
 };
 
 // St. Patrick's Day look: on from 10 to 17 March unless switched off in Settings › Look (this browser), Kids too
