@@ -256,6 +256,8 @@ B.img = (id, type, o) => {
 };
 B.poster = (it, h) => {
   const tags = it.ImageTags || {};
+  // Episodes show the show's own cover (the one picked in Change poster), never the episode's still
+  if (it.Type === "Episode" && it.SeriesId) return B.img(it.SeriesId, "Primary", { h: h || 400, tag: it.SeriesPrimaryImageTag });
   if (tags.Primary) return B.img(it.Id, "Primary", { h: h || 400, tag: tags.Primary });
   if (it.SeriesPrimaryImageTag) return B.img(it.SeriesId, "Primary", { h: h || 400, tag: it.SeriesPrimaryImageTag });
   if (it.AlbumPrimaryImageTag) return B.img(it.AlbumId, "Primary", { h: h || 400 });
