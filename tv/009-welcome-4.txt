@@ -1,0 +1,9 @@
+  [96,64][327,130] Benflix
+  [161,64][327,130] Benflix
+  [1696,89][1824,105] Step 4 of 4
+  [805,170][1115,246] Parent PIN
+  [156,286][1765,331] Four numbers only grown-ups know. Kids can't leave Kids without it, and it locks Kids at bedtime.
+  [678,408][746,446] Back
+  [1057,403][1246,443] Skip for now
+* [810,379][997,475] 
+  [842,408][965,446] Set a PIN

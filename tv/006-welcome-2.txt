@@ -1,0 +1,11 @@
+  [96,17][327,83] Benflix
+  [161,17][327,83] Benflix
+  [1696,42][1824,58] Step 2 of 4
+  [834,123][1086,199] Subtitles
+  [342,239][1579,284] When should they show, and how big? Anime always gets English subtitles.
+  [747,345][886,383] Always on
+  [982,345][1322,383] Only for other languages
+* [567,316][683,412] 
+  [602,345][649,383] Off
+  [260,444][1660,484] Only for other languages: subtitles turn on for things like a Japanese anime or a French film.
+  [624,959][1296,1013] This is how your subtitles will look.

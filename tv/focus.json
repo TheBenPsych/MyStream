@@ -1,0 +1,799 @@
+{
+ "pages": {
+  "home": {
+   "buttons_visited": 14,
+   "presses": 31,
+   "traps": 0,
+   "first_shot": 11
+  },
+  "side-menu": {
+   "buttons_visited": 8,
+   "names": [
+    "Books",
+    "Games",
+    "Live TV",
+    "Movies",
+    "Music",
+    "Requests",
+    "Shows",
+    "demo"
+   ]
+  },
+  "door-movies": {
+   "buttons_visited": 10,
+   "presses": 38,
+   "traps": 11,
+   "first_shot": 13
+  },
+  "door-shows": {
+   "buttons_visited": 10,
+   "presses": 37,
+   "traps": 10,
+   "first_shot": 25
+  },
+  "door-live-tv": {
+   "buttons_visited": 10,
+   "presses": 37,
+   "traps": 9,
+   "first_shot": 36
+  },
+  "door-games": {
+   "buttons_visited": 8,
+   "presses": 31,
+   "traps": 8,
+   "first_shot": 46
+  },
+  "door-music": {
+   "buttons_visited": 7,
+   "presses": 28,
+   "traps": 7,
+   "first_shot": 55
+  },
+  "door-books": {
+   "buttons_visited": 6,
+   "presses": 25,
+   "traps": 6,
+   "first_shot": 63
+  },
+  "search": {
+   "buttons_visited": 2,
+   "presses": 9,
+   "traps": 5,
+   "first_shot": 70
+  },
+  "requests": {
+   "buttons_visited": 5,
+   "presses": 22,
+   "traps": 5,
+   "first_shot": 76
+  },
+  "profile-panel": {
+   "buttons_visited": 9,
+   "presses": 30,
+   "traps": 4,
+   "first_shot": 82
+  },
+  "settings": {
+   "buttons_visited": 5,
+   "presses": 26,
+   "traps": 0,
+   "first_shot": 87
+  }
+ },
+ "traps": [
+  {
+   "page": "door-movies",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 14
+  },
+  {
+   "page": "door-movies",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 15
+  },
+  {
+   "page": "door-movies",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 16
+  },
+  {
+   "page": "door-movies",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 17
+  },
+  {
+   "page": "door-movies",
+   "on": "Games",
+   "box": "[20,576][436,672]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 18
+  },
+  {
+   "page": "door-movies",
+   "on": "Live TV",
+   "box": "[20,486][436,582]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 19
+  },
+  {
+   "page": "door-movies",
+   "on": "Shows",
+   "box": "[20,396][436,492]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 20
+  },
+  {
+   "page": "door-movies",
+   "on": "Movies",
+   "box": "[20,306][436,402]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 21
+  },
+  {
+   "page": "door-movies",
+   "on": "Search",
+   "box": "[20,216][436,312]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 22
+  },
+  {
+   "page": "door-movies",
+   "on": "Home",
+   "box": "[20,126][436,222]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 23
+  },
+  {
+   "page": "door-movies",
+   "on": "Home",
+   "box": "[20,126][436,222]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix"
+   ],
+   "shot": 24
+  },
+  {
+   "page": "door-shows",
+   "on": "Movies home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Down",
+   "could_reach": [
+    "Shows",
+    "Live TV",
+    "Games",
+    "Music",
+    "Books",
+    "Requests"
+   ],
+   "shot": 26
+  },
+  {
+   "page": "door-shows",
+   "on": "Movies home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 27
+  },
+  {
+   "page": "door-shows",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 28
+  },
+  {
+   "page": "door-shows",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 29
+  },
+  {
+   "page": "door-shows",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 30
+  },
+  {
+   "page": "door-shows",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 31
+  },
+  {
+   "page": "door-shows",
+   "on": "Games",
+   "box": "[20,576][436,672]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 32
+  },
+  {
+   "page": "door-shows",
+   "on": "Live TV",
+   "box": "[20,486][436,582]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 33
+  },
+  {
+   "page": "door-shows",
+   "on": "Shows",
+   "box": "[20,396][436,492]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 34
+  },
+  {
+   "page": "door-shows",
+   "on": "Movies",
+   "box": "[20,306][436,402]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 35
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Test Show",
+   "box": "[648,404][780,602]",
+   "pressed": "Down",
+   "could_reach": [
+    "Music",
+    "Books",
+    "Requests",
+    "demo"
+   ],
+   "shot": 37
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Shows home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 38
+  },
+  {
+   "page": "door-live-tv",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 39
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 40
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 41
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 42
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Games",
+   "box": "[20,576][436,672]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 43
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Live TV",
+   "box": "[20,486][436,582]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 44
+  },
+  {
+   "page": "door-live-tv",
+   "on": "Shows",
+   "box": "[20,396][436,492]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 45
+  },
+  {
+   "page": "door-games",
+   "on": "Live TV home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Down",
+   "could_reach": [
+    "Shows",
+    "Live TV",
+    "Games",
+    "Music",
+    "Books",
+    "Requests"
+   ],
+   "shot": 47
+  },
+  {
+   "page": "door-games",
+   "on": "Live TV home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 48
+  },
+  {
+   "page": "door-games",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 49
+  },
+  {
+   "page": "door-games",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 50
+  },
+  {
+   "page": "door-games",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 51
+  },
+  {
+   "page": "door-games",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 52
+  },
+  {
+   "page": "door-games",
+   "on": "Games",
+   "box": "[20,576][436,672]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 53
+  },
+  {
+   "page": "door-games",
+   "on": "Live TV",
+   "box": "[20,486][436,582]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 54
+  },
+  {
+   "page": "door-music",
+   "on": "Games home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Down",
+   "could_reach": [
+    "Shows",
+    "Live TV",
+    "Games",
+    "Music",
+    "Books",
+    "Requests"
+   ],
+   "shot": 56
+  },
+  {
+   "page": "door-music",
+   "on": "Games home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 57
+  },
+  {
+   "page": "door-music",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 58
+  },
+  {
+   "page": "door-music",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 59
+  },
+  {
+   "page": "door-music",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 60
+  },
+  {
+   "page": "door-music",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 61
+  },
+  {
+   "page": "door-music",
+   "on": "Games",
+   "box": "[20,576][436,672]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 62
+  },
+  {
+   "page": "door-books",
+   "on": "Music home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Down",
+   "could_reach": [
+    "Shows",
+    "Live TV",
+    "Games",
+    "Music",
+    "Books",
+    "Requests"
+   ],
+   "shot": 64
+  },
+  {
+   "page": "door-books",
+   "on": "Music home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 65
+  },
+  {
+   "page": "door-books",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 66
+  },
+  {
+   "page": "door-books",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 67
+  },
+  {
+   "page": "door-books",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 68
+  },
+  {
+   "page": "door-books",
+   "on": "Music",
+   "box": "[20,666][436,762]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 69
+  },
+  {
+   "page": "search",
+   "on": "\uf130",
+   "box": "[204,160][300,256]",
+   "pressed": "Down",
+   "could_reach": [
+    "Channel types",
+    "Consoles",
+    "Can't decide? Play This or that",
+    "Watching together? Take the mood quiz",
+    "Watch in order: Marvel, Star Wars and more",
+    "Binge Mode"
+   ],
+   "shot": 71
+  },
+  {
+   "page": "search",
+   "on": "Search",
+   "box": "[308,160][664,248]",
+   "pressed": "Down",
+   "could_reach": [
+    "Channel types",
+    "Consoles",
+    "Can't decide? Play This or that",
+    "Watching together? Take the mood quiz",
+    "Watch in order: Marvel, Star Wars and more",
+    "Binge Mode"
+   ],
+   "shot": 72
+  },
+  {
+   "page": "search",
+   "on": "Search",
+   "box": "[308,160][664,248]",
+   "pressed": "Right",
+   "could_reach": [
+    "\uf1de",
+    "Genres",
+    "Networks"
+   ],
+   "shot": 73
+  },
+  {
+   "page": "search",
+   "on": "Search",
+   "box": "[308,160][664,248]",
+   "pressed": "Up",
+   "could_reach": [
+    "Back",
+    "Home",
+    "Movies"
+   ],
+   "shot": 74
+  },
+  {
+   "page": "search",
+   "on": "Search",
+   "box": "[308,160][664,248]",
+   "pressed": "Left",
+   "could_reach": [
+    "\uf130",
+    "",
+    ""
+   ],
+   "shot": 75
+  },
+  {
+   "page": "requests",
+   "on": "Books home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Down",
+   "could_reach": [
+    "Shows",
+    "Live TV",
+    "Games",
+    "Music",
+    "Books",
+    "Requests"
+   ],
+   "shot": 77
+  },
+  {
+   "page": "requests",
+   "on": "Books home",
+   "box": "[480,228][1032,324]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix",
+    "Home"
+   ],
+   "shot": 78
+  },
+  {
+   "page": "requests",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 79
+  },
+  {
+   "page": "requests",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 80
+  },
+  {
+   "page": "requests",
+   "on": "Books",
+   "box": "[20,756][436,852]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 81
+  },
+  {
+   "page": "profile-panel",
+   "on": "Sign out",
+   "box": "[480,650][1032,746]",
+   "pressed": "Down",
+   "could_reach": [
+    "Books",
+    "Requests",
+    "demo"
+   ],
+   "shot": 83
+  },
+  {
+   "page": "profile-panel",
+   "on": "Switch profile",
+   "box": "[480,200][1032,296]",
+   "pressed": "Up",
+   "could_reach": [
+    "Benflix"
+   ],
+   "shot": 84
+  },
+  {
+   "page": "profile-panel",
+   "on": "demo",
+   "box": "[20,962][436,1058]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 85
+  },
+  {
+   "page": "profile-panel",
+   "on": "Requests",
+   "box": "[20,872][436,968]",
+   "pressed": "Right",
+   "could_reach": [
+    ""
+   ],
+   "shot": 86
+  }
+ ],
+ "vanished": [],
+ "notes": [
+  "search didn't find Robot Anime Test",
+  "search didn't find Test Show",
+  "search didn't find Test Pattern One",
+  "'Shows' panel has no 'Shows home'",
+  "'Live TV' panel has no 'Live TV home'",
+  "'Games' panel has no 'Games home'",
+  "'Music' panel has no 'Music home'",
+  "'Books' panel has no 'Books home'"
+ ],
+ "crashes": []
+}

@@ -1,0 +1,16 @@
+  [212,43][937,118] Happy Thanksgiving, demo
+  [212,270][676,315] Finding something for you…
+  [488,367][637,407] More info
+* [212,339][420,435] 
+  [308,366][378,408] Play
+  [244,901][415,926] THANKSGIVING
+  [244,932][533,965] 8 days to Thanksgiving
+  [784,885][998,910] NEW EPISODE · S1 E1
+  [784,916][998,981] Robot Anime Test
+  [1198,901][1412,926] NEW EPISODE · S1 E1
+  [1198,932][1326,965] Test Show
+  [1486,885][1672,910] BENFLIX UPDATE
+  [1486,916][1826,981] A new version is ready to install
+  [1672,49][1773,112] 3:37
+  [1781,73][1824,106] AM
+  [36,986][84,1034] demo
