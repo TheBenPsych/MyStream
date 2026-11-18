@@ -131,7 +131,7 @@ fun BooksDoorPage(
                 fontSize = BenflixType.body,
             )
             Text(
-                text = "If Books is new, Tower's Benflix helper needs its setup run once more (the same one-line paste as before).",
+                text = "If Books is new, Tower's Glowfin helper needs its setup run once more (the same one-line paste as before).",
                 color = BenflixColors.Soft,
                 fontSize = BenflixType.body,
             )
@@ -639,7 +639,7 @@ private fun EmptyBooks(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(16.dp),
         ) {
-            Title("No books on Benflix yet")
+            Title("No books on Glowfin yet")
             Text(
                 text =
                     if (folders.isEmpty()) {

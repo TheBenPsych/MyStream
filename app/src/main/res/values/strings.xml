@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name" translatable="false">Benflix</string>
-    <string name="app_name_long" translatable="false">Benflix</string>
+    <string name="app_name" translatable="false">Glowfin</string>
+    <string name="app_name_long" translatable="false">Glowfin</string>
 
     <string name="about">About</string>
     <string name="active_recordings">Active Recordings</string>
@@ -634,7 +634,7 @@
     <string name="bold_blue">Bold Blue</string>
     <string name="black">Black</string>
     <string name="brown">Brown</string>
-    <string name="mystream_theme" translatable="false">Benflix</string>
+    <string name="mystream_theme" translatable="false">Glowfin</string>
     <string-array name="app_theme_colors">
         <item>@string/purple</item>
         <item>@string/blue</item>
@@ -838,7 +838,7 @@
     <string name="select_all">Select all</string>
     <string name="separate_types">Separate types</string>
     <string name="prefer_logos">Prefer showing logos for titles</string>
-    <string name="updated_toast">Benflix updated to %s</string>
+    <string name="updated_toast">Glowfin updated to %s</string>
     <string name="remove_continue_watching">Remove from continue watching</string>
     <string name="remove_next_up">Remove series from next up</string>
     <string name="view_removed_next_up">View series removed from next up</string>
@@ -1001,7 +1001,7 @@
     <string name="trailer_shuffle">Trailer Shuffle</string>
     <string name="watch_in_order">Watch in order</string>
     <string name="mood_quiz">Mood quiz</string>
-    <string name="my_benflix">My Benflix</string>
+    <string name="my_benflix">My Glowfin</string>
     <string name="in_my_list">In My List</string>
     <string name="surprise_me">Surprise me</string>
     <string name="featured_new">New on your server</string>
@@ -1090,7 +1090,7 @@
     <string name="disliked">Not for me (press to undo)</string>
     <string name="because_you_liked">Because you liked %1$s</string>
     <string name="studios_row">Studios</string>
-    <string name="new_on_benflix">New on Benflix</string>
+    <string name="new_on_benflix">New on Glowfin</string>
     <string name="games">Games</string>
     <string name="surround_passthrough_on">Surround to soundbar: On</string>
     <string name="surround_passthrough_off">Surround to soundbar: Off</string>
@@ -1112,15 +1112,15 @@
     <string name="download_failed_short">Download failed</string>
     <string name="downloads_whos_watching">Whose downloads?</string>
     <string name="offline_title">You\'re offline</string>
-    <string name="offline_body">Benflix can\'t reach the server right now. Anything you downloaded still works.</string>
-    <string name="offline_body_tv">Benflix can\'t reach the server right now. Check the internet connection, then try again.</string>
+    <string name="offline_body">Glowfin can\'t reach the server right now. Anything you downloaded still works.</string>
+    <string name="offline_body_tv">Glowfin can\'t reach the server right now. Check the internet connection, then try again.</string>
     <string name="offline_go_to_downloads">Go to Downloads</string>
     <string name="offline_try_again">Try again</string>
     <string name="offline_details">Details</string>
     <string name="offline_hide_details">Hide details</string>
     <string name="download_delete_title">Delete this download?</string>
     <string name="downloads_none">Nothing downloaded yet. Tap Download on a movie or episode to save it on this phone and watch it without internet. Downloads only happen on Wi-Fi.</string>
-    <string name="phone_my_benflix">My Benflix</string>
+    <string name="phone_my_benflix">My Glowfin</string>
     <string name="phone_switch_profile">Switch profile</string>
     <string name="phone_my_page">My page</string>
     <string name="benflix_requests">Requests</string>
@@ -1134,7 +1134,7 @@
     <string name="player_episodes">Episodes</string>
     <string name="player_now_playing">Now playing</string>
     <string name="benflix_update_tip_tv">New update ready! Find it in Settings, under Help.</string>
-    <string name="benflix_update_tip_phone">New update ready! Tap My Benflix, then Settings, then Help.</string>
+    <string name="benflix_update_tip_phone">New update ready! Tap My Glowfin, then Settings, then Help.</string>
     <string name="benflix_mark_watched_up_to_here">Mark watched up to here</string>
     <string name="benflix_mark_season_watched">Mark season watched</string>
     <string name="benflix_mark_season_unwatched">Mark season unwatched</string>

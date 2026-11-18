@@ -161,8 +161,8 @@ fun MusicDoorPage(
             Text(
                 text =
                     when {
-                        state.noMusic -> "No music on Benflix yet"
-                        else -> "Couldn't reach Benflix"
+                        state.noMusic -> "No music on Glowfin yet"
+                        else -> "Couldn't reach Glowfin"
                     },
                 color = BenflixColors.Text,
                 fontSize = BenflixType.pageTitle,

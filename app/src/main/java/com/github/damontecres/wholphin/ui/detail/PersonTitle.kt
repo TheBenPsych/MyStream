@@ -77,7 +77,7 @@ fun PersonTitlePage(
         )
     val tabs =
         doors.map { door ->
-            val tabName = if (door is PersonDoor.Ask) "Not on Benflix yet" else door.title
+            val tabName = if (door is PersonDoor.Ask) "Not on Glowfin yet" else door.title
             TitleTab(tabName) { scope ->
                 Column(Modifier.fillMaxWidth()) {
                     PersonDoorGrid(scope, door, onClickItem, onClickAsk)

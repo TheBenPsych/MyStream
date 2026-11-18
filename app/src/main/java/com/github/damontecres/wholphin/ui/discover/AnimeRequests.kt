@@ -620,7 +620,7 @@ private fun AnimeWall(
     val all = state?.items?.filter(keep)
     val shown = remember(all, owned) { all?.filterNot { owned.has(it) } }
     val here = (all?.size ?: 0) - (shown?.size ?: 0)
-    val line = listOfNotNull(note, if (here > 0) "$here already on Benflix" else null).joinToString(" · ")
+    val line = listOfNotNull(note, if (here > 0) "$here already on Glowfin" else null).joinToString(" · ")
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val gap = 12.dp
         val side = 16.dp
@@ -669,7 +669,7 @@ private fun AnimeWall(
                 shown.isEmpty() -> {
                     item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            if (here > 0) "You already have all of these on Benflix." else "Nothing here right now.",
+                            if (here > 0) "You already have all of these on Glowfin." else "Nothing here right now.",
                             fontSize = BenflixType.lead,
                             color = BenflixColors.Muted,
                             modifier = Modifier.padding(vertical = 24.dp),
@@ -979,7 +979,7 @@ private fun AnimeCalendar(
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text("This week in anime", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
             Text(
-                listOfNotNull("New episodes by day, for shows you don't have yet", if (hidden > 0) "$hidden already on Benflix" else null)
+                listOfNotNull("New episodes by day, for shows you don't have yet", if (hidden > 0) "$hidden already on Glowfin" else null)
                     .joinToString(" · "),
                 fontSize = BenflixType.small,
                 color = BenflixColors.Muted,

@@ -150,7 +150,7 @@ class DownloadService
                     .Request(Uri.parse(api.libraryApi.getDownloadUrl(item.id)))
                     .addRequestHeader("Authorization", "MediaBrowser Token=\"${api.accessToken}\"")
                     .setTitle(title)
-                    .setDescription(subtitle ?: "Benflix")
+                    .setDescription(subtitle ?: "Glowfin")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_MOVIES, "$FOLDER/$fileName")
                     .setAllowedOverMetered(false)

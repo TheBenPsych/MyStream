@@ -1455,7 +1455,7 @@ class PlaybackViewModel
                 NoticeAction.SKIP_FILLER, NoticeAction.ALWAYS_SKIP_FILLER -> {
                     if (action == NoticeAction.ALWAYS_SKIP_FILLER) {
                         BenflixPlayerPrefs.setAlwaysSkipFiller(context, true)
-                        viewModelScope.launchIO { showToast(context, "Benflix will skip filler from now on", Toast.LENGTH_SHORT) }
+                        viewModelScope.launchIO { showToast(context, "Glowfin will skip filler from now on", Toast.LENGTH_SHORT) }
                     }
                     viewModelScope.launchIO {
                         val (next, _) = nextStoryEpisode(currentItem.item) ?: return@launchIO
@@ -1510,7 +1510,7 @@ class PlaybackViewModel
             val seriesId = currentSeriesId() ?: return
             setAlwaysSkipIntro(seriesId, true)
             updateSegment(segmentId, false)
-            viewModelScope.launchIO { showToast(context, "Benflix will skip this show's intro from now on", Toast.LENGTH_SHORT) }
+            viewModelScope.launchIO { showToast(context, "Glowfin will skip this show's intro from now on", Toast.LENGTH_SHORT) }
         }
 
         /** Benflix "Always for this show" on Skip credits: skip this show's credits now and every time from now on */
@@ -1518,7 +1518,7 @@ class PlaybackViewModel
             val seriesId = currentSeriesId() ?: return
             setAlwaysSkipOutro(seriesId, true)
             updateSegment(segmentId, false)
-            viewModelScope.launchIO { showToast(context, "Benflix will skip this show's credits from now on", Toast.LENGTH_SHORT) }
+            viewModelScope.launchIO { showToast(context, "Glowfin will skip this show's credits from now on", Toast.LENGTH_SHORT) }
         }
 
         /**
@@ -1544,7 +1544,7 @@ class PlaybackViewModel
                     if (!started && transcoding && firstReadyAt == 0L && sameItem && state.value.notice == null) {
                         showNotice(
                             PlayerNotice(
-                                title = "Benflix is busy right now",
+                                title = "Glowfin is busy right now",
                                 message = "It may take a moment to start, and the picture may look a bit softer for a bit.",
                                 autoHideMs = 9_000L,
                                 busy = true,

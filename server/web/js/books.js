@@ -36,7 +36,7 @@
     const done = t.status === "done" ? `<span class="bk-tick">${B.I("check")}</span>` : "";
     const ears = t.kind === "audiobook" ? `<span class="bk-ears">${I("ears")}</span>` : "";
     return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)"><span class="nt">${esc(t.name)}</span></div>`}${tag}${ears}${done}${bar}</div>
-      <div class="cap"><span class="nm">${esc(t.name)}</span><small>${esc(t.notHere ? "Not on Benflix yet" : t.line || "")}</small></div></a>`;
+      <div class="cap"><span class="nm">${esc(t.name)}</span><small>${esc(t.notHere ? "Not on Glowfin yet" : t.line || "")}</small></div></a>`;
   };
   const grid = (tiles) => tiles.length ? `<div class="bk-grid">${tiles.map((t) => card(t)).join("")}</div>` : "";
 
@@ -55,7 +55,7 @@
       home = await B.cached("books-home", 15000, () => api("GET", "home"));
     } catch (e) {
       if (!B.alive(nav)) return;
-      $("#bkMain").innerHTML = `<div class="wrap"><div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(e.message)}</p><p class="sub">If Books is new, Tower's Benflix helper needs its setup run once more.</p></div>`;
+      $("#bkMain").innerHTML = `<div class="wrap"><div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(e.message)}</p><p class="sub">If Books is new, Tower's Glowfin helper needs its setup run once more.</p></div>`;
       return;
     }
     if (!B.alive(nav)) return;
@@ -66,7 +66,7 @@
     $("#bkSide").innerHTML = shown.map(([k, l]) => `<a class="${k === place ? "on" : ""}" href="${link({ p: k, c: "all" })}">${esc(l)}${counts[k] ? `<small>${counts[k]}</small>` : ""}</a>`).join("");
     const main = $("#bkMain");
     if (home.empty) {
-      main.innerHTML = `<div class="wrap"><div class="h1">No books on Benflix yet</div><p class="sub">Put books, audiobooks or manga in Tower's ${esc((home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books, Audiobooks and Manga folders")}, and they show up here within 10 minutes.</p>
+      main.innerHTML = `<div class="wrap"><div class="h1">No books on Glowfin yet</div><p class="sub">Put books, audiobooks or manga in Tower's ${esc((home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books, Audiobooks and Manga folders")}, and they show up here within 10 minutes.</p>
         ${home.requests && !B.me.kids ? '<a class="btn white" href="#/requests?tab=books">Ask for a book</a>' : ""}</div>`;
       return;
     }
@@ -128,7 +128,7 @@
         ? { label: "Open the PDF", icon: "book", onClick: () => window.open(`api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}`, "_blank", "noopener") }
         : { label: place.pct > 0.005 && t.status !== "done" ? "Keep reading " + Math.round(place.pct * 100) + "%" : "Read", icon: "book", href: `#/books/read/${enc(t.id)}` };
     }
-    if (!main) main = { label: "Read", icon: "book", off: !t.readable && !audio && !manga ? "This kind of file can't be opened in Benflix. EPUB and PDF can." : "Nothing to open yet" };
+    if (!main) main = { label: "Read", icon: "book", off: !t.readable && !audio && !manga ? "This kind of file can't be opened in Glowfin. EPUB and PDF can." : "Nothing to open yet" };
     const series = t.series && !manga ? [...(t.moreBy || []), ...(t.moreLike || [])].filter((x, i, all) => x.series === t.series && x.id !== t.id && all.findIndex((y) => y.id === x.id) === i) : [];
     const vols = manga ? t.volumes || [] : [];
     const hasSeries = vols.length || series.length;
@@ -546,7 +546,7 @@
     }
     const hero = d.hero;
     if (hero) {
-      const btn = hero.have ? `<a class="btn white big" href="#/book/${enc(hero.have)}">${B.I("check")} On Benflix</a>`
+      const btn = hero.have ? `<a class="btn white big" href="#/book/${enc(hero.have)}">${B.I("check")} On Glowfin</a>`
         : hero.asked ? `<span class="btn big" style="color:${LIME}">${esc(hero.asked)}</span>`
           : `<button class="btn white big" data-bq="${esc(hero.key)}">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`;
       h += `<div class="wrap"><div class="bq-hero"><a class="cv" href="${aboutHref(hero)}" style="${hero.cover ? `background-image:url('${esc(outPic(hero.cover))}')` : ""}"></a><div class="grow">
@@ -627,7 +627,7 @@
         a.award ? `<span>${esc(a.award)}</span>` : ""].join("");
       const chips = (audioOnly ? [["audiobook", "Audiobook"]] : [["ebook", "Ebook"], ["audiobook", "Audiobook"], ["both", "Both"]])
         .map(([k, l]) => `<button class="chip ${pick === k ? "on" : ""}" data-pick="${k}">${l}</button>`).join("");
-      const ask = a.have ? `<a class="btn white big" href="#/book/${enc(a.have)}">${B.I("check")} On Benflix</a>`
+      const ask = a.have ? `<a class="btn white big" href="#/book/${enc(a.have)}">${B.I("check")} On Glowfin</a>`
         : a.asked ? `<span class="btn big" style="color:${LIME}">${esc(a.asked)}</span>`
           : `${chips}<button class="btn white big" data-act="ask">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`;
       const s = a.series;
@@ -638,7 +638,7 @@
           const img = b.cover ? `background-image:url('${esc(outPic(b.cover))}')` : "";
           const href = b.have ? "#/book/" + enc(b.have) : b.isThis ? "" : `#/bookask?key=${enc(b.key)}&name=${enc(b.name)}&author=${enc(b.author || "")}`;
           return `<a class="poster bk" ${href ? `href="${href}"` : ""}><div class="im" style="${img}">${b.cover ? "" : `<span class="bk-name">${esc(b.name)}</span>`}${b.have ? `<span class="bk-tick">${B.I("check")}</span>` : ""}</div>
-            <div class="cap" ${b.isThis ? `style="color:${LIME}"` : ""}><span class="nm">${b.pos}. ${esc(b.name)}</span><small${b.have || b.asked ? ` style="color:${LIME}"` : ""}>${esc(b.have ? "On Benflix" : b.asked || (b.isThis ? "This book" : ""))}</small></div></a>`;
+            <div class="cap" ${b.isThis ? `style="color:${LIME}"` : ""}><span class="nm">${b.pos}. ${esc(b.name)}</span><small${b.have || b.asked ? ` style="color:${LIME}"` : ""}>${esc(b.have ? "On Glowfin" : b.asked || (b.isThis ? "This book" : ""))}</small></div></a>`;
         }).join("")}</div><button class="arrow r" data-scroll="1" aria-label="Scroll right">${B.I("right")}</button></section>` : "";
       const back = `<div class="back"><b style="color:${LIME}">${esc((a.name || "").toUpperCase())}</b><p>${esc((a.back && a.back.blurb) || "No blurb yet.")}</p>${((a.back && a.back.quotes) || []).slice(0, 2).map((q) => `<p class="q">“${esc(q.text)}”</p>`).join("")}</div>`;
       el.innerHTML = `<div class="wrap bq-top"><div><button class="bq-flip" data-act="flip" title="Turn the cover over"><div class="front" style="${a.cover ? `background-image:url('${esc(outPic(a.cover))}')` : ""}">${a.cover ? "" : `<span class="bk-name">${esc(a.name)}</span>`}</div>${back}</button>

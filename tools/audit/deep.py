@@ -433,7 +433,7 @@ def switch_profile(tile):
         if best is not None:
             d.touch_tap(best)
             time.sleep(1.5)
-    d.press(r"^Switch profile$|^My Benflix$", timeout=4)
+    d.press(r"^Switch profile$|^My (?:Benflix|Glowfin)$", timeout=4)
     if d.find(d.dump(), r"Who's watching") is None:
         d.press(r"^Switch profile$", timeout=4)
     if d.wait_for(r"Who's watching", 15) is None:

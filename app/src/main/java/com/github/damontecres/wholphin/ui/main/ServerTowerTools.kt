@@ -396,7 +396,7 @@ internal fun LazyListScope.towerDownloadItems(
                 headline =
                     listOfNotNull("Sonarr".takeIf { !status.sonarr }, "Radarr".takeIf { !status.radarr }).joinToString(" and ") +
                         " not connected",
-                supporting = "Run the Benflix setup command on Tower again to connect it.",
+                supporting = "Run the Glowfin setup command on Tower again to connect it.",
                 leading = { Dot(Light.UNKNOWN) },
             )
         }
@@ -461,7 +461,7 @@ private fun LazyListScope.appListItems(
         item {
             ServerActionRow(
                 headline = "The helper can't see your apps yet",
-                supporting = "Run the Benflix setup command on Tower again.",
+                supporting = "Run the Glowfin setup command on Tower again.",
             )
         }
     } else {
@@ -511,7 +511,7 @@ internal fun LazyListScope.trackTidyItems(
             item {
                 ServerActionRow(
                     headline = "Not set up on Tower yet",
-                    supporting = tracks.problem ?: "Run the Benflix setup command on Tower again.",
+                    supporting = tracks.problem ?: "Run the Glowfin setup command on Tower again.",
                     leading = { Dot(Light.UNKNOWN) },
                 )
             }

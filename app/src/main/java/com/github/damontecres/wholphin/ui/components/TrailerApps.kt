@@ -214,7 +214,7 @@ internal fun TrailerAppQuestion(
             }
             add(
                 DialogItem(
-                    headlineContent = { AppLabel("Inside Benflix", null) },
+                    headlineContent = { AppLabel("Inside Glowfin", null) },
                     supportingContent = { Text("A pop-up player. Can stutter on slower TVs") },
                     onClick = {
                         TrailerApps.save(context, TrailerApps.INSIDE)
@@ -232,7 +232,7 @@ internal fun TrailerAppQuestion(
         dismissOnClick = false,
         waitToLoad = false,
         header = {
-            Text("Benflix remembers your pick. Change it any time in Settings > Watching > YouTube trailers.")
+            Text("Glowfin remembers your pick. Change it any time in Settings > Watching > YouTube trailers.")
         },
     )
 }
@@ -251,7 +251,7 @@ fun TrailerAppSetting(
         remember(apps) {
             listOf(
                 TrailerApps.App("Ask me the first time", TrailerApps.ASK, null),
-                TrailerApps.App("Inside Benflix (pop-up)", TrailerApps.INSIDE, null),
+                TrailerApps.App("Inside Glowfin (pop-up)", TrailerApps.INSIDE, null),
             ) + apps
         }
     val selected = choices.indexOfFirst { it.packageName == saved }.takeIf { it >= 0 } ?: 0
@@ -259,7 +259,7 @@ fun TrailerAppSetting(
         title = title,
         summary =
             if (apps.isEmpty() && saved != TrailerApps.INSIDE) {
-                "No YouTube app on this device, so trailers play inside Benflix"
+                "No YouTube app on this device, so trailers play inside Glowfin"
             } else {
                 choices[selected].name
             },

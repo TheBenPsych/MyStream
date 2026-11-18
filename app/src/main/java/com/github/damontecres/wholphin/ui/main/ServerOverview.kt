@@ -58,7 +58,7 @@ enum class ServerToolGroup(
 ) {
     LIBRARY("Library", "Scan for new stuff, the library checkup and posters", BenflixIcon.FILM),
     DOWNLOADS("Downloads", "What's downloading, and stuck ones", BenflixIcon.DOWNLOAD),
-    PEOPLE("People", "Messages, Benflix versions and Kids ratings", BenflixIcon.PERSON),
+    PEOPLE("People", "Messages, Glowfin versions and Kids ratings", BenflixIcon.PERSON),
     FIXES("Playback fixes", "Tidy track names and check playback speed", BenflixIcon.PLAY),
     TOWER("Tower", "Setup command, apps, drive health, restart, chores, weather town", BenflixIcon.SERVER),
 }
@@ -521,7 +521,7 @@ internal fun ServerSetupCard(need: TowerSetupNeed) {
             )
         }
         Text(
-            text = "This Benflix is newer than the helper on Tower. Run the command once and these start working:",
+            text = "This Glowfin is newer than the helper on Tower. Run the command once and these start working:",
             fontSize = BenflixType.body,
             color = BenflixColors.Soft,
         )
@@ -543,7 +543,7 @@ internal fun ServerSetupCard(need: TowerSetupNeed) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SmallButton(if (copied) "Copied" else "Copy", primary = true) {
                 val clip = context.getSystemService(android.content.ClipboardManager::class.java)
-                clip?.setPrimaryClip(android.content.ClipData.newPlainText("Benflix setup command", TowerSetupCheck.COMMAND))
+                clip?.setPrimaryClip(android.content.ClipData.newPlainText("Glowfin setup command", TowerSetupCheck.COMMAND))
                 copied = true
             }
             SmallButton("Where do I paste it?") { where = true }
@@ -554,7 +554,7 @@ internal fun ServerSetupCard(need: TowerSetupNeed) {
             title = "Where do I paste it?",
             body =
                 TowerSetupCheck.WHERE +
-                    "\n\nOn a TV, Copy only copies on the TV, so it's easiest from Benflix on your phone or the web.",
+                    "\n\nOn a TV, Copy only copies on the TV, so it's easiest from Glowfin on your phone or the web.",
             onCancel = { where = false },
             onConfirm = { where = false },
         )

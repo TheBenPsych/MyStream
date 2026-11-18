@@ -223,7 +223,7 @@ class HomePicksService
                         ben.await().shuffled().map { it to "Picked for you" },
                         movies.await()?.let { (name, items) -> items.shuffled().map { it to "Because you watched $name" } }.orEmpty(),
                         shows.await()?.let { (name, items) -> items.shuffled().map { it to "Because you watched $name" } }.orEmpty(),
-                        fresh.await().shuffled().map { it to "New on Benflix" },
+                        fresh.await().shuffled().map { it to "New on Glowfin" },
                     )
                 }
             // Ben's picks first (Kids), then movies and shows taking turns, then what's new

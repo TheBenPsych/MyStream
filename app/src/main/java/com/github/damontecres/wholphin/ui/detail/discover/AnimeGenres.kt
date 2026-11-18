@@ -813,7 +813,7 @@ fun AnimeGenrePage(
                             },
                             sort.label,
                             kind.label,
-                            if (hereCount > 0) "$hereCount already on Benflix (hidden)" else null,
+                            if (hereCount > 0) "$hereCount already on Glowfin (hidden)" else null,
                         ).joinToString(" · "),
                     color = LABEL_GREY,
                     fontSize = BenflixType.small,
@@ -869,7 +869,7 @@ fun AnimeGenrePage(
                                     }
 
                                     hereCount > 0 -> {
-                                        "You already have every one of these on Benflix."
+                                        "You already have every one of these on Glowfin."
                                     }
 
                                     else -> {

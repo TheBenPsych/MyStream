@@ -507,7 +507,7 @@ fun NavDrawer(
     BackHandler(enabled = (isTv && !leaveArmed && destination is Destination.Home)) {
         leaveArmed = true
         com.github.damontecres.wholphin.ui.components.BenflixNotices
-            .pill("Press Back again to leave Benflix")
+            .pill("Press Back again to leave Glowfin")
     }
     val userImageUrl = remember(user) { viewModel.getUserImage(user) }
     // Benflix: requests waiting for the main profile to say yes or no
@@ -663,7 +663,7 @@ fun NavDrawer(
                         headlineContent = { androidx.tv.material3.Text(problem) },
                         onClick = {
                             showReport = false
-                            reportViewModel.report(null, "Benflix app", problem)
+                            reportViewModel.report(null, "Glowfin app", problem)
                         },
                     )
                 },
@@ -673,7 +673,7 @@ fun NavDrawer(
     }
     if (confirmSignOut) {
         com.github.damontecres.wholphin.ui.components.ConfirmDialog(
-            title = "Sign out of Benflix?",
+            title = "Sign out of Glowfin?",
             body = "You'll need your password to sign in again on this ${if (isTv) "TV" else "phone"}.",
             onCancel = { confirmSignOut = false },
             onConfirm = {

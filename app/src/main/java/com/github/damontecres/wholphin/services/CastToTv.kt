@@ -234,7 +234,7 @@ class CastToTv
             val isEpisode = item.type == BaseItemKind.EPISODE
             val metadata =
                 MediaMetadata(if (isEpisode) MediaMetadata.MEDIA_TYPE_TV_SHOW else MediaMetadata.MEDIA_TYPE_MOVIE).apply {
-                    putString(MediaMetadata.KEY_TITLE, item.name ?: "Benflix")
+                    putString(MediaMetadata.KEY_TITLE, item.name ?: "Glowfin")
                     if (isEpisode) item.data.seriesName?.let { putString(MediaMetadata.KEY_SERIES_TITLE, it) }
                     imageUrlService.getItemImageUrl(item, ImageType.BACKDROP)?.let { addImage(WebImage(Uri.parse(it))) }
                 }

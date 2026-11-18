@@ -257,9 +257,9 @@ internal fun OwnedMoreButton(
     RequestsChip(
         label =
             when {
-                open -> "Hide the ones already on Benflix"
-                count == 1 -> "1 more is already on Benflix ›"
-                else -> "$count more are already on Benflix ›"
+                open -> "Hide the ones already on Glowfin"
+                count == 1 -> "1 more is already on Glowfin ›"
+                else -> "$count more are already on Glowfin ›"
             },
         selected = false,
         onClick = onClick,

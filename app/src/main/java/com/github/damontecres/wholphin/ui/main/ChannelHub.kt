@@ -62,7 +62,7 @@ import org.jellyfin.sdk.model.api.ImageType
 /** How a channel type is named on its tile and in the side guide */
 internal fun groupLabel(group: String): String =
     when (group) {
-        BENFLIX_GROUP -> "Benflix · No ads"
+        BENFLIX_GROUP -> "Glowfin · No ads"
         FAVOURITES_GROUP -> "★ Favourites"
         else -> group
     }

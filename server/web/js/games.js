@@ -157,7 +157,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
       g.size ? ["MB", (g.size / 1048576).toFixed(1)] : null,
     ]),
     tabs: [
-      { name: "Your saves", id: "tpSaves", html: kept ? `<div class="wrap0"><p>${saves.srm ? "You have an in-game save on Tower." : "Benflix kept where you stopped."} Keep playing picks it up on any TV, phone or here.</p></div>` : "" },
+      { name: "Your saves", id: "tpSaves", html: kept ? `<div class="wrap0"><p>${saves.srm ? "You have an in-game save on Tower." : "Glowfin kept where you stopped."} Keep playing picks it up on any TV, phone or here.</p></div>` : "" },
     ],
   });
 });

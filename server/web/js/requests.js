@@ -86,8 +86,8 @@ B.askPanel = async (type, id) => {
       <h3>${esc(t)}</h3><p class="dim">${esc([year, type === "tv" ? "Show" : "Movie", d.runtime ? B.len(d.runtime) : "", (d.genres || []).slice(0, 3).map((g) => g.name).join(", "), d.originalLanguage && d.originalLanguage !== "en" ? "Spoken in " + B.langName(d.originalLanguage) : ""].filter(Boolean).join(" · "))}</p>
       ${d.voteAverage ? `<div class="scores"><span><b>${d.voteAverage.toFixed(1)}</b>TMDB</span></div>` : ""}
       <p>${esc(d.overview || "")}</p>
-      ${status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Benflix</a>`
-        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Benflix" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
+      ${status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Glowfin</a>`
+        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Glowfin" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
         ${status === 2 || status === 3 ? `<p>${B.rqPillHtml(status === 3 ? { k: "looking", w: "Still looking" } : { k: "asked", w: "Asked · waiting for Ben" })}</p>` : ""}
         <div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for it</button>${B.reqForHtml()}</div>`}`;
     B.reqForFill(p);
@@ -182,7 +182,7 @@ B.rqSide = (lists, picked, mine, waiting) => `<h4>Yours</h4><button class="${pic
   + `<h4>Lists</h4>` + lists.map((l, i) => (l.heading && (lists[i - 1] || {}).heading !== l.heading ? `<h4>${esc(l.heading)}</h4>` : "")
     + `<button class="${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}" title="${esc(l.title)}">${l.heading ? `<span class="rqshort">${esc(l.short || l.title)}</span><span class="rqlong">${esc(l.title)}</span>` : esc(l.title)}</button>`).join("");
 // The end of a list: titles already on Benflix never show in the lists, but can be opened here
-B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Benflix" : `${n} more ${n === 1 ? "is" : "are"} already on Benflix ›`}</button></p>` : "");
+B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Glowfin" : `${n} more ${n === 1 ? "is" : "are"} already on Glowfin ›`}</button></p>` : "");
 B.yearsOf = (r) => (r.releaseDate || r.firstAirDate || "").slice(0, 4);
 
 const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["yours", "Your requests"]];
@@ -696,7 +696,7 @@ B.musicTab = async (nav) => {
       B.askText("Bring in a playlist", "Paste the playlist's link (Share > Copy link), or songs one per line like: Queen - Bohemian Rhapsody", "", { long: true, ok: "Bring it in" }).then((link) => {
         if (!link || !link.trim()) return;
         // Ben: someone else's playlist can bring in just the songs, without a Benflix playlist
-        B.ask("Make a Benflix playlist too?", "Songs you don't have yet are asked for either way. Pick Just the songs for someone else's playlist.", "Songs + playlist", "Just the songs").then((make) => {
+        B.ask("Make a Glowfin playlist too?", "Songs you don't have yet are asked for either way. Pick Just the songs for someone else's playlist.", "Songs + playlist", "Just the songs").then((make) => {
           B.busy(null, async () => { const p = await music("POST", "/playlist", { link: link.trim(), playlist: !!make }); loadStatus(); return `Bringing in ${p.name}.`; });
         });
       });
@@ -893,8 +893,8 @@ B.animeRequests = (nav, getLists, openList) => {
     if (!B.alive(nav) || wall() !== w || w.dataset.at !== opts.at) return;
     if (opts.keep) items = items.filter(opts.keep);
     const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
-    w.innerHTML = head(title, [note, here ? `${here} already on Benflix` : ""].filter(Boolean).join(" · "), opts.top)
-      + (shown.length ? `<div class="grid">${shown.map((c, i) => poster(c, opts.ranked && i < 10 ? i + 1 : 0)).join("")}</div>` : `<div class="empty">${here ? "You already have all of these on Benflix." : "Nothing here right now."}</div>`);
+    w.innerHTML = head(title, [note, here ? `${here} already on Glowfin` : ""].filter(Boolean).join(" · "), opts.top)
+      + (shown.length ? `<div class="grid">${shown.map((c, i) => poster(c, opts.ranked && i < 10 ? i + 1 : 0)).join("")}</div>` : `<div class="empty">${here ? "You already have all of these on Glowfin." : "Nothing here right now."}</div>`);
     if (here && !opts.ranked) {
       let grid = $(".grid", w);
       if (!grid) { grid = document.createElement("div"); grid.className = "grid"; }
@@ -925,7 +925,7 @@ B.animeRequests = (nav, getLists, openList) => {
     const name = (d, i) => i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.getDate();
     const time = (a) => new Date(a.at * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
     const row = (a) => { B.animeCards[a.card.id] = a.card; return `<div class="anep"><button class="anep-open" data-an="${a.card.id}"><span class="pic" ${a.card.cover ? `style="background-image:url('${esc(a.card.cover)}')"` : ""}></span><span class="t"><b>${esc(a.card.titles[0] || "")}</b><small>Ep ${a.ep} · ${esc(time(a))}${a.card.score ? " · AniList " + (a.card.score / 10).toFixed(1) : ""}</small></span></button><button class="btn small white" data-an="${a.card.id}">Ask</button></div>`; };
-    const note = ["New episodes by day, for shows you don't have yet", here.size ? `${here.size} already on Benflix` : ""].filter(Boolean).join(" · ");
+    const note = ["New episodes by day, for shows you don't have yet", here.size ? `${here.size} already on Glowfin` : ""].filter(Boolean).join(" · ");
     let dayI = 0;
     const draw = () => {
       const phone = window.innerWidth <= 700;
@@ -963,7 +963,7 @@ B.animeRequests = (nav, getLists, openList) => {
       try { items = await load(a); } catch (e) { box.innerHTML = `<div class="empty">That didn't load. AniList may be busy.</div>`; return; }
       if (w.dataset.at !== at || !box.isConnected) return;
       const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
-      fake.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Benflix` : ""}</p><div class="grid">${shown.map((c) => poster(c, 0)).join("")}</div>`;
+      fake.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Glowfin` : ""}</p><div class="grid">${shown.map((c) => poster(c, 0)).join("")}</div>`;
       box.replaceChildren(...fake.childNodes);
       if (here) bringBackMissing(items, $(".grid", box), () => B.alive(nav) && w.dataset.at === at && box.isConnected);
     }

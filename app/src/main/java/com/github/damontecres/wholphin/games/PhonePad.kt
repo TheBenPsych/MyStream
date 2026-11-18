@@ -82,7 +82,7 @@ class PhonePadServer(
             running = true
             val info =
                 NsdServiceInfo().apply {
-                    serviceName = "Benflix ${Build.MODEL}".take(60)
+                    serviceName = "Glowfin ${Build.MODEL}".take(60)
                     serviceType = PhonePadProtocol.SERVICE_TYPE
                     port = s.localPort
                     setAttribute("game", gameName.take(60))

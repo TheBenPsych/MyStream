@@ -74,13 +74,13 @@ class TowerSetupCheck
                 mapOf(
                     1 to
                         listOf(
-                            "Benflix can tell you when Tower needs this command (this card)",
+                            "Glowfin can tell you when Tower needs this command (this card)",
                             "Anything from the last few updates that said it needs the setup command again",
                         ),
                     2 to
                         listOf(
                             "Safer ebook reading: book pages can't run hidden code",
-                            "Other websites can't show Benflix inside their pages",
+                            "Other websites can't show Glowfin inside their pages",
                         ),
                     3 to
                         listOf(
@@ -99,7 +99,7 @@ class TowerSetupCheck
                         ),
                     6 to
                         listOf(
-                            "The Lobby: a 3D room in web Benflix to watch together, chat and play pool",
+                            "The Lobby: a 3D room in web Glowfin to watch together, chat and play pool",
                         ),
                     7 to
                         listOf(
@@ -127,7 +127,7 @@ class TowerSetupCheck
                         ),
                     14 to
                         listOf(
-                            "Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Benflix and skip learning",
+                            "Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Glowfin and skip learning",
                         ),
                     15 to
                         listOf(
@@ -143,7 +143,7 @@ class TowerSetupCheck
             const val WHERE =
                 "On your computer, open Unraid in the browser (http://tower, or Tower's home address), " +
                     "click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. " +
-                    "It takes about a minute, and Benflix keeps working while it runs."
+                    "It takes about a minute, and Glowfin keeps working while it runs."
 
             private const val MIN_GAP_MS = 60_000L
         }

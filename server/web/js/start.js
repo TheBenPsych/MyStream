@@ -85,7 +85,7 @@ B.signInProblem = (err, name) => {
     return { kind: "many", title: "On too many TVs", line: `${whose} is on too many TVs. Sign out on one${/^ben$/i.test(who) ? "" : ", or ask Ben"}.`, button: "OK" };
   }
   if (st === 401 || /accept that name and password|wrong password/i.test(msg)) return { kind: "wrong", title: "Wrong password", line: "Check the name and password and try again. Capital letters count.", button: "Type it again" };
-  if (st === 400 && /name/i.test(msg)) return { kind: "wrong", title: "Type your name first", line: "Your name is the one you use for Benflix on the TV.", button: "OK" };
+  if (st === 400 && /name/i.test(msg)) return { kind: "wrong", title: "Type your name first", line: "Your name is the one you use for Glowfin on the TV.", button: "OK" };
   return { kind: "other", title: "That didn't work", line: msg || "Something went wrong signing in. Try again in a minute.", button: "Try again" };
 };
 B.route(/^\/signin/, async () => {
@@ -97,7 +97,7 @@ B.route(/^\/signin/, async () => {
   const draw = () => {
     gen++;
     const form = `<form id="f" class="half type">
-        <h2>${wide() ? "Or type it in" : "Sign in to Benflix"}</h2>
+        <h2>${wide() ? "Or type it in" : "Sign in to Glowfin"}</h2>
         <label>Name<input class="field" id="nm" autocomplete="username" value="${esc(name0)}"></label>
         <label>Password<input class="field" id="pw" type="password" autocomplete="current-password" placeholder="Leave it empty if you don't have one"></label>
         <div id="prob"></div>
@@ -106,7 +106,7 @@ B.route(/^\/signin/, async () => {
       </form>`;
     const phone = `<div class="half phone">
         <h2>Sign in with your phone</h2>
-        <p>On your phone, open Benflix, then My Benflix › Quick Connect, and type this code:</p>
+        <p>On your phone, open Glowfin, then My Glowfin › Quick Connect, and type this code:</p>
         <div id="code">${B.spinner()}</div>
         <div id="qcProb"></div>
         ${wide() ? "" : `<button class="btn" type="button" id="useForm">Type it in instead</button>`}
@@ -392,7 +392,7 @@ const cantFindRows = async () => {
     const title = (d && (d.title || d.name)) || e.title || "Something you asked for";
     const why = e.auto ? `We looked for ${title} for a week but couldn't find a copy yet.` : `Ben looked for ${title} but couldn't find a copy yet.`;
     const img = (d && B.tmdbImg ? B.tmdbImg(d.posterPath, "w185") : "") || e.posterUrl || "";
-    return { id: `cant-${e.key}-${e.date}`, news: true, kind: "Couldn't find it", title, full: `${why} If one turns up, it'll come to Benflix by itself.${e.note ? ` Ben's note: \u201C${e.note}\u201D` : ""}`,
+    return { id: `cant-${e.key}-${e.date}`, news: true, kind: "Couldn't find it", title, full: `${why} If one turns up, it'll come to Glowfin by itself.${e.note ? ` Ben's note: \u201C${e.note}\u201D` : ""}`,
       go: ["See details", `#/ask/${type}/${tmdb}`], kc: KIND_CANT, img, href: "", t };
   }));
   return rows.filter(Boolean);
@@ -542,7 +542,7 @@ const homeNotices = async (c, ready) => {
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
 let boardParts = { news: [], way: [], facts: [] };
 const rowHtml = (r, n) => {
-  const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
+  const logo = `<span class="lgthumb"><img src="web/img/glowfin-mark.svg" alt=""></span>`;
   return `<div class="bitem${r.kc === KIND_FACT ? " fact" : ""}">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
@@ -681,7 +681,7 @@ B.openMenu = async (byKeys) => {
 };
 
 B.signOut = async () => {
-  if (!(await B.ask(`Sign ${B.me.name} out of Benflix in this browser?`, "Your lists and settings stay safe on the server. Sign back in any time.", "Sign out"))) return;
+  if (!(await B.ask(`Sign ${B.me.name} out of Glowfin in this browser?`, "Your lists and settings stay safe on the server. Sign back in any time.", "Sign out"))) return;
   const me = B.me;
   try { await B.jf("POST", "/Sessions/Logout", undefined, { quiet401: true }); } catch (e) {}
   B.forget(me.id);
@@ -706,7 +706,7 @@ B.report = (item) => {
     }
     B.closeAll();
     B.busy(null, async () => {
-      const line = [Date.now(), what ? what.id : "", (what ? what.title : "Benflix web").replace(/[|\n]/g, " "), problem.replace(/[|\n]/g, " "), "Web browser"].join("|");
+      const line = [Date.now(), what ? what.id : "", (what ? what.title : "Glowfin web").replace(/[|\n]/g, " "), problem.replace(/[|\n]/g, " "), "Web browser"].join("|");
       await B.savePrefs((c) => {
         const lines = String(c["benflix.problems"] || "").split("\n").filter(Boolean);
         lines.push(line);

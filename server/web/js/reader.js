@@ -293,7 +293,7 @@
         const picks = j.picks || [];
         panel.querySelector(".rd-picks").innerHTML = picks.length
           ? picks.map((p) => `<button class="rd-pick" data-pick="${esc(p.id)}"><span class="rd-cv" style="background-image:url('${base}${p.cover.replace(/^\//, "")}&api_key=${encodeURIComponent(opts.token)}')"></span><b>${esc(p.name)}</b><small>${esc(p.author || "")}</small></button>`).join("")
-          : `<p class="rd-sub">Nothing else on Benflix yet. Ask for more in Requests.</p>`;
+          : `<p class="rd-sub">Nothing else on Glowfin yet. Ask for more in Requests.</p>`;
       } catch (e) {
         panel.querySelector(".rd-picks").innerHTML = "";
       }

@@ -45,7 +45,7 @@ private val phoneTips =
     listOf(
         HowToTip("Tap", "Opens a movie or show. Tap the video while watching to show the controls."),
         HowToTip("Press and hold a poster", "Shows quick info without opening the page."),
-        HowToTip("Bottom bar", "Home, Search, Trailer Shuffle, Channels and My Benflix are always at the bottom."),
+        HowToTip("Bottom bar", "Home, Search, Trailer Shuffle, Channels and My Glowfin are always at the bottom."),
     )
 
 private val generalTips =
@@ -53,14 +53,14 @@ private val generalTips =
         HowToTip("Pick up where you left off", "Anything you stopped part way through is in Continue watching on Home."),
         HowToTip("Skip intro", "A Skip intro button pops up at the start of most episodes. Credits can be skipped too."),
         HowToTip("My List", "Open a movie or show and press + My List to save it for later."),
-        HowToTip("Can't find something?", "Search for it. If it isn't on Benflix yet, you can ask Ben to add it."),
-        HowToTip("Download to your phone", "On a phone, open a movie and press Download (Wi-Fi only). Find it in My Benflix, Downloads."),
+        HowToTip("Can't find something?", "Search for it. If it isn't on Glowfin yet, you can ask Ben to add it."),
+        HowToTip("Download to your phone", "On a phone, open a movie and press Download (Wi-Fi only). Find it in My Glowfin, Downloads."),
         HowToTip("Kids", "Pick the Kids profile on the Who's watching screen. It only shows titles rated PG or lower."),
-        HowToTip("Switch profile", "Press your profile picture at the top (TV) or in My Benflix (phone)."),
+        HowToTip("Switch profile", "Press your profile picture at the top (TV) or in My Glowfin (phone)."),
         HowToTip("Something to watch, fast", "Try Channels, Trailer Shuffle or the Mood quiz under More."),
         HowToTip("Bigger text", "Turn on Easy-read mode in Settings, Look, for bigger and brighter text."),
-        HowToTip("Play on TV", "On your phone, open a movie or episode and press Play on TV. Benflix needs to be open on the TV."),
-        HowToTip("Kids bedtime", "Set a Parent PIN in My Benflix. Kids then goes to bed at 9 PM, and your PIN gives 30 more minutes."),
+        HowToTip("Play on TV", "On your phone, open a movie or episode and press Play on TV. Glowfin needs to be open on the TV."),
+        HowToTip("Kids bedtime", "Set a Parent PIN in My Glowfin. Kids then goes to bed at 9 PM, and your PIN gives 30 more minutes."),
         HowToTip("Random episodes", "On a show's page, press Random episodes. It keeps playing random ones until you press Back."),
         HowToTip("Getting a new version", "When there's an update, Settings shows Install update at the top."),
     )
@@ -80,7 +80,7 @@ fun HowToPage(modifier: Modifier = Modifier) {
     ) {
         item {
             Text(
-                text = "How to use Benflix",
+                text = "How to use Glowfin",
                 fontWeight = FontWeight.Bold,
                 fontSize = BenflixType.pageTitle,
                 letterSpacing = 1.sp,

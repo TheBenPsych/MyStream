@@ -354,8 +354,8 @@
     if (!box) return;
     const seen = new Set();
     const screens = (list || []).filter((x) => String(x.DeviceId || "").startsWith("benflix-") && x.SupportsRemoteControl && !seen.has(x.DeviceId) && seen.add(x.DeviceId));
-    if (!screens.length) { box.innerHTML = `<p class="dim">No TV or phone found. Open Benflix on the TV (any page), then try again.</p>`; return; }
-    box.innerHTML = screens.map((x) => `<button class="btn wide" data-sess="${esc(x.Id)}">${I("tv")} ${esc(x.DeviceName || "Benflix")}${x.UserId !== B.uid() && x.UserName ? ` (${esc(x.UserName)})` : ""}</button>`).join("");
+    if (!screens.length) { box.innerHTML = `<p class="dim">No TV or phone found. Open Glowfin on the TV (any page), then try again.</p>`; return; }
+    box.innerHTML = screens.map((x) => `<button class="btn wide" data-sess="${esc(x.Id)}">${I("tv")} ${esc(x.DeviceName || "Glowfin")}${x.UserId !== B.uid() && x.UserName ? ` (${esc(x.UserName)})` : ""}</button>`).join("");
     box.addEventListener("click", async (e) => {
       const b = e.target.closest("[data-sess]"); if (!b) return;
       const ids = M.queue.slice(M.index, M.index + 100).map((x) => x.Id);
@@ -528,7 +528,7 @@
         lastLyric = -2;
         body.innerHTML = M.lyrics
           ? `<div class="np-words">${M.lyrics.lines.map((l, k) => M.lyrics.timed ? `<button class="np-ly" data-jump="${(l.Start || 0) / B.TICKS}" data-k="${k}" title="Play from here">${esc(l.Text)}</button>` : `<p class="np-ly" data-k="${k}">${esc(l.Text)}</p>`).join("")}</div>`
-          : noWords ? `<div class="np-note"><b>No words for this song yet</b><p class="dim">Benflix looks for them every night, so they may turn up tomorrow.</p></div>` : `<p class="dim">Looking for the words…</p>`;
+          : noWords ? `<div class="np-note"><b>No words for this song yet</b><p class="dim">Glowfin looks for them every night, so they may turn up tomorrow.</p></div>` : `<p class="dim">Looking for the words…</p>`;
       }
       drawLyric();
     } else if (npTab === "upnext") {
@@ -846,7 +846,7 @@
   const secs = (n) => (n ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}` : "");
   const ghostRow = (c, n, withCover) => `<div class="srow ghost" data-ghost="${esc(String(c.id))}">
       <span class="sn">${withCover ? (c.cover ? `<img class="sc" src="${esc(c.cover)}" alt="" loading="lazy" decoding="async">` : `<span class="sc"></span>`) : esc(n != null ? n : "")}</span>
-      <span class="st"><b>${esc(c.title)}</b><small>${withCover ? esc(c.artist) + " · " : ""}Not on Benflix</small></span>
+      <span class="st"><b>${esc(c.title)}</b><small>${withCover ? esc(c.artist) + " · " : ""}Not on Glowfin</small></span>
       ${B.previewBtn(c.id)}<span class="sl">${secs(c.seconds)}</span>
       <button class="btn small mask ${c.asked ? "done" : ""}" data-askghost="${esc(String(c.id))}" ${c.asked ? "disabled" : ""}>${esc(c.asked || "Ask")}</button></div>`;
   const wireGhosts = (root, onAsked) => root.addEventListener("click", async (e) => {
@@ -1018,7 +1018,7 @@
     B.wireTop();
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
-    if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Benflix yet.</p>`; return; }
+    if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Glowfin yet.</p>`; return; }
     const [mixes, pls, liked, recent, played, artists, themes, mine] = await Promise.all([
       B.musicMixes().catch(() => []),
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount&Limit=30`).catch(() => []),
@@ -1258,7 +1258,7 @@
       const topHtml = top ? `<h3 class="msub">Top result</h3><${topTag} class="mtop" ${top.Type === "Audio" ? `type="button" data-topsong` : `href="#/${top.Type === "MusicArtist" ? "artist" : top.Type === "MusicAlbum" ? "album" : "playlist"}/${top.Id}"`}>
           <span class="mtop-art ${top.Type === "MusicArtist" ? "round" : ""}" style="${cover(top, 200) ? `background-image:url('${cover(top, 200)}')` : ""}"></span>
           <span><b>${esc(top.Name)}</b><small>${esc(top.Type === "MusicArtist" ? "Artist" : top.Type === "MusicAlbum" ? `Album · ${top.AlbumArtist || ""}` : top.Type === "Playlist" ? "Playlist" : `Song · ${artistOf(top)}`)}</small></span></${topTag}>` : "";
-      res.innerHTML = (none ? `<p class="dim">Nothing on Benflix by that name yet.</p>` : topHtml + (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
+      res.innerHTML = (none ? `<p class="dim">Nothing on Glowfin by that name yet.</p>` : topHtml + (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
         + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard))) + `<div id="mwords"></div><div id="mnothere"></div>`;
       if (songs.length) wireSongs($("#ms"), songs, "Search", null);
       const tp = $("[data-topsong]"); if (tp) tp.addEventListener("click", () => { keep(); M.playList([top], 0, false, "Search"); M.sourceId = null; });
@@ -1277,7 +1277,7 @@
           const list = found.map((f) => f.s);
           $("#mwords").innerHTML = `<h3 class="msub">Songs with these words</h3><div class="msongs" id="mwl">${found.map((f, i) => songRow(f.s, i, { cover: true, artist: true }) + `<div class="mword-line dim">\u201C${esc(f.line)}\u201D</div>`).join("")}</div>`;
           wireSongs($("#mwl"), list, "Search", null);
-          if (none) { const d = res.querySelector("p.dim"); if (d && /Nothing on Benflix/.test(d.textContent)) d.remove(); }
+          if (none) { const d = res.querySelector("p.dim"); if (d && /Nothing on Glowfin/.test(d.textContent)) d.remove(); }
         }).catch(() => {});
       }
       // Not on Benflix yet: songs from the music catalogue for these words, with a preview and Ask
@@ -1285,7 +1285,7 @@
       if (mine !== ticket || !B.alive(nav) || !$("#mnothere")) return;
       const out = ((cat && cat.songs) || []).filter((c) => !c.have).slice(0, 6);
       if (out.length) {
-        $("#mnothere").innerHTML = `<h3 class="msub mask-h">Not on Benflix yet</h3><div class="msongs" id="mnh">${out.map((c) => ghostRow(c, null, true)).join("")}</div>`;
+        $("#mnothere").innerHTML = `<h3 class="msub mask-h">Not on Glowfin yet</h3><div class="msongs" id="mnh">${out.map((c) => ghostRow(c, null, true)).join("")}</div>`;
         wireGhosts($("#mnh"), () => keep());
       } else if (none) $("#mnothere").innerHTML = `<p class="dim"><a href="#/requests?tab=music&q=${enc(q)}">Ask for music</a> to look further.</p>`;
     };
@@ -1695,7 +1695,7 @@
   const catalogueMix = async (nav, mix) => {
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg"><div class="mhero"><div class="mhero-words"><div class="mkick">MADE FOR YOU</div><h1>${esc(mix.name)}</h1><div class="dim">${esc(mix.line)}</div>
       <div class="mhero-btns"><button class="btn white" data-h="pv">${I("play")} Play previews</button><button class="btn" data-h="stop">${I("x")} Stop</button></div></div></div>
-      <p class="dim">Not on Benflix yet. Hear 30 seconds of each, one after another, and press Ask for it on the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
+      <p class="dim">Not on Glowfin yet. Hear 30 seconds of each, one after another, and press Ask for it on the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
       <div class="msongs" id="mcat">${B.spinner()}</div></div>`;
     B.wireTop();
     $("#mpg").style.backgroundImage = "linear-gradient(rgba(108,74,190,.45), transparent 460px)";
@@ -1773,7 +1773,7 @@
     let noMix = (mine.noartists || []).some((n) => n.toLowerCase() === (ar.Name || "").toLowerCase());
     const arPlace = { kind: "artist", id: ar.Id, name: ar.Name };
     const pic = cover(ar, 900);
-    const counts = () => [count ? `${count} ${count === 1 ? "song" : "songs"} on Benflix` : "", follow ? "Following" : ""].filter(Boolean).join(" · ");
+    const counts = () => [count ? `${count} ${count === 1 ? "song" : "songs"} on Glowfin` : "", follow ? "Following" : ""].filter(Boolean).join(" · ");
     const yours = top.filter((x) => ((x.UserData || {}).PlayCount || 0) > 0).slice(0, 5);
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg">
       <div class="martist" style="${pic ? `background-image:url('${pic}')` : ""}"><div class="martist-words"><div class="dim" id="mcounts">${esc(counts())}</div><h1>${esc(ar.Name)}</h1></div></div>
@@ -1792,7 +1792,7 @@
       const b = e.target.closest("[data-h]"); if (!b) return;
       if (b.dataset.h === "play" || b.dataset.h === "shuffle") {
         const all = await allSongs().catch(() => top);
-        if (!all.length) return B.toast(`No songs by ${ar.Name} on Benflix yet.`);
+        if (!all.length) return B.toast(`No songs by ${ar.Name} on Glowfin yet.`);
         M.playList(all, 0, b.dataset.h === "shuffle", ar.Name, arPlace); M.sourceId = ar.Id; openNow();
       }
       if (b.dataset.h === "radio") {
@@ -1833,7 +1833,7 @@
     }
     // Discography, Benflix's albums first while the catalogue answers
     const discHtml = (albumsHere, singlesHere, missA, missS, on) => {
-      const card = (x) => x.Id ? albumCard(x) : `<a class="poster mnot" href="#/requests?tab=music&mopen=album:${esc(String(x.id))}" title="${esc(x.title)}"><div class="im" style="aspect-ratio:1;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"><span class="mnot-tag">Not on Benflix</span></div><div class="cap">${esc(x.title)}</div><div class="cap2">${esc(x.year || "")}</div></a>`;
+      const card = (x) => x.Id ? albumCard(x) : `<a class="poster mnot" href="#/requests?tab=music&mopen=album:${esc(String(x.id))}" title="${esc(x.title)}"><div class="im" style="aspect-ratio:1;${x.cover ? `background-image:url('${esc(x.cover)}')` : ""}"><span class="mnot-tag">Not on Glowfin</span></div><div class="cap">${esc(x.title)}</div><div class="cap2">${esc(x.year || "")}</div></a>`;
       const year = (x) => +(x.ProductionYear || x.year || 0);
       const listA = albumsHere.concat(missA).sort((p, q) => year(q) - year(p)), listS = singlesHere.concat(missS).sort((p, q) => year(q) - year(p));
       if (!listA.length && !listS.length) return "";
@@ -1871,7 +1871,7 @@
       const local = await Promise.all(fans.slice(0, 12).map((a) => items(`searchTerm=${enc(a.name)}&IncludeItemTypes=MusicArtist&Limit=5`).then((l) => l.find((x) => (x.Name || "").toLowerCase() === a.name.toLowerCase())).catch(() => null)));
       if (!B.alive(nav)) return;
       const cards = fans.slice(0, 12).map((a, i) => ({ a, l: local[i] })).sort((p, q) => (p.l ? 0 : 1) - (q.l ? 0 : 1))
-        .map(({ a, l }) => `<a class="poster" href="${l ? `#/artist/${l.Id}` : `#/requests?tab=music&mopen=artist:${esc(String(a.id))}`}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div><div class="cap2">${l ? "On Benflix" : "None yet"}</div></a>`);
+        .map(({ a, l }) => `<a class="poster" href="${l ? `#/artist/${l.Id}` : `#/requests?tab=music&mopen=artist:${esc(String(a.id))}`}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div><div class="cap2">${l ? "On Glowfin" : "None yet"}</div></a>`);
       $("#mfans").innerHTML = B.row("Fans also like", cards);
     }
   });

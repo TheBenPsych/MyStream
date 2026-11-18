@@ -354,7 +354,7 @@ class ServerToolsViewModel
                         message =
                             "${name.trim()} can now sign in" to
                                 "Name: ${name.trim()}\nPassword: $password\n\n" +
-                                "On their TV, open the Downloader app and type $INSTALL_CODE to get Benflix. " +
+                                "On their TV, open the Downloader app and type $INSTALL_CODE to get Glowfin. " +
                                 "They can change the password later in Jellyfin.",
                     )
             }
@@ -517,7 +517,7 @@ class ServerToolsViewModel
                                 // saw it live. Every Benflix screen checks for saved messages every minute or so.
                                 blocked && savedFor.isNotEmpty() -> {
                                     "Message saved" to
-                                        "Open Benflix screens will show it within about 2 minutes, even during a show. " +
+                                        "Open Glowfin screens will show it within about 2 minutes, even during a show. " +
                                         "It can't pop up instantly right now: $LIVE_BLOCKED_HELP"
                                 }
 
@@ -530,7 +530,7 @@ class ServerToolsViewModel
                                         if (sent == 0) {
                                             null
                                         } else {
-                                            "It showed on $sent Benflix screen" + (if (sent == 1) "" else "s") + " right away."
+                                            "It showed on $sent Glowfin screen" + (if (sent == 1) "" else "s") + " right away."
                                         }
                                     // Benflix: picked people who aren't on Benflix right now see it next time they open it
                                     val later = (savedFor - reached).map { id -> names[id] ?: "Someone" }
@@ -539,11 +539,11 @@ class ServerToolsViewModel
                                             null
                                         } else {
                                             listNames(later) + (if (later.size == 1) " isn't" else " aren't") +
-                                                " on Benflix right now, so it will pop up within a couple of minutes " +
-                                                "if Benflix is open, or the next time they open it."
+                                                " on Glowfin right now, so it will pop up within a couple of minutes " +
+                                                "if Glowfin is open, or the next time they open it."
                                         }
                                     if (now == null && saved == null) {
-                                        "Nobody to send to" to "No Benflix screens are open right now."
+                                        "Nobody to send to" to "No Glowfin screens are open right now."
                                     } else {
                                         (if (now != null) "Pop-up sent" else "Message saved") to
                                             listOfNotNull(now, saved).joinToString(" ")
@@ -824,7 +824,7 @@ fun LazyListScope.messageItems(
                 },
             supporting =
                 if (state.welcome == null) {
-                    "Everyone sees it once, on their first Home screen. Like \"Welcome to Benflix! Ask me if you can't find something.\""
+                    "Everyone sees it once, on their first Home screen. Like \"Welcome to Glowfin! Ask me if you can't find something.\""
                 } else {
                     "Welcome note. Click to change it, or save it empty to remove it."
                 },
@@ -847,7 +847,7 @@ fun LazyListScope.messageItems(
             headline = "Send a pop-up message",
             supporting =
                 "To everyone, or tick just the people you want. It pops up right away. " +
-                    "Someone you picked who isn't on Benflix sees it the next time they open it.",
+                    "Someone you picked who isn't on Glowfin sees it the next time they open it.",
             onClick = { showDialog(ServerToolsDialog.WritePopup) },
         )
     }
@@ -1147,7 +1147,7 @@ fun ServerToolsDialogs(
                             DialogItem(
                                 headlineContent = { Text("Send a message") },
                                 supportingContent = {
-                                    Text("Pops up on their screen now, or the next time they open Benflix")
+                                    Text("Pops up on their screen now, or the next time they open Glowfin")
                                 },
                                 onClick = { showDialog(ServerToolsDialog.WritePopupTo(user)) },
                             ),

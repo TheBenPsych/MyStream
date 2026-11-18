@@ -65,7 +65,7 @@ val CANT_FIND_COLOR = Color(0xFFF07A3E)
 fun CantFindOutcome.message(): String =
     when (this) {
         CantFindOutcome.STOPPED -> "Marked. Radarr/Sonarr stopped searching, and nobody can ask for it again."
-        CantFindOutcome.KEPT_PARTIAL -> "Marked. Some episodes are already on Benflix, so it stays in Sonarr."
+        CantFindOutcome.KEPT_PARTIAL -> "Marked. Some episodes are already on Glowfin, so it stays in Sonarr."
         CantFindOutcome.SAVED_ONLY -> "Marked, but Seerr wouldn't remove it from Radarr/Sonarr. Remove it there by hand."
         CantFindOutcome.FAILED -> "Couldn't save that. Try again."
     }

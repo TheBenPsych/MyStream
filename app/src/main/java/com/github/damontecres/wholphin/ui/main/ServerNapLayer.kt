@@ -179,7 +179,7 @@ fun ServerNapLayer(viewModel: ServerNapViewModel = hiltViewModel()) {
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    "Nothing is wrong with your TV. Benflix will keep checking and bring you back as soon as it's up.",
+                    "Nothing is wrong with your TV. Glowfin will keep checking and bring you back as soon as it's up.",
                     fontSize = BenflixType.lead,
                     color = Color(0xFFD8D8F0),
                     textAlign = TextAlign.Center,

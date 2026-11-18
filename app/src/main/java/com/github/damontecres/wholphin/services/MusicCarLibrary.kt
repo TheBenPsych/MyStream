@@ -42,12 +42,12 @@ class MusicCarLibrary
         }
 
         /** The top of the car's list */
-        fun root(): MediaItem = folder(ROOT, "Benflix")
+        fun root(): MediaItem = folder(ROOT, "Glowfin")
 
         /** What's inside [parentId] on the car's screen */
         suspend fun children(parentId: String): List<MediaItem> {
             if (!signedIn()) {
-                return listOf(note("Open Benflix on your phone first", "Then pick who's listening"))
+                return listOf(note("Open Glowfin on your phone first", "Then pick who's listening"))
             }
             return when {
                 parentId == ROOT -> {

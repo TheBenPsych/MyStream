@@ -1182,7 +1182,7 @@ private fun SpeedMeter(ping: Long?) {
             val scope = rememberCoroutineScope()
             ClickPreference(
                 title = "Speed up now",
-                summary = "Android prepares Benflix for this TV. Press Install on the next screen; it takes a moment.",
+                summary = "Android prepares Glowfin for this TV. Press Install on the next screen; it takes a moment.",
                 onClick = {
                     scope.launch {
                         val handed =
