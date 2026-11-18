@@ -178,7 +178,9 @@ private const val SEC_GENRES = "genres"
 private const val SEC_COLLECTIONS = "collections"
 private const val SEC_STUDIOS = "studios"
 private const val SEC_MY_LIST = "mylist"
-private const val SEC_ANIME = "anime"
+
+/** The anime part of Shows (Glowfin: the menu's Anime spot opens it) */
+const val SEC_ANIME = "anime"
 private const val SEC_STAND_UP = "standup"
 
 /**

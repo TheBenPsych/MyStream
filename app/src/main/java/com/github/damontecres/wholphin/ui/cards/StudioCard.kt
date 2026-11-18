@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Studio
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import java.util.UUID
 
 @Composable
@@ -68,7 +69,7 @@ fun StudioCard(
     val background = rememberIdColor(studioId).copy(alpha = .4f)
     var error by remember { mutableStateOf(false) }
     Card(
-        modifier = modifier,
+        modifier = modifier.glowFocus(),
         onClick = onClick,
         onLongClick = onLongClick,
         interactionSource = interactionSource,

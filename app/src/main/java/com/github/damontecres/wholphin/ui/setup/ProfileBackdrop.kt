@@ -53,7 +53,7 @@ fun PosterWall(
                         Box(
                             Modifier
                                 .size(tileW, tileH)
-                                .background(Color(0xFF1C1C22)),
+                                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise),
                         ) {
                             if (url != null) {
                                 AsyncImage(

@@ -104,7 +104,39 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (g.id === "you") {
     sp.innerHTML = `<div class="row" style="gap:18px;margin-bottom:18px">${B.picHtml(B.me, "", 220).replace('class="pic', 'style="width:96px;height:96px;font-size:36px" class="pic')}<div><div style="font-size:24px;font-weight:800">${esc(B.me.name)}</div><div class="dim">${B.me.admin ? "Main profile" : "Profile"}</div></div></div>
       ${setRow("Profile picture", "Pick a picture from this computer. It shows on every TV and phone.", `<label class="valbtn" style="display:inline-block;cursor:pointer">Change<input type="file" accept="image/*" id="picFile" hidden></label>`)}
-      ${setRow("Password", "Change the password you sign in with.", `<button class="valbtn" id="pwBtn">Change</button>`)}`;
+      ${setRow("Password", "Change the password you sign in with.", `<button class="valbtn" id="pwBtn">Change</button>`)}
+      ${B.seaPic ? `<h3 style="margin:22px 0 10px">Pick your sea friend</h3>
+      <div class="seapick" id="seaAnimals">${B.SEA_KEYS.map((k, i) => `<button type="button" class="seabtn" data-a="${i}" title="${esc(B.SEA_LABEL[k])}">${B.seaPic(i, 0)}</button>`).join("")}</div>
+      <div class="seadots" id="seaColours">${B.SEA_COLOURS.map(([a, b], i) => `<button type="button" class="seadot ${i === 0 ? "on" : ""}" data-c="${i}" style="background:linear-gradient(45deg,${a},${b})" title="Colour ${i + 1}"></button>`).join("")}</div>
+      <p class="dim" style="margin:8px 0 0">Pick a colour, then press an animal to save it. It shows on every TV and phone.</p>` : ""}`;
+    // Glowfin sea friends (ui-5): pick a colour, then an animal; the picture is drawn here and saved to your account
+    let seaColour = 0;
+    const seaBox = document.getElementById("seaAnimals");
+    if (seaBox) {
+      document.getElementById("seaColours").onclick = (e) => {
+        const d = e.target.closest("[data-c]"); if (!d) return;
+        seaColour = +d.dataset.c;
+        sp.querySelectorAll(".seadot").forEach((x) => x.classList.toggle("on", x === d));
+        seaBox.querySelectorAll(".seabtn").forEach((b) => { b.innerHTML = B.seaPic(+b.dataset.a, seaColour); });
+      };
+      seaBox.onclick = (e) => {
+        const b = e.target.closest("[data-a]"); if (!b) return;
+        const svg = B.seaPic(+b.dataset.a, seaColour).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" ');
+        B.busy(null, async () => {
+          const img = new Image();
+          img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+          await img.decode();
+          const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+          c.getContext("2d").drawImage(img, 0, 0, 256, 256);
+          const b64 = c.toDataURL("image/png").split(",")[1];
+          const res = await fetch(`api/web/jf/Users/${B.uid()}/Images/Primary`, { method: "POST", headers: { "X-Benflix-Token": B.me.token, "X-Benflix-Device": B.me.device, "Content-Type": "image/png" }, body: b64 });
+          if (!res.ok) throw new Error("Couldn't save that picture. Try again in a moment.");
+          const me = await B.get(`/Users/${B.uid()}`);
+          B.me.image = me.PrimaryImageTag; B.addProfile(B.me); B.render();
+          return "New picture saved.";
+        });
+      };
+    }
     $("#picFile").onchange = (e) => {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();

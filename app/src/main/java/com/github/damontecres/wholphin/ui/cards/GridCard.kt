@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import kotlinx.coroutines.delay
 
 /**
@@ -75,7 +76,7 @@ fun GridCard(
         modifier = modifier.playButtonPlays(item),
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.glowFocus().fillMaxWidth(),
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,

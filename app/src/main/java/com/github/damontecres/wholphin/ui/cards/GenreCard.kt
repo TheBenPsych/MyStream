@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Genre
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import java.util.UUID
 
 @Composable
@@ -64,7 +65,7 @@ fun GenreCard(
 ) {
     val background = rememberIdColor(genreId).copy(alpha = .6f)
     Card(
-        modifier = modifier,
+        modifier = modifier.glowFocus(),
         onClick = onClick,
         onLongClick = onLongClick,
         interactionSource = interactionSource,

@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.preferences.experimentalPreferences
 import com.github.damontecres.wholphin.preferences.guestPreferences
 import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.preferences.screensaverPreferences
+import com.github.damontecres.wholphin.preferences.updateBenflixPreferences
 import com.github.damontecres.wholphin.preferences.updatePlaybackPreferences
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.HiddenGenres
@@ -697,7 +698,12 @@ fun PreferencesContent(
                                             title = stringResource(pref.title),
                                             onClick = { if (user != null) showPicturePicker = true },
                                             modifier = focusModifier,
-                                            summary = picked?.let { "Picture ${it + 1}" } ?: "Automatic",
+                                            summary =
+                                                picked?.let {
+                                                    com.github.damontecres.wholphin.ui.setup.SeaFriend.entries
+                                                        .getOrNull(it)
+                                                        ?.title
+                                                } ?: "Automatic",
                                             onLongClick = null,
                                             interactionSource = interactionSource,
                                         )
@@ -707,6 +713,15 @@ fun PreferencesContent(
                                                 name = user.name,
                                                 onPick = { index -> viewModel.pickPicture(index) },
                                                 onDismissRequest = { showPicturePicker = false },
+                                                // Your colour is saved with your settings, so it follows you
+                                                onPickColour = { accent ->
+                                                    scope.launch(ExceptionHandler()) {
+                                                        preferences =
+                                                            viewModel.preferenceDataStore.updateData { prefs ->
+                                                                prefs.updateBenflixPreferences { this.accent = accent }
+                                                            }
+                                                    }
+                                                },
                                             )
                                         }
                                     }

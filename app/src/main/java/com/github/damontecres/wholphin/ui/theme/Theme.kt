@@ -100,35 +100,27 @@ private const val EASY_READ_SCALE = 1.15f
 private const val EASY_READ_MAX_SCALE = 1.3f
 
 /**
- * The Benflix highlight colour. In the redesign this is white for everyone (it used to be red, or the
- * profile's own colour). The name stayed so the many progress lines and highlights keep working.
+ * The highlight colour. Glowfin: the logo's aqua for everyone (it used to be red, then white). The name
+ * stayed so the many progress lines, Play buttons and highlights keep working.
  */
-val BenflixRedBase = BenflixColors.Text
+val BenflixRedBase = Glowfin.Aqua
 
-/** What to write on top of [BenflixRed] (dark, since the highlight is white) */
-val OnBenflixRed = BenflixColors.Tray
+/** What to write on top of [BenflixRed] (dark, since aqua is bright) */
+val OnBenflixRed = Glowfin.Ink
 
-/** The highlight colour (white) */
+/** The highlight colour (Glowfin aqua) */
 val LocalBenflixAccent = staticCompositionLocalOf { BenflixRedBase }
 
-/** Used for watch progress bars everywhere (cards, banners, player). White in the redesign. */
+/** Used for watch progress bars everywhere (cards, banners, player). Glowfin aqua. */
 val BenflixRed: Color
     @Composable
     @ReadOnlyComposable
     get() = LocalBenflixAccent.current
 
+/** Glowfin: each profile colour is one of the 8 sea-friend picture colours (its main end) */
 fun BenflixAccent.toColor(): Color =
-    when (this) {
-        BenflixAccent.ACCENT_RED, BenflixAccent.UNRECOGNIZED -> BenflixRedBase
-        BenflixAccent.ACCENT_BLUE -> Color(0xFF2F7DF6)
-        BenflixAccent.ACCENT_GREEN -> Color(0xFF2FB862)
-        BenflixAccent.ACCENT_GOLD -> Color(0xFFE8A92B)
-        BenflixAccent.ACCENT_PURPLE -> Color(0xFF8B5CF6)
-        BenflixAccent.ACCENT_PINK -> Color(0xFFE5488F)
-        BenflixAccent.ACCENT_TEAL -> Color(0xFF14A8A0)
-        BenflixAccent.ACCENT_ORANGE -> Color(0xFFF26B1D)
-        BenflixAccent.ACCENT_MONO -> Color(0xFF9A9AA2)
-    }
+    com.github.damontecres.wholphin.ui.setup.SeaColours[themeIndex()]
+        .first
 
 /** The Kids colours for the TV parts of the app */
 private fun ColorScheme.withKids(k: KidsPalette): ColorScheme =

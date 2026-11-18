@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,36 +34,45 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
+import com.github.damontecres.wholphin.ui.components.GlowfinIcon
+import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 
 /** One tab along the phone's bottom bar */
 data class PhoneTab(
     val key: String,
     val label: String,
-    val icon: BenflixIcon,
+    val icon: GlowfinIcon,
     val color: Color,
     val door: BenflixDoor? = null,
 )
 
 const val TAB_HOME = "home"
+const val TAB_ANIME = "anime"
 const val TAB_MORE = "more"
 
 /**
- * Approved pc-phone / r2-q-phonebar: Home, Movies, Shows, Music and More along the bottom of every phone page
- * (Kids: Home, Movies, Shows, Games). The other doors, Search, Requests and your profile are under More.
+ * Glowfin (Ben, 2026-11-18): Home, Movies, Shows, Anime and More along the bottom of every phone page.
+ * Without Anime (Kids, easy mode) the next door takes its place. Everything else (Search, Live TV, Music,
+ * Games, Books, Requests, your profile, Settings) is under More.
  */
-fun phoneTabs(doors: List<BenflixDoor>): List<PhoneTab> {
+fun phoneTabs(
+    doors: List<BenflixDoor>,
+    anime: Boolean = true,
+): List<PhoneTab> {
     val wanted = listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.MUSIC, BenflixDoor.GAMES)
-    val shown = wanted.filter { it in doors }.take(3)
+    val shown = wanted.filter { it in doors }.take(if (anime) 2 else 3)
     return buildList {
-        add(PhoneTab(TAB_HOME, "Home", BenflixIcon.HOME, BenflixColors.Text))
-        shown.forEach { add(PhoneTab(it.name, it.title, it.railIcon(), it.color, it)) }
-        add(PhoneTab(TAB_MORE, "More", BenflixIcon.MORE, BenflixColors.Text))
+        add(PhoneTab(TAB_HOME, "Home", GlowfinIcon.HOME, BenflixColors.Text))
+        shown.forEach { add(PhoneTab(it.name, it.title, it.glowIcon(), BenflixColors.Text, it)) }
+        if (anime) add(PhoneTab(TAB_ANIME, "Anime", GlowfinIcon.ANIME, BenflixColors.Text))
+        add(PhoneTab(TAB_MORE, "More", GlowfinIcon.MORE, BenflixColors.Text))
     }
 }
 
@@ -88,8 +98,17 @@ fun PhoneBottomBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(BenflixColors.Tray)
-                .navigationBarsPadding()
+                .background(Glowfin.Deep)
+                .drawBehind {
+                    drawLine(
+                        Glowfin.Line,
+                        androidx.compose.ui.geometry
+                            .Offset(0f, 0f),
+                        androidx.compose.ui.geometry
+                            .Offset(size.width, 0f),
+                        1.dp.toPx(),
+                    )
+                }.navigationBarsPadding()
                 .padding(top = 4.dp, bottom = 4.dp),
     ) {
         tabs.forEach { tab ->
@@ -117,14 +136,14 @@ fun PhoneBottomBar(
                             Modifier
                                 .width(56.dp)
                                 .height(30.dp)
-                                .background(
-                                    if (on) tab.color.copy(alpha = .2f) else Color.Transparent,
-                                    RoundedCornerShape(50),
+                                .then(
+                                    if (on) Modifier.background(Glowfin.GlowAcross, RoundedCornerShape(50)) else Modifier,
                                 ),
                     ) {
-                        BenflixIconImage(
+                        // Glowfin: the tab you're on sits on the glow
+                        GlowfinIconImage(
                             tab.icon,
-                            color = if (on) tab.color else BenflixColors.Soft,
+                            color = if (on) Color.White else Glowfin.Dim,
                             size = 24.dp,
                             contentDescription = null,
                         )
@@ -141,7 +160,7 @@ fun PhoneBottomBar(
                     }
                     Text(
                         text = tab.label,
-                        color = if (on) BenflixColors.Text else BenflixColors.Muted,
+                        color = if (on) BenflixColors.Text else Glowfin.Dim,
                         fontSize = 11.sp,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
@@ -156,12 +175,13 @@ fun PhoneBottomBar(
 /** One line in the phone's More sheet or places sheet */
 @Composable
 private fun SheetRow(
-    icon: BenflixIcon,
+    icon: BenflixIcon?,
     label: String,
     color: Color,
     note: String?,
     onClick: () -> Unit,
     muted: Boolean = false,
+    glowIcon: GlowfinIcon? = null,
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
@@ -184,7 +204,11 @@ private fun SheetRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
         ) {
-            BenflixIconImage(icon, color = color, size = 22.dp)
+            if (glowIcon != null) {
+                GlowfinIconImage(glowIcon, color = color, size = 22.dp)
+            } else if (icon != null) {
+                BenflixIconImage(icon, color = color, size = 22.dp)
+            }
             Text(
                 text = label,
                 color = if (muted) BenflixColors.Soft else BenflixColors.Text,
@@ -225,6 +249,8 @@ fun PhoneMoreSheet(
     profileItems: List<ProfileMenuItem>?,
     onDoor: (BenflixDoor) -> Unit,
     onSearch: () -> Unit,
+    /** Glowfin: Anime has its own spot (null = hidden, like Kids' easy mode) */
+    onAnime: (() -> Unit)? = null,
     onRequests: () -> Unit,
     onMyList: () -> Unit,
     onSwitchProfile: () -> Unit,
@@ -235,11 +261,14 @@ fun PhoneMoreSheet(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.verticalScroll(rememberScrollState()),
         ) {
+            if (showSearch) SheetRow(null, "Search", BenflixColors.Soft, null, onSearch, glowIcon = GlowfinIcon.SEARCH)
+            if (onAnime != null) SheetRow(null, "Anime", BenflixColors.Soft, null, onAnime, glowIcon = GlowfinIcon.ANIME)
             doors.forEach { door ->
-                SheetRow(door.railIcon(), door.title, door.color, null, { onDoor(door) })
+                SheetRow(null, door.title, BenflixColors.Soft, null, { onDoor(door) }, glowIcon = door.glowIcon())
             }
-            if (showSearch) SheetRow(BenflixIcon.SEARCH, "Search", BenflixColors.Soft, null, onSearch)
-            if (showRequests) SheetRow(BenflixIcon.REQUESTS, "Requests", BenflixColors.LiveTv, requestsNote, onRequests)
+            if (showRequests) {
+                SheetRow(null, "Requests", BenflixColors.Soft, requestsNote, onRequests, glowIcon = GlowfinIcon.REQUESTS)
+            }
             SheetRow(BenflixIcon.HEART, "My List", BenflixColors.Soft, null, onMyList)
             Box(
                 Modifier

@@ -40,6 +40,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import kotlinx.coroutines.delay
 
 @Composable
@@ -86,6 +87,7 @@ fun ViewMoreCard(
                     .benflixCardFocusBorder(com.github.damontecres.wholphin.ui.theme.CardRing),
             modifier =
                 Modifier
+                    .glowFocus()
                     .size(width, height)
                     .aspectRatio(aspectRatio.ratio),
             onClick = onClick,
