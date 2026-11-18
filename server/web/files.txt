@@ -7,9 +7,13 @@ fonts/kids_fredoka_regular.ttf
 fonts/kids_fredoka_semibold.ttf
 fonts/opendyslexic.LICENSE.txt
 fonts/opendyslexic_regular.woff2
-icons/icon-192.png
-icons/icon-512.png
-icons/icon-32.png
+icons/fin.svg
+icons/fin-16.png
+icons/fin-32.png
+icons/fin-48.png
+icons/fin-180.png
+icons/fin-192.png
+icons/fin-512.png
 index.html
 js/ask.js
 js/books.js
