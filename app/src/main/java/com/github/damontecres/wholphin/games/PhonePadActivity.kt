@@ -164,7 +164,7 @@ class PhonePadActivity : ComponentActivity() {
                     override fun onServiceResolved(info: NsdServiceInfo) {
                         val host = info.host ?: return
                         val game = info.attributes["game"]?.toString(Charsets.UTF_8).orEmpty()
-                        val tv = FoundTv(info.serviceName.removePrefix("Glowfin ").removePrefix("Benflix "), game, host, info.port)
+                        val tv = FoundTv(info.serviceName.removePrefix("Glowfin ").removePrefix("Glowfin "), game, host, info.port)
                         runOnUiThread {
                             found.removeAll { it.name == tv.name }
                             found.add(tv)

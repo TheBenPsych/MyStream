@@ -81,169 +81,6 @@ B.trending = async (type, onlyAnime) => {
   }
   return B.keep(items.slice(0, 10));
 };
-// Date night (Valentine's look): romance and love stories, plus anything tagged Valentine's Day or with "Valentine"
-// in the name, leaving out anything scary or grim, shuffled (cached 30 minutes)
-B.dateNightMovies = () => B.cached("dateNight-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${encodeURIComponent("valentine's day")}&Limit=20&Fields=${F}`).catch(() => null),
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=Valentine&Limit=10&Fields=${F}`)
-      .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => /\bvalentine/i.test(x.Name || "")) })).catch(() => null),
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Genres=Romance&SortBy=Random&Limit=40&Fields=${F}`).catch(() => null),
-  ]);
-  const grim = /^(horror|thriller|war|crime)$/i, seen = new Set(), out = [];
-  for (const l of lists) for (const x of (l && l.Items) || []) {
-    if (seen.has(x.Id) || (x.Genres || []).some((g) => grim.test(g))) continue;
-    seen.add(x.Id); out.push(x);
-  }
-  return B.keep(out.slice(0, 20).sort(() => Math.random() - 0.5));
-});
-// Christmas favourites: movies tagged Christmas or with a Christmas word in the name, shuffled (cached 30 minutes)
-B.christmasMovies = () => B.cached("xmasMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const tags = encodeURIComponent(["christmas", "christmas eve", "santa claus", "christmas party", "christmas tree"].join("|"));
-  const words = ["Christmas", "Xmas", "Santa Claus", "Grinch", "Elf", "Home Alone", "Polar Express", "Klaus", "Jingle"];
-  // Name searches only keep whole-word matches, so "Elf" doesn't bring in "Self/less"
-  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => new RegExp(`\\b${w}\\b`, "i").test(x.Name || "")) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...words.map(byWord),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Game night (Video Games Day): films about video games, from the same hand-picked list as the TV app, shuffled
-B.gameNightMovies = () => B.cached("vgMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const tags = encodeURIComponent(["video game", "based on video game", "gamer"].join("|"));
-  const titles = ["Super Mario Bros", "Detective Pikachu", "Sonic the Hedgehog", "Wreck-It Ralph", "Ralph Breaks the Internet", "Minecraft", "Five Nights at Freddy", "Angry Birds", "Pixels", "Ready Player One", "Free Guy", "Jumanji", "Tron", "Scott Pilgrim", "WarGames", "The Wizard", "Uncharted", "Tomb Raider", "Mortal Kombat", "Dungeons & Dragons", "Gran Turismo", "Tetris", "The Last Starfighter", "Grandma's Boy", "Wreck-It"];
-  const byTitle = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=6&Fields=${F}`).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...titles.map(byTitle),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Friday the 13th: spooky but fun picks (monster comedies, ghost stories, mysteries; never slashers), found by
-// their exact names, shuffled (cached 30 minutes). The same list as the app's Friday13.SpookyPicks.
-B.SPOOKY_PICKS = ["Ghostbusters", "Ghostbusters II", "Ghostbusters: Afterlife", "Beetlejuice", "Beetlejuice Beetlejuice", "Hocus Pocus",
-  "The Addams Family", "Addams Family Values", "Hotel Transylvania", "Coraline", "Monster House", "ParaNorman", "Casper", "Goosebumps",
-  "Scooby-Doo", "Frankenweenie", "Corpse Bride", "The Nightmare Before Christmas", "Monsters, Inc.", "Young Frankenstein",
-  "The Haunted Mansion", "Haunted Mansion", "Clue", "Knives Out", "Glass Onion", "Gremlins", "The Witches", "Edward Scissorhands",
-  "Arsenic and Old Lace", "The Others", "The Sixth Sense", "Shaun of the Dead", "What We Do in the Shadows", "Zombieland", "The Burbs",
-  "Death Becomes Her", "Little Shop of Horrors", "Wendell & Wild", "Spirited Away", "Ghost"];
-B.spookyMovies = () => B.cached("spookyMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
-  const want = new Set(B.SPOOKY_PICKS.map(norm));
-  const terms = [...new Set(B.SPOOKY_PICKS.map((t) => t.split(":")[0].trim()))];
-  const lists = await Promise.all(terms.map((t) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(t)}&Limit=10&Fields=${F}`).catch(() => null)));
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id) && (want.has(norm(x.Name)) || want.has(norm(x.OriginalTitle)))) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Halloween favourites: movies tagged Halloween or with a Halloween title, shuffled (cached 30 minutes).
-// On Kids the server's own age limits keep it to the cosy-spooky ones.
-B.halloweenMovies = () => B.cached("hwMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const tags = encodeURIComponent(["halloween", "trick or treating", "haunted house", "witch", "jack o'lantern"].join("|"));
-  const words = ["Halloween", "Hocus Pocus", "Halloweentown", "Great Pumpkin", "Casper", "Nightmare Before Christmas", "Coraline", "Beetlejuice", "Addams Family", "Ghostbusters", "Monster House", "Corpse Bride", "Trick 'r Treat", "ParaNorman", "Frankenweenie", "Hotel Transylvania"];
-  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => (x.Name || "").toLowerCase().includes(w.toLowerCase())) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...words.map(byWord),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Planet Earth picks (Earth Day look, Earth week): nature films and shows on Benflix, the same picks as the TV app
-const ED_TITLES = ["Planet Earth", "Planet Earth II", "Planet Earth III", "Our Planet", "Our Planet II", "Blue Planet", "The Blue Planet", "Blue Planet II", "Frozen Planet", "Frozen Planet II", "Seven Worlds, One Planet", "Earth", "One Day on Earth", "WALL·E", "FernGully: The Last Rainforest", "The Lorax", "Dr. Seuss' The Lorax", "Avatar", "Avatar: The Way of Water", "Princess Mononoke", "Nausicaä of the Valley of the Wind", "An Inconvenient Truth", "Chasing Coral", "My Octopus Teacher", "Penguins", "Bears", "Oceans", "Kiss the Ground"];
-const ED_TAGS = ["nature", "environmentalism", "climate change", "wildlife", "nature documentary"];
-B.earthPicks = (type) => B.cached(`edPicks-${type}-` + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const byTitle = (t) => B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SearchTerm=${encodeURIComponent(t.split(":")[0])}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => norm(x.Name) === norm(t) || norm(x.OriginalTitle) === norm(t)) })).catch(() => null);
-  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SearchTerm=${w}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => ` ${norm(x.Name)} `.includes(` ${w.toLowerCase()} `)) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&Tags=${encodeURIComponent(ED_TAGS.join("|"))}&SortBy=Random&Limit=24&Fields=${F}`).catch(() => null),
-    ...ED_TITLES.map(byTitle), byWord("Planet"), byWord("Earth"),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// 4th of July favourites: movies tagged for the Fourth or with an Independence Day word in the name (cached 30 minutes)
-B.july4Movies = () => B.cached("j4Movies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const tags = encodeURIComponent(["independence day", "fourth of july", "4th of july", "american revolution", "founding fathers"].join("|"));
-  const words = ["Independence Day", "Fourth of July", "4th of July", "Born on the Fourth of July", "Jaws", "The Patriot", "1776", "National Treasure", "Top Gun", "Captain America", "Hamilton", "The Sandlot", "Yankee Doodle Dandy"];
-  const byWord = (w) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(w)}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => new RegExp(`\\b${w}\\b`, "i").test(x.Name || "")) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...words.map(byWord),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Star Wars Day: every Star Wars film on Benflix (tagged "star wars" or with Star Wars in the name), oldest first
-B.starWarsMovies = () => B.cached("swMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${encodeURIComponent("star wars")}&Limit=40&Fields=${F}`).catch(() => null),
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent("Star Wars")}&Limit=40&Fields=${F}`).catch(() => null),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  out.sort((a, b) => String(a.PremiereDate || a.ProductionYear || "9999").localeCompare(String(b.PremiereDate || b.ProductionYear || "9999")));
-  return B.keep(out.slice(0, 24));
-});
-// Popcorn movies (Popcorn Day look, 19 January): big fun crowd-pleasers on Benflix, the same picks as the TV app
-const PC_TITLES = ["Jurassic Park", "Back to the Future", "Star Wars", "Raiders of the Lost Ark", "The Avengers", "Avengers: Endgame", "Top Gun: Maverick", "Spider-Man: Into the Spider-Verse", "Toy Story", "The Lion King", "Jaws", "E.T. the Extra-Terrestrial", "Ghostbusters", "The Princess Bride", "Home Alone", "Finding Nemo", "Shrek", "The Incredibles", "Pirates of the Caribbean", "The Dark Knight", "Guardians of the Galaxy", "Inside Out", "Up", "Ferris Bueller's Day Off", "The Goonies", "Men in Black", "Independence Day", "Titanic", "Frozen", "Paddington 2"];
-B.popcornMovies = () => B.cached("pcMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const byTitle = (t) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(t)}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => norm(x.Name).startsWith(norm(t))) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=blockbuster&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...PC_TITLES.map(byTitle),
-  ]);
-  // Kids: only films rated for kids
-  const ok = (x) => !B.me.kids || ["G", "PG", "TV-G", "TV-Y", "TV-Y7", "TV-PG", "U"].includes(String(x.OfficialRating || "").toUpperCase());
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id) && ok(x)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
-// Irish favourites (St. Patrick's Day look): hand-picked Irish films, titles with an Irish word in the name, and
-// movies tagged for St. Patrick's Day or Ireland (cached 30 minutes). Same list as the app's HomeTheme.ST_PATRICKS.
-B.irishMovies = () => B.cached("spMovies-" + B.uid(), 1800000, async () => {
-  const u = B.uid(), F = B.FIELDS;
-  const tags = encodeURIComponent(["st. patrick's day", "saint patrick's day", "ireland", "irish", "leprechaun", "dublin, ireland"].join("|"));
-  // words in the name, and hand-picked films found by their exact name
-  const words = ["Leprechaun", "Irish", "Ireland", "Patrick's"];
-  const titles = ["The Secret of Kells", "Song of the Sea", "Wolfwalkers", "Darby O'Gill and the Little People", "The Quiet Man", "The Commitments", "Sing Street", "The Banshees of Inisherin", "Waking Ned Devine", "Waking Ned", "P.S. I Love You", "Leap Year", "Brooklyn", "Once", "Belfast", "Luck", "The Boondock Saints", "Finian's Rainbow", "Ondine", "The Wind That Shakes the Barley", "Michael Collins", "In Bruges"];
-  const plain = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
-  const find = (term, keep) => B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SearchTerm=${encodeURIComponent(term)}&Limit=10&Fields=${F}`)
-    .then((r) => ({ Items: ((r && r.Items) || []).filter((x) => keep(plain(x.Name))) })).catch(() => null);
-  const lists = await Promise.all([
-    B.get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Tags=${tags}&SortBy=Random&Limit=30&Fields=${F}`).catch(() => null),
-    ...words.map((w) => find(w, (n) => ` ${n} `.includes(` ${plain(w)} `))),
-    ...titles.map((t) => find(t, (n) => n === plain(t))),
-  ]);
-  const seen = new Set(), out = [];
-  lists.forEach((r) => ((r && r.Items) || []).forEach((x) => { if (!seen.has(x.Id)) { seen.add(x.Id); out.push(x); } }));
-  return B.keep(out.sort(() => Math.random() - 0.5).slice(0, 24));
-});
 // Ids of anime titles (anything in a library with "anime" in its name)
 B.animeIds = async (type) => B.cached("animeIds-" + type, 600000, async () => {
   const libs = (await B.libs(type === "Movie" ? "movies" : "shows")).filter(B.isAnimeLib);
@@ -279,39 +116,9 @@ B.route(/^\/movies$/, async (m, nav) => {
   const kids = B.me.kids;
   // Easy mode: fewer rows, like Kids (Keep watching, My List, New)
   const fewer = kids || (B.easyMode && B.easyMode());
-  // Christmas look (1 to 26 December): Christmas favourites right after Keep watching (like the TV app)
-  const xmas = !kids && B.xmasOn && B.xmasOn() ? await B.christmasMovies().catch(() => []) : [];
-  // Video Games Day look (12 September, not on Kids): a Game night row at the very top
-  const gameNight = !kids && B.vgOn && B.vgOn() ? await B.gameNightMovies().catch(() => []) : [];
-  // Friday the 13th look (that day only, Kids too): spooky but fun picks right after Keep watching (only if 4 or more)
-  const spooky = B.f13On && B.f13On() ? await B.spookyMovies().catch(() => []) : [];
-  // Halloween look (1 to 31 October, Kids too): Halloween favourites right after Keep watching
-  const hwRow = B.hwOn && B.hwOn() ? await B.halloweenMovies().catch(() => []) : [];
-  // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
-  const earth = B.edOn && B.edOn() ? await B.earthPicks("Movie").catch(() => []) : [];
-  // 4th of July look (1 to 4 July, Kids too): 4th of July favourites right after Keep watching
-  const j4 = B.j4On && B.j4On() ? await B.july4Movies().catch(() => []) : [];
-  // Star Wars Day (4 May, Kids too): the saga from this library, in the order the films came out, at the very top
-  const saga = B.swOn && B.swOn() ? await B.starWarsMovies().catch(() => []) : [];
-  // Valentine's look (1 to 14 February): Date night right after Keep watching (like the TV app)
-  const dates = !fewer && B.valOn && B.valOn() ? await B.dateNightMovies().catch(() => []) : [];
-  // Popcorn Day look (19 January): Popcorn movies right after Keep watching, Kids too
-  const pcm = B.pcOn && B.pcOn() ? await B.popcornMovies().catch(() => []) : [];
-  // St. Patrick's Day look (10 to 17 March, Kids too): Irish favourites right after Keep watching
-  const irish = B.spOn && B.spOn() ? await B.irishMovies().catch(() => []) : [];
   if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
-    gameNight.length >= 4 ? B.row("Game night", gameNight.map((it) => B.posterCard(it))) : "",
-    saga.length >= 3 ? B.row("May the 4th: the saga", saga.map((it) => B.posterCard(it))) : "",
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
-    spooky.length >= 4 ? B.row("Spooky but fun", spooky.map((it) => B.posterCard(it))) : "",
-    earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
-    pcm.length >= 4 ? B.row("Popcorn movies", pcm.map((it) => B.posterCard(it))) : "",
-    xmas.length >= 4 ? B.row("Christmas favourites", xmas.map((it) => B.posterCard(it))) : "",
-    hwRow.length >= 4 ? B.row("Halloween favourites", hwRow.map((it) => B.posterCard(it))) : "",
-    j4.length >= 4 ? B.row("4th of July favourites", j4.map((it) => B.posterCard(it))) : "",
-    dates.length >= 4 ? B.row("Date night", dates.map((it) => B.posterCard(it))) : "",
-    irish.length >= 4 ? B.row("Irish favourites", irish.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
     B.row("New on Glowfin", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
     fewer ? "" : B.row("Top 10 movies", B.top10(top)),
@@ -366,12 +173,8 @@ B.route(/^\/shows$/, async (m, nav) => {
   };
   // Easy mode: fewer rows, like Kids (Keep watching, My List, New shows)
   const fewerShows = B.me.kids || (B.easyMode && B.easyMode());
-  // Earth Day look (Earth week): Planet Earth picks right after Keep watching, Kids too
-  const earth = B.edOn && B.edOn() ? await B.earthPicks("Series").catch(() => []) : [];
-  if (!B.alive(nav)) return;
   $("#rows").innerHTML = [
     B.row("Keep watching", kw.map(kwCard)),
-    earth.length >= 4 ? B.row("Planet Earth picks", earth.map((it) => B.posterCard(it))) : "",
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/shows?mine=1&title=My%20List" }),
     fewerShows ? "" : B.row("New episodes", newEpShows.map((s) => B.posterCard(s, { newCount: newCount[s.Id] }))),
     B.row("New shows", newShows.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?sort=newshow&title=New%20shows" }),

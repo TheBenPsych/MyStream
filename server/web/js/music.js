@@ -1012,7 +1012,7 @@
   };
   B.route(/^\/music$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><h1 class="mhello">${esc(B.holiday() || B.greeting())}, ${esc(B.me.name)}</h1>
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><h1 class="mhello">${esc(B.greeting())}, ${esc(B.me.name)}</h1>
       <div class="mchips">${HOME_CHIPS.map(([k, l]) => `<button class="chip ${k === "all" ? "on" : ""}" data-chip="${k}" style="--accent:var(--music)">${esc(l)}</button>`).join("")}</div>
       <div id="mquick" class="mquickgrid"></div><div id="mrows">${B.spinner()}</div></div>`;
     B.wireTop();

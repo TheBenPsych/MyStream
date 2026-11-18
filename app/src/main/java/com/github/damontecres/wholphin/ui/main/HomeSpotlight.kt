@@ -81,9 +81,6 @@ import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.HolidayArtBox
-import com.github.damontecres.wholphin.ui.theme.HolidayNav
-import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.rememberAmbientClock
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -109,7 +106,6 @@ import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import timber.log.Timber
-import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -217,10 +213,8 @@ class HomePicksService
             kids: Boolean,
         ): List<HomePick> {
             val disliked = doorData.disliked(userId)
-            val holiday = HolidayNavKit.current()
-            val (ben, movies, shows, fresh, festive) =
+            val (ben, movies, shows, fresh) =
                 coroutineScope {
-                    val festive = async { holiday?.let { holidayItems(userId, it) }.orEmpty() }
                     val ben = async { if (kids) doorData.kidsPicks(userId) else emptyList() }
                     val movies = async { doorData.because(userId, BaseItemKind.MOVIE, disliked) }
                     val shows = async { doorData.because(userId, BaseItemKind.SERIES, disliked) }
@@ -230,7 +224,6 @@ class HomePicksService
                         movies.await()?.let { (name, items) -> items.shuffled().map { it to "Because you watched $name" } }.orEmpty(),
                         shows.await()?.let { (name, items) -> items.shuffled().map { it to "Because you watched $name" } }.orEmpty(),
                         fresh.await().shuffled().map { it to "New on Glowfin" },
-                        festive.await().map { it to holiday?.pickWhy.orEmpty() },
                     )
                 }
             // Ben's picks first (Kids), then movies and shows taking turns, then what's new
@@ -243,43 +236,15 @@ class HomePicksService
                         if (b.hasNext()) add(b.next())
                     }
                 }
-            // Holiday marks (approved hq-pick A): during a holiday its own film comes first (Kids: a Kids-safe one,
-            // as Kids only ever sees Kids titles)
-            return (festive.take(HOLIDAY_TRIES) + ben.take(2) + liked.take(4) + fresh + liked.drop(4) + ben.drop(2))
+            return (ben.take(2) + liked.take(4) + fresh + liked.drop(4) + ben.drop(2))
                 .filter { (item, _) ->
                     item.id !in disliked &&
                         item.data.backdropImageTags?.isNotEmpty() == true &&
                         item.data.userData?.played != true
                 }.distinctBy { it.first.id }
-                .let { list ->
-                    list.filter { it.second != holiday?.pickWhy }.let { rest ->
-                        list.filter { it.second == holiday?.pickWhy }.take(1) +
-                            rest
-                    }
-                }.take(PICKS)
+                .take(PICKS)
                 .map { (item, reason) -> toPick(item, reason) }
         }
-
-        /** Films and shows that fit the holiday: its Home row list (hand-picked names, tags, words in the name) */
-        private suspend fun holidayItems(
-            userId: UUID,
-            holiday: HolidayNav,
-        ): List<BaseItem> =
-            try {
-                val row = HomeTheme.forDate(LocalDate.now()).takeIf { it.isStrict }
-                val theme =
-                    when {
-                        holiday.pickTitles.isEmpty() -> row
-                        row != null -> row.copy(titles = row.titles + holiday.pickTitles)
-                        else -> HomeTheme(title = 0, titles = holiday.pickTitles)
-                    }
-                theme?.let { findThemeItems(api, userId, it) }.orEmpty().map { BaseItem(it) }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Home picks: holiday")
-                emptyList()
-            }
 
         private suspend fun newest(userId: UUID): List<BaseItem> =
             try {
@@ -352,9 +317,6 @@ class HomePicksService
         }
 
         private companion object {
-            /** How many holiday titles to try for the one holiday pick (some have no wide picture or are watched) */
-            const val HOLIDAY_TRIES = 8
-
             const val PREFS = "benflix_home_picks"
             const val PICKS = 6
             const val NEWEST = 24
@@ -380,9 +342,7 @@ class HomePicksViewModel
         val ready: StateFlow<Boolean> = _ready
 
         private fun key(): String =
-            "picks-${serverRepository.currentUser?.id}-${KidsMode.level}-${if (GuestMode.isActive) "guest" else "me"}" +
-                // A holiday starting (or ending) makes fresh picks, so its pick shows up first straight away
-                (HolidayNavKit.current()?.let { "-${it.key}" } ?: "")
+            "picks-${serverRepository.currentUser?.id}-${KidsMode.level}-${if (GuestMode.isActive) "guest" else "me"}"
 
         fun load() {
             val key = key()
@@ -587,8 +547,6 @@ fun HomeSpotlight(
             )
         }
     }
-    // Holiday marks: trims along the top of the picture and the bottom of Home
-    val holiday = remember { HolidayNavKit.current() }
     if (wide) {
         BoxWithConstraints(modifier.fillMaxSize().then(keys)) {
             val h = maxHeight
@@ -614,10 +572,6 @@ fun HomeSpotlight(
                         Brush.verticalGradient(0.5f to Color.Transparent, 1f to BenflixColors.Tray),
                     ),
                 )
-                holiday?.topTrim?.let { HolidayArtBox(it, Modifier.align(Alignment.TopStart).fillMaxWidth().height(TRIM_TOP)) }
-            }
-            holiday?.bottomTrim?.let {
-                HolidayArtBox(it, Modifier.align(Alignment.BottomStart).fillMaxWidth().height(TRIM_BOTTOM))
             }
             // Ben 2026-11-17: the greeting sits top left beside the rail, on the same line as the clock
             Box(
@@ -702,7 +656,6 @@ fun HomeSpotlight(
                         ),
                     ),
                 )
-                holiday?.topTrim?.let { HolidayArtBox(it, Modifier.align(Alignment.TopStart).fillMaxWidth().height(TRIM_TOP)) }
                 Box(Modifier.padding(start = 16.dp, top = 10.dp, end = 16.dp)) {
                     Greeting(greeting, weather, tv = false)
                 }
@@ -730,13 +683,9 @@ fun HomeSpotlight(
                     }
                 }
             }
-            holiday?.bottomTrim?.let { HolidayArtBox(it, Modifier.padding(top = 12.dp).fillMaxWidth().height(TRIM_BOTTOM)) }
         }
     }
 }
-
-private val TRIM_TOP = 44.dp
-private val TRIM_BOTTOM = 36.dp
 
 /** The pick's picture: a tiny copy first, then the sharp one, slowly zooming in (approved hc-q-trailer A) */
 @Composable

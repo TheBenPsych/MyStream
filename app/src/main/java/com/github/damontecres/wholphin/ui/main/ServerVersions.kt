@@ -61,7 +61,7 @@ internal fun appVersionRows(
             val id = d.id.orEmpty()
             val isBenflix =
                 id.startsWith("benflix-") ||
-                    (d.appName.equals("Benflix", ignoreCase = true) || d.appName.equals("Glowfin", ignoreCase = true))
+                    (d.appName.equals("Glowfin", ignoreCase = true) || d.appName.equals("Glowfin", ignoreCase = true))
             isBenflix && !id.startsWith("benflix-web-")
         }.distinctBy { (it.id ?: "") + "|" + it.lastUserId }
         .map { d ->

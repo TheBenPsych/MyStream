@@ -33,7 +33,6 @@ import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
-import com.github.damontecres.wholphin.ui.theme.xmasFocusOrnament
 import kotlinx.coroutines.delay
 
 /**
@@ -76,7 +75,7 @@ fun GridCard(
         modifier = modifier.playButtonPlays(item),
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth().xmasFocusOrnament(focused),
+            modifier = Modifier.fillMaxWidth(),
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,

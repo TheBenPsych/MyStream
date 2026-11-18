@@ -6,7 +6,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,15 +17,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -39,7 +32,6 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.holidayFor
 import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.IntroPace
 import com.github.damontecres.wholphin.ui.components.HomeNewsDot
@@ -49,11 +41,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
-import com.github.damontecres.wholphin.ui.theme.SwLook
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.waitForSettled
 import com.github.damontecres.wholphin.util.StartupTimer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -1142,61 +1131,11 @@ const val MAX_PHONE_ROWS = 5
 /** Lets the pop-up finish closing before the remote's focus moves back to the doors */
 private const val REFOCUS_DELAY_MS = 150L
 
-/** "Good morning", "Good afternoon" or "Good evening", or the holiday on the day itself */
+/** "Good morning", "Good afternoon" or "Good evening" */
 fun greetingFor(
     name: String,
     now: LocalTime = LocalTime.now(),
 ): String {
-    // Video Games Day look (12 Sep): "Happy Video Games Day, Ben" in pixel capitals
-    if (com.github.damontecres.wholphin.ui.theme.VgLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.VideoGamesDay.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Friday the 13th look (that day only): "Happy Friday the 13th, Ben" in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-        return com.github.damontecres.wholphin.ui.theme.Friday13.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Earth Day look (Earth week): "Happy Earth Day, Ben" all week, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.EarthDaySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Popcorn Day look (19 Jan): "Happy Popcorn Day, Ben", in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.PopcornSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Halloween look (1 to 31 Oct): "Happy Halloween, Ben" all month, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.HalloweenSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Star Wars Day (4 May): "May the 4th be with you, Ben" in yellow crawl lettering
-    if (com.github.damontecres.wholphin.ui.theme.SwLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.StarWarsDay.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Thanksgiving look (16 to 30 Nov): "Happy Thanksgiving, Ben" all season, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.TgLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.ThanksgivingSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Easter look (Monday to Easter Sunday): "Happy Easter, Ben" all week
-    if (com.github.damontecres.wholphin.ui.theme.EaLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.EasterSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // New Year's look (27 Dec to 1 Jan): "Happy New Year, Ben" all season, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.NewYearSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // 4th of July look (1 to 4 Jul): "Happy 4th of July, Ben" all season, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {
-        return com.github.damontecres.wholphin.ui.theme.JulySeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // Valentine's look (1 to 14 Feb): "Happy Valentine's Day, Ben" all season, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.ValentineSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    // St. Patrick's Day look (10 to 17 Mar): "Happy St. Patrick's Day, Ben" all week, in the curly holiday font
-    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
-        return com.github.damontecres.wholphin.ui.theme.StPatricksSeason.GREETING + if (name.isNotBlank()) ", $name" else ""
-    }
-    val holiday = holidayFor(java.time.LocalDate.now())
-    if (holiday != null) return holiday.text + if (name.isNotBlank()) ", $name" else ""
     val part =
         when (now.hour) {
             in 5..11 -> "Good morning"
@@ -1329,17 +1268,7 @@ fun DoorsHomePage(
     }
 
     val rows = liveRows
-    // Friday the 13th look: a lucky line under the greeting instead of the weather ("Lucky you: 3 new episodes and
-    // 1 request ready")
-    val weather =
-        if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-            com.github.damontecres.wholphin.ui.theme.Friday13.luckyLine(
-                newEpisodes = rows.news.count { it.kind.startsWith("New episode") },
-                ready = rows.news.count { it.kind == "Ready to watch" },
-            )
-        } else {
-            liveWeather
-        }
+    val weather = liveWeather
     // A row with nowhere to go (a note from Ben, "Ben fixed it", a built-in fact) opens a pop-up with all its words
     var reading by remember { mutableStateOf<HomeRow?>(null) }
     var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -1390,23 +1319,6 @@ fun DoorsHomePage(
         )
     }
     val family = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
-    // Holiday marks (approved hq-count A): the first Today card counts down to the day
-    val countdownCard =
-        remember {
-            HolidayNavKit.current()?.let { holiday ->
-                holiday.countdown()?.let { line ->
-                    TodayCard(
-                        id = "holiday-${holiday.key}",
-                        kind = holiday.countdownKind,
-                        kindColor = holiday.accent,
-                        title = line,
-                        image = null,
-                        square = true,
-                        onClick = {},
-                    )
-                }
-            }
-        }
     val todayCards =
         if (family) {
             // Kids and Guest: titles to keep watching (or popular here) instead of news
@@ -1440,7 +1352,7 @@ fun DoorsHomePage(
                 )
             }
         }
-    val cards = listOfNotNull(countdownCard).plus(todayCards).take(TODAY_CARDS)
+    val cards = todayCards.take(TODAY_CARDS)
     val moreNews = !family && rows.all.size > todayCards.size
     Box(
         modifier =
@@ -1463,19 +1375,8 @@ fun DoorsHomePage(
                         "Welcome"
                     }
 
-                    // Friday the 13th, Earth week, Popcorn Day (19 Jan) and Star Wars Day: Kids gets the greeting too
                     FamilyKind.KIDS -> {
-                        if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-                            "Happy Friday the 13th!"
-                        } else if (com.github.damontecres.wholphin.ui.theme.EdLook.on) {
-                            "Happy Earth Day!"
-                        } else if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-                            "Happy Popcorn Day!"
-                        } else if (SwLook.on) {
-                            "May the 4th be with you!"
-                        } else {
-                            "Hi there!"
-                        }
+                        "Hi there!"
                     }
 
                     else -> {

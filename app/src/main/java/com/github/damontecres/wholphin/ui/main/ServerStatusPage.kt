@@ -875,7 +875,6 @@ fun ServerStatusPage(
         state = frame,
         sections = if (isAdmin) ServerSection.entries.map { it.railItem(lights[it]) } else emptyList(),
         modifier = modifier.fillMaxSize().serverLookABackground(),
-        hunt = false,
         ownRail = true,
     ) { inner ->
         if (isTv) {
