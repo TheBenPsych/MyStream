@@ -563,6 +563,7 @@ fun NavDrawer(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.STATS,
                     title = "My watching",
+                    line = "Your hours, top shows and streaks",
                     onClick = { go(Destination.MyBenflix) },
                 ),
             )
@@ -571,6 +572,7 @@ fun NavDrawer(
                     ProfileMenuItem(
                         icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.DOWNLOAD,
                         title = "Downloads",
+                        line = "Shows and movies saved on this phone",
                         onClick = {
                             showMenu = false
                             downloadsOpen = true
@@ -582,6 +584,7 @@ fun NavDrawer(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.GEAR,
                     title = stringResource(R.string.settings),
+                    line = "Picture, sound, subtitles, Home rows",
                     onClick = { go(Destination.Settings(PreferenceScreenOption.BASIC)) },
                 ),
             )
@@ -590,6 +593,7 @@ fun NavDrawer(
                     ProfileMenuItem(
                         icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.SERVER,
                         title = "Server",
+                        line = "Who's watching and how the server is doing",
                         onClick = { go(Destination.ServerStatus) },
                         note = if (serverAlert) "Check" else null,
                     ),
@@ -599,6 +603,7 @@ fun NavDrawer(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.HELP,
                     title = "Help and updates",
+                    line = "Guides and the latest version",
                     onClick = { go(Destination.UpdateApp) },
                     note = if (updateAlert) "Update ready" else null,
                 ),
@@ -608,6 +613,7 @@ fun NavDrawer(
                     ProfileMenuItem(
                         icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.CHECK,
                         title = "Mark all as seen",
+                        line = "Clear the new dots",
                         onClick = {
                             showMenu = false
                             menuViewModel.markAllSeen()
@@ -621,6 +627,7 @@ fun NavDrawer(
                 ProfileMenuItem(
                     icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.FLAG,
                     title = "Report a problem",
+                    line = "Send a note about what went wrong",
                     onClick = {
                         showMenu = false
                         showReport = true
@@ -728,6 +735,21 @@ fun NavDrawer(
         }
     }
     val onSwitchProfile = { viewModel.navigateToSetup(SetupDestination.UserList(server)) }
+    // Ben 2026-11-18 (approved profile-page-1): your picture opens the full Me page instead of a pop-up
+    val meModel =
+        profileItems?.let {
+            MeModel(
+                user = user,
+                userImageUrl = userImageUrl,
+                minutesWatched = minutes,
+                items = it,
+                onSwitchProfile = onSwitchProfile,
+            )
+        }
+    val openMe = {
+        menuViewModel.load()
+        if (destination !is Destination.Me) viewModel.navigationManager.navigateTo(Destination.Me)
+    }
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     // Phones turned sideways and tablets use the TV layout, with the rail always open (approved ix-sideways)
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
@@ -765,6 +787,7 @@ fun NavDrawer(
                     destination = destination,
                     preferences = preferences,
                     onClearBackdrop = onClearBackdrop,
+                    me = meModel,
                     modifier =
                         Modifier
                             .weight(1f)
@@ -839,14 +862,12 @@ fun NavDrawer(
                         else -> user.name.orEmpty()
                     },
                 minutesWatched = if (easy) null else minutes,
-                profileItems =
-                    profileItems?.map { item ->
-                        item.copy(
-                            onClick = {
-                                moreOpen = false
-                                item.onClick()
-                            },
-                        )
+                onMe =
+                    meModel?.let {
+                        {
+                            moreOpen = false
+                            openMe()
+                        }
                     },
                 onDoor = { door ->
                     moreOpen = false
@@ -925,7 +946,7 @@ fun NavDrawer(
             onSwitchProfile = onSwitchProfile,
             showAnime = !kids && BenflixDoor.SHOWS in railDoors,
             onAnime = { goPlace(BenflixDoor.ANIME, com.github.damontecres.wholphin.ui.door.DOOR_HOME) },
-            onSettings = { nav.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC)) },
+            onMe = openMe,
         )
     val header: @Composable () -> Unit = {
         BenflixPageHeader(
@@ -997,6 +1018,7 @@ fun NavDrawer(
                                 destination = destination,
                                 preferences = preferences,
                                 onClearBackdrop = onClearBackdrop,
+                                me = meModel,
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
@@ -1022,6 +1044,7 @@ fun NavDrawer(
                         destination = destination,
                         preferences = preferences,
                         onClearBackdrop = onClearBackdrop,
+                        me = meModel,
                         modifier =
                             Modifier
                                 .fillMaxWidth()

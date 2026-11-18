@@ -238,8 +238,8 @@ class RailModel(
     /** Glowfin: Anime gets its own spot under Shows */
     val showAnime: Boolean = false,
     val onAnime: () -> Unit = {},
-    /** Glowfin: Settings sits at the very bottom, under your picture */
-    val onSettings: () -> Unit = {},
+    /** Ben 2026-11-18: your picture opens the full Me page (Settings lives there, no second Settings spot) */
+    val onMe: () -> Unit = {},
 )
 
 private enum class Spot { HOME, SEARCH, ANIME, REQUESTS, PROFILE, SETTINGS }
@@ -289,7 +289,7 @@ fun BenflixRail(
             is Destination.Home -> Spot.HOME
             is Destination.Search -> if (model.showSearch) Spot.SEARCH else null
             is Destination.Requests -> if (model.showRequests) Spot.REQUESTS else null
-            is Destination.Settings -> if (model.showSettings) Spot.SETTINGS else null
+            is Destination.Me -> Spot.PROFILE
             else -> null
         }
     val panelFocus = LocalFocusManager.current
@@ -312,16 +312,6 @@ fun BenflixRail(
         if (door != null) doorFocus[door]?.tryRequestFocus() else spotFocus[Spot.PROFILE]?.tryRequestFocus()
     }
 
-    fun openProfilePanel() {
-        if (model.profileItems == null) {
-            model.onProfile()
-            return
-        }
-        model.onProfile()
-        panelDoor = null
-        profileOpen = true
-    }
-
     /** A page was picked: tuck the menu away now and give the focus to the page (TV) */
     fun leaveFor(go: () -> Unit) {
         panelDoor = null
@@ -333,6 +323,15 @@ fun BenflixRail(
         }
         go()
         if (!model.alwaysOpen && railFocused) strays++
+    }
+
+    fun openProfilePanel() {
+        if (model.profileItems == null) {
+            model.onProfile()
+            return
+        }
+        // Ben 2026-11-18 (approved profile-page-1): a full page like every other spot, no slide-out
+        leaveFor(model.onMe)
     }
 
     // ☰ Menu opens the rail on the place you're in; holding ☰ opens your profile panel
@@ -508,7 +507,7 @@ fun BenflixRail(
                     }
                     Spacer(Modifier.height(4.dp * scale))
                     // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests,
-                    // then your picture and Settings at the bottom
+                    // then your picture at the bottom (it opens the Me page, where Settings lives)
                     if (model.showSearch) {
                         RailButton(
                             icon = GlowfinIcon.SEARCH,
@@ -577,21 +576,10 @@ fun BenflixRail(
                         model = model,
                         open = open,
                         scale = scale,
-                        highlighted = profileOpen,
+                        highlighted = profileOpen || currentSpot == Spot.PROFILE,
                         onClick = { openProfilePanel() },
                         modifier = Modifier.focusRequester(spotFocus.getValue(Spot.PROFILE)),
                     )
-                    if (model.showSettings) {
-                        RailButton(
-                            icon = GlowfinIcon.SETTINGS,
-                            label = "Settings",
-                            open = open,
-                            scale = scale,
-                            on = currentSpot == Spot.SETTINGS,
-                            onClick = { leaveFor(model.onSettings) },
-                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
-                        )
-                    }
                 }
             }
         }
@@ -649,12 +637,6 @@ fun BenflixRail(
                         places = DoorPlaces.of(door),
                         scale = scale,
                         onPlace = { key -> leaveFor { model.onPlace(door, key) } },
-                    )
-                } else if (profileOpen) {
-                    ProfilePanel(
-                        model = model,
-                        scale = scale,
-                        onPicked = { profileOpen = false },
                     )
                 }
             }
@@ -979,96 +961,6 @@ private fun PanelRow(
                     fontSize = BenflixType.tag * scale,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-/** Your picture's panel (approved s4-q-me): the same kind of panel, with Switch profile and the rest */
-@Composable
-private fun ProfilePanel(
-    model: RailModel,
-    scale: Float,
-    onPicked: () -> Unit,
-) {
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        delay(PANEL_FOCUS_MS)
-        first.tryRequestFocus()
-    }
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(BenflixColors.PanelHigh)
-                    .padding(horizontal = 22.dp * scale, vertical = 20.dp * scale),
-        ) {
-            UserIconCardImage(
-                id = model.user.id,
-                name = model.user.name,
-                imageUrl = model.userImageUrl,
-                modifier = Modifier.size(56.dp * scale),
-            )
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = model.user.name.orEmpty(),
-                    color = BenflixColors.Text,
-                    fontSize = 20.sp * scale,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                model.minutesWatched?.let {
-                    Text(
-                        text = watchedWords(it),
-                        color = BenflixColors.Muted,
-                        fontSize = 12.sp * scale,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp * scale, vertical = 8.dp),
-        ) {
-            // Glowfin (S1): plain words, the lit line lifted with the aqua bar, like Settings
-            com.github.damontecres.wholphin.ui.preferences.GlowfinListRow(
-                label = "Switch profile",
-                selected = false,
-                onClick = {
-                    onPicked()
-                    model.onSwitchProfile()
-                },
-                modifier = Modifier.focusRequester(first),
-            )
-            model.profileItems.orEmpty().forEach { item ->
-                if (item.apart) {
-                    Box(
-                        Modifier
-                            .padding(vertical = 6.dp, horizontal = 10.dp)
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(BenflixColors.Line),
-                    )
-                }
-                com.github.damontecres.wholphin.ui.preferences.GlowfinListRow(
-                    label = item.title,
-                    selected = false,
-                    labelColor = if (item.apart) Glowfin.Dim else Glowfin.Text,
-                    note = item.note,
-                    onClick = {
-                        onPicked()
-                        item.onClick()
-                    },
                 )
             }
         }

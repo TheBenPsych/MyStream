@@ -77,15 +77,7 @@
       ["home", "For you", "home"], ["book", "Books", "book"], ["audiobook", "Audiobooks", "ears"],
       ["series", "Series", "list"], ["want", "Want to read", "star"],
     ].map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
-    const srv = (id) => location.hash.startsWith(`#/server/${id}`);
-    const server = [
-      ["Overview", "home", "#/server/overview", () => srv("overview")],
-      ["Watching", "tv", "#/server/watching", () => srv("watching")],
-      ["Library", "film", "#/server/library", () => srv("library")],
-      ["People", "user", "#/server/people", () => srv("people")],
-      ["Tools", "gear", "#/server/tools", () => srv("tools")],
-    ];
-    return { movies, shows, live, games, music: kids ? null : music, books, server: B.me && B.me.admin ? server : null };
+    return { movies, shows, live, games, music: kids ? null : music, books, server: null };
   };
 
   // Which door (if any) the page you're on belongs to: only the door pages themselves, not title pages

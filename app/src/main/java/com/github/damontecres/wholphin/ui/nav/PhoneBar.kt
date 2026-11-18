@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -248,7 +249,8 @@ fun PhoneMoreSheet(
     userImageUrl: String?,
     userName: String,
     minutesWatched: Long?,
-    profileItems: List<ProfileMenuItem>?,
+    /** Ben 2026-11-18: tapping your picture opens the Me page (Settings, Help and the rest live there). Null = Kids/Guest */
+    onMe: (() -> Unit)?,
     onDoor: (BenflixDoor) -> Unit,
     onSearch: () -> Unit,
     /** Glowfin: Anime has its own spot (null = hidden, like Kids' easy mode) */
@@ -282,7 +284,11 @@ fun PhoneMoreSheet(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .then(if (onMe != null) Modifier.clickable(onClick = onMe) else Modifier)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 UserIconCardImage(
                     id = user.id,
@@ -303,18 +309,11 @@ fun PhoneMoreSheet(
                         Text(watchedWords(it), color = BenflixColors.Muted, fontSize = 12.sp, maxLines = 1)
                     }
                 }
+                if (onMe != null) {
+                    Text("Your page  ›", color = BenflixColors.Soft, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
-            SheetRow(BenflixIcon.SWITCH, "Switch profile", BenflixColors.Soft, null, onSwitchProfile)
-            profileItems.orEmpty().forEach { item ->
-                SheetRow(
-                    item.icon,
-                    item.title,
-                    if (item.apart) BenflixColors.Muted else BenflixColors.Soft,
-                    item.note,
-                    item.onClick,
-                    item.apart,
-                )
-            }
+            if (onMe == null) SheetRow(BenflixIcon.SWITCH, "Switch profile", BenflixColors.Soft, null, onSwitchProfile)
             Spacer(Modifier.height(4.dp))
         }
     }

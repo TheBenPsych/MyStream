@@ -428,7 +428,7 @@ B.where = (hash) => {
   const page = hash.split("?")[0];
   if (/^#\/(home|who|signin)$/.test(page)) trail = [];
   // A door or a page from the top bar starts a new line (Movies then Shows isn't "Movies > Shows")
-  if (/^#\/(movies|shows|anime|live|music|games|books|requests|search|settings(\/\w+)?|help(\/\w+)?|mine|lobby)$/.test(page)) trail = [];
+  if (/^#\/(movies|shows|anime|live|music|games|books|requests|search|me)$/.test(page)) trail = [];
   const name = B.placeName || "";
   const at = trail.findIndex((t) => t.h === hash);
   if (at >= 0) trail = trail.slice(0, at + 1);
