@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.games
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
@@ -26,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.network.NetworkHeaders
@@ -47,7 +50,6 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.glowFocus
-import com.github.damontecres.wholphin.ui.touch.Dialog
 
 /** What the game details page shows besides the buttons */
 data class GameInfo(
@@ -236,7 +238,16 @@ fun GameDetailsPage(
             info?.year?.takeIf { it > 0 }?.toString(),
             info?.players?.takeIf { it.isNotBlank() }?.let { if (it == "1") "1 player" else "$it players" },
         ).joinToString("  ·  ")
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // Ben 2026-11-18: the game page fills the page area, not the whole screen, so the left menu stays
+    // (Left on the remote reaches it, like on movie pages). Back closes it.
+    BackHandler(enabled = !showMore) { onDismiss() }
+    Box(
+        Modifier
+            .fillMaxSize()
+            // Right past the last thing on the page goes nowhere (the Games page is tucked away to the right)
+            .focusProperties { onExit = { if (requestedFocusDirection == FocusDirection.Right) cancelFocusChange() } }
+            .focusGroup(),
+    ) {
         Box(Modifier.fillMaxSize().background(BenflixColors.Tray)) {
             TitlePage(
                 title = ref.name,

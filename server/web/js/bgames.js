@@ -161,10 +161,10 @@
     const kindName = g.kind === "arcade" ? "Glowfin arcade" : party ? "Glowfin party game" : "Glowfin movie puzzle";
     const steps = (g.steps || []).filter(Boolean);
     const howHtml = steps.length || (g.kind === "puzzle" && !kids())
-      ? `<div class="bg-how">${steps.map((st, i) => `<div class="bg-step"><b>${i + 1}</b><span>${esc(st)}</span></div>`).join("")}${g.kind === "puzzle" && !kids() ? `<div class="bg-step bg-anime"><span class="dim">Anime in the questions</span><button class="chip" id="bgAnime"></button></div>` : ""}</div>`
+      ? `<h3 class="tp-h">How to play</h3><div class="bg-how">${steps.map((st, i) => `<div class="bg-step"><b>${i + 1}</b><span>${esc(st)}</span></div>`).join("")}${g.kind === "puzzle" && !kids() ? `<div class="bg-step bg-anime"><span class="dim">Anime in the questions</span><button class="chip" id="bgAnime"></button></div>` : ""}</div>`
       : "";
     const boardHtml = g.board
-      ? `<div class="bg-board">${t.length ? t.map((sc, i) => `<div><span><b class="m${i + 1}">${i + 1}</b>${esc(sc.name)}</span><b>${sc.score.toLocaleString()}</b></div>`).join("") : `<div><span class="dim">No scores yet. Be the first!</span></div>`}<div class="you"><span>Your best</span><b>${best ? best.toLocaleString() : "None yet"}</b></div><small class="dim">Ranked by ${esc(g.ranked || "most points")}</small></div>`
+      ? `<h3 class="tp-h">Leaderboard · all time</h3><div class="bg-board">${t.length ? t.map((sc, i) => `<div><span><b class="m${i + 1}">${i + 1}</b>${esc(sc.name)}</span><b>${sc.score.toLocaleString()}</b></div>`).join("") : `<div><span class="dim">No scores yet. Be the first!</span></div>`}<div class="you"><span>Your best</span><b>${best ? best.toLocaleString() : "None yet"}</b></div><small class="dim">Ranked by ${esc(g.ranked || "most points")}</small></div>`
       : "";
     const sameKind = g.kind === "arcade" ? ARCADE.map((x) => find(x.key)) : party ? PARTY.map((x) => find(x.key)) : PUZZLES.map((x) => find(x.key));
     const more = sameKind.filter((x) => x && x.key !== g.key && (!kids() || x.kind === "arcade" || x.kids));
@@ -186,7 +186,7 @@
       tabs: [
         { name: "How to play", id: "tpHow", html: howHtml, skip: !howHtml },
         { name: "Leaderboard · all time", id: "tpBoard", html: boardHtml, skip: !boardHtml },
-        { name: g.kind === "arcade" ? "More Glowfin arcade" : party ? "More party games" : "More movie puzzles", id: "tpLike", html: more.length ? `<div class="bg-more">${more.map((x) => tile(x, x.kind === "arcade" ? "Arcade" : x.kind === "party" ? "Party" : "Movie puzzle")).join("")}</div>` : "", skip: !more.length },
+        { name: g.kind === "arcade" ? "More Glowfin arcade" : party ? "More party games" : "More movie puzzles", id: "tpLike", html: more.length ? `<h3 class="tp-h">${g.kind === "arcade" ? "More Glowfin arcade" : party ? "More party games" : "More movie puzzles"}</h3><div class="bg-more">${more.map((x) => tile(x, x.kind === "arcade" ? "Arcade" : x.kind === "party" ? "Party" : "Movie puzzle")).join("")}</div>` : "", skip: !more.length },
       ],
       aboutStory: g.about || g.short,
     });

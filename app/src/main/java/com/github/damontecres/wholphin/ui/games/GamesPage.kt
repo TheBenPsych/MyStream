@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
@@ -50,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -335,476 +338,510 @@ fun GamesPage(
         }
     }
 
-    DoorFrame(frame, sections, modifier, tabs = true) { inner ->
-        // TV and wide screens: the tabs sit over the top of the page, so the page starts under them
-        val top = if (wide) LocalTopBarOverlap.current else 0.dp
-        Column(modifier = inner.fillMaxSize().padding(top = top).onFirstUserMove { userMoved = true }) {
-            if (wide && forYou) {
-                val first =
-                    recent.firstOrNull()?.let { refPreview(it.first, it.second) }
-                GamesTopArea(
-                    preview = shown ?: first,
-                    height = (config.screenHeightDp * 0.36f).dp.coerceIn(170.dp, 300.dp),
-                    modifier = Modifier.padding(start = if (isTv) 48.dp else 16.dp, end = if (isTv) 48.dp else 8.dp),
-                )
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        // Opens on the first game tile (a group requester hands focus to its first child)
-                        .focusRequester(focusRequester)
-                        .verticalScroll(pageScroll)
-                        .padding(
-                            start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
-                            end = if (isTv) BenflixSpace.tvEdge else 8.dp,
-                            top = 8.dp,
-                            bottom = 24.dp,
-                        ),
-            ) {
-                // For you (G1): Continue playing, Movie puzzles, Favourites, Arcade.
-                // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
-                val keep = if (!wide && forYou) recent.firstOrNull() else null
-                if (keep != null) {
-                    val (ref, time) = keep
-                    KeepPlayingCard(
-                        ref = ref,
-                        line = "${ref.consoleName} · Played ${playedAgo(time)}",
-                        token = viewModel.gamesToken,
-                        status =
-                            when {
-                                prep?.gameId == ref.id -> prep?.text
-                                starting == ref.id -> "Starting…"
-                                else -> null
-                            },
-                        onPlay = { viewModel.playHere(context, ref, resume = true) },
-                        onOpen = { viewModel.choose(ref) },
+    // Ben 2026-11-18: a game's own page opens inside the page area (not over the whole screen), so the left
+    // menu stays there like on movie and show pages. The Games page underneath stays as it was (same rows,
+    // same place) but moves out of sight, so the remote can't land on it; closing the game page goes back to it.
+    val choice by viewModel.choice.collectAsState()
+    val gameOpen = choice != null
+    val pageFocus = remember { FocusRequester() }
+    var gameWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(gameOpen) {
+        if (gameOpen) {
+            gameWasOpen = true
+        } else if (gameWasOpen) {
+            delay(60)
+            pageFocus.tryRequestFocus()
+        }
+    }
+    Box(modifier.fillMaxSize()) {
+        DoorFrame(
+            frame,
+            sections,
+            Modifier
+                .fillMaxSize()
+                .offset { if (gameOpen) IntOffset(100_000, 0) else IntOffset.Zero }
+                .focusRequester(pageFocus)
+                .focusRestorer(),
+            tabs = true,
+        ) { inner ->
+            // TV and wide screens: the tabs sit over the top of the page, so the page starts under them
+            val top = if (wide) LocalTopBarOverlap.current else 0.dp
+            Column(modifier = inner.fillMaxSize().padding(top = top).onFirstUserMove { userMoved = true }) {
+                if (wide && forYou) {
+                    val first =
+                        recent.firstOrNull()?.let { refPreview(it.first, it.second) }
+                    GamesTopArea(
+                        preview = shown ?: first,
+                        height = (config.screenHeightDp * 0.36f).dp.coerceIn(170.dp, 300.dp),
+                        modifier = Modifier.padding(start = if (isTv) 48.dp else 16.dp, end = if (isTv) 48.dp else 8.dp),
                     )
                 }
-                if (forYou && recent.isEmpty() && waitingRecent) {
-                    RowName("Continue playing", isTv)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
-                        modifier =
-                            Modifier
-                                .padding(vertical = 8.dp, horizontal = 8.dp)
-                                .wrapContentWidth(Alignment.Start, unbounded = true),
-                    ) {
-                        repeat(8) {
-                            Box(cardSize.background(BenflixColors.Raised, RoundedCornerShape(10.dp)))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            // Opens on the first game tile (a group requester hands focus to its first child)
+                            .focusRequester(focusRequester)
+                            .verticalScroll(pageScroll)
+                            .padding(
+                                start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
+                                end = if (isTv) BenflixSpace.tvEdge else 8.dp,
+                                top = 8.dp,
+                                bottom = 24.dp,
+                            ),
+                ) {
+                    // For you (G1): Continue playing, Movie puzzles, Favourites, Arcade.
+                    // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
+                    val keep = if (!wide && forYou) recent.firstOrNull() else null
+                    if (keep != null) {
+                        val (ref, time) = keep
+                        KeepPlayingCard(
+                            ref = ref,
+                            line = "${ref.consoleName} · Played ${playedAgo(time)}",
+                            token = viewModel.gamesToken,
+                            status =
+                                when {
+                                    prep?.gameId == ref.id -> prep?.text
+                                    starting == ref.id -> "Starting…"
+                                    else -> null
+                                },
+                            onPlay = { viewModel.playHere(context, ref, resume = true) },
+                            onOpen = { viewModel.choose(ref) },
+                        )
+                    }
+                    if (forYou && recent.isEmpty() && waitingRecent) {
+                        RowName("Continue playing", isTv)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                            modifier =
+                                Modifier
+                                    .padding(vertical = 8.dp, horizontal = 8.dp)
+                                    .wrapContentWidth(Alignment.Start, unbounded = true),
+                        ) {
+                            repeat(8) {
+                                Box(cardSize.background(BenflixColors.Raised, RoundedCornerShape(10.dp)))
+                            }
                         }
                     }
-                }
-                val rowRecent =
-                    if (!forYou) {
-                        emptyList()
-                    } else if (keep != null) {
-                        recent.drop(1)
-                    } else {
-                        recent
-                    }
-                if (rowRecent.isNotEmpty()) {
-                    // TV: the row name comes into view with the row
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
-                        RowName("Continue playing", isTv)
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                        ) {
-                            items(rowRecent, key = { "recent-${it.first.id}" }) { (ref, time) ->
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    // Continue playing starts the game straight away, where you left off
-                                    Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
-                                    if (!wide) {
-                                        Text(
-                                            text = "${ref.consoleName} · ${playedAgo(time)}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.width(cardHeight * BoxArt.DEFAULT_RATIO),
-                                        )
+                    val rowRecent =
+                        if (!forYou) {
+                            emptyList()
+                        } else if (keep != null) {
+                            recent.drop(1)
+                        } else {
+                            recent
+                        }
+                    if (rowRecent.isNotEmpty()) {
+                        // TV: the row name comes into view with the row
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                            RowName("Continue playing", isTv)
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(if (isTv) 16.dp else 12.dp),
+                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                            ) {
+                                items(rowRecent, key = { "recent-${it.first.id}" }) { (ref, time) ->
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        // Continue playing starts the game straight away, where you left off
+                                        Card(ref, onClick = { viewModel.playHere(context, ref, resume = true) })
+                                        if (!wide) {
+                                            Text(
+                                                text = "${ref.consoleName} · ${playedAgo(time)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.width(cardHeight * BoxArt.DEFAULT_RATIO),
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                if (forYou || tab == TAB_MOVIE) {
-                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles"), board = board, onFocus = onFocus)
-                }
-                if (forYou) FavouritesRow()
-                if (forYou || tab == TAB_MOVIE) {
-                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
-                }
-                if (tab == TAB_MOVIE) {
-                    EmberBanner(isTv = isTv, onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) }, onFocus = onFocus)
-                }
-                if (tab == TAB_PARTY) {
-                    GameRows(viewModel = viewModel, isTv = isTv, only = setOf("party"), board = board, onFocus = onFocus)
-                    InfoText(
-                        "Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and " +
-                            "presses Join a party, then answers on the phone. 3 to 8 players.",
-                    )
-                }
+                    if (forYou || tab == TAB_MOVIE) {
+                        GameRows(viewModel = viewModel, isTv = isTv, only = setOf("puzzles"), board = board, onFocus = onFocus)
+                    }
+                    if (forYou) FavouritesRow()
+                    if (forYou || tab == TAB_MOVIE) {
+                        GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
+                    }
+                    if (tab == TAB_MOVIE) {
+                        EmberBanner(
+                            isTv = isTv,
+                            onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) },
+                            onFocus = onFocus,
+                        )
+                    }
+                    if (tab == TAB_PARTY) {
+                        GameRows(viewModel = viewModel, isTv = isTv, only = setOf("party"), board = board, onFocus = onFocus)
+                        InfoText(
+                            "Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and " +
+                                "presses Join a party, then answers on the phone. 3 to 8 players.",
+                        )
+                    }
 
-                // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
-                if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
-                    when (val state = library) {
-                        LibraryState.Hidden -> {}
+                    // Your own games, from the RomM game library on Tower. They play right here on this TV or phone.
+                    if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
+                        when (val state = library) {
+                            LibraryState.Hidden -> {}
 
-                        LibraryState.Loading -> {
-                            InfoText("Loading your games…")
-                        }
+                            LibraryState.Loading -> {
+                                InfoText("Loading your games…")
+                            }
 
-                        is LibraryState.Failed -> {
-                            InfoText(state.message)
-                            val retryTiles: @Composable () -> Unit = {
-                                ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
-                                if (state.askAddress) {
-                                    ActionTile(
-                                        title = "Set server address",
-                                        subtitle = "Only if it can't find it",
-                                        onClick = { askAddress = true },
+                            is LibraryState.Failed -> {
+                                InfoText(state.message)
+                                val retryTiles: @Composable () -> Unit = {
+                                    ActionTile(title = "Try again", subtitle = "Reload your games", onClick = { viewModel.reload() })
+                                    if (state.askAddress) {
+                                        ActionTile(
+                                            title = "Set server address",
+                                            subtitle = "Only if it can't find it",
+                                            onClick = { askAddress = true },
+                                        )
+                                    }
+                                }
+                                // Two tiles side by side are wider than a phone, so on phones they go one under the other
+                                if (isTv) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { retryTiles() }
+                                } else {
+                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { retryTiles() }
+                                }
+                                if (state.downloaded.isNotEmpty()) {
+                                    Text(
+                                        text = "Saved on this device",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = MaterialTheme.colorScheme.onBackground,
                                     )
-                                }
-                            }
-                            // Two tiles side by side are wider than a phone, so on phones they go one under the other
-                            if (isTv) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { retryTiles() }
-                            } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { retryTiles() }
-                            }
-                            if (state.downloaded.isNotEmpty()) {
-                                Text(
-                                    text = "Saved on this device",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                                InfoText("These play without Tower. Your saves are sent to Tower next time it can be reached.")
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-                                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-                                ) {
-                                    items(state.downloaded, key = { "dl-${it.ref.id}" }) { Card(it.ref) }
-                                }
-                            }
-                        }
-
-                        is LibraryState.Ready -> {
-                            if (state.consoles.isEmpty()) {
-                                InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
-                            }
-                            // Idea Box 25: a controller that's nearly flat (newer TVs and phones can tell), checked each minute
-                            val lowBattery by produceState<String?>(null) {
-                                while (true) {
-                                    value =
-                                        com.github.damontecres.wholphin.games.ControllerBattery
-                                            .words()
-                                    delay(BATTERY_CHECK_MS)
-                                }
-                            }
-                            lowBattery?.let { words ->
-                                Text(
-                                    text = words,
-                                    color = Color(0xFF1D1405),
-                                    fontSize = BenflixType.small,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier =
-                                        Modifier
-                                            .background(
-                                                Color(0xFFF2B544),
-                                                androidx.compose.foundation.shape
-                                                    .RoundedCornerShape(50),
-                                            ).padding(horizontal = 14.dp, vertical = 6.dp),
-                                )
-                            }
-                            // Idea Box 25 "Games for two": the best-loved games two or more can play at once
-                            val forTwo =
-                                remember(ready, refs) {
-                                    ready
-                                        ?.consoles
-                                        .orEmpty()
-                                        .flatMap { it.games }
-                                        .filter { it.players >= 2 }
-                                        .sortedByDescending { it.rating }
-                                        .mapNotNull { refs[it.id] }
-                                        .filter { !KidsMode.isActive || it.kids }
-                                        .take(FOR_TWO_ROW)
-                                }
-                            if (forTwo.isNotEmpty()) {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier.scrollAsOneBlock(),
-                                ) {
-                                    RowName("Games for two", isTv)
+                                    InfoText("These play without Tower. Your saves are sent to Tower next time it can be reached.")
                                     LazyRow(
                                         horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                                         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                                     ) {
-                                        items(forTwo, key = { "two-${it.id}" }) { Card(it) }
+                                        items(state.downloaded, key = { "dl-${it.ref.id}" }) { Card(it.ref) }
                                     }
                                 }
                             }
-                            var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
-                            val open = playable.firstOrNull { it.first.slug == openSlug }
-                            BackHandler(enabled = open != null) { openSlug = null }
-                            // Opening or leaving a console removes the focused tile, so focus moves on by itself
-                            val consoleFocus = remember { FocusRequester() }
-                            var wasOpen by remember { mutableStateOf(false) }
-                            LaunchedEffect(open != null) {
-                                if (open != null) {
-                                    consoleFocus.tryRequestFocus()
-                                } else if (wasOpen) {
-                                    focusRequester.tryRequestFocus()
+
+                            is LibraryState.Ready -> {
+                                if (state.consoles.isEmpty()) {
+                                    InfoText("Your game library is connected but has no games yet. Add some in RomM and run a scan.")
                                 }
-                                wasOpen = open != null
-                            }
-                            if (open == null) {
-                                // Benflix "Game roulette": can't decide? Spin and land on a random game
-                                var spinning by remember { mutableStateOf(false) }
-                                val spinGames =
-                                    remember(refs) {
-                                        refs.values.filter { !KidsMode.isActive || it.kids }
-                                    }
-                                if (spinGames.size > 1) {
-                                    ActionTile(
-                                        title = "Game roulette",
-                                        subtitle = "Spin for a random game",
-                                        onClick = { spinning = true },
-                                    )
-                                }
-                                if (spinning) {
-                                    GameRouletteDialog(
-                                        games = spinGames,
-                                        token = viewModel.gamesToken,
-                                        onPlay = {
-                                            spinning = false
-                                            viewModel.playHere(context, it, resume = false)
-                                        },
-                                        onOpen = {
-                                            spinning = false
-                                            viewModel.choose(it)
-                                        },
-                                        onDismiss = { spinning = false },
-                                    )
-                                }
-                                // A grid of consoles: photo, name and how many games. Press one to see its games.
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier.scrollAsOneBlock(),
-                                ) {
-                                    if (playable.isNotEmpty()) RowName("Consoles", isTv)
-                                    ConsoleGrid(
-                                        playable = playable,
-                                        isTv = isTv,
-                                        onOpen = { openSlug = it },
-                                        lastPlayed = { c -> recent.firstOrNull { it.first.slug == c.slug }?.first?.name },
-                                        onFocus = onFocus,
-                                    )
-                                }
-                            } else {
-                                val (console, local, fit) = open
-                                val notes =
-                                    listOfNotNull(
-                                        if (fit ==
-                                            DevicePower.Fit.MAY_BE_SLOW
-                                        ) {
-                                            "may be slow on this ${if (isTv) "TV" else "phone"}"
-                                        } else {
-                                            null
-                                        },
-                                        if (isTv && local.remoteFriendly) "works with the remote" else null,
-                                    )
-                                // Back returns to all consoles (no extra tile, as approved)
-                                Text(
-                                    text =
-                                        "${console.name} (${console.games.size})" +
-                                            if (notes.isEmpty()) "" else "  ·  " + notes.joinToString(" · "),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                                // Sort is remembered per console (A to Z to start)
-                                var sort by rememberSaveable(console.slug) { mutableStateOf(GameSort.AZ) }
-                                // Idea Box 25: "2 players" shows only games two or more can play at once
-                                var twoOnly by rememberSaveable(console.slug) { mutableStateOf(false) }
-                                val hasTwo = remember(console) { console.games.any { it.players >= 2 } }
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.focusRequester(consoleFocus),
-                                ) {
-                                    // "Best score" only once RomM has ratings for this console
-                                    items(
-                                        GameSort.entries.filter { it != GameSort.BEST || console.games.any { g -> g.rating > 0.0 } },
-                                        key = { "sort-${it.name}" },
-                                    ) { mode ->
-                                        SortChip(mode.label, selected = mode == sort) { sort = mode }
-                                    }
-                                    if (hasTwo) {
-                                        item(key = "two-players") {
-                                            SortChip("2 players", selected = twoOnly) { twoOnly = !twoOnly }
-                                        }
+                                // Idea Box 25: a controller that's nearly flat (newer TVs and phones can tell), checked each minute
+                                val lowBattery by produceState<String?>(null) {
+                                    while (true) {
+                                        value =
+                                            com.github.damontecres.wholphin.games.ControllerBattery
+                                                .words()
+                                        delay(BATTERY_CHECK_MS)
                                     }
                                 }
-                                val rows =
-                                    remember(console, favourites) {
-                                        consoleRows(
-                                            console,
-                                            viewModel.localGames.downloaded().map { it.ref.id },
-                                            favourites,
-                                        )
+                                lowBattery?.let { words ->
+                                    Text(
+                                        text = words,
+                                        color = Color(0xFF1D1405),
+                                        fontSize = BenflixType.small,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier =
+                                            Modifier
+                                                .background(
+                                                    Color(0xFFF2B544),
+                                                    androidx.compose.foundation.shape
+                                                        .RoundedCornerShape(50),
+                                                ).padding(horizontal = 14.dp, vertical = 6.dp),
+                                    )
+                                }
+                                // Idea Box 25 "Games for two": the best-loved games two or more can play at once
+                                val forTwo =
+                                    remember(ready, refs) {
+                                        ready
+                                            ?.consoles
+                                            .orEmpty()
+                                            .flatMap { it.games }
+                                            .filter { it.players >= 2 }
+                                            .sortedByDescending { it.rating }
+                                            .mapNotNull { refs[it.id] }
+                                            .filter { !KidsMode.isActive || it.kids }
+                                            .take(FOR_TWO_ROW)
                                     }
-                                rows.forEach { (title, games) ->
-                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
-                                        Text(
-                                            text = title,
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                        )
+                                if (forTwo.isNotEmpty()) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                        modifier = Modifier.scrollAsOneBlock(),
+                                    ) {
+                                        RowName("Games for two", isTv)
                                         LazyRow(
                                             horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
                                             contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
                                         ) {
-                                            items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
+                                            items(forTwo, key = { "two-${it.id}" }) { Card(it) }
                                         }
                                     }
                                 }
-                                // Play time per game is a small file each, so it's only read for Most played
-                                val playTimes by produceState(emptyMap<Int, Long>(), console, sort) {
-                                    if (sort == GameSort.MOST) {
-                                        value =
-                                            withContext(Dispatchers.IO) { console.games.associate { it.id to viewModel.playTime(it.id) } }
+                                var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
+                                val open = playable.firstOrNull { it.first.slug == openSlug }
+                                BackHandler(enabled = open != null) { openSlug = null }
+                                // Opening or leaving a console removes the focused tile, so focus moves on by itself
+                                val consoleFocus = remember { FocusRequester() }
+                                var wasOpen by remember { mutableStateOf(false) }
+                                LaunchedEffect(open != null) {
+                                    if (open != null) {
+                                        consoleFocus.tryRequestFocus()
+                                    } else if (wasOpen) {
+                                        focusRequester.tryRequestFocus()
                                     }
+                                    wasOpen = open != null
                                 }
-                                val sections =
-                                    remember(console, sort, recent, playTimes, twoOnly) {
-                                        consoleGridSections(
-                                            if (twoOnly) console.games.filter { it.players >= 2 } else console.games,
-                                            sort,
-                                            recent.map { it.first.id },
-                                            playTimes,
+                                if (open == null) {
+                                    // Benflix "Game roulette": can't decide? Spin and land on a random game
+                                    var spinning by remember { mutableStateOf(false) }
+                                    val spinGames =
+                                        remember(refs) {
+                                            refs.values.filter { !KidsMode.isActive || it.kids }
+                                        }
+                                    if (spinGames.size > 1) {
+                                        ActionTile(
+                                            title = "Game roulette",
+                                            subtitle = "Spin for a random game",
+                                            onClick = { spinning = true },
                                         )
                                     }
-                                val config = LocalConfiguration.current
-                                ConsoleGameGrid(
-                                    sections = sections,
-                                    cardWidth = cardHeight * BoxArt.consoleRatio(console.slug),
-                                    height = (config.screenHeightDp * if (isTv) 0.8f else 0.75f).dp,
-                                    showLetters = sort == GameSort.AZ,
-                                    card = { game -> refs[game.id]?.let { Card(it, fixedShape = true) } },
+                                    if (spinning) {
+                                        GameRouletteDialog(
+                                            games = spinGames,
+                                            token = viewModel.gamesToken,
+                                            onPlay = {
+                                                spinning = false
+                                                viewModel.playHere(context, it, resume = false)
+                                            },
+                                            onOpen = {
+                                                spinning = false
+                                                viewModel.choose(it)
+                                            },
+                                            onDismiss = { spinning = false },
+                                        )
+                                    }
+                                    // A grid of consoles: photo, name and how many games. Press one to see its games.
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                        modifier = Modifier.scrollAsOneBlock(),
+                                    ) {
+                                        if (playable.isNotEmpty()) RowName("Consoles", isTv)
+                                        ConsoleGrid(
+                                            playable = playable,
+                                            isTv = isTv,
+                                            onOpen = { openSlug = it },
+                                            lastPlayed = { c -> recent.firstOrNull { it.first.slug == c.slug }?.first?.name },
+                                            onFocus = onFocus,
+                                        )
+                                    }
+                                } else {
+                                    val (console, local, fit) = open
+                                    val notes =
+                                        listOfNotNull(
+                                            if (fit ==
+                                                DevicePower.Fit.MAY_BE_SLOW
+                                            ) {
+                                                "may be slow on this ${if (isTv) "TV" else "phone"}"
+                                            } else {
+                                                null
+                                            },
+                                            if (isTv && local.remoteFriendly) "works with the remote" else null,
+                                        )
+                                    // Back returns to all consoles (no extra tile, as approved)
+                                    Text(
+                                        text =
+                                            "${console.name} (${console.games.size})" +
+                                                if (notes.isEmpty()) "" else "  ·  " + notes.joinToString(" · "),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                    // Sort is remembered per console (A to Z to start)
+                                    var sort by rememberSaveable(console.slug) { mutableStateOf(GameSort.AZ) }
+                                    // Idea Box 25: "2 players" shows only games two or more can play at once
+                                    var twoOnly by rememberSaveable(console.slug) { mutableStateOf(false) }
+                                    val hasTwo = remember(console) { console.games.any { it.players >= 2 } }
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.focusRequester(consoleFocus),
+                                    ) {
+                                        // "Best score" only once RomM has ratings for this console
+                                        items(
+                                            GameSort.entries.filter { it != GameSort.BEST || console.games.any { g -> g.rating > 0.0 } },
+                                            key = { "sort-${it.name}" },
+                                        ) { mode ->
+                                            SortChip(mode.label, selected = mode == sort) { sort = mode }
+                                        }
+                                        if (hasTwo) {
+                                            item(key = "two-players") {
+                                                SortChip("2 players", selected = twoOnly) { twoOnly = !twoOnly }
+                                            }
+                                        }
+                                    }
+                                    val rows =
+                                        remember(console, favourites) {
+                                            consoleRows(
+                                                console,
+                                                viewModel.localGames.downloaded().map { it.ref.id },
+                                                favourites,
+                                            )
+                                        }
+                                    rows.forEach { (title, games) ->
+                                        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.scrollAsOneBlock()) {
+                                            Text(
+                                                text = title,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = MaterialTheme.colorScheme.onBackground,
+                                            )
+                                            LazyRow(
+                                                horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
+                                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
+                                            ) {
+                                                items(games, key = { "$title-${it.id}" }) { game -> refs[game.id]?.let { Card(it) } }
+                                            }
+                                        }
+                                    }
+                                    // Play time per game is a small file each, so it's only read for Most played
+                                    val playTimes by produceState(emptyMap<Int, Long>(), console, sort) {
+                                        if (sort == GameSort.MOST) {
+                                            value =
+                                                withContext(
+                                                    Dispatchers.IO,
+                                                ) { console.games.associate { it.id to viewModel.playTime(it.id) } }
+                                        }
+                                    }
+                                    val sections =
+                                        remember(console, sort, recent, playTimes, twoOnly) {
+                                            consoleGridSections(
+                                                if (twoOnly) console.games.filter { it.players >= 2 } else console.games,
+                                                sort,
+                                                recent.map { it.first.id },
+                                                playTimes,
+                                            )
+                                        }
+                                    val config = LocalConfiguration.current
+                                    ConsoleGameGrid(
+                                        sections = sections,
+                                        cardWidth = cardHeight * BoxArt.consoleRatio(console.slug),
+                                        height = (config.screenHeightDp * if (isTv) 0.8f else 0.75f).dp,
+                                        showLetters = sort == GameSort.AZ,
+                                        card = { game -> refs[game.id]?.let { Card(it, fixedShape = true) } },
+                                    )
+                                }
+                                ActionTile(
+                                    title = "Reload games",
+                                    subtitle = "After adding games in RomM",
+                                    onClick = { viewModel.reload() },
                                 )
                             }
-                            ActionTile(title = "Reload games", subtitle = "After adding games in RomM", onClick = { viewModel.reload() })
                         }
                     }
-                }
-                // Scores: every game, its top 3 and your place, all time
-                if (tab == TAB_SCORES) {
-                    val boardGames =
-                        remember(board) {
-                            BuiltInGame.entries.map { g ->
-                                BoardGame(
-                                    g.name,
-                                    g.title,
-                                    { viewModel.navigationManager.navigateTo(Destination.GameInfo("arcade:${g.name}")) },
-                                    viewModel.best(g),
-                                )
-                            } +
-                                if (KidsMode.isActive) {
-                                    emptyList()
-                                } else {
-                                    MovieGame.entries.filter { it.boardKey != null && it.visibleNow(false) }.map { g ->
-                                        BoardGame(
-                                            g.boardKey!!,
-                                            g.title,
-                                            { viewModel.navigationManager.navigateTo(Destination.GameInfo("movie:${g.name}")) },
-                                            viewModel.bestExtra(g.boardKey),
-                                        )
+                    // Scores: every game, its top 3 and your place, all time
+                    if (tab == TAB_SCORES) {
+                        val boardGames =
+                            remember(board) {
+                                BuiltInGame.entries.map { g ->
+                                    BoardGame(
+                                        g.name,
+                                        g.title,
+                                        { viewModel.navigationManager.navigateTo(Destination.GameInfo("arcade:${g.name}")) },
+                                        viewModel.best(g),
+                                    )
+                                } +
+                                    if (KidsMode.isActive) {
+                                        emptyList()
+                                    } else {
+                                        MovieGame.entries.filter { it.boardKey != null && it.visibleNow(false) }.map { g ->
+                                            BoardGame(
+                                                g.boardKey!!,
+                                                g.title,
+                                                { viewModel.navigationManager.navigateTo(Destination.GameInfo("movie:${g.name}")) },
+                                                viewModel.bestExtra(g.boardKey),
+                                            )
+                                        }
                                     }
-                                }
-                        }
-                    val myName = remember { viewModel.myBoardName() }
-                    LeaderboardRow(games = boardGames, board = board, myName = myName, isTv = isTv, onFocus = onFocus)
-                }
-                if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
-                    DeviceCard(power, isTv)
-                    // Refreshes after a game is downloaded or removed, not only when the library reloads
-                    val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
-                    StorageCard(
-                        games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
-                        isTv = isTv,
-                        // Kids can't delete games from the device
-                        onRemove =
-                            if (KidsMode.isActive) {
-                                null
-                            } else {
-                                { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
-                            },
-                    )
-                    if (!isTv) {
-                        ActionTile(
-                            title = "Use this phone as a controller",
-                            subtitle = "For a game playing on a TV in the house",
-                            onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
+                            }
+                        val myName = remember { viewModel.myBoardName() }
+                        LeaderboardRow(games = boardGames, board = board, myName = myName, isTv = isTv, onFocus = onFocus)
+                    }
+                    if (tab == TAB_CONSOLES && library != LibraryState.Hidden) {
+                        DeviceCard(power, isTv)
+                        // Refreshes after a game is downloaded or removed, not only when the library reloads
+                        val downloadsVersion by viewModel.localGames.downloadsVersion.collectAsState()
+                        StorageCard(
+                            games = remember(library, downloadsVersion) { viewModel.visibleDownloads() },
+                            isTv = isTv,
+                            // Kids can't delete games from the device
+                            onRemove =
+                                if (KidsMode.isActive) {
+                                    null
+                                } else {
+                                    { g: DownloadedGame -> viewModel.removeDownload(context, g.ref) }
+                                },
                         )
+                        if (!isTv) {
+                            ActionTile(
+                                title = "Use this phone as a controller",
+                                subtitle = "For a game playing on a TV in the house",
+                                onClick = { context.startActivity(Intent(context, PhonePadActivity::class.java)) },
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
-    val choice by viewModel.choice.collectAsState()
-    val info by viewModel.info.collectAsState()
-    choice?.let { c ->
-        GameDetailsPage(
-            choice = c,
-            info = info?.takeIf { it.first == c.ref.id }?.second,
-            saves = remember(c) { viewModel.saveSpots(c.ref.id) },
-            playTimeMs = remember(c) { viewModel.playTime(c.ref.id) },
-            favourite = c.ref.id in favourites,
-            token = viewModel.gamesToken,
-            isTv = isTv,
-            onPlay = { resume -> viewModel.playHere(context, c.ref, resume) },
-            onFavourite = { viewModel.toggleFavourite(c.ref.id) },
-            onKeep = { keep -> viewModel.setKeep(context, c.ref, keep) },
-            onRemove = { viewModel.removeDownload(context, c.ref) },
-            onDismiss = { viewModel.closeChoice() },
-            moreLike =
-                remember(c.ref.id, ready) {
-                    val all =
-                        ready
-                            ?.consoles
-                            ?.firstOrNull { it.slug == c.ref.slug }
-                            ?.games
-                            .orEmpty()
-                    val genres =
-                        all
-                            .firstOrNull { it.id == c.ref.id }
-                            ?.genres
-                            .orEmpty()
-                            .toSet()
-                    if (genres.isEmpty()) {
-                        emptyList()
-                    } else {
-                        all
-                            .filter { it.id != c.ref.id && it.genres.any { g -> g in genres } }
-                            .sortedByDescending { it.rating }
-                            .mapNotNull { refs[it.id] }
-                            .take(MORE_LIKE_ROW)
-                    }
-                },
-            moreLikeCard = { Card(it) },
-            worksWith =
-                "Works with: " +
-                    listOfNotNull(
-                        if (LocalConsole.forSlug(c.ref.slug)?.remoteFriendly == true) "Remote" else null,
-                        "Controller",
-                        "Phone",
-                    ).joinToString(" · "),
-        )
+        val info by viewModel.info.collectAsState()
+        choice?.let { c ->
+            GameDetailsPage(
+                choice = c,
+                info = info?.takeIf { it.first == c.ref.id }?.second,
+                saves = remember(c) { viewModel.saveSpots(c.ref.id) },
+                playTimeMs = remember(c) { viewModel.playTime(c.ref.id) },
+                favourite = c.ref.id in favourites,
+                token = viewModel.gamesToken,
+                isTv = isTv,
+                onPlay = { resume -> viewModel.playHere(context, c.ref, resume) },
+                onFavourite = { viewModel.toggleFavourite(c.ref.id) },
+                onKeep = { keep -> viewModel.setKeep(context, c.ref, keep) },
+                onRemove = { viewModel.removeDownload(context, c.ref) },
+                onDismiss = { viewModel.closeChoice() },
+                moreLike =
+                    remember(c.ref.id, ready) {
+                        val all =
+                            ready
+                                ?.consoles
+                                ?.firstOrNull { it.slug == c.ref.slug }
+                                ?.games
+                                .orEmpty()
+                        val genres =
+                            all
+                                .firstOrNull { it.id == c.ref.id }
+                                ?.genres
+                                .orEmpty()
+                                .toSet()
+                        if (genres.isEmpty()) {
+                            emptyList()
+                        } else {
+                            all
+                                .filter { it.id != c.ref.id && it.genres.any { g -> g in genres } }
+                                .sortedByDescending { it.rating }
+                                .mapNotNull { refs[it.id] }
+                                .take(MORE_LIKE_ROW)
+                        }
+                    },
+                moreLikeCard = { Card(it) },
+                worksWith =
+                    "Works with: " +
+                        listOfNotNull(
+                            if (LocalConsole.forSlug(c.ref.slug)?.remoteFriendly == true) "Remote" else null,
+                            "Controller",
+                            "Phone",
+                        ).joinToString(" · "),
+            )
+        }
     }
-
     if (askAddress) {
         StringInputDialog(
             input =

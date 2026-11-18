@@ -176,7 +176,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
   const kept = saves.srm || saves.state;
   const genres = info.genres || g.genres || [];
   const like = c.games.filter((x) => x.id !== id && (x.genres || []).some((gg) => genres.includes(gg))).slice(0, 20).map((x) => Object.assign({ console: c.name, slug: c.slug }, x));
-  const saveCards = kept ? `<div class="gsaves"><a class="gsave" href="#/playgame/${id}"><b>${saves.srm ? "In-game save" : "Where you stopped"}</b><small>On Tower · plays on any TV, phone or here</small></a></div>` : "";
+  const saveCards = kept ? `<h3 class="tp-h">Your saves</h3><div class="gsaves"><a class="gsave" href="#/playgame/${id}"><b>${saves.srm ? "In-game save" : "Where you stopped"}</b><small>On Tower · plays on any TV, phone or here</small></a></div>` : "";
   const tp = B.titlePage({
     title: g.name,
     color: DOORS.games.color,
@@ -185,6 +185,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
     cover: { url: cover(g), ratio: 3 / 4 },
     info: [info.year || g.year || "", genres.slice(0, 2).join(", "), info.players ? `${info.players} player${info.players > 1 ? "s" : ""}` : "1 player"],
     story: info.summary || "",
+    aboutStory: info.summary || "",
     status: "Works with: Keyboard · Controller",
     buttons: [
       { label: kept ? "Keep playing" : "Play", icon: "play", href: ok ? `#/playgame/${id}` : "", off: ok ? "" : "This console doesn't play in a browser. Play it on the TV or phone.", note: "Arrow keys move. Z and X are the main buttons, Enter is Start. A controller works too." },
@@ -206,7 +207,7 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
     ]),
     tabs: [
       { name: "Your saves", id: "tpSaves", html: saveCards, skip: !saveCards },
-      { name: "More like this", id: "tpLike", html: like.length ? `<div class="grid">${like.map((x) => gameCard(x)).join("")}</div>` : "", skip: !like.length },
+      { name: "More like this", id: "tpLike", html: like.length ? `<h3 class="tp-h">More like this</h3><div class="grid">${like.map((x) => gameCard(x)).join("")}</div>` : "", skip: !like.length },
     ],
   });
 });
