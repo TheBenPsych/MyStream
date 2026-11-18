@@ -34,6 +34,9 @@ import javax.inject.Inject
 enum class DoorRowStyle {
     POSTERS,
     TOP10,
+
+    /** Titles that aren't on the server yet (Trending, not on Tower): request cards */
+    DISCOVER,
 }
 
 /** One row inside a door. An empty row is hidden. */
@@ -45,7 +48,11 @@ data class DoorRowData(
     val style: DoorRowStyle = DoorRowStyle.POSTERS,
     /** Shows a "See all" tile at the end that opens the whole list */
     val seeAll: Boolean = false,
-)
+    /** [DoorRowStyle.DISCOVER] rows: the titles to ask for */
+    val discover: List<com.github.damontecres.wholphin.data.model.DiscoverItem> = emptyList(),
+) {
+    val isEmpty: Boolean get() = items.isEmpty() && discover.isEmpty()
+}
 
 /** A "Browse by" tile at the bottom of a door */
 @kotlinx.serialization.Serializable
@@ -96,6 +103,7 @@ class DoorViewModel
         private val aniListLibraries: AniListLibraries,
         private val hiddenGenresStore: com.github.damontecres.wholphin.services.HiddenGenresStore,
         private val diskCache: com.github.damontecres.wholphin.services.DiskCache,
+        @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         private val _state = MutableStateFlow(DoorPageState())
@@ -109,6 +117,9 @@ class DoorViewModel
         var userMoved = false
 
         private var door: BenflixDoor? = null
+
+        /** Glowfin: this model is Home's rows (no door) */
+        private var home = false
         private var loadJob: Job? = null
         private var loadedAt = 0L
         private var loadedFor: Pair<UUID, String>? = null
@@ -138,15 +149,22 @@ class DoorViewModel
         /** Fresh copies of the shuffled rows, held back while last time's are on screen */
         private val freshShuffled = java.util.concurrent.ConcurrentHashMap<String, DoorRowData>()
 
+        /** Glowfin: starts (or refreshes) Home's rows: the same top area and rows as the doors */
+        fun startHome(easy: Boolean = easyRows) {
+            home = true
+            start(null, easy)
+        }
+
         /** Starts (or refreshes) the door. Coming back within a short while keeps the rows as they are. */
         fun start(
-            door: BenflixDoor,
+            door: BenflixDoor?,
             easy: Boolean = easyRows,
         ) {
             val userId = serverRepository.currentUser?.id ?: return
+            if (door == null && !home) return
             easyRows = easy
-            // Each profile (and Kids, Big kids, Guest, Easy mode) keeps its own rows
-            val key = userId to "${KidsMode.level}-$easy"
+            // Each profile (and Kids, Big kids, Guest, Easy mode) keeps its own rows; picking rows in Settings loads again
+            val key = userId to "${KidsMode.level}-$easy-${PageRows.changes.intValue}"
             val fresh = System.currentTimeMillis() - loadedAt < REFRESH_MS
             if (this.door == door && loadedFor == key && (fresh || loadJob?.isActive == true)) return
             // The first start keeps a spot recalled from DoorMemory; another profile starts at the top
@@ -182,6 +200,8 @@ class DoorViewModel
                     when (door) {
                         BenflixDoor.MOVIES -> loadMovies(userId)
                         BenflixDoor.SHOWS -> loadShows(userId)
+                        BenflixDoor.ANIME -> loadAnime(userId)
+                        null -> loadHome(userId)
                         else -> Unit
                     }
                     if (fromSnapshot) {
@@ -240,16 +260,17 @@ class DoorViewModel
         }
 
         private fun snapshotKey(
-            door: BenflixDoor,
+            door: BenflixDoor?,
             userId: UUID,
-        ) = "door-${door.name}-$userId-${KidsMode.level}-${if (easyRows) "easy" else "all"}-$SNAPSHOT_FORMAT"
+        ) = "door-${door?.name ?: "HOME"}-$userId-${KidsMode.level}-${if (easyRows) "easy" else "all"}-$SNAPSHOT_FORMAT"
 
         /** "Try again" on the can't-reach-the-server note */
         fun retry() {
-            val door = door ?: return
+            val door = door
+            if (door == null && !home) return
             loadedAt = 0L
             loadJob?.cancel()
-            this.door = null
+            loadedFor = null
             _state.update { it.copy(loaded = false, offline = false) }
             start(door)
         }
@@ -303,81 +324,77 @@ class DoorViewModel
         /** Marks every row as loading, so the page draws grey placeholder rows until each one arrives */
         private fun startRows(order: List<String>) =
             _state.update {
+                // Rows switched off in Settings (or gone from the page) leave straight away
+                val kept = it.rows.filter { r -> r.key in order }
                 // Over last time's rows, nothing turns grey: each row just swaps to its fresh copy when it's in
-                if (fromSnapshot) it.copy(order = order) else it.copy(order = order, pending = order.toSet())
+                if (fromSnapshot) it.copy(rows = kept, order = order) else it.copy(rows = kept, order = order, pending = order.toSet())
             }
 
         private fun putOrRemove(
             order: List<String>,
             row: DoorRowData,
-        ) = if (row.items.isEmpty()) remove(row.key) else put(order, row)
+        ) = if (row.isEmpty || row.key !in order) remove(row.key) else put(order, row)
 
+        /** The rows this person switched on for [page] (Settings > Look > Home rows), after the ones that always stay */
+        private fun picked(
+            userId: UUID,
+            page: PageRows.Page,
+            fixed: List<String>,
+        ): List<String> = fixed + PageRows.shown(context, userId, page).filter { it !in fixed }
+
+        /**
+         * Glowfin Movies, For you (ui-7): Continue watching, Top 10 this week, Because you watched, Recently added,
+         * Recently released, Top rated you haven't seen, Stand-up. No anime: that has its own page now.
+         */
         private suspend fun loadMovies(userId: UUID) {
             val libs = libraries()
             val main = libs.ofKind(LibraryKind.MOVIES)
             val anime = libs.ofKind(LibraryKind.ANIME_MOVIES)
             val standUp = libs.ofKind(LibraryKind.STANDUP)
             val easy = KidsMode.isActive || easyRows
-            val order =
-                if (easy) {
-                    listOf(KEEP, MY_LIST, NEW)
-                } else {
-                    listOf(KEEP, MY_LIST, NEW, TOP_10, BECAUSE, MORE_GENRE, ANIME, STAND_UP)
-                }
+            val order = if (easy) listOf(KEEP, NEW) else picked(userId, PageRows.Page.MOVIES, listOf(KEEP))
             startRows(order)
-            aniListLibraries.warm(anime, userId)
-            _state.update {
-                it.copy(
-                    browse =
-                        listOfNotNull(
-                            DoorBrowseTile("Genres", Destination.DoorBrowse(BenflixDoor.MOVIES.name, BROWSE_GENRES)),
-                            DoorBrowseTile("Collections", Destination.DoorBrowse(BenflixDoor.MOVIES.name, BROWSE_COLLECTIONS)),
-                            DoorBrowseTile("Studios", Destination.DoorBrowse(BenflixDoor.MOVIES.name, BROWSE_STUDIOS)),
-                            DoorBrowseTile("All movies", Destination.DoorBrowse(BenflixDoor.MOVIES.name, BROWSE_ALL)),
-                        ),
-                )
-            }
-            // Phones: "Picked for you" is chosen once everything is in, so the card doesn't swap to another title
             var newPick: BaseItem? = null
             var becausePick: BaseItem? = null
             coroutineScope {
                 val disliked = async { data.disliked(userId) }
+                val animeIds = async { data.idsIn(userId, anime, BaseItemKind.MOVIE) }
                 launch {
-                    val items = data.resumeMovies(userId)
-                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", items))
-                }
-                launch {
-                    val items = data.myList(userId, BaseItemKind.MOVIE)
-                    putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
+                    val skip = animeIds.await()
+                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", data.resumeMovies(userId).filter { it.id !in skip }))
                 }
                 launch {
                     val dislikes = disliked.await()
-                    val items = data.newest(userId, main + anime + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
-                    putOrRemove(order, DoorRowData(NEW, "New", items, seeAll = true))
+                    val items = data.newest(userId, main + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                    putOrRemove(order, DoorRowData(NEW, "Recently added", items, seeAll = true))
                     newPick = pickFrom(items)
                 }
                 if (!easy) {
                     launch {
-                        val animeIds = data.idsIn(userId, anime, BaseItemKind.MOVIE)
                         val dislikes = disliked.await()
-                        val items = data.top10(userId, BaseItemKind.MOVIE, animeIds, anime = false).filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(TOP_10, "Top 10 movies today", items, style = DoorRowStyle.TOP10))
+                        val items = data.top10(userId, BaseItemKind.MOVIE, animeIds.await(), anime = false).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(TOP_10, "Top 10 movies this week", items, style = DoorRowStyle.TOP10))
                     }
                     launch {
                         val dislikes = disliked.await()
-                        val found = data.because(userId, BaseItemKind.MOVIE, dislikes)
+                        val skip = animeIds.await()
+                        val found = data.because(userId, BaseItemKind.MOVIE, dislikes) { it !in skip }
                         if (found == null) {
                             remove(BECAUSE)
                         } else {
-                            put(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
+                            putOrRemove(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
                             becausePick = pickFrom(found.second)
                         }
                     }
-                    launch { moreGenreRow(userId, order, BaseItemKind.MOVIE) }
                     launch {
                         val dislikes = disliked.await()
-                        val items = data.fromLibrary(userId, anime, BaseItemKind.MOVIE).filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(ANIME, "Anime movies", items, seeAll = true))
+                        val items = data.recentlyReleased(userId, main + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(RELEASED, "Recently released", items))
+                    }
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.topRatedUnseen(userId, main, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(TOP_RATED, "Top rated you haven't seen", items))
                     }
                     launch {
                         val items = data.fromLibrary(userId, standUp, BaseItemKind.MOVIE)
@@ -389,84 +406,239 @@ class DoorViewModel
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
 
+        /**
+         * Glowfin Shows, For you (ui-7): Continue watching, Next up, New episodes (the Missing episodes tag),
+         * Because you watched, Recently added, Top rated you haven't seen, Trending not on Tower. No anime.
+         */
         private suspend fun loadShows(userId: UUID) {
             val libs = libraries()
             val main = libs.ofKind(LibraryKind.SHOWS)
             val anime = libs.ofKind(LibraryKind.ANIME_SHOWS)
             val easy = KidsMode.isActive || easyRows
             val order =
-                if (easy) {
-                    listOf(KEEP, MY_LIST, NEW_SHOWS)
-                } else {
-                    listOf(KEEP, MY_LIST, NEW_EPISODES, NEW_SHOWS, TOP_10, BECAUSE, MORE_GENRE, ANIME, TOP_10_ANIME)
-                }
+                if (easy) listOf(KEEP, NEXT_UP, NEW) else picked(userId, PageRows.Page.SHOWS, listOf(KEEP, NEXT_UP))
             startRows(order)
-            aniListLibraries.warm(anime, userId)
-            _state.update {
-                it.copy(
-                    browse =
-                        listOf(
-                            DoorBrowseTile("Genres", Destination.DoorBrowse(BenflixDoor.SHOWS.name, BROWSE_GENRES)),
-                            DoorBrowseTile("Networks", Destination.DoorBrowse(BenflixDoor.SHOWS.name, BROWSE_STUDIOS)),
-                            DoorBrowseTile("All shows", Destination.DoorBrowse(BenflixDoor.SHOWS.name, BROWSE_ALL)),
-                        ),
-                )
-            }
-            // Phones: "Picked for you" is chosen once everything is in, so the card doesn't swap to another title
             var newPick: BaseItem? = null
             var becausePick: BaseItem? = null
             coroutineScope {
                 val disliked = async { data.disliked(userId) }
                 val animeIds = async { data.idsIn(userId, anime, BaseItemKind.SERIES) }
+
+                suspend fun notAnime(list: List<BaseItem>): List<BaseItem> {
+                    val skip = animeIds.await()
+                    return list.filter { (it.data.seriesId ?: it.id) !in skip }
+                }
                 launch {
-                    val keep = data.keepWatchingEpisodes(userId)
-                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", keep))
+                    val items = notAnime(data.continueEpisodes(userId))
+                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                }
+                launch {
+                    val next = notAnime(data.nextUp(userId))
+                    putOrRemove(order, DoorRowData(NEXT_UP, "Next up", next))
                     if (!easy) {
-                        val fresh = data.newEpisodes(userId, keep.mapNotNull { it.data.seriesId }.distinct())
+                        val fresh = data.newEpisodes(userId, next.mapNotNull { it.data.seriesId }.distinct())
                         putOrRemove(order, DoorRowData(NEW_EPISODES, "New episodes", fresh))
                     }
                 }
                 launch {
-                    val items = data.myList(userId, BaseItemKind.SERIES)
-                    putOrRemove(order, DoorRowData(MY_LIST, "My List", items, seeAll = items.size >= DoorDataService.ROW))
-                }
-                launch {
                     val dislikes = disliked.await()
-                    val items = data.newest(userId, main + anime, BaseItemKind.SERIES).filter { it.id !in dislikes }
-                    putOrRemove(order, DoorRowData(NEW_SHOWS, "New shows", items, seeAll = true))
+                    val items = data.newest(userId, main, BaseItemKind.SERIES).filter { it.id !in dislikes }
+                    putOrRemove(order, DoorRowData(NEW, "Recently added", items, seeAll = true))
                     newPick = pickFrom(items)
                 }
                 if (!easy) {
                     launch {
                         val dislikes = disliked.await()
-                        val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = false).filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(TOP_10, "Top 10 shows today", items, style = DoorRowStyle.TOP10))
-                    }
-                    launch {
-                        val dislikes = disliked.await()
-                        val found = data.because(userId, BaseItemKind.SERIES, dislikes)
+                        val skip = animeIds.await()
+                        val found = data.because(userId, BaseItemKind.SERIES, dislikes) { it !in skip }
                         if (found == null) {
                             remove(BECAUSE)
                         } else {
-                            put(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
+                            putOrRemove(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
                             becausePick = pickFrom(found.second)
                         }
                     }
-                    launch { moreGenreRow(userId, order, BaseItemKind.SERIES) }
                     launch {
                         val dislikes = disliked.await()
-                        val items = data.fromLibrary(userId, anime, BaseItemKind.SERIES).filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(ANIME, "Anime", items, seeAll = true))
+                        val items = data.topRatedUnseen(userId, main, BaseItemKind.SERIES).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(TOP_RATED, "Top rated you haven't seen", items))
                     }
                     launch {
-                        val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = true)
-                        putOrRemove(order, DoorRowData(TOP_10_ANIME, "Top 10 anime", items, style = DoorRowStyle.TOP10))
+                        val missing = data.trendingMissing(com.github.damontecres.wholphin.data.model.SeerrItemType.TV)
+                        putOrRemove(
+                            order,
+                            DoorRowData(TRENDING_MISSING, "Trending, not on Tower", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                        )
                     }
                 }
             }
             nextPick = becausePick ?: newPick
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
+
+        /**
+         * Glowfin Anime, For you (ui-7, Ben's pick A): Continue watching, Airing this season, Top 10 anime,
+         * Because you watched, Hidden gem anime, Anime movies, Recently added. Anime shows and movies together.
+         */
+        private suspend fun loadAnime(userId: UUID) {
+            val libs = libraries()
+            val shows = libs.ofKind(LibraryKind.ANIME_SHOWS)
+            val movies = libs.ofKind(LibraryKind.ANIME_MOVIES)
+            val order = picked(userId, PageRows.Page.ANIME, listOf(KEEP))
+            startRows(order)
+            aniListLibraries.warm(shows + movies, userId)
+            var newPick: BaseItem? = null
+            var becausePick: BaseItem? = null
+            coroutineScope {
+                val disliked = async { data.disliked(userId) }
+                val showIds = async { data.idsIn(userId, shows, BaseItemKind.SERIES) }
+                val movieIds = async { data.idsIn(userId, movies, BaseItemKind.MOVIE) }
+                launch {
+                    val series = showIds.await()
+                    val films = movieIds.await()
+                    val episodes = data.continueEpisodes(userId) + data.nextUp(userId)
+                    val items =
+                        (
+                            data.resumeMovies(userId).filter { it.id in films } +
+                                episodes.filter { (it.data.seriesId ?: it.id) in series }
+                        ).distinctBy { it.data.seriesId ?: it.id }
+                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                }
+                launch {
+                    val dislikes = disliked.await()
+                    val items = data.airing(userId, shows).filter { it.id !in dislikes }
+                    putOrRemove(order, DoorRowData(AIRING, "Airing this season", items))
+                }
+                launch {
+                    val items = data.top10(userId, BaseItemKind.SERIES, showIds.await(), anime = true)
+                    putOrRemove(order, DoorRowData(TOP_10_ANIME, "Top 10 anime", items, style = DoorRowStyle.TOP10))
+                }
+                launch {
+                    val dislikes = disliked.await()
+                    val series = showIds.await()
+                    val found = data.because(userId, BaseItemKind.SERIES, dislikes) { it in series }
+                    if (found == null) {
+                        remove(BECAUSE)
+                    } else {
+                        putOrRemove(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
+                        becausePick = pickFrom(found.second)
+                    }
+                }
+                launch {
+                    val dislikes = disliked.await()
+                    val items = data.hiddenGems(userId, shows, BaseItemKind.SERIES).filter { it.id !in dislikes }
+                    putOrRemove(order, DoorRowData(GEMS, "Hidden gem anime", items))
+                }
+                launch {
+                    val dislikes = disliked.await()
+                    val items = data.newest(userId, movies, BaseItemKind.MOVIE).filter { it.id !in dislikes }
+                    putOrRemove(order, DoorRowData(ANIME_MOVIES, "Anime movies", items, seeAll = true))
+                }
+                launch {
+                    val dislikes = disliked.await()
+                    val items =
+                        (data.newest(userId, shows, BaseItemKind.SERIES) + data.newest(userId, movies, BaseItemKind.MOVIE))
+                            .filter { it.id !in dislikes }
+                            .sortedByDescending { it.data.dateCreated }
+                            .take(DoorDataService.ROW)
+                    putOrRemove(order, DoorRowData(NEW, "Recently added", items))
+                    newPick = pickFrom(items)
+                }
+            }
+            nextPick = becausePick ?: newPick
+            _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
+        }
+
+        /**
+         * Glowfin Home (ui-6): Continue watching and Next up, then up to the rows this person picked (Recently
+         * added, Top 10, Because you watched, Trending not on Tower, Anime airing, Watch it again). "What's new"
+         * is drawn by the Home page itself, in the spot picked for it.
+         */
+        private suspend fun loadHome(userId: UUID) {
+            val libs = libraries()
+            val animeShows = libs.ofKind(LibraryKind.ANIME_SHOWS)
+            val animeMovies = libs.ofKind(LibraryKind.ANIME_MOVIES)
+            val easy = KidsMode.isActive || easyRows
+            val order =
+                if (easy) {
+                    listOf(KEEP, NEXT_UP, NEW)
+                } else {
+                    picked(userId, PageRows.Page.HOME, listOf(KEEP, NEXT_UP))
+                }
+            startRows(order)
+            var newPick: BaseItem? = null
+            coroutineScope {
+                val disliked = async { data.disliked(userId) }
+                launch {
+                    val items =
+                        (data.resumeMovies(userId) + data.continueEpisodes(userId))
+                            .sortedByDescending { it.data.userData?.lastPlayedDate }
+                            .take(DoorDataService.ROW)
+                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                }
+                launch { putOrRemove(order, DoorRowData(NEXT_UP, "Next up", data.nextUp(userId))) }
+                launch {
+                    val dislikes = disliked.await()
+                    val items =
+                        (
+                            data.newest(userId, allIds(libs), BaseItemKind.MOVIE) +
+                                data.newest(userId, allIds(libs), BaseItemKind.SERIES)
+                        ).filter { it.id !in dislikes }
+                            .sortedByDescending { it.data.dateCreated }
+                            .take(DoorDataService.ROW)
+                    putOrRemove(order, DoorRowData(NEW, "Recently added", items))
+                    newPick = pickFrom(items)
+                }
+                if (!easy) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val animeIds =
+                            data.idsIn(userId, animeMovies, BaseItemKind.MOVIE) + data.idsIn(userId, animeShows, BaseItemKind.SERIES)
+                        val movies = data.top10(userId, BaseItemKind.MOVIE, animeIds, anime = false)
+                        val shows = data.top10(userId, BaseItemKind.SERIES, animeIds, anime = false)
+                        // Movies and shows take turns, so both are in the ten
+                        val items =
+                            (0 until maxOf(movies.size, shows.size))
+                                .flatMap { listOfNotNull(movies.getOrNull(it), shows.getOrNull(it)) }
+                                .filter { it.id !in dislikes }
+                                .take(DoorDataService.TOP)
+                        putOrRemove(order, DoorRowData(TOP_10, "Top 10 this week", items, style = DoorRowStyle.TOP10))
+                    }
+                    launch {
+                        val dislikes = disliked.await()
+                        val found =
+                            data.because(userId, BaseItemKind.MOVIE, dislikes)
+                                ?: data.because(userId, BaseItemKind.SERIES, dislikes)
+                        if (found == null) {
+                            remove(BECAUSE)
+                        } else {
+                            putOrRemove(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
+                        }
+                    }
+                    launch {
+                        val missing = data.trendingMissing(null)
+                        putOrRemove(
+                            order,
+                            DoorRowData(TRENDING_MISSING, "Trending, not on Tower", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                        )
+                    }
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.airing(userId, animeShows).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(AIRING, "Anime airing this season", items))
+                    }
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.watchAgain(userId).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(WATCH_AGAIN, "Watch it again", items))
+                    }
+                }
+            }
+            nextPick = newPick
+            _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
+        }
+
+        private fun allIds(libs: List<Library>): List<UUID> = libs.map { it.itemId }
 
         /** Something unwatched with a wide picture, for the phone's "Picked for you" card */
         private fun pickFrom(items: List<BaseItem>): BaseItem? =
@@ -491,20 +663,31 @@ class DoorViewModel
             list: String,
         ) = "${serverRepository.currentUser?.id}-${door.name}-$list"
 
-        /** Everything behind a door, for the All movies / All shows grid; the second value is the anime ids */
-        suspend fun everything(door: BenflixDoor): Pair<List<BaseItem>, Set<UUID>> {
-            val userId = serverRepository.currentUser?.id ?: return emptyList<BaseItem>() to emptySet()
+        /**
+         * Everything behind a door, for the All movies / All shows grid. Glowfin: anime lives on its own page now,
+         * so Movies and Shows leave it out, and the Anime page's Shows and Movies tabs show only anime ([movies]).
+         */
+        suspend fun everything(
+            door: BenflixDoor,
+            movies: Boolean = door == BenflixDoor.MOVIES,
+        ): List<BaseItem> {
+            val userId = serverRepository.currentUser?.id ?: return emptyList()
             val libs = libraries()
-            val movies = door == BenflixDoor.MOVIES
             val type = if (movies) BaseItemKind.MOVIE else BaseItemKind.SERIES
-            val main = libs.ofKind(if (movies) LibraryKind.MOVIES else LibraryKind.SHOWS)
-            val anime = libs.ofKind(if (movies) LibraryKind.ANIME_MOVIES else LibraryKind.ANIME_SHOWS)
-            val standUp = if (movies) libs.ofKind(LibraryKind.STANDUP) else emptyList()
-            return coroutineScope {
-                val all = async { data.everything(userId, main + anime + standUp, type) }
-                val animeIds = async { data.idsIn(userId, anime, type) }
-                all.await() to animeIds.await()
-            }
+            val parents =
+                when {
+                    door == BenflixDoor.ANIME -> libs.ofKind(if (movies) LibraryKind.ANIME_MOVIES else LibraryKind.ANIME_SHOWS)
+                    movies -> libs.ofKind(LibraryKind.MOVIES) + libs.ofKind(LibraryKind.STANDUP)
+                    else -> libs.ofKind(LibraryKind.SHOWS)
+                }
+            return data.everything(userId, parents, type)
+        }
+
+        /** The anime library for the Anime page's Genres tab (shows first, else movies) */
+        suspend fun animeLibrary(): Library? {
+            val libs = libraries()
+            return libs.firstOrNull { LibraryKind.from(it.name, it.collectionType) == LibraryKind.ANIME_SHOWS }
+                ?: libs.firstOrNull { LibraryKind.from(it.name, it.collectionType) == LibraryKind.ANIME_MOVIES }
         }
 
         /** The whole list behind a row's "See all" tile */
@@ -525,7 +708,11 @@ class DoorViewModel
                 }
 
                 NEW, NEW_SHOWS -> {
-                    data.newest(userId, main + anime + (if (movies) standUp else emptyList()), type, limit = FULL)
+                    data.newest(userId, main + (if (movies) standUp else emptyList()), type, limit = FULL)
+                }
+
+                ANIME_MOVIES -> {
+                    data.newest(userId, libs.ofKind(LibraryKind.ANIME_MOVIES), BaseItemKind.MOVIE, limit = FULL)
                 }
 
                 ANIME -> {
@@ -573,20 +760,30 @@ class DoorViewModel
             const val MORE_GENRE = "moregenre"
             const val ANIME = "anime"
             const val STAND_UP = "standup"
+            const val NEXT_UP = "nextup"
+            const val RELEASED = "released"
+            const val TOP_RATED = "toprated"
+            const val TRENDING_MISSING = "trendingmissing"
+            const val AIRING = "airing"
+            const val GEMS = "gems"
+            const val ANIME_MOVIES = "animemovies"
+            const val WATCH_AGAIN = "watchagain"
 
             const val BROWSE_GENRES = "genres"
             const val BROWSE_COLLECTIONS = "collections"
             const val BROWSE_STUDIOS = "studios"
             const val BROWSE_ALL = "all"
+            const val BROWSE_ANIME_SHOWS = "animeshows"
+            const val BROWSE_ANIME_MOVIES = "animemovies"
 
             private const val REFRESH_MS = 60_000L
 
             /** Last time's snapshot is shown for up to a week (fresh rows replace it as they load) */
             private const val SNAPSHOT_MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
-            private const val SNAPSHOT_FORMAT = 1
+            private const val SNAPSHOT_FORMAT = 2
 
             /** Rows that come out different every time; a refresh keeps the copy already on screen */
-            private val SHUFFLED = setOf(BECAUSE, MORE_GENRE, ANIME, STAND_UP)
+            private val SHUFFLED = setOf(BECAUSE, MORE_GENRE, ANIME, STAND_UP, GEMS, WATCH_AGAIN)
 
             /** The doors' snapshots in memory, for this run of the app */
             private val memory = java.util.concurrent.ConcurrentHashMap<String, DoorSnapshot>()

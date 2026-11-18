@@ -1192,7 +1192,7 @@ fun DoorsHomePage(
         when (familyKind) {
             FamilyKind.KIDS -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
             FamilyKind.GUEST -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
-            else -> BenflixDoor.entries.toList()
+            else -> BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
         }
     val lite =
         remember {
@@ -1206,7 +1206,8 @@ fun DoorsHomePage(
     // Phones turned sideways and tablets use the TV layout
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     val picksViewModel: HomePicksViewModel = hiltViewModel()
-    LaunchedEffect(Unit) { picksViewModel.load() }
+    // Glowfin: only Kids and Guest still use the picture carousel, so only they load its picks
+    LaunchedEffect(smallHome) { if (smallHome) picksViewModel.load() }
     val picks by picksViewModel.picks.collectAsState()
 
     // The start-up light-up (approved in-light), once, right after a profile is picked: the rail's door icons
@@ -1368,6 +1369,27 @@ fun DoorsHomePage(
                     }
                 },
     ) {
+        if (!family) {
+            // Glowfin (ui-6): the top area + rows Home, with the news as its "What's new" row
+            val news =
+                arrangeHomeRows(rows, WHATS_NEW_CARDS).rows.map { row ->
+                    TodayCard(
+                        id = row.id,
+                        kind = row.kind,
+                        kindColor = row.kindColor,
+                        title = row.title,
+                        image = row.image,
+                        square = row.square,
+                        onClick = { onRow(row) },
+                    )
+                }
+            GlowfinHome(
+                news = news,
+                onSeeAllNews = if (rows.all.size > news.size) ({ seeAll = true }) else null,
+                onNewsSeen = { viewModel.markSeen() },
+            )
+            return@Box
+        }
         HomeSpotlight(
             greeting =
                 when (familyKind) {
@@ -1405,6 +1427,9 @@ private const val SETTLE_MS = 600f
 
 /** Up to four floating Today cards */
 private const val TODAY_CARDS = 4
+
+/** Glowfin Home's "What's new" row holds a few more */
+private const val WHATS_NEW_CARDS = 10
 
 private const val DOOR_STAGGER_MS = 70f
 private const val DOOR_GROW_MS = 560f

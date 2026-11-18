@@ -857,7 +857,7 @@ private fun Dots(
 
 /** A Today card floating with a soft shadow under it (approved fl-cards) */
 @Composable
-private fun FloatingCard(
+internal fun FloatingCard(
     card: TodayCard,
     scale: Float,
     modifier: Modifier = Modifier,
@@ -874,7 +874,7 @@ private fun FloatingCard(
                 focusedContentColor = BenflixColors.Text,
             ),
         border = focusRing(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.height(CARD_HEIGHT * scale).shadow(14.dp, shape, clip = false),
     ) {
         // Ben 2026-11-17: the cover art fills almost the card's whole height so you see all of it, the words are
@@ -933,7 +933,7 @@ private fun FloatingCard(
 }
 
 @Composable
-private fun SeeAllCard(
+internal fun SeeAllCard(
     onClick: () -> Unit,
     scale: Float,
 ) {
@@ -949,7 +949,7 @@ private fun SeeAllCard(
                 focusedContentColor = BenflixColors.Text,
             ),
         border = focusRing(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = Modifier.shadow(14.dp, shape, clip = false),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.height(CARD_HEIGHT * scale).padding(horizontal = 20.dp)) {

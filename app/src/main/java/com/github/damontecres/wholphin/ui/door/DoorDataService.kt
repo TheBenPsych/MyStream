@@ -285,6 +285,8 @@ class DoorDataService
             userId: UUID,
             type: BaseItemKind,
             exclude: Set<UUID>,
+            /** Glowfin: only titles that pass this (anime only on Anime, no anime on Movies and Shows) */
+            within: ((UUID) -> Boolean)? = null,
         ): Pair<String, List<BaseItem>>? {
             val watchType = if (type == BaseItemKind.SERIES) BaseItemKind.EPISODE else BaseItemKind.MOVIE
             val played =
@@ -312,7 +314,7 @@ class DoorDataService
                             dto.name?.let { dto.id to it }
                         }
                     }.distinctBy { it.first }
-                    .filter { it.first !in exclude }
+                    .filter { it.first !in exclude && (within == null || within(it.first)) }
                     .take(BECAUSE_TRIES)
             for ((id, name) in sources) {
                 val similar =
@@ -326,13 +328,173 @@ class DoorDataService
                                     limit = ROW,
                                 ),
                             ).content.items
-                            .filter { it.type == type && it.id !in exclude }
+                            .filter { it.type == type && it.id !in exclude && (within == null || within(it.id)) }
                             .map { BaseItem(it) }
                     }
                 if (similar.size >= BECAUSE_MIN) return name to similar
             }
             return null
         }
+
+        /** Glowfin "Continue watching" for shows: only episodes you're partway through, one per show */
+        suspend fun continueEpisodes(userId: UUID): List<BaseItem> =
+            safe {
+                api.itemsApi
+                    .getResumeItems(
+                        GetResumeItemsRequest(
+                            userId = userId,
+                            fields = SlimItemFields,
+                            limit = ROW,
+                            mediaTypes = listOf(MediaType.VIDEO),
+                            includeItemTypes = listOf(BaseItemKind.EPISODE),
+                            enableTotalRecordCount = false,
+                        ),
+                    ).content.items
+                    .filterNot { NextEpisode.isWatchedEpisode(it) }
+                    .map { BaseItem(it, true) }
+                    .distinctBy { it.data.seriesId ?: it.id }
+            }
+
+        /** Glowfin "Next up": the next episode of each show you're watching (not ones you're partway through) */
+        suspend fun nextUp(userId: UUID): List<BaseItem> =
+            safe {
+                api.tvShowsApi
+                    .getNextUp(
+                        GetNextUpRequest(
+                            userId = userId,
+                            fields = SlimItemFields,
+                            limit = ROW,
+                            enableResumable = false,
+                            enableUserData = true,
+                            enableRewatching = false,
+                            nextUpDateCutoff = LocalDateTime.now().minusDays(NEXT_UP_DAYS),
+                            enableTotalRecordCount = false,
+                        ),
+                    ).content.items
+                    .let { NextEpisode.fixNextUp(api, it, userId, SlimItemFields) }
+                    .map { BaseItem(it, true) }
+                    .distinctBy { it.data.seriesId ?: it.id }
+            }
+
+        /** Glowfin "Recently released": newest by release date in these libraries */
+        suspend fun recentlyReleased(
+            userId: UUID,
+            parentIds: List<UUID>,
+            type: BaseItemKind,
+        ): List<BaseItem> =
+            fromLibraries(parentIds) { parentId ->
+                GetItemsRequest(
+                    userId = userId,
+                    parentId = parentId,
+                    includeItemTypes = listOf(type),
+                    recursive = true,
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.PREMIERE_DATE),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                )
+            }.sortedByDescending { it.data.premiereDate }
+                .take(ROW)
+
+        /** Glowfin "Top rated you haven't seen": the best scores, unwatched, in these libraries */
+        suspend fun topRatedUnseen(
+            userId: UUID,
+            parentIds: List<UUID>,
+            type: BaseItemKind,
+        ): List<BaseItem> =
+            fromLibraries(parentIds) { parentId ->
+                GetItemsRequest(
+                    userId = userId,
+                    parentId = parentId,
+                    includeItemTypes = listOf(type),
+                    recursive = true,
+                    isPlayed = false,
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                )
+            }.sortedByDescending { it.data.communityRating ?: 0f }
+                .take(ROW)
+
+        /** Glowfin "Airing this season": anime shows still airing, the ones with the newest episodes first */
+        suspend fun airing(
+            userId: UUID,
+            parentIds: List<UUID>,
+        ): List<BaseItem> =
+            fromLibraries(parentIds) { parentId ->
+                GetItemsRequest(
+                    userId = userId,
+                    parentId = parentId,
+                    includeItemTypes = listOf(BaseItemKind.SERIES),
+                    recursive = true,
+                    seriesStatus = listOf(org.jellyfin.sdk.model.api.SeriesStatus.CONTINUING),
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.DATE_LAST_CONTENT_ADDED),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                )
+            }.sortedByDescending { it.data.dateLastMediaAdded }
+                .take(ROW)
+
+        /** Glowfin "Hidden gem anime": well scored, unwatched, picked at random */
+        suspend fun hiddenGems(
+            userId: UUID,
+            parentIds: List<UUID>,
+            type: BaseItemKind,
+        ): List<BaseItem> =
+            fromLibraries(parentIds) { parentId ->
+                GetItemsRequest(
+                    userId = userId,
+                    parentId = parentId,
+                    includeItemTypes = listOf(type),
+                    recursive = true,
+                    isPlayed = false,
+                    minCommunityRating = GEM_MIN_SCORE,
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.RANDOM),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                )
+            }.shuffled()
+                .take(ROW)
+
+        /** Glowfin Home "Watch it again": favourites you've finished, picked at random */
+        suspend fun watchAgain(userId: UUID): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    isPlayed = true,
+                    minCommunityRating = AGAIN_MIN_SCORE,
+                    imageTypes = listOf(ImageType.PRIMARY),
+                    sortBy = listOf(ItemSortBy.RANDOM),
+                    fields = SlimItemFields,
+                    enableUserData = true,
+                    limit = ROW,
+                ),
+            )
+
+        /**
+         * Glowfin "Trending, not on Tower": what's trending (from Requests) that isn't here yet. [type] picks
+         * movies or shows (null = both); anime is left to the Anime page and Requests.
+         */
+        suspend fun trendingMissing(type: SeerrItemType?): List<DiscoverItem> =
+            safe {
+                if (!seerrService.active.first()) return@safe emptyList()
+                trending()
+                    .filter { (type == null || it.type == type) && it.jellyfinItemId == null && !it.isAnime }
+                    .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                    .take(ROW)
+            }
 
         /** A row from one library (Anime, Stand-up): unwatched first, best rated */
         suspend fun fromLibrary(
@@ -512,6 +674,8 @@ class DoorDataService
             private const val ID_CACHE_MS = 60L * 60 * 1000
             private const val NEXT_UP_DAYS = 60L
             private const val NEW_EPISODE_DAYS = 14L
+            private const val GEM_MIN_SCORE = 7.5
+            private const val AGAIN_MIN_SCORE = 7.0
 
             /** Kids rows ask for a little less */
             val rowLimit: Int get() = if (KidsMode.isActive) 15 else ROW

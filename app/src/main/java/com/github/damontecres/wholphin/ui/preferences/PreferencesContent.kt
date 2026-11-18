@@ -156,6 +156,7 @@ fun PreferencesContent(
     var showLocaleChoiceDialog by remember { mutableStateOf(false) }
     var showBirthdayDialog by remember { mutableStateOf(false) }
     var showHiddenGenres by remember { mutableStateOf(false) }
+    var showHomeRows by remember { mutableStateOf(false) }
     var showParentPin by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -667,6 +668,17 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.HomeRowsPref -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showHomeRows = true },
+                                            modifier = focusModifier,
+                                            summary = "Pick the rows on Home, Movies, Shows and Anime",
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
                                     AppPreference.HiddenGenresPref -> {
                                         val hiddenCount = HiddenGenres.hidden.size
                                         ClickPreference(
@@ -1080,6 +1092,15 @@ fun PreferencesContent(
         LocaleChoiceDialog(
             onDismissRequest = { showLocaleChoiceDialog = false },
         )
+    }
+    if (showHomeRows) {
+        val userId = currentUser?.id
+        if (userId != null) {
+            com.github.damontecres.wholphin.ui.door
+                .PageRowsDialog(userId = userId, onDismiss = { showHomeRows = false })
+        } else {
+            showHomeRows = false
+        }
     }
     if (showHiddenGenres) {
         HiddenGenresDialog(onDismiss = { showHiddenGenres = false })

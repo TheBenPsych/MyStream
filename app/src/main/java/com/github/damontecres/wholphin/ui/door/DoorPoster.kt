@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -26,22 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.doorColor
@@ -51,7 +42,6 @@ import com.github.damontecres.wholphin.ui.components.PosterHoldMenu
 import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -245,9 +235,8 @@ fun yearText(item: BaseItem): String? =
     }
 
 /**
- * A Top 10 poster (approved t2-today): today's tall outlined number tucked half behind the poster.
- * The number turns white while you're on it. Numbers are spaced by their ink, so 9 to 10 looks the
- * same as 1 to 2.
+ * A Top 10 poster (Ben's T1 pick): the glowing Anton number in its own equal-width box BESIDE the poster,
+ * never tucked behind it, so every number (even the thin "1") is fully seen.
  */
 @Composable
 fun DoorTop10Poster(
@@ -259,33 +248,15 @@ fun DoorTop10Poster(
     modifier: Modifier = Modifier,
     onFocus: (() -> Unit)? = null,
 ) {
-    var focused by remember { mutableStateOf(false) }
     val nameStrip =
         com.github.damontecres.wholphin.ui.cards
             .cardNameHeight(strip = true)
     val posterHeight = width / POSTER_RATIO
-    val numberHeight = posterHeight * 0.92f
-    val numberSize = with(LocalDensity.current) { numberHeight.toSp() }
-    // Bebas Neue's "1" has wide side space: pull numbers starting with 1 in a little
-    val pull = if (rank.toString().startsWith("1")) -numberHeight * 0.08f else 0.dp
-    Row(verticalAlignment = Alignment.Bottom, modifier = modifier) {
-        Text(
-            text = rank.toString(),
-            style =
-                TextStyle(
-                    fontSize = numberSize,
-                    fontFamily = BenflixTitleFont,
-                    lineHeight = numberSize,
-                    letterSpacing = (-1).sp,
-                    drawStyle = Stroke(width = 5f, join = StrokeJoin.Round),
-                ),
-            color = if (focused) BenflixColors.Text else TOP10_GREY,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .offset(x = pull, y = numberHeight * 0.07f)
-                    .padding(bottom = if (showName) nameStrip else 0.dp),
+    Row(verticalAlignment = Alignment.Top, modifier = modifier) {
+        com.github.damontecres.wholphin.ui.components.GlowRankNumber(
+            rank = rank,
+            posterHeight = posterHeight,
+            modifier = Modifier.padding(end = com.github.damontecres.wholphin.ui.components.RankGap),
         )
         DoorPoster(
             item = item,
@@ -293,15 +264,9 @@ fun DoorTop10Poster(
             showName = showName,
             onClick = onClick,
             onFocus = onFocus,
-            modifier =
-                Modifier
-                    .offset(x = pull - width * 0.24f)
-                    .onFocusChanged { focused = it.hasFocus },
         )
     }
 }
-
-private val TOP10_GREY = Color(0xFF5A5E6A)
 
 /** The tile at the end of a row that opens the whole list */
 @Composable
