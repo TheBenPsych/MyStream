@@ -10,7 +10,6 @@ import com.github.damontecres.wholphin.data.JellyfinServerDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinServer
 import com.github.damontecres.wholphin.data.model.JellyfinUser
-import com.github.damontecres.wholphin.services.BenflixFunFacts
 import com.github.damontecres.wholphin.services.BenflixParentPin
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
 import com.github.damontecres.wholphin.services.DisplayPreferencesService
@@ -76,7 +75,6 @@ class SwitchUserViewModel
         val navigationManager: NavigationManager,
         val setupNavigationManager: SetupNavigationManager,
         val imageUrlService: ImageUrlService,
-        private val funFacts: BenflixFunFacts,
         private val benflixSeerrLink: BenflixSeerrLink,
         private val profilePictureSync: ProfilePictureSync,
         private val parentPin: BenflixParentPin,
@@ -213,9 +211,6 @@ class SwitchUserViewModel
             try {
                 val api = jellyfin.createApi(server.url, accessToken = user.accessToken)
                 if (!wallFresh) loadNewPosterWall(api, user, wallPrefs, wallKey)
-                // Benflix: a fun fact for the bottom of the screen
-                _state.update { it.copy(funFact = funFacts.pick(api, user.id)) }
-                funFacts.learnMore(api, user.id)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -621,8 +616,6 @@ data class SwitchUserState(
     val serverVersionSupported: ServerVersionSupported = ServerVersionSupported.UNKNOWN,
     // Poster image addresses for the sliding wall behind the profiles
     val posterWall: List<String> = emptyList(),
-    // A "Did you know?" fact for the bottom of the screen
-    val funFact: String? = null,
 )
 
 private const val POSTER_WALL_COUNT = 12

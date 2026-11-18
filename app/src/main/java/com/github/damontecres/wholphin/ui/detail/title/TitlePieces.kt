@@ -1,25 +1,20 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
@@ -55,35 +50,6 @@ fun TitleCastRow(
         TitleGrid(scope, list.size) { index, width ->
             val p = list[index]
             PersonCard(person = p, onClick = { onClick(p) }, onLongClick = {}, modifier = Modifier.width(width))
-        }
-    }
-}
-
-/** The Did you know tab: every fact about this title, one under the other */
-@Composable
-fun TitleFacts(
-    scope: TitleTabScope,
-    facts: List<String>,
-    accent: Color,
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            Modifier
-                .padding(horizontal = scope.side)
-                .then(if (scope.wide) Modifier.widthIn(max = 900.dp) else Modifier.fillMaxWidth()),
-    ) {
-        facts.distinct().forEach { fact ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    Modifier
-                        .padding(top = 3.dp)
-                        .width(3.dp)
-                        .height(18.dp)
-                        .background(accent, RoundedCornerShape(2.dp)),
-                )
-                Text(fact, color = BenflixColors.Soft, fontSize = BenflixType.body, lineHeight = BenflixType.body * 1.4f)
-            }
         }
     }
 }

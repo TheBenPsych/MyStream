@@ -10,34 +10,26 @@ class HomeNewsPanelTest {
         news: Boolean = true,
     ) = HomeRow(id = id, kind = "k", title = id, kindColor = HomeKind.Other, image = null, destination = null, news = news)
 
-    private val facts = listOf(row("fact-1", false), row("fact-2", false))
-
     @Test
-    fun quietDayFillsWithOnTheWayAndAFact() {
-        val list = arrangeHomeRows(HomeParts(listOf(row("ep-1"), row("req-1")), listOf(row("way-1"), row("way-2")), facts), 6)
-        assertEquals(listOf("ep-1", "req-1", "way-1", "way-2", "fact-1"), list.rows.map { it.id })
+    fun quietDayShowsNewsThenOnTheWay() {
+        val list = arrangeHomeRows(HomeParts(listOf(row("ep-1"), row("req-1")), listOf(row("way-1"), row("way-2"))), 6)
+        assertEquals(listOf("ep-1", "req-1", "way-1", "way-2"), list.rows.map { it.id })
         assertEquals(0, list.more)
-    }
-
-    @Test
-    fun veryQuietDayGetsTwoFacts() {
-        val list = arrangeHomeRows(HomeParts(listOf(row("ep-1")), emptyList(), facts), 6)
-        assertEquals(listOf("ep-1", "fact-1", "fact-2"), list.rows.map { it.id })
     }
 
     @Test
     fun busyDayKeepsTheLastLineForSeeAll() {
         val news = (1..9).map { row("ep-$it") }
-        val list = arrangeHomeRows(HomeParts(news, listOf(row("way-1")), facts), 6)
+        val list = arrangeHomeRows(HomeParts(news, listOf(row("way-1"))), 6)
         assertEquals(5, list.rows.size)
         assertEquals(5, list.more)
         assertEquals("ep-1", list.rows.first().id)
     }
 
     @Test
-    fun exactlyFullHasNoFact() {
+    fun exactlyFullShowsEverything() {
         val news = (1..6).map { row("ep-$it") }
-        val list = arrangeHomeRows(HomeParts(news, emptyList(), facts), 6)
+        val list = arrangeHomeRows(HomeParts(news, emptyList()), 6)
         assertEquals(6, list.rows.size)
         assertEquals(0, list.more)
         assertEquals("ep-6", list.rows.last().id)

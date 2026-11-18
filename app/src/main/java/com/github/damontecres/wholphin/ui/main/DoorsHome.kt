@@ -62,7 +62,6 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.request.GetNextUpRequest
-import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -75,18 +74,18 @@ import javax.inject.Inject
  */
 data class HomeRow(
     val id: String,
-    /** The small coloured line: "New episode · S3 E12", "Ready to watch", "On the way · 2h left", "Did you know" */
+    /** The small coloured line: "New episode · S3 E12", "Ready to watch", "On the way · 2h left" */
     val kind: String,
-    /** The name (or the fact), up to 2 lines; a longer one slides by when the row is picked */
+    /** The name, up to 2 lines; a longer one slides by when the row is picked */
     val title: String,
-    /** Green = ready to watch, amber = on the way, teal = Did you know, grey = everything else */
+    /** Green = ready to watch, amber = on the way, grey = everything else */
     val kindColor: Color,
     val image: String?,
     val destination: Destination?,
     /** A square picture (music) instead of a poster */
     val square: Boolean = false,
     val news: Boolean = false,
-    /** The whole message, shown in a pop-up when the row has nowhere to go (a note from Ben, a built-in fact) */
+    /** The whole message, shown in a pop-up when the row has nowhere to go (a note from Ben) */
     val fullText: String? = null,
     /** A note that talks about one part of Benflix gets a button in its pop-up to go there ("Open Live TV") */
     val goTo: Pair<String, Destination>? = null,
@@ -98,23 +97,20 @@ data class HomeRow(
 object HomeKind {
     val Ready = BenflixColors.Ok
     val OnTheWay = BenflixColors.Movies
-    val Fact = BenflixColors.LiveTv
     val Other = BenflixColors.Muted
 }
 
-/** Everything Home could show: your news (newest first), your requests on the way, and Did you know facts */
+/** Everything Home could show: your news (newest first), and your requests on the way */
 data class HomeParts(
     val news: List<HomeRow> = emptyList(),
     val onTheWay: List<HomeRow> = emptyList(),
-    val facts: List<HomeRow> = emptyList(),
 ) {
-    fun without(ids: Set<String>) =
-        HomeParts(news.filter { it.id !in ids }, onTheWay.filter { it.id !in ids }, facts.filter { it.id !in ids })
+    fun without(ids: Set<String>) = HomeParts(news.filter { it.id !in ids }, onTheWay.filter { it.id !in ids })
 
-    /** Everything See all lists (facts aren't news, so they stay on Home only) */
+    /** Everything See all lists */
     val all: List<HomeRow> get() = news + onTheWay
 
-    val isEmpty: Boolean get() = news.isEmpty() && onTheWay.isEmpty() && facts.isEmpty()
+    val isEmpty: Boolean get() = news.isEmpty() && onTheWay.isEmpty()
 }
 
 /** What the panel shows: [rows], and how many more are under See all */
@@ -157,8 +153,7 @@ fun noteLink(
 /**
  * Home's greeting, weather and list (approved f3-panel, 2026-11-10): up to 4 rows. News about new episodes of
  * shows you watch, a new season of a show you watched, new music from artists you follow, a new book volume,
- * a request that's ready, and an app update; then your own requests that are still on the way; then a
- * "Did you know" fact that changes every time Home opens. Nothing from Live TV or Games. A news row goes away
+ * a request that's ready, and an app update; then your own requests that are still on the way. Nothing from Live TV or Games. A news row goes away
  * once opened, after 3 days, or when newer news of the same kind pushes it out. Each profile only sees its own.
  * The weather comes from Tower (a town typed once on the Server page), never from the TV's or phone's location.
  */
@@ -172,7 +167,6 @@ class HomeDoorsViewModel
         private val requestReadyService: RequestReadyService,
         private val books: com.github.damontecres.wholphin.services.BenflixBooks,
         private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
-        private val funFacts: com.github.damontecres.wholphin.services.BenflixFunFacts,
         private val displayPreferencesService: com.github.damontecres.wholphin.services.DisplayPreferencesService,
         private val notes: com.github.damontecres.wholphin.services.BenflixNotes,
         private val doorData: com.github.damontecres.wholphin.ui.door.DoorDataService,
@@ -208,12 +202,9 @@ class HomeDoorsViewModel
 
         private fun openedKey() = "opened-" + (serverRepository.currentUser?.id?.toString() ?: "none")
 
-        // The fact titles shown last time, so the next Home open shows different ones
-        private var lastFacts: List<String> = emptyList()
-
         /**
          * Rows this profile cleared (the X, Clear all, or opening news). Saved on the server with the profile, so
-         * the TV, phone and web all hide the same rows. Facts are only hidden until Home opens again (they change anyway).
+         *the TV, phone and web all hide the same rows.
          */
         private var cleared: Set<String> = emptySet()
         private val clearedNow = mutableSetOf<String>()
@@ -395,7 +386,6 @@ class HomeDoorsViewModel
             _weather.value = savedWeather()
             viewModelScope.launchIO {
                 var news: List<HomeRow> = emptyList()
-                var facts: List<HomeRow> = emptyList()
                 try {
                     val opened = prefs.getStringSet(openedKey(), emptySet()).orEmpty()
                     clearedNow.clear()
@@ -406,7 +396,6 @@ class HomeDoorsViewModel
                         val bookRows = async { bookNews() }
                         val requests = async { requestNews() }
                         val notFound = async { withTimeoutOrNull(CANT_FIND_WAIT_MS) { cantFindNews() }.orEmpty() }
-                        val fact = async { withTimeoutOrNull(FACT_WAIT_MS) { factRows() }.orEmpty() }
                         val weather = async { withTimeoutOrNull(WEATHER_WAIT_MS) { towerWeather() } }
                         val saved = async { withTimeoutOrNull(PREFS_WAIT_MS) { savedPrefs() }.orEmpty() }
                         val setup = async { withTimeoutOrNull(WEATHER_WAIT_MS) { setupNews() }.orEmpty() }
@@ -419,10 +408,9 @@ class HomeDoorsViewModel
                             ).filter { it.id !in opened }
                                 .sortedByDescending { it.at }
                                 .take(MAX_NEWS)
-                        facts = fact.await()
                         weather.await()?.let { _weather.value = it.ifBlank { null } }
                     }
-                    _rows.value = HomeParts(news, shown(onTheWayRows()), facts)
+                    _rows.value = HomeParts(news, shown(onTheWayRows()))
                     updateDot()
                 } catch (ex: CancellationException) {
                     throw ex
@@ -435,7 +423,7 @@ class HomeDoorsViewModel
                 // changes if something did)
                 try {
                     requestReadyService.refresh(minGapMs = REQUESTS_GAP_MS)
-                    val again = HomeParts(shown(news), shown(onTheWayRows()), shown(facts))
+                    val again = HomeParts(shown(news), shown(onTheWayRows()))
                     if (again != _rows.value) _rows.value = again
                     if (_weather.value == null) towerWeather()?.let { _weather.value = it.ifBlank { null } }
                 } catch (ex: CancellationException) {
@@ -467,16 +455,14 @@ class HomeDoorsViewModel
         /** Clear all: the whole list goes away (new news still shows when it comes) */
         fun clearAll() {
             val parts = _rows.value
-            val ids = (parts.all + parts.facts).map { it.id }
+            val ids = parts.all.map { it.id }
             HomeNewsDot.set(false)
             _rows.value = HomeParts()
             clearedNow += ids
             saveCleared(ids)
         }
 
-        private fun saveCleared(ids: List<String>) {
-            // Facts change every time Home opens, so they aren't saved
-            val keep = ids.filterNot { it.startsWith("fact-") }
+        private fun saveCleared(keep: List<String>) {
             if (keep.isEmpty()) return
             cleared = cleared + keep
             val userId = serverRepository.currentUser?.id ?: return
@@ -914,66 +900,6 @@ class HomeDoorsViewModel
                 )
             }
 
-        /**
-         * Two "Did you know" facts about movies or shows this person can watch (different every time Home opens).
-         * Tower picks them; if it can't be reached, one of the built-in facts (not about one title) instead.
-         */
-        private suspend fun factRows(): List<HomeRow> {
-            val fromTower =
-                try {
-                    val skip = lastFacts.joinToString(",")
-                    helper
-                        .getJson("/api/facts/home?n=2&max=$FACT_MAX_LENGTH&skip=$skip")
-                        .optJSONArray("facts")
-                        ?.let { list -> (0 until list.length()).mapNotNull { list.optJSONObject(it) } }
-                        .orEmpty()
-                        .mapNotNull { j ->
-                            val id = j.optString("id").toUUIDOrNull() ?: return@mapNotNull null
-                            val name = j.optString("name")
-                            val show = j.optString("type") == "Series"
-                            var fact = j.optString("fact").trim()
-                            if (fact.isBlank()) return@mapNotNull null
-                            // Say which title it's about when the fact doesn't
-                            if (name.isNotBlank() && !fact.contains(name.substringBefore(":").trim(), ignoreCase = true)) {
-                                fact = "$name: $fact"
-                            }
-                            // the title in front can make it too long to show whole: skip that one
-                            if (fact.length > FACT_MAX_LENGTH + FACT_NAME_ROOM) return@mapNotNull null
-                            HomeRow(
-                                id = "fact-$id",
-                                kind = "Did you know",
-                                title = fact,
-                                kindColor = HomeKind.Fact,
-                                image = poster(id),
-                                destination = Destination.MediaItem(id, if (show) BaseItemKind.SERIES else BaseItemKind.MOVIE),
-                            )
-                        }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.d(ex, "Home: Tower facts")
-                    emptyList()
-                }
-            if (fromTower.isNotEmpty()) {
-                lastFacts = fromTower.map { it.id.removePrefix("fact-") }
-                return fromTower
-            }
-            val userId = serverRepository.currentUser?.id ?: return emptyList()
-            return listOfNotNull(
-                funFacts.pick(api, userId)?.let {
-                    HomeRow(
-                        id = "fact-built-in",
-                        kind = "Did you know",
-                        title = it,
-                        kindColor = HomeKind.Fact,
-                        image = null,
-                        destination = null,
-                        fullText = it,
-                    )
-                },
-            )
-        }
-
         /** Tower's weather line with today's name in front ("" = no town set), saved for next time */
         private suspend fun towerWeather(): String? =
             try {
@@ -1034,14 +960,9 @@ class HomeDoorsViewModel
             const val CLEARED_KEY = "benflix.cleared"
             private const val MAX_CLEARED = 80
             private const val BOOK_NEWS_WAIT_MS = 1_200L
-            private const val FACT_WAIT_MS = 1_200L
             private const val WEATHER_WAIT_MS = 1_200L
             private const val REQUESTS_GAP_MS = 5 * 60_000L
 
-            // Ben: Home list words must never be cut. Two lines of the fact row hold about 72 letters on a
-            // phone and a TV (longer ones ended in "…"), so only facts that short are picked
-            private const val FACT_MAX_LENGTH = 72
-            private const val FACT_NAME_ROOM = 6
             private const val POSTER_HEIGHT = 240
             const val MAX_NEWS = 12
             private const val MAX_SEEN = 80
@@ -1050,8 +971,7 @@ class HomeDoorsViewModel
 
 /**
  * Home's news panel (approved hm-tall): up to [slots] lines (6 on a TV, 5 on phones). Your news newest first, then
- * On the way, then one Did you know at the bottom. A quiet day fills up with On the way and Did you know (two facts
- * when there's very little), so the panel never looks empty. A busy day shows what fits and keeps the last line
+ * On the way. A busy day shows what fits and keeps the last line
  * for "4 more" and See all.
  */
 fun arrangeHomeRows(
@@ -1060,14 +980,8 @@ fun arrangeHomeRows(
 ): HomeList {
     val all = parts.all
     if (all.size > slots) return HomeList(all.take(slots - 1), all.size - (slots - 1))
-    val out = all.toMutableList()
-    if (out.size < slots) out += parts.facts.take(1)
-    if (out.size < QUIET_ROWS && parts.facts.size > 1) out += parts.facts[1]
-    return HomeList(out.take(slots), 0)
+    return HomeList(all.take(slots), 0)
 }
-
-/** On a quiet day the panel is topped up with a second fact until it has this many rows */
-private const val QUIET_ROWS = 4
 
 /** "On the way, about 20 minutes left" becomes the small line "On the way · 20 min left" */
 fun onTheWayKind(line: String): String {
@@ -1269,7 +1183,7 @@ fun DoorsHomePage(
 
     val rows = liveRows
     val weather = liveWeather
-    // A row with nowhere to go (a note from Ben, "Ben fixed it", a built-in fact) opens a pop-up with all its words
+    // A row with nowhere to go (a note from Ben, "Ben fixed it") opens a pop-up with all its words
     var reading by remember { mutableStateOf<HomeRow?>(null) }
     var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     LaunchedEffect(refocus) {

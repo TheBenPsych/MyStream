@@ -1,8 +1,6 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -19,8 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,10 +53,8 @@ import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
 import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.R
-import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
-import com.github.damontecres.wholphin.services.BenflixFunFacts
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
@@ -71,14 +65,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.shareIn
-import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.api.BaseItemKind
 import javax.inject.Inject
 import kotlin.time.Duration
@@ -90,32 +79,11 @@ class ScreensaverViewModel
     constructor(
         private val screensaverService: ScreensaverService,
         val preferencesDataStore: DataStore<AppPreferences>,
-        private val funFacts: BenflixFunFacts,
-        private val api: ApiClient,
-        private val serverRepository: ServerRepository,
     ) : ViewModel() {
-        // Shared, so the picture and the fact below follow the same timer
         val currentItem =
             screensaverService
                 .createItemFlow(viewModelScope)
                 .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-
-        /** Benflix: a new "Did you know?" fact each time the picture changes */
-        @OptIn(ExperimentalCoroutinesApi::class)
-        val fact =
-            currentItem
-                .map { (it as? ScreensaverItem.CurrentItem)?.item }
-                .distinctUntilChanged { old, new -> old?.id == new?.id }
-                .mapLatest { item ->
-                    val userId = serverRepository.currentUser?.id
-                    if (item == null || userId == null) {
-                        null to false
-                    } else {
-                        // A fact about the movie or show on screen, otherwise a random "Did you know?"
-                        val picked = funFacts.forItem(item).randomOrNull() ?: funFacts.pick(api, userId)
-                        picked to (picked != null)
-                    }
-                }
     }
 
 sealed interface ScreensaverItem {
@@ -146,10 +114,8 @@ fun AppScreensaver(
     viewModel: ScreensaverViewModel = hiltViewModel(),
 ) {
     val currentItem by viewModel.currentItem.collectAsState(null)
-    val fact by viewModel.fact.collectAsState(null to false)
     AppScreensaverContent(
         currentItem = currentItem,
-        fact = fact,
         showClock = prefs.interfacePreferences.screensaverPreference.showClock,
         duration = prefs.interfacePreferences.screensaverPreference.duration.milliseconds,
         animate = prefs.interfacePreferences.screensaverPreference.animate,
@@ -165,7 +131,6 @@ fun AppScreensaverContent(
     duration: Duration,
     animate: Boolean,
     modifier: Modifier = Modifier,
-    fact: Pair<String?, Boolean> = null to false,
 ) {
     Box(
         modifier
@@ -311,36 +276,6 @@ fun AppScreensaverContent(
                     .align(Alignment.TopStart)
                     .padding(start = BenflixSpace.tvEdge, top = 32.dp),
         )
-        // Benflix: a "Did you know?" fact that changes with each picture
-        AnimatedVisibility(
-            visible = fact.second && fact.first != null,
-            enter = fadeIn(tween(1_500)),
-            exit = fadeOut(tween(1_500)),
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp)
-                    .widthIn(max = 460.dp),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .background(Color.Black.copy(alpha = .55f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-            ) {
-                Text(
-                    text = "DID YOU KNOW?",
-                    color = BenflixColors.Soft,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    fontSize = BenflixType.small,
-                )
-                // The fact fades over to the next one together with the picture
-                Crossfade(targetState = fact.first.orEmpty(), animationSpec = tween(2_000)) { text ->
-                    Text(text = text, color = Color.White, fontSize = BenflixType.body, maxLines = 6, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
     }
 }
 

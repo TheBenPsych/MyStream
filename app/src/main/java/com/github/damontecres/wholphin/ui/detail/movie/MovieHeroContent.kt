@@ -36,7 +36,6 @@ import com.github.damontecres.wholphin.ui.detail.HeroButton
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
-import com.github.damontecres.wholphin.ui.detail.title.TitleFacts
 import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
 import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
@@ -78,8 +77,8 @@ class MovieHeroActions(
 /**
  * Benflix Redesign 2: a movie's own page on the shared title page frame. Buttons: Resume (or Play),
  * Trailer (greyed out when there isn't one), My List, Rate, More. Tabs: Overview, More like this (with
- * In this collection, Ask for more like this and More from the director), Cast, Parents' guide and
- * Did you know. Kids and Easy read get bigger buttons and no Rate or asking.
+ * In this collection, Ask for more like this and More from the director), Cast and Parents' guide.
+ * Kids and Easy read get bigger buttons and no Rate or asking.
  */
 @Composable
 fun MovieHeroContent(
@@ -230,9 +229,6 @@ fun MovieHeroContent(
             }
             if (state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
-            }
-            if (state.facts.isNotEmpty()) {
-                add(TitleTab("Did you know") { scope -> TitleFacts(scope, state.facts, BenflixColors.Movies) })
             }
         }
     TitlePage(
