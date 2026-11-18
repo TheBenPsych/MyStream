@@ -36,7 +36,7 @@ fun AskForSimilarTab(
     showName: Boolean,
     onClick: (DiscoverItem) -> Unit,
 ) {
-    val note = "Only ${kind.label} · not on Benflix yet"
+    val note = "Only ${kind.label} · not on Glowfin yet"
     Column(Modifier.fillMaxWidth()) {
         AskShelf(
             items = best,
@@ -68,7 +68,7 @@ fun AskShelf(
     onClick: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
     name: String = "Ask for more like this",
-    note: String? = "Not on Benflix yet",
+    note: String? = "Not on Glowfin yet",
 ) {
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {

@@ -133,11 +133,11 @@ fun ChannelTitleSheet(
                     Text(
                         when {
                             schedule.custom != null -> {
-                                "A channel you made from Benflix movies and shows. No ads."
+                                "A channel you made from Glowfin movies and shows. No ads."
                             }
 
                             schedule.live == null -> {
-                                "A Benflix channel made from the movies and shows on Tower. " +
+                                "A Glowfin channel made from the movies and shows on Tower. " +
                                     "No ads, always something on."
                             }
 

@@ -129,7 +129,7 @@ private fun Lobby(
     Panel {
         Text("JOIN ON YOUR PHONES", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .6f))
         Text(
-            "Open Benflix on your phone, go to Games, and press Join party. Phones need to be on the same Wi-Fi as this ${if (isTv) "TV" else "phone"}.",
+            "Open Glowfin on your phone, go to Games, and press Join party. Phones need to be on the same Wi-Fi as this ${if (isTv) "TV" else "phone"}.",
             fontSize = 18.sp,
             lineHeight = 26.sp,
             color = Color.White,
@@ -384,7 +384,7 @@ fun PartyJoinScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
     ) {
-        Text("Benflix Party", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
+        Text("Glowfin Party", fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
         val v = view
         if (v == null) {
             Text(

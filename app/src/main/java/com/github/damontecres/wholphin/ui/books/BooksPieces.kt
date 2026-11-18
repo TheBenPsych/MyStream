@@ -170,7 +170,7 @@ fun BookCard(
         if (!isTv) {
             com.github.damontecres.wholphin.ui.cards.CardNameUnder(
                 name = tile.name,
-                line = if (tile.notHere) "Not on Benflix yet" else tile.line,
+                line = if (tile.notHere) "Not on Glowfin yet" else tile.line,
             )
         }
     }

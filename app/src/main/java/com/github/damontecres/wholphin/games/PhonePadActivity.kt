@@ -164,7 +164,7 @@ class PhonePadActivity : ComponentActivity() {
                     override fun onServiceResolved(info: NsdServiceInfo) {
                         val host = info.host ?: return
                         val game = info.attributes["game"]?.toString(Charsets.UTF_8).orEmpty()
-                        val tv = FoundTv(info.serviceName.removePrefix("Benflix "), game, host, info.port)
+                        val tv = FoundTv(info.serviceName.removePrefix("Glowfin ").removePrefix("Glowfin "), game, host, info.port)
                         runOnUiThread {
                             found.removeAll { it.name == tv.name }
                             found.add(tv)
@@ -286,7 +286,7 @@ class PhonePadActivity : ComponentActivity() {
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        text = "Start a game on the TV in Benflix. This phone needs to be on the same Wi-Fi.",
+                        text = "Start a game on the TV in Glowfin. This phone needs to be on the same Wi-Fi.",
                         color = Color.White.copy(alpha = .75f),
                         fontSize = 15.sp,
                         textAlign = TextAlign.Center,
@@ -316,7 +316,7 @@ class PhonePadActivity : ComponentActivity() {
                                 .clickable { finish() }
                                 .padding(12.dp),
                     ) {
-                        Text("Back to Benflix", color = Color.White.copy(alpha = .8f), fontSize = 15.sp)
+                        Text("Back to Glowfin", color = Color.White.copy(alpha = .8f), fontSize = 15.sp)
                     }
                 }
             }

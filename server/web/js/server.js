@@ -41,7 +41,7 @@ const PAGES = {};
 const TOOL_GROUPS = [
   { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
-  { id: "tppl", label: "People", icon: "user", line: "Messages, Benflix versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
+  { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
   { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
 ];
@@ -65,19 +65,19 @@ function toolTiles(on) {
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
 const SETUP_NEEDED = 15;
 const SETUP_WAITING = {
-  1: ["Benflix can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
-  2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Benflix inside their pages"],
+  1: ["Glowfin can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
+  2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Glowfin inside their pages"],
   3: ["Kids accounts in the web browser only see titles rated for kids", "Games in more console folders (like ps1 or fds) play everywhere"],
   4: ["Kids and Big kids game choices, and the \"Games that didn't start\" list", "Games on more than one disc, and browser play for games made of several files", "Drive health from Scrutiny on the Server page"],
   5: ["The family can ask for music (it waits for Ben's Approve)"],
-  6: ["The Lobby: a 3D room in web Benflix to watch together, chat and play pool"],
+  6: ["The Lobby: a 3D room in web Glowfin to watch together, chat and play pool"],
   7: ["TVs find Tower on the Wi-Fi by themselves, even after Tower's address changes"],
   8: ["Phones and TVs learn every way to reach Tower (home, internet name, Tailscale) so they never get stuck on one"],
   9: ["Tower installs helper updates by itself, only when nobody is watching (this is the last time you'll need this command)"],
   11: ["Music remembers what you played, your pins and your recent searches on every screen"],
   12: ["Artist pages show their popular songs and Fans also like, artists get photos overnight, and your playlists get Songs to add"],
   13: ["Send music to someone in the family, and find a song by a line of its words"],
-  14: ["Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Benflix and skip learning"],
+  14: ["Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Glowfin and skip learning"],
   15: ["When Radarr or Sonarr swap in a better copy, the movie or episode keeps its first date and doesn't show as new again"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
@@ -91,7 +91,7 @@ const setupNeed = async () => {
 };
 function setupCard(waiting) {
   return `<div class="srv-setup"><div class="t">${B.I("info")}Tower needs the setup command</div>
-    <p>This Benflix is newer than the helper on Tower. Run the command once and these start working:</p>
+    <p>This Glowfin is newer than the helper on Tower. Run the command once and these start working:</p>
     <ul>${waiting.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
     <code>${esc(SETUP_COMMAND)}</code>
     <div class="acts"><button class="btn small white" data-setup="copy">Copy</button><button class="btn small" data-setup="where">Where do I paste it?</button></div></div>`;
@@ -102,7 +102,7 @@ document.addEventListener("click", async (e) => {
   if (b.dataset.setup === "copy") {
     try { await navigator.clipboard.writeText(SETUP_COMMAND); b.textContent = "Copied"; } catch (err) { B.toast("Couldn't copy. Select the command and copy it by hand."); }
   } else {
-    B.ask("Where do I paste it?", `Open Unraid in your browser (http://${location.hostname.match(/^[\d.]+$/) ? location.hostname : "tower"}), click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, and Benflix keeps working while it runs.`, "OK", "Close");
+    B.ask("Where do I paste it?", `Open Unraid in your browser (http://${location.hostname.match(/^[\d.]+$/) ? location.hostname : "tower"}), click the Terminal button (the >_ icon at the top right), paste the command, and press Enter. It takes about a minute, and Glowfin keeps working while it runs.`, "OK", "Close");
   }
 });
 
@@ -156,7 +156,7 @@ PAGES.overview = (el) => {
       const need = (light, title, sub, acts) => `<div class="srv-need"><span class="dot ${light}"></span><div class="grow"><div class="t">${esc(title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div><div class="acts">${acts || ""}</div></div>`;
       // Health first (these colour the big line), then requests
       const health = [];
-      if (!info) health.push(["bad", "Benflix can't reach Jellyfin. Is Tower on?", "", ""]);
+      if (!info) health.push(["bad", "Glowfin can't reach Jellyfin. Is Tower on?", "", ""]);
       down.forEach((a) => health.push(["bad", `${a.nice} isn't running properly`, a.status, `<a class="btn small white" href="#/server/tools/apps">Go</a>`]));
       stuck.forEach((d) => health.push(["warn", `Stuck download: ${d.title}`, d.why || "It stopped moving", `<button class="btn small white" data-replace="${esc(d.app)}/${esc(String(d.id))}" data-title="${esc(d.title)}" data-episodes="${d.episodes || 1}">Find another</button>`]));
       if (setupWaiting) health.push(["warn", "Tower needs the setup command", "The yellow card above has it, with Copy", ""]);
@@ -412,7 +412,7 @@ PAGES.gameproblems = (el) => {
 
 // ---------- Web version: where these files came from ----------
 PAGES.webversion = (el) => {
-  el.innerHTML = `<p class="sub">Benflix in a browser gets its newest version from GitHub by itself, when Tower's helper starts and then every hour.</p><div id="wv">${loading()}</div>`;
+  el.innerHTML = `<p class="sub">Glowfin in a browser gets its newest version from GitHub by itself, when Tower's helper starts and then every hour.</p><div id="wv">${loading()}</div>`;
   call("GET", "api/web/version").then((s) => {
     if (current !== "webversion") return;
     $("#wv").innerHTML = `<div class="list">
@@ -458,7 +458,7 @@ PAGES.downloads = (el) => {
       const t = await tower(fresh);
       if (current !== "downloads") return;
       let html = problemsNote(t.problems);
-      if (!t.sonarr && !t.radarr) html += `<div class="note">Sonarr and Radarr aren't connected to the helper yet. Run the Benflix setup command on Tower again.</div>`;
+      if (!t.sonarr && !t.radarr) html += `<div class="note">Sonarr and Radarr aren't connected to the helper yet. Run the Glowfin setup command on Tower again.</div>`;
       const list = t.downloads || [];
       html += `<div class="list">` + (list.map((d) => `
         <div class="item"><span class="dot ${d.stuck ? "bad" : d.paused || d.queued ? "off" : ""}"></span>
@@ -575,7 +575,7 @@ PAGES.tracks = (el) => {
 
 // ---------- Jellyfin tools (part 2) ----------
 const TICKS_PER_MIN = 600000000;
-const PREFS_CLIENT = "Wholphin"; // where the Benflix app keeps notes and problem reports
+const PREFS_CLIENT = "Wholphin"; // where the Glowfin app keeps notes and problem reports
 const imgUrl = (id, h) => `api/web/jf/Items/${encodeURIComponent(id)}/Images/Primary?maxHeight=${h || 180}&api_key=${encodeURIComponent(B.me.token)}`;
 function when(iso) {
   const d = new Date(iso); if (isNaN(d)) return "";
@@ -724,7 +724,7 @@ PAGES.posters = (el) => {
   const pic = (url, pr, caption) => `<div class="fixer-pic ${tall(pr) ? "tall" : ""}">${url ? `<img src="${esc(url)}" alt="" style="object-fit:${pr.img === "Logo" ? "contain" : "cover"}">` : `<span class="dim">None</span>`}</div><div class="dim fixer-cap">${esc(caption)}</div>`;
   const draw = () => {
     if (current !== "posters" || !box()) return;
-    const nightLine = night && night.filled > 0 ? `<p class="dim">Last night Benflix filled in ${night.filled} missing picture${night.filled === 1 ? "" : "s"} by itself.</p>` : "";
+    const nightLine = night && night.filled > 0 ? `<p class="dim">Last night Glowfin filled in ${night.filled} missing picture${night.filled === 1 ? "" : "s"} by itself.</p>` : "";
     const pr = list && list[0];
     if (!pr) {
       box().innerHTML = nightLine + `<div class="list"><div class="empty">${done ? `All done! You fixed ${done}.` : "Nothing needs a look. Every poster looks good."}</div></div><button class="btn white" id="fpAgain">Check again</button>`;
@@ -775,7 +775,7 @@ PAGES.posters = (el) => {
 };
 
 PAGES.library = (el) => {
-  el.innerHTML = `<h2>Library</h2><p class="sub">How much is on Benflix, and scanning for new files.</p><div id="lb">${loading()}</div>`;
+  el.innerHTML = `<h2>Library</h2><p class="sub">How much is on Glowfin, and scanning for new files.</p><div id="lb">${loading()}</div>`;
   const draw = async () => {
     try {
       const weekAgo = new Date(Date.now() - 7 * 86400000);
@@ -909,7 +909,7 @@ PAGES.people = (el) => {
 };
 
 PAGES.problems = (el) => {
-  el.innerHTML = `<h2>Problems</h2><p class="sub">Problems people reported from Benflix, and problems from the server in the last day.</p>
+  el.innerHTML = `<h2>Problems</h2><p class="sub">Problems people reported from Glowfin, and problems from the server in the last day.</p>
     <h3 class="section-title">Reported by people</h3><div id="rep">${loading()}</div>
     <h3 class="section-title">From the server</h3><div id="srv">${loading()}</div>`;
   let reports = [];
@@ -994,13 +994,13 @@ PAGES.messages = (el) => {
         </div></div>
         <h3 class="section-title">Welcome note</h3>
         <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
-          <textarea class="field" id="welText" rows="3" placeholder="Shows once to each person the first time they open Benflix" style="resize:vertical;margin:0">${esc(welcome ? welcome.text : "")}</textarea>
+          <textarea class="field" id="welText" rows="3" placeholder="Shows once to each person the first time they open Glowfin" style="resize:vertical;margin:0">${esc(welcome ? welcome.text : "")}</textarea>
           <div class="row"><span style="flex:1"></span><button class="btn small" data-wel="clear">Remove</button><button class="btn small red" data-wel="save">Save welcome note</button></div>
         </div></div>
         <h3 class="section-title">Pop-up right now</h3>
         <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
           <input class="field" id="popText" placeholder="Like: Restarting the server in 5 minutes" style="margin:0">
-          <div class="row"><span class="s" style="flex:1">Shows for 15 seconds on every Benflix screen that's on.</span><button class="btn small red" id="popSend">Send pop-up</button></div>
+          <div class="row"><span class="s" style="flex:1">Shows for 15 seconds on every Glowfin screen that's on.</span><button class="btn small red" id="popSend">Send pop-up</button></div>
         </div></div>`;
     } catch (err) { if (current === "messages") $("#ms").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
@@ -1029,7 +1029,7 @@ PAGES.messages = (el) => {
         let n = 0;
         for (const x of s) { try { await jf("POST", `/Sessions/${encodeURIComponent(x.Id)}/Message`, { Header: "Message from " + B.me.name, Text: text, TimeoutMs: 15000 }); n++; } catch (err) {} }
         $("#popText").value = "";
-        return n ? `Sent to ${n} screen${n === 1 ? "" : "s"}.` : "No Benflix screens are on right now.";
+        return n ? `Sent to ${n} screen${n === 1 ? "" : "s"}.` : "No Glowfin screens are on right now.";
       });
     }
   };
@@ -1037,7 +1037,7 @@ PAGES.messages = (el) => {
 };
 
 // ---------- Versions: which Benflix each TV and phone had when it last connected ----------
-const UPDATE_MESSAGE = "There's a new Benflix update! Go to Settings > Help > Install update to get it.";
+const UPDATE_MESSAGE = "There's a new Glowfin update! Go to Settings > Help > Install update to get it.";
 const verParts = (v) => { const m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || "")); return m ? [+m[1], +m[2], +m[3]] : null; };
 const verCmp = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return a[i] - b[i]; } return 0; };
 function seenAgo(iso) {
@@ -1063,11 +1063,11 @@ async function messagePeople(ids, text) {
     .filter((x) => x.SupportsRemoteControl && x.Id && ids.includes(x.UserId) && !String(x.DeviceId || "").startsWith("benflix-web-"));
   for (const x of s) { try { await jf("POST", `/Sessions/${encodeURIComponent(x.Id)}/Message`, { Header: header, Text: text, TimeoutMs: 15000 }); live++; } catch (err) {} }
   if (!saved && !live) throw new Error("The message couldn't be sent. Try again in a moment.");
-  return live ? `Popped up on ${live} screen${live === 1 ? "" : "s"} now. Anyone else sees it the next time they open Benflix.` : "Saved. They'll see it the next time they open Benflix.";
+  return live ? `Popped up on ${live} screen${live === 1 ? "" : "s"} now. Anyone else sees it the next time they open Glowfin.` : "Saved. They'll see it the next time they open Glowfin.";
 }
 
 PAGES.versions = (el) => {
-  el.innerHTML = `<h2>Benflix versions</h2><p class="sub">The Benflix version on each TV and phone the last time it connected. Message anyone who's out of date, or everyone after a big change.</p><div id="vr">${loading()}</div>`;
+  el.innerHTML = `<h2>Glowfin versions</h2><p class="sub">The Glowfin version on each TV and phone the last time it connected. Message anyone who's out of date, or everyone after a big change.</p><div id="vr">${loading()}</div>`;
   let rows = [];
   const draw = async () => {
     try {
@@ -1083,7 +1083,7 @@ PAGES.versions = (el) => {
       const oldest = known.reduce((a, b) => (a && verCmp(a, b) < 0 ? a : b), null);
       const seen = new Set();
       rows = (((devs && devs.Items) || devs || []))
-        .filter((d) => { const id = String(d.Id || ""); return (id.startsWith("benflix-") || /^benflix$/i.test(d.AppName || "")) && !id.startsWith("benflix-web-"); })
+        .filter((d) => { const id = String(d.Id || ""); return (id.startsWith("benflix-") || /^(benflix|glowfin)$/i.test(d.AppName || "")) && !id.startsWith("benflix-web-"); })
         .filter((d) => { const k = d.Id + "|" + d.LastUserId; if (seen.has(k)) return false; seen.add(k); return true; })
         .map((d) => {
           const v = verParts(d.AppVersion);
@@ -1099,7 +1099,7 @@ PAGES.versions = (el) => {
       const behindText = (r) => r.behind == null ? "Can't tell if it's up to date" : !r.behind ? "Up to date" : `${r.behind}${r.plus ? "+" : ""} update${r.behind === 1 && !r.plus ? "" : "s"} behind`;
       const dot = (r) => r.behind == null ? "off" : !r.behind ? "" : (r.behind >= 10 || r.plus) ? "bad" : "warn";
       $("#vr").innerHTML = `<div class="list"><div class="item"><span class="dot ${old.length ? "warn" : ""}"></span><div class="grow">
-          <div class="t">${!rows.length ? "No Benflix TVs or phones have connected yet" : !old.length ? "Everyone is up to date" : `${old.length} of ${rows.length} Benflix device${rows.length === 1 ? " is" : "s are"} out of date`}</div>
+          <div class="t">${!rows.length ? "No Glowfin TVs or phones have connected yet" : !old.length ? "Everyone is up to date" : `${old.length} of ${rows.length} Glowfin device${rows.length === 1 ? " is" : "s are"} out of date`}</div>
           <div class="s">${latest ? `The newest version is ${esc(latest.join("."))}.` : "Couldn't check the newest version right now."} The web version is always the newest.</div></div>
           <div class="acts">${old.length ? `<button class="btn small red" data-v="old">Message everyone out of date</button>` : ""}<button class="btn small" data-v="again">Check again</button></div></div>
         ${rows.map((r, i) => `<div class="item"><span class="dot ${dot(r)}"></span><div class="grow"><div class="t">${esc(r.user)} · ${esc(r.device)}</div>
@@ -1113,7 +1113,7 @@ PAGES.versions = (el) => {
     const old = rows.filter((r) => r.behind > 0);
     const r = b.dataset.v === "one" ? rows[+b.dataset.i] : null;
     const ids = r ? [r.id] : [...new Set(old.map((x) => x.id).filter(Boolean))];
-    const text = await B.askText(r ? `Message to ${r.user}` : "Message everyone out of date", "It pops up now if Benflix is open, or the next time they open it.", r && !r.behind ? "" : UPDATE_MESSAGE, { ok: "Send" });
+    const text = await B.askText(r ? `Message to ${r.user}` : "Message everyone out of date", "It pops up now if Glowfin is open, or the next time they open it.", r && !r.behind ? "" : UPDATE_MESSAGE, { ok: "Send" });
     if (!text || !text.trim()) return;
     busy(b, () => messagePeople(ids, text.trim()));
   };
@@ -1198,7 +1198,7 @@ PAGES.tidy = (el) => {
     const list = view === "old" ? data.old : data.big;
     const all = new Map([...data.old, ...data.big].map((r) => [r.app + ":" + r.id, r]));
     const total = [...ticked.keys()].reduce((n, k) => n + ((all.get(k) || {}).size || 0), 0);
-    $("#td").innerHTML = `${!data.radarr && !data.sonarr ? `<div class="note">Radarr and Sonarr aren't connected to Tower's helper. Run the Benflix setup command again.</div>` : ""}
+    $("#td").innerHTML = `${!data.radarr && !data.sonarr ? `<div class="note">Radarr and Sonarr aren't connected to Tower's helper. Run the Glowfin setup command again.</div>` : ""}
       <div class="tabs" style="margin-bottom:12px"><button class="chip ${view === "old" ? "on" : ""}" data-v="old">Not watched in a year (${data.old_count}, ${bytes(data.old_total)})</button><button class="chip ${view === "big" ? "on" : ""}" data-v="big">Biggest</button></div>
       <div class="list">${list.map(row).join("") || `<div class="empty">${view === "old" ? "Everything has been watched in the last year." : "Nothing found."}</div>`}</div>
       <div class="acts" style="margin-top:14px;position:sticky;bottom:12px"><button class="btn white" id="tdGo" ${ticked.size ? "" : "disabled"}>Remove ${ticked.size || ""} ticked${ticked.size ? " (frees " + bytes(total) + ")" : ""}</button></div>`;
@@ -1237,7 +1237,7 @@ PAGES.playtest = (el) => {
     <div class="acts"><button class="btn small" data-again="${esc(r.id)}">Check again</button><button class="btn small" data-ok="${esc(r.id)}">It's fine</button></div></div>`;
   const draw = (s) => {
     if (current !== "playtest") return;
-    $("#pt").innerHTML = `${s.on ? "" : `<div class="note">The play test isn't on Tower yet. Run the Benflix setup command again.</div>`}
+    $("#pt").innerHTML = `${s.on ? "" : `<div class="note">The play test isn't on Tower yet. Run the Glowfin setup command again.</div>`}
       <div class="tiles">${tile("Checked this week", String(s.checked_this_week))}${tile("Broken", String(s.broken.length))}${tile("Worth a look", String(s.look.length))}${tile("Last check", s.last ? shortDay(s.last) : "Not yet")}</div>
       <h3 class="section-title">Broken</h3><div class="list">${s.broken.map((r) => item(r, "bad")).join("") || `<div class="empty">Every new file played fine.</div>`}</div>
       <h3 class="section-title">Worth a look</h3><div class="list">${s.look.map((r) => item(r, "look")).join("") || `<div class="empty">Nothing odd.</div>`}</div>`;

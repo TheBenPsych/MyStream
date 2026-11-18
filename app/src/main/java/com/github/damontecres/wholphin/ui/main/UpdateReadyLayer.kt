@@ -170,7 +170,7 @@ fun UpdateReadyLayer(
             ) {
                 BenflixMark(size = if (isTv) 44.dp else 40.dp)
                 Text(
-                    "Benflix got better",
+                    "Glowfin got better",
                     fontSize = BenflixType.pageTitle,
                     color = BenflixColors.Text,
                 )

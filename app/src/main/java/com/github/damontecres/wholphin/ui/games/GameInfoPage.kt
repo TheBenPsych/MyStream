@@ -254,8 +254,8 @@ fun GameInfoPage(
             },
             (if (info.boardKey != null) "Leaderboard" else "Players") to {
                 if (info.boardKey == null) {
-                    InfoLine("Everyone joins with their own Android phone: Benflix › Games › Join party.")
-                    InfoLine("iPhones can't join, because Benflix is only on Android.", dim = true)
+                    InfoLine("Everyone joins with their own Android phone: Glowfin › Games › Join party.")
+                    InfoLine("iPhones can't join, because Glowfin is only on Android.", dim = true)
                     InfoLine("Scores are kept for the game, then start fresh.")
                 } else {
                     val medals = listOf("🥇", "🥈", "🥉")

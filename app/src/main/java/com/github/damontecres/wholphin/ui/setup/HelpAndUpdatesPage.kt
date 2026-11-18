@@ -46,7 +46,7 @@ private enum class HelpSection(
     val title: String,
     val note: String,
 ) {
-    UPDATES("Updates", "Install the newest Benflix and see what's new"),
+    UPDATES("Updates", "Install the newest Glowfin and see what's new"),
     HOW_TO("How to use", "The remote, the doors, and the handy tricks"),
     REPORT("Report a problem", "Tell the owner something isn't working"),
     ABOUT("About", "Version, credits and licences"),
@@ -126,7 +126,7 @@ fun HelpAndUpdatesPage(
         BenflixChoiceDialog(
             title = "Report a problem",
             subtitle = "Pick what's wrong. The owner gets it with the app's log.",
-            choices = APP_PROBLEMS.map { problem -> BenflixChoice(problem, { reportViewModel.report(null, "Benflix app", problem) }) },
+            choices = APP_PROBLEMS.map { problem -> BenflixChoice(problem, { reportViewModel.report(null, "Glowfin app", problem) }) },
             onDismissRequest = { report = false },
         )
     }

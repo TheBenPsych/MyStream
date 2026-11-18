@@ -575,7 +575,7 @@ fun SeasonPickDialog(
                     ) {
                         val extra =
                             when {
-                                season.taken -> "already asked for or on Benflix"
+                                season.taken -> "already asked for or on Glowfin"
                                 season.episodes != null && season.episodes > 0 -> "${season.episodes} episodes"
                                 else -> null
                             }

@@ -23,7 +23,7 @@
   L.allowed = () => !!(B.me && !B.me.kids && !L.onPhone());
   const notHere = () => {
     B.page().innerHTML = B.top("Lobby") + `<div class="center"><div><div class="h1">${B.me && B.me.kids ? "The Lobby isn't for Kids" : "The Lobby is for computers"}</div>
-      <p class="sub">${B.me && B.me.kids ? "Ask a grown-up to pick something to watch together." : "Open Benflix in a web browser on a computer, or the Benflix desktop app, to walk into the Lobby."}</p>
+      <p class="sub">${B.me && B.me.kids ? "Ask a grown-up to pick something to watch together." : "Open Glowfin in a web browser on a computer, or the Glowfin desktop app, to walk into the Lobby."}</p>
       <a class="btn white" href="#/home">Back to Home</a></div></div>`;
     B.wireTop();
   };
@@ -314,12 +314,12 @@
     function arcade(g, s, x, z, ry, y) {
       y = y || 0; const grp = new T.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; g.add(grp);
       box(grp, 0.75, 1.8, 0.7, mat(0x1D2027, { roughness: 0.6 }), 0, 0.9, 0); box(grp, 0.78, 0.25, 0.75, glowMat(0xFF6F91, 1.2), 0, 1.92, 0.02);
-      const scr = canvasTex(256, 200, (gg) => { gg.fillStyle = "#0B0C10"; gg.fillRect(0, 0, 256, 200); gg.fillStyle = "#FF6F91"; gg.font = `800 26px ${FONT}`; gg.fillText("Benflix", 20, 50); gg.fillText("Games", 20, 80); gg.fillStyle = "#A7A9B0"; gg.font = `500 16px ${FONT}`; gg.fillText("Coming soon", 20, 130); });
+      const scr = canvasTex(256, 200, (gg) => { gg.fillStyle = "#0B0C10"; gg.fillRect(0, 0, 256, 200); gg.fillStyle = "#FF6F91"; gg.font = `800 26px ${FONT}`; gg.fillText("Glowfin", 20, 50); gg.fillText("Games", 20, 80); gg.fillStyle = "#A7A9B0"; gg.font = `500 16px ${FONT}`; gg.fillText("Coming soon", 20, 130); });
       const sm = new T.Mesh(new T.PlaneGeometry(0.6, 0.47), new T.MeshBasicMaterial({ map: scr })); sm.position.set(0, 1.35, 0.356); grp.add(sm);
       box(grp, 0.72, 0.06, 0.3, mat(0x262932), 0, 0.98, 0.45);
       const c = Math.cos(ry), sn = Math.sin(ry);
       s.obstacles.push([x - 0.5, x + 0.5, z - 0.5, z + 0.5]);
-      s.use.push({ x: x + sn * 0.8, z: z + c * 0.8, r: 1.3, label: "<kbd>E</kbd> The arcade", act: () => toast("The arcade will play your Benflix console games together in a later update.") });
+      s.use.push({ x: x + sn * 0.8, z: z + c * 0.8, r: 1.3, label: "<kbd>E</kbd> The arcade", act: () => toast("The arcade will play your Glowfin console games together in a later update.") });
     }
     function popcorn(g, s, x, z, y) {
       const grp = new T.Group(); grp.position.set(x, y, z); g.add(grp);

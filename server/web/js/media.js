@@ -120,7 +120,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   $("#rows").innerHTML = [
     B.row("Keep watching", resume.map((it) => B.posterCard(it, { progress: true }))),
     B.row("My List", mine.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?mine=1&title=My%20List" }),
-    B.row("New on Benflix", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
+    B.row("New on Glowfin", fresh.map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?title=New%20on%20Benflix" }),
     fewer ? "" : B.row("Top 10 movies", B.top10(top)),
     recent[0] && !fewer ? B.row(`Because you watched ${recent[0].Name}`, because.map((it) => B.posterCard(it))) : "",
     fewer ? "" : B.row("Anime movies", anime.map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
@@ -356,7 +356,7 @@ B.toggleList = async (it, btn) => {
 B.rate = (it) => {
   const ud = it.UserData || {};
   const cur = ud.Likes === false ? "no" : ud.Likes === true ? (ud.Rating >= 9 ? "love" : "like") : "";
-  const p = B.side(`<h3>Rate ${esc(it.Name)}</h3><p class="dim">Benflix uses this to pick things for you.</p>
+  const p = B.side(`<h3>Rate ${esc(it.Name)}</h3><p class="dim">Glowfin uses this to pick things for you.</p>
     <button class="opt ${cur === "no" ? "on" : ""}" data-r="no">Not for me</button><button class="opt ${cur === "like" ? "on" : ""}" data-r="like">I like it</button><button class="opt ${cur === "love" ? "on" : ""}" data-r="love">Love it</button>
     ${cur ? `<button class="opt" data-r="clear">Take my rating off</button>` : ""}`);
   p.onclick = (e) => {
@@ -554,7 +554,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     rating: it.OfficialRating,
     info: [...plainBits.map(String), (it.Genres || [])[0]],
     buttons: [
-      target ? { label: resumeLabel, icon: "play", href: `#/play/${target.Id}?resume=1` } : { label: "Play", icon: "play", off: "No episodes on Benflix yet" },
+      target ? { label: resumeLabel, icon: "play", href: `#/play/${target.Id}?resume=1` } : { label: "Play", icon: "play", off: "No episodes on Glowfin yet" },
       { label: "Episodes", icon: "list", onClick: () => tp.open("Episodes") },
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
@@ -675,12 +675,12 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
     tabs: [
       { name: "Movies", id: "tpMovies", html: grid(movies) },
       { name: "Shows", id: "tpShows", html: grid(shows) },
-      { name: "Not on Benflix yet", id: "tpAsk", html: "", skip: !!B.me.kids },
+      { name: "Not on Glowfin yet", id: "tpAsk", html: "", skip: !!B.me.kids },
     ],
   });
   // The Overview tab isn't used on actor pages: their story is behind About them
   const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
-  if (!movies.length && !shows.length) tp.pane("tpMovies").insertAdjacentHTML("afterbegin", '<div class="wrap empty">Nothing with them on Benflix yet.</div>');
+  if (!movies.length && !shows.length) tp.pane("tpMovies").insertAdjacentHTML("afterbegin", '<div class="wrap empty">Nothing with them on Glowfin yet.</div>');
   tp.refresh();
   const first = $(".tp-tab:not([hidden])"); if (first) first.click();
   // Everything of theirs that isn't on Benflix yet (extras.js)

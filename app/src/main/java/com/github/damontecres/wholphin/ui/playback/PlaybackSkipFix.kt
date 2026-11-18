@@ -42,7 +42,7 @@ internal fun PlaybackViewModel.fixSkip(fix: SkipFix) {
             showNotice(
                 PlayerNotice(
                     title = "Couldn't save the fix",
-                    message = ex.message ?: "Tower's Benflix helper didn't answer. Try again in a minute.",
+                    message = ex.message ?: "Tower's Glowfin helper didn't answer. Try again in a minute.",
                     autoHideMs = 8_000L,
                 ),
             )
@@ -57,7 +57,7 @@ private fun fixSavedMessage(fix: SkipFix): String =
         SkipFix.INTRO_END,
         SkipFix.CREDITS_START,
         SkipFix.CREDITS_END,
-        -> "Benflix is finding the same spot in the show's other episodes."
+        -> "Glowfin is finding the same spot in the show's other episodes."
 
         SkipFix.NO_INTRO -> "No Skip intro button on this episode."
 

@@ -284,7 +284,7 @@ class SearchViewModel
                             SearchGame(
                                 key = "movie-${it.name}",
                                 title = it.title,
-                                kind = "Benflix game",
+                                kind = "Glowfin game",
                                 destination = Destination.GameInfo("movie:${it.name}"),
                                 colors = it.colors,
                                 icon = it.icon,

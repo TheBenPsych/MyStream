@@ -78,7 +78,7 @@ def log(msg):
 
 # text that only shows once you are on the home screen (Benflix rows, or plain Wholphin's rows)
 HOME_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |^Live TV$|Continue watching|^Home$"
-PKG_LABEL = re.compile(r"Benflix|MyStream", re.I)
+PKG_LABEL = re.compile(r"Glowfin|Benflix|MyStream", re.I)
 SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
 
 
@@ -453,7 +453,7 @@ def sign_in():
             time.sleep(5)
             continue
         # Redesign 2 sign-in: TV = "Sign in with your phone" beside "Or type it in"; phone = one form
-        if find(root, r"^Or type it in$|^Sign in to Benflix$") is not None:
+        if find(root, r"^Or type it in$|^Sign in to (?:Benflix|Glowfin)$") is not None:
             if find(root, rf"^{USER}$") is None:
                 # TV: the keyboard has the focus and types into the Name box to begin with
                 type_answer(edit, USER)
@@ -861,7 +861,7 @@ def ember_shot(name):
 def ember_road():
     back_to_home()
     if not press(r"^Games$", timeout=6):
-        if not press(r"My Benflix", timeout=4) and MODE != "tv":
+        if not press(r"My (?:Benflix|Glowfin)", timeout=4) and MODE != "tv":
             # the phone menu bar can be shrunk to icons: My Benflix is the last thing on it
             m = re.search(r"(\d+)x(\d+)", sh("wm size"))
             height = int(m.group(2)) if m else 2400

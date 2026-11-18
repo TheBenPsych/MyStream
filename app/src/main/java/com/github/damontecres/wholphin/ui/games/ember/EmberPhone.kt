@@ -58,7 +58,7 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
         if (v == null) {
             Text(
                 if (tvs.isEmpty()) {
-                    "Looking for a TV playing Ember Road… Open Ember Road on the TV (Games on Benflix). This phone needs to be on the same Wi-Fi."
+                    "Looking for a TV playing Ember Road… Open Ember Road on the TV (Games on Glowfin). This phone needs to be on the same Wi-Fi."
                 } else {
                     "Pick the TV to join:"
                 },

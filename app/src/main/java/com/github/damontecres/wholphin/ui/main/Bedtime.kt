@@ -274,7 +274,7 @@ fun BedtimeLayer(
             ) {
                 Text(text = "Good night!", fontWeight = FontWeight.Bold, fontSize = BenflixType.hero, color = Color.White)
                 Text(
-                    text = "Benflix is sleeping too. See you in the morning!",
+                    text = "Glowfin is sleeping too. See you in the morning!",
                     fontSize = BenflixType.rowName,
                     color = Color(0xFFD8D8F0),
                     textAlign = TextAlign.Center,
@@ -351,7 +351,7 @@ private fun ScreenTimeUp(viewModel: BedtimeViewModel) {
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = "You've watched your Benflix time for today. Time to go play! See you tomorrow.",
+                    text = "You've watched your Glowfin time for today. Time to go play! See you tomorrow.",
                     fontSize = BenflixType.rowName,
                     color = Color(0xFFD6F0E6),
                     textAlign = TextAlign.Center,

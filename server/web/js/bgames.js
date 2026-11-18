@@ -19,7 +19,7 @@
   ];
   const ARCADE = [
     { key: "POPCORN_POP", title: "Popcorn Pop", short: "Bounce a popcorn kernel up a tower of soda cups and film reels. Grab the tickets!", how: "Arrow keys or A and D to steer. Phone: hold the left or right side.", colors: C("#F59E0B", "#7C2D12") },
-    { key: "REEL_RUSH", title: "Reel Rush", short: "Fly the Benflix B through the gaps in the film strips.", how: "Space, Enter or Up to flap. Phone: tap anywhere.", colors: C("#E50914", "#3B0A0A") },
+    { key: "REEL_RUSH", title: "Reel Rush", short: "Fly the Glowfin B through the gaps in the film strips.", how: "Space, Enter or Up to flap. Phone: tap anywhere.", colors: C("#E50914", "#3B0A0A") },
     { key: "SNACK_CATCH", title: "Snack Catch", short: "Catch the falling snacks in your popcorn bucket. Watch out for spilled sodas!", how: "Arrow keys or A and D to move. Phone: hold the left or right side.", colors: C("#16A34A", "#052E16") },
     { key: "USHER_DASH", title: "Usher Dash", short: "Run down the aisle and jump over popcorn spills and lost shoes.", how: "Space, Enter or Up to jump (hold for a higher jump). Phone: tap anywhere.", colors: C("#2563EB", "#172554") },
     { key: "FILM_CAN_STACK", title: "Film Can Stack", short: "Drop sliding film cans to build the tallest tower. Line them up perfectly!", how: "Space or Enter to drop the can. Phone: tap anywhere.", colors: C("#9333EA", "#2E1065") },
@@ -120,7 +120,7 @@
       B.row("Movie puzzles", puzzles.map((g) => tile(g, badge(g.board)))),
       B.row("Party", party.map((g) => tile(g, "Needs the TV and phones"))),
       B.row("Arcade", [...ARCADE.map((g) => tile(g, badge(g.key))), `<a class="poster bgm" href="#/playb/surprise" title="Surprise me"><div class="im"><img class="art" src="${art({ title: "Surprise me", colors: ["#3A3A44", "#16161B"] })}" alt=""></div><div class="cap"><span class="nm">Surprise me</span><small>Random</small></div></a>`]),
-      `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Benflix's own adventure game. Plays on the TV with your phone.</span></a></div>`,
+      `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Glowfin's own adventure game. Plays on the TV with your phone.</span></a></div>`,
     ].join("");
     if (infoBox && !infoBox.innerHTML.trim() && puzzles[0]) infoBox.innerHTML = describe(find(puzzles[0].key));
     const point = (e) => { const c = e.target.closest("[data-bg]"); if (!c) return; const g = find(c.dataset.bg); if (g && infoBox) infoBox.innerHTML = describe(g); };
@@ -136,7 +136,7 @@
         title: "Ember Road", color: DOORS.games.color, cover: { url: art({ title: "Ember Road", colors: ["#B45309", "#1C1917"] }), ratio: 2 / 3 },
         info: ["Adventure", "1 player"],
         buttons: [{ label: "Play on the TV", icon: "tv", off: "Ember Road plays on the TV, with your Android phone as the controller. Open Games on the TV to play it." }],
-        story: "Benflix's own adventure game: walk the road, make choices and keep the fire going. It plays on the TV, with your phone in your hand.",
+        story: "Glowfin's own adventure game: walk the road, make choices and keep the fire going. It plays on the TV, with your phone in your hand.",
       });
       return;
     }

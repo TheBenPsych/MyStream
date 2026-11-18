@@ -33,13 +33,13 @@
     if (here && jfId) first = { label: "Watch now", icon: "play", href: `#/${isMovie ? "movie" : "show"}/${jfId}` };
     else if (kids) first = { label: "Ask for it", icon: "plus", off: "Ask a grown-up to ask for this one" };
     else if (status === 2) first = { label: admin ? "Waiting for you" : "Asked · waiting for Ben", icon: "bell", note: admin ? "Say yes or no in Overview" : "Ben has to say yes first", onClick: () => {} };
-    else if (status === 3) first = { label: "On its way", icon: "dl", note: "Benflix is getting it now", onClick: () => {} };
+    else if (status === 3) first = { label: "On its way", icon: "dl", note: "Glowfin is getting it now", onClick: () => {} };
     else first = { label: "Ask for it", icon: "plus", onClick: ask };
     const videos = (d.relatedVideos || []).filter((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"));
     const trailer = videos.find((v) => v.type === "Trailer") || videos[0];
     const buttons = [
       first,
-      status === 4 && !kids && type === "tv" ? { label: "Ask for the rest", icon: "plus", note: "Some of it isn't on Benflix yet", onClick: ask } : null,
+      status === 4 && !kids && type === "tv" ? { label: "Ask for the rest", icon: "plus", note: "Some of it isn't on Glowfin yet", onClick: ask } : null,
       { label: "Trailer", icon: "trailer", off: trailer ? "" : "No trailer for this one yet", onClick: () => B.trailer({ RemoteTrailers: [{ Url: `https://www.youtube.com/watch?v=${trailer.key}` }] }) },
       { label: "More", icon: "more", onClick: () => B.tpMore(t, [
         { label: "Open on TMDB", icon: "info", href: `https://www.themoviedb.org/${type}/${id}`, blank: true },

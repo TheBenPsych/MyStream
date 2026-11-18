@@ -57,7 +57,7 @@ sealed interface PersonDoor {
         val items: List<DiscoverItem>,
     ) : PersonDoor {
         override val key = "ask"
-        override val title = "Not on Benflix"
+        override val title = "Not on Glowfin"
         override val colour = BenflixColors.NotHere
         override val count: Int get() = items.size
     }

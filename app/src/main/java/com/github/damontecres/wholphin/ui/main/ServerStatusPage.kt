@@ -225,7 +225,7 @@ class ServerStatusViewModel
             act("Couldn't restart Jellyfin") {
                 if (minutes > 0) {
                     actions.messageEveryone(
-                        "Benflix is restarting in $minutes minute" + (if (minutes == 1) "" else "s") +
+                        "Glowfin is restarting in $minutes minute" + (if (minutes == 1) "" else "s") +
                             ". It'll be back a minute later.",
                     )
                     actions.planRestart(minutes) { problem ->
@@ -235,7 +235,7 @@ class ServerStatusViewModel
                         "Restart planned" to
                         "Everyone was warned. Jellyfin restarts in $minutes minute" +
                         (if (minutes == 1) "" else "s") +
-                        ", even if you leave this page. Just keep Benflix open on this device until then. " +
+                        ", even if you leave this page. Just keep Glowfin open on this device until then. " +
                         "You can call it off under Tools."
                     return@act
                 }
@@ -480,7 +480,7 @@ fun ServerStatusPage(
         remember(header, disks, problems, reports, tower, setupNeed) {
             buildList {
                 if (header?.online == false) {
-                    add(NeedLine("offline", "Benflix can't reach Jellyfin. Is Tower on?", Light.BAD))
+                    add(NeedLine("offline", "Glowfin can't reach Jellyfin. Is Tower on?", Light.BAD))
                 }
                 brokenApps(tower).forEach { app ->
                     add(
@@ -769,7 +769,7 @@ fun ServerStatusPage(
                 peopleItems(toolsState, history, { toolsDialog = it }, sectionTitle)
                 item(key = "people-tools") {
                     ServerActionRow(
-                        headline = "Messages and Benflix versions",
+                        headline = "Messages and Glowfin versions",
                         supporting = "Send a note to someone, or see who needs to update",
                         onClick = { openTools(ServerToolGroup.PEOPLE) },
                         actions = listOf("Open" to { openTools(ServerToolGroup.PEOPLE) }),
@@ -996,7 +996,7 @@ private fun PageHeader(
     onRefresh: (() -> Unit)?,
 ) {
     val isTv = rememberIsTv()
-    val name = header?.serverName.orEmpty().ifBlank { "Benflix" }
+    val name = header?.serverName.orEmpty().ifBlank { "Glowfin" }
     val version = header?.version?.takeIf { it.isNotBlank() }?.let { " · Jellyfin $it" } ?: ""
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
         Column(Modifier.weight(1f)) {

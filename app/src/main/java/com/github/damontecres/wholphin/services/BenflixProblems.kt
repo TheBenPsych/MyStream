@@ -75,7 +75,7 @@ class BenflixProblems
             }
             try {
                 val log = getLogCatLines().takeLast(LOG_LINES).joinToString("\n") { it.text }
-                val header = serverReportService.buildLogHeader("Benflix problem report: $problem - $title")
+                val header = serverReportService.buildLogHeader("Glowfin problem report: $problem - $title")
                 api.clientLogApi.logFile(
                     "$header\nuser=${user.name}\nitem=$itemId\nsoundCheck=${SoundWatchdog.lastReport}\npictureCheck=${PictureWatchdog.lastReport}\n\n$log",
                 )

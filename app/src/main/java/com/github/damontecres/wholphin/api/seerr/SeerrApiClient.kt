@@ -69,7 +69,7 @@ class SeerrApiClient(
                             if (forWho?.seerr != null) withRequester(it.request(), forWho.seerr)?.let { body -> post(body) }
                             if (apiKey.isNotNullOrBlank()) header("X-Api-Key", apiKey)
                             if (jellyfinToken.isNotNullOrBlank()) {
-                                header("Authorization", "MediaBrowser Client=\"Benflix\", Token=\"$jellyfinToken\"")
+                                header("Authorization", "MediaBrowser Client=\"Glowfin\", Token=\"$jellyfinToken\"")
                                 jellyfinEnhancedUrl(it.request().url)?.let { newUrl -> url(newUrl) }
                             }
                         }.build(),

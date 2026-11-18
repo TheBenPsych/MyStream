@@ -150,7 +150,7 @@ fun MissingFromCollection(
             Text(if (missing.size == 1) "Ask for the missing movie" else "Ask for the ${missing.size} missing movies")
         }
         Text(
-            text = "Not on Benflix yet: " + missing.joinToString(", ") { it.title },
+            text = "Not on Glowfin yet: " + missing.joinToString(", ") { it.title },
             fontSize = BenflixType.small,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

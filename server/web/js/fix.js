@@ -72,7 +72,7 @@
         season = season || (seasons[0] && seasons[0].Id);
       }
       const target = kind.seasons ? season : it.Id;
-      if (!target) { if (tab === kind.type) body().innerHTML = tabs() + `<p class="dim">This show has no seasons in Benflix yet.</p>`; return; }
+      if (!target) { if (tab === kind.type) body().innerHTML = tabs() + `<p class="dim">This show has no seasons in Glowfin yet.</p>`; return; }
       let now = null;
       try {
         [list, now] = await Promise.all([B.posters.choices(target, kind.img), B.get(`/Users/${B.uid()}/Items/${target}`)]);

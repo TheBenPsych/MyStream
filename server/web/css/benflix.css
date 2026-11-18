@@ -34,11 +34,14 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 :focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 6px; }
 
 /* ---------- logo ---------- */
-.logo { display: inline-flex; align-items: center; gap: .42em; font-weight: 800; letter-spacing: -.02em; color: var(--ink); white-space: nowrap; }
-.logo .sq { display: grid; grid-template-columns: 1fr 1fr; gap: .1em; width: 1.05em; height: 1.05em; }
-.logo .sq i { display: block; border-radius: .09em; }
-.logo .sq i:nth-child(1) { background: var(--movies); } .logo .sq i:nth-child(2) { background: var(--shows); }
-.logo .sq i:nth-child(3) { background: var(--live); } .logo .sq i:nth-child(4) { background: var(--games); }
+@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+/* Glowfin logo (approved 2026-11-18): the fin mark, "Glow" light white + "fin" in the purple-to-cyan fade; Kids adds a small tag on the bottom line */
+.logo { display: inline-flex; align-items: baseline; gap: .3em; font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 300; color: var(--ink); white-space: nowrap; line-height: 1; }
+.logo .fin { width: 1.3em; height: 1.25em; display: block; align-self: center; }
+.logo .lw b { font-weight: 600; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.logo .kt { display: none; position: relative; top: -.37em; font-weight: 600; font-size: .36em; line-height: 1.25; padding: 0 .55em; margin-left: -.05em; border-radius: 999px; color: #0B0C12; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); }
+html.kids .logo .kt { display: inline-block; }
 
 /* ---------- top bar ---------- */
 .top { position: sticky; top: 0; z-index: 30; height: var(--bar); display: flex; align-items: center; gap: 20px; padding: 0 var(--gutter);
@@ -889,8 +892,8 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 @keyframes slidename { 0%, 8% { transform: translateX(0); } 92%, 100% { transform: translateX(-100%); } }
 .brow .th, .lgthumb { width: calc(var(--rowh, 3.8) * var(--u)); aspect-ratio: 1; border-radius: calc(.4 * var(--u)); }
 .brow .th { background: var(--pg3) center/cover no-repeat; }
-.lgthumb { background: var(--pg3); display: grid; grid-template-columns: repeat(2, 24%); grid-template-rows: repeat(2, calc(.7 * var(--u))); gap: 5%; place-content: center; }
-.lgthumb i { border-radius: 22%; } .lgthumb i:nth-child(1) { background: var(--movies); } .lgthumb i:nth-child(2) { background: var(--shows); } .lgthumb i:nth-child(3) { background: var(--live); } .lgthumb i:nth-child(4) { background: var(--games); }
+.lgthumb { background: var(--pg3); display: grid; place-items: center; }
+.lgthumb img { width: 70%; height: auto; display: block; }
 .board.grow .blist { animation: fadein .4s .6s both; }
 /* See all: the same rows in the side panel */
 .seeall { --u: 16px; --fs: 1; margin-top: 10px; }

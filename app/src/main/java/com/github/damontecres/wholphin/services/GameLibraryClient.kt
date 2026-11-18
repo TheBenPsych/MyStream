@@ -330,7 +330,7 @@ class GameLibraryClient
             onBytes: (Long) -> Unit = {},
         ): Boolean =
             withContext(Dispatchers.IO) {
-                if (token.isBlank()) throw GameLibraryException("Sign in to Benflix first.")
+                if (token.isBlank()) throw GameLibraryException("Sign in to Glowfin first.")
                 val request =
                     Request
                         .Builder()
@@ -377,7 +377,7 @@ class GameLibraryClient
         }
 
         private fun call(builder: Request.Builder): String {
-            if (token.isBlank()) throw GameLibraryException("Sign in to Benflix first.")
+            if (token.isBlank()) throw GameLibraryException("Sign in to Glowfin first.")
             if (address.isBlank()) throw GameLibraryException("Couldn't work out your server's address.", askAddress = true)
             val request =
                 builder

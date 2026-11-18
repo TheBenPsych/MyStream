@@ -275,7 +275,7 @@ fun PlaybackDialog(
                     add(
                         PanelLine.Row(
                             label = "No sound",
-                            note = "Benflix brings the sound back",
+                            note = "Glowfin brings the sound back",
                             icon = BenflixIcon.WARNING,
                             onClick = { onPlaybackActionClick(PlaybackAction.FixNoSound) },
                         ),
@@ -466,7 +466,7 @@ fun PlaybackDialog(
                             }
 
                             family.orEmpty().isEmpty() -> {
-                                add(PanelLine.Heading("There are no other profiles on Benflix yet"))
+                                add(PanelLine.Heading("There are no other profiles on Glowfin yet"))
                             }
 
                             else -> {

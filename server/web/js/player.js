@@ -459,7 +459,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (!B.familyUsers) B.familyUsers = await B.jf("GET", "/Users?isDisabled=false").then((list) => (list || []).filter((x) => x.Id !== B.uid())).catch(() => null);
     if (!box.isConnected) return;
     const list = B.familyUsers || [];
-    box.innerHTML = list.length ? list.map((x) => `<button class="opt ${B.alsoFor.some((y) => y.id === x.Id) ? "on" : ""}" data-also="${esc(x.Id)}" data-name="${esc(x.Name || "")}">${esc(x.Name || "Someone")}</button>`).join("") : '<p class="dim">There are no other profiles on Benflix yet.</p>';
+    box.innerHTML = list.length ? list.map((x) => `<button class="opt ${B.alsoFor.some((y) => y.id === x.Id) ? "on" : ""}" data-also="${esc(x.Id)}" data-name="${esc(x.Name || "")}">${esc(x.Name || "Someone")}</button>`).join("") : '<p class="dim">There are no other profiles on Glowfin yet.</p>';
   };
   const copyToAlso = (posTicks, len) => {
     const people = alsoOk ? B.alsoFor : [];
@@ -490,10 +490,10 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
       ${alsoOk ? `<h4>Also counts for</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Tick who's watching with you. When this ends, it's marked watched for them too.</p><div data-alsolist><p class="dim">Looking for family profiles…</p></div>` : ""}
       <h4>Fix a problem</h4>
-      <button class="opt" data-nosound>${I("flag")} No sound<small>Benflix brings it back</small></button>
+      <button class="opt" data-nosound>${I("flag")} No sound<small>Glowfin brings it back</small></button>
       <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
       ${!B.me.kids ? `<button class="opt" data-better>${I("sub")} Find other subtitles<small>${subOn ? "Bazarr deletes these and gets different ones" : "Bazarr looks for subtitles"}</small></button>` : ""}
-      ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Benflix finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
+      ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Glowfin finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
       <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
       <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;

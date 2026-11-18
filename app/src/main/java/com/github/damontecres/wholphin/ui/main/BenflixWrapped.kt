@@ -371,7 +371,7 @@ fun BenflixWrappedLayer(
                 modifier = Modifier.padding(top = 8.dp).focusRequester(focus),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
-                Text(if (w.music != null) "Next: your music" else "Thanks, Benflix!")
+                Text(if (w.music != null) "Next: your music" else "Thanks, Glowfin!")
             }
         }
     }
@@ -449,7 +449,7 @@ private fun WrappedMusicSlide(
                 modifier = Modifier.padding(top = 8.dp).focusRequester(focus),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) {
-                Text("Thanks, Benflix!")
+                Text("Thanks, Glowfin!")
             }
         }
     }

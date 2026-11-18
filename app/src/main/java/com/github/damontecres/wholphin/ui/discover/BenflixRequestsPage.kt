@@ -1047,7 +1047,7 @@ class BenflixRequestsViewModel
                                     )
                                 }.sortedBy { it.number }
                         if (seasons.isEmpty() || seasons.all { it.taken }) {
-                            showToast(context, "Every season is already asked for or on Benflix")
+                            showToast(context, "Every season is already asked for or on Glowfin")
                             return@launch
                         }
                         _seasonPick.value = SeasonPick(item, seasons)
@@ -1528,7 +1528,7 @@ private fun NotConnected(
                     when (connecting) {
                         true -> "Connecting…"
                         false -> "That password didn't work. Try again, or ask Ben to check your account."
-                        null -> "Type your Benflix password once on this device and you can ask Ben for anything that's missing."
+                        null -> "Type your Glowfin password once on this device and you can ask Ben for anything that's missing."
                     },
                 fontSize = BenflixType.body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2725,7 +2725,7 @@ private fun PasswordDialog(
                     .widthIn(max = 420.dp)
                     .padding(24.dp),
         ) {
-            Text("Your Benflix password", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Your Glowfin password", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },

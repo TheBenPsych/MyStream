@@ -684,7 +684,7 @@ class PartyViewModel
 
         companion object {
             const val SERVICE_TYPE = "_benflixparty._udp"
-            const val LABEL = "Benflix party"
+            const val LABEL = "Glowfin party"
             private const val QUESTION_MS = 20_000L
             private const val CLOSEST_MS = 25_000L
             private const val WRITE_MS = 90_000L

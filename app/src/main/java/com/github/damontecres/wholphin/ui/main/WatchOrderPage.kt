@@ -448,7 +448,7 @@ fun WatchOrderPage(
                     if (kids) {
                         "${tab.blurb}  ·  ${shown.size} to watch"
                     } else {
-                        "${tab.blurb}  ·  ${shown.count { it.item != null }} of ${shown.size} on Benflix"
+                        "${tab.blurb}  ·  ${shown.count { it.item != null }} of ${shown.size} on Glowfin"
                     },
                 fontSize = BenflixType.small,
                 color = Color(0xFFB5ABAC),

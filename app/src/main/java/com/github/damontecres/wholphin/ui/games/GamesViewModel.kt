@@ -55,7 +55,7 @@ enum class BuiltInGame(
     ),
     REEL_RUSH(
         title = "Reel Rush",
-        tagline = "Fly the Benflix B through the gaps in the film strips.",
+        tagline = "Fly the Glowfin B through the gaps in the film strips.",
         howTo = "Press OK on the remote or A on a controller to flap · Phone: tap anywhere",
         remoteOk = true,
         touch = TouchMode.BUTTON,
@@ -360,7 +360,7 @@ class GamesViewModel
                         .filter { it.games.isNotEmpty() }
                 if (kidsConsoles.isEmpty()) {
                     LibraryState.Failed(
-                        "No games rated for everyone yet. A grown-up can run the Benflix setup command on Tower again " +
+                        "No games rated for everyone yet. A grown-up can run the Glowfin setup command on Tower again " +
                             "to update it, and games rated E show up here.",
                         askAddress = false,
                         emptyList(),

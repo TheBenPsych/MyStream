@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/readme/hero.jpg" alt="Benflix on a TV and a phone: the Home screen with six coloured doors for Movies, Shows, Live TV, Games, Music and Books, and a list of your news beside them" width="100%"/>
+  <img src="docs/readme/hero.jpg" alt="Glowfin on a TV and a phone: the Home screen with six coloured doors for Movies, Shows, Live TV, Games, Music and Books, and a list of your news beside them" width="100%"/>
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="#what-is-benflix">What is it?</a> ·
+  <a href="#what-is-glowfin">What is it?</a> ·
   <a href="#a-quick-look">A quick look</a> ·
   <a href="#whats-inside">What's inside</a> ·
   <a href="#how-to-install">How to install</a> ·
@@ -17,9 +17,9 @@
   <a href="#credits-and-license">Credits</a>
 </p>
 
-## What is Benflix?
+## What is Glowfin?
 
-Benflix is a home streaming app. It plays the movies, shows and music you already keep on your own
+Glowfin (formerly Benflix) is a home streaming app. It plays the movies, shows and music you already keep on your own
 [Jellyfin](https://jellyfin.org/) server, lets you read and listen to your books, adds live TV channels,
 and plays your retro games right on the TV or phone.
 
@@ -32,25 +32,25 @@ ready, something on its way, or a fun fact, plus today's weather. Clear any line
 It is a personal project for family and friends. It is not in the Google Play Store or the Amazon Appstore,
 so you install it yourself. It takes about five minutes, see [How to install](#how-to-install).
 
-Benflix is built on top of the excellent open-source app [Wholphin](https://github.com/damontecres/Wholphin).
+Glowfin is built on top of the excellent open-source app [Wholphin](https://github.com/damontecres/Wholphin).
 See [Credits and license](#credits-and-license).
 
 <p align="center">
-  <img src="docs/readme/how-it-fits.png" alt="Your server at home runs Jellyfin, Seerr, Lidarr, Chaptarr, RomM, the Benflix helper, Trailarr, Sonarr and Radarr. Benflix on your TV, your phone and in a web browser connects to it." width="100%"/>
+  <img src="docs/readme/how-it-fits.png" alt="Your server at home runs Jellyfin, Seerr, Lidarr, Chaptarr, RomM, the Glowfin helper, Trailarr, Sonarr and Radarr. Glowfin on your TV, your phone and in a web browser connects to it." width="100%"/>
 </p>
 
 ## A quick look
 
 <p align="center">
-  <img src="docs/readme/tv-tour.jpg" alt="Benflix on the TV: the Movies door, a show page, Live TV, Games, the Music page, the Now playing screen with lyrics, a manga in Books, book requests, and Search" width="100%"/>
+  <img src="docs/readme/tv-tour.jpg" alt="Glowfin on the TV: the Movies door, a show page, Live TV, Games, the Music page, the Now playing screen with lyrics, a manga in Books, book requests, and Search" width="100%"/>
 </p>
 
 <p align="center">
-  <img src="docs/readme/phone-tour.jpg" alt="Real screenshots of Benflix on a phone: Home, Movies, Shows, Live TV, Games, Search, a movie page and Settings" width="100%"/>
+  <img src="docs/readme/phone-tour.jpg" alt="Real screenshots of Glowfin on a phone: Home, Movies, Shows, Live TV, Games, Search, a movie page and Settings" width="100%"/>
 </p>
 
 <sub>The phone pictures are real screenshots, taken by the test robot on the public Jellyfin demo server
-(from before the Books door arrived). The TV pictures come from the finished Benflix design, with made-up titles.</sub>
+(from before the Books door arrived). The TV pictures come from the finished Glowfin design, with made-up titles.</sub>
 
 ## What's inside
 
@@ -89,14 +89,14 @@ See [Credits and license](#credits-and-license).
 - **Save songs to your phone** to listen with no internet
 - Bring in your playlists from **Spotify, YouTube Music** or **Deezer**, or just the songs
 - **Ask for songs and albums**, and hear a **30 second preview** first
-- Music also plays in Benflix in your web browser
+- Music also plays in Glowfin in your web browser
 
 </td>
 <td width="50%" valign="top">
 
 ### 🟩 Live TV
 - About **600 hand-picked channels**, sorted into types like News, Movies, Comedy, Kids and Holiday
-- **Benflix channels** with no ads, built from your own movies and shows, and you can **make your own channel**
+- **Glowfin channels** with no ads, built from your own movies and shows, and you can **make your own channel**
 - Favourites, a TV guide, and number keys to jump to a channel
 - **Pause live TV**, and get a reminder before a big event starts
 
@@ -129,7 +129,7 @@ See [Credits and license](#credits-and-license).
 <td width="50%" valign="top">
 
 ### 🟨 Books
-- **Read manga, comics and ebooks**, and **listen to audiobooks**, right in Benflix
+- **Read manga, comics and ebooks**, and **listen to audiobooks**, right in Glowfin
 - Manga series show as one tile, with **Keep reading** on the next volume
 - Books Home has **top lists with the books you have**: New York Times, Apple Books and Hardcover best sellers, award winners, genre rows, **Readers love these** and **Quick reads**
 - A **Want to read** list, and Ask for it (or Ask Ben) for books you don't have yet
@@ -138,7 +138,7 @@ See [Credits and license](#credits-and-license).
 </td>
 <td width="50%" valign="top">
 
-### 🌐 Web Benflix
+### 🌐 Web Glowfin
 - Open your server's address in **any web browser**, at home or away, no install needed
 - The same six doors, player, music, requests and settings as on the TV
 - Now caught up with the TV and phone: **Ask for more like this**, the parents' guide, anime extras, game roulette and more
@@ -169,7 +169,7 @@ See [Credits and license](#credits-and-license).
 </table>
 
 And a few small touches: change any **poster** you don't like, a screensaver with artwork and fun facts,
-and Benflix **updates itself** quietly in the background.
+and Glowfin **updates itself** quietly in the background.
 
 ## How to install
 
@@ -181,24 +181,24 @@ and Benflix **updates itself** quietly in the background.
 
 ### 📺 On a TV (Google TV, Android TV or Fire TV)
 
-1. **Allow apps from "unknown sources"** on your TV, so it lets you install Benflix. How-to guides:
+1. **Allow apps from "unknown sources"** on your TV, so it lets you install Glowfin. How-to guides:
    [Google TV / Chromecast](https://androidtvnews.com/unknown-sources-chromecast-google-tv/) ·
    [Fire TV](https://www.aftvnews.com/how-to-enable-apps-from-unknown-sources-on-an-amazon-fire-tv-or-fire-tv-stick/)
 2. Install the free **Downloader** app from your TV's app store.
 3. Open Downloader, type the code **`2488986`** and press **Go**.
 4. When it finishes downloading, choose **Install**.
-5. Open Benflix. At home it finds your server by itself; otherwise type the server address, then sign in.
+5. Open Glowfin. At home it finds your server by itself; otherwise type the server address, then sign in.
    (Already signed in on your phone? Use **Sign in with my phone** instead of typing your password.)
 
 > [!NOTE]
-> The newest Fire TV sticks that run **Vega OS** can't install outside apps, so Benflix won't work on them.
+> The newest Fire TV sticks that run **Vega OS** can't install outside apps, so Glowfin won't work on them.
 > Older Fire TV sticks and Fire TV Cubes are fine.
 
 ### 📱 On an Android phone
 
-1. On your phone, open [aftv.news/2488986](https://aftv.news/2488986) (or tap the **Download** badge at the top of this page and pick **Benflix.apk**).
+1. On your phone, open [aftv.news/2488986](https://aftv.news/2488986) (or tap the **Download** badge at the top of this page and pick **Glowfin.apk**).
 2. When it finishes downloading, tap it. If your phone asks, allow your browser to install apps.
-3. Open Benflix and sign in.
+3. Open Glowfin and sign in.
 
 ### 🌐 In a web browser
 
@@ -207,21 +207,21 @@ Nothing to install.
 
 ### 🔄 Getting updates
 
-You only install Benflix once. New versions download quietly in the background. When one is ready, a dot
+You only install Glowfin once. New versions download quietly in the background. When one is ready, a dot
 shows on your picture; open your picture's menu and pick **Help and updates** to see what's new and
 install it in one click.
 
 ### 🍎 iPhone and Apple TV
 
-There is no Apple app. iPhone users can open **web Benflix** in Safari, or use
+There is no Apple app. iPhone users can open **web Glowfin** in Safari, or use
 [Swiftfin](https://github.com/jellyfin/Swiftfin) or [Infuse](https://firecore.com/infuse) to watch from the same Jellyfin server.
 
 ## For the server admin
 
-If you run the server, Benflix has a few extra tools that only admins see:
+If you run the server, Glowfin has a few extra tools that only admins see:
 
-- **Server page** in the app and in web Benflix: who's watching, your libraries, downloads, problems and chores,
-  with fix-it buttons, a **Benflix versions** list for every TV and phone, and a way to send a message to one person
+- **Server page** in the app and in web Glowfin: who's watching, your libraries, downloads, problems and chores,
+  with fix-it buttons, a **Glowfin versions** list for every TV and phone, and a way to send a message to one person
 - **Requests** to approve or decline, for movies, shows, music and books
 - **Poster fixer** to swap bad posters one at a time
 - **Delete and find again** for a bad copy of a song
@@ -232,14 +232,14 @@ If you run the server, Benflix has a few extra tools that only admins see:
 | | Needed for | |
 |---|---|---|
 | [Jellyfin](https://jellyfin.org/) (version 12 recommended) | Everything | Required |
-| Benflix helper (in the [`server`](server) folder) | Games, Live TV, Books, web Benflix, Skip intro, music extras, fun facts, Home weather | Recommended |
+| Glowfin helper (in the [`server`](server) folder) | Games, Live TV, Books, web Glowfin, Skip intro, music extras, fun facts, Home weather | Recommended |
 | [Seerr / Jellyseerr](https://github.com/seerr-team/seerr) | Asking for movies and shows | Optional |
 | [Lidarr](https://lidarr.audio/) | Asking for music | Optional |
 | Chaptarr (a Readarr-style book downloader) | Asking for books and audiobooks | Optional |
 | [RomM](https://github.com/rommapp/romm) | Your game library | Optional |
 | [Trailarr](https://github.com/nandyalu/trailarr) | Trailers on title pages | Optional |
 
-To set up (or update) the Benflix helper, run this in the Unraid terminal (**Tools > Terminal**). It's safe to run again any time:
+To set up (or update) the Glowfin helper, run this in the Unraid terminal (**Tools > Terminal**). It's safe to run again any time:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash
@@ -247,7 +247,7 @@ curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/be
 
 ## Credits and license
 
-Benflix is a modified version (a "fork") of **[Wholphin](https://github.com/damontecres/Wholphin)** by
+Glowfin is a modified version (a "fork") of **[Wholphin](https://github.com/damontecres/Wholphin)** by
 [damontecres](https://github.com/damontecres), an open-source Android TV app for Jellyfin.
 A huge thank you to Wholphin and its contributors. Most of the hard work under the hood is theirs.
 If you want a polished Jellyfin app from the Play Store, go get Wholphin!
@@ -257,18 +257,18 @@ Thanks also to:
 - The official [Jellyfin Android TV](https://github.com/jellyfin/jellyfin-androidtv) app, which some of Wholphin's playback code is adapted from
 - The [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin), [RomM](https://github.com/rommapp/romm), [Seerr](https://github.com/seerr-team/seerr), [Lidarr](https://lidarr.audio/), [Open Library](https://openlibrary.org/), [AniList](https://anilist.co/), [iptv-org](https://github.com/iptv-org/iptv) and all the other open-source projects this app uses
 
-Benflix is not connected to, or endorsed by, Netflix, Jellyfin or Wholphin.
+Glowfin is not connected to, or endorsed by, Netflix, Jellyfin or Wholphin.
 
 ### License
 
-Like Wholphin, Benflix is released under the **GNU General Public License, version 2** (GPL-2.0).
+Like Wholphin, Glowfin is released under the **GNU General Public License, version 2** (GPL-2.0).
 The full text is in the [LICENSE](LICENSE) file. In short: you are free to use, change and share this
 app, but if you share a changed version you must share its source code under the same license
 and keep these credits.
 
 ## For developers
 
-Benflix is built automatically by GitHub Actions every time a change lands on `main`. The newest APK
+Glowfin is built automatically by GitHub Actions every time a change lands on `main`. The newest APK
 is always on the [latest-build release](https://github.com/TheBenPsych/MyStream/releases/tag/latest-build).
 Every build is also checked for code that would crash on older TVs and phones, and a test robot clicks
 through every screen on a TV and a phone emulator.

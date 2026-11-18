@@ -159,7 +159,7 @@ class GenreHubViewModel
                                     fetch(both, listOf(ItemSortBy.RANDOM), minRating = 7.0, unwatched = true),
                                 )
                             },
-                            async { HubRow("New on Benflix", fetch(both, listOf(ItemSortBy.DATE_CREATED))) },
+                            async { HubRow("New on Glowfin", fetch(both, listOf(ItemSortBy.DATE_CREATED))) },
                             async {
                                 HubRow(
                                     "Movies under 2 hours",

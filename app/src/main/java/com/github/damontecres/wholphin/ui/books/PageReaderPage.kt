@@ -101,7 +101,7 @@ fun PageReaderPage(
             modifier = modifier.fillMaxSize().background(BenflixColors.Tray).padding(32.dp),
         ) {
             Text("Couldn't open it", color = BenflixColors.Text, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
-            Text(state.problem ?: "It has no pages Benflix can read.", color = BenflixColors.Soft, fontSize = BenflixType.body)
+            Text(state.problem ?: "It has no pages Glowfin can read.", color = BenflixColors.Soft, fontSize = BenflixType.body)
             MusicButton("Back", BenflixIcon.BACK_ARROW, onClick = { viewModel.navigationManager.goBack() })
         }
         return
