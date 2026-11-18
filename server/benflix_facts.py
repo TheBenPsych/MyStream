@@ -1,5 +1,5 @@
 """
-Benflix Parents' guide on Tower (the web version can't ask IMDb itself).
+Glowfin Parents' guide on Tower (the web version can't ask IMDb itself).
 
 Loaded by benflix-games-helper.py (it sits next to it on Tower). Answers /api/facts/parents/<IMDb id>.
 

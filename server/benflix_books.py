@@ -914,7 +914,7 @@ def _rar_folder(vol):
     if os.path.isfile(stamp) and _read(stamp, {}).get("mtime") == vol["added"]:
         return out
     if not have_tool("7z"):
-        raise BooksError(422, "This volume is a .cbr file, and Tower can't open those yet. Run the Benflix setup command again.")
+        raise BooksError(422, "This volume is a .cbr file, and Tower can't open those yet. Run the Glowfin setup command again.")
     shutil.rmtree(out, ignore_errors=True)
     os.makedirs(out, exist_ok=True)
     r = subprocess.run(["7z", "x", "-y", "-o" + out, vol["path"]], capture_output=True, timeout=300)
@@ -1471,7 +1471,7 @@ def title_page(tid, user_id, is_kids, is_admin):
     with _lock:
         t = _lib["titles"].get(tid)
     if not t or not visible(is_kids, t):
-        raise BooksError(404, "That isn't on Benflix any more.")
+        raise BooksError(404, "That isn't on Glowfin any more.")
     u = _user(user_id)
     m = meta_of(t)
     out = tile(t, u)
@@ -1651,7 +1651,7 @@ def save_place(user_id, tid, body):
     t = _lib["titles"].get(tid)
     vol = _lib["vols"].get(tid)
     if not t and not vol:
-        raise BooksError(404, "That isn't on Benflix any more.")
+        raise BooksError(404, "That isn't on Glowfin any more.")
     now = int(time.time())
     keep = {k: body[k] for k in ("pct", "page", "pages", "chapter", "cpos", "pos", "file", "vol", "mode") if k in body}
     if "pct" in keep:
@@ -1748,7 +1748,7 @@ def mark(user_id, body):
                     if p:
                         p["pct"] = 0
         else:
-            raise BooksError(404, "That isn't on Benflix any more.")
+            raise BooksError(404, "That isn't on Glowfin any more.")
     _save_user(u)
     return {"ok": True}
 
@@ -1770,7 +1770,7 @@ def set_want(user_id, body):
 def send_to_phone(user_id, tid):
     u = _user(user_id)
     if tid not in _lib["titles"]:
-        raise BooksError(404, "That isn't on Benflix any more.")
+        raise BooksError(404, "That isn't on Glowfin any more.")
     with _lock:
         u["sent"][tid] = int(time.time())
     _save_user(u)
@@ -2039,7 +2039,7 @@ def pick_cover(body):
     edition = str(body.get("edition") or "")
     scope = body.get("scope") or "one"
     if not _dir:
-        raise BooksError(503, "Tower has no folder to save covers in. Run the Benflix setup command again.")
+        raise BooksError(503, "Tower has no folder to save covers in. Run the Glowfin setup command again.")
     if not url.startswith("https://"):
         raise BooksError(400, "That cover link doesn't look right.")
     if tid not in _lib["titles"] and tid not in _lib["vols"]:
@@ -2301,7 +2301,7 @@ def forget(rid, user_id, is_admin):
 
 def ch(method, path, body=None, timeout=60):
     if not CH_URL or not CH_KEY:
-        raise BooksError(503, "Chaptarr isn't connected yet. Run the Benflix setup command again.")
+        raise BooksError(503, "Chaptarr isn't connected yet. Run the Glowfin setup command again.")
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
         CH_URL + path, data=data, method=method,
@@ -2909,7 +2909,7 @@ def requests_view(user_id, is_admin):
         out["others"] = [request_view(r, True) for r in _state["requests"] if r.get("user") != user_id and r["state"] not in ("waiting", "no")][:60]
         out["mangaToAdd"] = [request_view(r, True) for r in _state["requests"] if r["state"] == "manga"]
         if not can_ask():
-            out["problems"].append("Chaptarr isn't connected. Set it up, then run the Benflix setup command again.")
+            out["problems"].append("Chaptarr isn't connected. Set it up, then run the Glowfin setup command again.")
         elif _ch_setup.get("indexers") == 0:
             out["problems"].append(
                 "Chaptarr has nowhere to look for books yet, so requests find nothing. In Prowlarr, add book sites "
@@ -2935,7 +2935,7 @@ def file_for(tid, index=0):
         if os.path.isdir(p):
             raise BooksError(404, "That volume is a folder of pictures.")
     else:
-        raise BooksError(404, "That isn't on Benflix any more.")
+        raise BooksError(404, "That isn't on Glowfin any more.")
     if not os.path.isfile(p):
         _kick.set()
         raise BooksError(404, "That file has moved. Tower is looking again; try in a minute.")

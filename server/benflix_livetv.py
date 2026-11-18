@@ -507,7 +507,7 @@ def report_broken(body, user_id):
         with open(tmp, "w") as f:
             json.dump(data, f, indent=1)
         os.replace(tmp, BROKEN_FILE)
-    return {"ok": True, "message": "Thanks! Benflix uses another copy of this channel from now on."}
+    return {"ok": True, "message": "Thanks! Glowfin uses another copy of this channel from now on."}
 
 
 def _copies_for(key):

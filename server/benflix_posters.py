@@ -117,7 +117,7 @@ def _admin():
 def _get(path):
     token = _admin()[0]
     if not token:
-        raise PosterError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise PosterError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     status, data, _ = _jf("GET", path, token=token)
     if status != 200:
         raise PosterError(502, f"Jellyfin answered with an error ({status}).")
@@ -130,7 +130,7 @@ def _get(path):
 def _post(path):
     token = _admin()[0]
     if not token:
-        raise PosterError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise PosterError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     status, _, _ = _jf("POST", path, token=token, body=b"")
     return 200 <= status < 300
 
