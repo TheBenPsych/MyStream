@@ -78,6 +78,10 @@ fun songKey(title: String?): String =
 object MusicAskNav {
     /** A [MusicAlbum] or [MusicArtist] waiting for Ask for music to open it */
     var open by mutableStateOf<Any?>(null)
+
+    /** Glowfin (M1): the Import tile on Music opens Ask for music straight on Import a playlist */
+    @Volatile
+    var importJump = false
 }
 
 /** Opens a catalogue album or artist on Ask for music, from any music page */
@@ -86,15 +90,12 @@ fun openInAsk(
     what: Any,
 ) {
     MusicAskNav.open = what
-    MusicPlaceNav.pending = MUSIC_ASK
-    val frame = MusicPlaceNav.frame
+    // Glowfin (M1): Ask for music opens over the Music page
+    MusicPlaceNav.openAsk()
     val stack = navigationManager.backStack
     val at = stack.indexOfLast { it is Destination.MusicDoor }
     when {
-        frame != null && stack.lastOrNull() is Destination.MusicDoor -> {
-            MusicPlaceNav.pending = null
-            frame.pick(MUSIC_ASK)
-        }
+        stack.lastOrNull() is Destination.MusicDoor -> {}
 
         at >= 0 -> {
             navigationManager.goBackTo(at)

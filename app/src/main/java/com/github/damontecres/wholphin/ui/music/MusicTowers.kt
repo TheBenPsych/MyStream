@@ -13,21 +13,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.services.MusicSpectrum
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** The door colours, low sounds to high: amber, blue, teal, pink, violet (Ben's pick) */
+/**
+ * Glowfin (M1): the logo's glow from the bottom row to the top, violet > blue > aqua (no more amber door colours)
+ */
 private val TowerColors =
-    listOf(BenflixColors.Movies, BenflixColors.Shows, BenflixColors.LiveTv, BenflixColors.Games, BenflixColors.Music)
+    listOf(
+        Glowfin.Violet,
+        lerp(Glowfin.Violet, Glowfin.Blue, 0.5f),
+        Glowfin.Blue,
+        lerp(Glowfin.Blue, Glowfin.Aqua, 0.5f),
+        Glowfin.Aqua,
+    )
 
 /**
  * The music bars (approved v-blocks): towers made of the same soft squares as the Benflix logo, one door
- * colour per group (low sounds amber, high sounds violet), with a faint square floating at each peak.
+ * colour per group (low sounds violet, high sounds aqua), with a faint square floating at each peak.
  * The heights come from the sound inside Benflix's player ([MusicSpectrum]), about 30 times a second.
  */
 @Composable
@@ -127,7 +137,7 @@ private fun fallback(
 
 /**
  * Music player 2026-11-17 (Ben's pick p3-progress): the progress line made of the same logo-square towers.
- * Towers left of [progress] are lit in the door colours (amber at the bottom up to violet at the top) and
+ * Towers left of [progress] are lit in the glow colours (violet at the bottom up to aqua at the top) and
  * dance to the music; the rest are grey and dance quietly. Every tower always keeps at least one square, so
  * the line reads as a line even when the song is quiet or paused.
  */
@@ -180,7 +190,7 @@ fun TowerLine(
         if (frame < 0L) return@Canvas
         val gapX = size.width / towers * 0.25f
         val w = (size.width - gapX * (towers - 1)) / towers
-        // Five rows of thin squares, one door colour each, amber at the bottom up to violet at the top (the
+        // Five rows of thin squares, one glow colour each, violet at the bottom up to aqua at the top (the
         // approved sheet). Tiny lines (the pill, the mini bar) get fewer rows so the squares stay visible.
         val rows = (size.height / 4.dp.toPx()).toInt().coerceIn(2, TowerColors.size)
         val gapY = size.height * 0.08f

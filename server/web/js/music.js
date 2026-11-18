@@ -5,7 +5,7 @@
    L likes the song. */
 
 (() => {
-  const MUSIC = "#B69CFF", ON_MUSIC = "#160F26";
+  const MUSIC = "#A55BE0", ON_MUSIC = "#160F26";
   B.DOORS.music = { key: "music", name: "Music", desc: "Your songs and playlists", color: MUSIC, icon: "note" };
   const I = B.I;
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -15,10 +15,13 @@
   const SONG_FIELDS = "Fields=ParentId,DateCreated,RunTimeTicks,ChildCount&EnableUserData=true";
   const ICON = {
     note: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
-    shuffle: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
+    shuffle: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" transform="translate(-0.5 0)"/>',
     prev: '<path d="M19 4.5v15L9 12l10-7.5Z" fill="currentColor"/><path d="M5 5v14" stroke-width="2.6"/>',
-    queue: '<path d="M3 6h13M3 12h13M3 18h8M18 14v7M21 17l-3 4-3-4" />',
+    queue: '<path d="M3 6h13M3 12h13M3 18h8M18 14v7M21 17l-3 4-3-4" transform="translate(0 -1.5)"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
+    // Glowfin (M1): Repeat (two arrows round a loop) and Lyrics (a microphone), centred in their 24 x 24 box
+    repeat: '<path d="M17 2.5l3 3-3 3M4 11.5v-1a5 5 0 0 1 5-5h11M7 21.5l-3-3 3-3M20 12.5v1a5 5 0 0 1-5 5H4"/>',
+    lyrics: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
   };
   // The shared title page (title.js) draws icons from the main set, so lend it shuffle
   if (typeof P === "object" && !P.shuffle && ICON.shuffle) P.shuffle = ICON.shuffle;
@@ -220,6 +223,9 @@
     const s = M.current();
     if (s && B.me) B.jf("POST", `/Users/${B.uid()}/PlayedItems/${enc(s.Id)}`).catch(() => {});
     report("/Stopped");
+    // Repeat this song: back to its start; Repeat all: the end of the list goes back to the first song
+    if (M.repeat === 2) { seek(0); audio.play().catch(() => {}); return; }
+    if (M.repeat === 1 && M.index + 1 >= M.queue.length && M.queue.length) { load(0); return; }
     M.next();
   });
   audio.addEventListener("play", draw);
@@ -282,12 +288,16 @@
     if (!bar) {
       bar = document.createElement("div");
       bar.className = "mbar hidden";
+      // Glowfin (W1, Ben: every player keeps every button): Like, Shuffle, Previous, Pause, Next, Repeat, then
+      // Lyrics, Up next, Play on, Stop, More and the volume, over the line of square towers. Narrow windows and
+      // phones get two rows (the buttons scroll sideways) instead of fewer buttons.
       bar.innerHTML = `<button class="mbar-open" data-open title="Now playing"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
-        <div class="mbar-ctl"><button class="circle" data-a="prev" title="Previous song">${icon("prev")}</button><button class="circle white" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song">${I("next")}</button>
-        <button class="circle mheart" data-a="like" title="Like (L)">${I("heart")}</button>${B.volume("", "circle")}</div>
+        <div class="mbar-ctl"><button class="circle mheart" data-a="like" title="Like (L)">${I("heart")}</button><button class="circle mshuf" data-a="shuffle" title="Shuffle">${icon("shuffle")}</button><button class="circle" data-a="prev" title="Previous song">${icon("prev")}</button><button class="circle white" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song">${I("next")}</button><button class="circle mrep" data-a="repeat" title="Repeat">${icon("repeat")}</button>
+        <span class="mbar-sep"></span><button class="circle" data-a="lyrics" title="Lyrics">${icon("lyrics")}</button><button class="circle" data-a="upnext" title="Up next">${icon("queue")}</button><button class="circle" data-a="playon" title="Play on a TV or phone">${I("tv")}</button><button class="circle" data-a="stop" title="Stop">${icon("stop")}</button><button class="circle" data-a="more" title="More">${I("more")}</button>${B.volume("", "circle")}</div>
         <canvas class="mbar-towers"></canvas>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
+        if (a && a.dataset.a === "more") { e.stopPropagation(); return M.current() && songMenu(a, M.current(), B.me.kids || B.me.guest ? null : [{ label: "Songs like this to ask for", value: "similar", run: () => { openNow(); showTab("like"); } }]); }
         if (a) { e.stopPropagation(); return act(a.dataset.a); }
         if (e.target.closest("[data-open]")) openNow();
       });
@@ -307,6 +317,7 @@
     $(".mbar-words small", bar).textContent = artistOf(s);
     $("[data-a=toggle]", bar).innerHTML = audio.paused ? I("play") : I("pause");
     $(".mheart", bar).classList.toggle("on", M.liked.has(s.Id));
+    markModes(bar);
     drawNow();
   }
   M.draw = draw;
@@ -320,8 +331,33 @@
     else if (a === "similar") { openNow(); showTab("like"); }
     else if (a === "about") { openNow(); showTab("about"); }
     else if (a === "shuffle") cycleShuffle();
+    else if (a === "repeat") cycleRepeat();
+    else if (a === "lyrics") { openNow(); showTab("lyrics", true); }
+    else if (a === "upnext") { openNow(); showTab("upnext", true); }
     else if (a === "playon") playOn();
   };
+  // Glowfin (M1): Repeat is Off, then the whole list, then this one song
+  M.repeat = 0;
+  function cycleRepeat() {
+    M.repeat = (M.repeat + 1) % 3;
+    B.toast(["Repeat off", "Repeat: all", "Repeat: this song"][M.repeat]);
+    draw();
+  }
+  // Shuffle and Repeat light up (aqua) wherever they are: the bar and Now playing
+  function markModes(root) {
+    if (!root) return;
+    const sh = $("[data-a=shuffle]", root), rp = $("[data-a=repeat]", root);
+    if (sh) {
+      sh.classList.toggle("on", shuffleMode > 0);
+      sh.classList.toggle("smart", shuffleMode === 2);
+      sh.title = ["Shuffle is off", "Shuffle is on", "Smart shuffle is on"][shuffleMode];
+    }
+    if (rp) {
+      rp.classList.toggle("on", M.repeat > 0);
+      rp.classList.toggle("one", M.repeat === 2);
+      rp.title = ["Repeat is off", "Repeat is on", "Repeat this song is on"][M.repeat];
+    }
+  }
   // Music player 2026-11-17: the About tab (the artist and the credits) inside Now playing's panel
   async function aboutInto(box) {
     const s = M.current();
@@ -438,7 +474,7 @@
             <div class="np-cover"></div>
             <div class="np-kick">NOW PLAYING</div><div class="np-t"></div><div class="np-a"></div>
             <div class="np-prog"><span class="np-now">0:00</span><canvas class="np-line" title="Click to jump (Shift + Left/Right: 10 seconds)"></canvas><span class="np-len">0:00</span></div>
-            <div class="np-ctl"><button class="circle np-shuf" data-a="shuffle" title="Shuffle">${icon("shuffle")}</button><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button>${B.volume("", "circle")}</div>
+            <div class="np-ctl"><button class="circle np-shuf" data-a="shuffle" title="Shuffle">${icon("shuffle")}</button><button class="circle" data-a="prev" title="Previous song (Left)">${icon("prev")}</button><button class="circle white big" data-a="toggle" title="Play or pause (Space)"></button><button class="circle" data-a="next" title="Next song (Right)">${I("next")}</button><button class="circle np-rep" data-a="repeat" title="Repeat">${icon("repeat")}</button>${B.volume("", "circle")}</div>
             <div class="np-round">${roundBtn("like", I("heart"), "Like", "mheart")}${roundBtn("playon", I("tv"), "Play on")}${roundBtn("stop", icon("stop"), "Stop")}${roundBtn("more", I("more"), "More")}</div>
           </div>
           <div class="np-panel">
@@ -572,10 +608,7 @@
       const liked = M.liked.has(s.Id);
       $(".np-round .mheart", np).classList.toggle("on", liked);
       $(".np-round .mheart small", np).textContent = liked ? "Liked" : "Like";
-      const sh = $(".np-shuf", np);
-      sh.classList.toggle("on", shuffleMode > 0);
-      sh.classList.toggle("smart", shuffleMode === 2);
-      sh.title = ["Shuffle is off", "Shuffle is on", "Smart shuffle is on"][shuffleMode];
+      markModes($(".np-ctl", np));
       drawNpPanel(full);
     }
     const d = songLen();
@@ -585,7 +618,7 @@
   }
 
   // The towers: the same soft squares as the logo, now inside the progress line (Ben's pick). Played part lit in
-  // the door colours, amber at the bottom up to violet at the top, the rest grey. The bar at the bottom of every
+  // the glow colours, violet at the bottom up to aqua at the top, the rest grey. The bar at the bottom of every
   // page gets the same line, smaller.
   let ctx, analyser, data;
   // Browsers pause the sound graph when the tab sleeps; wake it or the music goes silent
@@ -598,7 +631,8 @@
   window.addEventListener("focus", towersBack);
   window.addEventListener("resize", towersBack);
   window.addEventListener("pageshow", towersBack);
-  const COLORS = ["#FFB547", "#7AA7FF", "#3DD6C6", "#FF6F91", MUSIC];
+  // Glowfin (M1): the logo's glow, violet at the bottom up to aqua at the top (no more amber door colours)
+  const COLORS = ["#A55BE0", "#6282E3", "#1FA8E6", "#2FC4E7", "#3FE0E8"];
   const levels = [];
   let towersOn = false;
   function startTowers() {
@@ -663,7 +697,7 @@
     const w = (c.width = Math.max(1, c.clientWidth * devicePixelRatio)), h = (c.height = Math.max(1, c.clientHeight * devicePixelRatio));
     const g = c.getContext("2d");
     const off = B.webSettings().musicBarsOff;
-    // Five rows of thin squares, one door colour each, amber at the bottom up to violet at the top
+    // Five rows of thin squares, one glow colour each, violet at the bottom up to aqua at the top
     const gap = w / n * 0.25, bw = (w - gap * (n - 1)) / n;
     const rows = Math.max(2, Math.min(COLORS.length, Math.floor(h / (4 * devicePixelRatio))));
     const gy = h * 0.08, bh = (h - gy * (rows - 1)) / rows;
@@ -705,12 +739,12 @@
   const playlistCard = (p) => card(p, `#/playlist/${p.Id}`, p.ChildCount ? `${p.ChildCount} songs` : "Playlist");
   // Mix and theme covers: up to four album covers in a square (one cover fills it, two or three repeat).
   // A mix with no covers yet (a holiday Ben is still filling) gets its own colour instead of a grey square.
-  const MIX_TINTS = [["#5B3FB8", "#A78BFA"], ["#B8323F", "#2E7D4F"], ["#C2410C", "#F59E0B"], ["#1E3A8A", "#60A5FA"], ["#0F766E", "#5EEAD4"], ["#9D174D", "#F472B6"]];
+  // Glowfin: night blues and violets only
+  const MIX_TINTS = [["#3B2C6E", "#A55BE0"], ["#12305A", "#1FA8E6"], ["#0E3B47", "#2BB5C0"], ["#2A1F5C", "#6C6FE8"]];
   const mixTint = (key) => {
     let h = 0;
     for (const ch of String(key || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    const t = { christmas: 1, halloween: 2, "cozy-fall": 2, winter: 3, summer: 4, valentines: 5 }[key];
-    return MIX_TINTS[t != null ? t : h % MIX_TINTS.length];
+    return MIX_TINTS[h % MIX_TINTS.length];
   };
   B.mixCovers = (list) => {
     const c = (list || []).filter(Boolean).slice(0, 4);
@@ -742,7 +776,7 @@
     const now = M.current() && M.current().Id === s.Id;
     const fav = (s.UserData || {}).IsFavorite || M.liked.has(s.Id);
     return `<div class="srow ${now ? "now" : ""}" data-i="${i}">
-      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i></span>' : opts.cover ? (cover(s, 80) ? `<img class="sc" src="${cover(s, 80)}" alt="" loading="lazy" decoding="async"${artistArt(s, 80) ? ` data-alt="${esc(artistArt(s, 80))}" onerror="this.onerror=null;this.src=this.dataset.alt"` : ""}>` : `<span class="sc"></span>`) : esc(opts.number != null ? opts.number : i + 1)}</span>
+      <span class="sn">${now ? '<span class="bars"><i></i><i></i><i></i><i></i></span>' : opts.cover ? (cover(s, 80) ? `<img class="sc" src="${cover(s, 80)}" alt="" loading="lazy" decoding="async"${artistArt(s, 80) ? ` data-alt="${esc(artistArt(s, 80))}" onerror="this.onerror=null;this.src=this.dataset.alt"` : ""}>` : `<span class="sc"></span>`) : esc(opts.number != null ? opts.number : i + 1)}</span>
       <span class="st"><b>${esc(s.Name)}</b>${opts.artist ? `<small>${esc(artistOf(s))}</small>` : ""}</span>
       <button class="sh ${fav ? "on" : ""}" data-heart="${esc(s.Id)}" title="Like">${I("heart")}</button>
       <span class="sl">${len(s.RunTimeTicks)}</span>
@@ -931,7 +965,6 @@
   };
   const meSave = async (path, body) => {
     try { const j = await B.call("POST", path, body); if (j && j.recents) { me = j; meAt = Date.now(); } } catch (e) { if (e && e.message && /pin/i.test(e.message)) B.toast(e.message); }
-    paintSide();
   };
   B.musicPlayed = (place) => {
     const mine = me || (me = { recents: [], searches: [], pins: [] });
@@ -982,50 +1015,68 @@
     const it = r.byId[p.id]; const art = it && cover(it, 120);
     return `<span class="qa ${p.kind === "artist" ? "round" : ""}" ${art ? `style="background-image:url('${art}')"` : ""}></span>`;
   };
-  const quickTile = (p, r) => `<a class="mquick" href="${hrefOf(p)}" title="${esc(p.name)}">${placeArt(p, r)}<b>${esc(p.name)}</b></a>`;
   const placeOfItem = (it) => ({ kind: it.Type === "MusicAlbum" ? "album" : it.Type === "MusicArtist" ? "artist" : "playlist", id: it.Id, name: it.Name });
   const placeOfMix = (m) => ({ kind: "mix", id: m.key, name: m.name });
 
-  // ---------- the browser's left side (approved r3-web3): the four places, then a short Your library ----------
-  let sideHtml = "";
-  const paintSide = async () => {
-    if (B.me.kids) return;
-    const mine = await B.musicMe();
-    const list = [{ kind: "liked", id: "", name: "Liked songs" }].concat(mine.pins || [], (mine.recents || []).slice(0, 12));
-    const seen = new Set(); const short = list.filter((p) => !seen.has(keyOf(p)) && seen.add(keyOf(p))).slice(0, 9);
-    const r = await resolve(short).catch(() => ({ byId: {}, byKey: {} }));
-    const pins = new Set((mine.pins || []).map(keyOf));
-    sideHtml = `<div class="mside"><a class="mside-h" href="#/mlibrary">${I("list")}<span>Your library</span></a>${short.map((p) => `<a class="mside-i" href="${hrefOf(p)}">${placeArt(p, r)}<span><b>${esc(p.name)}</b><small>${p.kind === "liked" || pins.has(keyOf(p)) ? "● " : ""}${esc({ album: "Album", artist: "Artist", playlist: "Playlist", mix: "Made for you", liked: "Playlist", songs: "Every song" }[p.kind] || "")}</small></span></a>`).join("")}</div>`;
-    const rail = $(".drail");
-    if (rail && rail.dataset.door === "music") { const old = $(".mside", rail); if (old) old.outerHTML = sideHtml; else rail.insertAdjacentHTML("beforeend", sideHtml); }
-  };
-  B.railExtra = (door) => (door === "music" ? sideHtml : "");
-  window.addEventListener("hashchange", () => { if (/^#\/(music|msearch|mlibrary|mthemes|songs|liked|mgrid)/.test(location.hash)) setTimeout(paintSide, 60); });
+  // (Glowfin M1: the Your library list on the left side is gone; Albums, Artists and Playlists are tabs now)
 
   // ---------- Music Home (approved g2-home): greeting, chips, 8 quick picks, shorter rows, one Browse row ----------
-  const HOME_CHIPS = [["all", "All"], ["mixes", "Mixes"], ["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["new", "New to you"]];
   const BROWSE = { decade: "Every decade you have", genre: "Your music by style", mood: "For any moment", lofi: "Hip hop, house, jazz and more", throwback: "Songs from years ago" };
   const browseCard = (group, title, list) => {
     const covers = B.mixCovers([...new Set(list.flatMap((t) => t.covers || []))].slice(0, 4));
     const art = covers.map((c) => `<span style="background-image:url('${B.img(c, "Primary", { h: 200 })}')"></span>`).join("");
     return `<a class="mcard mix" href="#/mthemes/${enc(group)}?name=${enc(title)}"><div class="im collage${covers.length ? "" : " empty"}">${covers.length ? art : `<i>${esc(title)}</i>`}<b>${esc(title)}</b></div><div class="cap"><span class="nm">${esc(title)}</span><small>${esc(BROWSE[group] || "")}</small></div></a>`;
   };
+  // Glowfin (M1): For you. The same tabs as Movies and Shows along the top (For you, Albums, Artists, Playlists,
+  // Songs), the top area about the card you're on (its cover fading in on the right), then Made for you, Your
+  // playlists (Liked songs first, Ask for music and Import at the end) and a few more rows.
+  const kickOf = (href) => (/^#\/mix\//.test(href) ? "Made for you · new every morning" : /^#\/mthemes\//.test(href) ? "Browse"
+    : /^#\/album\//.test(href) ? "Album" : /^#\/artist\//.test(href) ? "Artist" : /^#\/(playlist\/|liked)/.test(href) ? "Your playlist"
+    : /^#\/requests/.test(href) ? "Requests" : "Music");
+  const wireMusicTop = () => {
+    const top = $("#mTop");
+    if (!top) return;
+    let timer, shown = null;
+    const show = (a) => {
+      if (!a || a === shown) return;
+      shown = a;
+      const name = ($(".nm", a) || {}).textContent || "", line = ($(".cap small", a) || {}).textContent || "";
+      $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(a.getAttribute("href") || ""))}</div><h1>${esc(name)}</h1>${line ? `<p>${esc(line)}</p>` : ""}`;
+      const art = $(".art", top);
+      const img = $("img.art", a), spans = $$(".collage span", a);
+      art.classList.remove("on");
+      if (img) art.innerHTML = `<span class="one" style="background-image:url('${esc(img.src)}')"></span>`;
+      else if (spans.length) art.innerHTML = spans.map((x) => x.outerHTML).join("");
+      else art.innerHTML = $(".im", a) ? $(".im", a).outerHTML : "";
+      art.classList.toggle("quad", !img && spans.length > 1);
+      requestAnimationFrame(() => art.classList.add("on"));
+    };
+    const pointAt = (e) => {
+      const a = e.target.closest("#mrows .mcard");
+      if (!a) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => show(a), shown ? 350 : 0);
+    };
+    B.page().addEventListener("mouseover", pointAt);
+    B.page().addEventListener("focusin", pointAt);
+    B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+    show($("#mrows .mcard"));
+  };
+  const askTile = () => `<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}<i>Ask for music</i></div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, playlists</small></div></a>`;
+  const importTile = () => `<a class="mcard" href="#/requests?tab=music&mlist=playlist"><div class="im ask">${I("dl")}<i>Import</i></div><div class="cap"><span class="nm">Import</span><small>A playlist from a link</small></div></a>`;
   B.route(/^\/music$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><h1 class="mhello">${esc(B.greeting())}, ${esc(B.me.name)}</h1>
-      <div class="mchips">${HOME_CHIPS.map(([k, l]) => `<button class="chip ${k === "all" ? "on" : ""}" data-chip="${k}" style="--accent:var(--music)">${esc(l)}</button>`).join("")}</div>
-      <div id="mquick" class="mquickgrid"></div><div id="mrows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><section class="mtop" id="mTop"><div class="art"></div><div class="info"></div></section><div id="mrows">${B.spinner()}</div></div>`;
     B.wireTop();
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
     if (!ls.length) { $("#mrows").innerHTML = `<p class="dim">There's no music library on Glowfin yet.</p>`; return; }
-    const [mixes, pls, liked, recent, played, artists, themes, mine] = await Promise.all([
+    const [mixes, pls, liked, recent, played, themes, mine] = await Promise.all([
       B.musicMixes().catch(() => []),
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount&Limit=30`).catch(() => []),
       B.get(`/Users/${B.uid()}/Items?Recursive=true&IncludeItemTypes=Audio&Filters=IsFavorite&Limit=0`).then((j) => j.TotalRecordCount || 0).catch(() => 0),
       items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=30&Fields=DateCreated`).catch(() => []),
       items(`IncludeItemTypes=MusicAlbum&SortBy=PlayCount,DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=30`).catch(() => []),
-      B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=PlayCount,SortName&SortOrder=Descending&Limit=30&Fields=PrimaryImageAspectRatio`).then((j) => j.Items || []).catch(() => []),
       B.musicThemes().catch(() => ({ themes: [] })),
       B.musicMe(true),
     ]);
@@ -1035,50 +1086,24 @@
     if (!B.alive(nav)) return;
     pls.forEach((p) => { r.byId[p.Id] = p; });
     const season = (themes.themes || []).filter((t) => t.group === "season");
-    // Quick picks: Liked songs first, then what you played in the last few days, then what's in season, the mixes, your playlists
-    const cut = Date.now() / 1000 - 5 * 86400;
-    const live = (p) => p.kind === "liked" || p.kind === "songs" || (p.kind === "mix" ? !!r.byKey[p.id] : !!r.byId[p.id]);
-    const pool = [{ kind: "liked", id: "", name: "Liked songs" }]
-      .concat(recents.filter((p) => (p.at || 0) >= cut && p.kind !== "songs" && live(p)), season.map(placeOfMix), mixes.map(placeOfMix), pls.map(placeOfItem));
-    const seen = new Set();
-    const quick = pool.filter((p) => !seen.has(keyOf(p)) && seen.add(keyOf(p))).slice(0, 8);
     season.concat(mixes).forEach((x) => { r.byKey[x.key] = x; });
-    $("#mquick").innerHTML = quick.map((p) => quickTile(p, r)).join("");
     const jump = recents.map((p) => placeCard(p, r, liked)).filter(Boolean).slice(0, 20);
+    const easy = B.easyMode && B.easyMode();
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
+    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), [askTile()], B.me.admin ? [importTile()] : [])));
     if (jump.length >= 2) rows.push(B.row("Jump back in", jump));
-    rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard))));
-    rows.push(themeRow(themes, "season"));
-    rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
-    if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
-    rows.push(B.row("Artists", artists.map(artistCard), { more: "#/mgrid/artists" }));
-    // Ben (shorter Home + one Browse row): Decades, Genres, Moods and Throwbacks are tiles at the bottom
-    const groups = ["lofi", "decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
-    if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
-    const allRows = rows.join("");
-    $("#mrows").innerHTML = allRows;
-    const f = $("#mquick a"); if (f) f.focus({ preventScroll: true });
-    // The chips (approved x-filter): pick one and the page shows only that, as a grid
-    $(".mchips").addEventListener("click", async (e) => {
-      const c = e.target.closest("[data-chip]"); if (!c) return;
-      $$(".mchips .chip").forEach((x) => x.classList.toggle("on", x === c));
-      const k = c.dataset.chip;
-      $("#mquick").hidden = k !== "all";
-      if (k === "all") { $("#mrows").innerHTML = allRows; return; }
-      $("#mrows").innerHTML = B.spinner();
-      let cards = [];
-      if (k === "mixes") cards = mixes.concat(themes.themes || []).map(mixCard);
-      else if (k === "playlists") cards = [likedCard(liked)].concat(pls.map(playlistCard));
-      else if (k === "albums") cards = (await items(`IncludeItemTypes=MusicAlbum&SortBy=SortName&Limit=3000`).catch(() => [])).map(albumCard);
-      else if (k === "artists") cards = ((await B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=SortName&Limit=3000`).catch(() => ({}))).Items || []).map(artistCard);
-      else if (k === "new") {
-        const since = Date.now() - 14 * 86400000;
-        cards = (await items(`IncludeItemTypes=MusicAlbum&SortBy=DateCreated&SortOrder=Descending&Limit=300&Fields=DateCreated`).catch(() => [])).filter((a) => Date.parse(a.DateCreated || 0) >= since).map(albumCard);
-      }
-      if (!B.alive(nav) || !c.classList.contains("on")) return;
-      $("#mrows").innerHTML = cards.length ? `<div class="mgrid">${cards.join("")}</div>` : `<p class="dim">${k === "new" ? "Nothing new in the last two weeks." : "Nothing here yet."}</p>`;
-    });
+    if (!easy) {
+      rows.push(themeRow(themes, "season"));
+      rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
+      if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
+      // Decades, Genres, Moods and Throwbacks are tiles in one Browse row at the bottom
+      const groups = ["lofi", "decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
+      if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
+    }
+    $("#mrows").innerHTML = rows.join("");
+    wireMusicTop();
+    const f = $("#mrows .mcard"); if (f) f.focus({ preventScroll: true });
   });
 
   // Browse > Decades, Genres, Moods or Throwbacks: that group's themed playlists
@@ -1097,11 +1122,14 @@
   const LIB_SORTS = ["Recently played", "Recently added", "A to Z", "Made by"];
   B.route(/^\/mlibrary$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    let chip = B.q("c") || "all", sort = +(B.q("s") || 0) % LIB_SORTS.length;
+    // Glowfin (M1): the Albums, Artists and Playlists tabs are this page (?c=albums, artists or playlists)
+    const tab = ["albums", "artists", "playlists"].includes(B.q("c")) ? B.q("c") : "all";
+    const listsTab = tab === "all" || tab === "playlists";
+    let chip = tab, sort = +(B.q("s") || 0) % LIB_SORTS.length;
     let grid = false;
     try { grid = localStorage.getItem("benflix-mlib-grid") === "1"; } catch (e) { /* private window */ }
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mlib-head"><h1 class="mtitle">Your library</h1>
-      <button class="btn" data-l="new">${I("plus")} New playlist</button><a class="btn" href="#/requests?tab=music">${I("dl")} Import</a><button class="btn" data-l="view" title="Grid or list"></button></div>
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mlib-head">${tab === "all" ? `<h1 class="mtitle">Your library</h1>` : `<span class="mlib-fill"></span>`}
+      ${listsTab ? `<button class="btn" data-l="new">${I("plus")} New playlist</button><a class="btn" href="#/requests?tab=music&mlist=playlist">${I("dl")} Import</a>` : ""}<button class="btn" data-l="view" title="Grid or list"></button></div>
       <div class="mchips" id="lchips"></div><div class="mlib-sort"><button class="btn small" data-l="sort"></button><span class="dim">Right-click (or hold) to pin up to ${PIN_MAX}</span></div><div id="lbody">${B.spinner()}</div></div>`;
     B.wireTop();
     const [pls, mixes, liked, likedAlbums, likedArtists, mine, status] = await Promise.all([
@@ -1125,7 +1153,8 @@
       .concat(mixes.map((x) => entry(placeOfMix(x), "Made for you", 0, 0)), pls.map((it) => itemEntry(it, 1)), likedAlbums.concat(likedArtists, extras).map((it) => itemEntry(it, 2)),
         [entry({ kind: "songs", id: "", name: "All songs" }, "Every song, A to Z", 0, 1)]);
     let allAlbums = null, allArtists = null;
-    const chips = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["recent", "Recently played"]].concat(found.length ? [["found", "Being found"]] : []);
+    const chips = (tab === "all" ? [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"]] : [])
+      .concat(listsTab ? [["recent", "Recently played"]].concat(found.length ? [["found", "Being found"]] : []) : []);
     const order = (list) => {
       const pins = (me || NO_ME).pins || [];
       const liked1 = list.filter((e) => e.p.kind === "liked");
@@ -1193,7 +1222,7 @@
     };
     $(".mpage").addEventListener("click", async (e) => {
       const c = e.target.closest("[data-chip]");
-      if (c) { chip = chip === c.dataset.chip ? "all" : c.dataset.chip; return draw(); }
+      if (c) { chip = chip === c.dataset.chip ? tab : c.dataset.chip; return draw(); }
       const l = e.target.closest("[data-l]"); if (!l) return;
       if (l.dataset.l === "sort") { sort = (sort + 1) % LIB_SORTS.length; draw(); }
       if (l.dataset.l === "view") { grid = !grid; try { localStorage.setItem("benflix-mlib-grid", grid ? "1" : "0"); } catch (err) { /* private window */ } draw(); }
@@ -1885,7 +1914,7 @@
       const row = (x, mine) => `<div class="srow" data-q="${x.i}" draggable="true"><span class="sn"><span class="sc" style="background-image:url('${cover(x.s, 80)}')"></span></span><span class="st"><b>${esc(x.s.Name)}</b><small>${esc(artistOf(x.s))}</small></span><span class="sl">${len(x.s.RunTimeTicks)}</span>
         <button class="sm" data-up="${x.i}" title="Move up">${I("up")}</button><button class="sm" data-down="${x.i}" title="Move down">${I("down")}</button><button class="sm" data-rm="${x.i}" title="Take out">${I("x")}</button></div>`;
       B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">Queue</h1><p class="dim">Drag a song to move it, or use the arrows.</p>
-        ${now ? `<h3 class="msub">Now playing</h3><div class="msongs"><div class="srow now" data-open><span class="sn"><span class="bars"><i></i><i></i><i></i></span></span><span class="st"><b>${esc(now.Name)}</b><small>${esc(artistOf(now))}</small></span><span class="sl">${len(now.RunTimeTicks)}</span></div></div>` : `<p class="dim">Nothing is playing.</p>`}
+        ${now ? `<h3 class="msub">Now playing</h3><div class="msongs"><div class="srow now" data-open><span class="sn"><span class="bars"><i></i><i></i><i></i><i></i></span></span><span class="st"><b>${esc(now.Name)}</b><small>${esc(artistOf(now))}</small></span><span class="sl">${len(now.RunTimeTicks)}</span></div></div>` : `<p class="dim">Nothing is playing.</p>`}
         ${added.length ? `<h3 class="msub">Next in queue</h3><div class="msongs">${added.map((x) => row(x, true)).join("")}</div>` : ""}
         ${then.length ? `<h3 class="msub">${M.thenTitle ? "Next from: " + esc(M.thenTitle) : "Next from your music"}</h3><div class="msongs">${then.map((x) => row(x, false)).join("")}</div>` : now ? `<p class="dim">Nothing waiting. When this song ends, a mix like it starts by itself.</p>` : ""}
       </div>`;

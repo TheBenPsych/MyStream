@@ -625,7 +625,7 @@ textarea.field { min-height: 90px; resize: vertical; }
 .fix-pic.on { box-shadow: inset 0 0 0 3px var(--ink); }
 
 /* ---------- music (the violet fifth door) ---------- */
-:root { --music: #B69CFF; --onmusic: #160F26; }
+:root { --music: #A55BE0; --onmusic: #160F26; }
 .doors.five { grid-template-columns: repeat(5, 1fr); }
 .doors.grow .door:nth-child(5) { animation-delay: .28s; }
 .mpage { padding: 10px var(--gutter) 60px; }
@@ -720,7 +720,6 @@ body.np-open .mbar { display: none; }
 .np-ctl .circle svg.i { width: 24px; height: 24px; }
 .np-ctl .np-shuf { width: 42px; height: 42px; background: none; position: relative; }
 .np-ctl .np-shuf.on { color: var(--music); }
-.np-ctl .np-shuf.smart::after { content: "✦"; position: absolute; top: 0; right: 2px; font-size: 11px; color: var(--music); }
 .np-round { display: flex; gap: 14px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 .np-rb { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; font: inherit; }
 .np-rb .circle { width: 46px; height: 46px; }
@@ -775,7 +774,6 @@ button.np-ly:hover::after, button.np-ly:focus-visible::after { content: "Play fr
   .srow { gap: 10px; padding: 6px 4px; }
   .srow .sm[data-up], .srow .sm[data-down] { display: none; }
   .mbar { left: 8px; right: 8px; bottom: 8px; height: 62px; }
-  .mbar-ctl [data-a=prev], .mbar-ctl .mheart { display: none; }
   .np { overflow-y: auto; }
   .np-t { font-size: 28px; }
 }
@@ -2163,3 +2161,58 @@ svg.gi path.gd { stroke-width: 3.6; }
 .nnrow .num { color: var(--ink2); font-size: 13px; font-weight: 700; }
 .nnrow .nnnow { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nnrow .nnnext { color: var(--ink2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Glowfin Music (M1, Ben 2026-11-18) ----------
+   Tabs along the top like Movies (For you, Albums, Artists, Playlists, Songs). For you: a top area about the card
+   you're on (its cover fades in on the right), then Made for you and Your playlists (Liked songs first, Ask for
+   music and Import at the end). The playing song gets four small violet-to-aqua bouncing bars and an aqua name.
+   Mix covers carry a glow strip; towers in the progress line go violet > blue > aqua. The bar along the bottom
+   keeps every button (two rows on narrow windows and phones, never fewer buttons). */
+.mtop { position: relative; height: clamp(190px, 30vh, 300px); margin: -10px calc(-1 * var(--gutter)) 6px; padding: 0 var(--gutter); overflow: hidden; display: flex; align-items: flex-end; }
+.mtop .art { position: absolute; right: 0; top: 0; height: 100%; aspect-ratio: 1; display: grid; grid-template-columns: 1fr; opacity: 0; transition: opacity .3s; }
+.mtop .art.on { opacity: 1; }
+.mtop .art.quad { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.mtop .art span { background: center/cover no-repeat var(--deep); min-width: 0; min-height: 0; }
+.mtop .art .im { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.mtop .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--ink-bg, #0B0D1A) 0%, rgba(11, 13, 26, .45) 55%, rgba(11, 13, 26, 0) 100%), linear-gradient(0deg, #0B0D1A 0%, rgba(11, 13, 26, 0) 50%); }
+.mtop .info { position: relative; max-width: 620px; padding-bottom: 10px; }
+.mtop .mtop-kick { color: var(--ink2); font-size: 14px; font-weight: 600; }
+.mtop h1 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 38px; font-weight: 700; margin: 4px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtop p { color: var(--ink2); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mlib-fill { flex: 1; }
+.mcard.mix .collage b { background: linear-gradient(90deg, rgba(165, 91, 224, .92), rgba(31, 168, 230, .92) 60%, rgba(63, 224, 232, .92)); color: #fff; }
+.mcard .im.liked { background: var(--glow); }
+.mcard .im.ask { background: var(--raise); color: var(--aqua); display: flex; flex-direction: column; gap: 8px; }
+.mcard .im.ask svg.i { width: 30%; height: 30%; }
+.mcard .im.ask i { font-style: normal; font-weight: 700; font-size: 14px; color: var(--ink2); }
+.mhero h1, .mhero-words h1, .mtitle { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 700; }
+.mkick { color: var(--ink2); }
+.srow.now .st b { color: var(--aqua); }
+.bars i { background: var(--violet); }
+.bars i:nth-child(2) { background: #6282E3; } .bars i:nth-child(3) { background: var(--blue); animation-delay: -.6s; } .bars i:nth-child(4) { background: var(--aqua); animation-delay: -.15s; }
+/* Shuffle and Repeat light up aqua; Smart shuffle adds a small drawn star, Repeat this song a small dot */
+.mshuf, .mrep, .np-ctl .np-rep { position: relative; }
+.mshuf.on, .mrep.on, .np-ctl .np-shuf.on, .np-ctl .np-rep.on { color: var(--aqua); }
+.np-ctl .np-rep { width: 42px; height: 42px; background: none; }
+.mshuf.smart::after, .np-ctl .np-shuf.smart::after { content: ""; position: absolute; top: 3px; right: 3px; width: 9px; height: 9px; background: var(--aqua); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); font-size: 0; }
+.mrep.one::after, .np-ctl .np-rep.one::after { content: ""; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--aqua); }
+.np-rb.mheart.on .circle, .mbar .mheart.on { color: var(--aqua); }
+.np-panel { background: rgba(18, 21, 42, .6); }
+/* The bar along the bottom: every button, always round */
+.mbar { background: var(--raise); border-color: var(--line); }
+.mbar-ctl { flex: none; }
+.mbar-ctl .circle { flex: none; aspect-ratio: 1; }
+.mbar-ctl .circle svg.i { width: 20px; height: 20px; display: block; margin: auto; }
+.mbar-sep { width: 1px; height: 26px; background: var(--line); margin: 0 4px; flex: none; }
+@media (max-width: 1280px) {
+  body.has-mbar { padding-bottom: 150px; }
+  .mbar { height: auto; flex-wrap: wrap; row-gap: 4px; padding: 6px 10px 16px 8px; }
+  .mbar-open { flex: 1 1 100%; }
+  .mbar-ctl { flex: 1 1 100%; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+  body.has-mbar.has-bkbar .bk-mbar { bottom: 160px; }
+}
+@media (max-width: 760px) {
+  .mbar { height: auto; }
+  .mbar-ctl .circle { width: 40px; height: 40px; }
+  .mtop { display: none; }
+}

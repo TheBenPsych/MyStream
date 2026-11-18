@@ -70,6 +70,12 @@ const val MUSIC_SEARCH = "search"
 const val MUSIC_LIBRARY = "library"
 const val MUSIC_ASK = "ask"
 
+/** Glowfin (M1): the Music tabs after For you */
+const val MUSIC_ALBUMS = "albums"
+const val MUSIC_ARTISTS = "artists"
+const val MUSIC_PLAYLISTS = "playlists"
+const val MUSIC_SONGS = "songs"
+
 /** The teal Requests colour, for Ask for music */
 val MusicAskColor = Color(0xFF4FD1C5)
 
@@ -84,6 +90,17 @@ object MusicPlaceNav {
     var pending by mutableStateOf<String?>(null)
 
     var place by mutableStateOf(DOOR_HOME)
+
+    /**
+     * Glowfin (M1): Ask for music opens over the Music page instead of being a place of its own ("ask", or
+     * "import" for Import a playlist). Back closes it.
+     */
+    var ask by mutableStateOf<String?>(null)
+
+    fun openAsk(import: Boolean = false) {
+        if (import) MusicAskNav.importJump = true
+        ask = if (import) "import" else MUSIC_ASK
+    }
 }
 
 /** A page that belongs to Music: the door, its lists, Up next, and album, artist, playlist and song pages */
@@ -113,7 +130,9 @@ class MusicPlacesViewModel
             key: String,
             onDoor: Boolean,
         ) {
+            if (key == MUSIC_ASK) MusicPlaceNav.openAsk()
             val frame = MusicPlaceNav.frame
+            if (key == MUSIC_ASK && onDoor) return
             if (onDoor && frame != null) {
                 if (frame.section == key && key == DOOR_HOME) frame.toTop() else frame.pick(key)
                 return
@@ -272,7 +291,7 @@ fun MusicStrip(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(Color(0xFF14121E))
+                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Deep)
                 .padding(start = 40.dp, end = 32.dp, top = 8.dp, bottom = 8.dp),
     ) {
         val shape = RoundedCornerShape(10.dp)

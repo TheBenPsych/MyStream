@@ -112,7 +112,7 @@ B.route(/^\/search/, async (m, nav) => {
     const doors = [
       [DOORS.movies, withWords(movies, "Movie").map(itemLine)],
       [DOORS.shows, withWords(shows, "Series").map(itemLine)],
-      ...(kids ? [] : [[{ name: "Music", color: "#B69CFF" }, mine.map(itemLine)]]),
+      ...(kids ? [] : [[{ name: "Music", color: "#A55BE0" }, mine.map(itemLine)]]),
       [DOORS.live, chans.map(chLine)],
       [DOORS.games, gl.map(gameLine)],
       ...(kids ? [] : [[{ name: "Books", color: "#B9E36A" }, books.map(bookLine)]]),

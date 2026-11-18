@@ -164,8 +164,7 @@ private fun PhonePanel(
         modifier =
             modifier
                 .background(
-                    androidx.compose.ui.graphics
-                        .Color(0xFF1A1529),
+                    com.github.damontecres.wholphin.ui.theme.Glowfin.Deep,
                     RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
                 ).padding(horizontal = 14.dp)
                 .padding(bottom = 8.dp),

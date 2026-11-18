@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,7 @@ import com.github.damontecres.wholphin.data.model.AudioItem
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import org.jellyfin.sdk.model.api.LyricDto
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration.Companion.milliseconds
@@ -216,7 +218,8 @@ fun RoundWordButton(
                         ),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-            modifier = modifier.size(size),
+            // Glowfin: the aqua ring with the soft violet glow around it
+            modifier = modifier.glowFocus(shape, spread = 8.dp).size(size),
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (filledHeart) {
@@ -312,8 +315,20 @@ fun PlayerControls(
             modifier = Modifier.focusRequester(playFocus).onFocusChanged { if (it.isFocused) onPlayFocus(true) },
         )
         PlainCircle(BenflixIcon.NEXT, "Next song", onClick = viewModel::next, size = if (big) 60.dp else 52.dp)
-        // Keeps Play in the middle: an empty space the size of Shuffle on the other side
-        Spacer(Modifier.size(if (big) 48.dp else 42.dp))
+        // Glowfin (M1): Repeat sits opposite Shuffle, so Play stays in the middle (Off, all, this song)
+        val repeat by viewModel.repeat.collectAsState()
+        PlainCircle(
+            BenflixIcon.REPEAT,
+            when (repeat) {
+                androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat is on"
+                androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat this song is on"
+                else -> "Repeat is off"
+            },
+            onClick = viewModel::cycleRepeat,
+            size = if (big) 48.dp else 42.dp,
+            lit = repeat != androidx.media3.common.Player.REPEAT_MODE_OFF,
+            one = repeat == androidx.media3.common.Player.REPEAT_MODE_ONE,
+        )
     }
 }
 
@@ -327,6 +342,8 @@ private fun PlainCircle(
     primary: Boolean = false,
     lit: Boolean = false,
     sparkle: Boolean = false,
+    /** Repeat this song: a small aqua dot in the corner */
+    one: Boolean = false,
 ) {
     val shape = CircleShape
     Surface(
@@ -358,7 +375,8 @@ private fun PlainCircle(
                 focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus), inset = 3.dp, shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.size(size),
+        // Glowfin: the aqua ring with the soft violet glow around it
+        modifier = modifier.glowFocus(shape, spread = 8.dp).size(size),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             com.github.damontecres.wholphin.ui.components.BenflixIconImage(
@@ -368,11 +386,16 @@ private fun PlainCircle(
                 contentDescription = description,
             )
             if (sparkle) {
-                Text(
-                    "✦",
-                    color = BenflixColors.Music,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 4.dp),
+                // Smart shuffle: a small drawn four-point star (Glowfin: no text symbols on buttons)
+                SmartSparkle(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp).size(10.dp))
+            }
+            if (one) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 5.dp, end = 5.dp)
+                        .size(8.dp)
+                        .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua, CircleShape),
                 )
             }
         }
@@ -556,8 +579,11 @@ fun PlayerPanelFrame(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier =
             modifier
-                .background(Color(0x99161224), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(20.dp))
+                .background(
+                    com.github.damontecres.wholphin.ui.theme.Glowfin.Deep
+                        .copy(alpha = 0.6f),
+                    RoundedCornerShape(20.dp),
+                ).border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(20.dp))
                 .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
         tabs()
@@ -733,7 +759,7 @@ fun LyricLine(
                 ),
     ) {
         Text(
-            text = text.ifBlank { "♪" },
+            text = text.ifBlank { "· · ·" },
             color = if (current || focused) BenflixColors.Text else BenflixColors.Muted,
             fontSize = if (current) (fontSize * 1.15f).sp else fontSize.sp,
             lineHeight = (fontSize * 1.3f).sp,
@@ -794,3 +820,22 @@ fun Modifier.coverGlow(tint: Color?): Modifier =
             )
         },
     )
+
+/** A small aqua four-point star, drawn (not a text symbol) */
+@Composable
+private fun SmartSparkle(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val path =
+            androidx.compose.ui.graphics.Path().apply {
+                moveTo(w / 2f, 0f)
+                quadraticTo(w * 0.56f, h * 0.44f, w, h / 2f)
+                quadraticTo(w * 0.56f, h * 0.56f, w / 2f, h)
+                quadraticTo(w * 0.44f, h * 0.56f, 0f, h / 2f)
+                quadraticTo(w * 0.44f, h * 0.44f, w / 2f, 0f)
+                close()
+            }
+        drawPath(path, com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua)
+    }
+}

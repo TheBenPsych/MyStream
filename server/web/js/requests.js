@@ -468,7 +468,7 @@ B.musicTab = async (nav) => {
   $("#rq").placeholder = "Search any song, album or artist";
   const rows = $("#rows");
   rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner()}</div></div>`;
-  let searching = false, tidyFolder = null, disc = null, st = null, picked = null, ownedOpen = null;
+  let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, ownedOpen = null;
   // Ben 2026-11-15: Top 100, then Trending (one list per genre), then a few "Because you have <song>" lists that
   // Tower picks again every time the page opens, then More.
   const lists = () => {
