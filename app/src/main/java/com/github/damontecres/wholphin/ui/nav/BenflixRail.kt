@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -409,11 +410,8 @@ fun BenflixRail(
                             1f to Glowfin.Deep,
                         )
                     } else {
-                        Brush.horizontalGradient(
-                            0f to BenflixColors.Tray.copy(alpha = .94f),
-                            0.75f to BenflixColors.Tray.copy(alpha = .8f),
-                            1f to BenflixColors.Tray.copy(alpha = 0f),
-                        )
+                        // Ben 2026-11-18: the tucked menu has no background of its own, the icons sit on the page
+                        SolidColor(Color.Transparent)
                     },
                 ).then(
                     if (open) {
@@ -732,8 +730,8 @@ private fun UpdateRailButton(
 
 /**
  * One spot in the Glowfin menu (ui-2). Closed: just the two-tone icon; the one the remote is on sits in a
- * round glow. Open: the name beside it, and the glow stretches into a pill. A small aqua dot marks the page
- * you're on. Nothing moves or keeps running, so it stays smooth on older TVs.
+ * round glow. Open: the name beside it, and the glow stretches into a pill. The page you're on has its icon
+ * in the Glowfin blue (Ben 2026-11-18, instead of the old small dot). Nothing moves or keeps running, so it stays smooth on older TVs.
  */
 @Composable
 private fun RailButton(
@@ -786,7 +784,7 @@ private fun RailButton(
                         color =
                             when {
                                 focused -> Color.White
-                                on -> BenflixColors.Text
+                                on -> BenflixColors.Shows
                                 else -> Glowfin.Dim
                             },
                         size = ICON * scale,
@@ -812,30 +810,10 @@ private fun RailButton(
                         modifier = Modifier.weight(1f),
                     )
                     if (count > 0) CountDot(count, scale)
-                    if (on && !focused) {
-                        Spacer(Modifier.width(8.dp))
-                        HereDot(scale)
-                    }
                 }
-            }
-            if (!open && on && !focused) {
-                HereDot(scale, Modifier.align(Alignment.CenterStart).offset(x = 1.dp))
             }
         }
     }
-}
-
-/** The small aqua dot beside the page you're on */
-@Composable
-private fun HereDot(
-    scale: Float,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier
-            .size(6.dp * scale)
-            .background(Glowfin.Aqua, CircleShape),
-    )
 }
 
 /** Requests' small teal number (approved ix-badges) */
