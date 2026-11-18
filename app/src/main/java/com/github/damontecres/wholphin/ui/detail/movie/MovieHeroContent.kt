@@ -107,6 +107,7 @@ fun MovieHeroContent(
         } else {
             null
         }
+    val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
     val likes = dto.userData?.likes
     val buttons =
         buildList {
@@ -118,6 +119,8 @@ fun MovieHeroContent(
                     note = left?.let { "${lengthText(it)} left" },
                 ),
             )
+            // Glowfin Kids (K1): just Play, big and round. No trailer, My List, rating or More.
+            if (easy) return@buildList
             val trailer = state.trailers.firstOrNull()
             add(
                 TitleButton(
@@ -127,14 +130,17 @@ fun MovieHeroContent(
                     off = if (trailer == null) "No trailer for this one yet" else null,
                 ),
             )
-            add(
-                TitleButton(
-                    label = "My List",
-                    icon = if (movie.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
-                    onClick = { actions.setMyList(!movie.favorite) },
-                    note = if (movie.favorite) "On your list" else null,
-                ),
-            )
+            // Glowfin Guest (ui-17): nothing saved, so no My List
+            if (!guest) {
+                add(
+                    TitleButton(
+                        label = "My List",
+                        icon = if (movie.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                        onClick = { actions.setMyList(!movie.favorite) },
+                        note = if (movie.favorite) "On your list" else null,
+                    ),
+                )
+            }
             if (!easy) {
                 add(
                     TitleButton(
@@ -162,13 +168,13 @@ fun MovieHeroContent(
     // Glowfin D1: the rows under the buttons, top to bottom
     val tabs =
         buildList {
-            if (state.people.isNotEmpty()) {
+            if (!easy && state.people.isNotEmpty()) {
                 add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
             }
             if (state.similar.isNotEmpty()) {
                 add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })
             }
-            if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
+            if (!easy && !guest && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
                 add(
                     TitleTab(askForSimilarName(state.askKind, show = false), note = "Not on Glowfin yet") { scope ->
                         AskForSimilarRow(
@@ -206,7 +212,7 @@ fun MovieHeroContent(
                     )
                 },
             )
-            if (state.parentsGuide.isNotEmpty()) {
+            if (!easy && state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
             }
         }
@@ -216,7 +222,7 @@ fun MovieHeroContent(
         accent = BenflixColors.Movies,
         picture = TitlePicture.Backdrop(movie),
         info = remember(movie) { movieInfo(movie) },
-        rating = dto.officialRating,
+        rating = if (easy) null else dto.officialRating,
         infoExtra =
             if (part != null && collection != null) {
                 { TitleTextLink("Part ${part.first} of ${part.second} · ${collection.name}", { actions.openCollection(collection) }) }

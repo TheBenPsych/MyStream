@@ -137,17 +137,17 @@ import javax.inject.Inject
 
 /**
  * The steps of the new-profile setup (redesign 2, su-p-welcome, 2026-11-10): four short steps, Picture,
- * Subtitles, Bigger words and Parent PIN (grown-ups only), then "All set". Each one has a small "Skip
+ * Subtitles and Parent PIN (grown-ups only), then "All set". Each one has a small "Skip
  * for now". The device check runs quietly in the background. [BROUGHT_OVER] is the one page people who
  * did the old setup see instead ("We brought your settings over"). [FINISH] isn't a question.
  * [FAVORITES] isn't in the setup any more: Settings > You > Things you love opens it on its own.
  * (Hide genres is in Settings > You too.)
  */
-enum class WelcomeStep { BROUGHT_OVER, PICTURE, SUBTITLES, EASY_READ, PARENT_PIN, FAVORITES, FINISH }
+enum class WelcomeStep { BROUGHT_OVER, PICTURE, SUBTITLES, PARENT_PIN, FAVORITES, FINISH }
 
 /** The setup, in order */
 private val FlowSteps =
-    listOf(WelcomeStep.PICTURE, WelcomeStep.SUBTITLES, WelcomeStep.EASY_READ, WelcomeStep.PARENT_PIN, WelcomeStep.FINISH)
+    listOf(WelcomeStep.PICTURE, WelcomeStep.SUBTITLES, WelcomeStep.PARENT_PIN, WelcomeStep.FINISH)
 
 /** A poster on the "Pick a few things you love" wall */
 data class WelcomePoster(
@@ -254,7 +254,6 @@ class WelcomeViewModel
         val deviceFailed: StateFlow<Boolean> = _deviceFailed
 
         val accent = preferences.data.map { it.benflixPreferences.accent }
-        val easyRead = preferences.data.map { it.benflixPreferences.easyRead }
         val subtitleFontSize = preferences.data.map { it.interfacePreferences.subtitlesPreferences.fontSize }
 
         val userName: String get() = serverRepository.currentUser?.name.orEmpty()
@@ -385,10 +384,6 @@ class WelcomeViewModel
         fun setAccent(accent: BenflixAccent) {
             userId?.let { ProfileColours.set(context, it, accent) }
             viewModelScope.launch { preferences.updateData { it.updateBenflixPreferences { this.accent = accent } } }
-        }
-
-        fun setEasyRead(on: Boolean) {
-            viewModelScope.launch { preferences.updateData { it.updateBenflixPreferences { easyRead = on } } }
         }
 
         fun setSubtitleSize(size: Int) {
@@ -690,7 +685,6 @@ fun WelcomePage(
                     WelcomeStep.BROUGHT_OVER -> BroughtOverStep(viewModel)
                     WelcomeStep.PICTURE -> PictureStep(viewModel, isTv)
                     WelcomeStep.SUBTITLES -> SubtitlesStep(viewModel)
-                    WelcomeStep.EASY_READ -> EasyReadStep(viewModel)
                     WelcomeStep.PARENT_PIN -> ParentPinStep(viewModel)
                     WelcomeStep.FAVORITES -> FavoritesStep(viewModel, isTv)
                     WelcomeStep.FINISH -> FinishStep(viewModel, isTv)
@@ -1039,108 +1033,6 @@ private fun SubtitlesStep(viewModel: WelcomeViewModel) {
 private const val SAMPLE_SCALE = .9f
 
 @Composable
-private fun EasyReadStep(viewModel: WelcomeViewModel) {
-    val easyRead by viewModel.easyRead.collectAsState(false)
-    val posters by viewModel.posters.collectAsState()
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle(
-        "How big should the words be?",
-        if (easyRead) "Bigger turns on Easy mode: bigger words and fewer rows everywhere." else "This is the normal size.",
-    )
-    // A small sample of what Home looks like, with their own posters once they've loaded
-    val details = listOf("32 min left", "S1:E4", "1 hr 10 min left")
-    val progress = listOf(.7f, .35f, .45f)
-    val samples =
-        posters
-            .take(3)
-            .takeIf { it.size == 3 }
-            ?.mapIndexed { i, p -> Triple(p.name, details[i], p.imageUrl) }
-            ?: listOf(Triple("Heat", details[0], null), Triple("Severance", details[1], null), Triple("Up", details[2], null))
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier =
-            Modifier
-                .fillMaxWidth(.8f)
-                .background(Color(0xE616161A), RoundedCornerShape(10.dp))
-                .padding(16.dp),
-    ) {
-        Text("Continue watching", style = MaterialTheme.typography.titleMedium, color = Color.White)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            samples.forEachIndexed { i, (name, detail, image) ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .background(Color(0xFF2A2A30), RoundedCornerShape(10.dp))
-                            .padding(8.dp),
-                ) {
-                    if (image != null) {
-                        AsyncImage(
-                            model = image,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .width(40.dp)
-                                    .aspectRatio(2f / 3f)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFF1C1C22)),
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-                        Text(
-                            name,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            detail,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(3.dp)
-                                .background(Color.White.copy(alpha = .2f), CircleShape),
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(progress[i])
-                                    .fillMaxHeight()
-                                    .background(Color.White, CircleShape),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // Normal or Bigger (approved p2-word-split): Bigger turns on Easy mode, and the rest of setup grows too
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Button(onClick = {
-            viewModel.setEasyRead(false)
-        }, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
-            Text(if (!easyRead) "✓ Normal" else "Normal")
-        }
-        Button(onClick = { viewModel.setEasyRead(true) }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
-            Text(if (easyRead) "✓ Bigger" else "Bigger")
-        }
-    }
-    StepButtons(viewModel)
-}
-
-@Composable
 private fun FavoritesStep(
     viewModel: WelcomeViewModel,
     isTv: Boolean,
@@ -1356,7 +1248,6 @@ private const val FINISH_MS = 2_000L
  */
 @Composable
 private fun BroughtOverStep(viewModel: WelcomeViewModel) {
-    val easyRead by viewModel.easyRead.collectAsState(false)
     val subtitles by viewModel.subtitles.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
@@ -1377,7 +1268,6 @@ private fun BroughtOverStep(viewModel: WelcomeViewModel) {
                 else -> "Only for other languages"
             }
         BroughtLine("Subtitles", subs)
-        BroughtLine("Word size", if (easyRead) "Bigger" else "Normal")
         BroughtLine("Picture", "Kept")
         BroughtLine("Favourites and hidden genres", "Kept")
     }

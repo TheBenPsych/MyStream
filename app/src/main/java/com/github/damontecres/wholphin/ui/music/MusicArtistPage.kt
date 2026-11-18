@@ -345,7 +345,8 @@ fun MusicArtistPage(
     androidx.lifecycle.compose.LifecycleResumeEffect(viewModel.preview) { onPauseOrDispose { viewModel.preview.stop() } }
     val state by viewModel.state.collectAsState()
     val music by actions.musicService.state.collectAsState()
-    val easy = preferences.appPreferences.benflixPreferences.easyRead
+    // Glowfin: Easy mode is gone (Ben, ui-17)
+    val easy = false
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600

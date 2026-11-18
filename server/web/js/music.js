@@ -1088,7 +1088,7 @@
     const season = (themes.themes || []).filter((t) => t.group === "season");
     season.concat(mixes).forEach((x) => { r.byKey[x.key] = x; });
     const jump = recents.map((p) => placeCard(p, r, liked)).filter(Boolean).slice(0, 20);
-    const easy = B.easyMode && B.easyMode();
+    const easy = false; // Glowfin (ui-17): Easy mode is gone
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
     rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), [askTile()], B.me.admin ? [importTile()] : [])));

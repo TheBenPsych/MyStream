@@ -200,12 +200,10 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     };
   }
   if (g.id === "look") {
-    const size = ws.textSize || (ws.easy && !B.me.kids ? 125 : 100);
-    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
-      + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")));
+    // Glowfin (ui-17): Easy mode is gone; Text size stays
+    const size = ws.textSize || 100;
+    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`);
     sp.onclick = (e) => {
-      const p = e.target.closest("[data-pick]");
-      if (p && p.dataset.pick === "easy") { B.setWebSetting("easy", !ws.easy); B.applyLook(); B.render(); return; }
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
   }
@@ -235,7 +233,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
 });
 // Easy mode starts 25% bigger (the Text size steps still change it)
-B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || (w.easy && !B.me.kids ? 125 : 100); document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); };
+B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || 100; document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); };
 window.addEventListener("hashchange", () => B.applyLook());
 // Kids look (Ben's pick kc-sky, 13 Nov 2026): Sky and Sunshine blue and yellow with round letters while a Kids
 // profile is open, and the calmer Night Light colours from 8 PM (an hour before the usual 9 PM bedtime) until 6 AM.

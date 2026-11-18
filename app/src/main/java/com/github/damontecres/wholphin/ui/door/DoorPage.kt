@@ -107,7 +107,8 @@ fun DoorPage(
     viewModel: DoorViewModel = hiltViewModel(key = "door-${door.name}"),
 ) {
     LaunchedEffect(Unit) { onClearBackdrop() }
-    val easyMode = preferences.appPreferences.benflixPreferences.easyRead
+    // Glowfin: Easy mode is gone (Ben, ui-17)
+    val easyMode = false
     LifecycleStartEffect(door, easyMode) {
         // Easy mode: fewer rows, like Kids
         viewModel.start(door, easy = easyMode)
@@ -120,7 +121,7 @@ fun DoorPage(
         if (firstReady) DoorWipe.ready()
     }
     val kids by KidsMode.active.collectAsState()
-    val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
+    val easy = kids
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600

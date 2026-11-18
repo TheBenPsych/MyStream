@@ -88,10 +88,9 @@ private fun buildSections(guest: Boolean): List<SettingsSection> =
         basicPreferences.forEach { group ->
             val guestHidden =
                 group.title != R.string.benflix_settings_watching &&
-                    group.title != R.string.benflix_settings_picture &&
                     group.title != R.string.benflix_settings_help
             if (guest && guestHidden) {
-                // Guest: only Watching, Picture and sound and Help
+                // Glowfin Guest (ui-17): only Watching (subtitles) and Help (how to use)
             } else if (group.title == R.string.more) {
                 if (AppPreference.AdvancedSettings in group.preferences) {
                     add(

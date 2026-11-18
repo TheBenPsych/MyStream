@@ -1069,6 +1069,9 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .tp .btns { grid-row: 4; align-self: start; margin: 0; flex-wrap: nowrap; }
 .tp .btns .btn.big { padding: 12px 22px; font-size: 16px; }
 .tp .btns .btn.off { opacity: .45; cursor: default; }
+.tp .btns [hidden] { display: none !important; }
+/* Glowfin for Kids (K1): Play is big and round */
+html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-size: 20px; }
 .tp .tp-why { grid-row: 5; align-self: start; color: var(--ink3); font-size: 14px; min-height: 20px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tp .tp-why.off { color: var(--ink2); }
 .tp .tp-tabs { grid-row: 6; align-self: start; display: flex; gap: 30px; overflow-x: auto; scrollbar-width: none; }
@@ -1322,21 +1325,21 @@ video::cue { color: #fff; background: transparent; font-family: "Benflix Subtitl
 .find-hits a small { display: block; color: var(--ink3); font-size: 12px; }
 .find-hits a:hover, .find-hits a:focus-visible { background: var(--pg3); color: var(--ink); }
 
-/* ---------- Kids look (Ben's pick kc-sky, 13 Nov 2026) ----------
-   "Sky and Sunshine": sky blue pages, sunny yellow for the "you are here" ring, the main buttons and progress lines,
-   round Fredoka letters, and Kids door colours (yellow Movies, white Shows, pink Games). From 8 PM to 6 AM it turns
-   into the calmer "Night Light" colours. Everything else keeps working because it uses the colour tokens. */
+/* ---------- Kids look: Glowfin for Kids (Ben's pick K1, ui-17, 18 Nov 2026) ----------
+   Glowfin's own colours made brighter and softer: lilac Movies, sky blue Shows and mint Games on deep navy, a
+   white-and-mint ring on the thing you're on, round Fredoka letters. From 8 PM to 6 AM it turns into the calmer
+   "Night Light" version. Everything else keeps working because it uses the colour tokens. */
 html.kids {
-  --tray: #1655CF; --trayrgb: 22,85,207; --pg2: #1F5ED6; --pg3: #2D6DE0; --pg4: #3B78E4; --line: #4A82E4;
-  --ink: #FFFFFF; --ink2: #EAF2FF; --ink3: #D3E3FD; --dark: #231A00;
-  --movies: #FFD21F; --shows: #FFFFFF; --games: #FF6F91; --ask: #FFD21F;
-  --kacc: #FFD21F; --kon: #231A00; --kshowsink: #1450C8;
+  --tray: #141A3A; --trayrgb: 20,26,58; --pg2: #1F2650; --pg3: #242C5C; --pg4: #2A3368; --line: #323C78;
+  --ink: #FFFFFF; --ink2: #E8EBFF; --ink3: #B9C2FF; --dark: #0B0D1A;
+  --movies: #C48BFF; --shows: #5CC8FF; --games: #7FF5E8; --ask: #7FF5E8;
+  --kacc: #7FF5E8; --kon: #0B0D1A; --kshowsink: #0B0D1A;
 }
 html.kids.night {
-  --tray: #1E2257; --trayrgb: 30,34,87; --pg2: #2A2F72; --pg3: #353B85; --pg4: #3F4694; --line: #464D99;
-  --ink: #FFFFFF; --ink2: #E2E5F8; --ink3: #C3C8EC; --dark: #2A2000;
-  --movies: #FFD6A5; --shows: #BDE0FE; --games: #FFC8DD; --ask: #FFE9A8;
-  --kacc: #FFE9A8; --kon: #2A2000; --kshowsink: #06213A;
+  --tray: #0E1230; --trayrgb: 14,18,48; --pg2: #191F46; --pg3: #1E2552; --pg4: #232B5C; --line: #2A336A;
+  --ink: #F2F3FF; --ink2: #DCE0F8; --ink3: #A9B1E6; --dark: #0B0D1A;
+  --movies: #D9BFFF; --shows: #A9DCF5; --games: #B8F2EA; --ask: #B8F2EA;
+  --kacc: #B8F2EA; --kon: #0B0D1A; --kshowsink: #0B0D1A;
 }
 html.kids, html.kids body { font-family: "Fredoka", "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif; }
 html.kids :focus-visible { outline-color: var(--kacc); outline-width: 4px; }
@@ -1353,6 +1356,20 @@ html.kids .btn.white, html.kids .btn.red, html.kids .circle.white, html.kids #to
 html.kids .btn.white:hover, html.kids .btn.red:hover, html.kids .circle.white:hover { background: #fff; color: var(--kon); }
 html.kids .poster .prog i, html.kids .kwbar .line i, html.kids .player .bar .segs i b, html.kids .player .bar .knob { background: var(--kacc); }
 html.kids .poster:focus-visible, html.kids .wide:focus-visible { outline-color: var(--kacc); }
+/* Glowfin for Kids Home (K1): three big round buttons in their own colours, white ring + mint glow on focus */
+.home.kidsh .greet { font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; }
+.kbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 20px; }
+.kbtn { display: flex; align-items: center; gap: 16px; height: 112px; padding: 0 26px; border-radius: 28px; background: var(--c); color: #0B0D1A; font-size: 30px; font-weight: 700; text-decoration: none; transition: transform .15s; }
+.kbtn[data-door="movies"] { --c: var(--movies); } .kbtn[data-door="shows"] { --c: var(--shows); } .kbtn[data-door="games"] { --c: var(--games); }
+.kbtn svg.i { width: 48px; height: 48px; display: block; flex: 0 0 auto; }
+.kbtn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kbtn:hover, .kbtn:focus-visible { outline: none; box-shadow: 0 0 0 5px #fff, 0 0 26px 6px var(--kacc, #7FF5E8); transform: scale(1.04); }
+@media (max-width: 700px) {
+  .kbtns { grid-template-columns: 1fr; gap: 14px; }
+  .kbtn { height: 76px; font-size: 26px; border-radius: 24px; }
+  .kbtn svg.i { width: 38px; height: 38px; }
+}
+@media (prefers-reduced-motion: reduce) { .kbtn { transition: none; } .kbtn:hover, .kbtn:focus-visible { transform: none; } }
 html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 600; color: var(--ink2); margin-top: 4px; letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { html.kids .door { transition: none; } html.kids .door:focus-visible { transform: none; } }
 

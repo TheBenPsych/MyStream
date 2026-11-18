@@ -212,6 +212,8 @@ class RailModel(
     val doors: List<BenflixDoor>,
     val showSearch: Boolean,
     val showRequests: Boolean,
+    /** Glowfin K1 (ui-17): Kids has no Settings in the menu */
+    val showSettings: Boolean = true,
     val requestsCount: Int,
     val user: JellyfinUser,
     val userImageUrl: String?,
@@ -275,7 +277,7 @@ fun BenflixRail(
             is Destination.Home -> Spot.HOME
             is Destination.Search -> if (model.showSearch) Spot.SEARCH else null
             is Destination.Requests -> if (model.showRequests) Spot.REQUESTS else null
-            is Destination.Settings -> Spot.SETTINGS
+            is Destination.Settings -> if (model.showSettings) Spot.SETTINGS else null
             else -> null
         }
     val panelFocus = LocalFocusManager.current
@@ -550,19 +552,21 @@ fun BenflixRail(
                     onClick = { openProfilePanel() },
                     modifier = Modifier.focusRequester(spotFocus.getValue(Spot.PROFILE)),
                 )
-                RailButton(
-                    icon = GlowfinIcon.SETTINGS,
-                    label = "Settings",
-                    open = open,
-                    scale = scale,
-                    on = currentSpot == Spot.SETTINGS,
-                    onClick = {
-                        panelDoor = null
-                        profileOpen = false
-                        model.onSettings()
-                    },
-                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
-                )
+                if (model.showSettings) {
+                    RailButton(
+                        icon = GlowfinIcon.SETTINGS,
+                        label = "Settings",
+                        open = open,
+                        scale = scale,
+                        on = currentSpot == Spot.SETTINGS,
+                        onClick = {
+                            panelDoor = null
+                            profileOpen = false
+                            model.onSettings()
+                        },
+                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
+                    )
+                }
             }
         }
         // The full-height panel slides out beside the open rail

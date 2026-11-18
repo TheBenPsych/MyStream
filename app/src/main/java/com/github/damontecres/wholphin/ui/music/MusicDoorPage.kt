@@ -94,7 +94,8 @@ fun MusicDoorPage(
     LaunchedEffect(state.loaded || state.rows.isNotEmpty()) {
         if (state.loaded || state.rows.isNotEmpty()) DoorWipe.ready()
     }
-    val easy = preferences.appPreferences.benflixPreferences.easyRead
+    // Glowfin: Easy mode is gone (Ben, ui-17)
+    val easy = false
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600

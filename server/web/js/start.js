@@ -193,68 +193,30 @@ B.route(/^\/signin/, async () => {
 });
 
 // ---------- Home ----------
-// Everyone but Kids and Easy mode gets the approved Today board (f3-panel): the greeting with Tower's weather line,
-// six square doors 3 by 2, and a soft list panel as tall as the doors (news, On the way).
-// Kids (kd-family): three big doors (Movies, Shows, Games) that name a couple of titles, then one Keep watching row.
-// Easy mode (ez-family, Settings > Look): the four doors this person opens most (the rest under More), 25% bigger,
-// then one Keep watching row.
-B.easyMode = () => !!(B.me && !B.me.kids && B.webSettings().easy);
-const doorUseKey = () => "benflix.dooruse." + (B.me ? B.me.id : "");
-B.doorUse = () => loadJson(doorUseKey(), {});
-document.addEventListener("click", (e) => {
-  const d = e.target.closest && e.target.closest("a.door[data-door]");
-  if (!d || !B.me) return;
-  const use = B.doorUse(); use[d.dataset.door] = (use[d.dataset.door] || 0) + 1;
-  store(doorUseKey(), JSON.stringify(use));
-});
+// Grown-ups get the Glowfin Home (ui-6): the top area and rows, with the news as one "What's new" row.
+// Kids (Ben's pick K1, ui-17): "Hi there! What do you want to watch?" (no names: Kids is shared), three big round
+// buttons (Movies lilac, Shows sky blue, Games mint), then Picked for you and Keep watching. Easy mode is gone.
 B.route(/^\/home$/, async (m, nav) => {
   // Someone has the Lobby open: a tap on the shoulder to join (lobby.js)
   if (B.lobby) B.lobby.homeNudge(nav);
   const grow = B.doorsGrow; B.doorsGrow = false;
-  const kids = B.me.kids;
-  const easy = B.easyMode();
-  // Benflix music: the violet fifth door (not on Kids); Books: the lime sixth door
-  const all = ["movies", "shows", "live", "games"].concat(kids || !DOORS.music ? [] : ["music"]).concat(DOORS.books ? ["books"] : []);
-  let keys = all, more = [];
-  if (kids) keys = ["movies", "shows", "games"];
-  if (easy) {
-    const use = B.doorUse();
-    // Movies always stays, so it's always in the same place; then the ones opened most (a tie keeps the usual order)
-    const top = ["movies"].concat(all.slice().sort((a, b) => (use[b] || 0) - (use[a] || 0))).filter((k, i, arr) => arr.indexOf(k) === i).slice(0, 4);
-    keys = all.filter((k) => top.includes(k));
-    more = all.filter((k) => !top.includes(k));
-  }
-  const doors = keys.map((k) => DOORS[k]);
-  // Navigation redesign: Easy mode gets the normal Home (the rail has every door); Kids get their own
-  const small = kids;
-  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(d.desc)}</div></div></a>`;
-  // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
-  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(B.greeting())}, ${esc(B.me.name)}`;
-  if (small) {
-    B.page().innerHTML = B.top("") + `<div class="home fam spotted ${kids ? "kidsh" : "easyh"}">
-      <div class="greet">${greet}</div>
-      ${B.spotHtml()}
-      <div id="famrow">${B.spinner()}</div>
-    </div>`;
-  } else {
-    // Glowfin Home (ui-6): the same top area and rows as Movies and Shows; the news is one "What's new" row.
-    // No greeting or clock line, no sliding pictures.
+  if (!B.me.kids) {
     B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner()}</div></div>`;
     B.wireTop();
     B.loadHomeRows(nav);
     return;
   }
+  const btn = (k) => { const d = DOORS[k]; return d ? `<a class="kbtn" data-door="${k}" href="#/${k}">${B.glowIcon ? B.glowIcon(k) : I(d.icon)}<span>${esc(d.name)}</span></a>` : ""; };
+  B.page().innerHTML = B.top("") + `<div class="home fam kidsh">
+    <div class="greet">Hi there!<small class="kq">What do you want to watch?</small></div>
+    <div class="kbtns">${["movies", "shows", "games"].map(btn).join("")}</div>
+    <div id="famrow">${B.spinner()}</div>
+  </div>`;
   B.wireTop();
-  const mb = $("#moreDoors");
-  if (mb) mb.onclick = () => B.side(`<h3>More doors</h3><div class="fmore">${more.map((k) => doorHtml(DOORS[k])).join("")}</div>`);
-  // Navigation redesign (approved in-light): when Benflix opens, the rail's icons light up one after another
-  // with the door notes, in place of the doors growing out of the logo
+  // When Glowfin opens, the rail's icons light up one after another
   if (grow && B.railLightUp) setTimeout(() => B.railLightUp(), 60);
-  B.loadSpot(nav);
-  // The keyboard starts on Play (once the first pick is there)
-  const focusPlay = (n) => { if (!B.alive(nav)) return; if (!B.spotFocus() && n < 20) setTimeout(() => focusPlay(n + 1), 150); };
-  focusPlay(0);
-  if (small) B.loadFamilyRow(nav, kids); else B.loadBoard(nav);
+  const f = $(".kbtns .kbtn"); if (f) f.focus({ preventScroll: true });
+  B.loadFamilyRow(nav, true);
 });
 
 // Glowfin Home rows: Continue watching, Next up, What's new, then Recently added, Top 10 this week, Because you
@@ -305,7 +267,7 @@ B.loadHomeRows = async (nav) => {
   B.loadBoard(nav);
 };
 
-// Kids and Easy mode: one Keep watching row with names under the pictures, and (Kids) a couple of titles on each door
+// Kids: Picked for you (Ben's picks), then one Keep watching row with names under the pictures
 B.loadFamilyRow = async (nav, kids) => {
   const u = B.uid(), F = B.FIELDS;
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
@@ -330,17 +292,8 @@ B.loadFamilyRow = async (nav, kids) => {
   if (box) {
     box.innerHTML = (picks.length ? B.row("Picked for you", picks.map((it) => B.posterCard(it))) : "") + (list.length
       ? B.row("Keep watching", list.map(card))
-      : `<section class="rowx"><h3>Keep watching</h3><p class="sub">${kids ? "Nothing started yet. Open a door and pick something fun!" : "Nothing started yet. Open a door to find something to watch."}</p></section>`);
+      : `<section class="rowx"><h3>Keep watching</h3><p class="sub">Nothing started yet. Pick Movies or Shows to find something fun!</p></section>`);
   }
-  if (!kids) return;
-  const names = async (type) => (await get(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&SortBy=DatePlayed,DateCreated&SortOrder=Descending&Limit=4&EnableImages=false`))
-    .map((it) => it.Name).filter(Boolean).filter((n, i, arr) => arr.indexOf(n) === i).slice(0, 2);
-  const [mn, sn] = await Promise.all([names("Movie"), names("Series")]);
-  if (!B.alive(nav)) return;
-  const line = (key, found, fallback) => { const el = $("#dl-" + key); if (el) el.textContent = found.length ? found.join(", ") + " and more" : fallback; };
-  line("movies", mn, "Films for any night");
-  line("shows", sn, "Series and episodes");
-  line("games", [], "Games to play");
 };
 
 // The weather Tower gave last time (for today, from the last 3 hours), so the line is there straight away

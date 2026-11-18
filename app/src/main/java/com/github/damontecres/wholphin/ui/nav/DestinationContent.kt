@@ -481,7 +481,7 @@ fun DestinationContent(
         Destination.Channels -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.main
-                .ChannelsPage(modifier, easy = preferences.appPreferences.benflixPreferences.easyRead)
+                .ChannelsPage(modifier, easy = false)
         }
 
         Destination.WatchOrder -> {

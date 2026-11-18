@@ -144,7 +144,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   const main = libs.filter((l) => !B.isAnimeLib(l) && !B.isStandLib(l)), standLibs = libs.filter(B.isStandLib);
   const anime = await B.animeIds("Movie");
   const notAnime = (x) => !anime.has(x.Id);
-  const fewer = B.me.kids || (B.easyMode && B.easyMode());
+  const fewer = B.me.kids;
   const [resume, fresh, top, because, released, best, stand] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     fromLibs(main.concat(standLibs), "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
@@ -177,7 +177,7 @@ B.route(/^\/shows$/, async (m, nav) => {
   const main = libs.filter((l) => !B.isAnimeLib(l));
   const anime = await B.animeIds("Series");
   const notAnime = (ep) => !anime.has(ep.SeriesId || ep.Id);
-  const fewer = B.me.kids || (B.easyMode && B.easyMode());
+  const fewer = B.me.kids;
   const [resume, next, latestEps, fresh, because, best, missing] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),

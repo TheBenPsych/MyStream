@@ -106,7 +106,8 @@ fun BooksDoorPage(
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
-    val easy = preferences.appPreferences.benflixPreferences.easyRead
+    // Glowfin: Easy mode is gone (Ben, ui-17)
+    val easy = false
     val home = state.home
     val edge = side(wide)
     val frame = rememberDoorFrameState(BenflixDoor.BOOKS)

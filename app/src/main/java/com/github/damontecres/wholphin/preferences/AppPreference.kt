@@ -1481,7 +1481,6 @@ val basicPreferences =
             preferences =
                 listOf(
                     AppPreference.HomeRowsPref,
-                    AppPreference.EasyRead,
                     AppPreference.LateNightLook,
                     AppPreference.RememberSelectedTab,
                     AppPreference.ScreensaverSettings,

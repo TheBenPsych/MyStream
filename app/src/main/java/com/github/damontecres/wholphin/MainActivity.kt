@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity() {
                                         // Benflix always uses its own red and black look
                                         appThemeColors = AppThemeColors.MYSTREAM,
                                         accent = appPreferences.benflixPreferences.accent,
-                                        easyRead = appPreferences.benflixPreferences.easyRead,
+                                        easyRead = false,
                                     ) {
                                         com.github.damontecres.wholphin.ui.touch.Haptics.enabled =
                                             !appPreferences.benflixPreferences.hapticsOff
