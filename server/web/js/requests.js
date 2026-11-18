@@ -744,6 +744,10 @@ B.animeRequests = (nav, getLists, openList) => {
   const SIDE = [["season", "This season"], ["top", "Top 10 this week"], ["week", "This week"], ["feel", "Find by feel"], ["tags", "Mix and match tags"],
     ["gems", "Hidden gems"], ["dubbed", "Finished and dubbed"], ["movies", "Movies"], ["next", "Coming next season"]];
   const cleanName = (t) => String(t || "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]/gu, "");
+  // Ben 2026-11-18: "Slime Season 2" belongs to the show "Slime" (same as the app's AniListService.seasonBase)
+  const SEASON_TAIL = /[\s:,\-]*\(?\s*\b(?:(?:season|part|cour)\s*(?:\d+|[ivx]+)|\d+(?:st|nd|rd|th)\s+season|(?:second|third|fourth|fifth|sixth|final)\s+season)\s*\)?\s*$/i;
+  const seasonBase = (t) => { const start = String(t || "").trim(); let b = start; for (let i = 0; i < 2; i++) b = b.replace(SEASON_TAIL, "").trim(); return b.length >= 3 && b !== start ? b : null; };
+  const baseNames = (titles) => titles.map(seasonBase).filter(Boolean).map(cleanName).filter((n) => n.length >= 3);
   const al = async (query, variables) => {
     const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
     if (!r.ok) throw new Error("AniList " + r.status);
@@ -752,7 +756,9 @@ B.animeRequests = (nav, getLists, openList) => {
   const titlesOf = (m) => [m.title && m.title.english, m.title && m.title.romaji, m.title && m.title.native].concat(m.synonyms || []).filter((x) => x && x.trim()).filter((x, i, a) => a.indexOf(x) === i);
   const cardOf = (m) => {
     if (!m || m.isAdult || (m.genres || []).includes("Hentai")) return null;
-    const later = SHOWS.includes(m.format) && ((m.relations && m.relations.edges) || []).some((e) => e.relationType === "PREQUEL" && e.node && SHOWS.includes(e.node.format));
+    // Some later seasons only follow an OVA on AniList (Slime Season 2), so a "Season 2" name with anything before it counts too
+    const named = titlesOf(m).some((t) => seasonBase(t));
+    const later = SHOWS.includes(m.format) && ((m.relations && m.relations.edges) || []).some((e) => e.relationType === "PREQUEL" && e.node && (SHOWS.includes(e.node.format) || named));
     return { id: m.id, idMal: m.idMal, titles: titlesOf(m), format: m.format, year: (m.startDate && m.startDate.year) || m.seasonYear, score: m.averageScore || m.meanScore,
       episodes: m.episodes, next: m.nextAiringEpisode && m.nextAiringEpisode.episode, status: m.status, cover: m.coverImage && (m.coverImage.large || m.coverImage.medium), later };
   };
@@ -803,12 +809,15 @@ B.animeRequests = (nav, getLists, openList) => {
   // What's already on Benflix: everything in the anime libraries, by AniList / MyAnimeList number and by name
   const owned = () => B.cached("anime-owned", 600000, async () => {
     const libs = (await B.views()).filter(B.isAnimeLib);
-    const o = { ids: new Set(), mal: new Set(), names: new Set() };
+    // shows: "al:<id>" / "n:<clean name>" -> { tmdb, series }, to check a show here for missing episodes
+    const o = { ids: new Set(), mal: new Set(), names: new Set(), shows: new Map() };
     for (const l of libs) {
       const r = await B.get(`/Items?userId=${B.uid()}&ParentId=${l.Id}&IncludeItemTypes=Series,Movie&Recursive=true&Fields=ProviderIds,OriginalTitle&EnableImages=false&EnableUserData=false`).catch(() => ({}));
       (r.Items || []).forEach((x) => {
-        [x.Name, x.OriginalTitle].forEach((n) => { const c = cleanName(n); if (c) o.names.add(c); });
         const p = x.ProviderIds || {};
+        const show = { tmdb: p.Tmdb ? +p.Tmdb : null, series: x.Type === "Series" };
+        [x.Name, x.OriginalTitle].forEach((n) => { const c = cleanName(n); if (c) { o.names.add(c); if (!o.shows.has("n:" + c)) o.shows.set("n:" + c, show); } });
+        if (p.AniList && !o.shows.has("al:" + p.AniList)) o.shows.set("al:" + p.AniList, show);
         if (p.AniList) o.ids.add(+p.AniList);
         if (p.MyAnimeList || p.Mal) o.mal.add(+(p.MyAnimeList || p.Mal));
       });
@@ -820,7 +829,29 @@ B.animeRequests = (nav, getLists, openList) => {
     if (o.ids.has(c.id) || (c.idMal && o.mal.has(c.idMal))) return true;
     const names = c.titles.map(cleanName).filter(Boolean);
     if (names.some((n) => o.names.has(n))) return true;
+    if (baseNames(c.titles).some((n) => o.names.has(n))) return true;
     return c.later && names.some((t) => [...o.names].some((n) => n.length >= 5 && t.startsWith(n)));
+  };
+  // The show on Benflix a poster belongs to (only for posters has() says are here)
+  const showOf = (o, c) => o && (o.shows.get("al:" + c.id) || c.titles.map(cleanName).concat(baseNames(c.titles)).map((n) => o.shows.get("n:" + n)).find(Boolean));
+  // Ben 2026-11-18: shows here that are missing aired episodes come back, tagged "Missing episodes", like the rest of Requests
+  const bringBackMissing = async (items, grid, isLive) => {
+    const todo = items.filter((c) => c.format !== "MOVIE" && has(own, c)).map((c) => [c, showOf(own, c)]).filter(([, s]) => s && s.series && s.tmdb);
+    if (!todo.length) return;
+    await B.libTmdb().catch(() => null);
+    let i = 0;
+    const next = async () => {
+      while (i < todo.length) {
+        const [c, s] = todo[i++];
+        const whole = await B.showComplete(s.tmdb).catch(() => true);
+        if (whole || !isLive() || !grid.isConnected) continue;
+        c._missing = true; c._tmdb = s.tmdb;
+        const box = document.createElement("div");
+        box.innerHTML = poster(c, 0);
+        grid.append(...box.childNodes);
+      }
+    };
+    await Promise.all([next(), next(), next()]);
   };
 
   let pick = "season", seasonI = 0, feel = null, must = [], leave = [], own = null, dub = null, tags = null;
@@ -845,7 +876,7 @@ B.animeRequests = (nav, getLists, openList) => {
   const poster = (c, rank) => {
     B.animeCards[c.id] = c;
     return `<button class="poster ancard" data-an="${c.id}" title="${esc(c.titles[0] || "")}">
-      <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart"><span class="nt">${esc(c.titles[0] || "")}</span></div>`}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
+      <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart"><span class="nt">${esc(c.titles[0] || "")}</span></div>`}${c._missing ? '<span class="newp miss">Missing episodes</span>' : ""}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
       <div class="cap">${esc(c.titles[0] || "")}<small>${esc(airing(c) || c.year || "")}</small></div></button>`;
   };
   const head = (title, note, extra) => `${extra || ""}<div class="rqhead"><b>${esc(title)}</b><span>${esc(note || "")}</span></div>`;
@@ -864,6 +895,12 @@ B.animeRequests = (nav, getLists, openList) => {
     const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
     w.innerHTML = head(title, [note, here ? `${here} already on Benflix` : ""].filter(Boolean).join(" · "), opts.top)
       + (shown.length ? `<div class="grid">${shown.map((c, i) => poster(c, opts.ranked && i < 10 ? i + 1 : 0)).join("")}</div>` : `<div class="empty">${here ? "You already have all of these on Benflix." : "Nothing here right now."}</div>`);
+    if (here && !opts.ranked) {
+      let grid = $(".grid", w);
+      if (!grid) { grid = document.createElement("div"); grid.className = "grid"; }
+      const live = () => B.alive(nav) && wall() === w && w.dataset.at === opts.at;
+      bringBackMissing(items.filter((c) => has(own, c)), grid, () => { if (live() && !grid.isConnected) { const e = $(".empty", w); if (e) e.replaceWith(grid); } return live(); });
+    }
   };
   const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   const showWeek = async () => {
@@ -928,6 +965,7 @@ B.animeRequests = (nav, getLists, openList) => {
       const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
       fake.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Benflix` : ""}</p><div class="grid">${shown.map((c) => poster(c, 0)).join("")}</div>`;
       box.replaceChildren(...fake.childNodes);
+      if (here) bringBackMissing(items, $(".grid", box), () => B.alive(nav) && w.dataset.at === at && box.isConnected);
     }
   };
   const draw = () => {
@@ -961,7 +999,10 @@ B.animeRequests = (nav, getLists, openList) => {
   const open = async (c, btn) => {
     if (btn) btn.classList.add("busy");
     const want = c.isMovie || c.format === "MOVIE" ? "movie" : "tv";
+    // A show here but missing episodes: straight to its own request page
+    if (c._tmdb) { if (btn) btn.classList.remove("busy"); if (B.alive(nav)) B.go(`#/ask/tv/${c._tmdb}`); return; }
     const wanted = new Set(c.titles.map(cleanName).filter(Boolean));
+    const baseWanted = new Set(baseNames(c.titles));
     const yearOk = (x, slack) => { const y = +((x.releaseDate || x.firstAirDate || "").slice(0, 4)); return !y || !c.year || Math.abs(y - c.year) <= slack; };
     const nameOf = (x) => cleanName(x.title || x.name || x.originalName || x.originalTitle);
     // Tower's anime id list first (AniList / MyAnimeList -> TMDB), so it never opens a look-alike like the live-action One Piece
@@ -977,19 +1018,24 @@ B.animeRequests = (nav, getLists, openList) => {
       }
     }
     let found = null;
-    for (const n of c.titles.filter((t) => /[A-Za-z0-9]/.test(t)).slice(0, 3)) {
+    const latin = (t) => /[A-Za-z0-9]/.test(t);
+    const tries = [...new Set(c.titles.filter(latin).slice(0, 3).concat(c.titles.map(seasonBase).filter((t) => t && latin(t)).slice(0, 2)))];
+    for (const n of tries) {
       const r = await seerr(`/search?query=${enc(n.replace(/[:!?]/g, " ").trim())}&page=1`).catch(() => null);
       // only cartoons (TMDB genre 16), never a live-action version with the same name
       const res = ((r && r.results) || []).filter((x) => x.mediaType === want && (x.genreIds || []).includes(16));
       found = res.find((x) => wanted.has(nameOf(x)) && yearOk(x, 1))
         || res.find((x) => { const m = nameOf(x); return m.length >= 4 && [...wanted].some((w) => w.startsWith(m) || m.startsWith(w)) && yearOk(x, 2); })
-        || res.find((x) => wanted.has(nameOf(x)));
+        || res.find((x) => wanted.has(nameOf(x)))
+        // a later season: the show it belongs to started the same year or before
+        || res.find((x) => { const y = +((x.releaseDate || x.firstAirDate || "").slice(0, 4)); return baseWanted.has(nameOf(x)) && (!y || !c.year || y <= c.year); });
       if (found) break;
     }
     if (btn) btn.classList.remove("busy");
     if (!B.alive(nav)) return;
     if (found) B.go(`#/ask/${want}/${found.id}`);
-    else B.toast(`Couldn't find ${c.titles[0] || "that"} in Requests yet. Try Search anime.`);
+    // Ben 2026-11-18: never a dead end. Search shows it with everything to ask for
+    else { const n = c.titles.find(latin) || c.titles[0] || ""; B.go(`#/search?q=${enc(seasonBase(n) || n)}`); }
   };
 
   $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;

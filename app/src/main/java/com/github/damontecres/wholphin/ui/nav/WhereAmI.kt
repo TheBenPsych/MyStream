@@ -40,6 +40,8 @@ object WhereAmI {
             is Destination.Home -> "Home"
             is Destination.Search -> "Search"
             is Destination.Requests -> "Requests"
+            // Benflix (2026-11-18): the anime tags page names itself ("Isekai"), so the trail ends where you are
+            is Destination.AnimeGenres -> destination.picked.joinToString(" + ").ifEmpty { "Anime deep search" }
             is Destination.MyBenflix -> "My Benflix"
             is Destination.Favorites -> "My List"
             is Destination.Settings -> "Settings"

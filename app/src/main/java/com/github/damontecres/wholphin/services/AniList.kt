@@ -668,7 +668,12 @@ class AniListService
                 ?.arr("edges")
                 .orEmpty()
                 .mapNotNull { it as? JsonObject }
-                .any { e -> e.str("relationType") == "PREQUEL" && e.obj("node")?.str("format") in SEASON_FORMATS }
+                .any { e ->
+                    e.str("relationType") == "PREQUEL" &&
+                        // Benflix (2026-11-18): some later seasons only follow an OVA on AniList (Slime Season 2),
+                        // so a "Season 2" name with anything before it counts too
+                        (e.obj("node")?.str("format") in SEASON_FORMATS || titlesOf(m).any { seasonBase(it) != null })
+                }
         }
 
         /** The index already built for a library this app run, if any */
@@ -1125,6 +1130,25 @@ class AniListService
 
             /** A name with only letters and numbers, for comparing */
             fun clean(name: String): String = name.lowercase().replace("&", "and").filter { it.isLetterOrDigit() }
+
+            // "Season 2", "2nd Season", "Part 2", "Cour 2", "Second Season", "Final Season" at the end of a name
+            private val SEASON_TAIL =
+                Regex(
+                    "(?i)[\\s:,\\-]*\\(?\\s*\\b(?:(?:season|part|cour)\\s*(?:\\d+|[ivx]+)|\\d+(?:st|nd|rd|th)\\s+season|" +
+                        "(?:second|third|fourth|fifth|sixth|final)\\s+season)\\s*\\)?\\s*$",
+                )
+
+            /**
+             * Benflix (Ben, 2026-11-18): the show a later season belongs to, by name ("That Time I Got Reincarnated
+             * as a Slime Season 2" -> "That Time I Got Reincarnated as a Slime"). Null when the name has no season
+             * on the end.
+             */
+            fun seasonBase(name: String): String? {
+                val start = name.trim()
+                var base = start
+                repeat(2) { base = SEASON_TAIL.replace(base, "").trim() }
+                return base.takeIf { it.length >= 3 && it != start }
+            }
 
             private fun JsonObject.obj(key: String) = (this[key] as? JsonObject)
 
