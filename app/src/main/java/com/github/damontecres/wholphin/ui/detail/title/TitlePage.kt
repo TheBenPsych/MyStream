@@ -412,7 +412,7 @@ private fun WideTitlePage(
             }
             val focused = focusedButton?.let { buttons.getOrNull(it) }
             val line = focused?.off ?: focused?.note ?: statusLine
-            Box(Modifier.height(26.dp).padding(top = 8.dp)) {
+            Box(Modifier.height(30.dp).padding(top = 8.dp)) {
                 if (!line.isNullOrBlank()) {
                     Text(
                         text = line,

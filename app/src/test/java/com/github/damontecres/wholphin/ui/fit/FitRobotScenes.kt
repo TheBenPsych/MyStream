@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.fit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -127,9 +128,10 @@ fun FitFrame(
             PhoneFit {
                 Box(Modifier.fillMaxSize().background(BenflixColors.Tray)) {
                     if (tv) {
-                        Box(Modifier.fillMaxSize().padding(start = 66.dp)) {
-                            page()
+                        // Title pages sit under the header (only Home and the doors go up behind it)
+                        Column(Modifier.fillMaxSize().padding(start = 66.dp)) {
                             FitHeader()
+                            Box(Modifier.fillMaxWidth().weight(1f)) { page() }
                         }
                         Box(Modifier.width(66.dp).fillMaxSize().background(Color(0xFF2A1A1A)))
                     } else {
@@ -267,8 +269,8 @@ object FitScenes {
             add(FitScene("anime-ask-focused", animePage("Ask for similar"), focusText = "Revenger"))
             add(FitScene("anime-ask", animePage("Ask for similar")))
             add(FitScene("anime-ask-second-row", animePage("Ask for similar"), focusText = "Zoids"))
-            add(FitScene("anime-episodes-focused", animePage("Episodes"), focusText = "E1 · A New Well"))
-            add(FitScene("anime-long-season-focused", animePage("Episodes", longSeason = true), focusText = "Episode 1"))
+            add(FitScene("anime-episodes-focused", animePage("Episodes"), focusText = "E5"))
+            add(FitScene("anime-long-season-focused", animePage("Episodes", longSeason = true), focusText = "E5"))
             add(FitScene("anime-more-like-this-focused", animePage("More like this"), focusText = "Desert Punk"))
             listOf("Episodes", "Overview", "More like this", "Did you know", "Parents' guide").forEach { tab ->
                 add(FitScene("anime-${tab.lowercase().replace(Regex("[^a-z]+"), "-").trim('-')}", animePage(tab)))
