@@ -467,7 +467,7 @@ fun SearchPage(
                         },
                         suggestions = emptyList(),
                         onSuggestion = pickSuggestion,
-                        big = KidsMode.isActive || userPreferences.appPreferences.benflixPreferences.easyRead,
+                        big = KidsMode.isActive,
                         modifier =
                             Modifier
                                 .fillMaxHeight()

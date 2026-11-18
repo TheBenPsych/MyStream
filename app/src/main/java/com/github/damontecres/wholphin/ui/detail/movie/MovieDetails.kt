@@ -107,7 +107,7 @@ fun MovieDetails(
             val movie by rememberUpdatedState(s.data)
             val chosenStreams by rememberUpdatedState(state.chosenStreams)
             val kids by KidsMode.active.collectAsState()
-            val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
+            val easy = kids
             MovieHeroContent(
                 movie = movie,
                 state = state,

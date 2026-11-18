@@ -35,10 +35,15 @@ data class KidsPalette(
     val onGames: Color,
 )
 
+/** Glowfin for Kids' three colours (K1) */
+val KidsLilac = Color(0xFFC48BFF)
+val KidsSky = Color(0xFF5CC8FF)
+val KidsMint = Color(0xFF7FF5E8)
+
 /**
- * The Kids look (Ben's pick kc-sky, 13 Nov 2026): "Sky and Sunshine". While Kids or Big kids is on, the
- * whole app turns sky blue with sunny yellow for the "you are here" ring, the Play button and progress lines,
- * and uses round friendly letters (Fredoka). It goes everywhere Kids goes (Ben: kc-q-where).
+ * The Kids look: "Glowfin for Kids" (Ben's pick K1, 18 Nov 2026; it replaced kc-sky). While Kids or Big kids
+ * is on, the whole app turns deep navy with lilac, sky blue and mint, a white-and-mint ring on the thing the
+ * remote is on, and round friendly letters (Fredoka). It goes everywhere Kids goes (Ben: kc-q-where).
  * From 1 hour before bedtime until 6 AM it switches to the calmer "Night Light" colours (Ben: kc-q-night).
  *
  * Every Benflix colour ([BenflixColors]) and the font ([BenflixFont]) ask this, so nothing else has to know.
@@ -60,7 +65,7 @@ object KidsLook {
         } else if (night) {
             NightLight
         } else {
-            SkyAndSunshine
+            BrightGlowfin
         }
 
     /** Called whenever Kids is switched on or off, and once a minute (for the Night Light) */
@@ -79,46 +84,51 @@ object KidsLook {
         return !now.isBefore(start) || now.isBefore(BenflixBedtime.WAKE_UP)
     }
 
-    val SkyAndSunshine =
+    /**
+     * Glowfin for Kids (Ben's pick K1, ui-17, 18 Nov 2026): Glowfin's own colours made brighter and softer,
+     * lilac, sky blue and mint on deep navy, with a white-and-mint glow ring.
+     */
+    val BrightGlowfin =
         KidsPalette(
-            tray = Color(0xFF1655CF),
+            tray = Color(0xFF141A3A),
             text = Color(0xFFFFFFFF),
-            soft = Color(0xFFEAF2FF),
-            muted = Color(0xFFD3E3FD),
-            raised = Color(0xFF2A68DA),
-            panel = Color(0xFF1F5ED6),
-            panelHigh = Color(0xFF2D6DE0),
-            line = Color(0xFF4A82E4),
-            focusRow = Color(0xFF3B78E4),
-            accent = Color(0xFFFFD21F),
-            onAccent = Color(0xFF231A00),
-            movies = Color(0xFFFFD21F),
-            onMovies = Color(0xFF2A1E00),
-            shows = Color(0xFFFFFFFF),
-            onShows = Color(0xFF1450C8),
-            games = Color(0xFFFF6F91),
-            onGames = Color(0xFF2A0612),
+            soft = Color(0xFFE8EBFF),
+            muted = Color(0xFFB9C2FF),
+            raised = Color(0xFF1F2650),
+            panel = Color(0xFF10142E),
+            panelHigh = Color(0xFF242C5C),
+            line = Color(0xFF323C78),
+            focusRow = Color(0xFF2A3368),
+            accent = KidsMint,
+            onAccent = Color(0xFF0B0D1A),
+            movies = KidsLilac,
+            onMovies = Color(0xFF0B0D1A),
+            shows = KidsSky,
+            onShows = Color(0xFF0B0D1A),
+            games = KidsMint,
+            onGames = Color(0xFF0B0D1A),
         )
 
+    /** The calmer Night Light: the same three colours, softer, on a darker navy */
     val NightLight =
         KidsPalette(
-            tray = Color(0xFF1E2257),
-            text = Color(0xFFFFFFFF),
-            soft = Color(0xFFE2E5F8),
-            muted = Color(0xFFC3C8EC),
-            raised = Color(0xFF2B3075),
-            panel = Color(0xFF2A2F72),
-            panelHigh = Color(0xFF353B85),
-            line = Color(0xFF464D99),
-            focusRow = Color(0xFF3F4694),
-            accent = Color(0xFFFFE9A8),
-            onAccent = Color(0xFF2A2000),
-            movies = Color(0xFFFFD6A5),
-            onMovies = Color(0xFF2A1700),
-            shows = Color(0xFFBDE0FE),
-            onShows = Color(0xFF06213A),
-            games = Color(0xFFFFC8DD),
-            onGames = Color(0xFF2E0A19),
+            tray = Color(0xFF0E1230),
+            text = Color(0xFFF2F3FF),
+            soft = Color(0xFFDCE0F8),
+            muted = Color(0xFFA9B1E6),
+            raised = Color(0xFF191F46),
+            panel = Color(0xFF0B0F28),
+            panelHigh = Color(0xFF1E2552),
+            line = Color(0xFF2A336A),
+            focusRow = Color(0xFF232B5C),
+            accent = Color(0xFFB8F2EA),
+            onAccent = Color(0xFF0B0D1A),
+            movies = Color(0xFFD9BFFF),
+            onMovies = Color(0xFF0B0D1A),
+            shows = Color(0xFFA9DCF5),
+            onShows = Color(0xFF0B0D1A),
+            games = Color(0xFFB8F2EA),
+            onGames = Color(0xFF0B0D1A),
         )
 }
 

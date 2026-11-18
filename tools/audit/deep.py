@@ -109,7 +109,7 @@ def docker(*args):
     return r.returncode == 0
 
 
-HOMES = d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome$"
+HOMES = d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome!?$"
 
 
 def go_home():
@@ -449,7 +449,7 @@ def switch_profile(tile):
         n = d.find(d.dump(), b)
         if n is not None:
             d.tap(n)
-    if d.wait_for(d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome$", 30) is None:
+    if d.wait_for(d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome!?$", 30) is None:
         j.step(f"{tile}-no-home")
         j.problem("profile didn't reach Home", tile)
         return False

@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.main
 
-import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,13 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -24,14 +22,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,37 +41,34 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.ui.components.BasicDialog
-import com.github.damontecres.wholphin.ui.components.BenflixIcon
-import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.components.GlowfinIcon
+import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
-import java.util.UUID
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 
 /**
- * Redesign 2, section 11 (Ben's marks, 2026-11-10): the smaller Homes.
- * - Kids (kd-family): three big coloured doors (Movies, Shows, Games), each naming a couple of titles from this
- *   profile, then one big Keep watching row with names under the pictures. Big kids looks the same.
- * - Easy mode (ez-family): the normal Home made 25% bigger, with the four doors this person opens most (the rest
- *   under More) and one Keep watching row.
- * - Guest (gs-family): four doors (Movies, Shows, Live TV, Games), then "Popular here this week". Nothing saved,
- *   no Keep watching, news, requests or admin.
+ * Glowfin Kids and Guest Homes (Ben's pick K1, ui-17, 18 Nov 2026). Easy mode is gone.
+ * - Kids: "Hi there! What do you want to watch?" (no names: Kids is shared by every kid on the TV), three big
+ *   round buttons (Movies lilac, Shows sky blue, Games mint), then one Keep watching row ("Picked for you" first).
+ * - Guest: the normal Glowfin look, "Welcome!", a Guest tag, "Nothing you watch is saved", then Popular here
+ *   and Recently added. No Keep watching, news, requests or My List.
  */
-enum class FamilyKind { KIDS, EASY, GUEST }
+enum class FamilyKind { KIDS, GUEST }
 
-/** Which smaller Home this profile gets, or null for the grown-up Today board */
-fun familyKindNow(easy: Boolean): FamilyKind? =
+/** Which smaller Home this profile gets, or null for the grown-up Home */
+fun familyKindNow(): FamilyKind? =
     when {
         KidsMode.isActive -> FamilyKind.KIDS
         GuestMode.isActive -> FamilyKind.GUEST
-        easy -> FamilyKind.EASY
         else -> null
     }
 
-/** One picture in the Keep watching (or Popular) row: the name always shows under it */
+/** One picture in a Kids or Guest row: the name always shows under it */
 data class FamilyCard(
     val id: String,
     val title: String,
@@ -83,328 +76,204 @@ data class FamilyCard(
     val destination: Destination,
 )
 
-/** What the smaller Homes show under the doors, for one profile ([key] says whose) */
+/** What the Kids and Guest Homes show, for one profile ([key] says whose) */
 data class FamilyHomeData(
     val key: String = "",
     val cards: List<FamilyCard> = emptyList(),
     /** Kids only (Idea Box 25): titles Ben put on the Kids home, shown first as "Picked for you" */
     val picks: List<FamilyCard> = emptyList(),
+    /** Guest only (ui-17): the newest movies and shows, under Popular here */
+    val recent: List<FamilyCard> = emptyList(),
     val lines: Map<BenflixDoor, String> = emptyMap(),
     val loaded: Boolean = false,
 )
 
-/** The doors each smaller Home shows, and (Easy mode only) the ones under More */
-data class FamilyDoors(
-    val shown: List<BenflixDoor>,
-    val more: List<BenflixDoor>,
-)
+/** The Kids Home's three big buttons */
+val KidsDoors = listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
 
-/**
- * Counts how often each door is opened on this device, per profile, so Easy mode can show the four used most.
- * Kept on the device only (it's just a tidy order, nothing private).
- */
-object DoorUse {
-    private const val PREFS = "benflix_door_use"
-
-    private fun key(
-        userId: UUID?,
-        door: BenflixDoor,
-    ) = "${userId ?: "none"}-${door.name}"
-
-    fun opened(
-        context: Context,
-        userId: UUID?,
-        door: BenflixDoor,
-    ) {
-        if (GuestMode.isActive) return
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putInt(key(userId, door), prefs.getInt(key(userId, door), 0) + 1).apply()
-    }
-
-    fun count(
-        context: Context,
-        userId: UUID?,
-        door: BenflixDoor,
-    ): Int = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(key(userId, door), 0)
-}
-
-/** The doors for [kind]. Easy mode picks the four this person opens most (a tie keeps the usual order). */
-fun familyDoors(
-    kind: FamilyKind,
-    context: Context,
-    userId: UUID?,
-): FamilyDoors =
-    when (kind) {
-        FamilyKind.KIDS -> {
-            FamilyDoors(listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES), emptyList())
-        }
-
-        FamilyKind.GUEST -> {
-            FamilyDoors(listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES), emptyList())
-        }
-
-        FamilyKind.EASY -> {
-            // (Anime has its own spot under Shows, not a door tile here)
-            val doors = BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
-            val ranked = doors.sortedByDescending { DoorUse.count(context, userId, it) }
-            // Movies always stays, so the remote always starts in the same place
-            val top = (listOf(BenflixDoor.MOVIES) + ranked).distinct().take(EASY_DOORS)
-            FamilyDoors(
-                shown = doors.filter { it in top },
-                more = doors.filter { it !in top },
-            )
-        }
-    }
-
-private const val EASY_DOORS = 4
-
-/** Easy mode makes this Home 25% bigger */
-private const val EASY_SCALE = 1.25f
-
-private fun doorIcon(door: BenflixDoor): BenflixIcon =
+private fun kidsIcon(door: BenflixDoor): GlowfinIcon =
     when (door) {
-        BenflixDoor.MOVIES -> BenflixIcon.FILM
-        BenflixDoor.SHOWS -> BenflixIcon.TV
-        BenflixDoor.LIVE_TV -> BenflixIcon.LIVE
-        BenflixDoor.GAMES -> BenflixIcon.PAD
-        BenflixDoor.MUSIC -> BenflixIcon.NOTE
-        BenflixDoor.BOOKS -> BenflixIcon.BOOK
-        BenflixDoor.ANIME -> BenflixIcon.STAR
+        BenflixDoor.SHOWS -> GlowfinIcon.SHOWS
+        BenflixDoor.GAMES -> GlowfinIcon.GAMES
+        else -> GlowfinIcon.MOVIES
     }
 
+/** The Kids Home (K1). [firstFocus] goes on the Movies button, where the remote starts. */
 @Composable
-fun FamilyHome(
-    kind: FamilyKind,
-    greeting: String,
-    doors: FamilyDoors,
+fun KidsHome(
     data: FamilyHomeData,
     wide: Boolean,
-    labelAlpha: (Int) -> Float,
-    listAlpha: () -> Float,
-    doorModifier: (BenflixDoor) -> Modifier,
+    firstFocus: FocusRequester,
     onDoor: (BenflixDoor) -> Unit,
     onCard: (FamilyCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scale = if (kind == FamilyKind.EASY) EASY_SCALE else 1f
-    var showMore by remember { mutableStateOf(false) }
-    val rowTitle = if (kind == FamilyKind.GUEST) "Popular here this week" else "Keep watching"
-    val empty =
-        when (kind) {
-            FamilyKind.GUEST -> "Open a door to find something to watch."
-            FamilyKind.KIDS -> "Nothing started yet. Open a door and pick something fun!"
-            FamilyKind.EASY -> "Nothing started yet. Open a door to find something to watch."
-        }
-    val header: @Composable () -> Unit = {
-        Column {
-            Text(
-                text = greeting,
-                color = BenflixColors.Text,
-                fontSize = BenflixType.pageTitle * scale,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (kind == FamilyKind.KIDS) {
-                // Ben: Kids profiles are shared by every kid on the TV, so no names, just a friendly question
-                Text(
-                    text = "What do you want to watch?",
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.lead,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            if (kind == FamilyKind.GUEST) {
-                Text(
-                    text = "Nothing you watch is saved",
-                    color = BenflixColors.Muted,
-                    fontSize = BenflixType.small,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-    }
-    val row: @Composable (posterHeight: Dp) -> Unit = { posterHeight ->
-        Column(Modifier.graphicsLayer { alpha = listAlpha() }) {
-            Text(
-                // Ben's picks come first in the one row, so the doors keep their size on the TV
-                text = if (data.picks.isNotEmpty()) "Picked for you" else rowTitle,
-                color = BenflixColors.Text,
-                fontSize = BenflixType.rowName * scale,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 10.dp),
-            )
-            if (data.loaded && data.cards.isEmpty() && data.picks.isEmpty()) {
-                Text(text = empty, color = BenflixColors.Soft, fontSize = BenflixType.body * scale)
-            } else {
-                val pickIds = data.picks.map { it.id }.toSet()
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    contentPadding = PaddingValues(end = 24.dp),
-                ) {
-                    items(data.picks, key = { "pick-" + it.id }) { card ->
-                        FamilyPoster(card = card, height = posterHeight, scale = scale, onClick = { onCard(card) })
-                    }
-                    val rest = data.cards.filter { it.id !in pickIds }
-                    if (data.picks.isNotEmpty() && rest.isNotEmpty()) {
-                        // A small label where Keep watching starts
-                        item(key = "keep-label") {
-                            Text(
-                                text = rowTitle,
-                                color = BenflixColors.Soft,
-                                fontSize = BenflixType.small * scale,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.width(70.dp).padding(top = posterHeight / 2 - 12.dp),
-                            )
-                        }
-                    }
-                    items(if (data.picks.isEmpty()) data.cards else rest, key = { it.id }) { card ->
-                        FamilyPoster(card = card, height = posterHeight, scale = scale, onClick = { onCard(card) })
-                    }
-                }
-            }
-        }
-    }
-
-    if (wide) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(end = 24.dp, top = 8.dp, bottom = 20.dp),
-        ) {
-            header()
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-            ) {
-                doors.shown.forEach { door ->
-                    FamilyDoor(
+    val scroll = rememberScrollState()
+    Column(
+        verticalArrangement = Arrangement.spacedBy(if (wide) 22.dp else 16.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(scroll)
+                .padding(
+                    start = if (wide) 8.dp else 0.dp,
+                    end = if (wide) 24.dp else 8.dp,
+                    top = if (wide) 24.dp else 8.dp,
+                    bottom = 24.dp,
+                ),
+    ) {
+        FamilyHeader(title = "Hi there!", line = "What do you want to watch?", wide = wide)
+        if (wide) {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
+                KidsDoors.forEachIndexed { i, door ->
+                    KidsButton(
                         door = door,
-                        line = data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.description,
-                        scale = scale,
-                        labelAlpha = labelAlpha(door.ordinal),
+                        wide = true,
                         onClick = { onDoor(door) },
-                        modifier = doorModifier(door).weight(1f).fillMaxHeight(),
-                    )
-                }
-                if (doors.more.isNotEmpty()) {
-                    MoreDoor(
-                        count = doors.more.size,
-                        scale = scale,
-                        onClick = { showMore = true },
-                        modifier = Modifier.weight(0.5f).fillMaxHeight().graphicsLayer { alpha = listAlpha() },
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .widthIn(max = 300.dp)
+                                .height(112.dp)
+                                .then(if (i == 0) Modifier.focusRequester(firstFocus) else Modifier),
                     )
                 }
             }
-            row(if (kind == FamilyKind.EASY) 150.dp else 140.dp)
-        }
-    } else {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(end = 8.dp, top = 8.dp, bottom = 24.dp),
-        ) {
-            header()
-            // Phones: Kids gets its three doors side by side; four doors go two by two
-            val perRow = if (doors.shown.size == 3) 3 else 2
-            doors.shown.chunked(perRow).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    pair.forEach { door ->
-                        FamilyDoor(
-                            door = door,
-                            line = if (perRow == 3) null else data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.description,
-                            scale = scale,
-                            labelAlpha = labelAlpha(door.ordinal),
-                            onClick = { onDoor(door) },
-                            small = true,
-                            modifier =
-                                doorModifier(door)
-                                    .weight(1f)
-                                    .aspectRatio(if (perRow == 3) 0.85f else 1.35f / scale),
-                        )
-                    }
-                }
-            }
-            if (doors.more.isNotEmpty()) {
-                MoreDoor(
-                    count = doors.more.size,
-                    scale = scale,
-                    onClick = { showMore = true },
-                    modifier = Modifier.fillMaxWidth().height(56.dp * scale).graphicsLayer { alpha = listAlpha() },
+        } else {
+            KidsDoors.forEachIndexed { i, door ->
+                KidsButton(
+                    door = door,
+                    wide = false,
+                    onClick = { onDoor(door) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(76.dp)
+                            .then(if (i == 0) Modifier.focusRequester(firstFocus) else Modifier),
                 )
             }
-            row(if (kind == FamilyKind.EASY) 160.dp else 150.dp)
         }
-    }
-
-    if (showMore) {
-        BasicDialog(onDismissRequest = { showMore = false }) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(8.dp)) {
-                Text(
-                    text = "More doors",
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.rowName * scale,
-                    fontWeight = FontWeight.Bold,
-                )
-                doors.more.forEach { door ->
-                    FamilyDoor(
-                        door = door,
-                        line = door.description,
-                        scale = scale,
-                        labelAlpha = 1f,
-                        onClick = {
-                            showMore = false
-                            onDoor(door)
-                        },
-                        small = true,
-                        modifier = Modifier.fillMaxWidth().height(96.dp * scale),
-                    )
-                }
-            }
+        val pickIds = data.picks.map { it.id }.toSet()
+        val rest = data.cards.filter { it.id !in pickIds }
+        if (data.picks.isNotEmpty()) {
+            FamilyRow(title = "Picked for you", cards = data.picks, posterHeight = if (wide) 150.dp else 140.dp, onCard = onCard)
+        }
+        if (rest.isNotEmpty() || data.picks.isEmpty()) {
+            FamilyRow(
+                title = "Keep watching",
+                cards = rest,
+                empty = if (data.loaded) "Nothing started yet. Pick Movies or Shows to find something fun!" else null,
+                posterHeight = if (wide) 150.dp else 140.dp,
+                onCard = onCard,
+            )
         }
     }
 }
 
-/** One big coloured door: icon at the top, name and a short line at the bottom. Focus = white outline only. */
+/** The Guest Home (ui-17): normal look, nothing saved. [firstFocus] goes on the first poster. */
 @Composable
-private fun FamilyDoor(
+fun GuestHome(
+    data: FamilyHomeData,
+    wide: Boolean,
+    firstFocus: FocusRequester,
+    onCard: (FamilyCard) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(if (wide) 22.dp else 16.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = if (wide) 8.dp else 0.dp,
+                    end = if (wide) 24.dp else 8.dp,
+                    top = if (wide) 24.dp else 8.dp,
+                    bottom = 24.dp,
+                ),
+    ) {
+        FamilyHeader(
+            title = "Welcome!",
+            line = "Watch anything here. Nothing you watch is saved.",
+            wide = wide,
+            tag = "Guest",
+        )
+        val height = if (wide) 165.dp else 140.dp
+        FamilyRow(
+            title = "Popular here",
+            cards = data.cards,
+            empty = if (data.loaded) "Pick Movies or Shows to find something to watch." else null,
+            posterHeight = height,
+            firstFocus = firstFocus,
+            onCard = onCard,
+        )
+        if (data.recent.isNotEmpty()) {
+            FamilyRow(
+                title = "Recently added",
+                cards = data.recent,
+                posterHeight = height,
+                firstFocus = if (data.cards.isEmpty()) firstFocus else null,
+                onCard = onCard,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FamilyHeader(
+    title: String,
+    line: String,
+    wide: Boolean,
+    tag: String? = null,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = title,
+                color = BenflixColors.Text,
+                fontFamily = GlowfinDisplayFont,
+                fontSize = if (wide) 40.sp else 30.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (tag != null) {
+                Text(
+                    text = tag,
+                    color = BenflixColors.Soft,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier =
+                        Modifier
+                            .background(BenflixColors.Line, RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
+        }
+        Text(
+            text = line,
+            color = BenflixColors.Soft,
+            fontSize = if (wide) BenflixType.lead else BenflixType.body,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * One big round Kids button in its own colour: the icon, then the name. The remote's button gets a white ring
+ * and a soft mint glow, and grows a little (Ben: kc-p-glow, ring + bigger).
+ */
+@Composable
+private fun KidsButton(
     door: BenflixDoor,
-    line: String?,
-    scale: Float,
-    labelAlpha: Float,
+    wide: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    small: Boolean = false,
 ) {
-    // Kids look: rounder doors that grow a little inside a thick yellow ring (Ben: kc-p-glow)
-    val kids = KidsLook.on
-    val shape =
-        RoundedCornerShape(
-            if (kids) {
-                (if (small) 22.dp else 26.dp)
-            } else if (small) {
-                18.dp
-            } else {
-                14.dp
-            },
-        )
+    val shape = RoundedCornerShape(if (wide) 28.dp else 24.dp)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -419,43 +288,65 @@ private fun FamilyDoor(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(border = BorderStroke(if (kids) 6.dp else 4.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
+                focusedBorder = Border(border = BorderStroke(5.dp, Color.White), inset = 0.dp, shape = shape),
             ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = if (kids) 1.04f else 1f),
-        modifier = modifier,
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        modifier = modifier.glowFocus(shape = shape, spread = 16.dp),
     ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = labelAlpha }
-                .padding(if (small) 14.dp else 22.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (wide) 16.dp else 14.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = if (wide) 26.dp else 22.dp),
         ) {
-            BenflixIconImage(
-                icon = doorIcon(door),
-                color = door.labelColor,
-                size = (if (small) 32.dp else 44.dp) * scale,
-                modifier = Modifier.align(Alignment.TopStart),
+            GlowfinIconImage(icon = kidsIcon(door), color = door.onColor, size = if (wide) 48.dp else 38.dp)
+            Text(
+                text = door.title,
+                color = door.onColor,
+                fontFamily = GlowfinDisplayFont,
+                fontSize = if (wide) 32.sp else 26.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                softWrap = false,
             )
-            Column(Modifier.align(Alignment.BottomStart)) {
-                Text(
-                    text = door.title,
-                    color = door.labelColor,
-                    fontSize = (if (small) 22.sp else 34.sp) * scale,
-                    lineHeight = (if (small) 24.sp else 36.sp) * scale,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    softWrap = false,
-                )
-                if (!line.isNullOrBlank()) {
-                    Text(
-                        text = line,
-                        color = door.labelColor.copy(alpha = .85f),
-                        fontSize = (if (small) 12.sp else 15.sp) * scale,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp),
+        }
+    }
+}
+
+/** A titled row of posters with names under them */
+@Composable
+private fun FamilyRow(
+    title: String,
+    cards: List<FamilyCard>,
+    posterHeight: Dp,
+    onCard: (FamilyCard) -> Unit,
+    empty: String? = null,
+    firstFocus: FocusRequester? = null,
+) {
+    Column {
+        Text(
+            text = title,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.rowName,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(bottom = 10.dp),
+        )
+        if (cards.isEmpty()) {
+            if (empty != null) Text(text = empty, color = BenflixColors.Soft, fontSize = BenflixType.body)
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(start = 4.dp, end = 24.dp, top = 6.dp, bottom = 6.dp),
+            ) {
+                items(cards, key = { it.id }) { card ->
+                    FamilyPoster(
+                        card = card,
+                        height = posterHeight,
+                        scale = 1f,
+                        onClick = { onCard(card) },
+                        modifier = if (firstFocus != null && card.id == cards.first().id) Modifier.focusRequester(firstFocus) else Modifier,
                     )
                 }
             }
@@ -463,63 +354,14 @@ private fun FamilyDoor(
     }
 }
 
-/** Easy mode's "More" tile: the doors not shown on Home */
-@Composable
-private fun MoreDoor(
-    count: Int,
-    scale: Float,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(14.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = BenflixColors.PanelHigh,
-                contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.FocusRow,
-                focusedContentColor = BenflixColors.Text,
-            ),
-        border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder = Border(border = BorderStroke(4.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        Column(
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize().padding(10.dp),
-        ) {
-            Text(
-                text = "More",
-                fontSize = 24.sp * scale,
-                fontWeight = FontWeight.ExtraBold,
-                color = BenflixColors.Text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = if (count == 1) "1 more door" else "$count more doors",
-                fontSize = BenflixType.small,
-                color = BenflixColors.Muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/** A poster with its name underneath (2 lines at most). Focus = white outline on the picture. */
+/** A poster with its name underneath (2 lines at most). Focus = the glow ring on the picture. */
 @Composable
 private fun FamilyPoster(
     card: FamilyCard,
     height: Dp,
     scale: Float,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
     val width = height * 2f / 3f
@@ -537,7 +379,7 @@ private fun FamilyPoster(
                     focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-            modifier = Modifier.width(width).height(height),
+            modifier = modifier.glowFocus(shape = shape).width(width).height(height),
         ) {
             Box(Modifier.fillMaxSize()) {
                 // No picture: the dark card with the name on it, like every other row

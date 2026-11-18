@@ -57,7 +57,7 @@ fun WholphinTheme(
         }
     // Benflix redesign: one look for grown-ups (no profile colours). Buttons, progress lines and highlights
     // are white on the dark tray.
-    // Kids (Ben's pick kc-sky): Sky and Sunshine, or Night Light near bedtime. Reading KidsLook here redraws
+    // Kids (Ben's pick K1): Glowfin for Kids, or Night Light near bedtime. Reading KidsLook here redraws
     // everything when Kids is switched on or off.
     val kidsPalette = KidsLook.palette
     val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme

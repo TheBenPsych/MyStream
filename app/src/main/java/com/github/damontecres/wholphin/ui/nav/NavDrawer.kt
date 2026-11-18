@@ -516,7 +516,7 @@ fun NavDrawer(
     val kids by KidsMode.active.collectAsState()
     val guest by com.github.damontecres.wholphin.services.GuestMode.active
         .collectAsState()
-    val easy = kids || guest || preferences.appPreferences.benflixPreferences.easyRead
+    val easy = kids || guest
     val updateAlert =
         com.github.damontecres.wholphin.ui.components
             .rememberUpdateAlert()
@@ -692,9 +692,11 @@ fun NavDrawer(
     val railDoors =
         remember(kids, guest) {
             when {
-                kids -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
+                // Glowfin K1 (ui-17): Kids gets Home, Movies, Shows and Games only
+                kids -> com.github.damontecres.wholphin.ui.main.KidsDoors
 
-                guest -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
+                // Guest: Search, Home, Movies, Shows and Anime
+                guest -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS)
 
                 // Anime isn't in this list: it has its own spot just under Shows (showAnime)
                 else -> BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
@@ -709,8 +711,6 @@ fun NavDrawer(
         if (frame != null && destination.isDoorRoot() && destination.door() == door) {
             if (frame.section == key && key == com.github.damontecres.wholphin.ui.door.DOOR_HOME) frame.toTop() else frame.pick(key)
         } else {
-            com.github.damontecres.wholphin.ui.main.DoorUse
-                .opened(context, user.id, door)
             if (key != com.github.damontecres.wholphin.ui.door.DOOR_HOME) {
                 com.github.damontecres.wholphin.ui.door.DoorPlaces
                     .openLater(door, key)
@@ -735,7 +735,7 @@ fun NavDrawer(
     if (!wide) {
         var moreOpen by remember { mutableStateOf(false) }
         var placesFor by remember { mutableStateOf<BenflixDoor?>(null) }
-        val phoneAnime = !easy && BenflixDoor.SHOWS in railDoors
+        val phoneAnime = !kids && BenflixDoor.SHOWS in railDoors
         val tabs = remember(railDoors, phoneAnime) { phoneTabs(railDoors, anime = phoneAnime) }
         val placesDoor = destination.door()?.takeIf { destination.isDoorRoot() }
         Column(modifier = modifier) {
@@ -822,7 +822,8 @@ fun NavDrawer(
             PhoneMoreSheet(
                 doors = railDoors.filter { it !in tabDoors },
                 showSearch = !kids,
-                showRequests = !kids,
+                showRequests = !kids && !guest,
+                showMyList = !kids && !guest,
                 requestsNote =
                     when {
                         requestsWaiting > 0 -> "$requestsWaiting waiting"
@@ -905,7 +906,8 @@ fun NavDrawer(
             destination = destination,
             doors = railDoors,
             showSearch = !kids,
-            showRequests = !kids,
+            showRequests = !kids && !guest,
+            showSettings = !kids,
             requestsCount = if (requestsWaiting > 0) requestsWaiting else readyCount,
             user = user,
             userImageUrl = userImageUrl,
@@ -921,7 +923,7 @@ fun NavDrawer(
             onItem = { nav.navigateTo(it.destination()) },
             onProfile = onProfileTap,
             onSwitchProfile = onSwitchProfile,
-            showAnime = !easy && BenflixDoor.SHOWS in railDoors,
+            showAnime = !kids && BenflixDoor.SHOWS in railDoors,
             onAnime = { goPlace(BenflixDoor.ANIME, com.github.damontecres.wholphin.ui.door.DOOR_HOME) },
             onSettings = { nav.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC)) },
         )

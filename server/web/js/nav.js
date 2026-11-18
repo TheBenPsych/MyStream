@@ -81,15 +81,15 @@
     const spot = spotOf(location.hash);
     const item = (key, icon, label, href, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="${href || "#/" + key}" title="${esc(label)}">${G(icon)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
     // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests, then your
-    // picture and Settings at the bottom
+    // picture and Settings at the bottom. Kids (K1, ui-17): Home, Movies, Shows and Games, then the picture.
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
-      ${item("search", "search", "Search")}
+      ${kids ? "" : item("search", "search", "Search")}
       ${item("home", "home", "Home")}
       ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}" aria-haspopup="true">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
       ${kids ? "" : item("requests", "requests", "Requests", "", `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <div class="rl-gap"></div>
       <button type="button" class="rl-i rl-me" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>
-      ${item("settings", "settings", "Settings")}`;
+      ${kids ? "" : item("settings", "settings", "Settings")}`;
   };
   const paint = () => {
     const hash = location.hash || "";
@@ -294,10 +294,10 @@
     const shown = tabs().map((t) => t.key);
     const rest = doors().filter((d) => !shown.includes(d.key));
     const p = B.side(`<div class="sheet">
-      ${sheetRow("#/search", "search", "Search")}
+      ${kids ? "" : sheetRow("#/search", "search", "Search")}
       ${rest.map((d) => sheetRow("#/" + d.key, d.key, d.name)).join("")}
       ${kids ? "" : sheetRow("#/requests", "requests", "Requests", "", reqCount ? String(reqCount) : "")}
-      ${sheetRow("#/settings", "settings", "Settings")}
+      ${kids ? "" : sheetRow("#/settings", "settings", "Settings")}
       <div class="sh-sep"></div>
       <button type="button" class="sh-row sh-me" data-me>${B.me ? B.picHtml(B.me, "", 100) : ""}<span>${esc(B.me ? B.me.name : "")}</span>${I("right")}</button>
     </div>`);

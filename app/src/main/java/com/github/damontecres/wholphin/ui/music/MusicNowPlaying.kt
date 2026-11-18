@@ -517,7 +517,8 @@ fun MusicNowPlayingPage(
     LaunchedEffect(audio?.id) { viewModel.loadLyrics(audio) }
     val lyricsPair by viewModel.lyrics.collectAsState()
     val lyrics = lyricsPair?.takeIf { it.first == audio?.id }?.second
-    val easy = preferences.appPreferences.benflixPreferences.easyRead
+    // Glowfin: Easy mode is gone (Ben, ui-17)
+    val easy = false
     val barsOn = !preferences.appPreferences.benflixPreferences.musicBarsOff
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current

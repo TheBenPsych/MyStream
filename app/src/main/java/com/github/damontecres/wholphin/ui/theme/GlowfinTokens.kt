@@ -86,11 +86,13 @@ fun Modifier.glowFocus(
                         out to shape.createOutline(Size(size.width + out * 2, size.height + out * 2), layoutDirection, this)
                     }
                 onDrawBehind {
-                    if (focused && !KidsLook.on) {
+                    if (focused) {
+                        // Glowfin for Kids (K1): the ring glows mint instead of violet
+                        val glow = KidsLook.palette?.accent ?: Glowfin.Violet
                         outlines.forEachIndexed { index, (out, outline) ->
                             val a = GLOW_ALPHA * (1f - index.toFloat() / steps)
                             translate(-out, -out) {
-                                drawOutline(outline, Glowfin.Violet.copy(alpha = a), style = Stroke(width = stroke))
+                                drawOutline(outline, glow.copy(alpha = a), style = Stroke(width = stroke))
                             }
                         }
                     }

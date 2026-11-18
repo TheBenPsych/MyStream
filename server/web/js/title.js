@@ -10,6 +10,8 @@
 
 (() => {
   const MAX_BUTTONS = 5;
+  // The rows Kids doesn't see on a title page
+  const KIDS_HIDE = ["tpCast", "tpParents", "tpChars", "tpAsk"];
 
   // opts: { title, original, color, picture, cover: { url, ratio }, info: [..], rating, infoExtra,
   //         buttons: [{ id, label, icon, href, off, note, onClick }], status,
@@ -19,6 +21,10 @@
     const pageName = opts.title || "";
     B.placeName = pageName;
     const buttons = (opts.buttons || []).filter(Boolean).slice(0, MAX_BUTTONS);
+    // Glowfin for Kids (K1, ui-17): just Play, big and round (Episodes is the row under it). No age box, cast,
+    // parents' guide or asking. The other buttons stay on the page, hidden, so nothing that looks for them breaks.
+    const kids = !!(B.me && B.me.kids);
+    const kidsHide = (id) => kids && KIDS_HIDE.includes(id);
     // Glowfin D1 (Ben 2026-11-18): opts.rows = no tab line, the story sits under the info line and every tab is a
     // row underneath, one after another (Overview becomes "About" near the end)
     const rows = !!opts.rows;
@@ -33,11 +39,11 @@
     }
     const btn = (b, i) => {
       const cls = `btn big ${i === 0 ? "white" : ""} ${b.off ? "off" : ""}`;
-      const attrs = `${b.id ? `id="${b.id}"` : ""} data-tpb="${i}" ${b.off ? `aria-disabled="true"` : ""}`;
+      const attrs = `${b.id ? `id="${b.id}"` : ""} data-tpb="${i}" ${b.off ? `aria-disabled="true"` : ""} ${kids && i > 0 ? "hidden" : ""}`;
       const inner = `${I(b.icon || "play")} <span>${esc(b.label)}</span>`;
       return b.href && !b.off ? `<a class="${cls}" ${attrs} href="${b.href}">${inner}</a>` : `<button class="${cls}" ${attrs}>${inner}</button>`;
     };
-    const meta = [opts.rating ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
+    const meta = [opts.rating && !kids ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
     const pic = opts.cover
       ? `<div class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" style="${opts.cover.url ? `background-image:url('${opts.cover.url}')` : ""}"></div>`
       : "";
@@ -128,7 +134,7 @@
     if (rows) {
       // Every row shows and loads now (each only once); an empty one hides itself
       watch.disconnect();
-      const refreshRows = () => tabs.forEach((t) => { const pane = $("#" + t.id); if (pane) pane.hidden = !t.keep && empty(pane); });
+      const refreshRows = () => tabs.forEach((t) => { const pane = $("#" + t.id); if (pane) pane.hidden = kidsHide(t.id) || (!t.keep && empty(pane)); });
       const watchRows = new MutationObserver(() => refreshRows());
       $$(".tp-pane").forEach((p) => watchRows.observe(p, { childList: true, subtree: true }));
       B.onLeave(() => watchRows.disconnect());

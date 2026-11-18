@@ -629,6 +629,24 @@ class DoorDataService
                 ),
             )
 
+        /** Glowfin Guest Home (ui-17): the newest movies and shows on Tower, from every library this profile sees */
+        suspend fun recentlyAdded(
+            userId: UUID,
+            limit: Int = ROW,
+        ): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                    recursive = true,
+                    sortBy = listOf(ItemSortBy.DATE_CREATED),
+                    sortOrder = listOf(SortOrder.DESCENDING),
+                    fields = SlimItemFields,
+                    enableUserData = false,
+                    limit = limit,
+                ),
+            )
+
         /** These titles, in this order (ones that aren't there any more are left out) */
         suspend fun byIds(
             userId: UUID,

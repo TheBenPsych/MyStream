@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.ui.components.HomeNewsDot
 import com.github.damontecres.wholphin.ui.components.UpdateNotice
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.destination
 import com.github.damontecres.wholphin.ui.runIntroTimeline
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
@@ -248,9 +249,19 @@ class HomeDoorsViewModel
                         if (kind == FamilyKind.GUEST) popularCards(userId) else keepWatchingCards(userId)
                     val lines = if (kind == FamilyKind.KIDS) kidsDoorLines(userId) else emptyMap()
                     val picks = if (kind == FamilyKind.KIDS) doorData.kidsPicks(userId).map { card(it) } else emptyList()
+                    val recent =
+                        if (kind == FamilyKind.GUEST) {
+                            doorData
+                                .recentlyAdded(userId)
+                                .map { card(it) }
+                                .distinctBy { it.id }
+                                .take(FAMILY_ROW)
+                        } else {
+                            emptyList()
+                        }
                     // Only if this profile is still the one on screen
                     if (familyKey(kind) != key) return@launchIO
-                    val data = FamilyHomeData(key = key, cards = cards, picks = picks, lines = lines, loaded = true)
+                    val data = FamilyHomeData(key = key, cards = cards, picks = picks, recent = recent, lines = lines, loaded = true)
                     familyMemory[key] = data
                     _family.value = data
                 } catch (ex: CancellationException) {
@@ -1076,11 +1087,10 @@ fun DoorsHomePage(
     val context = LocalContext.current
     val kids by KidsMode.active.collectAsState()
     val guestOn by GuestMode.active.collectAsState()
-    val easyPref = preferences.appPreferences.benflixPreferences.easyRead
-    // Kids, Big kids, Guest and Easy mode get their own smaller Home (Redesign 2, section 11)
-    val familyKind = remember(kids, guestOn, easyPref) { familyKindNow(easyPref) }
+    // Kids, Big kids and Guest get their own Home (Glowfin K1, ui-17). Easy mode is gone.
+    val familyKind = remember(kids, guestOn) { familyKindNow() }
     val familyData by viewModel.family.collectAsState()
-    // Kids and Guest get titles under the carousel instead of news; Easy mode gets the news like everyone else
+    // Kids and Guest get titles instead of news
     val smallHome = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
     LifecycleStartEffect(familyKind) {
         viewModel.load(small = smallHome)
@@ -1104,8 +1114,8 @@ fun DoorsHomePage(
     // Today cards floating under it (approved hm-spot, hc-dots, fl-cards). Kids get the same Home made for them.
     val doors =
         when (familyKind) {
-            FamilyKind.KIDS -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.GAMES)
-            FamilyKind.GUEST -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.GAMES)
+            FamilyKind.KIDS -> KidsDoors
+            FamilyKind.GUEST -> listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS)
             else -> BenflixDoor.entries.filter { it != BenflixDoor.ANIME }
         }
     val lite =
@@ -1114,15 +1124,11 @@ fun DoorsHomePage(
                 .isOn(context)
         }
     val liveRows by viewModel.rows.collectAsState()
-    val liveWeather by viewModel.weather.collectAsState()
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     // Phones turned sideways and tablets use the TV layout
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     val picksViewModel: HomePicksViewModel = hiltViewModel()
-    // Glowfin: only Kids and Guest still use the picture carousel, so only they load its picks
-    LaunchedEffect(smallHome) { if (smallHome) picksViewModel.load() }
-    val picks by picksViewModel.picks.collectAsState()
 
     // The start-up light-up (approved in-light), once, right after a profile is picked: the rail's door icons
     // light up in their colours top to bottom, one after another, and the
@@ -1139,7 +1145,9 @@ fun DoorsHomePage(
             BenflixIntroState.doorsPending = false
             try {
                 // Everything ready before anything moves (no sound: Ben wants it clean and plain)
-                withTimeoutOrNull(WAIT_FOR_NEWS_MS) { picksViewModel.ready.first { it } }
+                withTimeoutOrNull(WAIT_FOR_NEWS_MS) {
+                    if (smallHome) viewModel.family.first { it.loaded } else picksViewModel.ready.first { it }
+                }
                 val pace = IntroPace.measure(context, frames = 6)
                 val f = pace.stretch
                 val stagger = DOOR_STAGGER_MS * f
@@ -1183,7 +1191,6 @@ fun DoorsHomePage(
     }
 
     val rows = liveRows
-    val weather = liveWeather
     // A row with nowhere to go (a note from Ben, "Ben fixed it") opens a pop-up with all its words
     var reading by remember { mutableStateOf<HomeRow?>(null) }
     var refocus by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -1234,41 +1241,6 @@ fun DoorsHomePage(
         )
     }
     val family = familyKind == FamilyKind.KIDS || familyKind == FamilyKind.GUEST
-    val todayCards =
-        if (family) {
-            // Kids and Guest: titles to keep watching (or popular here) instead of news
-            val data = if (familyData.key.endsWith("-" + familyKind?.name)) familyData else FamilyHomeData()
-            (
-                data.picks.map { it to "Picked for you" } +
-                    data.cards.map { it to if (familyKind == FamilyKind.GUEST) "Popular here" else "Keep watching" }
-            ).distinctBy { it.first.id }
-                .take(TODAY_CARDS)
-                .map { (card, kind) ->
-                    TodayCard(
-                        id = card.id,
-                        kind = kind,
-                        kindColor = HomeKind.Ready,
-                        title = card.title,
-                        image = card.image,
-                        square = false,
-                        onClick = { viewModel.navigationManager.navigateTo(card.destination) },
-                    )
-                }
-        } else {
-            arrangeHomeRows(rows, TODAY_CARDS).rows.map { row ->
-                TodayCard(
-                    id = row.id,
-                    kind = row.kind,
-                    kindColor = row.kindColor,
-                    title = row.title,
-                    image = row.image,
-                    square = row.square,
-                    onClick = { onRow(row) },
-                )
-            }
-        }
-    val cards = todayCards.take(TODAY_CARDS)
-    val moreNews = !family && rows.all.size > todayCards.size
     Box(
         modifier =
             modifier
@@ -1304,33 +1276,29 @@ fun DoorsHomePage(
             )
             return@Box
         }
-        HomeSpotlight(
-            greeting =
-                when (familyKind) {
-                    FamilyKind.GUEST -> {
-                        "Welcome"
-                    }
-
-                    FamilyKind.KIDS -> {
-                        "Hi there!"
-                    }
-
-                    else -> {
-                        greetingFor(viewModel.userName)
-                    }
+        // Glowfin K1 (ui-17): the Kids Home and the Guest Home
+        val data = if (familyData.key.endsWith("-" + familyKind?.name)) familyData else FamilyHomeData()
+        val openCard: (FamilyCard) -> Unit = { viewModel.navigationManager.navigateTo(it.destination) }
+        if (familyKind == FamilyKind.KIDS) {
+            KidsHome(
+                data = data,
+                wide = wide,
+                firstFocus = playFocus,
+                onDoor = { door ->
+                    viewModel.navigationManager.navigateTo(door.destination())
                 },
-            weather = if (family) null else weather,
-            picks = picks,
-            cards = cards,
-            wide = wide,
-            kids = familyKind == FamilyKind.KIDS,
-            bloom = { bloom.floatValue },
-            playFocus = playFocus,
-            onPlay = picksViewModel::play,
-            onInfo = picksViewModel::open,
-            onSeeAll = if (moreNews) ({ seeAll = true }) else null,
-            onCardsSeen = { if (!family) viewModel.markSeen() },
-        )
+                onCard = openCard,
+                modifier = Modifier.graphicsLayer { alpha = bloom.floatValue },
+            )
+        } else {
+            GuestHome(
+                data = data,
+                wide = wide,
+                firstFocus = playFocus,
+                onCard = openCard,
+                modifier = Modifier.graphicsLayer { alpha = bloom.floatValue },
+            )
+        }
     }
 }
 
@@ -1338,9 +1306,6 @@ fun DoorsHomePage(
 private const val LIGHT_MS = 320f
 private const val BLOOM_MS = 520f
 private const val SETTLE_MS = 600f
-
-/** Up to four floating Today cards */
-private const val TODAY_CARDS = 4
 
 /** Glowfin Home's "What's new" row holds a few more */
 private const val WHATS_NEW_CARDS = 10

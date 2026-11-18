@@ -114,6 +114,7 @@ fun SeriesHeroContent(
     var held by remember { mutableStateOf<BaseItem?>(null) }
     var showCatchUp by remember { mutableStateOf(false) }
     val anime = state.subDub != null
+    val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
     val likes = series.data.userData?.likes
     val trailer = state.trailers.firstOrNull()
     val buttons =
@@ -127,7 +128,7 @@ fun SeriesHeroContent(
                 ),
             )
             // Idea Box 25: back after three weeks or more? A quick reminder of the last episodes watched
-            if (state.catchUp.isNotEmpty()) {
+            if (!easy && state.catchUp.isNotEmpty()) {
                 add(
                     TitleButton(
                         label = "Catch me up",
@@ -140,6 +141,8 @@ fun SeriesHeroContent(
             if (state.inlineEpisodes.isNotEmpty()) {
                 add(TitleButton(label = "Episodes", icon = BenflixIcon.LIST, onClick = {}, opensTab = "Episodes"))
             }
+            // Glowfin Kids (K1): just Play and Episodes, big and round. No trailer, My List or More.
+            if (easy) return@buildList
             add(
                 TitleButton(
                     label = "Trailer",
@@ -148,14 +151,17 @@ fun SeriesHeroContent(
                     off = if (trailer == null) "No trailer for this one yet" else null,
                 ),
             )
-            add(
-                TitleButton(
-                    label = "My List",
-                    icon = if (series.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
-                    onClick = { actions.setMyList(!series.favorite) },
-                    note = if (series.favorite) "On your list" else null,
-                ),
-            )
+            // Glowfin Guest (ui-17): nothing saved, so no My List
+            if (!guest) {
+                add(
+                    TitleButton(
+                        label = "My List",
+                        icon = if (series.favorite) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                        onClick = { actions.setMyList(!series.favorite) },
+                        note = if (series.favorite) "On your list" else null,
+                    ),
+                )
+            }
             add(TitleButton(label = "More", icon = BenflixIcon.MORE, onClick = { showMore = true }))
         }
     val scores = rememberScoreParts(series)
@@ -188,13 +194,13 @@ fun SeriesHeroContent(
                     },
                 )
             }
-            if (state.people.isNotEmpty()) {
+            if (!easy && state.people.isNotEmpty()) {
                 add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
             }
             if (state.similar.isNotEmpty()) {
                 add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })
             }
-            if (!easy && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
+            if (!easy && !guest && (state.discovered.isNotEmpty() || state.discoveredMore.isNotEmpty())) {
                 add(
                     TitleTab(askForSimilarName(state.askKind, show = true), note = "Not on Glowfin yet") { scope ->
                         AskForSimilarRow(
@@ -222,7 +228,7 @@ fun SeriesHeroContent(
                     )
                 },
             )
-            if (!anime && state.parentsGuide.isNotEmpty()) {
+            if (!easy && !anime && state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
             }
         }
@@ -232,7 +238,7 @@ fun SeriesHeroContent(
         accent = BenflixColors.Shows,
         picture = TitlePicture.Backdrop(series),
         info = remember(series, state.seasons.size, state.subDub) { showMeta(series, state) },
-        rating = series.data.officialRating,
+        rating = if (easy) null else series.data.officialRating,
         buttons = buttons,
         tabs = tabs,
         big = easy,

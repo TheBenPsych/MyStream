@@ -242,6 +242,8 @@ fun PhoneMoreSheet(
     showSearch: Boolean,
     showRequests: Boolean,
     requestsNote: String?,
+    /** Glowfin (ui-17): Kids and Guest have no My List here */
+    showMyList: Boolean = true,
     user: JellyfinUser,
     userImageUrl: String?,
     userName: String,
@@ -269,7 +271,7 @@ fun PhoneMoreSheet(
             if (showRequests) {
                 SheetRow(null, "Requests", BenflixColors.Soft, requestsNote, onRequests, glowIcon = GlowfinIcon.REQUESTS)
             }
-            SheetRow(BenflixIcon.HEART, "My List", BenflixColors.Soft, null, onMyList)
+            if (showMyList) SheetRow(BenflixIcon.HEART, "My List", BenflixColors.Soft, null, onMyList)
             Box(
                 Modifier
                     .padding(vertical = 8.dp)

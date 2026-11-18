@@ -133,7 +133,7 @@ fun SeriesDetails(
                 }
             }
             val kids by KidsMode.active.collectAsState()
-            val easy = kids || preferences.appPreferences.benflixPreferences.easyRead
+            val easy = kids
             SeriesHeroContent(
                 series = series,
                 state = state,

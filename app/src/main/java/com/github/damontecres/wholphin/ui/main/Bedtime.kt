@@ -235,13 +235,22 @@ fun BedtimeLayer(
                 modifier =
                     Modifier
                         .padding(24.dp)
-                        .widthIn(max = 380.dp)
-                        .background(Color(0xEE141418), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                        .widthIn(max = 400.dp)
+                        .background(Color(0xF01A1F48), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 22.dp, vertical = 16.dp),
             ) {
-                // Ben's pick (kd-p-bedtime): gentle. What's on now finishes, then Benflix says good night.
-                Text("Bedtime soon", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("This is the last one", fontSize = BenflixType.body, color = Color(0xFFD8D8F0))
+                // Ben's pick (kd-p-bedtime, restyled K1): gentle. What's on now finishes, then Glowfin says good night.
+                val bedtime =
+                    BenflixBedtime.BEDTIME.format(
+                        java.time.format.DateTimeFormatter
+                            .ofPattern("h:mm"),
+                    )
+                Text("Last episode for tonight", fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    "Bedtime is at $bedtime. What's on now is the last one.",
+                    fontSize = BenflixType.body,
+                    color = Color(0xFFB9C2FF),
+                )
             }
         }
     }
