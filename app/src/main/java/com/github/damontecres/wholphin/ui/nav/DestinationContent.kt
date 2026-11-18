@@ -553,9 +553,9 @@ fun DestinationContent(
             PlayGamePage(destination.gameName, modifier)
         }
 
-        Destination.Welcome -> {
+        Destination.ThingsYouLove -> {
             com.github.damontecres.wholphin.ui.main
-                .WelcomePage(modifier)
+                .ThingsYouLovePage(modifier)
         }
 
         Destination.GuessTheMovie -> {

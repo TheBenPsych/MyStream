@@ -99,7 +99,7 @@ data class DeviceChoices(
  * video it can play) and sets the per-device performance settings to suit it: Lite mode (no trailer
  * previews or clip preloading, still backgrounds) and the screensaver's slow motion.
  *
- * It runs in the welcome setup, and again quietly after every app update. A setting the person changed
+ * It runs the first time Glowfin opens on a device, and again quietly after every app update. A setting the person changed
  * themselves is never changed back: Lite mode remembers whether it was set by this check or by hand, and
  * the screensaver remembers the value this check last set (anything else means they changed it).
  * These are device settings, kept only on this device (BenflixSettingsSync never syncs them).

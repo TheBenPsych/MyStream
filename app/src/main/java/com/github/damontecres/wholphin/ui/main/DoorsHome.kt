@@ -286,8 +286,8 @@ fun DoorsHomePage(
                 .clear()
         }
     }
-    // The first-time setup for a new profile
-    WelcomeGate()
+    // Quiet first-run jobs: the device check, and a random sea friend for a profile with no picture
+    FirstRunGate()
     LaunchedEffect(Unit) {
         StartupTimer.mark(StartupTimer.HOME_ROWS)
         StartupTimer.finish(context)
