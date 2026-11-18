@@ -645,9 +645,15 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   B.items[it.Id] = it;
   const ud = it.UserData || {};
   const wantEp = B.q("ep"), wantSeason = B.q("season");
-  let target = wantEp ? await B.get(`/Users/${u}/Items/${wantEp}?Fields=${B.FIELDS}`).catch(() => null) : null;
-  if (!target) target = nextUp;
-  const seasonId = wantSeason || (target && target.SeasonId) || (seasons.find((s) => s.IndexNumber > 0) || seasons[0] || {}).Id;
+  // The episode in the address (?ep=, from the card you clicked) only picks which season row opens, and only while it's
+  // still unwatched. Play always follows where you really are in the show, so coming back or refreshing never sticks
+  // on the episode you first landed on.
+  let landed = wantEp ? await B.get(`/Users/${u}/Items/${wantEp}?Fields=${B.FIELDS}`).catch(() => null) : null;
+  if (landed && (landed.UserData || {}).Played) landed = null;
+  const target = nextUp || landed;
+  const focus = landed || target;
+  if (wantEp && !landed && B.alive(nav)) history.replaceState(null, "", `#/show/${m[1]}${wantSeason ? `?season=${wantSeason}` : ""}`);
+  const seasonId = wantSeason || (focus && focus.SeasonId) || (seasons.find((s) => s.IndexNumber > 0) || seasons[0] || {}).Id;
   const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? "Resume" : "Play"} S${target.ParentIndexNumber} E${target.IndexNumber}` : "Play";
   const bits = [it.ProductionYear ? (it.Status === "Ended" && it.EndDate ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear) : "", seasons.filter((s) => s.IndexNumber > 0).length ? `${seasons.filter((s) => s.IndexNumber > 0).length} seasons` : "", it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : "", it.Status === "Ended" ? "Ended" : it.AirDays && it.AirDays.length ? `New episodes on ${it.AirDays[0]}s` : ""].filter(Boolean);
   const creators = (it.People || []).filter((p) => p.Type === "Creator").map((p) => p.Name).slice(0, 2);
@@ -707,14 +713,14 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
       const sub = soon ? `Coming ${B.day(e.PremiereDate)}` : [special ? "Special" : `E${e.IndexNumber}`, e.RunTimeTicks ? B.len(B.minutes(e.RunTimeTicks)) : "", B.isNew(e) && !(e.UserData || {}).Played ? "New" : ""].filter(Boolean).join(" · ");
       return B.wideCard(e, { href: `#/play/${e.Id}?resume=1`, title: `${special ? "" : e.IndexNumber + ". "}${e.Name}`, sub, story: true, soon, tag: special ? "SPECIAL" : "" });
     }), { id: "epRow" });
-    const t = target && $(`#epRow [data-id="${CSS.escape(target.Id)}"]`);
+    const t = focus && $(`#epRow [data-id="${CSS.escape(focus.Id)}"]`);
     if (t) { t.scrollIntoView({ inline: "start", block: "nearest" }); $("#epRow .strip").scrollLeft -= 48; }
   };
   const loadSeason = async (sid) => {
     $("#eps").innerHTML = B.spinner();
     episodes = await q(`/Shows/${it.Id}/Episodes?userId=${u}&SeasonId=${sid}&Fields=Overview,PremiereDate,RunTimeTicks,DateCreated,UserData&EnableImages=true`);
     group = 0;
-    if (target) { const i = episodes.findIndex((e) => e.Id === target.Id); if (i >= 0 && episodes.length > 50) group = Math.floor(i / 25); }
+    if (focus) { const i = episodes.findIndex((e) => e.Id === focus.Id); if (i >= 0 && episodes.length > 50) group = Math.floor(i / 25); }
     if (B.alive(nav)) drawEps();
   };
   $("#seasons").onclick = (e) => {
