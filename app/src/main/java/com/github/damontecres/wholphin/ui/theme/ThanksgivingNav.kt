@@ -41,7 +41,7 @@ object ThanksgivingNav {
     fun day(year: Int): LocalDate = LocalDate.of(year, 11, 1).with(TemporalAdjusters.dayOfWeekInMonth(4, DayOfWeek.THURSDAY))
 
     /** The first Today card: "9 days to Thanksgiving", "Happy Thanksgiving" on the day, nothing after it */
-    fun countdown(today: LocalDate = LocalDate.now()): String? {
+    fun countdown(today: LocalDate = Today.date()): String? {
         val left = ChronoUnit.DAYS.between(today, day(today.year))
         return when {
             left > 1 -> "$left days to Thanksgiving"

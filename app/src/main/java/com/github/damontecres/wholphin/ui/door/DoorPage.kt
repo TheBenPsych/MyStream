@@ -81,6 +81,7 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -263,15 +264,19 @@ private fun WideDoor(
     modifier: Modifier,
 ) {
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
-    var focused by remember { mutableStateOf<BaseItem?>(null) }
+    // Speed check (Ben 2026-11-18): the poster you're on is only watched here, never read while building the page,
+    // so moving along a row no longer rebuilds the whole door on every press. Only the top area changes, once you stop.
+    val focused = remember { mutableStateOf<BaseItem?>(null) }
     var shown by remember { mutableStateOf<BaseItem?>(null) }
-    LaunchedEffect(focused) {
-        val item = focused ?: return@LaunchedEffect
-        if (shown == null) {
-            shown = item
-        } else {
-            delay(PREVIEW_DELAY_MS)
-            shown = item
+    LaunchedEffect(Unit) {
+        snapshotFlow { focused.value }.collectLatest { item ->
+            if (item == null) return@collectLatest
+            if (shown == null) {
+                shown = item
+            } else {
+                delay(PREVIEW_DELAY_MS)
+                shown = item
+            }
         }
     }
     // Before anything is focused (or on a touch screen), describe the first poster
@@ -404,7 +409,7 @@ private fun WideDoor(
                             onClick = onClick,
                             onSeeAll = { onSeeAll(row) },
                             onFocus = { index, item ->
-                                focused = item
+                                focused.value = item
                                 focusedKey = row.key
                                 viewModel.focusedRow = row.key
                                 viewModel.focusedIndex = index

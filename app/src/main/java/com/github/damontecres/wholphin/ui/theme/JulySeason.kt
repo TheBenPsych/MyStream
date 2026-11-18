@@ -51,7 +51,8 @@ object JulySeason {
 
     fun isSeason(now: LocalDateTime = LocalDateTime.now()): Boolean = now.month == Month.JULY && now.dayOfMonth <= 4
 
-    fun on(now: LocalDateTime = LocalDateTime.now()): Boolean = !lookOff && isSeason(now)
+    // Only the month and day matter here, so the shared date is enough (no clock read on every colour)
+    fun on(now: LocalDateTime = Today.date().atStartOfDay()): Boolean = !lookOff && isSeason(now)
 
     /** Which recording of the room plays: "night" on the 4th from 9 PM (the big fireworks show), else "day" */
     fun variant(now: LocalDateTime = LocalDateTime.now()): String =

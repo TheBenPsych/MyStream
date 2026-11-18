@@ -50,21 +50,21 @@ object StPatricksSeason {
     /** Settings > Look > St. Patrick's Day look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = date.month == Month.MARCH && date.dayOfMonth in 10..17
+    fun isSeason(date: LocalDate = Today.date()): Boolean = date.month == Month.MARCH && date.dayOfMonth in 10..17
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date)
 
     /** Which recording of the room plays: "week" 10 to 16 March (rain), "day" on 17 March (rainbow and falling shamrocks) */
-    fun variant(date: LocalDate = LocalDate.now()): String = if (date.month == Month.MARCH && date.dayOfMonth == 17) "day" else "week"
+    fun variant(date: LocalDate = Today.date()): String = if (date.month == Month.MARCH && date.dayOfMonth == 17) "day" else "week"
 
     /** Who's watching's big words: "Who's watching?" all week, "Happy St. Patrick's Day!" on the day */
-    fun whoGreeting(date: LocalDate = LocalDate.now()): String = if (variant(date) == "day") DAY_GREETING else WHO
+    fun whoGreeting(date: LocalDate = Today.date()): String = if (variant(date) == "day") DAY_GREETING else WHO
 
     private const val DAY_GREETING = "Happy St. Patrick\u2019s Day!"
     private const val WHO = "Who\u2019s watching?"
 
     /** The line under the greeting in the week before: "3 days to St. Patrick's Day" (none on the day) */
-    fun countdown(date: LocalDate = LocalDate.now()): String? {
+    fun countdown(date: LocalDate = Today.date()): String? {
         if (!isSeason(date) || variant(date) == "day") return null
         val days = 17 - date.dayOfMonth
         return if (days == 1) "St. Patrick’s Day is tomorrow" else "$days days to St. Patrick’s Day"

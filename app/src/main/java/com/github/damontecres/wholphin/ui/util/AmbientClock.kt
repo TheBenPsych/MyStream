@@ -27,8 +27,12 @@ object AmbientClock {
     /** Each tick waits this long after the last frame: about 20 frames a second on a 60 Hz TV */
     private const val TICK_MS = 34L
 
-    /** After a key press the art holds still this long, so focus moves and scrolling run at full speed */
-    private const val HOLD_MS = 450L
+    /**
+     * After a key press the art holds still this long, so focus moves and scrolling run at full speed. Ben
+     * 2026-11-18: 0.45 s let the motion start again between presses while moving around a menu at a normal pace,
+     * so it kept taking turns with the menu. The motion is slow enough that a two second pause can't be seen.
+     */
+    private const val HOLD_MS = 2_000L
 
     /** A spare user checks this often whether it should take over driving */
     private const val SPARE_MS = 250L
@@ -42,6 +46,12 @@ object AmbientClock {
                 if (driver !== me) {
                     last = -1L
                     delay(SPARE_MS)
+                    continue
+                }
+                if (LastRemoteKey.pressedRecently(HOLD_MS)) {
+                    // Holding still: don't even ask for frames, so the remote has the TV to itself
+                    last = -1L
+                    delay(TICK_MS)
                     continue
                 }
                 val now = withFrameMillis { it }

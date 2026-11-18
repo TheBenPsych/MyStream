@@ -93,6 +93,7 @@ import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -167,14 +168,17 @@ fun GamesPage(
         }
 
     // The top area (TV and wide screens) describes what you're on; it waits half a second after you stop
-    var focused by remember { mutableStateOf<GamePreview?>(null) }
+    // Speed check (Ben 2026-11-18): the tile you're on is only watched here, so moving around doesn't rebuild the page
+    val focused = remember { mutableStateOf<GamePreview?>(null) }
     var shown by remember { mutableStateOf<GamePreview?>(null) }
-    LaunchedEffect(focused) {
-        val p = focused ?: return@LaunchedEffect
-        if (shown != null) delay(500)
-        shown = p
+    LaunchedEffect(Unit) {
+        snapshotFlow { focused.value }.collectLatest { p ->
+            if (p == null) return@collectLatest
+            if (shown != null) delay(500)
+            shown = p
+        }
     }
-    val onFocus: (GamePreview) -> Unit = { focused = it }
+    val onFocus: (GamePreview) -> Unit = remember { { focused.value = it } }
 
     fun refPreview(
         ref: GameRef,

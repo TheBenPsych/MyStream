@@ -57,9 +57,9 @@ object Friday13 {
     /** Settings > Look > Friday the 13th look is off (set by MainActivity from the saved settings) */
     var lookOff by mutableStateOf(false)
 
-    fun isDay(date: LocalDate = LocalDate.now()): Boolean = isFriday13(date)
+    fun isDay(date: LocalDate = Today.date()): Boolean = isFriday13(date)
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isDay(date)
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isDay(date)
 
     const val GREETING = "Happy Friday the 13th"
 

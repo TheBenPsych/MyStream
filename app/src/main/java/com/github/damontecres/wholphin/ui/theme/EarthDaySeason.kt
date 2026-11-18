@@ -49,19 +49,22 @@ object EarthDaySeason {
     }
 
     /** Which day of Earth week [date] is (1 to 7), or 0 outside it */
-    fun day(date: LocalDate = LocalDate.now()): Int {
+    fun day(date: LocalDate = Today.date()): Int {
         val n = ChronoUnit.DAYS.between(start(date.year), date) + 1
         return if (n in 1..DAYS) n.toInt() else 0
     }
 
-    fun isSeason(date: LocalDate = LocalDate.now()): Boolean = day(date) > 0
+    fun isSeason(date: LocalDate = Today.date()): Boolean = seasonAnswer(date)
 
-    fun on(date: LocalDate = LocalDate.now()): Boolean = !lookOff && isSeason(date)
+    // Kept for the day: it works out Easter's date too, and every colour on screen asks
+    private val seasonAnswer = DayAnswer { day(it) > 0 }
+
+    fun on(date: LocalDate = Today.date()): Boolean = !lookOff && isSeason(date)
 
     const val GREETING = "Happy Earth Day"
 
     /** The line under the greeting: "Earth week, day 3" */
-    fun line(date: LocalDate = LocalDate.now()): String? = day(date).takeIf { it > 0 }?.let { "Earth week, day $it" }
+    fun line(date: LocalDate = Today.date()): String? = day(date).takeIf { it > 0 }?.let { "Earth week, day $it" }
 }
 
 /**
