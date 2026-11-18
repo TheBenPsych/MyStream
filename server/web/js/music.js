@@ -1017,8 +1017,11 @@
       shown = a;
       const name = ($(".nm", a) || {}).textContent || "", line = ($(".cap small", a) || {}).textContent || "";
       $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(a.getAttribute("href") || ""))}</div><h1>${esc(name)}</h1>${line ? `<p>${esc(line)}</p>` : ""}`;
+      top.dataset.href = a.getAttribute("href") || "";
       const art = $(".art", top);
       const img = $("img.art", a), spans = $$(".collage span", a);
+      const firstBg = spans.length ? (spans[0].style.backgroundImage.match(/url\(["']?([^"')]+)/) || [])[1] : null;
+      B.coverGlow(img ? img.src : firstBg || null);
       art.classList.remove("on");
       if (img) art.innerHTML = `<span class="one" style="background-image:url('${esc(img.src)}')"></span>`;
       else if (spans.length) art.innerHTML = spans.map((x) => x.outerHTML).join("");
@@ -1027,6 +1030,7 @@
       requestAnimationFrame(() => art.classList.add("on"));
     };
     const pointAt = (e) => {
+      if (B.phoneTop()) return;
       const a = e.target.closest("#mrows .mcard");
       if (!a) return;
       clearTimeout(timer);
@@ -1035,13 +1039,15 @@
     B.page().addEventListener("mouseover", pointAt);
     B.page().addEventListener("focusin", pointAt);
     B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+    top.onclick = () => { if (B.phoneTop() && top.dataset.href) B.go(top.dataset.href); };
+    B.wireCoverGlow();
     show($("#mrows .mcard"));
   };
   const askTile = () => `<a class="mcard" href="#/requests?tab=music"><div class="im ask">${I("plus")}<i>Ask for music</i></div><div class="cap"><span class="nm">Ask for music</span><small>Songs, albums, playlists</small></div></a>`;
   const importTile = () => `<a class="mcard" href="#/requests?tab=music&mlist=playlist"><div class="im ask">${I("dl")}<i>Import</i></div><div class="cap"><span class="nm">Import</span><small>A playlist from a link</small></div></a>`;
   B.route(/^\/music$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage mhome"><section class="mtop" id="mTop"><div class="art"></div><div class="info"></div></section><div id="mrows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + B.coverGlowHtml() + `<div class="mpage mhome"><section class="mtop" id="mTop"><div class="art"></div><div class="info"></div></section><div id="mrows">${B.spinner()}</div></div>`;
     B.wireTop();
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;

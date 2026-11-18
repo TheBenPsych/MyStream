@@ -4,19 +4,23 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -39,13 +43,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -65,12 +69,15 @@ import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
+import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.music.MusicRowName
+import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -294,6 +301,11 @@ private fun BooksForYou(
             contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
+            if (!wide) {
+                shownRows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
+                    item(key = "phoneTop") { BooksPhoneTop(top) { onTile(top) } }
+                }
+            }
             itemsIndexed(shownRows, key = { _, row -> row.key }) { rowIndex, row ->
                 Column {
                     MusicRowName(row.title, Modifier.padding(start = edge, bottom = 8.dp))
@@ -340,8 +352,9 @@ private fun BooksForYou(
 
 /**
  * Glowfin (B1) top area on TV and wide screens: what the book you're on is ("Keep reading · 64%", its name big,
- * the author, which book of the series, ebook and/or audiobook), with its cover fading in on the right. It waits
- * half a second after you stop moving, so passing along a row stays smooth on older TVs.
+ * the author, which book of the series, ebook and/or audiobook), with its cover standing sharp on the right and a
+ * soft glow in the cover's own colours behind the top of the page (Ben 2026-11-18: no cover picture as the
+ * background). It waits half a second after you stop moving, so passing along a row stays smooth on older TVs.
  */
 @Composable
 private fun BooksTopArea(
@@ -359,21 +372,30 @@ private fun BooksTopArea(
     }
     val tile = shown ?: first ?: return
     val edge = side(true)
+    val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val height = (maxWidth * 0.2f).coerceIn(150.dp, 230.dp) + overlap
         Box(Modifier.fillMaxWidth().height(height)) {
-            // The cover on the right, standing like a book, fading into the page at the bottom
+            // The glow reaches up under the tabs and a little way down behind the first row
+            CoverGlow(
+                glow,
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.Top, unbounded = true)
+                    .height(height * 1.6f),
+            )
+            // The cover on the right, whole and sharp, standing like a book
             Box(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = overlap, end = edge)
+                    .padding(top = overlap + 6.dp, end = edge, bottom = 8.dp)
                     .fillMaxHeight()
-                    .aspectRatio(BOOK_RATIO),
+                    .aspectRatio(BOOK_RATIO)
+                    .shadow(18.dp, BenflixShapes.Card),
             ) {
                 Crossfade(targetState = tile, animationSpec = tween(250), label = "booksTopCover") { t ->
                     BookCoverImage(t.cover, t.name, Modifier.fillMaxSize(), audio = t.isAudio)
                 }
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Glowfin.Ink)))
             }
             Column(
                 modifier =
@@ -382,37 +404,79 @@ private fun BooksTopArea(
                         .padding(start = edge, end = edge, bottom = 10.dp)
                         .widthIn(max = 620.dp),
             ) {
-                Text(
-                    text = topKicker(tile),
-                    color = Glowfin.Dim,
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = tile.name,
-                    color = Glowfin.Text,
-                    fontFamily = GlowfinDisplayFont,
-                    fontSize = BenflixType.pageTitle,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                val line = topLine(tile)
-                if (line.isNotBlank()) {
-                    Text(
-                        text = line,
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.body,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
+                BooksTopWords(tile, center = false)
             }
         }
+    }
+}
+
+/**
+ * Phones (Ben 2026-11-18): there's no remote moving between books, so the top stays on the first book (the one
+ * you're reading): its cover in the middle with the glow behind it, and its name under it. Tapping it opens it.
+ */
+@Composable
+private fun BooksPhoneTop(
+    tile: BookTile,
+    onClick: () -> Unit,
+) {
+    val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
+    Box(Modifier.fillMaxWidth()) {
+        CoverGlow(glow, Modifier.matchParentSize())
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(start = side(false), end = side(false), top = 18.dp, bottom = 6.dp),
+        ) {
+            Box(Modifier.width(140.dp).aspectRatio(BOOK_RATIO).shadow(18.dp, BenflixShapes.Card)) {
+                BookCoverImage(tile.cover, tile.name, Modifier.fillMaxSize(), audio = tile.isAudio)
+            }
+            Spacer(Modifier.height(14.dp))
+            BooksTopWords(tile, center = true)
+        }
+    }
+}
+
+/** The kicker, the big name and the line under it, for the top area */
+@Composable
+private fun BooksTopWords(
+    tile: BookTile,
+    center: Boolean,
+) {
+    val align = if (center) TextAlign.Center else TextAlign.Start
+    Text(
+        text = topKicker(tile),
+        color = Glowfin.Dim,
+        fontSize = BenflixType.small,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = align,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+    Text(
+        text = tile.name,
+        color = Glowfin.Text,
+        fontFamily = GlowfinDisplayFont,
+        fontSize = BenflixType.pageTitle,
+        fontWeight = FontWeight.Bold,
+        textAlign = align,
+        maxLines = if (center) 2 else 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    val line = topLine(tile)
+    if (line.isNotBlank()) {
+        Text(
+            text = line,
+            color = BenflixColors.Soft,
+            fontSize = BenflixType.body,
+            textAlign = align,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 
