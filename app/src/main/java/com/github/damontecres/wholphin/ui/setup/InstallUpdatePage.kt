@@ -255,8 +255,7 @@ fun InstallUpdatePage(
     // background), because some TVs quietly ignored the background launch, so the install screen never showed up.
     // It opens in its own task: inside Benflix's task, an older TCL TV (Android 9) closed the install
     // screen when the update replaced Benflix, so it never showed "App installed" / Open.
-    // This is the usual install screen (older TVs, or when the sped-up install can't be used).
-    fun openUsualInstaller(uri: Uri) {
+    fun openInstaller(uri: Uri) {
         fun launch(plainView: Boolean): Boolean =
             try {
                 // Coming back from the installer isn't "away" (no Who's watching)
@@ -272,6 +271,14 @@ fun InstallUpdatePage(
                 Timber.w(ex, "No installer for plainView=%s", plainView)
                 false
             }
+        // Only one install screen at a time. Two at once (for example a slow TV still "Preparing" the first one)
+        // read the same file together, and the second said "There was a problem parsing the package".
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastInstallerOpenAt < INSTALLER_REOPEN_GAP_MS) {
+            Timber.w("Install screen was just opened, not opening a second one")
+            return
+        }
+        lastInstallerOpenAt = now
         // Notice if the install screen covers Benflix at all, even for a moment or as a small box on top
         var leftScreen = false
         lateinit var observer: LifecycleEventObserver
@@ -301,34 +308,6 @@ fun InstallUpdatePage(
                 launch(plainView = true)
             }
         }
-    }
-
-    fun openInstaller(uri: Uri) {
-        // Only one install screen at a time. Two at once (for example a slow TV still "Preparing" the first one)
-        // read the same file together, and the second said "There was a problem parsing the package".
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastInstallerOpenAt < INSTALLER_REOPEN_GAP_MS) {
-            Timber.w("Install screen was just opened, not opening a second one")
-            return
-        }
-        lastInstallerOpenAt = now
-        // Ben 2026-11-18: updates go in already sped up (Android prepares the app during the install, like a game
-        // processing its shaders), so Benflix isn't slow for the first day after each update. If that way can't
-        // be used, the usual install screen below opens instead.
-        if (com.github.damontecres.wholphin.services.SpeedUpInstall
-                .canUse(context)
-        ) {
-            scope.launch {
-                com.github.damontecres.wholphin.ui.components.BenflixNotices
-                    .pill("Getting the update ready...")
-                val handed =
-                    com.github.damontecres.wholphin.services.SpeedUpInstall
-                        .start(context, uri)
-                if (!handed) openUsualInstaller(uri)
-            }
-            return
-        }
-        openUsualInstaller(uri)
     }
 
     LaunchedEffect(state.installRequest) {
