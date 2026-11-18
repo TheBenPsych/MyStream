@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -73,29 +72,10 @@ fun DrawScope.drawLogoSquares(
 fun BenflixMark(
     size: Dp,
     modifier: Modifier = Modifier,
-    /** 0..1: a soft extra glow behind the fin (the startup logo glows once, gently) */
-    glow: Float = 0f,
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .size(size)
-                .drawBehind {
-                    if (glow > 0f) {
-                        val c = Offset(this.size.width * 0.52f, this.size.height * 0.5f)
-                        drawCircle(
-                            brush =
-                                Brush.radialGradient(
-                                    colors = listOf(GlowfinCyan.copy(alpha = 0.45f * glow), Color.Transparent),
-                                    center = c,
-                                    radius = this.size.width * 0.75f,
-                                ),
-                            radius = this.size.width * 0.75f,
-                            center = c,
-                        )
-                    }
-                },
+        modifier = modifier.size(size),
     ) {
         Image(
             painter = painterResource(R.drawable.glowfin_mark),
@@ -185,8 +165,6 @@ fun BenflixWordLogo(
     extra: String? = null,
     /** Extra modifier for just the fin (the intro and the Home doors need to know where it is) */
     markModifier: Modifier = Modifier,
-    /** 0..1: the startup logo's one gentle glow */
-    glow: Float = 0f,
 ) {
     // The logo keeps its own size even when Easy read makes the words bigger
     val fontScale = LocalDensity.current.fontScale
@@ -196,7 +174,7 @@ fun BenflixWordLogo(
         horizontalArrangement = Arrangement.spacedBy(height * 0.3f),
         modifier = modifier.semantics { contentDescription = "Glowfin" },
     ) {
-        BenflixMark(size = height * 1.3f, modifier = markModifier, glow = glow)
+        BenflixMark(size = height * 1.3f, modifier = markModifier)
         GlowfinWord(fontSize = fontSize, wordColor = wordColor)
         if (extra != null) {
             Text(

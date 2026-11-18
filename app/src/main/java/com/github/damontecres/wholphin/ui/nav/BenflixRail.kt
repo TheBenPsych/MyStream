@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -190,6 +191,9 @@ object RailIntro {
     val waiting: Boolean get() = active || BenflixIntroState.doorsPending
 }
 
+/** The rail holds the focus only while a newly picked page loads: it shows no focus glow then */
+private val LocalRailQuiet = androidx.compose.runtime.compositionLocalOf { false }
+
 /** Lets the page around the rail open it (the remote's ☰ Menu key) or its profile panel (holding ☰) */
 class RailControl {
     var openRequests by mutableIntStateOf(0)
@@ -260,7 +264,15 @@ fun BenflixRail(
     var panelDoor by remember { mutableStateOf<BenflixDoor?>(null) }
     var profileOpen by remember { mutableStateOf(false) }
     val panelOpen = panelDoor != null || profileOpen
-    val open = model.alwaysOpen || railFocused || panelOpen
+    // Ben 2026-11-18: picking a page tucks the menu away and it stays tucked while the new page loads. If the
+    // focus falls back onto the menu by itself meanwhile (the old page's cards went away), the menu stays
+    // closed and hands the focus to the new page, which puts it on the first card of its first row.
+    // [quiet] = the menu has the focus but nobody asked for it to open (no Left/Up/Down or ☰ Menu press).
+    var quiet by remember { mutableStateOf(false) }
+    var invitedAt by remember { mutableLongStateOf(0L) }
+    var leftAt by remember { mutableLongStateOf(0L) }
+    var strays by remember { mutableIntStateOf(0) }
+    val open = model.alwaysOpen || (railFocused && !quiet) || panelOpen
     // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
     // rebuilds every icon and name on each step of it
     val width =
@@ -283,6 +295,8 @@ fun BenflixRail(
     val panelFocus = LocalFocusManager.current
 
     fun focusCurrent() {
+        quiet = false
+        invitedAt = android.os.SystemClock.uptimeMillis()
         val target =
             current?.let { doorFocus[it] }
                 ?: currentSpot?.let { spotFocus[it] }
@@ -291,6 +305,7 @@ fun BenflixRail(
     }
 
     fun closePanel() {
+        invitedAt = android.os.SystemClock.uptimeMillis()
         val door = panelDoor
         panelDoor = null
         profileOpen = false
@@ -307,6 +322,19 @@ fun BenflixRail(
         profileOpen = true
     }
 
+    /** A page was picked: tuck the menu away now and give the focus to the page (TV) */
+    fun leaveFor(go: () -> Unit) {
+        panelDoor = null
+        profileOpen = false
+        if (!model.alwaysOpen) {
+            quiet = true
+            leftAt = android.os.SystemClock.uptimeMillis()
+            contentFocus.tryRequestFocus()
+        }
+        go()
+        if (!model.alwaysOpen && railFocused) strays++
+    }
+
     // ☰ Menu opens the rail on the place you're in; holding ☰ opens your profile panel
     LaunchedEffect(control.openRequests) {
         if (control.openRequests > 0) focusCurrent()
@@ -320,11 +348,10 @@ fun BenflixRail(
 
     // Like the door menus before it: when a page swaps its rows in, the focus can fall onto the rail by itself.
     // The rail only keeps the focus when the remote moved onto it; otherwise it goes straight back to the page.
-    var strays by remember { mutableIntStateOf(0) }
     LaunchedEffect(strays) {
         if (strays == 0) return@LaunchedEffect
         repeat(STRAY_TRIES) {
-            if (!railFocused || panelOpen || LastRemoteKey.movedRecently()) return@LaunchedEffect
+            if (!railFocused || !quiet || panelOpen) return@LaunchedEffect
             contentFocus.tryRequestFocus()
             delay(STRAY_RETRY_MS)
         }
@@ -413,159 +440,158 @@ fun BenflixRail(
                     layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
                 },
         ) {
-            // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(3.dp * scale),
-                modifier =
-                    Modifier
-                        .verticalScroll(rememberScrollState())
-                        .heightIn(min = maxHeight)
-                        .padding(horizontal = 10.dp * scale, vertical = 14.dp * scale)
-                        .onFocusChanged {
-                            val came = it.hasFocus && !railFocused
-                            railFocused = it.hasFocus
-                            if (came && !model.alwaysOpen && !LastRemoteKey.movedRecently()) strays++
-                        }.focusRestorer(entryFocus)
-                        .focusProperties {
-                            onExit = {
-                                if (requestedFocusDirection == FocusDirection.Up || requestedFocusDirection == FocusDirection.Down) {
-                                    cancelFocusChange()
-                                }
-                            }
-                        }.onPreviewKeyEvent { event ->
-                            if (!model.alwaysOpen && !panelOpen && event.key == Key.DirectionRight) {
-                                if (event.type == KeyEventType.KeyDown) contentFocus.tryRequestFocus()
-                                true
-                            } else {
-                                false
-                            }
-                        },
-            ) {
-                // The logo goes Home too (a tap; the remote uses Home just below it)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+            androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides (quiet && !model.alwaysOpen)) {
+                // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(3.dp * scale),
                     modifier =
                         Modifier
-                            .height(ITEM * scale)
-                            .padding(start = 9.dp * scale)
-                            .focusProperties { canFocus = false }
-                            .clickable(onClickLabel = "Home", onClick = model.onHome),
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(min = maxHeight)
+                            .padding(horizontal = 10.dp * scale, vertical = 14.dp * scale)
+                            .onFocusChanged {
+                                val came = it.hasFocus && !railFocused
+                                railFocused = it.hasFocus
+                                if (!it.hasFocus) {
+                                    quiet = false
+                                } else if (came && !model.alwaysOpen) {
+                                    // (an arrow pressed just before picking the page doesn't count: only one after it)
+                                    val asked =
+                                        (LastRemoteKey.movedRecently() && LastRemoteKey.moveAt > leftAt) ||
+                                            android.os.SystemClock.uptimeMillis() - invitedAt < INVITE_MS
+                                    quiet = !asked
+                                    if (!asked) strays++
+                                }
+                            }.focusRestorer(entryFocus)
+                            .focusProperties {
+                                onExit = {
+                                    if (requestedFocusDirection == FocusDirection.Up || requestedFocusDirection == FocusDirection.Down) {
+                                        cancelFocusChange()
+                                    }
+                                }
+                            }.onPreviewKeyEvent { event ->
+                                if (!model.alwaysOpen && !panelOpen && event.key == Key.DirectionRight) {
+                                    if (event.type == KeyEventType.KeyDown) contentFocus.tryRequestFocus()
+                                    true
+                                } else if (quiet && !model.alwaysOpen) {
+                                    // The menu is tucked away but holding the focus while a page loads: Left, Up
+                                    // or Down opens it on the page you're in; OK goes to the page instead of
+                                    // pressing a button you can't see
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        when (event.key) {
+                                            Key.DirectionLeft, Key.DirectionUp, Key.DirectionDown -> focusCurrent()
+                                            else -> contentFocus.tryRequestFocus()
+                                        }
+                                    }
+                                    event.key != Key.Back
+                                } else {
+                                    false
+                                }
+                            },
                 ) {
-                    BenflixMark(size = 30.dp * scale)
-                    if (open) {
-                        Spacer(Modifier.width(12.dp))
-                        com.github.damontecres.wholphin.ui.components
-                            .GlowfinWord(fontSize = 19.sp * scale)
+                    // The logo goes Home too (a tap; the remote uses Home just below it)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .height(ITEM * scale)
+                                .padding(start = 9.dp * scale)
+                                .focusProperties { canFocus = false }
+                                .clickable(onClickLabel = "Home", onClick = model.onHome),
+                    ) {
+                        BenflixMark(size = 30.dp * scale)
+                        if (open) {
+                            Spacer(Modifier.width(12.dp))
+                            com.github.damontecres.wholphin.ui.components
+                                .GlowfinWord(fontSize = 19.sp * scale)
+                        }
                     }
-                }
-                Spacer(Modifier.height(4.dp * scale))
-                // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests,
-                // then your picture and Settings at the bottom
-                if (model.showSearch) {
-                    RailButton(
-                        icon = GlowfinIcon.SEARCH,
-                        label = "Search",
-                        open = open,
-                        scale = scale,
-                        on = currentSpot == Spot.SEARCH,
-                        onClick = {
-                            panelDoor = null
-                            profileOpen = false
-                            model.onSearch()
-                        },
-                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SEARCH)),
-                    )
-                }
-                RailButton(
-                    icon = GlowfinIcon.HOME,
-                    label = "Home",
-                    open = open,
-                    scale = scale,
-                    on = currentSpot == Spot.HOME,
-                    onClick = {
-                        panelDoor = null
-                        profileOpen = false
-                        model.onHome()
-                    },
-                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.HOME)),
-                )
-                GlowfinDoorOrder.filter { it in model.doors }.forEach { door ->
-                    RailButton(
-                        icon = door.glowIcon(),
-                        label = door.title,
-                        open = open,
-                        scale = scale,
-                        on = door == current,
-                        highlighted = panelDoor == door,
-                        onClick = {
-                            profileOpen = false
-                            if (door.hasPageTabs()) {
-                                // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, no panel
-                                panelDoor = null
-                                model.onPlace(door, com.github.damontecres.wholphin.ui.door.DOOR_HOME)
-                                contentFocus.tryRequestFocus()
-                            } else {
-                                panelDoor = door
-                            }
-                        },
-                        modifier = Modifier.focusRequester(doorFocus.getValue(door)),
-                    )
-                    if (door == BenflixDoor.SHOWS && model.showAnime) {
+                    Spacer(Modifier.height(4.dp * scale))
+                    // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests,
+                    // then your picture and Settings at the bottom
+                    if (model.showSearch) {
                         RailButton(
-                            icon = GlowfinIcon.ANIME,
-                            label = "Anime",
+                            icon = GlowfinIcon.SEARCH,
+                            label = "Search",
                             open = open,
                             scale = scale,
-                            on = current == BenflixDoor.ANIME,
-                            onClick = {
-                                panelDoor = null
-                                profileOpen = false
-                                model.onAnime()
-                                contentFocus.tryRequestFocus()
-                            },
-                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.ANIME)),
+                            on = currentSpot == Spot.SEARCH,
+                            onClick = { leaveFor(model.onSearch) },
+                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SEARCH)),
                         )
                     }
-                }
-                if (model.showRequests) {
                     RailButton(
-                        icon = GlowfinIcon.REQUESTS,
-                        label = "Requests",
+                        icon = GlowfinIcon.HOME,
+                        label = "Home",
                         open = open,
                         scale = scale,
-                        on = currentSpot == Spot.REQUESTS,
-                        count = model.requestsCount,
-                        onClick = {
-                            panelDoor = null
-                            profileOpen = false
-                            model.onRequests()
-                        },
-                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.REQUESTS)),
+                        on = currentSpot == Spot.HOME,
+                        onClick = { leaveFor(model.onHome) },
+                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.HOME)),
                     )
-                }
-                Spacer(Modifier.weight(1f))
-                ProfileRailButton(
-                    model = model,
-                    open = open,
-                    scale = scale,
-                    highlighted = profileOpen,
-                    onClick = { openProfilePanel() },
-                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.PROFILE)),
-                )
-                if (model.showSettings) {
-                    RailButton(
-                        icon = GlowfinIcon.SETTINGS,
-                        label = "Settings",
+                    GlowfinDoorOrder.filter { it in model.doors }.forEach { door ->
+                        RailButton(
+                            icon = door.glowIcon(),
+                            label = door.title,
+                            open = open,
+                            scale = scale,
+                            on = door == current,
+                            highlighted = panelDoor == door,
+                            onClick = {
+                                profileOpen = false
+                                if (door.hasPageTabs()) {
+                                    // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, no panel
+                                    leaveFor { model.onPlace(door, com.github.damontecres.wholphin.ui.door.DOOR_HOME) }
+                                } else {
+                                    panelDoor = door
+                                }
+                            },
+                            modifier = Modifier.focusRequester(doorFocus.getValue(door)),
+                        )
+                        if (door == BenflixDoor.SHOWS && model.showAnime) {
+                            RailButton(
+                                icon = GlowfinIcon.ANIME,
+                                label = "Anime",
+                                open = open,
+                                scale = scale,
+                                on = current == BenflixDoor.ANIME,
+                                onClick = { leaveFor(model.onAnime) },
+                                modifier = Modifier.focusRequester(spotFocus.getValue(Spot.ANIME)),
+                            )
+                        }
+                    }
+                    if (model.showRequests) {
+                        RailButton(
+                            icon = GlowfinIcon.REQUESTS,
+                            label = "Requests",
+                            open = open,
+                            scale = scale,
+                            on = currentSpot == Spot.REQUESTS,
+                            count = model.requestsCount,
+                            onClick = { leaveFor(model.onRequests) },
+                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.REQUESTS)),
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    ProfileRailButton(
+                        model = model,
                         open = open,
                         scale = scale,
-                        on = currentSpot == Spot.SETTINGS,
-                        onClick = {
-                            panelDoor = null
-                            profileOpen = false
-                            model.onSettings()
-                        },
-                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
+                        highlighted = profileOpen,
+                        onClick = { openProfilePanel() },
+                        modifier = Modifier.focusRequester(spotFocus.getValue(Spot.PROFILE)),
                     )
+                    if (model.showSettings) {
+                        RailButton(
+                            icon = GlowfinIcon.SETTINGS,
+                            label = "Settings",
+                            open = open,
+                            scale = scale,
+                            on = currentSpot == Spot.SETTINGS,
+                            onClick = { leaveFor(model.onSettings) },
+                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
+                        )
+                    }
                 }
             }
         }
@@ -622,11 +648,7 @@ fun BenflixRail(
                         door = door,
                         places = DoorPlaces.of(door),
                         scale = scale,
-                        onPlace = { key ->
-                            panelDoor = null
-                            model.onPlace(door, key)
-                            contentFocus.tryRequestFocus()
-                        },
+                        onPlace = { key -> leaveFor { model.onPlace(door, key) } },
                     )
                 } else if (profileOpen) {
                     ProfilePanel(
@@ -660,7 +682,10 @@ private fun RailButton(
     highlighted: Boolean = false,
 ) {
     val shape = RoundedCornerShape(percent = 50)
-    var focused by remember { mutableStateOf(false) }
+    // Ben 2026-11-18: no glow on the tucked-away menu while it only holds the focus for a page that's loading
+    val quiet = LocalRailQuiet.current
+    var hasFocus by remember { mutableStateOf(false) }
+    val focused = hasFocus && !quiet
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -674,10 +699,10 @@ private fun RailButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
-                .glowFocus(shape, spread = 8.dp)
+                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
-                .onFocusChanged { focused = it.isFocused },
+                .onFocusChanged { hasFocus = it.isFocused },
     ) {
         Box(
             Modifier
@@ -787,7 +812,10 @@ private fun ProfileRailButton(
             guest -> "Guest"
             else -> model.user.name.orEmpty()
         }
-    var focused by remember { mutableStateOf(false) }
+    // Ben 2026-11-18: no glow on the tucked-away menu while it only holds the focus for a page that's loading
+    val quiet = LocalRailQuiet.current
+    var hasFocus by remember { mutableStateOf(false) }
+    val focused = hasFocus && !quiet
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -801,10 +829,10 @@ private fun ProfileRailButton(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
-                .glowFocus(shape, spread = 8.dp)
+                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
-                .onFocusChanged { focused = it.isFocused }
+                .onFocusChanged { hasFocus = it.isFocused }
                 .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
     ) {
         Row(
@@ -1118,7 +1146,10 @@ private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
 private const val DIM = .66f
 private const val STRAY_RETRY_MS = 150L
-private const val STRAY_TRIES = 20
+private const val STRAY_TRIES = 40
+
+/** How long after ☰ Menu (or the menu's own focus calls) the focus arriving on the menu counts as wanted */
+private const val INVITE_MS = 900L
 private const val TIP_PREFS = "benflix_rail_tip"
 private const val TIP_DELAY_MS = 2500L
 private const val TIP_SHOW_MS = 7000L
