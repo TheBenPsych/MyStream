@@ -384,9 +384,11 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .player .pbtn:hover { background: rgba(255,255,255,.14); }
 .player .pbtn svg.i { width: 26px; height: 26px; }
 .player .pbtn.play svg.i { width: 32px; height: 32px; }
-.player .skip { position: absolute; right: 48px; bottom: 150px; background: #fff; color: #000; border: 0; border-radius: 99px; padding: 13px 26px; font-weight: 800; font-size: 17px; cursor: pointer; }
-.player .upnext { position: absolute; right: 48px; bottom: 150px; width: 380px; background: rgba(22,24,30,.96); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: default; }
-.player .upnext .im { aspect-ratio: 16/9; border-radius: 10px; background: #222 center/cover no-repeat; }
+.player .pcorner { position: absolute; right: 48px; bottom: var(--pctl, 190px); display: flex; flex-direction: column; align-items: flex-end; gap: 16px; pointer-events: none; }
+.player .pcorner > * { pointer-events: auto; }
+.player .skip { background: #fff; color: #000; border: 0; border-radius: 99px; padding: 13px 26px; font-weight: 800; font-size: 17px; cursor: pointer; }
+.player .upnext { width: 380px; max-width: 100%; min-height: 0; background: rgba(22,24,30,.96); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: default; }
+.player .upnext .im { flex: 0 1 auto; min-height: 0; aspect-ratio: 16/9; border-radius: 10px; background: #222 center/cover no-repeat; }
 .player .upnext .cd { height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; overflow: hidden; }
 .player .upnext .cd i { display: block; height: 100%; background: #fff; transition: width 1s linear; }
 .player .center-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; pointer-events: none; }
@@ -620,8 +622,8 @@ textarea.field { min-height: 90px; resize: vertical; }
   .who .person.small .pic { width: 72px; height: 72px; font-size: 28px; }
   .who .wall { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); }
   .player .topline, .player .controls { padding: 0 16px; }
-  .player .skip, .player .upnext { right: 16px; }
-  .player .upnext { width: calc(100% - 32px); }
+  .player .pcorner { right: 16px; left: 16px; }
+  .player .upnext { width: 100%; }
   .guide .ghead, .guide .grow-ch { grid-template-columns: minmax(0, 1fr); }
   .guide .ghead .times { display: none; }
   .guide .progs { height: 58px; }
@@ -2253,6 +2255,8 @@ svg.gi path.gd { stroke-width: 3.6; }
   .tp.tp-rows .tp-pane > .grid { padding: 0 16px; }
 }
 
+/* Short windows (phones on their side): the Up next picture goes so the box never runs into the title */
+@media (max-height: 620px) { .player .upnext .im { display: none; } }
 /* ---------- Glowfin Me page (Ben 2026-11-18, approved profile-page-1): your picture opens a full page ---------- */
 .rl-me.on { background: var(--pg4); box-shadow: inset 0 0 0 2px var(--aqua); }
 .mepage { padding-top: 12px; max-width: 1180px; }

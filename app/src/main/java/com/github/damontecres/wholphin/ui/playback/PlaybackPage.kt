@@ -441,7 +441,9 @@ fun PlaybackPageContent(
 
     val showSegment =
         state.currentSegment?.interacted == false &&
-            state.nextUp == null && !controllerViewState.controlsVisible && skipIndicatorDuration == 0L
+            state.nextUp == null && !controllerViewState.controlsVisible && skipIndicatorDuration == 0L &&
+            // Benflix: the "Watch next" movie card sits in the same corner, so Skip waits until it's gone
+            state.movieNext == null
     BackHandler(showSegment) {
         viewModel.updateSegment(state.currentSegment?.segment?.id, true)
     }
