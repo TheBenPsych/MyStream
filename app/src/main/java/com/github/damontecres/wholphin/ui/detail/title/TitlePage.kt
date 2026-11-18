@@ -46,14 +46,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -65,6 +69,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
 import com.github.damontecres.wholphin.ui.door.DoorPoster
+import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
@@ -97,6 +102,7 @@ import com.github.damontecres.wholphin.ui.theme.vgPlayPixel
 import com.github.damontecres.wholphin.ui.theme.xmasOrnament
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -142,7 +148,24 @@ class TitleTabScope(
     val side: Dp,
     /** True for the fixed TV layout (tabs content sits in the bottom 40%), false on phones */
     val wide: Boolean,
+    /**
+     * TV: how tall the tab's content area is, so a row can size its posters to fit with its name above
+     * them (a row taller than this scrolled its name off the top). Unspecified on phones.
+     */
+    val height: Dp = Dp.Unspecified,
 )
+
+/**
+ * TV: how wide a poster in a tab row can be so the row's name ([nameRoom]) and the poster both fit in
+ * the tab's content area. Never wider than [max].
+ */
+fun TitleTabScope.posterWidthToFit(
+    max: Dp,
+    nameRoom: Dp = 44.dp,
+): Dp {
+    if (!wide || height == Dp.Unspecified) return max
+    return min(max, ((height - nameRoom) * POSTER_RATIO).coerceAtLeast(60.dp))
+}
 
 /** What fills the picture area */
 sealed interface TitlePicture {
@@ -308,16 +331,18 @@ private fun WideTitlePage(
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(BenflixColors.Tray)) {
         val h = maxHeight
         TitlePictureView(picture, wide = true)
-        // Title + door colour line: 9% down
+        // Title + door colour line: 9% down. The words shrink to fit this space, so a long title with an
+        // original name under it never runs into the info line (Ben's TV, 2026-11-18).
+        val titleRoom = h * .19f - 6.dp
         Column(
             modifier =
                 Modifier
                     .padding(start = side, top = h * .09f)
                     .widthIn(max = maxWidth * .55f)
-                    .height(h * .19f),
+                    .height(titleRoom),
             verticalArrangement = Arrangement.Bottom,
         ) {
-            TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = true)
+            TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = true, maxHeight = titleRoom)
         }
         // Info line: 28% down
         Row(
@@ -379,11 +404,12 @@ private fun WideTitlePage(
                 modifier = Modifier.padding(start = side, end = side, top = h * .5f),
             )
             // The tab's content: from 60% down to the bottom
+            val contentHeight = h * .37f
             Box(
                 Modifier
                     .padding(top = h * .6f)
                     .fillMaxWidth()
-                    .height(h * .37f),
+                    .height(contentHeight),
             ) {
                 androidx.compose.runtime.key(tab) {
                     Column(
@@ -391,7 +417,7 @@ private fun WideTitlePage(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        tabs.getOrNull(tab)?.content?.invoke(TitleTabScope(side = side, wide = true))
+                        tabs.getOrNull(tab)?.content?.invoke(TitleTabScope(side = side, wide = true, height = contentHeight))
                     }
                 }
             }
@@ -615,16 +641,21 @@ private fun BoxScope.TitlePictureView(
     }
 }
 
-/** The title (shrinks a little when long, never cut off), the original name and the door colour line */
+/**
+ * The title (shrinks a little when long, never cut off), the original name and the door colour line.
+ * On TV [maxHeight] is the room above the info line: the title steps down in size until everything fits,
+ * and if even the smallest size can't fit, the original name is left out rather than cut in half.
+ */
 @Composable
 private fun TitleWords(
     title: String,
     originalTitle: String?,
     accent: Color,
     wide: Boolean,
+    maxHeight: Dp? = null,
 ) {
     val original = originalTitle?.takeIf { it.isNotBlank() && !it.equals(title, ignoreCase = true) }
-    val size: TextUnit =
+    val first: TextUnit =
         when {
             !wide && title.length > 40 -> 22.sp
             !wide && title.length > 24 -> 26.sp
@@ -633,14 +664,75 @@ private fun TitleWords(
             title.length > 30 || original != null -> 32.sp
             else -> 40.sp
         }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val gap = 6.dp
+    val bar = 4.dp + 4.dp
+    val smallSize = BenflixType.small
+    if (maxHeight == null) {
+        TitleWordsColumn(title, original, accent, first, gap, maxLines = if (wide) 2 else 3)
+        return
+    }
+    BoxWithConstraints {
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val widthPx = constraints.maxWidth
+        val fit =
+            remember(title, original, widthPx, maxHeight, first) {
+                with(density) {
+                    fun titleHeight(size: TextUnit): Dp =
+                        measurer
+                            .measure(
+                                text = title,
+                                style = TextStyle(fontSize = size, lineHeight = size * 1.1f, fontWeight = FontWeight.ExtraBold),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                constraints =
+                                    androidx.compose.ui.unit
+                                        .Constraints(maxWidth = widthPx),
+                            ).size.height
+                            .toDp()
+                    val originalHeight =
+                        original?.let {
+                            measurer
+                                .measure(
+                                    text = it,
+                                    style = TextStyle(fontSize = smallSize, fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                    constraints =
+                                        androidx.compose.ui.unit
+                                            .Constraints(maxWidth = widthPx),
+                                ).size.height
+                                .toDp()
+                        } ?: 0.dp
+                    val sizes = listOf(first, 30.sp, 28.sp, 26.sp, 24.sp, 22.sp).filter { it.value <= first.value }.distinct()
+                    sizes
+                        .firstOrNull { size ->
+                            val total = titleHeight(size) + bar + gap + if (original != null) originalHeight + gap else 0.dp
+                            total <= maxHeight
+                        }?.let { it to true }
+                        ?: (sizes.last() to (titleHeight(sizes.last()) + bar + gap + originalHeight + gap <= maxHeight))
+                }
+            }
+        TitleWordsColumn(title, original.takeIf { fit.second }, accent, fit.first, gap)
+    }
+}
+
+@Composable
+private fun TitleWordsColumn(
+    title: String,
+    original: String?,
+    accent: Color,
+    size: TextUnit,
+    gap: Dp,
+    maxLines: Int = 2,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
         Text(
             text = title,
             color = BenflixColors.Text,
             fontSize = size,
             lineHeight = size * 1.1f,
             fontWeight = FontWeight.ExtraBold,
-            maxLines = if (wide) 2 else 3,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
         if (original != null) {
@@ -913,8 +1005,52 @@ private fun TabLine(
     selected: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    if (!wide) {
+        TabLineRow(tabs, tab, onTab, false, BenflixType.body, 22.dp, firstTab, selected, modifier)
+        return
+    }
+    // TV: every tab must fit on the line. With six or seven tabs (an anime show) the line used to run
+    // off the right edge, so landing on the last tab scrolled the first one half out ("les" for
+    // Episodes). Tighten the gaps, then use a smaller size, until they all fit.
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val widthPx = constraints.maxWidth
+        val names = tabs.map { it.name }
+        val lead = BenflixType.lead
+        val body = BenflixType.body
+        val small = BenflixType.small
+        val (size, gap) =
+            remember(names, widthPx) {
+                val options = listOf(lead to 30.dp, lead to 20.dp, body to 18.dp, small to 14.dp)
+                options.firstOrNull { (size, gap) ->
+                    val words =
+                        names.sumOf { name ->
+                            measurer
+                                .measure(name, TextStyle(fontSize = size, fontWeight = FontWeight.ExtraBold), maxLines = 1)
+                                .size.width
+                        }
+                    with(density) { words + ((12.dp + 4.dp) * names.size + gap * (names.size - 1)).roundToPx() } <= widthPx
+                } ?: options.last()
+            }
+        TabLineRow(tabs, tab, onTab, true, size, gap, firstTab, selected, Modifier)
+    }
+}
+
+@Composable
+private fun TabLineRow(
+    tabs: List<TitleTab>,
+    tab: Int,
+    onTab: (Int) -> Unit,
+    wide: Boolean,
+    fontSize: TextUnit,
+    gap: Dp,
+    firstTab: FocusRequester,
+    selected: FocusRequester,
+    modifier: Modifier,
+) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(if (wide) 30.dp else 22.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap),
         contentPadding = if (wide) PaddingValues(0.dp) else PaddingValues(horizontal = BenflixSpace.phoneEdge),
         modifier = modifier.fillMaxWidth().focusRestorer(selected),
     ) {
@@ -948,7 +1084,7 @@ private fun TabLine(
                     Text(
                         text = t.name,
                         color = if (on) BenflixColors.Text else BenflixColors.Muted,
-                        fontSize = if (wide) BenflixType.lead else BenflixType.body,
+                        fontSize = fontSize,
                         fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1167,7 +1303,11 @@ fun TitlePosterRow(
 ) {
     val list = remember(items) { items.distinctBy { it.id } }
     if (list.isEmpty()) return
-    Column(Modifier.fillMaxWidth().padding(bottom = if (scope.wide) 16.dp else 20.dp)) {
+    // TV: posters sized to fit under the row name in the tab area, and the row scrolls as one block so its
+    // name never slides off the top when you land on a poster
+    val block = if (scope.wide && scope.height != Dp.Unspecified) Modifier.scrollAsOneBlock(scope.height) else Modifier
+    val posterWidth = scope.posterWidthToFit(96.dp, nameRoom = if (name != null || current != null) 52.dp else 16.dp)
+    Column(block.fillMaxWidth().padding(bottom = if (scope.wide) 16.dp else 20.dp)) {
         if (name != null) TitleRowName(name, scope)
         if (scope.wide) {
             LazyRow(
@@ -1177,7 +1317,7 @@ fun TitlePosterRow(
                 itemsIndexed(list, key = { _, it -> it.id.toString() }) { _, item ->
                     val here = current != null && item.id == current.id
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        DoorPoster(item = item, width = 96.dp, showName = false, onClick = { if (!here) onClick(item) })
+                        DoorPoster(item = item, width = posterWidth, showName = false, onClick = { if (!here) onClick(item) })
                         if (here) {
                             Text(
                                 "You are here",

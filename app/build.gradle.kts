@@ -223,6 +223,18 @@ configure<ApplicationExtension> {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all {
+                // Benflix fit robot (cut-off text pictures): only when asked for with -PbenflixFit=1,
+                // so the normal PR checks stay quick. See .github/workflows/fit-robot.yml
+                it.systemProperty("benflix.fit", project.findProperty("benflixFit") ?: "0")
+                it.systemProperty(
+                    "benflix.fitOut",
+                    layout.buildDirectory
+                        .dir("fit-robot")
+                        .get()
+                        .asFile.absolutePath,
+                )
+            }
         }
     }
 

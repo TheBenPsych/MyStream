@@ -218,8 +218,7 @@ fun MovieHeroContent(
                             kind = state.askKind,
                             best = state.discovered,
                             more = state.discoveredMore,
-                            side = scope.side,
-                            showName = !scope.wide,
+                            scope = scope,
                             onClick = actions.openAsk,
                         )
                     },

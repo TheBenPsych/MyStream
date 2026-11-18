@@ -1,16 +1,19 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,36 +87,51 @@ fun WhereAmILine(
     padded: Boolean = true,
 ) {
     if (stack.size < 3) return
-    val steps = whereAmISteps(stack, maxSteps)
-    if (steps.size < 2) return
-    val scroll = rememberScrollState()
-    // Long trails: the newest part stays in view
-    LaunchedEffect(steps) { scroll.scrollTo(scroll.maxValue) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier =
-            modifier
-                .horizontalScroll(scroll)
-                .then(if (padded) Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp) else Modifier),
-    ) {
-        steps.forEachIndexed { n, (index, name) ->
-            val last = index == stack.lastIndex
-            if (n > 0) Text("›", color = BenflixColors.Muted, fontSize = fontSize)
-            Text(
-                text = name,
-                color = if (last) BenflixColors.Text else BenflixColors.Muted,
-                fontSize = fontSize,
-                fontWeight = if (last) FontWeight.SemiBold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier =
-                    if (last) {
-                        Modifier
-                    } else {
-                        Modifier.clickable { onPick(index) }
-                    },
-            )
+    val all = whereAmISteps(stack, maxSteps)
+    if (all.size < 2) return
+    // The line never scrolls: it used to slide to its end, which cut the first name in half behind the Back
+    // button ("Boy Is a Realist", Ben's TV 2026-11-18). Now the oldest parts are left out until the rest
+    // fits, and a name that is still too long ends in "…".
+    BoxWithConstraints(modifier.then(if (padded) Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp) else Modifier)) {
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val maxPx = constraints.maxWidth
+        val steps =
+            remember(all, maxPx, fontSize) {
+                val gap = with(density) { 6.dp.roundToPx() }
+                val style = TextStyle(fontSize = fontSize, fontWeight = FontWeight.SemiBold)
+                val sep = measurer.measure("›", style).size.width + gap * 2
+
+                fun width(list: List<Pair<Int, String>>) =
+                    list.sumOf { measurer.measure(it.second, style, maxLines = 1).size.width } + sep * (list.size - 1)
+                var shown = all
+                while (shown.size > 2 && width(shown) > maxPx) shown = shown.drop(1)
+                shown
+            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            steps.forEachIndexed { n, (index, name) ->
+                val last = index == stack.lastIndex
+                if (n > 0) Text("›", color = BenflixColors.Muted, fontSize = fontSize, maxLines = 1)
+                Text(
+                    text = name,
+                    color = if (last) BenflixColors.Text else BenflixColors.Muted,
+                    fontSize = fontSize,
+                    fontWeight = if (last) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier =
+                        if (n == steps.lastIndex) {
+                            Modifier.weight(1f, fill = false).then(if (last) Modifier else Modifier.clickable { onPick(index) })
+                        } else {
+                            Modifier
+                                .widthIn(max = maxWidth * .45f)
+                                .clickable { onPick(index) }
+                        },
+                )
+            }
         }
     }
 }

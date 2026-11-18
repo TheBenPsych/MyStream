@@ -12,14 +12,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.services.AskKind
+import com.github.damontecres.wholphin.ui.detail.title.TitleTabScope
+import com.github.damontecres.wholphin.ui.detail.title.posterWidthToFit
 import com.github.damontecres.wholphin.ui.discover.RequestPoster
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /**
  * Benflix (Ben, 2026-11-16): the "Ask for similar" tab on a movie or show page. Only titles of the same kind
@@ -32,11 +36,16 @@ fun AskForSimilarTab(
     kind: AskKind,
     best: List<DiscoverItem>,
     more: List<DiscoverItem>,
-    side: Dp,
-    showName: Boolean,
+    scope: TitleTabScope,
     onClick: (DiscoverItem) -> Unit,
 ) {
     val note = "Only ${kind.label} · not on Benflix yet"
+    val side = scope.side
+    val showName = !scope.wide
+    // TV: posters sized so the row's name and the posters both fit in the tab area, and the row scrolls
+    // as one block, so landing on a poster never pushes "Closest matches" off the top (Ben's TV, 2026-11-18)
+    val posterWidth = if (scope.wide) scope.posterWidthToFit(100.dp) else 104.dp
+    val block = if (scope.wide && scope.height != Dp.Unspecified) Modifier.scrollAsOneBlock(scope.height) else Modifier
     Column(Modifier.fillMaxWidth()) {
         AskShelf(
             items = best,
@@ -45,7 +54,8 @@ fun AskForSimilarTab(
             onClick = onClick,
             name = "Closest matches",
             note = note,
-            modifier = Modifier.padding(bottom = 16.dp),
+            posterWidth = posterWidth,
+            modifier = block.padding(bottom = 16.dp),
         )
         AskShelf(
             items = more,
@@ -54,7 +64,8 @@ fun AskForSimilarTab(
             onClick = onClick,
             name = "More ${kind.label} to ask for",
             note = if (best.isEmpty()) note else null,
-            modifier = Modifier.padding(bottom = 16.dp),
+            posterWidth = posterWidth,
+            modifier = block.padding(bottom = 16.dp),
         )
     }
 }
@@ -69,6 +80,7 @@ fun AskShelf(
     modifier: Modifier = Modifier,
     name: String = "Ask for more like this",
     note: String? = "Not on Benflix yet",
+    posterWidth: Dp = if (showName) 104.dp else 100.dp,
 ) {
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {
@@ -82,6 +94,8 @@ fun AskShelf(
                 color = BenflixColors.Text,
                 fontSize = BenflixType.lead,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (note != null) {
                 Text(
@@ -89,6 +103,8 @@ fun AskShelf(
                     color = BenflixColors.Muted,
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -99,7 +115,7 @@ fun AskShelf(
             itemsIndexed(items, key = { _, it -> "${it.type}-${it.id}" }) { _, item ->
                 RequestPoster(
                     item = item,
-                    width = if (showName) 104.dp else 100.dp,
+                    width = posterWidth,
                     showName = showName,
                     subtitle = item.releaseDate?.year?.toString(),
                     cornerNote = null,
