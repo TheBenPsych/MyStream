@@ -262,8 +262,11 @@ fun TitleGrid(
                 when {
                     // The For you rows' card size: 120dp on TVs, about 3.5 across on phones
                     bigCards && isTv -> ((maxWidth + 12.dp) / (BIG_CARD + 12.dp)).toInt().coerceIn(4, 8)
+
                     bigCards -> ((maxWidth / 128.dp).toInt()).coerceIn(2, 6)
+
                     isTv -> 8
+
                     else -> ((maxWidth / 110.dp).toInt()).coerceIn(3, 8)
                 }
             val width = (maxWidth - 12.dp * (columns - 1) - 8.dp) / columns
