@@ -1891,3 +1891,71 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   .bg-cell { font-size: 20px; }
   .bg-tl { width: 84px; }
 }
+
+/* ---------- Glowfin base look (Ben's "Still Water" pick, 2026-11-18; the same as the TV and phone app) ----------
+   Deep night-blue background, Inter for reading and Sora for titles, two-tone menu icons, and glow only on the
+   thing you're on: an aqua ring with a soft violet glow, and nothing grows. Nothing here keeps running. */
+@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_regular.ttf") format("truetype"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+:root {
+  --tray: #0B0D1A; --trayrgb: 11,13,26; --pg2: #12152A; --pg3: #1A1E38; --pg4: #222645; --line: #262A45;
+  --ink: #ECEEFB; --ink2: #9AA0C3; --ink3: #7A80A8; --dark: #0B0D1A;
+  --deep: #12152A; --raise: #1A1E38; --violet: #A55BE0; --blue: #1FA8E6; --aqua: #3FE0E8;
+  --glow: linear-gradient(135deg, var(--violet), var(--blue) 60%, var(--aqua));
+  --glowring: 0 0 0 3px var(--aqua), 0 0 22px 4px rgba(165, 91, 224, .5);
+}
+html, body { font-family: "Glowfin Inter", "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1, h2, h3, .who h1 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; letter-spacing: -.01em; }
+html.kids, html.kids body, html.kids h1, html.kids h2, html.kids h3 { font-family: "Fredoka", "Outfit", system-ui, sans-serif; }
+:focus-visible { outline-color: var(--aqua); }
+/* Cards: the Glow ring */
+.poster:hover .im, .poster:focus-visible .im, .wide:hover .im, .wide:focus-visible .im, .mcard:hover .im, .mcard:focus-visible .im { box-shadow: var(--glowring); }
+.pickt:hover, .pickt:focus-visible { box-shadow: var(--glowring); }
+/* Who's watching: sea friends, and the same glow on the one you're on */
+.pic.sea { background: none; }
+.pic.sea svg.sea { width: 100%; height: 100%; display: block; }
+.who .person:hover .pic, .who .person:focus-visible .pic { box-shadow: 0 0 0 4px var(--tray), 0 0 0 7px var(--aqua), 0 0 30px 6px rgba(165, 91, 224, .55); }
+/* Two-tone icons */
+svg.gi path.gf { fill: currentColor; fill-opacity: .28; stroke: none; }
+svg.gi path.gd { stroke-width: 3.6; }
+/* The menu: still icons, a round glow on the one you're on (a pill once it's open), an aqua dot for where you are */
+.brail { background: linear-gradient(90deg, var(--tray) 70%, rgba(var(--trayrgb), 0)); }
+.brail:hover, .brail:focus-within, .brail.always, body.nav-panel .brail { background: var(--deep); box-shadow: none; border-right: 1px solid var(--line); }
+.brail::after { background: rgba(11, 13, 26, .66); }
+.rl-i { border-radius: 99px; color: var(--ink2); font-weight: 500; }
+.rl-i svg.i { transition: none; }
+.rl-i:hover, .rl-i:focus-visible { background: var(--glow); color: #fff; box-shadow: 0 0 18px -2px rgba(165, 91, 224, .8); }
+.rl-i:focus-visible { outline: none; }
+.rl-i.on { color: var(--ink); }
+.rl-i.on::before { left: -7px; top: 50%; bottom: auto; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--aqua); }
+.rl-i.on:hover::before, .rl-i.on:focus-visible::before { display: none; }
+.rl-door.open, .rl-me.open { background: var(--pg4); color: var(--ink); }
+.rl-i.dark, .rl-i.dark.on { color: var(--ink2); }
+.rl-i.lit { color: inherit; animation: none; }
+.rl-logo:focus-visible { outline-color: var(--aqua); }
+.npanel { background: var(--deep); animation: none; }
+.np-title { padding: 26px 22px 8px; }
+.np-title b { font-family: "Glowfin Sora", sans-serif; font-size: 24px; font-weight: 600; }
+.np-list a:focus-visible { outline-color: var(--aqua); }
+/* Phones: the bar along the bottom, the tab you're on sits on the glow */
+.bbar { background: var(--deep); }
+.bt { color: var(--ink2); }
+.bt.on { color: var(--ink); font-weight: 600; }
+.bt.on i { background: var(--glow); color: #fff; }
+
+/* Settings > You: pick your sea friend */
+.seapick { display: grid; grid-template-columns: repeat(4, 72px); gap: 14px; }
+.seabtn { width: 72px; height: 72px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.seabtn svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
+.seabtn:hover, .seabtn:focus-visible { outline: none; box-shadow: var(--glowring); }
+.seadots { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.seadot { width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; }
+.seadot.on { box-shadow: 0 0 0 3px var(--tray), 0 0 0 5px #fff; }
+.seadot:hover, .seadot:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tray), 0 0 0 5px var(--aqua); }
+@media (max-width: 760px) { .seapick { grid-template-columns: repeat(4, 1fr); } .seabtn { width: 100%; height: auto; aspect-ratio: 1; } }
+/* Kids' wider rail: the icons sit exactly in the middle of the tucked rail ((80 - 20 - 28) / 2 = 16) */
+.brail.kids .rl-i { padding: 0 16px; }

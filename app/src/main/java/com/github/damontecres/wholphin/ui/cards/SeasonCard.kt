@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -175,6 +176,7 @@ fun SeasonCard(
         Card(
             modifier =
                 Modifier
+                    .glowFocus()
                     .size(imageWidth, imageHeight)
                     .aspectRatio(aspectRationToUse),
             onClick = onClick,

@@ -7,16 +7,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Typography
 import com.github.damontecres.wholphin.R
 
-/** Benflix's clean, round font (Outfit), used for all text; Kids get the rounder Fredoka (Ben: kc-p-letters) */
-val BenflixFont: FontFamily get() = if (KidsLook.on) KidsFont else OutfitFont
+/**
+ * Glowfin's letters (Ben's pick): Inter for reading, Sora for names and titles. Kids keep the rounder
+ * Fredoka (Ben: kc-p-letters).
+ */
+val BenflixFont: FontFamily get() = if (KidsLook.on) KidsFont else InterFont
 
-private val OutfitFont =
+/** Sora: page titles, row names and big names (the logo's letters) */
+val GlowfinDisplayFont: FontFamily get() = if (KidsLook.on) KidsFont else SoraFont
+
+private val InterFont =
     FontFamily(
-        Font(R.font.outfit_regular, FontWeight.Normal),
-        Font(R.font.outfit_medium, FontWeight.Medium),
-        Font(R.font.outfit_semibold, FontWeight.SemiBold),
-        Font(R.font.outfit_bold, FontWeight.Bold),
-        Font(R.font.outfit_extrabold, FontWeight.ExtraBold),
+        Font(R.font.glowfin_inter_regular, FontWeight.Normal),
+        Font(R.font.glowfin_inter_medium, FontWeight.Medium),
+        Font(R.font.glowfin_inter_semibold, FontWeight.SemiBold),
+        Font(R.font.glowfin_inter_bold, FontWeight.Bold),
+        Font(R.font.glowfin_inter_bold, FontWeight.ExtraBold),
+    )
+
+private val SoraFont =
+    FontFamily(
+        Font(R.font.glowfin_sora_light, FontWeight.Light),
+        Font(R.font.glowfin_sora_regular, FontWeight.Normal),
+        Font(R.font.glowfin_sora_regular, FontWeight.Medium),
+        Font(R.font.glowfin_sora_semibold, FontWeight.SemiBold),
+        Font(R.font.glowfin_sora_bold, FontWeight.Bold),
+        Font(R.font.glowfin_sora_bold, FontWeight.ExtraBold),
     )
 
 /** Round, friendly letters for Kids (Fredoka; it has no extra-bold, so that uses bold) */
@@ -29,26 +45,32 @@ private val KidsFont =
         Font(R.font.kids_fredoka_bold, FontWeight.ExtraBold),
     )
 
-/** Tall movie-poster letters (Bebas Neue). Only for the giant Top 10 numbers; everything else uses Outfit */
+/** Tall movie-poster letters (Bebas Neue). Only for the giant Top 10 numbers; everything else uses Inter or Sora */
 val BenflixTitleFont = FontFamily(Font(R.font.bebas_neue, FontWeight.Normal))
 
 private fun TextStyle.benflix() = copy(fontFamily = BenflixFont)
 
-/** Outfit at one of the shared Benflix sizes ([BenflixType]), with comfortable line spacing */
+/** Inter at one of the shared Benflix sizes ([BenflixType]), with comfortable line spacing */
 private fun TextStyle.benflix(size: androidx.compose.ui.unit.TextUnit) =
     copy(fontFamily = BenflixFont, fontSize = size, lineHeight = size * 1.25f)
+
+/** Sora at one of the shared sizes, for titles and row names */
+private fun TextStyle.display(size: androidx.compose.ui.unit.TextUnit) =
+    copy(fontFamily = GlowfinDisplayFont, fontSize = size, lineHeight = size * 1.2f)
+
+private fun TextStyle.display() = copy(fontFamily = GlowfinDisplayFont)
 
 /** Built when the theme starts (not at load), so TV or phone sizes are already known */
 fun appTypography() =
     Typography().let {
         Typography(
-            displayLarge = it.displayLarge.benflix(),
-            displayMedium = it.displayMedium.benflix(),
-            displaySmall = it.displaySmall.benflix(BenflixType.hero),
-            headlineLarge = it.headlineLarge.benflix(BenflixType.hero),
-            headlineMedium = it.headlineMedium.benflix(BenflixType.pageTitle),
-            headlineSmall = it.headlineSmall.benflix(BenflixType.pageTitle),
-            titleLarge = it.titleLarge.benflix(BenflixType.rowName),
+            displayLarge = it.displayLarge.display(),
+            displayMedium = it.displayMedium.display(),
+            displaySmall = it.displaySmall.display(BenflixType.hero),
+            headlineLarge = it.headlineLarge.display(BenflixType.hero),
+            headlineMedium = it.headlineMedium.display(BenflixType.pageTitle),
+            headlineSmall = it.headlineSmall.display(BenflixType.pageTitle),
+            titleLarge = it.titleLarge.display(BenflixType.rowName),
             titleMedium = it.titleMedium.benflix(BenflixType.lead),
             titleSmall = it.titleSmall.benflix(BenflixType.body),
             bodyLarge = it.bodyLarge.benflix(BenflixType.body),
@@ -64,13 +86,13 @@ fun appTypography() =
 fun appMaterialTypography() =
     androidx.compose.material3.Typography().let {
         androidx.compose.material3.Typography(
-            displayLarge = it.displayLarge.benflix(),
-            displayMedium = it.displayMedium.benflix(),
-            displaySmall = it.displaySmall.benflix(BenflixType.hero),
-            headlineLarge = it.headlineLarge.benflix(BenflixType.hero),
-            headlineMedium = it.headlineMedium.benflix(BenflixType.pageTitle),
-            headlineSmall = it.headlineSmall.benflix(BenflixType.pageTitle),
-            titleLarge = it.titleLarge.benflix(BenflixType.rowName),
+            displayLarge = it.displayLarge.display(),
+            displayMedium = it.displayMedium.display(),
+            displaySmall = it.displaySmall.display(BenflixType.hero),
+            headlineLarge = it.headlineLarge.display(BenflixType.hero),
+            headlineMedium = it.headlineMedium.display(BenflixType.pageTitle),
+            headlineSmall = it.headlineSmall.display(BenflixType.pageTitle),
+            titleLarge = it.titleLarge.display(BenflixType.rowName),
             titleMedium = it.titleMedium.benflix(BenflixType.lead),
             titleSmall = it.titleSmall.benflix(BenflixType.body),
             bodyLarge = it.bodyLarge.benflix(BenflixType.body),

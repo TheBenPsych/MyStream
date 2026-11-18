@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.UUID
 import org.jellyfin.sdk.model.api.PersonKind
@@ -101,7 +102,7 @@ fun PersonCard(
         modifier = modifier,
     ) {
         Card(
-            modifier = Modifier,
+            modifier = Modifier.glowFocus(androidx.compose.foundation.shape.CircleShape),
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,
@@ -113,7 +114,7 @@ fun PersonCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Focus,
                                 ),
                             shape = CircleShape,
                         ),

@@ -732,7 +732,8 @@ fun NavDrawer(
     if (!wide) {
         var moreOpen by remember { mutableStateOf(false) }
         var placesFor by remember { mutableStateOf<BenflixDoor?>(null) }
-        val tabs = remember(railDoors) { phoneTabs(railDoors) }
+        val phoneAnime = !easy && BenflixDoor.SHOWS in railDoors
+        val tabs = remember(railDoors, phoneAnime) { phoneTabs(railDoors, anime = phoneAnime) }
         val placesDoor = destination.door()?.takeIf { destination.isDoorRoot() }
         Column(modifier = modifier) {
             if (downloadsOpen) {
@@ -795,6 +796,10 @@ fun NavDrawer(
                                 tab.key == TAB_MORE -> {
                                     menuViewModel.load()
                                     moreOpen = true
+                                }
+
+                                tab.key == TAB_ANIME -> {
+                                    goPlace(BenflixDoor.SHOWS, com.github.damontecres.wholphin.ui.door.SEC_ANIME)
                                 }
 
                                 tab.door != null && tab.door == placesDoor -> {
@@ -915,6 +920,9 @@ fun NavDrawer(
             onItem = { nav.navigateTo(it.destination()) },
             onProfile = onProfileTap,
             onSwitchProfile = onSwitchProfile,
+            showAnime = !easy && BenflixDoor.SHOWS in railDoors,
+            onAnime = { goPlace(BenflixDoor.SHOWS, com.github.damontecres.wholphin.ui.door.SEC_ANIME) },
+            onSettings = { nav.navigateTo(Destination.Settings(PreferenceScreenOption.BASIC)) },
         )
     val header: @Composable () -> Unit = {
         BenflixPageHeader(

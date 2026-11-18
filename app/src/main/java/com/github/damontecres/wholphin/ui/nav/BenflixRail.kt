@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -81,6 +82,8 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixMark
+import com.github.damontecres.wholphin.ui.components.GlowfinIcon
+import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorPlaces
 import com.github.damontecres.wholphin.ui.door.DoorSection
@@ -88,6 +91,9 @@ import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
@@ -103,6 +109,21 @@ fun BenflixDoor.railIcon(): BenflixIcon =
         BenflixDoor.MUSIC -> BenflixIcon.NOTE
         BenflixDoor.BOOKS -> BenflixIcon.BOOK
     }
+
+/** Glowfin's two-tone menu icon for each door */
+fun BenflixDoor.glowIcon(): GlowfinIcon =
+    when (this) {
+        BenflixDoor.MOVIES -> GlowfinIcon.MOVIES
+        BenflixDoor.SHOWS -> GlowfinIcon.SHOWS
+        BenflixDoor.LIVE_TV -> GlowfinIcon.LIVE
+        BenflixDoor.GAMES -> GlowfinIcon.GAMES
+        BenflixDoor.MUSIC -> GlowfinIcon.MUSIC
+        BenflixDoor.BOOKS -> GlowfinIcon.BOOKS
+    }
+
+/** Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books */
+private val GlowfinDoorOrder =
+    listOf(BenflixDoor.MOVIES, BenflixDoor.SHOWS, BenflixDoor.LIVE_TV, BenflixDoor.MUSIC, BenflixDoor.GAMES, BenflixDoor.BOOKS)
 
 /** Where each door's own page is */
 fun BenflixDoor.destination(): Destination =
@@ -201,9 +222,14 @@ class RailModel(
     val onItem: (BaseItem) -> Unit,
     val onProfile: () -> Unit,
     val onSwitchProfile: () -> Unit,
+    /** Glowfin: Anime gets its own spot under Shows */
+    val showAnime: Boolean = false,
+    val onAnime: () -> Unit = {},
+    /** Glowfin: Settings sits at the very bottom, under your picture */
+    val onSettings: () -> Unit = {},
 )
 
-private enum class Spot { HOME, SEARCH, REQUESTS, PROFILE }
+private enum class Spot { HOME, SEARCH, ANIME, REQUESTS, PROFILE, SETTINGS }
 
 /**
  * Navigation redesign (Nov 2026, approved nv-rail + s3-pop + s4-panel + pa-strip): one slim column of line
@@ -219,7 +245,6 @@ fun BenflixRail(
     contentFocus: FocusRequester,
     control: RailControl,
     modifier: Modifier = Modifier,
-    viewModel: RailViewModel = hiltViewModel(),
 ) {
     val scale = if (model.big) BIG_SCALE else 1f
     var railFocused by remember { mutableStateOf(false) }
@@ -243,9 +268,9 @@ fun BenflixRail(
             is Destination.Home -> Spot.HOME
             is Destination.Search -> if (model.showSearch) Spot.SEARCH else null
             is Destination.Requests -> if (model.showRequests) Spot.REQUESTS else null
+            is Destination.Settings -> Spot.SETTINGS
             else -> null
         }
-    val panels by viewModel.panels.collectAsState()
     val panelFocus = LocalFocusManager.current
 
     fun focusCurrent() {
@@ -302,7 +327,7 @@ fun BenflixRail(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = DIM))
+                    .background(Glowfin.Ink.copy(alpha = DIM))
                     .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -317,7 +342,7 @@ fun BenflixRail(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = DIM))
+                    .background(Glowfin.Ink.copy(alpha = DIM))
                     .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -342,10 +367,10 @@ fun BenflixRail(
                 }.clipToBounds()
                 .background(
                     if (open) {
+                        // Glowfin: the open menu is one calm deep panel with a thin line on its edge
                         Brush.horizontalGradient(
-                            0f to BenflixColors.Tray,
-                            0.9f to BenflixColors.Tray.copy(alpha = .98f),
-                            1f to BenflixColors.Tray.copy(alpha = .9f),
+                            0f to Glowfin.Deep,
+                            1f to Glowfin.Deep,
                         )
                     } else {
                         Brush.horizontalGradient(
@@ -353,6 +378,23 @@ fun BenflixRail(
                             0.75f to BenflixColors.Tray.copy(alpha = .8f),
                             1f to BenflixColors.Tray.copy(alpha = 0f),
                         )
+                    },
+                ).then(
+                    if (open) {
+                        Modifier.drawBehind {
+                            drawLine(
+                                color = Glowfin.Line,
+                                start =
+                                    androidx.compose.ui.geometry
+                                        .Offset(size.width - 1f, 0f),
+                                end =
+                                    androidx.compose.ui.geometry
+                                        .Offset(size.width - 1f, size.height),
+                                strokeWidth = 1.dp.toPx(),
+                            )
+                        }
+                    } else {
+                        Modifier
                     },
                 ).layout { measurable, constraints ->
                     // The icons and names are laid out once at the open width and the glide just shows more of
@@ -408,29 +450,15 @@ fun BenflixRail(
                     }
                 }
                 Spacer(Modifier.height(4.dp * scale))
-                RailButton(
-                    icon = BenflixIcon.HOME,
-                    label = "Home",
-                    open = open,
-                    scale = scale,
-                    on = currentSpot == Spot.HOME,
-                    onColor = BenflixColors.Text,
-                    onClick = {
-                        panelDoor = null
-                        profileOpen = false
-                        model.onHome()
-                    },
-                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.HOME)),
-                )
-                // Approved rx-searchup: Search right under Home, one press away
+                // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests,
+                // then your picture and Settings at the bottom
                 if (model.showSearch) {
                     RailButton(
-                        icon = BenflixIcon.SEARCH,
+                        icon = GlowfinIcon.SEARCH,
                         label = "Search",
                         open = open,
                         scale = scale,
                         on = currentSpot == Spot.SEARCH,
-                        onColor = BenflixColors.Text,
                         onClick = {
                             panelDoor = null
                             profileOpen = false
@@ -439,34 +467,57 @@ fun BenflixRail(
                         modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SEARCH)),
                     )
                 }
-                model.doors.forEach { door ->
+                RailButton(
+                    icon = GlowfinIcon.HOME,
+                    label = "Home",
+                    open = open,
+                    scale = scale,
+                    on = currentSpot == Spot.HOME,
+                    onClick = {
+                        panelDoor = null
+                        profileOpen = false
+                        model.onHome()
+                    },
+                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.HOME)),
+                )
+                GlowfinDoorOrder.filter { it in model.doors }.forEach { door ->
                     RailButton(
-                        icon = door.railIcon(),
+                        icon = door.glowIcon(),
                         label = door.title,
                         open = open,
                         scale = scale,
                         on = door == current,
-                        onColor = door.color,
-                        door = door,
-                        chevron = true,
                         highlighted = panelDoor == door,
                         onClick = {
                             profileOpen = false
                             panelDoor = door
-                            viewModel.load(door)
                         },
                         modifier = Modifier.focusRequester(doorFocus.getValue(door)),
                     )
+                    if (door == BenflixDoor.SHOWS && model.showAnime) {
+                        RailButton(
+                            icon = GlowfinIcon.ANIME,
+                            label = "Anime",
+                            open = open,
+                            scale = scale,
+                            on = false,
+                            onClick = {
+                                panelDoor = null
+                                profileOpen = false
+                                model.onAnime()
+                                contentFocus.tryRequestFocus()
+                            },
+                            modifier = Modifier.focusRequester(spotFocus.getValue(Spot.ANIME)),
+                        )
+                    }
                 }
-                Spacer(Modifier.weight(1f))
                 if (model.showRequests) {
                     RailButton(
-                        icon = BenflixIcon.REQUESTS,
+                        icon = GlowfinIcon.REQUESTS,
                         label = "Requests",
                         open = open,
                         scale = scale,
                         on = currentSpot == Spot.REQUESTS,
-                        onColor = BenflixColors.LiveTv,
                         count = model.requestsCount,
                         onClick = {
                             panelDoor = null
@@ -476,6 +527,7 @@ fun BenflixRail(
                         modifier = Modifier.focusRequester(spotFocus.getValue(Spot.REQUESTS)),
                     )
                 }
+                Spacer(Modifier.weight(1f))
                 ProfileRailButton(
                     model = model,
                     open = open,
@@ -483,6 +535,19 @@ fun BenflixRail(
                     highlighted = profileOpen,
                     onClick = { openProfilePanel() },
                     modifier = Modifier.focusRequester(spotFocus.getValue(Spot.PROFILE)),
+                )
+                RailButton(
+                    icon = GlowfinIcon.SETTINGS,
+                    label = "Settings",
+                    open = open,
+                    scale = scale,
+                    on = currentSpot == Spot.SETTINGS,
+                    onClick = {
+                        panelDoor = null
+                        profileOpen = false
+                        model.onSettings()
+                    },
+                    modifier = Modifier.focusRequester(spotFocus.getValue(Spot.SETTINGS)),
                 )
             }
         }
@@ -498,7 +563,7 @@ fun BenflixRail(
                 Modifier
                     .fillMaxHeight()
                     .width(PANEL_WIDTH * scale)
-                    .background(BenflixColors.Panel, shape)
+                    .background(Glowfin.Deep, shape)
                     .clip(shape)
                     .focusProperties {
                         // Arrow keys never move the focus out of the panel by themselves: Left at the panel's edge closes it (below).
@@ -538,16 +603,11 @@ fun BenflixRail(
                     DoorPanel(
                         door = door,
                         places = DoorPlaces.of(door),
-                        data = panels[door] ?: RailPanelData(),
                         scale = scale,
                         onPlace = { key ->
                             panelDoor = null
                             model.onPlace(door, key)
                             contentFocus.tryRequestFocus()
-                        },
-                        onItem = { item ->
-                            panelDoor = null
-                            model.onItem(item)
                         },
                     )
                 } else if (profileOpen) {
@@ -564,141 +624,109 @@ fun BenflixRail(
     }
 }
 
-/** One icon in the rail; with the rail open, its name sits beside it */
+/**
+ * One spot in the Glowfin menu (ui-2). Closed: just the two-tone icon; the one the remote is on sits in a
+ * round glow. Open: the name beside it, and the glow stretches into a pill. A small aqua dot marks the page
+ * you're on. Nothing moves or keeps running, so it stays smooth on older TVs.
+ */
 @Composable
 private fun RailButton(
-    icon: BenflixIcon,
+    icon: GlowfinIcon,
     label: String,
     open: Boolean,
     scale: Float,
     on: Boolean,
-    onColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    door: BenflixDoor? = null,
     count: Int = 0,
-    chevron: Boolean = false,
     highlighted: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(12.dp * scale)
+    val shape = RoundedCornerShape(percent = 50)
     var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor =
-                    when {
-                        highlighted -> BenflixColors.FocusRow
-                        on -> onColor.copy(alpha = .16f)
-                        else -> Color.Transparent
-                    },
+                containerColor = if (highlighted) BenflixColors.FocusRow else Color.Transparent,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.FocusRow,
-                focusedContentColor = BenflixColors.Text,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = Color.White,
             ),
-        border = focusRing(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
+                .glowFocus(shape, spread = 8.dp)
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
                 .onFocusChanged { focused = it.isFocused },
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().padding(start = 11.dp * scale, end = 10.dp * scale),
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
-                RailIcon(icon = icon, door = door, on = on, onColor = onColor, focused = focused, scale = scale)
-                if (count > 0 && !open) {
-                    CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // Closed: the icon sits exactly in the middle of the round glow ((42 - 22) / 2 = 10 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 10.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
+                    GlowfinIconImage(
+                        icon,
+                        color =
+                            when {
+                                focused -> Color.White
+                                on -> BenflixColors.Text
+                                else -> Glowfin.Dim
+                            },
+                        size = ICON * scale,
+                    )
+                    if (count > 0 && !open) {
+                        CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
+                    }
+                }
+                if (open) {
+                    Spacer(Modifier.width(13.dp * scale))
+                    Text(
+                        text = label,
+                        color =
+                            when {
+                                focused -> Color.White
+                                on -> BenflixColors.Text
+                                else -> Glowfin.Dim
+                            },
+                        fontSize = BenflixType.body * scale,
+                        fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (count > 0) CountDot(count, scale)
+                    if (on && !focused) {
+                        Spacer(Modifier.width(8.dp))
+                        HereDot(scale)
+                    }
                 }
             }
-            if (open) {
-                Spacer(Modifier.width(13.dp * scale))
-                Text(
-                    text = label,
-                    color = if (on && door != null) onColor else BenflixColors.Text,
-                    fontSize = BenflixType.body * scale,
-                    fontWeight = if (on || focused) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (count > 0) CountDot(count, scale)
-                if (chevron) {
-                    BenflixIconImage(BenflixIcon.CHEVRON, color = BenflixColors.Muted, size = 16.dp * scale)
-                }
+            if (!open && on && !focused) {
+                HereDot(scale, Modifier.align(Alignment.CenterStart).offset(x = 1.dp))
             }
         }
     }
 }
 
-/**
- * The icon itself: soft white, or the door's colour when you're in that door. During the start-up light-up the
- * door icons go from grey to their colour one by one, each with a soft glow (drawn without recomposing, so it
- * stays smooth on older TVs).
- */
+/** The small aqua dot beside the page you're on */
 @Composable
-private fun RailIcon(
-    icon: BenflixIcon,
-    door: BenflixDoor?,
-    on: Boolean,
-    onColor: Color,
-    focused: Boolean,
+private fun HereDot(
     scale: Float,
+    modifier: Modifier = Modifier,
 ) {
-    val usual =
-        when {
-            on -> onColor
-            focused -> BenflixColors.Text
-            else -> BenflixColors.Soft
-        }
-    val size = ICON * scale
-    if (door == null || !RailIntro.waiting) {
-        BenflixIconImage(
-            icon,
-            color = if (RailIntro.waiting) BenflixColors.Muted else usual,
-            size = size,
-        )
-        return
-    }
-    val i = door.ordinal
-    val light = door.color
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
-        // The glow as its note plays
-        Box(
-            Modifier
-                .size(size * 1.9f)
-                .graphicsLayer { alpha = RailIntro.glow[i].floatValue }
-                .background(
-                    Brush.radialGradient(listOf(light.copy(alpha = .55f), Color.Transparent)),
-                    CircleShape,
-                ),
-        )
-        // Grey until it lights up
-        BenflixIconImage(
-            icon,
-            color = BenflixColors.Muted.copy(alpha = .55f),
-            size = size,
-            modifier = Modifier.graphicsLayer { alpha = 1f - RailIntro.lit[i].floatValue },
-        )
-        // Back to the usual look as the light-up settles
-        BenflixIconImage(
-            icon,
-            color = usual,
-            size = size,
-            modifier = Modifier.graphicsLayer { alpha = RailIntro.lit[i].floatValue * (1f - RailIntro.settle.floatValue) },
-        )
-        // Lit, in the door's colour
-        BenflixIconImage(
-            icon,
-            color = light,
-            size = size,
-            modifier = Modifier.graphicsLayer { alpha = RailIntro.lit[i].floatValue * RailIntro.settle.floatValue },
-        )
-    }
+    Box(
+        modifier
+            .size(6.dp * scale)
+            .background(Glowfin.Aqua, CircleShape),
+    )
 }
 
 /** Requests' small teal number (approved ix-badges) */
@@ -734,13 +762,14 @@ private fun ProfileRailButton(
 ) {
     val kids by KidsMode.active.collectAsState()
     val guest by GuestMode.active.collectAsState()
-    val shape = RoundedCornerShape(12.dp * scale)
+    val shape = RoundedCornerShape(percent = 50)
     val name =
         when {
             kids -> KidsMode.displayName
             guest -> "Guest"
             else -> model.user.name.orEmpty()
         }
+    var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -748,19 +777,22 @@ private fun ProfileRailButton(
             ClickableSurfaceDefaults.colors(
                 containerColor = if (highlighted) BenflixColors.FocusRow else Color.Transparent,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = BenflixColors.FocusRow,
-                focusedContentColor = BenflixColors.Text,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = Color.White,
             ),
-        border = focusRing(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
+                .glowFocus(shape, spread = 8.dp)
                 .height(ITEM * scale)
-                .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale)),
+                .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
+                .onFocusChanged { focused = it.isFocused }
+                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().padding(start = 8.dp * scale, end = 10.dp * scale),
+            // Closed: your picture sits exactly in the middle of the round glow ((42 - 28) / 2 = 7 each side)
+            modifier = Modifier.fillMaxSize().padding(start = 7.dp * scale, end = if (open) 10.dp * scale else 0.dp),
         ) {
             Box {
                 UserIconCardImage(
@@ -797,15 +829,16 @@ private fun ProfileRailButton(
     }
 }
 
-/** A door's slide-out panel: the picture strip, its places, and Jump back in */
+/**
+ * A door's slide-out panel: the door's name and its places (Glowfin: the picture strip and Jump back in are
+ * gone, so it opens instantly and loads nothing). The Movies, Shows and Anime pages get their own tabs next.
+ */
 @Composable
 private fun DoorPanel(
     door: BenflixDoor,
     places: List<DoorSection>,
-    data: RailPanelData,
     scale: Float,
     onPlace: (String) -> Unit,
-    onItem: (BaseItem) -> Unit,
 ) {
     val first = remember(door) { FocusRequester() }
     LaunchedEffect(door) {
@@ -813,7 +846,15 @@ private fun DoorPanel(
         first.tryRequestFocus()
     }
     Column(Modifier.fillMaxSize()) {
-        PanelStrip(door = door, art = data.art, scale = scale)
+        Text(
+            text = door.title,
+            color = BenflixColors.Text,
+            fontFamily = GlowfinDisplayFont,
+            fontSize = 24.sp * scale,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 22.dp * scale, top = 26.dp * scale, bottom = 12.dp * scale),
+        )
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =
@@ -832,69 +873,7 @@ private fun DoorPanel(
                     modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
                 )
             }
-            if (data.jumpBackIn.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "JUMP BACK IN",
-                    color = BenflixColors.Muted,
-                    fontSize = 11.sp * scale,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.2.sp,
-                    modifier = Modifier.padding(start = 10.dp, bottom = 8.dp),
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(start = 8.dp, bottom = 16.dp),
-                ) {
-                    data.jumpBackIn.forEach { item ->
-                        JumpPoster(item, door, scale) { onItem(item) }
-                    }
-                }
-            }
         }
-    }
-}
-
-/** Approved pa-strip: a short strip of a picture from that door (changes each day) with the name over it */
-@Composable
-private fun PanelStrip(
-    door: BenflixDoor,
-    art: String?,
-    scale: Float,
-) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(STRIP_HEIGHT * scale),
-    ) {
-        if (art != null) {
-            AsyncImage(
-                model = art,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(0.25f to Color.Transparent, 1f to BenflixColors.Panel)),
-            )
-        } else {
-            // No picture (Live TV, Games, Books, or still loading): a soft glow in the door's colour
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(0f to door.color.copy(alpha = .32f), 1f to Color.Transparent)),
-            )
-        }
-        Text(
-            text = door.title,
-            color = if (art != null) Color.White else door.color,
-            fontSize = 24.sp * scale,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp * scale, bottom = 8.dp),
-        )
     }
 }
 
@@ -957,36 +936,6 @@ private fun PanelRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun JumpPoster(
-    item: BaseItem,
-    door: BenflixDoor,
-    scale: Float,
-    onClick: () -> Unit,
-) {
-    val imageUrlService = LocalImageUrlService.current
-    val square = door == BenflixDoor.MUSIC
-    val w = JUMP_WIDTH * scale
-    val h = if (square) w else w * 1.5f
-    val url = remember(item.id) { imageUrlService.getItemImageUrl(item, ImageType.PRIMARY, fillWidth = 240) }
-    val shape = RoundedCornerShape(8.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
-        border = focusRing(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = Modifier.width(w).height(h),
-    ) {
-        AsyncImage(
-            model = url,
-            contentDescription = item.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
     }
 }
 
@@ -1146,14 +1095,12 @@ private val ITEM = 42.dp
 private val ICON = 22.dp
 private val PICTURE = 28.dp
 private val PANEL_WIDTH = 300.dp
-private val STRIP_HEIGHT = 112.dp
-private val JUMP_WIDTH = 66.dp
 private const val BIG_SCALE = 1.2f
 private const val RAIL_MS = 170
 private const val PANEL_MS = 200
 private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
-private const val DIM = .6f
+private const val DIM = .66f
 private const val STRAY_RETRY_MS = 150L
 private const val STRAY_TRIES = 20
 private const val TIP_PREFS = "benflix_rail_tip"

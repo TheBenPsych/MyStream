@@ -59,8 +59,8 @@ object BenflixIntroState {
 }
 
 /**
- * Benflix startup intro (approved r2-flow): the logo fades in (0.3 s) to two soft mallet notes, holds
- * for 0.4 s, then glides up into its spot on Who's watching while the page fades in behind it.
+ * Glowfin startup (ui-2, Ben's pick): the still logo fades in (0.3 s) on a dark screen with no sound, holds
+ * for 0.7 s, then glides into its spot on Who's watching (0.5 s) while the page fades in behind it.
  * About 1.5 s, no skipping. It plays on every fresh open (not when coming back from another app).
  * If Who's watching isn't on screen (a slow server, or the app went straight to Home), the logo fades away.
  * It waits until the notes are loaded and the screen is drawing, then plays every frame and every
@@ -91,7 +91,8 @@ fun BenflixIntro(
             // The logo fades in, then it holds
             runIntroTimeline((FADE_MS + HOLD_MS) * f, pace) { t ->
                 logoAlpha.floatValue = (t / (FADE_MS * f)).coerceIn(0f, 1f)
-                glow.floatValue = kotlin.math.sin(Math.PI * (t / ((FADE_MS + HOLD_MS) * f)).coerceIn(0f, 1f)).toFloat()
+                // Glowfin base (ui-2): a still logo. The fin's glow comes in with it and then stays put.
+                glow.floatValue = logoAlpha.floatValue
             }
             // Wait for Who's watching to be ready and settled (a slow server goes on anyway)
             val whoMark = waitForSettled(WAIT_FOR_PAGE_MS) { BenflixIntroState.whoMark }
@@ -124,7 +125,17 @@ fun BenflixIntro(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = screenAlpha.floatValue }
-                .background(BenflixColors.Tray),
+                .background(BenflixColors.Tray)
+                .background(
+                    // Glowfin: a soft night-blue light behind the logo, on the deep ink background
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        listOf(
+                            androidx.compose.ui.graphics
+                                .Color(0xFF1A1D3A),
+                            BenflixColors.Tray,
+                        ),
+                    ),
+                ),
         )
         BenflixWordLogo(
             height = INTRO_LOGO_HEIGHT.dp,
@@ -186,7 +197,7 @@ private const val SETTLED_FRAMES = 3
 private const val INTRO_LOGO_HEIGHT = 56
 
 private const val FADE_MS = 300f
-private const val HOLD_MS = 400f
-private const val GLIDE_MS = 800f
+private const val HOLD_MS = 700f
+private const val GLIDE_MS = 500f
 private const val FADE_OUT_MS = 300f
 private const val WAIT_FOR_PAGE_MS = 900L

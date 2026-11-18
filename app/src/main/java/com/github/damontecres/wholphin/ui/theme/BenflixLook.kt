@@ -10,43 +10,43 @@ import androidx.compose.ui.graphics.Color
  */
 object BenflixColors {
     /** The dark background everything sits on */
-    val Tray: Color get() = KidsLook.palette?.tray ?: Color(0xFF0B0C10)
+    val Tray: Color get() = KidsLook.palette?.tray ?: Glowfin.Ink
 
     /** Main words */
-    val Text: Color get() = KidsLook.palette?.text ?: Color(0xFFF1F2F5)
+    val Text: Color get() = KidsLook.palette?.text ?: Glowfin.Text
 
     /** Softer words, like the clock */
-    val Soft: Color get() = KidsLook.palette?.soft ?: Color(0xFFC9CBD2)
+    val Soft: Color get() = KidsLook.palette?.soft ?: Color(0xFFC6CBE8)
 
     /** Quiet words: hints, site names, small labels */
-    val Muted: Color get() = KidsLook.palette?.muted ?: Color(0xFF9497A3)
+    val Muted: Color get() = KidsLook.palette?.muted ?: Glowfin.Dim
 
     /** Pills, chips and small raised things */
-    val Raised: Color get() = KidsLook.palette?.raised ?: Color(0xFF15171D)
+    val Raised: Color get() = KidsLook.palette?.raised ?: Glowfin.Raise
 
     /** Menus and panels */
-    val Panel: Color get() = KidsLook.palette?.panel ?: Color(0xFF16181E)
+    val Panel: Color get() = KidsLook.palette?.panel ?: Glowfin.Deep
 
     /** The lighter side of a panel (profile card picture side) */
-    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: Color(0xFF1D2027)
+    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: Glowfin.Raise
 
-    /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
-    val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
+    /** The "you are here" ring around whatever the remote is on: Glowfin aqua, or sunny yellow on Kids */
+    val Focus: Color get() = KidsLook.palette?.accent ?: Glowfin.Aqua
 
-    /** A button the remote is on fills with this: white, or sunny yellow on Kids */
-    val FocusFill: Color get() = KidsLook.palette?.accent ?: Color.White
+    /** A button the remote is on fills with this: the middle of the Glowfin glow (violet-blue), or sunny yellow on Kids */
+    val FocusFill: Color get() = KidsLook.palette?.accent ?: Glowfin.FillMid
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: Color(0xFF0B0C10)
+    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: Color.White
 
     /** Thin lines and panel edges */
-    val Line: Color get() = KidsLook.palette?.line ?: Color(0xFF2A2D35)
+    val Line: Color get() = KidsLook.palette?.line ?: Glowfin.Line
 
     /** The focused row in a list or menu */
-    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: Color(0xFF262932)
+    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: Glowfin.FocusRow
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
-    val Dim = Color(0xB8050608)
+    val Dim = Color(0xA80B0D1A)
 
     /** Not on Benflix (Ask for it) */
     val NotHere = Color(0xFF858896)

@@ -1,4 +1,5 @@
-/* Benflix web: the navigation redesign (approved 2026-11-17, same as the TV and phone app).
+/* Glowfin web: the menu (Glowfin base look, Ben 2026-11-18: two-tone icons, glow on the one you're on, Anime and
+   Settings spots, phone bar Home / Movies / Shows / Anime / More). Built on the navigation redesign (2026-11-17).
    - Computers: an icon rail down the left of every page that opens wider with names when you point at it (or Tab
      into it). Clicking a door slides out that door's panel: a picture strip at the top, the door's places, and
      Jump back in. Requests (teal number) and your picture (white dot when there's news) sit at the bottom.
@@ -18,8 +19,35 @@
   const narrow = () => matchMedia("(max-width: 760px)").matches;
   // Pages that fill the whole window (the player, a game, a book, signing in) have no menu
   const FULL = /^#\/(who|signin|play|playgame|game\/|read|lobby\/)/;
-  const ORDER = ["movies", "shows", "live", "games", "music", "books"];
+  // Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books
+  const ORDER = ["movies", "shows", "live", "music", "games", "books"];
   const TEAL = "#3DD6C6";
+  const ANIME = "#/grid/shows?anime=only&title=Anime";
+  // Glowfin's two-tone menu icons (ui-2, the same shapes as the TV and phone app): a soft see-through fill
+  // under each body shape, then an outline
+  const GI = {
+    search: [["M10.8 4.2a6.6 6.6 0 1 0 0 13.2a6.6 6.6 0 1 0 0-13.2z"], ["M15.7 15.7l4.6 4.6"]],
+    home: [["M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.6v-5.4H9.6V20H5a1 1 0 0 1-1-1z"], []],
+    movies: [["M4 10.2h16v8.3a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z", "M3.7 6.9 18.6 3.3l.9 3.5-14.9 3.6z"], ["M8.3 5.8l1.8 2.9", "M13 4.7l1.8 2.9"]],
+    shows: [["M5 7.6h14a2 2 0 0 1 2 2v7.6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.6a2 2 0 0 1 2-2z"], ["M8.6 3.6 12 7l3.4-3.4"]],
+    anime: [["M8.10 7.80a3.9 3.9 0 1 0 7.8 0a3.9 3.9 0 1 0 -7.8 0z", "M12.47 10.98a3.9 3.9 0 1 0 7.8 0a3.9 3.9 0 1 0 -7.8 0z", "M10.80 16.12a3.9 3.9 0 1 0 7.8 0a3.9 3.9 0 1 0 -7.8 0z", "M5.40 16.12a3.9 3.9 0 1 0 7.8 0a3.9 3.9 0 1 0 -7.8 0z", "M3.73 10.98a3.9 3.9 0 1 0 7.8 0a3.9 3.9 0 1 0 -7.8 0z"], ["M12 10.6a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6z"]],
+    live: [["M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"], ["M8 8a5.7 5.7 0 0 0 0 8", "M16 8a5.7 5.7 0 0 1 0 8", "M5.2 5.2a9.6 9.6 0 0 0 0 13.6", "M18.8 5.2a9.6 9.6 0 0 1 0 13.6"]],
+    music: [["M6.6 14.8a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z", "M16.6 12.8a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z"], ["M9.3 17.5V6.4l10-2.2v11.3"]],
+    games: [["M7.6 7.4h8.8a4.5 4.5 0 0 1 4.4 3.6l.9 4.7a2.4 2.4 0 0 1-4.1 2.1L15.6 16H8.4l-2 1.8a2.4 2.4 0 0 1-4.1-2.1l.9-4.7a4.5 4.5 0 0 1 4.4-3.6z"], ["M8 10.4v3.4", "M6.3 12.1h3.4", "M15.6 11.1h.01", "M17.6 13.1h.01"]],
+    books: [["M3.4 5.4h5.6a3 3 0 0 1 3 3V20a2.2 2.2 0 0 0-2.2-2H3.4z", "M20.6 5.4H15a3 3 0 0 0-3 3V20a2.2 2.2 0 0 1 2.2-2h6.4z"], []],
+    requests: [["M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"], ["M12 8.3v7.4", "M8.3 12h7.4"]],
+    settings: [["M12.74 2.83L14.83 3.25L15.19 5.77L16.54 6.67L19.00 6.04L20.19 7.81L18.66 9.85L18.98 11.44L21.17 12.74L20.75 14.83L18.23 15.19L17.33 16.54L17.96 19.00L16.19 20.19L14.15 18.66L12.56 18.98L11.26 21.17L9.17 20.75L8.81 18.23L7.46 17.33L5.00 17.96L3.81 16.19L5.34 14.15L5.02 12.56L2.83 11.26L3.25 9.17L5.77 8.81L6.67 7.46L6.04 5.00L7.81 3.81L9.85 5.34L11.44 5.02Z"], ["M12 9.3a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z"]],
+    more: [[], ["M5 12h.01", "M12 12h.01", "M19 12h.01"]],
+  };
+  const SHIFT = { search: [-0.25, -0.25], movies: [0.15, 0.35], shows: [0, 0.6], music: [0.4, -0.2], games: [0, -0.97], books: [0, -0.7] };
+  const G = (n) => {
+    const g = GI[n];
+    if (!g) return I(n);
+    // Moved so each drawing sits exactly in the middle of its box (looks centred in the round glow)
+    const [dx, dy] = SHIFT[n] || [0, 0];
+    return `<svg class="i gi" viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(${dx} ${dy})">${g[0].map((d) => `<path d="${d}" class="gf"/>`).join("")}${g[0].concat(g[1]).map((d) => `<path d="${d}"${n === "more" ? ' class="gd"' : ""}/>`).join("")}</g></svg>`;
+  };
+  B.glowIcon = G;
 
   const doors = () => {
     const D = B.DOORS;
@@ -38,6 +66,8 @@
   };
   const spotOf = (hash) => {
     if (/^#\/home/.test(hash)) return "home";
+    if (/^#\/grid\/shows\?(.*&)?anime=only/.test(hash)) return "anime";
+    if (/^#\/settings/.test(hash)) return "settings";
     if (/^#\/search/.test(hash)) return "search";
     if (/^#\/requests/.test(hash)) return "requests";
     return doorOf(hash) || "";
@@ -48,14 +78,17 @@
   const railHtml = () => {
     const kids = !!(B.me && B.me.kids);
     const spot = spotOf(location.hash);
-    const item = (key, icon, label, color, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="#/${key}" style="--c:${color || "var(--ink)"}" title="${esc(label)}">${I(icon)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
+    const item = (key, icon, label, href, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="${href || "#/" + key}" title="${esc(label)}">${G(icon)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
+    // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests, then your
+    // picture and Settings at the bottom
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
-      ${item("home", "home", "Home")}
       ${item("search", "search", "Search")}
-      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" style="--c:${d.color}" title="${esc(d.name)}" aria-haspopup="true">${I(d.icon)}<span class="rl-t">${esc(d.name)}</span></button>`).join("")}
+      ${item("home", "home", "Home")}
+      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}" aria-haspopup="true">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
+      ${kids ? "" : item("requests", "requests", "Requests", "", `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <div class="rl-gap"></div>
-      ${kids ? "" : item("requests", "plus", "Requests", TEAL, `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
-      <button type="button" class="rl-i rl-me" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
+      <button type="button" class="rl-i rl-me" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>
+      ${item("settings", "settings", "Settings")}`;
   };
   const paint = () => {
     const hash = location.hash || "";
@@ -135,7 +168,7 @@
     panel.className = "npanel"; panel.style.setProperty("--c", d.color);
     panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", d.name);
     const places = placesOf(door);
-    panel.innerHTML = `<div class="np-strip" id="npStrip"><b>${esc(d.name)}</b></div>
+    panel.innerHTML = `<div class="np-title"><b>${esc(d.name)}</b></div>
       <div class="np-list">${places.map(([label, icon, link, , count], i) => `<a href="${link.startsWith("jump:") ? "#/" + door : esc(link)}" ${link.startsWith("jump:") ? `data-jump="${esc(link.slice(5))}"` : ""}>${I(icon)}<span>${esc(i === 0 ? d.name + " home" : label)}</span>${count ? `<small>${esc(count)}</small>` : ""}</a>`).join("")}</div>
       <div class="np-back" id="npBack"></div>`;
     document.body.appendChild(panel);
@@ -168,7 +201,6 @@
       if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn(door); closePanel(); if (back) back.focus(); }
     });
     if (byKeys) { const first = $("a", panel); if (first) first.focus(); }
-    fillPanel(door);
   };
   // ---------- your picture's panel: the profile menu, sliding out beside the rail like a door's panel ----------
   // Returns false when there's no rail to slide out from (phone-sized windows, full-window pages): the corner card shows instead
@@ -204,52 +236,15 @@
     if (B.watchTime) B.watchTime().then((w) => { const el = $("#npWt"); if (el && openDoor === "me") el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
     return true;
   };
-  // The picture strip (one of your door's pictures, a new one each day) and Jump back in (up to 3)
-  const artCache = {};
-  const fillPanel = async (door) => {
-    const u = B.uid();
-    const day = new Date().toDateString();
-    const types = { movies: "Movie", shows: "Series", music: "MusicArtist" }[door];
-    const art = types ? (artCache[door] && artCache[door].day === day ? artCache[door].url : null) : null;
-    const strip = () => $("#npStrip");
-    const setArt = (url) => { const s = strip(); if (s && url && openDoor === door) { s.style.backgroundImage = `url('${url}')`; s.classList.add("art"); } };
-    if (art) setArt(art);
-    else if (types) {
-      B.get(`/Items?userId=${u}&IncludeItemTypes=${types}&Recursive=true&ImageTypes=Backdrop&SortBy=SortName&Limit=1&StartIndex=0&EnableTotalRecordCount=true&EnableImages=false`)
-        .then(async (r) => {
-          const total = r.TotalRecordCount || 0;
-          if (!total) return;
-          const start = new Date();
-          const n = Math.floor((start - new Date(start.getFullYear(), 0, 0)) / 864e5) % total;
-          const pick = await B.get(`/Items?userId=${u}&IncludeItemTypes=${types}&Recursive=true&ImageTypes=Backdrop&SortBy=SortName&Limit=1&StartIndex=${n}`);
-          const it = (pick.Items || [])[0];
-          if (!it) return;
-          const url = B.img(it.Id, "Backdrop", { w: 640, index: 0 });
-          artCache[door] = { day, url };
-          setArt(url);
-        }).catch(() => {});
-    }
-    const get = (p) => B.get(p).then((r) => B.keep(r.Items || [])).catch(() => []);
-    let items = [];
-    if (door === "movies") items = await get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=3&Fields=${B.FIELDS}`);
-    else if (door === "shows") items = (await get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=6&Fields=${B.FIELDS}`)).filter((e) => !B.watchedEp(e)).slice(0, 3);
-    else if (door === "music") items = await get(`/Items?userId=${u}&IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&Limit=3`);
-    const box = $("#npBack");
-    if (!box || openDoor !== door || !items.length) return;
-    box.innerHTML = `<h4>Jump back in</h4><div class="np-posters">${items.map((it) => {
-      const sq = it.Type === "MusicAlbum";
-      const img = it.Type === "Episode" ? B.img(it.SeriesId, "Primary", { h: 240 }) : B.poster(it, 240);
-      const name = it.Type === "Episode" ? it.SeriesName : it.Name;
-      return `<a href="${esc(B.hrefOf(it))}" class="${sq ? "sq" : ""}" title="${esc(name)}"><span style="background-image:url('${esc(img)}')"></span><small>${esc(name)}</small></a>`;
-    }).join("")}</div>`;
-  };
-
   // ---------- phones: the bottom bar ----------
+  // Glowfin (Ben, 2026-11-18): Home, Movies, Shows, Anime and More (Kids: Games in Anime's place)
   const tabs = () => {
-    const ds = doors().filter((d) => ["movies", "shows", "music", "games"].includes(d.key)).slice(0, 3);
-    return [{ key: "home", label: "Home", icon: "home", color: "var(--ink)" }]
-      .concat(ds.map((d) => ({ key: d.key, label: d.name, icon: d.icon, color: d.color, door: true })))
-      .concat([{ key: "more", label: "More", icon: "more", color: "var(--ink)" }]);
+    const kids = !!(B.me && B.me.kids);
+    const ds = doors().filter((d) => ["movies", "shows", "music", "games"].includes(d.key)).slice(0, kids ? 3 : 2);
+    return [{ key: "home", label: "Home", icon: "home" }]
+      .concat(ds.map((d) => ({ key: d.key, label: d.name, icon: d.key, door: true })))
+      .concat(kids ? [] : [{ key: "anime", label: "Anime", icon: "anime" }])
+      .concat([{ key: "more", label: "More", icon: "more" }]);
   };
   const paintBar = () => {
     if (!narrow()) { if (bar) bar.hidden = true; return; }
@@ -263,7 +258,7 @@
     const spot = spotOf(location.hash);
     const list = tabs();
     const on = list.some((t) => t.key === spot) ? spot : "more";
-    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}" style="--c:${t.color}"><i>${I(t.icon)}${t.key === "more" && B.newsDot ? '<b class="rl-dot"></b>' : ""}</i><span>${esc(t.label)}</span></button>`).join("");
+    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}"><i>${G(t.icon)}${t.key === "more" && B.newsDot ? '<b class="rl-dot"></b>' : ""}</i><span>${esc(t.label)}</span></button>`).join("");
     if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
   };
   const onTab = (e) => {
@@ -272,11 +267,12 @@
     const k = b.dataset.tab;
     if (k === "home") return B.go("#/home");
     if (k === "more") return moreSheet();
+    if (k === "anime") return B.go(ANIME);
     // Approved rx-phonepanel: tapping the door you're already in opens its places
     if (doorOf(location.hash || "") === k) return placesSheet(k);
     B.go("#/" + k);
   };
-  const sheetRow = (href, icon, label, color, note) => `<a class="sh-row" href="${esc(href)}" style="--c:${color || "var(--ink2)"}">${I(icon)}<span>${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ""}</a>`;
+  const sheetRow = (href, icon, label, color, note) => `<a class="sh-row" href="${esc(href)}" style="--c:${color || "var(--ink2)"}">${G(icon)}<span>${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ""}</a>`;
   const placesSheet = (door) => {
     const d = B.DOORS[door];
     const places = placesOf(door);
@@ -295,9 +291,10 @@
     const shown = tabs().map((t) => t.key);
     const rest = doors().filter((d) => !shown.includes(d.key));
     const p = B.side(`<div class="sheet">
-      ${rest.map((d) => sheetRow("#/" + d.key, d.icon, d.name, d.color)).join("")}
       ${sheetRow("#/search", "search", "Search")}
-      ${kids ? "" : sheetRow("#/requests", "plus", "Requests", TEAL, reqCount ? String(reqCount) : "")}
+      ${rest.map((d) => sheetRow("#/" + d.key, d.key, d.name)).join("")}
+      ${kids ? "" : sheetRow("#/requests", "requests", "Requests", "", reqCount ? String(reqCount) : "")}
+      ${sheetRow("#/settings", "settings", "Settings")}
       <div class="sh-sep"></div>
       <button type="button" class="sh-row sh-me" data-me>${B.me ? B.picHtml(B.me, "", 100) : ""}<span>${esc(B.me ? B.me.name : "")}</span>${I("right")}</button>
     </div>`);
@@ -318,15 +315,8 @@
 
   // ---------- start-up: the icons light up one after another (replaces the doors growing on Home) ----------
   let lighting = false;
-  B.railLightUp = () => {
-    if (!rail || rail.hidden) return;
-    const icons = $$(".rl-i", rail);
-    lighting = true;
-    icons.forEach((x) => { x.classList.remove("lit"); x.classList.add("dark"); });
-    // Top to bottom: Home and Search first, then each door
-    icons.forEach((x, i) => setTimeout(() => { x.classList.remove("dark"); x.classList.add("lit"); setTimeout(() => x.classList.remove("lit"), 700); }, 120 + i * 140));
-    setTimeout(() => { lighting = false; }, 160 + icons.length * 140);
-  };
+  // Glowfin: menus stay still (no start-up light-up), so nothing runs while the page loads
+  B.railLightUp = () => {};
 
   // ---------- keys: Esc closes the panel; M opens the menu (like ☰ on a remote) ----------
   document.addEventListener("keydown", (e) => {

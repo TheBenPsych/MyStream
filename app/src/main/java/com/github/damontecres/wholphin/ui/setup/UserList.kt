@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -64,6 +65,8 @@ import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
+import com.github.damontecres.wholphin.ui.theme.themeIndex
 import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -269,7 +272,9 @@ private fun WhoLink(
 }
 
 /**
- * Pick a Benflix profile picture. [onPick] saves it (null = automatic).
+ * Glowfin (ui-5): pick your sea friend, then its colour. The big preview shows what you'll get. OK on an animal
+ * saves it; the colour dots change the colour straight away ([onPickColour], saved with your settings so it
+ * follows you). Null = automatic.
  */
 @Composable
 fun AvatarPickerDialog(
@@ -277,42 +282,111 @@ fun AvatarPickerDialog(
     name: String?,
     onPick: (Int?) -> Unit,
     onDismissRequest: () -> Unit,
+    onPickColour: ((com.github.damontecres.wholphin.preferences.BenflixAccent) -> Unit)? = null,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     // Make sure the pick is saved on the device, even if no picture has been drawn yet
-    AvatarChoices.init(androidx.compose.ui.platform.LocalContext.current)
+    AvatarChoices.init(context)
+    com.github.damontecres.wholphin.ui.theme.ProfileColours
+        .init(context)
     val current = AvatarChoices.get(userId)
+    val starter = benflixAvatarFor(userId, name)
+    var preview by remember { mutableStateOf(current ?: BenflixAvatars.indexOf(starter).coerceAtLeast(0)) }
+    val colour = seaColourIndex(userId, BenflixAvatars.getOrElse(preview) { BenflixAvatars[0] })
     com.github.damontecres.wholphin.ui.touch.Dialog(onDismissRequest = onDismissRequest) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            verticalAlignment = Alignment.CenterVertically,
             modifier =
                 Modifier
-                    .background(Color(0xFF181818), RoundedCornerShape(10.dp))
-                    .padding(24.dp),
+                    .background(
+                        com.github.damontecres.wholphin.ui.theme.Glowfin.Deep,
+                        RoundedCornerShape(16.dp),
+                    ).padding(24.dp),
         ) {
-            Text(
-                text = stringResource(R.string.choose_picture_for, name.orEmpty()),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            val firstFocus = remember { FocusRequester() }
-            LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
-            BenflixAvatars.chunked(4).forEachIndexed { rowIndex, row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    row.forEachIndexed { col, res ->
-                        val index = rowIndex * 4 + col
+            Column(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text(
+                    text = "Pick your sea friend",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                val firstFocus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
+                SeaFriend.entries.chunked(4).forEachIndexed { rowIndex, row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        row.forEachIndexed { col, friend ->
+                            val index = rowIndex * 4 + col
+                            Surface(
+                                onClick = {
+                                    onPick.invoke(index)
+                                    onDismissRequest.invoke()
+                                },
+                                shape = ClickableSurfaceDefaults.shape(CircleShape),
+                                colors =
+                                    ClickableSurfaceDefaults.colors(
+                                        containerColor = Color.Transparent,
+                                        focusedContainerColor = Color.Transparent,
+                                    ),
+                                border =
+                                    ClickableSurfaceDefaults.border(
+                                        border =
+                                            androidx.tv.material3.Border(
+                                                androidx.compose.foundation.BorderStroke(
+                                                    3.dp,
+                                                    if (index == current) Color.White else Color.Transparent,
+                                                ),
+                                            ),
+                                        focusedBorder =
+                                            androidx.tv.material3.Border(
+                                                androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
+                                            ),
+                                    ),
+                                modifier =
+                                    Modifier
+                                        .glowFocus(CircleShape, spread = 10.dp)
+                                        .size(68.dp)
+                                        .onFocusChanged { if (it.isFocused) preview = index }
+                                        .then(if (index == (current ?: 0)) Modifier.focusRequester(firstFocus) else Modifier),
+                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                            ) {
+                                SeaFriendImage(
+                                    friend = friend,
+                                    colour = colour,
+                                    contentDescription = friend.title,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                )
+                            }
+                        }
+                    }
+                }
+                Text(
+                    text = "Colour",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    com.github.damontecres.wholphin.ui.theme.ProfileThemeChoices.forEachIndexed { i, accent ->
+                        val (a, b) = SeaColours[i]
                         Surface(
                             onClick = {
-                                onPick.invoke(index)
-                                onDismissRequest.invoke()
+                                com.github.damontecres.wholphin.ui.theme.ProfileColours
+                                    .set(context, userId, accent)
+                                onPickColour?.invoke(accent)
                             },
                             shape = ClickableSurfaceDefaults.shape(CircleShape),
+                            colors =
+                                ClickableSurfaceDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = Color.Transparent,
+                                ),
                             border =
                                 ClickableSurfaceDefaults.border(
                                     border =
                                         androidx.tv.material3.Border(
                                             androidx.compose.foundation.BorderStroke(
-                                                3.dp,
-                                                if (index == current) Color.White else Color.Transparent,
+                                                2.dp,
+                                                if (i == colour) Color.White else Color.Transparent,
                                             ),
                                         ),
                                     focusedBorder =
@@ -320,28 +394,45 @@ fun AvatarPickerDialog(
                                             androidx.compose.foundation.BorderStroke(3.dp, BenflixColors.Focus),
                                         ),
                                 ),
-                            modifier =
-                                Modifier
-                                    .size(72.dp)
-                                    .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                            modifier = Modifier.size(32.dp),
                         ) {
-                            // Shown on their colour, so they see exactly what they will get
-                            BenflixAvatarImage(
-                                res = res,
-                                background = avatarBackgroundFor(userId, res),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush
+                                            .linearGradient(listOf(a, b)),
+                                        CircleShape,
+                                    ),
                             )
                         }
                     }
                 }
+                Button(onClick = {
+                    onPick.invoke(null)
+                    onDismissRequest.invoke()
+                }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                    Text(stringResource(R.string.use_automatic_picture))
+                }
             }
-            Button(onClick = {
-                onPick.invoke(null)
-                onDismissRequest.invoke()
-            }, scale = ButtonDefaults.scale(focusedScale = 1f)) {
-                Text(stringResource(R.string.use_automatic_picture))
+            // The big preview: the animal the remote is on, in your colour
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SeaFriendImage(
+                    friend = SeaFriend.entries.getOrElse(preview) { SeaFriend.FISH },
+                    colour = colour,
+                    contentDescription = null,
+                    modifier = Modifier.size(150.dp).clip(CircleShape),
+                )
+                Text(
+                    text = name.orEmpty(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                )
             }
         }
     }
@@ -420,6 +511,7 @@ private fun UserIconCard(
             interactionSource = interactionSource,
             modifier =
                 Modifier
+                    .glowFocus(ProfileTileShape, spread = 14.dp)
                     .size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
@@ -434,7 +526,7 @@ private fun UserIconCard(
                             border =
                                 BorderStroke(
                                     width = 3.dp,
-                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                    color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Focus,
                                 ),
                             shape = ProfileTileShape,
                         ),
@@ -575,33 +667,23 @@ internal val BenflixAvatars =
     )
 
 /**
- * The colour behind each picture for someone who has not picked a colour yet (the same colours
- * the pictures used to come in, so nobody's tile changes until they pick one).
+ * Which of the 8 Glowfin colours ([SeaColours]) someone's picture is: the colour they picked (in setup or
+ * Settings), otherwise each animal's own starter colour.
  */
-private val AvatarStarterColours =
-    listOf(
-        Color(0xFFE50914),
-        Color(0xFF0071EB),
-        Color(0xFFE8A92B),
-        Color(0xFF1EAA5A),
-        Color(0xFF8C3CDC),
-        Color(0xFFE5488F),
-        Color(0xFF2A2A30),
-        Color(0xFF00A0AA),
-    )
+fun seaColourIndex(
+    id: UUID,
+    res: Int,
+): Int =
+    com.github.damontecres.wholphin.ui.theme.ProfileColours
+        .get(id)
+        ?.themeIndex()
+        ?: BenflixAvatars.indexOf(res).coerceIn(0, SeaColours.lastIndex)
 
-/**
- * The colour behind someone's picture: the colour they picked ("Its background colour" in setup,
- * or their colour in Settings), otherwise the picture's starter colour.
- */
+/** The main colour of someone's picture (the tile around it uses it too) */
 fun avatarBackgroundFor(
     id: UUID,
     res: Int,
-): Color =
-    com.github.damontecres.wholphin.ui.theme.ProfileColours
-        .get(id)
-        ?.toColor()
-        ?: AvatarStarterColours.getOrElse(BenflixAvatars.indexOf(res)) { AvatarStarterColours[0] }
+): Color = SeaColours[seaColourIndex(id, res)].first
 
 /**
  * White or near-black, whichever is easier to see on [background]. White wins unless it is too
@@ -610,8 +692,8 @@ fun avatarBackgroundFor(
 fun avatarInkFor(background: Color): Color = if (1.05f / (background.luminance() + 0.05f) >= 3f) Color.White else Color(0xFF141418)
 
 /**
- * A Benflix profile picture: the character drawn on [background], with a soft shade at the bottom.
- * The Kids rainbow keeps its own colours. Clip [modifier] to the shape you want.
+ * A Glowfin profile picture: one of the Storybook sea friends ([SeaFriend]) in the colour [background]
+ * stands for (from [avatarBackgroundFor]). Kids always get the rainbow starfish. Clip [modifier] to a circle.
  */
 @Composable
 fun BenflixAvatarImage(
@@ -621,37 +703,21 @@ fun BenflixAvatarImage(
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
 ) {
-    if (res == R.drawable.benflix_avatar_kids) {
-        Image(
-            painter = painterResource(res),
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            alpha = alpha,
-            modifier = modifier,
-        )
-        return
-    }
-    Box(
-        modifier =
-            modifier
-                .background(background.copy(alpha = background.alpha * alpha))
-                .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = .16f * alpha)),
-                    ),
-                ),
-    ) {
-        Image(
-            painter = painterResource(res),
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            alpha = alpha,
-            colorFilter =
-                androidx.compose.ui.graphics.ColorFilter
-                    .tint(avatarInkFor(background)),
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
+    val kids = res == R.drawable.benflix_avatar_kids
+    val friend = if (kids) SeaFriend.STARFISH else SeaFriend.entries.getOrElse(BenflixAvatars.indexOf(res)) { SeaFriend.FISH }
+    val colour =
+        if (kids) {
+            SEA_KIDS
+        } else {
+            SeaColours.indexOfFirst { it.first == background.copy(alpha = 1f) }.coerceAtLeast(0)
+        }
+    SeaFriendImage(
+        friend = friend,
+        colour = colour,
+        contentDescription = contentDescription,
+        alpha = alpha,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -685,7 +751,7 @@ private fun KidsProfileCard(
     ) {
         Surface(
             onClick = onClick,
-            modifier = Modifier.size(cardSize),
+            modifier = Modifier.glowFocus(ProfileTileShape, spread = 14.dp).size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             border =
                 ClickableSurfaceDefaults.border(
@@ -701,10 +767,10 @@ private fun KidsProfileCard(
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
-            Image(
-                painter = painterResource(R.drawable.benflix_avatar_kids),
+            SeaFriendImage(
+                friend = SeaFriend.STARFISH,
+                colour = SEA_KIDS,
                 contentDescription = stringResource(R.string.kids_profile),
-                contentScale = ContentScale.Crop,
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -746,12 +812,12 @@ private fun GuestProfileCard(
     ) {
         Surface(
             onClick = onClick,
-            modifier = Modifier.size(cardSize),
+            modifier = Modifier.glowFocus(ProfileTileShape, spread = 14.dp).size(cardSize),
             shape = ClickableSurfaceDefaults.shape(shape = ProfileTileShape),
             colors =
                 ClickableSurfaceDefaults.colors(
-                    containerColor = Color(0xFF55555C),
-                    focusedContainerColor = Color(0xFF6A6A72),
+                    containerColor = Color(0xFF2D3354),
+                    focusedContainerColor = Color(0xFF5A6488),
                 ),
             border =
                 ClickableSurfaceDefaults.border(
@@ -783,7 +849,7 @@ private fun GuestProfileCard(
 
 /** The outline around the chosen profile */
 @Composable
-private fun profileBorderColor(): Color = MaterialTheme.colorScheme.onSurface
+private fun profileBorderColor(): Color = BenflixColors.Focus
 
 /** How many see-through layers make up the profile glow */
 private const val GLOW_LAYERS = 3

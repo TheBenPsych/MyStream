@@ -18,6 +18,7 @@ index.html
 js/ask.js
 js/books.js
 js/core.js
+js/sea.js
 js/doors.js
 js/nav.js
 js/spot.js
@@ -64,3 +65,10 @@ fonts/atkinson_hyperlegible.LICENSE.txt
 img/glowfin-mark.svg
 fonts/glowfin_sora_light.ttf
 fonts/glowfin_sora_semibold.ttf
+fonts/glowfin_sora_regular.ttf
+fonts/glowfin_sora_bold.ttf
+fonts/glowfin_inter_regular.ttf
+fonts/glowfin_inter_medium.ttf
+fonts/glowfin_inter_semibold.ttf
+fonts/glowfin_inter_bold.ttf
+fonts/inter.LICENSE.txt

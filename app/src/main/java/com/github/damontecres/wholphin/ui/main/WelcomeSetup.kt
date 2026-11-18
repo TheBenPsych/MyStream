@@ -803,7 +803,7 @@ private fun ProfileTile(
 ) {
     AvatarChoices.init(LocalContext.current)
     val chosen = AvatarChoices.get(userId)?.let { BenflixAvatars.getOrNull(it) }
-    val shape = RoundedCornerShape(size * .09f)
+    val shape = CircleShape
     var imageError by remember(imageUrl) { mutableStateOf(false) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -860,7 +860,7 @@ private fun PictureStep(
     val image by viewModel.profileImage.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle("Pick your picture", "Then pick a colour for behind it.")
+    StepTitle("Pick your sea friend", "Then pick its colour.")
     val preview: @Composable () -> Unit = {
         // A live preview of their Who's watching tile
         ProfileTile(userId, viewModel.userName, image, accent, size = if (isTv) 150.dp else 120.dp)
@@ -892,13 +892,16 @@ private fun PictureStep(
                         BenflixAvatarImage(
                             res = res,
                             background = accent.toColor(),
-                            contentDescription = "Picture ${index + 1}",
+                            contentDescription =
+                                com.github.damontecres.wholphin.ui.setup.SeaFriend.entries
+                                    .getOrNull(index)
+                                    ?.title,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                         )
                     }
                 }
             }
-            Text("Its background colour", fontSize = BenflixType.lead, color = Color.White, modifier = Modifier.padding(top = 4.dp))
+            Text("Its colour", fontSize = BenflixType.lead, color = Color.White, modifier = Modifier.padding(top = 4.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(14.dp),

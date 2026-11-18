@@ -128,7 +128,13 @@ B.picOf = (p, size) => {
 };
 B.picHtml = (p, cls, size) => {
   const { url, color } = B.picOf(p, size);
-  return `<span class="pic ${cls || ""}" style="background-color:${color};${url ? `background-image:url('${url}')` : ""}">${url ? "" : esc(B.initials(p.name))}</span>`;
+  if (url) return `<span class="pic ${cls || ""}" style="background-color:${color};background-image:url('${url}')"></span>`;
+  // Glowfin: no picture yet = one of the sea friends (js/sea.js), always the same one for the same name
+  if (B.seaPic) {
+    const n = Array.from(String(p.name || "?")).reduce((a, c) => a + c.charCodeAt(0), 0);
+    return `<span class="pic sea ${cls || ""}">${B.seaPic(n, p.kids ? -1 : n)}</span>`;
+  }
+  return `<span class="pic ${cls || ""}" style="background-color:${color}">${esc(B.initials(p.name))}</span>`;
 };
 
 // ---------- talking to the helper ----------

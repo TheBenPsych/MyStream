@@ -16,8 +16,9 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.setup.BenflixAvatars
-import com.github.damontecres.wholphin.ui.setup.avatarBackgroundFor
-import com.github.damontecres.wholphin.ui.setup.avatarInkFor
+import com.github.damontecres.wholphin.ui.setup.SeaFriend
+import com.github.damontecres.wholphin.ui.setup.seaColourIndex
+import com.github.damontecres.wholphin.ui.setup.seaFriendBitmap
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -92,7 +93,7 @@ class ProfilePictureSync
                 // Pictures sent while the old full-colour pictures were still in the app came out as a
                 // plain square, so send their picture again once, drawn properly on their colour
                 val redrawn = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val redrawnKey = "redrawn-v2-${user.id}"
+                val redrawnKey = "redrawn-glowfin-${user.id}"
                 val token = user.accessToken
                 if (index != null && token != null && !redrawn.getBoolean(redrawnKey, false)) {
                     if (upload(serverUrl, user.id, token, index)) {
@@ -116,30 +117,9 @@ class ProfilePictureSync
             res: Int,
         ): ByteArray {
             ProfileColours.init(context)
-            val size = 256
-            val background = avatarBackgroundFor(userId, res)
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            canvas.drawColor(background.toArgb())
-            val shade =
-                Paint().apply {
-                    shader =
-                        LinearGradient(
-                            0f,
-                            0f,
-                            0f,
-                            size.toFloat(),
-                            android.graphics.Color.TRANSPARENT,
-                            android.graphics.Color.argb(41, 0, 0, 0),
-                            Shader.TileMode.CLAMP,
-                        )
-                }
-            canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), shade)
-            ContextCompat.getDrawable(context, res)?.mutate()?.let { drawable ->
-                drawable.setBounds(0, 0, size, size)
-                drawable.colorFilter = PorterDuffColorFilter(avatarInkFor(background).toArgb(), PorterDuff.Mode.SRC_IN)
-                drawable.draw(canvas)
-            }
+            // Glowfin: their sea friend in their colour, drawn the same way the app draws it
+            val friend = SeaFriend.entries.getOrElse(BenflixAvatars.indexOf(res)) { SeaFriend.FISH }
+            val bitmap = seaFriendBitmap(friend, seaColourIndex(userId, res), PICTURE_SIZE)
             val out = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             bitmap.recycle()
@@ -242,6 +222,7 @@ class ProfilePictureSync
 
         companion object {
             const val KEY = "benflix.avatar"
+            private const val PICTURE_SIZE = 256
             private const val PREFS = "benflix_avatar_sync"
             private const val AUTOMATIC = -1
         }

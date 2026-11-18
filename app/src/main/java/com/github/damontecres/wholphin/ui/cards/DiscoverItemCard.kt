@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import kotlinx.coroutines.delay
 
 @Composable
@@ -93,6 +94,7 @@ fun DiscoverItemCard(
         Card(
             modifier =
                 Modifier
+                    .glowFocus()
                     .size(width, Dp.Unspecified)
                     .aspectRatio(AspectRatios.TALL),
             onClick = onClick,
@@ -116,7 +118,7 @@ fun DiscoverItemCard(
                             border =
                                 androidx.compose.foundation.BorderStroke(
                                     3.dp,
-                                    com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
+                                    com.github.damontecres.wholphin.ui.theme.BenflixColors.Focus,
                                 ),
                             shape =
                                 androidx.compose.foundation.shape
