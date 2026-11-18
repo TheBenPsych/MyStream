@@ -268,7 +268,7 @@ class BenflixFunFacts
             }
         }
 
-        /** A stand-alone sentence from the Production part that reads well on its own */
+        /** The best fun-story sentence from the Production part ([FunFactRules] decides what counts) */
         private fun productionFact(
             name: String,
             text: String,
@@ -277,16 +277,15 @@ class BenflixFunFacts
             val rest = text.substring(start.range.last + 1)
             val end = Regex("\n== [^=]+ ==\n").find(rest)?.range?.first ?: rest.length
             val section = rest.substring(0, end).replace(Regex("\n=+[^=]+=+\n"), "\n")
-            val sentences =
+            val best =
                 section
                     .split(SENTENCE_END)
-                    .map { it.trim() }
-                    .filter { it.length in MIN_SENTENCE..MAX_SENTENCE && looksComplete(it) }
-                    .filter { s -> GOOD_WORDS.any { s.contains(it, ignoreCase = true) } }
-                    .filter { s -> BORING_WORDS.none { s.contains(it, ignoreCase = true) } }
-                    // Starts with a name, not "He", "It" or "This", so it makes sense on its own
-                    .filter { s -> BAD_STARTS.none { s.startsWith("$it ") } }
-            val best = sentences.firstOrNull { it.contains(name, ignoreCase = true) } ?: sentences.firstOrNull() ?: return null
+                    .map { it.trim().replace(Regex("\\s+"), " ") }
+                    .filter { looksComplete(it) }
+                    .map { it to FunFactRules.score(it) }
+                    .filter { it.second >= FunFactRules.PASS }
+                    .maxWithOrNull(compareBy({ it.second }, { it.first.contains(name, ignoreCase = true) }))
+                    ?.first ?: return null
             return if (best.contains(name, ignoreCase = true)) best else "$name: $best"
         }
 
@@ -315,46 +314,15 @@ class BenflixFunFacts
 
         companion object {
             private const val PREFS = "benflix_fun_facts"
-            private const val KEY = "facts2"
+
+            // "facts3": facts saved with the older, looser rules are dropped (Ben 2026-11-17)
+            private const val KEY = "facts3"
             private const val SEPARATOR = "\u001E"
             private const val MAX_SAVED = 400
             private const val SEEN_KEY = "seen"
             private const val MAX_SEEN = 1500
             private const val SAVED_SHARE = 0.35
             private const val LOOKUPS = 6
-            private const val MIN_SENTENCE = 50
-            private const val MAX_SENTENCE = 190
-            private val GOOD_WORDS =
-                listOf(
-                    "budget",
-                    "originally",
-                    "improvis",
-                    "real ",
-                    "actual",
-                    "practical",
-                    "record",
-                    "inspired",
-                    "nickname",
-                    "first time",
-                    "props",
-                    "turned down",
-                    "accident",
-                    "injur",
-                    "secret",
-                    "replaced",
-                    "auditioned",
-                    "ad-lib",
-                    "by hand",
-                    "for real",
-                    "animatronic",
-                    "puppet",
-                    "trained",
-                    "learned to",
-                    "did his own",
-                    "did her own",
-                    "stunt",
-                    "costume",
-                )
 
             /** A sentence ends at . ! or ? and a space, but not after an initial ("Courtney B. Vance") or a title ("Dr.") */
             private val SENTENCE_END =
@@ -363,34 +331,5 @@ class BenflixFunFacts
                         "(?<!\\b(Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|Mt|No)\\.)\\s+(?=[A-Z0-9\"“])",
                 )
             private val ABBREVIATIONS = listOf("Mr", "Mrs", "Ms", "Dr", "St", "Jr", "Sr", "vs", "Mt", "No")
-
-            /** News-style lines (casting talks, release dates, money) that aren't fun to read */
-            private val BORING_WORDS =
-                listOf(
-                    "was asked",
-                    "announced",
-                    "confirmed",
-                    "in talks",
-                    "negotiat",
-                    "reported",
-                    "principal photography",
-                    "wrapped",
-                    "release date",
-                    "box office",
-                    "joined the cast",
-                    "was cast",
-                    "were cast",
-                    "signed on",
-                    "set to",
-                    "expected to",
-                    "would return",
-                    "screenplay",
-                    "deal",
-                    "years ago",
-                    "anniversary",
-                    "years old",
-                )
-
-            private val BAD_STARTS = listOf("He", "She", "It", "They", "This", "These", "That", "His", "Her", "Their", "However", "Also")
         }
     }

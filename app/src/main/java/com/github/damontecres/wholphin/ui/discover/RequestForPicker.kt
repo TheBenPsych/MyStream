@@ -13,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.MaterialTheme
@@ -113,14 +115,20 @@ fun RequestForButton(modifier: Modifier = Modifier) {
 
 /** The slim "Asking for" line at the top of each Requests tab (admins only) */
 @Composable
-fun RequestForBar(modifier: Modifier = Modifier) {
+fun RequestForBar(
+    modifier: Modifier = Modifier,
+    /** Where Up goes from the For button (Requests: the tab you're on), so the remote never gets stuck on it */
+    up: FocusRequester? = null,
+) {
     val picked by RequestFor.picked.collectAsState()
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)),
     ) {
-        RequestForButton()
+        RequestForButton(
+            modifier = if (up != null) Modifier.focusProperties { this.up = up } else Modifier,
+        )
         Text(
             text =
                 picked?.let { "Anything you ask for now is ${it.name}'s. They'll be told when it's ready." }

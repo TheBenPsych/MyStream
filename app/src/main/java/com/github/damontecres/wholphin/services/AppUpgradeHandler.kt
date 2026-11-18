@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.services
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.edit
 import androidx.datastore.core.DataStore
 import androidx.preference.PreferenceManager
@@ -210,6 +211,9 @@ class AppUpgradeHandler
 
             /** Set once the old outlined subtitles were moved to the soft shadow (Redesign 2 players) */
             private const val SUBTITLE_SHADOW_KEY = "benflix.subtitles.softShadow"
+
+            /** Set once everyone was moved to the standard Benflix subtitle look (Atkinson, white, black outline) */
+            private const val SUBTITLE_STANDARD_KEY = "benflix.subtitles.standardLook"
 
             private const val SUBFONT_FILE = "subfont.ttf"
             private const val SUBFONT_FALLBACK = "font-roboto/Roboto-Regular.ttf"
@@ -589,6 +593,18 @@ class AppUpgradeHandler
                 shadowPrefs.edit { putBoolean(SUBTITLE_SHADOW_KEY, true) }
             }
 
+            // Benflix standard subtitle look (2026-11-17): Atkinson Hyperlegible Bold, white with a black outline.
+            // Everyone moves to it once (size and position are kept); the style can still be changed after.
+            if (!shadowPrefs.getBoolean(SUBTITLE_STANDARD_KEY, false)) {
+                appPreferences.updateData {
+                    it.updateInterfacePreferences {
+                        subtitlesPreferences = subtitlesPreferences.withStandardLook()
+                        hdrSubtitlesPreferences = hdrSubtitlesPreferences.withStandardLook()
+                    }
+                }
+                shadowPrefs.edit { putBoolean(SUBTITLE_STANDARD_KEY, true) }
+            }
+
             if (previous.isLessThan(Version.fromString("1.0.10-0-g0"))) {
                 val count = seriesTrackChoiceDao.count()
                 if (count == 0) {
@@ -615,3 +631,16 @@ private fun SubtitlePreferences.withSoftShadow(): SubtitlePreferences {
             fontColor.and(0x00FFFFFF) == 0x00FFFFFF
     return if (oldLook) toBuilder().setEdgeStyle(EdgeStyle.EDGE_SHADOW).build() else this
 }
+
+/** The standard Benflix subtitle look: white Atkinson Hyperlegible Bold with a black outline, no box. Size and position stay. */
+private fun SubtitlePreferences.withStandardLook(): SubtitlePreferences =
+    toBuilder()
+        .setFontColor(SubtitleSettings.FontColor.defaultValue.toArgb())
+        .setFontOpacity(100)
+        .setFontBold(true)
+        .setFontItalic(false)
+        .setEdgeStyle(EdgeStyle.EDGE_SOLID)
+        .setEdgeColor(SubtitleSettings.EdgeColor.defaultValue.toArgb())
+        .setEdgeThickness(SubtitleSettings.EdgeThickness.defaultValue.toInt())
+        .setBackgroundStyle(SubtitleSettings.BackgroundStylePref.defaultValue)
+        .build()
