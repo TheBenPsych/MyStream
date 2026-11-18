@@ -10,14 +10,18 @@
   browser's requests on to Jellyfin. The files live in server/web in the MyStream repo; the helper
   fetches the newest copy from GitHub by itself every hour.
 -->
-<link rel="icon" type="image/png" href="web/icons/icon-32.png">
+<!-- Tab + bookmark icon: just the Glowfin fin on a see-through background, filling the square -->
+<link rel="icon" type="image/svg+xml" href="web/icons/fin.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="web/icons/fin-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="web/icons/fin-16.png">
+<link rel="icon" type="image/png" sizes="48x48" href="web/icons/fin-48.png">
 <script>
   // Away from home Benflix lives at https://<internet address>/benflix-games/ : make sure the address ends
   // in "/" so every file below is found next to it.
   if (/\/benflix-games$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
 </script>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="web/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="web/icons/fin-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="web/css/benflix.css">
 <link rel="stylesheet" href="web/css/reader.css">

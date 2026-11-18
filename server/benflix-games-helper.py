@@ -1401,11 +1401,13 @@ class Handler(BaseHTTPRequestHandler):
                 with open(found[0], "rb") as f:
                     return self.send(200, f.read(), found[1])
             if web is not None and method in ("GET", "HEAD") and (
-                path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest") or path.startswith("/web/")
+                path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest", "/favicon.ico") or path.startswith("/web/")
             ):
                 # Benflix in a web browser (server/web in the repo). The install helper (sw.js) and the
                 # app description sit at the top so "Install Benflix" covers the whole site.
                 rel = path[len("/web/"):] if path.startswith("/web/") else path.lstrip("/") if path in ("/sw.js", "/manifest.webmanifest") else "index.html"
+                if path == "/favicon.ico":  # browsers ask for this for bookmarks: give them the fin
+                    rel = "icons/fin-32.png"
                 found = web.file_for(rel)
                 if found:
                     with open(found[0], "rb") as f:
