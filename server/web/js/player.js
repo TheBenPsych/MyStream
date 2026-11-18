@@ -91,8 +91,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="center-msg" id="msg"></div>
     <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button>
       <div><div class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</div><div class="rating">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</div></div></div>
-    <button class="skip hidden" id="pSkip"></button>
-    <div class="upnext hidden" id="pNext"></div>
+    <div class="pcorner"><button class="skip hidden" id="pSkip"></button><div class="upnext hidden" id="pNext"></div></div>
     <div class="eprow hidden" id="pEps"></div>
     <div class="controls p1">
       <div class="chap" id="pChap"></div>
@@ -122,6 +121,11 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     </div>
   </div>`;
   const pl = $("#pl"), v = $("#v");
+  // Skip and Up next sit just above the controls, however tall they are (they wrap on small windows)
+  const ctl = $(".controls", pl);
+  const placeCorner = () => { if (ctl.isConnected) pl.style.setProperty("--pctl", `${ctl.offsetHeight + 26 + 18}px`); };
+  placeCorner();
+  if (window.ResizeObserver) { const ro = new ResizeObserver(placeCorner); ro.observe(ctl); B.onLeave(() => ro.disconnect()); } else window.addEventListener("resize", placeCorner);
   // Still this player? (true while it plays on in the pop-out window and you browse other pages)
   let myNav = nav;
   const myHash = location.hash;
@@ -435,6 +439,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if ((auto || settings.autoskip) && seg.sure !== false && !skipped.has(seg.type)) { skipped.add(seg.type); v.currentTime = seg.end; B.toast(words[seg.type].replace("Skip", "Skipped")); return; }
       sk.textContent = words[seg.type]; sk.classList.remove("hidden"); sk.onclick = () => { skipped.add(seg.type); v.currentTime = seg.end; sk.classList.add("hidden"); };
     } else sk.classList.add("hidden");
+    // Same as the TV and phone: while the Up next box is showing, it is the one thing in that corner
+    // (Play now / Watch credits). Skip credits comes back if you pick Watch credits.
+    if (!$("#pNext").classList.contains("hidden")) sk.classList.add("hidden");
     const outro = tidySegments(segments, total()).find((s) => s.type === "Outro");
     const T = total();
     if (!nextShown && T > 60 && ((outro && t >= outro.start) || (!outro && T - t < (isEp ? 25 : 60)))) showUpNext();
