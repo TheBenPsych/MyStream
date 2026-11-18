@@ -2483,16 +2483,116 @@ def _slsk_on():
     return bool(SLSKD_URL and SLSKD_KEY)
 
 
-def slskd(method, path, body=None):
+_slsk_key_look = [0.0]  # When Tower last read slskd's own settings for a working key
+
+
+def slskd(method, path, body=None, _again=True):
     try:
-        return _http(SLSKD_URL + "/api/v0" + path, method, body, {"X-API-Key": SLSKD_KEY}, timeout=30)
+        answer = _http(SLSKD_URL + "/api/v0" + path, method, body, {"X-API-Key": SLSKD_KEY}, timeout=30)
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
-            _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Glowfin setup command again."
+            # The key changed in slskd (or can only read): Tower looks up slskd's current key itself and tries again
+            if _again and _slsk_new_key(need_write=(e.code == 403)):
+                return slskd(method, path, body, _again=False)
+            if e.code == 403:
+                _slsk_problem[0] = (
+                    "slskd's API key can only look, not download. In slskd's settings, set the key's role to readwrite."
+                )
+            else:
+                _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Glowfin setup command again."
         raise MusicError(502, f"slskd (Soulseek) answered with an error ({e.code}).")
     except (urllib.error.URLError, OSError, ValueError):
         _slsk_problem[0] = "Couldn't reach slskd (Soulseek). Check it's running on Tower."
         raise MusicError(502, "Couldn't reach slskd (Soulseek).")
+    if _slsk_problem[0] and "key" in _slsk_problem[0] and method != "GET":
+        _slsk_problem[0] = None  # The key works for downloads again
+    return answer
+
+
+def _docker_raw(path, timeout=20):
+    """One GET to Docker on Tower (the helper has Docker's socket), raw bytes back"""
+    import http.client
+    import socket
+
+    conn = http.client.HTTPConnection("localhost", timeout=timeout)
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    try:
+        sock.connect("/var/run/docker.sock")
+        conn.sock = sock
+        conn.request("GET", path)
+        r = conn.getresponse()
+        body = r.read()
+    finally:
+        conn.close()
+    if r.status >= 400:
+        raise OSError(f"Docker answered {r.status}")
+    return body
+
+
+def slsk_keys_in(yml):
+    """Every API key in slskd's settings file (slskd.yml), as (key, role), readwrite and admin keys first"""
+    keys, inside, indent, cur = [], False, 0, None
+    for line in yml.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        depth = len(line) - len(line.lstrip(" "))
+        text = line.strip()
+        if not inside:
+            if text.startswith("api_keys:"):
+                inside, indent = True, depth
+            continue
+        if depth <= indent:
+            break
+        m = re.match(r"(key|role):\s*[\"']?([^\"'\s#]*)", text)
+        if not m:
+            continue
+        if m.group(1) == "key":
+            cur = [m.group(2), ""]
+            keys.append(cur)
+        elif cur is not None:
+            cur[1] = m.group(2).lower()
+    keys = [(k, r) for k, r in keys if k]
+    keys.sort(key=lambda kr: kr[1] == "readonly")
+    return keys
+
+
+def _slsk_new_key(need_write=False):
+    """Reads slskd's settings through Docker and switches to the first key slskd accepts (at most every 10 minutes)"""
+    global SLSKD_KEY
+    if time.time() - _slsk_key_look[0] < 600:
+        return False
+    _slsk_key_look[0] = time.time()
+    try:
+        apps = json.loads(_docker_raw("/containers/json?all=1") or b"[]")
+        names = [n.lstrip("/") for c in apps for n in (c.get("Names") or []) if "slskd" in n.lower()]
+        if not names:
+            return False
+        tar = _docker_raw(f"/containers/{urllib.parse.quote(names[0])}/archive?path=/app/slskd.yml")
+        import io
+        import tarfile
+
+        with tarfile.open(fileobj=io.BytesIO(tar)) as t:
+            member = next((m for m in t.getmembers() if m.isfile()), None)
+            yml = t.extractfile(member).read().decode("utf-8", "replace") if member else ""
+    except Exception as e:  # noqa: BLE001 (any Docker trouble: keep the old key)
+        log(f"couldn't read slskd's settings for its key: {e}")
+        return False
+    for key, role in slsk_keys_in(yml):
+        if key == SLSKD_KEY and not need_write:
+            continue
+        if need_write and role == "readonly":
+            continue
+        try:
+            _http(SLSKD_URL + "/api/v0/application", "GET", None, {"X-API-Key": key}, timeout=15)
+        except (urllib.error.URLError, OSError, ValueError):
+            continue
+        if key != SLSKD_KEY:
+            SLSKD_KEY = key
+            log("slskd's key changed, so Tower now uses slskd's current key")
+            _slsk_problem[0] = None
+            return True
+    return False
 
 
 def _slsk_due(r):
