@@ -1374,7 +1374,7 @@ html.kids .logo .sq i:nth-child(3) { background: #3DD6C6; } html.kids .logo .sq 
 html.kids .pbadge { background: var(--kacc); color: var(--kon); }
 html.kids .btn.white, html.kids .btn.red, html.kids .circle.white, html.kids #toast { background: var(--kacc); color: var(--kon); }
 html.kids .btn.white:hover, html.kids .btn.red:hover, html.kids .circle.white:hover { background: #fff; color: var(--kon); }
-html.kids .poster .prog i, html.kids .kwbar .line i, html.kids .player .bar .segs i b, html.kids .player .bar .knob { background: var(--kacc); }
+html.kids .poster .prog i, html.kids .kwbar .line i, html.kids .player .bar .segs i b, html.kids .player .bar .track b, html.kids .player .bar .knob { background: var(--kacc); }
 html.kids .poster:focus-visible, html.kids .wide:focus-visible { outline-color: var(--kacc); }
 /* Glowfin for Kids Home (K1): three big round buttons in their own colours, white ring + mint glow on focus */
 .home.kidsh .greet { font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; }
@@ -1921,9 +1921,34 @@ svg.gi path.gd { stroke-width: 3.6; }
 .player .bar .segs i { background: rgba(255,255,255,.22); }
 .player .bar .segs i u { background: rgba(255,255,255,.3); }
 .player .bar .segs i b { background: linear-gradient(90deg, var(--violet), var(--blue) 60%, var(--aqua)) fixed; }
-.player .bar .knob { box-shadow: 0 0 0 3px var(--aqua), 0 0 14px 2px rgba(165,91,224,.55); }
+/* The seek line (approved P1 sheet): one thin line, little white chapter marks, the glow fill and a white knob
+   with a dark gap, an aqua ring and a soft violet glow. The bar must not clip, or the knob gets cut in half. */
+.player .bar { overflow: visible; height: 28px; margin: 0; background: none; border-radius: 0; }
+.player .bar .track { position: absolute; left: 0; right: 0; top: 50%; height: 5px; margin-top: -2.5px; border-radius: 99px; background: rgba(255,255,255,.2); transition: height .15s, margin-top .15s; }
+.player .bar:hover .track { height: 7px; margin-top: -3.5px; }
+.player .bar .track u, .player .bar .track b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; }
+.player .bar .track u { background: rgba(255,255,255,.28); }
+.player .bar .track b { background: var(--glow); background: linear-gradient(90deg, var(--violet), var(--blue) 60%, var(--aqua)); }
+.player .bar .tick { position: absolute; top: 50%; width: 3px; height: 11px; margin: -5.5px 0 0 -1.5px; border-radius: 2px; background: rgba(255,255,255,.7); pointer-events: none; }
+.player .bar .knob { top: 50%; width: 16px; height: 16px; margin-top: -8px; z-index: 1; box-shadow: 0 0 0 3px #05060D, 0 0 0 6px var(--aqua), 0 0 18px 4px rgba(165,91,224,.6); }
 .player .times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 15px; color: #D6D9EC; font-variant-numeric: tabular-nums; }
 .player .row2 { gap: 12px; margin-top: 8px; align-items: flex-start; }
+/* P1 bottom row: chapter name on the left, Back 10 / Pause / Ahead 10 / Next in the middle, the labelled
+   buttons, volume and the small extras on the right. Every button stays at every size. */
+.player .row2.p1row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; margin-top: 8px; align-items: flex-start; }
+.player .row2 .p1l { height: 60px; display: flex; align-items: center; min-width: 0; margin-top: -6px; }
+.player .row2 .chap2 { font-size: 15px; color: #D6D9EC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .row2 .p1c, .player .row2 .p1r { display: flex; align-items: flex-start; gap: 12px; }
+.player .row2 .p1r { justify-content: flex-end; }
+.player .controls.p1 > .chap { display: none; }
+/* Not wide enough for the middle to sit in the middle: the old order (play buttons left, the rest right),
+   chapter name back above the line */
+@media (max-width: 1599px) {
+  .player .row2.p1row { display: flex; }
+  .player .row2 .p1l { display: none; }
+  .player .row2 .p1r { margin-left: auto; }
+  .player .controls.p1 > .chap { display: block; }
+}
 .player .pbtn { background: rgba(255,255,255,.12); width: 48px; height: 48px; flex: none; }
 .player .pbtn svg.i { display: block; width: 24px; height: 24px; }
 .player .pbtn.play { width: 60px; height: 60px; margin-top: -6px; }
@@ -1946,6 +1971,7 @@ svg.gi path.gd { stroke-width: 3.6; }
   .player .topline, .player .controls { padding: 0 14px; }
   .player .topline .tt { font-size: 20px; }
   .player .row2 { gap: 8px 14px; flex-wrap: wrap; }
+  .player .row2 .p1c, .player .row2 .p1r { gap: 8px 14px; flex-wrap: wrap; }
   .player .pbtn, .player .pbtn.lab { width: 40px; height: 40px; }
   .player .pbtn.play { width: 50px; height: 50px; margin-top: -5px; }
   .player .pbtn.lab em, .player .vlab > em { top: 44px; font-size: 11px; }
@@ -1957,7 +1983,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 /* Upright phones: Back 10, Pause, Ahead 10 and Next on one line, the labelled buttons spread out on the next */
 @media (max-width: 480px) {
   .player .row2 { justify-content: center; column-gap: 22px; row-gap: 6px; }
-  .player .row2 .grow { flex-basis: 100%; height: 0; }
+  .player .row2 .p1c, .player .row2 .p1r { flex-basis: 100%; justify-content: center; column-gap: 22px; margin-left: 0; }
   .player .pbtn.lab em, .player .vlab > em { font-size: 11px; }
   .player .extra { margin-top: -4px; }
 }

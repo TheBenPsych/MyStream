@@ -1,4 +1,4 @@
-/* Benflix web: the player. Classic bottom bar cut into chapters, white Skip pill, Up next card,
+/* Benflix web: the player. Glowfin P1 bar with chapter marks, white Skip pill, Up next card,
    audio + subtitles panel, ambient pause. Plays the file as it is when the browser can, otherwise
    Jellyfin converts it on the fly (HLS, played with hls.js). */
 "use strict";
@@ -94,16 +94,19 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <button class="skip hidden" id="pSkip"></button>
     <div class="upnext hidden" id="pNext"></div>
     <div class="eprow hidden" id="pEps"></div>
-    <div class="controls">
+    <div class="controls p1">
       <div class="chap" id="pChap"></div>
-      <div class="bar" id="pBar"><div class="segs" id="pSegs"></div><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
+      <div class="bar" id="pBar"><div class="track"><u id="pBuf"></u><b id="pDone"></b></div><span id="pTicks"></span><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
       <div class="times"><span id="pTime">0:00</span><span id="pEnds"></span></div>
-      <div class="row2">
+      <div class="row2 p1row">
+        <div class="p1l"><span class="chap2" id="pChap2"></span></div>
+        <div class="p1c">
         <button class="pbtn" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}</button>
         <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
         <button class="pbtn" id="pFw" title="Ahead 10 seconds (right arrow)">${I("fwd10")}</button>
         ${isEp ? `<button class="pbtn" id="pNx" title="Next episode (N)">${I("next")}</button>` : ""}
-        <span class="grow"></span>
+        </div>
+        <div class="p1r">
         <button class="pbtn lab" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}<em>Subtitles</em></button>
         <button class="pbtn lab" id="pAud" title="Audio: pick the language or sound track">${I("audio")}<em>Audio</em></button>
         ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
@@ -114,6 +117,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
           ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
           <button class="pbtn" id="pFull" title="Full screen (F)">${I("full")}</button>
         </span>
+        </div>
       </div>
     </div>
   </div>`;
@@ -235,21 +239,19 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
 
   // ---------- chapters bar ----------
   const segs = chapters.length > 1 && dur ? chapters.map((c, i) => ({ name: c.Name, start: c.StartPositionTicks / B.TICKS, end: i + 1 < chapters.length ? chapters[i + 1].StartPositionTicks / B.TICKS : dur })) : [{ name: "", start: 0, end: dur || 1 }];
-  $("#pSegs").innerHTML = segs.map((s) => `<i style="flex:${Math.max(0.001, s.end - s.start)}"><u></u><b></b></i>`).join("");
+  // Glowfin P1: one thin line with small white chapter marks (not gaps), like the approved player sheet
+  $("#pTicks").innerHTML = segs.slice(1).map((s) => `<span class="tick" style="left:${(s.start / (dur || 1)) * 100}%"></span>`).join("");
   const total = () => v.duration && isFinite(v.duration) ? Math.max(v.duration, dur) : dur || 1;
   const drawBar = () => {
     const t = v.currentTime, T = total();
     let buf = 0; try { buf = v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0; } catch (e) {}
-    $$("#pSegs i").forEach((el, i) => {
-      const s = segs[i], w = s.end - s.start || 1;
-      el.querySelector("b").style.width = Math.max(0, Math.min(100, ((t - s.start) / w) * 100)) + "%";
-      el.querySelector("u").style.width = Math.max(0, Math.min(100, ((buf - s.start) / w) * 100)) + "%";
-    });
-    $("#pKnob").style.left = (t / T) * 100 + "%";
+    $("#pDone").style.width = Math.max(0, Math.min(100, (t / T) * 100)) + "%";
+    $("#pBuf").style.width = Math.max(0, Math.min(100, (buf / T) * 100)) + "%";
+    $("#pKnob").style.left = Math.max(0, Math.min(100, (t / T) * 100)) + "%";
     $("#pTime").textContent = B.hms(t);
     $("#pEnds").textContent = `Ends at ${B.clock(new Date(Date.now() + ((T - t) / (v.playbackRate || 1)) * 1000))} · −${B.hms(Math.max(0, T - t))}`;
     const ch = segs.find((s) => t >= s.start && t < s.end);
-    $("#pChap").textContent = ch ? ch.name || "" : "";
+    $("#pChap").textContent = $("#pChap2").textContent = ch ? ch.name || "" : "";
   };
   const barTime = (e) => { const r = $("#pBar").getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * total(); };
   $("#pBar").onclick = (e) => { v.currentTime = barTime(e); poke(); };
