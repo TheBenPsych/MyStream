@@ -94,11 +94,15 @@ object FitRobot {
                     boxes += TextBox(words, vis, node)
                     val cutV = full.height - vis.height
                     val cutH = full.width - vis.width
-                    if (cutV > 3f) {
-                        val where = if (vis.top > full.top + 1f) "top" else "bottom"
+                    // Cut at the bottom of a list that keeps going down is normal; cut at the top never is
+                    val topCut = vis.top > full.top + 1f
+                    if (cutV > 3f && (topCut || !inScroller(node, SemanticsProperties.VerticalScrollAxisRange, startCut = false))) {
+                        val where = if (topCut) "top" else "bottom"
                         found += Finding("CUT", words, vis, "${cutV.toInt()}px of its $where is hidden")
                     }
-                    if (cutH > 3f && !inSidewaysRow(node, leftCut = vis.left > full.left + 1f)) {
+                    if (cutH > 3f &&
+                        !inScroller(node, SemanticsProperties.HorizontalScrollAxisRange, startCut = vis.left > full.left + 1f)
+                    ) {
                         val where = if (vis.left > full.left + 1f) "left" else "right"
                         found += Finding("CUT", words, vis, "${cutH.toInt()}px of its $where side is hidden")
                     }
@@ -134,17 +138,18 @@ object FitRobot {
         return found
     }
 
-    /** Text cut at the edge of a row that scrolls sideways (and has more in that direction) is normal */
-    private fun inSidewaysRow(
+    /** Text cut at the edge of a row or list that scrolls (and has more in that direction) is normal */
+    private fun inScroller(
         node: SemanticsNode,
-        leftCut: Boolean,
+        axis: androidx.compose.ui.semantics.SemanticsPropertyKey<androidx.compose.ui.semantics.ScrollAxisRange>,
+        startCut: Boolean,
     ): Boolean {
         var p = node.parent
         while (p != null) {
-            p.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange)?.let { range ->
+            p.config.getOrNull(axis)?.let { range ->
                 val value = range.value()
                 val max = range.maxValue()
-                return if (leftCut) value > 0f else value < max
+                return if (startCut) value > 0f else value < max
             }
             p = p.parent
         }
