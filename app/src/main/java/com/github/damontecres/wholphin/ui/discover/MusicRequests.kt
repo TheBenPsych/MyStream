@@ -513,7 +513,17 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
             if (d != null && d.genres.isNotEmpty()) add(SideList("genres", "Genres", heading = more))
             if (admin) add(SideList("playlist", "Import a playlist", heading = more))
         }
-    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    // Glowfin (M1): the Import tile on Music lands straight on Import a playlist
+    var picked by rememberSaveable {
+        mutableStateOf<String?>(
+            if (com.github.damontecres.wholphin.ui.music.MusicAskNav.importJump) {
+                com.github.damontecres.wholphin.ui.music.MusicAskNav.importJump = false
+                "playlist"
+            } else {
+                null
+            },
+        )
+    }
     val pickedKey =
         picked?.takeIf { p -> lists.any { it.key == p } } ?: lists.firstOrNull()?.key ?: ""
     var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }

@@ -70,8 +70,8 @@ object BenflixColors {
     val Games: Color get() = KidsLook.palette?.games ?: Color(0xFFFF6F91)
     val OnGames: Color get() = KidsLook.palette?.onGames ?: Color(0xFF210E12)
 
-    /** Music, the fifth door: soft violet with dark words */
-    val Music = Color(0xFFB69CFF)
+    /** Music: Glowfin's violet (M1, Nov 2026), with dark words on it */
+    val Music = Glowfin.Violet
     val OnMusic = Color(0xFF160F26)
 
     /** Books, the sixth door: lime with dark words */

@@ -299,12 +299,13 @@ fun MixCover(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .height(size * 0.3f)
-                    .background(BenflixColors.Music)
+                    // Glowfin (M1): the name strip is the logo's glow, violet to aqua, with white words
+                    .background(MixStrip)
                     .padding(horizontal = size * 0.07f),
         ) {
             Text(
                 text = name,
-                color = BenflixColors.OnMusic,
+                color = Color.White,
                 fontSize = BenflixType.small,
                 lineHeight = BenflixType.small,
                 fontWeight = FontWeight.ExtraBold,
@@ -315,31 +316,33 @@ fun MixCover(
     }
 }
 
-/** A colour pair for a mix with no covers yet: holidays get their own, the rest pick one by name */
+/** The mix name strip: Glowfin's glow, a little see-through so the covers show under it */
+private val MixStrip =
+    Brush.horizontalGradient(
+        0f to
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Violet
+                .copy(alpha = 0.92f),
+        0.6f to
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Blue
+                .copy(alpha = 0.92f),
+        1f to
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua
+                .copy(alpha = 0.92f),
+    )
+
+/** A colour pair for a mix with no covers yet (Glowfin: night blues and violets only, picked by name) */
 private fun mixTint(name: String): List<Color> {
     val tints =
         listOf(
-            listOf(Color(0xFF5B3FB8), Color(0xFFA78BFA)),
-            listOf(Color(0xFFB8323F), Color(0xFF2E7D4F)),
-            listOf(Color(0xFFC2410C), Color(0xFFF59E0B)),
-            listOf(Color(0xFF1E3A8A), Color(0xFF60A5FA)),
-            listOf(Color(0xFF0F766E), Color(0xFF5EEAD4)),
-            listOf(Color(0xFF9D174D), Color(0xFFF472B6)),
+            listOf(Color(0xFF3B2C6E), com.github.damontecres.wholphin.ui.theme.Glowfin.Violet),
+            listOf(Color(0xFF12305A), com.github.damontecres.wholphin.ui.theme.Glowfin.Blue),
+            listOf(Color(0xFF0E3B47), Color(0xFF2BB5C0)),
+            listOf(Color(0xFF2A1F5C), Color(0xFF6C6FE8)),
         )
-    val n = name.lowercase()
-    val pick =
-        when {
-            "christmas" in n -> 1
-            "halloween" in n || "fall" in n -> 2
-            "winter" in n -> 3
-            "summer" in n -> 4
-            "valentine" in n -> 5
-            else -> (n.hashCode() and 0x7fffffff) % tints.size
-        }
-    return tints[pick]
+    return tints[(name.lowercase().hashCode() and 0x7fffffff) % tints.size]
 }
 
-/** Liked songs: a violet square with a big heart */
+/** Liked songs: the glow (violet to aqua) with a big white heart */
 @Composable
 fun LikedCover(modifier: Modifier = Modifier) {
     Box(
@@ -347,7 +350,7 @@ fun LikedCover(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .clip(BenflixShapes.Card)
-                .background(Brush.linearGradient(listOf(Color(0xFF3B2C6E), BenflixColors.Music))),
+                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Glow),
     ) {
         Image(
             imageVector = BenflixHeartFilled,
@@ -386,20 +389,23 @@ fun ActionCover(
     }
 }
 
-/** Small violet bars bouncing, for the song that's playing now (instead of its number) */
+/**
+ * Glowfin (M1): four small bars bouncing, violet to aqua, for the song that's playing now (instead of its
+ * number). [color] tints them all one colour instead (Kids, or a coloured background).
+ */
 @Composable
 fun PlayingBars(
     playing: Boolean,
     modifier: Modifier = Modifier,
     size: Dp = 16.dp,
-    color: Color = BenflixColors.Music,
+    color: Color? = null,
 ) {
     // Speed check (Ben 2026-11-18): the bars used to be rebuilt and laid out again 60 times a second; now they're
     // only drawn, and when the music is paused nothing runs at all
     val heights =
         if (playing) {
             val t = rememberInfiniteTransition(label = "playingBars")
-            listOf(0, 180, 360).map { delay ->
+            listOf(0, 140, 280, 420).map { delay ->
                 t.animateFloat(
                     initialValue = 0.3f,
                     targetValue = 1f,
@@ -414,17 +420,18 @@ fun PlayingBars(
         } else {
             null
         }
+    val colors = if (color != null) List(BAR_COUNT) { color } else PlayingBarColors
     androidx.compose.foundation.Canvas(modifier.size(size)) {
-        val gap = size.toPx() * 0.12f
-        val barWidth = (this.size.width - gap * 2) / 3f
+        val gap = size.toPx() * 0.1f
+        val barWidth = (this.size.width - gap * (BAR_COUNT - 1)) / BAR_COUNT
         val corner =
             androidx.compose.ui.geometry
                 .CornerRadius(1.dp.toPx())
-        for (i in 0 until 3) {
+        for (i in 0 until BAR_COUNT) {
             val f = heights?.get(i)?.value ?: PAUSED_BARS[i]
             val h = this.size.height * f
             drawRoundRect(
-                color = color,
+                color = colors[i],
                 topLeft =
                     androidx.compose.ui.geometry
                         .Offset(i * (barWidth + gap), this.size.height - h),
@@ -437,7 +444,21 @@ fun PlayingBars(
     }
 }
 
-private val PAUSED_BARS = floatArrayOf(0.5f, 0.8f, 0.35f)
+private const val BAR_COUNT = 4
+private val PAUSED_BARS = floatArrayOf(0.5f, 0.85f, 0.4f, 0.65f)
+
+/** Violet, two steps of blue, aqua: the logo's glow across the four bars */
+private val PlayingBarColors =
+    listOf(
+        com.github.damontecres.wholphin.ui.theme.Glowfin.Violet,
+        androidx.compose.ui.graphics.lerp(
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Violet,
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Blue,
+            0.6f,
+        ),
+        com.github.damontecres.wholphin.ui.theme.Glowfin.Blue,
+        com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua,
+    )
 
 /** "3:45" */
 fun songLength(d: Duration?): String {
@@ -560,8 +581,11 @@ fun SongRow(
         ) {
             val nameColor =
                 when {
-                    isCurrent -> BenflixColors.Music
+                    // Glowfin (M1): the playing song's name is aqua
+                    isCurrent -> com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua
+
                     dimmed -> BenflixColors.Muted
+
                     else -> BenflixColors.Text
                 }
             if (withCover) {

@@ -231,6 +231,27 @@ class MusicNowPlayingViewModel
             }
         }
 
+        /** Glowfin (M1): Repeat on the player: Off, then the whole list, then this one song */
+        val repeat = MutableStateFlow(musicService.player.repeatMode)
+
+        fun cycleRepeat() {
+            val next =
+                when (player.repeatMode) {
+                    androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ALL
+                    androidx.media3.common.Player.REPEAT_MODE_ALL -> androidx.media3.common.Player.REPEAT_MODE_ONE
+                    else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+                }
+            player.repeatMode = next
+            repeat.value = next
+            com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
+                when (next) {
+                    androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat: all"
+                    androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat: this song"
+                    else -> "Repeat off"
+                },
+            )
+        }
+
         /** Songs like the playing one, from your music, slipped into what's coming (one after every 3 songs) */
         private fun smartShuffle() {
             val audio = musicService.state.value.currentAudio ?: return

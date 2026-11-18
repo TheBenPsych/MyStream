@@ -128,6 +128,13 @@ enum class BenflixIcon(
     BACK15("M4.5 12a7.5 7.5 0 1 0 2.2-5.3", "M4.5 4.5v4h4"),
     AHEAD30("M19.5 12a7.5 7.5 0 1 1-2.2-5.3", "M19.5 4.5v4h-4"),
     MOON("M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"),
+
+    // Glowfin listening buttons (M1): a speed dial for Speed, a numbered list for Chapters
+    SPEED("M4 14a8 8 0 1 1 16 0", "M12 14l3.5-4", "M7 18h10"),
+    CHAPTERS("M8.5 6h11M8.5 12h11M8.5 18h11", "M4.5 6h.01M4.5 12h.01M4.5 18h.01"),
+
+    // Music Repeat: two arrows chasing each other round a loop
+    REPEAT("M17 2.5l3 3-3 3", "M4 11.5v-1a5 5 0 0 1 5-5h11", "M7 21.5l-3-3 3-3", "M20 12.5v1a5 5 0 0 1-5 5H4"),
     ;
 
     /** Built once per icon */
@@ -140,6 +147,10 @@ enum class BenflixIcon(
                 viewportWidth = 24f,
                 viewportHeight = 24f,
             )
+        // Glowfin (Ben: icons sit exactly in the middle of their circles): each drawing is moved so its outline's
+        // middle is the middle of the 24 x 24 box
+        val (dx, dy) = IconCentreShift[name] ?: (0f to 0f)
+        builder.addGroup(translationX = dx, translationY = dy)
         paths.forEach { data ->
             builder.addPath(
                 pathData = addPathNodes(data),
@@ -150,9 +161,36 @@ enum class BenflixIcon(
                 strokeLineJoin = StrokeJoin.Round,
             )
         }
+        builder.clearGroup()
         builder.build()
     }
 }
+
+/**
+ * How far to move an icon so the middle of its outline is the middle of its box (measured from the drawings,
+ * in 24ths). Icons not listed are already centred.
+ */
+private val IconCentreShift: Map<String, Pair<Float, Float>> =
+    mapOf(
+        "TV" to (0f to -1f),
+        "PAD" to (0f to -0.25f),
+        "SEARCH" to (-0.5f to -0.5f),
+        "STATS" to (0f to -0.5f),
+        "FLAG" to (1.5f to -0.5f),
+        "PLAY" to (-1.25f to 0f),
+        "BELL" to (0f to -1.5f),
+        "THUMB" to (-0.26f to 0.04f),
+        "TRASH" to (0f to -0.25f),
+        "STAR" to (0f to 0.45f),
+        "PENCIL" to (0.5f to -0.5f),
+        "LIST" to (-0.25f to 0f),
+        "CALENDAR" to (0f to 0.5f),
+        "LOCK" to (0f to -0.25f),
+        "NOTE" to (0f to 0.5f),
+        "HEART" to (0f to -1.02f),
+        "WRENCH" to (-1.44f to -0.06f),
+        "MOON" to (-0.32f to 0.32f),
+    )
 
 /**
  * The play arrow for Play buttons: the same rounded triangle as [BenflixIcon.PLAY], filled in, so it
@@ -167,7 +205,8 @@ val BenflixPlayFilled: ImageVector by lazy {
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).addPath(
-            pathData = addPathNodes("M8 5.5v13l10.5-6.5z"),
+            // Centred in its box like [BenflixIcon.PLAY]
+            pathData = addPathNodes("M6.75 5.5v13l10.5-6.5z"),
             fill = SolidColor(Color.White),
             stroke = SolidColor(Color.White),
             strokeLineWidth = 2.2f,
@@ -204,7 +243,8 @@ val BenflixHeartFilled: ImageVector by lazy {
             viewportWidth = 24f,
             viewportHeight = 24f,
         ).addPath(
-            pathData = addPathNodes("M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"),
+            // Centred in its box like [BenflixIcon.HEART]
+            pathData = addPathNodes("M12 18.98s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 8.98c0 5.6-7 10-7 10z"),
             fill = SolidColor(Color.White),
             stroke = SolidColor(Color.White),
             strokeLineWidth = 2.2f,

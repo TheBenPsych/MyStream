@@ -15,7 +15,7 @@ function loadJson(k, d) { try { const v = JSON.parse(load(k)); return v == null 
 // ---------- icons (simple line icons) ----------
 const P = {
   film: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 12h4M3 16h4M17 8h4M17 12h4M17 16h4"/>',
-  tv: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  tv: '<rect x="3" y="3.5" width="18" height="13" rx="2"/><path d="M8 20.5h8M12 16.5v4"/>',
   live: '<circle cx="12" cy="12" r="2"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
   // Navigation redesign: the taller Xbox-style controller, with a gap around the stick
   pad: '<path d="M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"/><path d="M7 9.4v4M5 11.4h4M12 8.3h.01M16.6 10h.01M18.2 12.6h.01"/>',
@@ -23,7 +23,7 @@ const P = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   down: '<path d="m6 9 6 6 6-6"/>', up: '<path d="m18 15-6-6-6 6"/>',
   left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>',
-  play: '<path d="M7 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/>', stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/>', pause: '<path d="M8 5v14M16 5v14" stroke-width="3.2"/>',
+  play: '<path d="M6 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/>', stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/>', pause: '<path d="M8 5v14M16 5v14" stroke-width="3.2"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 5 5 9-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9L12 3Z"/>',
   thumb: '<path d="M7 10v11M7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/>',
@@ -861,11 +861,13 @@ B.PAGE_TABS = {
   movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
   shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
   anime: [["For you", "#/anime"], ["Shows", "#/grid/shows?anime=only&title=Anime%20shows"], ["Movies", "#/grid/movies?anime=only&title=Anime%20movies"], ["Genres and tags", "#/browse/anime/genres"]],
+  // Glowfin Music (M1)
+  music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {
   hash = hash || location.hash;
-  for (const page of ["anime", "movies", "shows"]) {
+  for (const page of ["anime", "movies", "shows", "music"]) {
     const list = B.PAGE_TABS[page];
     const on = list.findIndex(([, link]) => hash === link || (link !== "#/" + page && hash.split("&")[0] === link.split("&")[0]));
     if (on >= 0) return { page, on };

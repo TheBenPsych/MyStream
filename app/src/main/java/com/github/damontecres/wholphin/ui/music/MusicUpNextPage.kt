@@ -245,7 +245,7 @@ private fun QueueRow(
                 Column(Modifier.weight(1f)) {
                     Text(
                         audio.title.orEmpty(),
-                        color = if (isCurrent) BenflixColors.Music else BenflixColors.Text,
+                        color = if (isCurrent) com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua else BenflixColors.Text,
                         fontSize = BenflixType.body,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,

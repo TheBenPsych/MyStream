@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -150,10 +149,10 @@ fun MusicMiniBar(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                // Music redesign 3: the violet mini player above the Music tabs
-                containerColor = Color(0xFF2A2142),
+                // Glowfin (M1): the raised night-blue mini player above the phone's bar
+                containerColor = com.github.damontecres.wholphin.ui.theme.Glowfin.Raise,
                 contentColor = BenflixColors.Text,
-                focusedContainerColor = Color(0xFF362B55),
+                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.Glowfin.FocusRow,
                 focusedContentColor = BenflixColors.Text,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),

@@ -182,6 +182,12 @@ class MusicDoorViewModel
             }
         }
 
+        override fun onCleared() {
+            // Leaving Music closes Ask for music, so the tabs show next time
+            MusicPlaceNav.ask = null
+            super.onCleared()
+        }
+
         fun retry() {
             loadedAt = 0L
             _state.update { MusicDoorState(greeting = it.greeting) }

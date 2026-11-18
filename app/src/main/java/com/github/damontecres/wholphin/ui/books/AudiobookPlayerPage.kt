@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.music.MusicButton
+import com.github.damontecres.wholphin.ui.music.RoundWordButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -206,26 +207,42 @@ private fun PlayerInfo(
         color = BenflixColors.Books,
     )
     n.problem?.let { Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small) }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        MusicButton(label = "15", icon = BenflixIcon.BACK15, onClick = svc::back, big = true)
-        MusicButton(
-            label = null,
-            icon = if (n.playing) BenflixIcon.PAUSE else null,
-            filledPlay = !n.playing,
-            primary = true,
-            big = true,
+    // Glowfin listening buttons: round, each with its word under it, every icon drawn and centred in its circle
+    var chaptersOpen by remember { mutableStateOf(false) }
+    if (chaptersOpen) {
+        ChoiceDialog(
+            title = "Chapters",
+            choices = n.chapters.mapIndexed { i, c -> c.title.ifBlank { "Chapter ${i + 1}" } },
+            picked = n.chapter,
+            onDismiss = { chaptersOpen = false },
+            onPick = {
+                chaptersOpen = false
+                svc.chapter(it)
+            },
+        )
+    }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        RoundWordButton("Back 15", BenflixIcon.BACK15, onClick = svc::back, size = 52.dp)
+        RoundWordButton(
+            if (n.playing) "Pause" else "Play",
+            if (n.playing) BenflixIcon.PAUSE else BenflixIcon.PLAY,
             onClick = svc::playPause,
+            size = 52.dp,
             modifier = Modifier.focusRequester(playFocus),
         )
-        MusicButton(label = "30", icon = BenflixIcon.AHEAD30, onClick = svc::ahead, big = true)
-    }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        MusicButton("Speed ${speedLabel(n.speed)}", null, onClick = onSpeed)
-        MusicButton(sleepNow(n), BenflixIcon.MOON, onClick = onSleep)
-        MusicButton("Stop", BenflixIcon.STOP, onClick = {
+        RoundWordButton("Ahead 30", BenflixIcon.AHEAD30, onClick = svc::ahead, size = 52.dp)
+        RoundWordButton("Speed ${speedLabel(n.speed)}", BenflixIcon.SPEED, onClick = onSpeed, size = 52.dp, lit = n.speed != 1f)
+        RoundWordButton(sleepNow(n), BenflixIcon.MOON, onClick = onSleep, size = 52.dp, lit = n.sleepAt != null || n.sleepEndOfChapter)
+        if (n.chapters.isNotEmpty()) {
+            RoundWordButton("Chapters", BenflixIcon.CHAPTERS, onClick = { chaptersOpen = true }, size = 52.dp)
+        }
+        RoundWordButton("Stop", BenflixIcon.STOP, onClick = {
             svc.stopSoon()
             viewModel.navigationManager.goBack()
-        })
+        }, size = 52.dp)
     }
 }
 

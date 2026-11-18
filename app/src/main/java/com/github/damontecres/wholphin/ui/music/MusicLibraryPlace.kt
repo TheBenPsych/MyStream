@@ -273,17 +273,24 @@ class MusicLibraryViewModel
 
 private val LIBRARY_SORTS = listOf("Recently played", "Recently added", "A to Z", "Made by")
 
+/**
+ * Your library. Glowfin (M1): it's what the Albums, Artists and Playlists tabs show ([tab] is "albums",
+ * "artists" or "playlists"); Playlists keeps New playlist, Import and the Recently played, Being found and
+ * Downloaded chips. "all" is the old everything-in-one list.
+ */
 @Composable
 fun MusicLibraryPlace(
     wide: Boolean,
     modifier: Modifier = Modifier,
+    tab: String = "all",
     viewModel: MusicLibraryViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) { viewModel.load() }
     val state by viewModel.state.collectAsState()
     val me by viewModel.musicMe.state.collectAsState()
     val isTv = rememberIsTv()
-    var chip by rememberSaveable { mutableStateOf("all") }
+    var chip by rememberSaveable(tab) { mutableStateOf(tab) }
+    val playlistsTab = tab == "all" || tab == "playlists"
     var sort by rememberSaveable { mutableIntStateOf(0) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var naming by remember { mutableStateOf(false) }
@@ -321,44 +328,58 @@ fun MusicLibraryPlace(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth().padding(start = side, end = 8.dp, top = 8.dp),
         ) {
-            Text(
-                "Your library",
-                color = BenflixColors.Text,
-                fontSize = BenflixType.pageTitle,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
-            MusicButton(if (wide) "New playlist" else null, BenflixIcon.PLUS, onClick = { naming = true })
-            MusicButton(
-                if (wide) "Import" else null,
-                BenflixIcon.DOWNLOAD,
-                onClick = { MusicPlaceNav.frame?.pick(MUSIC_ASK) },
-            )
+            if (tab == "all") {
+                Text(
+                    "Your library",
+                    color = BenflixColors.Text,
+                    fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                    fontSize = BenflixType.pageTitle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                // (the tab above already names the page)
+                Box(Modifier.weight(1f))
+            }
+            if (playlistsTab) {
+                MusicButton(if (wide) "New playlist" else null, BenflixIcon.PLUS, onClick = { naming = true })
+                MusicButton(
+                    if (wide) "Import" else null,
+                    BenflixIcon.DOWNLOAD,
+                    onClick = { MusicPlaceNav.openAsk(import = true) },
+                )
+            }
             MusicButton(null, if (grid) BenflixIcon.LIST else BenflixIcon.IMAGE, onClick = { grid = !grid })
         }
         val chips =
             buildList {
-                add("playlists" to "Playlists")
-                add("albums" to "Albums")
-                add("artists" to "Artists")
-                add("recent" to "Recently played")
-                if (state.beingFound.isNotEmpty()) add("found" to "Being found")
-                if (!isTv) add("downloaded" to "Downloaded")
+                if (tab == "all") {
+                    add("playlists" to "Playlists")
+                    add("albums" to "Albums")
+                    add("artists" to "Artists")
+                }
+                if (playlistsTab) {
+                    add("recent" to "Recently played")
+                    if (state.beingFound.isNotEmpty()) add("found" to "Being found")
+                    if (!isTv) add("downloaded" to "Downloaded")
+                }
             }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(start = side, end = 8.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-        ) {
-            items(chips, key = { it.first }) { (key, label) ->
-                DoorChip(
-                    label = label,
-                    door = BenflixDoor.MUSIC,
-                    selected = chip == key,
-                    // Picking the chip you're on goes back to everything
-                    onClick = { chip = if (chip == key) "all" else key },
-                )
+        if (chips.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = side, end = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            ) {
+                items(chips, key = { it.first }) { (key, label) ->
+                    DoorChip(
+                        label = label,
+                        door = BenflixDoor.MUSIC,
+                        selected = chip == key,
+                        // Picking the chip you're on goes back to the whole tab
+                        onClick = { chip = if (chip == key) tab else key },
+                    )
+                }
             }
         }
         if (chip != "recent" && chip != "found" && chip != "downloaded") {
@@ -396,7 +417,7 @@ fun MusicLibraryPlace(
                             line = p.words,
                             cover = { ActionCover(p.name, BenflixIcon.DOWNLOAD, Modifier.fillMaxSize()) },
                             pinned = false,
-                            onClick = { MusicPlaceNav.frame?.pick(MUSIC_ASK) },
+                            onClick = { MusicPlaceNav.openAsk() },
                             onLongClick = null,
                             modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
                         )
@@ -589,7 +610,7 @@ private fun RecentlyPlayedList(
                         }
                     },
                     pinned = false,
-                    onClick = { if (e != null) onOpen(e) else MusicPlaceNav.frame?.pick(MUSIC_SEARCH) },
+                    onClick = { if (e != null) onOpen(e) else MusicPlaceNav.openAsk() },
                     onLongClick = null,
                     modifier = mod,
                 )
@@ -739,7 +760,7 @@ fun openTile(
         is MusicTile.Mix -> nav.navigateTo(Destination.MusicList("mix", tile.mix.key, tile.mix.name))
         is MusicTile.Item -> nav.navigateTo(tile.item.destination())
         is MusicTile.Liked -> nav.navigateTo(Destination.MusicList("liked", title = "Liked songs"))
-        MusicTile.Ask -> MusicPlaceNav.frame?.pick(MUSIC_ASK)
+        MusicTile.Ask -> MusicPlaceNav.openAsk()
         is MusicTile.SeeAll -> nav.navigateTo(Destination.MusicList(tile.kind, title = tile.title))
         is MusicTile.Browse -> nav.navigateTo(Destination.MusicList("themes", tile.group, tile.title))
         MusicTile.AllSongs -> nav.navigateTo(Destination.MusicList("songs", title = "All songs"))

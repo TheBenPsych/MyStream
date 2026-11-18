@@ -10,7 +10,7 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // Server isn't a door: its menu (Redesign 2, approved sv2-glance) uses a white pill
-  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#B69CFF", books: "#B9E36A", server: "#F1F2F5" };
+  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#A55BE0", books: "#B9E36A", server: "#F1F2F5" };
   const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#141C05", server: "#0B0C10" };
   const ICON = {
     home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
@@ -108,17 +108,13 @@
       const on = i === 0 ? !anyOn : !!(isOn && isOn());
       const jump = link.startsWith("jump:");
       return `<a class="${on ? "on" : ""}" href="${jump ? "#" : esc(link)}" ${jump ? `data-jump="${esc(link.slice(5))}"` : ""}>${I(icon)}<span>${esc(label)}</span>${count ? `<small>${esc(count)}</small>` : ""}</a>`;
-    }).join("")}${B.railExtra ? B.railExtra(door) : ""}</nav>`;
+    }).join("")}</nav>`;
   };
 
   // Navigation redesign: a door's places live in its panel off the rail now (js/nav.js), so this menu stays only on
-  // the Server page (it keeps its own menu, like the TV) and, in Music, just the Your library list under it.
+  // the Server page (it keeps its own menu, like the TV). Music has its tabs along the top (Glowfin M1).
   B.doorPlaces = (door) => (menus()[door] || []).filter(Boolean);
-  const libOnly = (door) => {
-    const extra = B.railExtra ? B.railExtra(door) : "";
-    return extra ? `<nav class="drail libonly" data-door="${esc(door)}" aria-label="Your library" style="--door:${COLORS[door]};--ondoor:${ON[door]}">${extra}</nav>` : "";
-  };
-  const wanted = (door) => (door === "server" ? html(door) : door === "music" ? libOnly(door) : "");
+  const wanted = (door) => (door === "server" ? html(door) : "");
 
   // A place that's a row on the door's page (Live TV, Games): go to the door, then scroll to that row
   B.doorJump = (door, label, tries) => {
