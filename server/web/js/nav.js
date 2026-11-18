@@ -76,7 +76,13 @@
   };
 
   // ---------- the rail ----------
-  let rail, panel, bar, openDoor = null, reqCount = 0;
+  let rail, panel, bar, openDoor = null, reqCount = 0, nowSong = null;
+  // music.js tells the menu what's playing ({ name, artist, art, playing }, or null when nothing is)
+  B.railNow = (n) => {
+    const same = JSON.stringify(n || null) === JSON.stringify(nowSong);
+    nowSong = n || null;
+    if (!same && rail) paint();
+  };
   const railHtml = () => {
     const kids = !!(B.me && B.me.kids);
     const spot = spotOf(location.hash);
@@ -84,7 +90,12 @@
     // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests, then your
     // picture at the bottom (Ben 2026-11-18: it opens the Me page, where Settings lives, so no second Settings
     // spot). Kids (K1, ui-17): Home, Movies, Shows and Games, then the picture.
+    // Ben 2026-11-18 (approved music-reach-1): while a song plays, its cover sits right under the logo (Now playing)
+    const now = nowSong && !kids
+      ? `<button type="button" class="rl-i rl-now ${nowSong.playing ? "playing" : ""}" data-k="now" title="Now playing: ${esc(nowSong.name)}"><span class="rl-cov" style="background-image:url('${esc(nowSong.art || "")}')"><i></i><i></i><i></i><i></i></span><span class="rl-t"><b>${esc(nowSong.name)}</b><small>${esc(nowSong.artist || "Now playing")}</small></span></button>`
+      : "";
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
+      ${now}
       ${kids ? "" : item("search", "search", "Search")}
       ${item("home", "home", "Home")}
       ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
@@ -160,6 +171,13 @@
     if (d) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); landOnPage(e.detail === 0); return; }
     const k = e.target.closest("[data-k]");
     if (!k) return;
+    if (k.dataset.k === "now") {
+      e.preventDefault();
+      closePanel();
+      tuck();
+      if (B.music && B.music.openNow) B.music.openNow();
+      return;
+    }
     if (k.dataset.k === "me") {
       // Ben 2026-11-18: your picture tucks the menu away and lands on the Me page's first tile (My watching),
       // with the mouse too. The menu stays tucked until the pointer leaves it.

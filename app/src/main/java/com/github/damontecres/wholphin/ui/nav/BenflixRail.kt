@@ -441,12 +441,13 @@ fun BenflixRail(
             androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides (quiet && !model.alwaysOpen)) {
                 // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(3.dp * scale),
+                    // Ben 2026-11-18 (approved music-reach-1): squeezed so your picture fits on a TV screen again
+                    verticalArrangement = Arrangement.spacedBy(1.dp * scale),
                     modifier =
                         Modifier
                             .verticalScroll(rememberScrollState())
                             .heightIn(min = maxHeight)
-                            .padding(horizontal = 10.dp * scale, vertical = 14.dp * scale)
+                            .padding(horizontal = 14.dp * scale, vertical = 8.dp * scale)
                             .onFocusChanged {
                                 val came = it.hasFocus && !railFocused
                                 railFocused = it.hasFocus
@@ -504,18 +505,26 @@ fun BenflixRail(
                         modifier =
                             Modifier
                                 .height(ITEM * scale)
-                                .padding(start = 9.dp * scale)
+                                .padding(start = 4.dp * scale)
                                 .focusProperties { canFocus = false }
                                 .clickable(onClickLabel = "Home", onClick = model.onHome),
                     ) {
-                        BenflixMark(size = 30.dp * scale)
+                        BenflixMark(size = 26.dp * scale)
                         if (open) {
                             Spacer(Modifier.width(12.dp))
                             com.github.damontecres.wholphin.ui.components
                                 .GlowfinWord(fontSize = 19.sp * scale)
                         }
                     }
-                    Spacer(Modifier.height(4.dp * scale))
+                    Spacer(Modifier.height(2.dp * scale))
+                    // Ben 2026-11-18 (approved music-reach-1): while music or an audiobook plays, its cover sits
+                    // right under the logo; OK opens Now playing (or the audiobook player)
+                    NowPlayingRailButton(
+                        open = open,
+                        scale = scale,
+                        destination = model.destination,
+                        onGo = { go -> leaveFor(go) },
+                    )
                     // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests,
                     // then your picture at the bottom (it opens the Me page, where Settings lives)
                     if (model.showSearch) {
@@ -702,8 +711,8 @@ private fun UpdateRailButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                // Closed: the ring sits exactly in the middle ((42 - 28) / 2 = 7 each side)
-                modifier = Modifier.fillMaxSize().padding(start = 7.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+                // Closed: the ring sits exactly in the middle ((34 - 28) / 2 = 3 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 3.dp * scale, end = if (open) 12.dp * scale else 0.dp),
             ) {
                 val tint = if (focused) Color.White else Glowfin.Aqua
                 Box(
@@ -786,8 +795,8 @@ private fun RailButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                // Closed: the icon sits exactly in the middle of the round glow ((42 - 22) / 2 = 10 each side)
-                modifier = Modifier.fillMaxSize().padding(start = 10.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+                // Closed: the icon sits exactly in the middle of the round glow ((34 - 22) / 2 = 6 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 6.dp * scale, end = if (open) 12.dp * scale else 0.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
                     GlowfinIconImage(
@@ -892,8 +901,8 @@ private fun ProfileRailButton(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            // Closed: your picture sits exactly in the middle of the round glow ((42 - 28) / 2 = 7 each side)
-            modifier = Modifier.fillMaxSize().padding(start = 7.dp * scale, end = if (open) 10.dp * scale else 0.dp),
+            // Closed: your picture sits exactly in the middle of the round glow ((34 - 28) / 2 = 3 each side)
+            modifier = Modifier.fillMaxSize().padding(start = 3.dp * scale, end = if (open) 10.dp * scale else 0.dp),
         ) {
             Box {
                 UserIconCardImage(
@@ -1081,6 +1090,168 @@ private fun RailTip(
     }
 }
 
+/**
+ * Ben 2026-11-18 (approved music-reach-1): the Now playing spot right under the logo, only while music or an
+ * audiobook is on. Closed: the cover with small violet bars moving on it. Open: the song (or book), the
+ * artist (or author) and a thin line for how far through it is. OK opens Now playing (or the audiobook player).
+ */
+@Composable
+private fun NowPlayingRailButton(
+    open: Boolean,
+    scale: Float,
+    destination: Destination,
+    onGo: (() -> Unit) -> Unit,
+    music: com.github.damontecres.wholphin.ui.music.MusicPillViewModel =
+        androidx.hilt.lifecycle.viewmodel.compose
+            .hiltViewModel(),
+    books: com.github.damontecres.wholphin.ui.books.AudiobookViewModel =
+        androidx.hilt.lifecycle.viewmodel.compose
+            .hiltViewModel(),
+) {
+    val song by music.musicService.state.collectAsState()
+    val book by books.audiobooks.now.collectAsState()
+    val audio = song.currentAudio?.takeIf { song.queueSize > 0 }
+    val songPlaying = audio != null && song.status == com.github.damontecres.wholphin.services.NowPlayingStatus.PLAYING
+    val b = book
+    // Music first, unless only the audiobook is actually playing
+    val showBook = b != null && (audio == null || (b.playing && !songPlaying))
+    if (audio == null && !showBook) return
+    val playing = if (showBook) b!!.playing else songPlaying
+    val title = if (showBook) b!!.name else audio!!.title.orEmpty()
+    val line = if (showBook) b!!.author else audio!!.artistNames.orEmpty()
+    val on = if (showBook) destination is Destination.AudiobookPlayer else destination is Destination.NowPlaying
+    var progress by remember { mutableFloatStateOf(0f) }
+    // Only while the menu is open (nobody sees the line when it's tucked away), so weak TVs do no extra work
+    LaunchedEffect(open, showBook, audio?.key, b?.id) {
+        while (open) {
+            progress =
+                if (showBook) {
+                    val n = books.audiobooks.now.value
+                    if (n != null && n.total > 0) (n.position / n.total).toFloat().coerceIn(0f, 1f) else 0f
+                } else {
+                    val p = music.musicService.player
+                    val d = p.duration.takeIf { it > 0 } ?: audio?.runtime?.inWholeMilliseconds ?: 0L
+                    if (d > 0) (p.currentPosition.toFloat() / d).coerceIn(0f, 1f) else 0f
+                }
+            delay(NOW_TICK_MS)
+        }
+    }
+    val shape = RoundedCornerShape(percent = 50)
+    val quiet = LocalRailQuiet.current
+    var hasFocus by remember { mutableStateOf(false) }
+    val focused = hasFocus && !quiet
+    Surface(
+        onClick = { onGo { if (showBook) books.open() else music.open() } },
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = Color.White,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier =
+            Modifier
+                .padding(bottom = 3.dp * scale)
+                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
+                .height(ITEM * scale)
+                .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
+                .onFocusChanged { hasFocus = it.isFocused },
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // Closed: the cover sits exactly in the middle ((34 - 28) / 2 = 3 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 3.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+            ) {
+                val coverShape = RoundedCornerShape(6.dp * scale)
+                Box(
+                    contentAlignment = Alignment.BottomCenter,
+                    modifier =
+                        Modifier
+                            .size(PICTURE * scale)
+                            .border(
+                                1.5.dp,
+                                if (focused) {
+                                    Color.White
+                                } else if (on) {
+                                    BenflixColors.Shows
+                                } else {
+                                    Glowfin.Violet
+                                },
+                                coverShape,
+                            ).clip(coverShape),
+                ) {
+                    if (showBook) {
+                        com.github.damontecres.wholphin.ui.books
+                            .BookCoverImage(b!!.cover, b.name, Modifier.fillMaxSize(), audio = true)
+                    } else {
+                        com.github.damontecres.wholphin.ui.music
+                            .CoverImage(audio!!.imageUrl, Modifier.fillMaxSize(), shape = coverShape)
+                    }
+                    // The little moving bars, on a soft dark strip so they show on any cover
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(12.dp * scale)
+                                .background(Glowfin.Ink.copy(alpha = .55f)),
+                    ) {
+                        com.github.damontecres.wholphin.ui.music.SmallTowerLine(
+                            1f,
+                            playing,
+                            Modifier.size(width = 20.dp * scale, height = 9.dp * scale),
+                            towers = 4,
+                        )
+                    }
+                }
+                if (open) {
+                    Spacer(Modifier.width(12.dp * scale))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            color = if (focused) Color.White else BenflixColors.Text,
+                            fontSize = 13.sp * scale,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (line.isNotBlank()) {
+                            Text(
+                                text = line,
+                                color = if (focused) Color.White else Glowfin.Dim,
+                                fontSize = 10.sp * scale,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Box(
+                            Modifier
+                                .padding(top = 2.dp * scale)
+                                .fillMaxWidth()
+                                .height(2.dp * scale)
+                                .background(Glowfin.Line, RoundedCornerShape(50)),
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(progress)
+                                    .background(Glowfin.GlowAcross, RoundedCornerShape(50)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** How wide the tucked rail is (the page starts right of it) */
 fun railTuckedWidth(big: Boolean): Dp = RAIL_TUCKED * (if (big) BIG_SCALE else 1f)
 
@@ -1089,12 +1260,15 @@ fun railOpenWidth(big: Boolean): Dp = RAIL_OPEN * (if (big) BIG_SCALE else 1f)
 
 private val RAIL_TUCKED = 66.dp
 private val RAIL_OPEN = 228.dp
-private val ITEM = 42.dp
+
+// Ben 2026-11-18 (approved music-reach-1): 42 -> 34 so every spot and your picture fit on a TV screen
+private val ITEM = 34.dp
 private val ICON = 22.dp
 private val PICTURE = 28.dp
 private val PANEL_WIDTH = 300.dp
 private const val BIG_SCALE = 1.2f
 private const val RAIL_MS = 170
+private const val NOW_TICK_MS = 1000L
 private const val PANEL_MS = 200
 private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
