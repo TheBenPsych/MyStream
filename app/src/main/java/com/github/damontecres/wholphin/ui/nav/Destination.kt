@@ -260,7 +260,7 @@ sealed class Destination(
         val title: String,
     ) : Destination(false)
 
-    /** A TV guide of Benflix channels made from your library */
+    /** Live TV: the free live channels and their guide */
     @Serializable
     data object Channels : Destination(false)
 

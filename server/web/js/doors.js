@@ -10,7 +10,7 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // Server isn't a door: its menu (Redesign 2, approved sv2-glance) uses a white pill
-  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3DD6C6", games: "#FF6F91", music: "#B69CFF", books: "#B9E36A", server: "#F1F2F5" };
+  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#B69CFF", books: "#B9E36A", server: "#F1F2F5" };
   const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#141C05", server: "#0B0C10" };
   const ICON = {
     home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',

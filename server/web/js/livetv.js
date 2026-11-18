@@ -70,20 +70,28 @@ B.route(/^\/live$/, async (m, nav) => {
   const describe = (c) => {
     if (!$("#liveInfo")) return; // already left the page
     const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
-    $("#liveInfo").innerHTML = `<div class="meta">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} · ${esc(c._type)}</div>
+    $("#liveInfo").innerHTML = `<div class="meta">${p ? `<span class="livep">● LIVE</span>` : ""}${esc(c.ChannelNumber || "")} · ${esc(c.Name)} · ${esc(c._type)}</div>
       <div class="t">${esc(p ? p.Name : c.Name)}</div>
-      ${p ? `<div class="meta"><span>${B.clock(new Date(p.StartDate))} – ${B.clock(new Date(p.EndDate))}</span><span>${minsLeft(p)} min left</span>${next ? `<span>Next: ${esc(next.Name)} at ${B.clock(new Date(next.StartDate))}</span>` : ""}</div>` : ""}
+      ${p ? `<div class="meta"><span>${B.clock(new Date(p.StartDate))} – ${B.clock(new Date(p.EndDate))}</span><span>${minsLeft(p)} min left</span>${next ? `<span>Next: ${esc(next.Name)} at ${B.clock(new Date(next.StartDate))}</span>` : ""}</div>
+      <div class="livebar"><i style="width:${Math.round(Math.max(0, Math.min(1, (Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate)))) * 100)}%"></i></div>` : ""}
       <div class="ov">${esc((p && p.Overview) || c.Overview || "Live channel")}</div>`;
   };
   // the guide: 2 hours across, starting now
   const start = new Date(); start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
   const span = 2 * 3600000, t0 = start.getTime();
   const pctX = (t) => Math.max(0, Math.min(100, ((t - t0) / span) * 100));
-  const guideRows = (chs) => chs.map((c) => `<div class="grow-ch"><a class="ch" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="num">${esc(c.ChannelNumber || "")}</span>${logo(c, 72) ? `<img src="${logo(c, 72)}" alt="" loading="lazy">` : ""}<span class="nm">${esc(c.Name)}</span>${prefs.favourites.includes(c.Name) ? `<span class="star">★</span>` : ""}</a>
+  // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+  const narrow = window.matchMedia("(max-width: 600px)").matches;
+  const nowNextRows = (chs) => chs.map((c) => {
+    const p = nowOn(c), n = c._progs.find((x) => new Date(x.StartDate) > Date.now());
+    return `<a class="nnrow" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="nnch">${logo(c, 60) ? `<img src="${logo(c, 60)}" alt="" loading="lazy">` : ""}<span class="num">${prefs.favourites.includes(c.Name) ? `<span class="star">★</span> ` : ""}${esc(c.ChannelNumber || "")}</span></span><span class="nnnow">${esc(p ? p.Name : c.Name)}</span><span class="nnnext">${esc(n ? n.Name : "")}</span></a>`;
+  }).join("");
+  const nowLeft = () => pctX(Date.now());
+  const guideRows = (chs) => narrow ? nowNextRows(chs) : chs.map((c) => `<div class="grow-ch"><a class="ch" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="num">${esc(c.ChannelNumber || "")}</span>${logo(c, 72) ? `<img src="${logo(c, 72)}" alt="" loading="lazy">` : ""}<span class="nm">${esc(c.Name)}</span>${prefs.favourites.includes(c.Name) ? `<span class="star">★</span>` : ""}</a>
     <div class="progs">${(c._progs.length ? c._progs : [{ Name: "No guide for this channel", StartDate: new Date(t0).toISOString(), EndDate: new Date(t0 + span).toISOString(), _none: true }]).filter((p) => new Date(p.EndDate) > t0 && new Date(p.StartDate) < t0 + span).map((p) => {
       const a = pctX(new Date(p.StartDate)), b = pctX(new Date(p.EndDate)), on = new Date(p.StartDate) <= Date.now() && new Date(p.EndDate) > Date.now();
-      return `<button class="prog ${on ? "now" : ""}" style="left:${a}%;width:calc(${b - a}% - 4px)" data-ch="${esc(c.Id)}" data-p="${esc(p.Id || "")}">${esc(p.Name)}<small>${esc(B.clock(new Date(p.StartDate)))}</small></button>`;
-    }).join("")}</div></div>`).join("");
+      return `<button class="prog ${on ? "now" : ""}" style="left:${a}%;width:calc(${b - a}% - 4px)" data-ch="${esc(c.Id)}" data-p="${esc(p.Id || "")}">${esc(p.Name)}<small>${esc(B.clock(new Date(p.StartDate)))}</small>${on ? `<i class="pbar" style="width:${Math.round(((Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate))) * 100)}%"></i>` : ""}</button>`;
+    }).join("")}<i class="nowl" style="left:${nowLeft()}%"></i></div></div>`).join("");
   const types = [...new Set(list.map((c) => c._type))];
   $("#rows").innerHTML = [
     B.row("Recently watched", recent.map(chCard)),
@@ -91,7 +99,7 @@ B.route(/^\/live$/, async (m, nav) => {
       <div class="gridbar" style="--accent:${DOORS.live.color};top:var(--bar)"><input class="search-in" id="chSearch" placeholder="Channel name or number">
       ${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
       <button class="chip" id="editTypes">Edit types</button></div>
-      <div class="guide"><div class="ghead"><span></span><div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
+      <div class="guide${narrow ? " nn" : ""}"><div class="ghead">${narrow ? `<span>Channel</span><span>Now</span><span>Next</span>` : `<span></span>`}<div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
   ].join("");
   describe(favs[0] || recent[0] || shown[0] || list[0]);
   let timer;

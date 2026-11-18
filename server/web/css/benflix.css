@@ -2129,3 +2129,37 @@ svg.gi path.gd { stroke-width: 3.6; }
   .rqt10 { --t10w: 52px; }
   .rqt10 .poster { width: 104px; }
 }
+
+/* ---------- Glowfin Live TV (L1, Ben 2026-11-18) ----------
+   Top area with the aqua LIVE pill, Recently watched tiles, then the 2-hour guide with favourites first.
+   Real live channels only. Shows on now sit on the raised colour, later ones on the deep one; the one you're
+   on turns white with the aqua ring. An aqua line marks now. Upright phones get a Now / Next list. */
+.livep { display: inline-flex; align-items: center; background: var(--aqua); color: #06121a; font-weight: 800; font-size: 12px; letter-spacing: .06em; border-radius: 99px; padding: 1px 9px; margin-right: 4px; }
+#liveInfo .t { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.livebar { width: 220px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .14); overflow: hidden; margin-top: 8px; }
+.livebar i { display: block; height: 100%; background: var(--glow); }
+.chcard .im { background: var(--raise); }
+.chcard .im img { background: #fff; border-radius: 6px; padding: 4px; max-width: 46%; max-height: 46%; }
+.chcard:hover .im, .chcard:focus-visible .im { box-shadow: var(--glowring); }
+.gridbar .chip { background: var(--raise); border-color: var(--raise); color: var(--ink2); }
+.gridbar .chip.on { background: var(--glow); border-color: transparent; color: #fff; }
+.gridbar .chip:hover, .gridbar .chip:focus-visible { box-shadow: var(--glowring); color: var(--ink); }
+.guide .grow-ch { border-top: 0; }
+.guide .ch { border-radius: 8px; padding-left: 6px; }
+.guide .ch:hover, .guide .ch:focus-visible { background: var(--pg4); box-shadow: inset 0 0 0 2px var(--aqua); }
+.guide .ch img { background: #fff; padding: 2px; }
+.guide .ch .star, .nnrow .star { color: var(--aqua); }
+.guide .prog { background: var(--deep); color: var(--ink2); border-radius: 6px; }
+.guide .prog.now { background: var(--raise); color: var(--ink); }
+.guide .prog:hover, .guide .prog:focus-visible { background: #fff; color: var(--dark); box-shadow: 0 0 0 2px var(--aqua); outline: none; }
+.guide .prog:hover small, .guide .prog:focus-visible small { color: #3a3f5c; }
+.guide .prog .pbar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--glow); }
+.guide .nowl { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--aqua); box-shadow: 0 0 8px var(--aqua); pointer-events: none; }
+.guide.nn .ghead { display: grid; grid-template-columns: 110px minmax(0, 1.3fr) minmax(0, 1fr); }
+.nnrow { display: grid; grid-template-columns: 110px minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; gap: 0 8px; min-height: 52px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.nnrow:hover, .nnrow:focus-visible { background: var(--pg4); box-shadow: inset 0 0 0 2px var(--aqua); outline: none; }
+.nnrow .nnch { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.nnrow img { width: 42px; height: 28px; object-fit: contain; background: #fff; border-radius: 5px; padding: 2px; flex: none; }
+.nnrow .num { color: var(--ink2); font-size: 13px; font-weight: 700; }
+.nnrow .nnnow { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nnrow .nnnext { color: var(--ink2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

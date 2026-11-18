@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,8 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
@@ -39,21 +41,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.services.BENFLIX_GROUP
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelSchedule
 import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -62,7 +64,6 @@ import org.jellyfin.sdk.model.api.ImageType
 /** How a channel type is named on its tile and in the side guide */
 internal fun groupLabel(group: String): String =
     when (group) {
-        BENFLIX_GROUP -> "Glowfin · No ads"
         FAVOURITES_GROUP -> "★ Favourites"
         else -> group
     }
@@ -90,7 +91,7 @@ internal fun digitOf(event: KeyEvent): Int? {
     }
 }
 
-private val Muted = Color(0xFF8B8B94)
+private val Muted = Glowfin.Dim
 
 @Composable
 private fun tileColors(container: Color) =
@@ -104,50 +105,37 @@ private fun tileColors(container: Color) =
 @Composable
 private fun tileBorder() =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
+        focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
     )
 
-/** A channel's logo on white (live channels), or its coloured letter badge (Benflix channels) */
+/** A live channel's logo, on a white plate so every station's colours show */
 @Composable
 internal fun ChannelLogo(
     schedule: ChannelSchedule,
     size: Dp,
+    /** Glowfin (L1): logos sit on a 3:2 plate; the old square stays for small places */
+    wide: Boolean = false,
 ) {
     val live = schedule.live
-    if (live != null) {
-        val imageUrlService = LocalImageUrlService.current
-        val logo = remember(live.id) { imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 80) }
-        Box(
-            modifier =
-                Modifier
-                    .size(size)
-                    .background(Color.White, RoundedCornerShape(6.dp))
-                    .clip(RoundedCornerShape(6.dp))
-                    .padding(2.dp),
-        ) {
-            AsyncImage(
-                model =
-                    com.github.damontecres.wholphin.ui.cards
-                        .rememberFadeIn(logo),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    } else {
-        val (from, to) = BadgeColors[Math.floorMod(schedule.channel?.ordinal ?: schedule.custom?.id.hashCode(), BadgeColors.size)]
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(size).background(Brush.linearGradient(listOf(from, to)), RoundedCornerShape(6.dp)),
-        ) {
-            Text(
-                text = schedule.title.take(1).uppercase(),
-                fontFamily = BenflixFont,
-                fontWeight = FontWeight.Bold,
-                fontSize = (size.value * .62f).sp,
-                color = Color.White,
-            )
-        }
+    val imageUrlService = LocalImageUrlService.current
+    val logo = remember(live.id) { imageUrlService.getItemImageUrl(itemId = live.id, imageType = ImageType.PRIMARY, maxWidth = 120) }
+    Box(
+        modifier =
+            Modifier
+                .height(size)
+                .width(if (wide) size * 1.5f else size)
+                .background(Color.White, RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .padding(2.dp),
+    ) {
+        AsyncImage(
+            model =
+                com.github.damontecres.wholphin.ui.cards
+                    .rememberFadeIn(logo),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
@@ -168,11 +156,14 @@ internal fun ChannelRow(
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (playing) Color(0xFF2A2A32) else Color(0xFF1C1C21),
-                contentColor = Color.White,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+                containerColor = if (playing) Glowfin.Raise else Color.Transparent,
+                contentColor = Glowfin.Text,
+                focusedContainerColor = Glowfin.FocusRow,
+                focusedContentColor = Glowfin.Text,
             ),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(RoundedCornerShape(6.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.fillMaxWidth().height(52.dp),
     ) {
@@ -203,9 +194,14 @@ internal fun ChannelRow(
     }
 }
 
-internal val StarGold = Color(0xFFE0A54A)
+/** Glowfin (L1): favourite stars are aqua, like the sheet */
+internal val StarGold = Glowfin.Aqua
 
-/** A Recently watched card: logo, number and name, and what's on now with how far in it is */
+/**
+ * Glowfin (L1): a Recently watched tile. The logo on a raised 16:9 card (glow ring when the remote is
+ * on it, nothing grows), a thin glow line for how far the show on now has got, and the number and
+ * what's on underneath.
+ */
 @Composable
 internal fun RecentCard(
     schedule: ChannelSchedule,
@@ -216,49 +212,42 @@ internal fun RecentCard(
 ) {
     val now = System.currentTimeMillis()
     val on = schedule.programAt(now)
-    Surface(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-        colors = tileColors(Color(0xFF1C1C21)),
-        border = tileBorder(),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.width(width).height(64.dp),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
-            ) {
-                ChannelLogo(schedule, size = 30.dp)
-                Column {
-                    Text(
-                        text = "${schedule.number}  ${schedule.title}",
-                        fontSize = BenflixType.tag,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = on?.name().orEmpty(),
-                        fontSize = BenflixType.tag,
-                        color = Muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+    val shape = RoundedCornerShape(10.dp)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(width)) {
+        Surface(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            shape = ClickableSurfaceDefaults.shape(shape),
+            colors = tileColors(Glowfin.Raise),
+            border = tileBorder(),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            modifier =
+                modifier
+                    .glowFocus(shape, spread = 10.dp)
+                    .width(width)
+                    .aspectRatio(16f / 9f),
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ChannelLogo(schedule, size = width * .24f, wide = true)
+                if (on != null && !on.noGuide && on.endMs > on.startMs) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth(((now - on.startMs).toFloat() / (on.endMs - on.startMs)).coerceIn(0f, 1f))
+                            .height(3.dp)
+                            .background(Glowfin.GlowAcross),
                     )
                 }
             }
-            if (on != null && !on.noGuide && on.endMs > on.startMs) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(((now - on.startMs).toFloat() / (on.endMs - on.startMs)).coerceIn(0f, 1f))
-                        .height(3.dp)
-                        .background(com.github.damontecres.wholphin.ui.theme.BenflixColors.LiveTv),
-                )
-            }
         }
+        Text(
+            text = "${schedule.number}  ·  " + (on?.name() ?: schedule.title),
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.SemiBold,
+            color = Glowfin.Dim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -275,15 +264,15 @@ internal fun HideTypesDialog(
             modifier =
                 Modifier
                     .widthIn(max = 420.dp)
-                    .background(Color(0xFF17171B), RoundedCornerShape(10.dp))
+                    .background(Glowfin.Deep, RoundedCornerShape(16.dp))
                     .padding(18.dp),
         ) {
             Text(
                 "Channel types",
-                fontFamily = BenflixFont,
+                fontFamily = GlowfinDisplayFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = BenflixType.pageTitle,
-                color = Color.White,
+                color = Glowfin.Text,
             )
             Text("Turn off the types you never watch.", fontSize = BenflixType.small, color = Muted)
             val first = remember { FocusRequester() }
@@ -302,11 +291,14 @@ internal fun HideTypesDialog(
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                         colors =
                             ClickableSurfaceDefaults.colors(
-                                containerColor = Color(0xFF222228),
-                                contentColor = Color.White,
-                                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+                                containerColor = Color.Transparent,
+                                contentColor = Glowfin.Text,
+                                focusedContainerColor = Glowfin.FocusRow,
+                                focusedContentColor = Glowfin.Text,
                             ),
+                        border =
+                            com.github.damontecres.wholphin.ui.nav
+                                .focusRing(RoundedCornerShape(6.dp)),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier =
                             Modifier
@@ -327,12 +319,60 @@ internal fun HideTypesDialog(
                                 text = if (shown) "Shown" else "Hidden",
                                 fontSize = BenflixType.tag,
                                 fontWeight = FontWeight.Bold,
-                                color = if (shown) Color(0xFF3FBF7A) else Muted,
+                                color = if (shown) Glowfin.Aqua else Muted,
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Glowfin (L1): a round chip on Live TV (the guide's types, Edit types, Add channels, the side guide's
+ * types). The picked one is filled with the glow; the remote gets the glow ring, and nothing grows.
+ */
+@Composable
+internal fun LiveChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = if (selected) Color.White else Glowfin.Dim,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = Glowfin.Text,
+                pressedContainerColor = Color.Transparent,
+            ),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.glowFocus(shape, spread = 8.dp).height(34.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .background(if (selected) Glowfin.GlowAcross else SolidColor(Glowfin.Raise), shape)
+                    .padding(horizontal = 14.dp),
+        ) {
+            Text(
+                text = label,
+                fontSize = BenflixType.tag,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

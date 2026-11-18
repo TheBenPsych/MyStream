@@ -131,27 +131,14 @@ fun ChannelTitleSheet(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        when {
-                            schedule.custom != null -> {
-                                "A channel you made from Glowfin movies and shows. No ads."
-                            }
-
-                            schedule.live == null -> {
-                                "A Glowfin channel made from the movies and shows on Tower. " +
-                                    "No ads, always something on."
-                            }
-
-                            else -> {
-                                "A free live channel (${schedule.group()}). It may have ads."
-                            }
-                        },
+                        "A free live channel (${schedule.group()}). It may have ads.",
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.body,
                     )
                 }
             },
         )
-    val picture = onNow?.item ?: schedule.live?.item
+    val picture = onNow?.item ?: schedule.live.item
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(BenflixColors.Tray)) {
             TitlePage(

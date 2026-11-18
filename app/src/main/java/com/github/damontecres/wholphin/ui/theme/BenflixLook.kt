@@ -65,7 +65,7 @@ object BenflixColors {
     val OnMovies: Color get() = KidsLook.palette?.onMovies ?: Color(0xFF211500)
     val Shows: Color get() = KidsLook.palette?.shows ?: Color(0xFF7AA7FF)
     val OnShows: Color get() = KidsLook.palette?.onShows ?: Color(0xFF0F1521)
-    val LiveTv = Color(0xFF3DD6C6)
+    val LiveTv = Glowfin.Aqua
     val OnLiveTv = Color(0xFF081B19)
     val Games: Color get() = KidsLook.palette?.games ?: Color(0xFFFF6F91)
     val OnGames: Color get() = KidsLook.palette?.onGames ?: Color(0xFF210E12)

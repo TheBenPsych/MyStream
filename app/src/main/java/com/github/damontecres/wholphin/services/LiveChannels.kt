@@ -58,7 +58,6 @@ object LiveChannels {
                     val item = BaseItem(dto, useSeriesForPrimary = false)
                     ChannelSchedule(
                         number = dto.channelNumber?.toIntOrNull() ?: (NO_NUMBER + i),
-                        channel = null,
                         programs = listOf(noGuide(item, now)),
                         live = LiveChannel(dto.id, dto.channelName ?: dto.name.orEmpty(), item),
                     )
@@ -75,7 +74,7 @@ object LiveChannels {
                             GetProgramsDto(
                                 minEndDate = from,
                                 maxStartDate = from.plusHours(GUIDE_HOURS),
-                                channelIds = batch.mapNotNull { rows[it].live?.id },
+                                channelIds = batch.map { rows[it].live.id },
                                 sortBy = listOf(ItemSortBy.START_DATE),
                                 userId = userId,
                                 fields = listOf(ItemFields.OVERVIEW),
@@ -84,7 +83,7 @@ object LiveChannels {
                         .groupBy { it.channelId }
                 batch.forEach { i ->
                     val row = rows[i]
-                    val list = programs[row.live?.id].orEmpty().mapNotNull { it.toProgram() }
+                    val list = programs[row.live.id].orEmpty().mapNotNull { it.toProgram() }
                     if (list.isNotEmpty()) rows[i] = row.copy(programs = list)
                 }
                 onProgress(rows.toList())
