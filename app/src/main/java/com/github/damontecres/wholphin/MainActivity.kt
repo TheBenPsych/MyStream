@@ -66,7 +66,6 @@ import com.github.damontecres.wholphin.ui.CoilConfig
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.components.BenflixNoticeLayer
-import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -341,7 +340,6 @@ class MainActivity : AppCompatActivity() {
                                         // Benflix always uses its own red and black look
                                         appThemeColors = AppThemeColors.MYSTREAM,
                                         accent = appPreferences.benflixPreferences.accent,
-                                        easyRead = false,
                                     ) {
                                         com.github.damontecres.wholphin.ui.touch.Haptics.enabled =
                                             !appPreferences.benflixPreferences.hapticsOff

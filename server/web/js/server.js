@@ -16,11 +16,6 @@ function bytes(n) {
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
   return (n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)) + " " + u[i];
 }
-function upTime(s) {
-  if (s == null) return "–";
-  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  return d ? `${d} day${d === 1 ? "" : "s"}, ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
-}
 function tile(k, v, barValue) {
   const bar = barValue == null ? "" : `<div class="bar"><i class="${barClass(barValue)}" style="width:${Math.min(100, barValue)}%"></i></div>`;
   return `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${bar}</div>`;
@@ -28,12 +23,6 @@ function tile(k, v, barValue) {
 function problemsNote(list) { return (list || []).map((p) => `<div class="note">${esc(p)}</div>`).join(""); }
 function loading(text) { return `<div class="list"><div class="empty">${esc(text || "Loading…")}</div></div>`; }
 B.notice = (text) => B.ask(text, "", "OK", "Close");
-
-// Status box: always a word as well as a colour
-function statusBox(name, level, word) {
-  const cls = level === "ok" ? "" : level === "check" ? "warn" : "bad";
-  return `<div class="tile"><div class="k">${esc(name)}</div><div class="v"><span class="dot ${cls}"></span><span class="word-${level}">${esc(word || (level === "ok" ? "OK" : level === "check" ? "Check" : "Problem"))}</span></div></div>`;
-}
 
 const PAGES = {};
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu

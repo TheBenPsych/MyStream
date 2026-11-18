@@ -517,8 +517,6 @@ fun MusicNowPlayingPage(
     LaunchedEffect(audio?.id) { viewModel.loadLyrics(audio) }
     val lyricsPair by viewModel.lyrics.collectAsState()
     val lyrics = lyricsPair?.takeIf { it.first == audio?.id }?.second
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easy = false
     val barsOn = !preferences.appPreferences.benflixPreferences.musicBarsOff
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
@@ -582,7 +580,7 @@ fun MusicNowPlayingPage(
             onDeleted = { viewModel.next() },
             // Ben 2026-11-17: More has Songs like this too (it opens that tab)
             onSongsLikeThis =
-                if (viewModel.canAsk && !easy) {
+                if (viewModel.canAsk) {
                     {
                         viewModel.closeMenu()
                         viewModel.showTab(PlayerTab.LIKE_THIS)
@@ -615,8 +613,8 @@ fun MusicNowPlayingPage(
         }
     }
     val tabs =
-        remember(viewModel.canAsk, easy) {
-            PlayerTab.entries.filter { it != PlayerTab.LIKE_THIS || (viewModel.canAsk && !easy) }
+        remember(viewModel.canAsk) {
+            PlayerTab.entries.filter { it != PlayerTab.LIKE_THIS || viewModel.canAsk }
         }
     val tint = rememberCoverTint(audio?.imageUrl)
 
@@ -661,7 +659,7 @@ fun MusicNowPlayingPage(
         }
     }
     val panelTabs: @Composable () -> Unit = {
-        PlayerTabs(tab, tabs, noLyrics, isTv, easy, onTab = viewModel::showTab)
+        PlayerTabs(tab, tabs, noLyrics, isTv, onTab = viewModel::showTab)
     }
 
     BoxWithConstraints(
@@ -688,22 +686,22 @@ fun MusicNowPlayingPage(
                             .fillMaxHeight()
                             .verticalScroll(androidx.compose.foundation.rememberScrollState()),
                 ) {
-                    val coverSize = minOf(boxHeight * (if (easy) 0.3f else 0.36f), songSideWidth(boxWidth - 80.dp) * 0.62f)
+                    val coverSize = minOf(boxHeight * 0.36f, songSideWidth(boxWidth - 80.dp) * 0.62f)
                     CoverImage(audio?.imageUrl, Modifier.size(coverSize), shape = RoundedCornerShape(14.dp))
                     Spacer(Modifier.height(16.dp))
-                    SongName(audio, music.thenTitle, easy, center = true)
+                    SongName(audio, music.thenTitle, center = true)
                     Spacer(Modifier.height(8.dp))
                     PlayerProgress(position, duration, playing, barsOn, isTv, onSeek = viewModel::seekTo, towers = 56)
                     Spacer(Modifier.height(8.dp))
-                    PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = { playFocused.value = it })
+                    PlayerControls(viewModel, playing, shuffle, playFocus, onPlayFocus = { playFocused.value = it })
                     Spacer(Modifier.height(14.dp))
-                    PlayerRoundButtons(viewModel, music.liked, easy)
+                    PlayerRoundButtons(viewModel, music.liked)
                 }
                 PlayerPanelFrame(
                     tabs = panelTabs,
                     upNext = { PlayerUpNextStrip(coming, onPlay = viewModel::playAt) },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                ) { panelBody(if (easy) 30f else 26f, false) }
+                ) { panelBody(26f, false) }
             }
         } else if (wide) {
             // A narrow window (or a small phone on its side): the panel goes under the song instead of squeezing
@@ -717,19 +715,19 @@ fun MusicNowPlayingPage(
             ) {
                 CoverImage(audio?.imageUrl, Modifier.size(minOf(240.dp, boxWidth * 0.5f)), shape = RoundedCornerShape(14.dp))
                 Spacer(Modifier.height(14.dp))
-                SongName(audio, music.thenTitle, easy, center = true)
+                SongName(audio, music.thenTitle, center = true)
                 Spacer(Modifier.height(8.dp))
                 PlayerProgress(position, duration, playing, barsOn, isTv, onSeek = viewModel::seekTo, towers = 40)
                 Spacer(Modifier.height(8.dp))
-                PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = { playFocused.value = it })
+                PlayerControls(viewModel, playing, shuffle, playFocus, onPlayFocus = { playFocused.value = it })
                 Spacer(Modifier.height(12.dp))
-                PlayerRoundButtons(viewModel, music.liked, easy)
+                PlayerRoundButtons(viewModel, music.liked)
                 Spacer(Modifier.height(16.dp))
                 PlayerPanelFrame(
                     tabs = panelTabs,
                     upNext = { PlayerUpNextStrip(coming, onPlay = viewModel::playAt) },
                     modifier = Modifier.fillMaxWidth().height(maxOf(360.dp, boxHeight * 0.7f)),
-                ) { panelBody(if (easy) 24f else 20f, false) }
+                ) { panelBody(20f, false) }
             }
         } else {
             PhoneNowPlaying(
@@ -740,13 +738,12 @@ fun MusicNowPlayingPage(
                 duration = duration,
                 playing = playing,
                 liked = music.liked,
-                easy = easy,
                 barsOn = barsOn,
                 shuffle = shuffle,
                 boxHeight = boxHeight,
                 boxWidth = boxWidth,
                 panelTabs = panelTabs,
-                panelBody = { panelBody(if (easy) 20f else 17f, true) },
+                panelBody = { panelBody(17f, true) },
             )
         }
     }
@@ -757,7 +754,6 @@ fun MusicNowPlayingPage(
 private fun SongName(
     audio: AudioItem?,
     from: String?,
-    easy: Boolean,
     center: Boolean,
 ) {
     androidx.compose.foundation.layout.Column(
@@ -768,8 +764,8 @@ private fun SongName(
         Text(
             text = audio?.title.orEmpty(),
             color = BenflixColors.Text,
-            fontSize = if (easy) 40.sp else 34.sp,
-            lineHeight = if (easy) 44.sp else 38.sp,
+            fontSize = 34.sp,
+            lineHeight = 38.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = if (center) TextAlign.Center else TextAlign.Start,
             maxLines = 2,
@@ -810,61 +806,6 @@ private fun currentLine(
         lines.indexOfLast { (it.start?.ticks?.inWholeMilliseconds ?: Long.MAX_VALUE) <= at }.coerceAtLeast(0)
     } else {
         if (duration <= 0) 0 else ((position.toDouble() / duration) * lines.size).toInt().coerceIn(0, lines.size - 1)
-    }
-}
-
-/** "UP NEXT" with the next song's small cover, name and artist (always there) */
-@Composable
-internal fun UpNextLine(
-    next: AudioItem?,
-    stacked: Boolean = false,
-) {
-    if (stacked) {
-        // Under the cover: UP NEXT on its own line, then the next song's cover, name and artist
-        androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MusicKicker("Up next", color = BenflixColors.Muted)
-            if (next != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CoverImage(next.imageUrl, Modifier.size(44.dp), shape = RoundedCornerShape(6.dp))
-                    androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
-                        Text(
-                            text = next.title.orEmpty(),
-                            color = BenflixColors.Text,
-                            fontSize = BenflixType.body,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = next.artistNames.orEmpty(),
-                            color = BenflixColors.Soft,
-                            fontSize = BenflixType.small,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            } else {
-                Text("A mix like this one", color = BenflixColors.Muted, fontSize = BenflixType.small)
-            }
-        }
-        return
-    }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MusicKicker("Up next", color = BenflixColors.Muted)
-        if (next != null) {
-            CoverImage(next.imageUrl, Modifier.size(28.dp), shape = RoundedCornerShape(5.dp))
-            Text(
-                text = listOfNotNull(next.title, next.artistNames).joinToString(" · "),
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } else {
-            Text("A mix like this one", color = BenflixColors.Muted, fontSize = BenflixType.small)
-        }
     }
 }
 

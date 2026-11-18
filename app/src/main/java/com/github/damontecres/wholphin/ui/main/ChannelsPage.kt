@@ -36,7 +36,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -190,7 +189,6 @@ private fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms)
 @Composable
 fun ChannelsPage(
     modifier: Modifier = Modifier,
-    easy: Boolean = false,
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val channels by viewModel.channels.collectAsState()
@@ -209,17 +207,6 @@ fun ChannelsPage(
             fontSize = BenflixType.lead,
             color = Glowfin.Dim,
             modifier = modifier.padding(32.dp),
-        )
-        return
-    }
-    // Easy mode: three big choices first (My channels opens the normal page)
-    var easyChoice by rememberSaveable { mutableStateOf(!easy) }
-    if (!easyChoice && !KidsMode.isActive) {
-        EasyChoices(
-            list = list,
-            onMyChannels = { easyChoice = true },
-            onWatch = viewModel::watch,
-            modifier = modifier,
         )
         return
     }
@@ -1361,57 +1348,6 @@ private fun GroupHeading(name: String) {
         color = if (name == FAVOURITES_GROUP) StarGold else BenflixColors.Soft,
         modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
     )
-}
-
-/** Easy mode's Live TV: three big buttons (approved f2-easy) */
-@Composable
-private fun EasyChoices(
-    list: List<ChannelSchedule>,
-    onMyChannels: () -> Unit,
-    onWatch: (ChannelSchedule) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val news = remember(list) { list.firstOrNull { it.group() == "News" } }
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        delay(80)
-        first.tryRequestFocus()
-    }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize().padding(24.dp),
-    ) {
-        EasyButton("My channels", "Your favourites and the full guide", onMyChannels, Modifier.focusRequester(first))
-        if (news != null) EasyButton("Put the news on", news.title, { onWatch(news) })
-    }
-}
-
-@Composable
-private fun EasyButton(
-    title: String,
-    note: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = BenflixColors.Raised,
-                contentColor = BenflixColors.Text,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(horizontal = 28.dp, vertical = 22.dp)) {
-            Text(title, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
-            Text(note, fontSize = BenflixType.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
 }
 
 /** How long a side-menu jump waits for the list to settle before focus moves */

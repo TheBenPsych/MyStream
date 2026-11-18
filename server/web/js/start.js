@@ -296,15 +296,7 @@ B.loadFamilyRow = async (nav, kids) => {
   }
 };
 
-// The weather Tower gave last time (for today, from the last 3 hours), so the line is there straight away
 const dayName = () => new Date().toLocaleDateString([], { weekday: "long" });
-B.savedWeather = () => {
-  try {
-    const w = JSON.parse(localStorage.getItem("benflix.weather") || "null");
-    if (w && Date.now() - w.at < 3 * 3600000 && w.line.startsWith(dayName())) return w.line;
-  } catch (e) {}
-  return "";
-};
 
 // Home's news panel (Redesign 2, approved hm-tall): up to 5 lines on the web. Your news newest first, then
 // On the way; a busy day keeps the last line for "4 more" and See all (like the TV and phone).

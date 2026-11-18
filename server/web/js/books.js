@@ -18,7 +18,6 @@
   if (typeof P === "object" && !P.ears) P.ears = ICON.ears;
   const I = (name, cls) => (ICON[name] ? `<svg class="i ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : B.I(name, cls));
   B.DOORS.books = { key: "books", name: "Books", desc: "Read and listen", color: LIME, icon: "book" };
-  B.bookIcon = I;
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const enc = encodeURIComponent;
   const $ = (s, r) => (r || document).querySelector(s);

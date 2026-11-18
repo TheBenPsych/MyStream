@@ -561,9 +561,6 @@ fun DoorChip(
     }
 }
 
-/** How far a door's own left edge moves in for the rail (TV): the rail covers part of the usual margin */
-fun doorRailInset(isTv: Boolean): Dp = if (isTv) RAIL_TUCKED - CONTENT_TUCK else RAIL_OPEN
-
 /**
  * Ben (TV photo, My List): a section page that has no side margin of its own needs this much, or the
  * tucked side menu's icons sit on its first poster and its title. Lines it up with the door's Home rows.

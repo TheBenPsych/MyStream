@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 
@@ -40,10 +39,6 @@ fun benflixFocusBorder(shape: Shape) = ClickableSurfaceDefaults.border(focusedBo
 /** The ring for a tv Card */
 @Composable
 fun benflixCardFocusBorder(shape: Shape) = CardDefaults.border(focusedBorder = ring(shape))
-
-/** The ring for a tv Button */
-@Composable
-fun benflixButtonFocusBorder(shape: Shape) = ButtonDefaults.border(focusedBorder = ring(shape))
 
 /**
  * A ring drawn a little outside, with a dark band between, for things that are already white before the remote

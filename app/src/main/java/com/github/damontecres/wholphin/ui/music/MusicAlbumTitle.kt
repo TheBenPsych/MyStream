@@ -30,7 +30,6 @@ fun AlbumTitlePage(
     state: MusicCollectionState,
     currentId: java.util.UUID?,
     playing: Boolean,
-    easy: Boolean,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onLike: () -> Unit,
@@ -104,7 +103,6 @@ fun AlbumTitlePage(
                                             isCurrent = song.id == currentId,
                                             isPlaying = playing,
                                             liked = song.id in state.liked,
-                                            big = easy,
                                             onClick = { onSong(line.index) },
                                             onMore = { onSongMore(line.index) },
                                             modifier = rowModifier,
@@ -118,7 +116,6 @@ fun AlbumTitlePage(
                                         number = line.number,
                                         preview = preview,
                                         onAsk = { onAskSong(line.song) },
-                                        big = easy,
                                         modifier = rowModifier,
                                     )
                                 }
@@ -145,7 +142,6 @@ fun AlbumTitlePage(
                                     isCurrent = song.id == currentId,
                                     isPlaying = playing,
                                     liked = song.id in state.liked,
-                                    big = easy,
                                     onClick = { onSong(index) },
                                     onMore = { onSongMore(index) },
                                     modifier =
@@ -193,7 +189,6 @@ fun AlbumTitlePage(
         buttons = buttons,
         tabs = tabs,
         openTab = "Songs",
-        big = easy,
         modifier = modifier,
     )
 }

@@ -1048,12 +1048,6 @@ fun bookWords(news: com.github.damontecres.wholphin.services.BookNews): Pair<Str
     }
 }
 
-/** Home's news panel on a TV (and tablets, and phones turned sideways) */
-const val MAX_HOME_ROWS = 6
-
-/** Phones and the web show one line fewer */
-const val MAX_PHONE_ROWS = 5
-
 /** Lets the pop-up finish closing before the remote's focus moves back to the doors */
 private const val REFOCUS_DELAY_MS = 150L
 
@@ -1312,17 +1306,12 @@ private const val SETTLE_MS = 600f
 private const val WHATS_NEW_CARDS = 10
 
 private const val DOOR_STAGGER_MS = 70f
-private const val DOOR_GROW_MS = 560f
 
 /**
  * The Music door grows out of the middle of the logo right on the next beat after Games (same spacing as the
  * four, so its note keeps the rhythm; Ben heard a gap at 330 ms), and grows only a little slower than the others
  */
 private const val MUSIC_DOOR_START_MS = 4 * DOOR_STAGGER_MS
-private const val MUSIC_DOOR_GROW_MS = 640f
 
 /** The longest Home waits for its news before the doors grow (a slow server goes on anyway) */
 private const val WAIT_FOR_NEWS_MS = 1500L
-
-/** The longest Home waits for the doors to settle in place */
-private const val WAIT_FOR_DOORS_MS = 1000L

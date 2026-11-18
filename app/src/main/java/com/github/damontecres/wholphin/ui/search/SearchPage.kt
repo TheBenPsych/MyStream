@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.search
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -56,7 +55,6 @@ import com.github.damontecres.wholphin.services.BookTile
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
-import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.components.BenflixTip
 import com.github.damontecres.wholphin.ui.components.BenflixTipId
@@ -751,87 +749,6 @@ private fun <T : CardGridItem> SearchGrid(
             modifier = Modifier.fillMaxSize(),
             cardContent = cardContent,
         )
-    }
-}
-
-@Composable
-fun SearchRowResult(
-    @StringRes title: Int,
-    result: SearchResult,
-    rowIndex: Int,
-    position: RowColumn,
-    focusRequester: FocusRequester,
-    onClickItem: (Int, BaseItem) -> Unit,
-    onLongClickItem: (Int, BaseItem) -> Unit,
-    onClickPosition: (RowColumn) -> Unit,
-    modifier: Modifier = Modifier,
-    onClickDiscover: ((Int, DiscoverItem) -> Unit)? = null,
-    cardContent: @Composable (
-        index: Int,
-        item: BaseItem?,
-        modifier: Modifier,
-        onClick: () -> Unit,
-        onLongClick: () -> Unit,
-    ) -> Unit,
-) {
-    when (val r = result) {
-        is SearchResult.Error -> {
-            SearchResultPlaceholder(
-                title = stringResource(title),
-                message = stringResource(R.string.search_failed),
-                messageColor = MaterialTheme.colorScheme.error,
-                modifier = Modifier,
-            )
-        }
-
-        SearchResult.NoQuery -> {
-            // no-op
-        }
-
-        SearchResult.Searching -> {
-            SearchResultPlaceholder(
-                title = stringResource(title),
-                message = stringResource(R.string.searching),
-                modifier = modifier,
-            )
-        }
-
-        is SearchResult.Success -> {
-            if (r.items.isNotEmpty()) {
-                ItemRow(
-                    title = stringResource(title),
-                    items = r.items,
-                    onClickItem = onClickItem,
-                    onLongClickItem = onLongClickItem,
-                    modifier = modifier.focusRequester(focusRequester),
-                    cardContent = cardContent,
-                )
-            }
-        }
-
-        is SearchResult.SuccessSeerr -> {
-            if (r.items.isNotEmpty()) {
-                ItemRow(
-                    title = stringResource(title),
-                    items = r.items,
-                    onClickItem = { index, item ->
-                        onClickPosition.invoke(RowColumn(rowIndex, index))
-                        onClickDiscover?.invoke(index, item)
-                    },
-                    onLongClickItem = { _, _ -> },
-                    modifier = modifier.focusRequester(focusRequester),
-                    cardContent = { index: Int, item: DiscoverItem?, mod: Modifier, onClick: () -> Unit, onLongClick: () -> Unit ->
-                        DiscoverItemCard(
-                            item = item,
-                            onClick = onClick,
-                            onLongClick = onLongClick,
-                            showOverlay = true,
-                            modifier = mod,
-                        )
-                    },
-                )
-            }
-        }
     }
 }
 

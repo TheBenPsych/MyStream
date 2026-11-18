@@ -1,53 +1,33 @@
 package com.github.damontecres.wholphin.ui.detail.music
 
 import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ExtrasItem
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
@@ -57,32 +37,15 @@ import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.UserPreferencesService
-import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.SlimItemFields
-import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
-import com.github.damontecres.wholphin.ui.cards.ExtrasRow
-import com.github.damontecres.wholphin.ui.cards.ItemRow
-import com.github.damontecres.wholphin.ui.components.ContextMenu
-import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
-import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreText
-import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.components.MusicContextActions
-import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.components.QuickDetails
-import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
-import com.github.damontecres.wholphin.ui.data.RowColumn
-import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
-import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.letNotEmpty
-import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.toBaseItems
-import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
@@ -314,352 +277,6 @@ private const val SONG_ROW = HEADER_ROW + 1
 private const val MUSIC_VIDEO_ROW = SONG_ROW + 1
 private const val EXTRAS_ROW = SONG_ROW + 1
 private const val SIMILAR_ROW = EXTRAS_ROW + 1
-
-@Composable
-fun AlbumDetailsPage(
-    itemId: UUID,
-    preferences: UserPreferences,
-    modifier: Modifier = Modifier,
-    initialSongId: UUID? = null,
-    viewModel: AlbumViewModel =
-        hiltViewModel<AlbumViewModel, AlbumViewModel.Factory>(
-            creationCallback = { it.create(itemId, initialSongId) },
-        ),
-    playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val state by viewModel.state.collectAsState()
-    val currentMusic by viewModel.currentMusic.collectAsState()
-
-    val focusRequesters =
-        remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
-    val focusManager = LocalFocusManager.current
-    var showPlaylistDialog by remember { mutableStateOf<Optional<UUID>>(Optional.absent()) }
-    val playlistState by playlistViewModel.playlistState.collectAsState()
-    var showContextMenu by remember { mutableStateOf<ContextMenu?>(null) }
-    val moreDialogActions =
-        remember {
-            MusicContextActions(
-                navigateTo = { viewModel.navigationManager.navigateTo(it) },
-                onClickPlay = { index, _ -> viewModel.play(false, index) },
-                onClickPlayNext = { _, song -> viewModel.playNext(song) },
-                onClickAddToQueue = { item -> viewModel.addToQueue(item, -1) },
-                onClickFavorite = { itemId, favorite -> viewModel.setFavorite(itemId, favorite) },
-                onClickAddPlaylist = { itemId ->
-                    playlistViewModel.loadPlaylists()
-                    showPlaylistDialog.makePresent(itemId)
-                },
-                onClickRemoveFromQueue = { _, _ -> },
-                onDeleteItem = viewModel::deleteItem,
-            )
-        }
-    when (val loading = state.loading) {
-        is LoadingState.Error -> {
-            ErrorMessage(loading, modifier)
-        }
-
-        LoadingState.Loading,
-        LoadingState.Pending,
-        -> {
-            LoadingPage(modifier)
-        }
-
-        LoadingState.Success -> {
-            val album = state.album!!
-            val itemsBefore = 2
-            val initialSongIndex = state.initialSongIndex
-            var position by rememberPosition(
-                row = if (initialSongIndex != null) SONG_ROW else 0,
-                column = initialSongIndex ?: 0,
-            )
-
-            val firstFocusRequester = remember { FocusRequester() }
-            val firstBringIntoViewRequester = remember { BringIntoViewRequester() }
-            val bringIntoViewRequester = remember { BringIntoViewRequester() }
-            val listState =
-                rememberLazyListState(
-                    initialFirstVisibleItemIndex = initialSongIndex?.let { itemsBefore + it } ?: 0,
-                )
-
-            val songFocusRequester = remember { FocusRequester() }
-            LaunchedEffect(Unit) {
-                if (position.row == SONG_ROW) {
-                    songFocusRequester.tryRequestFocus()
-                } else {
-                    focusRequesters.getOrNull(position.row)?.tryRequestFocus()
-                }
-                viewModel.updateBackDrop()
-            }
-            val backHandlerActive by remember {
-                derivedStateOf {
-                    listState.firstVisibleItemIndex > itemsBefore
-                }
-            }
-            BackHandler(backHandlerActive) {
-                scope.launch {
-                    listState.animateScrollToItem(itemsBefore)
-                    firstBringIntoViewRequester.bringIntoView()
-                    firstFocusRequester.tryRequestFocus()
-                }
-            }
-            Box(modifier = modifier) {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier =
-                                Modifier
-                                    .scrollAsOneBlock()
-                                    .fillMaxWidth()
-                                    .bringIntoViewRequester(bringIntoViewRequester)
-                                    .padding(bottom = 32.dp),
-                        ) {
-                            AlbumHeader(
-                                album = album,
-                                imageUrl = state.imageUrl,
-                                overviewOnClick = {},
-                                bringIntoViewRequester = bringIntoViewRequester,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            MusicExpandableButtons(
-                                title = album.title ?: "",
-                                actions =
-                                    remember {
-                                        MusicButtonActions(
-                                            onClickPlay = { viewModel.play(it, 0) },
-                                            onClickInstantMix = { viewModel.startInstantMix(album.id) },
-                                            onClickFavorite = {
-                                                viewModel.setFavorite(
-                                                    album.id,
-                                                    !album.favorite,
-                                                )
-                                            },
-                                            onClickMore = {
-                                                showContextMenu =
-                                                    ContextMenu.ForMusic(
-                                                        fromLongClick = false,
-                                                        item = album,
-                                                        index = 0,
-                                                        canDelete =
-                                                            viewModel.canDelete(
-                                                                album,
-                                                                preferences.appPreferences,
-                                                            ),
-                                                        canRemoveFromQueue = false,
-                                                        actions = moreDialogActions,
-                                                    )
-                                            },
-                                            onConfirmDelete = {
-                                                viewModel.deleteItem(album)
-                                            },
-                                        )
-                                    },
-                                favorite = album.favorite,
-                                canDelete = state.canDelete,
-                                buttonOnFocusChanged = {
-                                    if (it.isFocused) {
-                                        position = RowColumn(HEADER_ROW, 0)
-                                        scope.launch { bringIntoViewRequester.bringIntoView() }
-                                    }
-                                },
-                                modifier =
-                                    Modifier
-                                        .onFocusChanged {
-                                            if (it.hasFocus) scope.launch { bringIntoViewRequester.bringIntoView() }
-                                        }.focusRequester(focusRequesters[HEADER_ROW]),
-                            )
-                        }
-                    }
-                    item {
-                        Text(
-                            text = stringResource(R.string.songs) + " (${state.songs.size})",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                    itemsIndexed(state.songs) { index, song ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SongListItem(
-                                song = song,
-                                onClick = {
-                                    position = RowColumn(SONG_ROW, index)
-                                    viewModel.play(false, index)
-                                },
-                                onLongClick = {
-                                    if (song != null) {
-                                        showContextMenu =
-                                            ContextMenu.ForMusic(
-                                                fromLongClick = true,
-                                                item = song,
-                                                index = index,
-                                                canDelete =
-                                                    viewModel.canDelete(
-                                                        song,
-                                                        preferences.appPreferences,
-                                                    ),
-                                                canRemoveFromQueue = false,
-                                                actions = moreDialogActions,
-                                            )
-                                    }
-                                },
-                                onClickMore = {
-                                    if (song != null) {
-                                        showContextMenu =
-                                            ContextMenu.ForMusic(
-                                                fromLongClick = false,
-                                                item = song,
-                                                index = index,
-                                                canDelete =
-                                                    viewModel.canDelete(
-                                                        song,
-                                                        preferences.appPreferences,
-                                                    ),
-                                                canRemoveFromQueue = false,
-                                                actions = moreDialogActions,
-                                            )
-                                    }
-                                },
-                                showArtist = state.isVariousArtists,
-                                isPlaying = song != null && currentMusic.currentItemId == song.id,
-                                isQueued = song != null && song.id in currentMusic.queuedIds,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth(.75f)
-                                        .ifElse(
-                                            index == 0,
-                                            Modifier
-                                                .focusRequester(firstFocusRequester)
-                                                .bringIntoViewRequester(firstBringIntoViewRequester),
-                                        ).ifElse(
-                                            position.row == SONG_ROW && position.column == index,
-                                            Modifier.focusRequester(songFocusRequester),
-                                        ),
-                            )
-                        }
-                    }
-                    if (state.musicVideos.isNotEmpty()) {
-                        item {
-                            ItemRow(
-                                title = stringResource(R.string.music_videos),
-                                items = state.musicVideos,
-                                onClickItem = { index, item ->
-                                    position = RowColumn(MUSIC_VIDEO_ROW, index)
-                                    viewModel.navigationManager.navigateTo(item.destination())
-                                },
-                                onLongClickItem = { index, item ->
-                                    // TODO
-                                },
-                                cardContent = { index: Int, item: BaseItem?, mod: Modifier, onClick: () -> Unit, onLongClick: () -> Unit ->
-                                    BannerCardWithTitle(
-                                        title = item?.name,
-                                        subtitle = item?.data?.productionYear?.toString(),
-                                        item = item,
-                                        onClick = onClick,
-                                        onLongClick = onLongClick,
-                                        aspectRatio = item?.aspectRatio ?: AspectRatios.WIDE,
-                                        played = item?.played ?: false,
-                                        playPercent = item?.data?.userData?.playedPercentage ?: 0.0,
-                                        favorite = item?.favorite ?: false,
-                                        modifier = mod,
-                                    )
-                                },
-                                modifier = Modifier.focusRequester(focusRequesters[MUSIC_VIDEO_ROW]),
-                            )
-                        }
-                    }
-                    if (state.extras.isNotEmpty()) {
-                        item {
-                            ExtrasRow(
-                                extras = state.extras,
-                                onClickItem = { index, extra ->
-                                    position = RowColumn(EXTRAS_ROW, index)
-                                    viewModel.navigationManager.navigateTo(extra.destination)
-                                },
-                                onLongClickItem = { _, _ -> },
-                                modifier = Modifier.focusRequester(focusRequesters[EXTRAS_ROW]),
-                            )
-                        }
-                    }
-                    if (state.similar.isNotEmpty()) {
-                        item {
-                            ItemRow(
-                                title = stringResource(R.string.more_like_this),
-                                items = state.similar,
-                                onClickItem = { index, item ->
-                                    position = RowColumn(SIMILAR_ROW, index)
-                                    viewModel.navigationManager.navigateTo(item.destination())
-                                },
-                                onLongClickItem = { index, item ->
-                                    showContextMenu =
-                                        ContextMenu.ForMusic(
-                                            fromLongClick = true,
-                                            item = item,
-                                            index = index,
-                                            canDelete =
-                                                viewModel.canDelete(
-                                                    item,
-                                                    preferences.appPreferences,
-                                                ),
-                                            canRemoveFromQueue = false,
-                                            actions = moreDialogActions,
-                                            showGoTo = true,
-                                        )
-                                },
-                                cardContent = { index: Int, item: BaseItem?, mod: Modifier, onClick: () -> Unit, onLongClick: () -> Unit ->
-                                    BannerCardWithTitle(
-                                        title = item?.name,
-                                        subtitle = item?.data?.productionYear?.toString(),
-                                        item = item,
-                                        onClick = onClick,
-                                        onLongClick = onLongClick,
-                                        aspectRatio = AspectRatios.SQUARE,
-                                        modifier = mod,
-                                    )
-                                },
-                                modifier = Modifier.focusRequester(focusRequesters[SIMILAR_ROW]),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-    showContextMenu?.let { contextMenu ->
-        ContextMenuDialog(
-            onDismissRequest = { showContextMenu = null },
-            getMediaSource = null,
-            contextMenu = contextMenu,
-            preferredSubtitleLanguage = null,
-        )
-    }
-    showPlaylistDialog.compose { itemId ->
-        PlaylistDialog(
-            title = stringResource(R.string.add_to_playlist),
-            state = playlistState,
-            onDismissRequest = { showPlaylistDialog.makeAbsent() },
-            onClick = {
-                playlistViewModel.addToPlaylist(it.id, itemId)
-                showPlaylistDialog.makeAbsent()
-            },
-            createEnabled = true,
-            onCreatePlaylist = {
-                playlistViewModel.createPlaylistAndAddItem(it, itemId)
-                showPlaylistDialog.makeAbsent()
-            },
-            onSearch = playlistViewModel::loadPlaylists,
-            elevation = 3.dp,
-        )
-    }
-}
 
 @Composable
 fun AlbumHeader(

@@ -107,11 +107,8 @@ fun DoorPage(
     viewModel: DoorViewModel = hiltViewModel(key = "door-${door.name}"),
 ) {
     LaunchedEffect(Unit) { onClearBackdrop() }
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easyMode = false
-    LifecycleStartEffect(door, easyMode) {
-        // Easy mode: fewer rows, like Kids
-        viewModel.start(door, easy = easyMode)
+    LifecycleStartEffect(door) {
+        viewModel.start(door)
         onStopOrDispose { }
     }
     val state by viewModel.state.collectAsState()

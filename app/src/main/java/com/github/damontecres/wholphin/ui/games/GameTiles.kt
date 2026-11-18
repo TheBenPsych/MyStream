@@ -4,11 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,11 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One spot on the Arcade wall */
@@ -108,54 +102,6 @@ internal fun Badge(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-    }
-}
-
-/**
- * The page's intro line plus one set of "works with" chips. Every game here works with a TV remote,
- * a controller, or a phone, so the chips live here once instead of on every tile.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun WorksWith(
-    text: String,
-    isTv: Boolean,
-) {
-    @Composable
-    fun Chips() {
-        Badge(PlayWith.REMOTE, "Remote")
-        Badge(PlayWith.CONTROLLER, "Controller")
-        Badge(PlayWith.PHONE, "Android phone")
-    }
-    if (isTv) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            Text("Works with", fontSize = BenflixType.tag, color = BenflixColors.Muted)
-            Chips()
-        }
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Chips()
-            }
-        }
     }
 }
 

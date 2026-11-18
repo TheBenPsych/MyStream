@@ -7,12 +7,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,17 +33,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -60,7 +53,6 @@ import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
-import com.github.damontecres.wholphin.ui.theme.BenflixTitleFont
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
@@ -280,53 +272,6 @@ private fun RankedPoster(
 ) {
     com.github.damontecres.wholphin.ui.components.GlowRanked(rank = rank, posterHeight = width / POSTER_RATIO) {
         poster(Modifier)
-    }
-}
-
-/**
- * Benflix (compact Requests, 2026-11-10): one small line about the poster you're on, instead of the big
- * picture area. Only this line reads [focused], so moving along a row doesn't redraw the page.
- */
-@Composable
-fun FocusedRequestLine(
-    focused: State<DiscoverItem?>,
-    fallback: DiscoverItem?,
-    scores: Map<String, String>,
-    modifier: Modifier = Modifier,
-) {
-    val item = focused.value ?: fallback
-    val score = item?.let { scores[it.requestKey()] ?: it.score?.let { s -> "★ ${"%.1f".format(s)}" } }
-    val rest =
-        listOfNotNull(
-            item?.releaseDate?.year?.toString(),
-            score,
-            item?.statusWord()?.lowercase()?.replaceFirstChar { it.uppercase() },
-            item?.overview?.takeIf { it.isNotBlank() },
-        ).joinToString("  ·  ")
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth().height(22.dp).padding(horizontal = SIDE_ROW),
-    ) {
-        if (item != null) {
-            Text(
-                text = item.title.orEmpty(),
-                color = BenflixColors.Text,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 360.dp),
-            )
-            if (rest.isNotEmpty()) {
-                Text(
-                    text = "  ·  $rest",
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.small,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
     }
 }
 

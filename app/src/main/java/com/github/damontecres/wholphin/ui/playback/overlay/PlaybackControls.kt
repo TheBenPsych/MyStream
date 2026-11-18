@@ -2,7 +2,6 @@
 
 package com.github.damontecres.wholphin.ui.playback.overlay
 
-import android.view.Gravity
 import androidx.annotation.DrawableRes
 import androidx.annotation.OptIn
 import androidx.annotation.StringRes
@@ -23,11 +22,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
@@ -59,7 +53,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -71,19 +64,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.preferences.AppThemeColors
@@ -94,11 +82,9 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Button
 import com.github.damontecres.wholphin.ui.components.GlowfinIcon
 import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
-import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
 import com.github.damontecres.wholphin.ui.components.centreShiftY
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
-import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.PlaybackDialogType
 import com.github.damontecres.wholphin.ui.seekBack
@@ -109,7 +95,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
-import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.delay
@@ -963,82 +948,6 @@ fun LiveLine(
     }
 }
 
-val buttonSpacing = 12.dp
-
-@OptIn(UnstableApi::class)
-@Composable
-fun PlaybackButtons(
-    player: Player,
-    initialFocusRequester: FocusRequester,
-    onControllerInteraction: () -> Unit,
-    onPlaybackActionClick: (PlaybackAction) -> Unit,
-    showPlay: Boolean,
-    previousEnabled: Boolean,
-    nextEnabled: Boolean,
-    seekBack: Duration,
-    skipBackOnResume: Duration?,
-    seekForward: Duration,
-    modifier: Modifier = Modifier,
-) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            modifier = modifier.focusGroup(),
-            horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
-        ) {
-            PlaybackButton(
-                iconRes = R.drawable.baseline_skip_previous_24,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.Previous)
-                },
-                enabled = previousEnabled,
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlaybackButton(
-                iconRes = R.drawable.baseline_fast_rewind_24,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekBack(seekBack)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlaybackButton(
-                modifier = Modifier.focusRequester(initialFocusRequester),
-                iconRes = if (showPlay) R.drawable.baseline_play_arrow_24 else R.drawable.baseline_pause_24,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    if (showPlay) {
-                        player.play()
-                        skipBackOnResume?.let {
-                            player.seekBack(it)
-                        }
-                    } else {
-                        player.pause()
-                    }
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlaybackButton(
-                iconRes = R.drawable.baseline_fast_forward_24,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    player.seekForward(seekForward)
-                },
-                onControllerInteraction = onControllerInteraction,
-            )
-            PlaybackButton(
-                iconRes = R.drawable.baseline_skip_next_24,
-                onClick = {
-                    onControllerInteraction.invoke()
-                    onPlaybackActionClick.invoke(PlaybackAction.Next)
-                },
-                enabled = nextEnabled,
-                onControllerInteraction = onControllerInteraction,
-            )
-        }
-    }
-}
-
 @Composable
 fun PlaybackButton(
     @DrawableRes iconRes: Int,
@@ -1126,109 +1035,6 @@ fun PlaybackFaButton(
         )
     }
 }
-
-/**
- * Show a dialog aligned to the bottom of the screen instead of centered.
- *
- * @param gravity The [Gravity] to align the dialog to left or right
- */
-@Composable
-fun <T> BottomDialog(
-    choices: List<BottomDialogItem<T>>,
-    onDismissRequest: () -> Unit,
-    onSelectChoice: (Int, BottomDialogItem<T>) -> Unit,
-    gravity: Int,
-    currentChoice: BottomDialogItem<T>? = null,
-) {
-    val initialIndex =
-        remember(choices, currentChoice) { choices.indexOfFirstOrNull { it == currentChoice } } ?: 0
-    val listState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = initialIndex,
-        )
-    val focusRequesters = remember(choices.size) { List(choices.size) { FocusRequester() } }
-    val bringIntoViewRequesters =
-        remember(choices.size) { List(choices.size) { BringIntoViewRequester() } }
-    if (currentChoice != null) {
-        LaunchedEffect(Unit) {
-            bringIntoViewRequesters.getOrNull(initialIndex)?.bringIntoView()
-            focusRequesters.getOrNull(initialIndex)?.tryRequestFocus()
-        }
-    }
-    // TODO enforcing a width ends up ignore the gravity
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
-    ) {
-        val dialogWindowProvider = LocalView.current.parent as? DialogWindowProvider
-        dialogWindowProvider?.window?.let { window ->
-            window.setGravity(Gravity.BOTTOM or gravity) // Move down, by default dialogs are in the centre
-            window.setDimAmount(0f) // Remove dimmed background of ongoing playback
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .wrapContentSize()
-                    .padding(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-//                        .widthIn(max = 240.dp)
-                        .wrapContentWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                itemsIndexed(choices) { index, choice ->
-                    val interactionSource = remember { MutableInteractionSource() }
-                    ListItem(
-                        selected = choice == currentChoice,
-                        enabled = choice.enabled,
-                        onClick = {
-                            onDismissRequest()
-                            onSelectChoice(index, choice)
-                        },
-                        leadingContent = {
-                            SelectedLeadingContent(choice == currentChoice)
-                        },
-                        headlineContent = {
-                            Text(
-                                text = choice.headline,
-                            )
-                        },
-                        supportingContent = {
-                            choice.supporting?.let {
-                                Text(
-                                    text = it,
-                                )
-                            }
-                        },
-                        interactionSource = interactionSource,
-                        modifier =
-                            Modifier
-                                .bringIntoViewRequester(bringIntoViewRequesters[index])
-                                .focusRequester(focusRequesters[index]),
-                        scale = ListItemDefaults.scale(focusedScale = 1f),
-                    )
-                }
-            }
-        }
-    }
-}
-
-data class BottomDialogItem<T>(
-    val data: T,
-    val headline: String,
-    val supporting: String?,
-    val enabled: Boolean = true,
-)
 
 @PreviewTvSpec
 @Composable

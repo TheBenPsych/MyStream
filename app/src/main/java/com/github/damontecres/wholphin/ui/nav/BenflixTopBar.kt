@@ -4,27 +4,21 @@ import android.view.Gravity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,20 +27,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -60,19 +50,14 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.BenflixWatchTime
-import com.github.damontecres.wholphin.services.GuestMode
-import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
-import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.components.BenflixWordLogo
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -134,107 +119,6 @@ fun Destination.fullBleed(): Boolean =
         (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES))
 
 /**
- * The redesigned TV top bar (approved h4-classic): the logo on the left (just decoration), and inside
- * a door its name in the door's colour. On the right a big clock, search, and your picture with a
- * small arrow, which opens the profile menu. A bigger white dot on the picture means something needs you.
- */
-@Composable
-fun BenflixTopBar(
-    door: BenflixDoor?,
-    user: JellyfinUser,
-    userImageUrl: String?,
-    showClock: Boolean,
-    badge: Boolean,
-    searchSelected: Boolean,
-    onClickSearch: () -> Unit,
-    onClickProfile: () -> Unit,
-    profileFocusRequester: FocusRequester,
-    modifier: Modifier = Modifier,
-    big: Boolean = false,
-    overPicture: Boolean = false,
-    /** Pages under the bar can name where Down goes (see [TopBarDown]) */
-    downTarget: TopBarDown? = null,
-    /** Music pages have the player strip along the bottom instead (Music redesign 3) */
-    hideMusicPill: Boolean = false,
-) {
-    val scale = if (big) 1.2f else 1f
-    val down =
-        Modifier.focusProperties {
-            downTarget?.target?.let { down = it }
-        }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 18.dp, bottom = 6.dp)
-                .height(TopNavBarHeight * scale)
-                .focusGroup()
-                .focusProperties {
-                    // Coming up from the page lands on your picture
-                    onEnter = { profileFocusRequester.tryRequestFocus() }
-                },
-    ) {
-        BenflixLogo(
-            height = 26.dp * scale,
-            markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
-        )
-        // Kids, Big kids and Guest always see whose Benflix this is (Guest also hears that nothing is saved)
-        com.github.damontecres.wholphin.ui.main
-            .ProfileBadge(scale = scale, showGuestLine = door == null)
-        if (door != null) {
-            Text(
-                text = door.title,
-                color = door.color,
-                fontSize = 22.sp * scale,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = if (overPicture) Modifier.softShadow() else Modifier,
-        ) {
-            // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
-            if (!hideMusicPill) {
-                com.github.damontecres.wholphin.ui.music
-                    .MusicNowPill(scale = scale, modifier = down)
-            }
-            // Benflix Books: while an audiobook plays, a lime pill (OK opens the player)
-            com.github.damontecres.wholphin.ui.books
-                .AudiobookPill(scale = scale, modifier = down)
-            if (showClock) BigClock(scale = scale)
-            TopBarIconButton(
-                icon = BenflixIcon.SEARCH,
-                contentDescription = "Search",
-                selected = searchSelected,
-                onClick = onClickSearch,
-                size = 40.dp * scale,
-                modifier = down,
-            )
-            ProfileButton(
-                user = user,
-                userImageUrl = userImageUrl,
-                badge = badge,
-                onClick = onClickProfile,
-                pictureSize = 40.dp * scale,
-                // Your picture is the last thing on the bar: Right stays put instead of jumping down onto
-                // whatever sits below on the right (on Home that was a notice's X, which then got cleared)
-                modifier =
-                    down
-                        .focusProperties { right = FocusRequester.Cancel }
-                        .focusRequester(profileFocusRequester),
-            )
-        }
-    }
-}
-
-/**
  * Ben: when the bar sits over a door's picture, a soft dark shadow behind the clock, search and your
  * picture keeps them easy to see on bright pictures. A plain drawing, so it costs nothing on older TVs.
  */
@@ -257,80 +141,6 @@ internal fun Modifier.softShadow(): Modifier =
             )
         }
     }
-
-/** The phone header: logo (and the door's name) on the left, search and your picture on the right. No clock. */
-@Composable
-fun BenflixPhoneHeader(
-    door: BenflixDoor?,
-    user: JellyfinUser,
-    userImageUrl: String?,
-    badge: Boolean,
-    onClickSearch: () -> Unit,
-    onClickProfile: () -> Unit,
-    modifier: Modifier = Modifier,
-    onBack: (() -> Unit)? = null,
-    onHome: (() -> Unit)? = null,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
-    ) {
-        if (onBack != null) {
-            TopBarIconButton(
-                icon = BenflixIcon.BACK,
-                contentDescription = "Back",
-                selected = false,
-                onClick = onBack,
-                size = 36.dp,
-            )
-        }
-        BenflixLogo(
-            height = 22.dp,
-            markModifier = Modifier.onGloballyPositioned { BenflixIntroState.barMark = it.boundsInWindow() },
-            // Benflix Idea Box 24: tapping the logo goes straight Home, from anywhere
-            modifier =
-                if (onHome != null) {
-                    Modifier.clickable(onClickLabel = "Home", onClick = onHome)
-                } else {
-                    Modifier
-                },
-        )
-        if (door == null) {
-            com.github.damontecres.wholphin.ui.main
-                .ProfileBadge(scale = 0.9f)
-        }
-        if (door != null) {
-            Text(
-                text = door.title,
-                color = door.color,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        TopBarIconButton(
-            icon = BenflixIcon.SEARCH,
-            contentDescription = "Search",
-            selected = false,
-            onClick = onClickSearch,
-            size = 38.dp,
-        )
-        ProfileButton(
-            user = user,
-            userImageUrl = userImageUrl,
-            badge = badge,
-            onClick = onClickProfile,
-            pictureSize = 36.dp,
-            showArrow = false,
-        )
-    }
-}
 
 /** "8:42" big, with a small "PM" beside it */
 @Composable
@@ -358,103 +168,6 @@ internal fun BigClock(scale: Float) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 4.dp, bottom = 3.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun TopBarIconButton(
-    icon: BenflixIcon,
-    contentDescription: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    size: Dp,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(CircleShape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                contentColor = if (selected) BenflixColors.Text else BenflixColors.Muted,
-                focusedContainerColor = BenflixColors.FocusRow,
-                focusedContentColor = BenflixColors.Text,
-            ),
-        border = focusRing(CircleShape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.size(size),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(size)) {
-            BenflixIconImage(
-                icon = icon,
-                color = if (selected) BenflixColors.Text else BenflixColors.Muted,
-                size = size * 0.52f,
-                contentDescription = contentDescription,
-            )
-        }
-    }
-}
-
-/** Your picture with a small down arrow. Focus = a white ring around both. */
-@Composable
-private fun ProfileButton(
-    user: JellyfinUser,
-    userImageUrl: String?,
-    badge: Boolean,
-    onClick: () -> Unit,
-    pictureSize: Dp,
-    modifier: Modifier = Modifier,
-    showArrow: Boolean = true,
-) {
-    val kids by KidsMode.active.collectAsState()
-    val guest by GuestMode.active.collectAsState()
-    val shape = RoundedCornerShape(50)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                focusedContainerColor = BenflixColors.FocusRow,
-            ),
-        border = focusRing(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 3.dp, end = if (showArrow) 6.dp else 3.dp, top = 3.dp, bottom = 3.dp),
-        ) {
-            Box {
-                UserIconCardImage(
-                    id = user.id,
-                    name =
-                        when {
-                            kids -> KidsMode.displayName
-                            guest -> "Guest"
-                            else -> user.name
-                        },
-                    imageUrl = if (kids) null else userImageUrl,
-                    modifier = Modifier.size(pictureSize - 6.dp),
-                )
-                if (badge) {
-                    // Approved: a bigger white dot (not red, not a number)
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 3.dp, y = (-3).dp)
-                            .size(pictureSize * 0.38f)
-                            .background(BenflixColors.Tray, CircleShape)
-                            .padding(2.5.dp)
-                            .background(BenflixColors.Text, CircleShape),
-                    )
-                }
-            }
-            if (showArrow) {
-                BenflixIconImage(icon = BenflixIcon.DOWN, color = BenflixColors.Muted, size = pictureSize * 0.42f)
-            }
         }
     }
 }

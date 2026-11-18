@@ -45,9 +45,6 @@ private val KidsFont =
         Font(R.font.kids_fredoka_bold, FontWeight.ExtraBold),
     )
 
-/** Tall movie-poster letters (Bebas Neue). Only for the giant Top 10 numbers; everything else uses Inter or Sora */
-val BenflixTitleFont = FontFamily(Font(R.font.bebas_neue, FontWeight.Normal))
-
 private fun TextStyle.benflix() = copy(fontFamily = BenflixFont)
 
 /** Inter at one of the shared Benflix sizes ([BenflixType]), with comfortable line spacing */

@@ -6,8 +6,6 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.preferences.AppThemeColors
@@ -44,7 +42,6 @@ fun WholphinTheme(
     darkTheme: Boolean = true,
     appThemeColors: AppThemeColors = AppThemeColors.PURPLE,
     accent: BenflixAccent = BenflixAccent.ACCENT_RED,
-    easyRead: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val themeColors = getThemeColors(appThemeColors)
@@ -62,21 +59,15 @@ fun WholphinTheme(
     val kidsPalette = KidsLook.palette
     val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
     val accentColor = kidsPalette?.accent ?: BenflixRedBase
-    // Benflix Easy-read mode: everything written gets 25% bigger and grey text gets brighter
-    val density = LocalDensity.current
-    val readDensity =
-        if (easyRead) Density(density.density, (density.fontScale * EASY_READ_SCALE).coerceAtMost(EASY_READ_MAX_SCALE)) else density
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()
     val kidsFont = KidsLook.on
     val tvTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appTypography() }
     val materialTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appMaterialTypography() }
-    val finalScheme = if (easyRead) colorScheme.copy(onSurfaceVariant = Color(0xFFE8E8EA)) else colorScheme
     CompositionLocalProvider(
         LocalTheme provides appThemeColors,
         LocalBenflixAccent provides accentColor,
-        LocalDensity provides readDensity,
     ) {
         androidx.compose.material3.MaterialTheme(
             colorScheme =
@@ -86,18 +77,13 @@ fun WholphinTheme(
             typography = materialTypography,
         ) {
             MaterialTheme(
-                colorScheme = finalScheme,
+                colorScheme = colorScheme,
                 typography = tvTypography,
                 content = content,
             )
         }
     }
 }
-
-private const val EASY_READ_SCALE = 1.15f
-
-/** Never bigger than this, even if the TV's own text size is already big, so nothing gets cut off */
-private const val EASY_READ_MAX_SCALE = 1.3f
 
 /**
  * The highlight colour. Glowfin: the logo's aqua for everyone (it used to be red, then white). The name

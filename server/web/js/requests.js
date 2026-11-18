@@ -185,8 +185,6 @@ B.rqGrid = (cards, ranked, cls) => (ranked && cards.length
   : "") + `<div class="grid ${cls || ""}">${(ranked ? cards.slice(10) : cards).join("")}</div>`;
 // The end of a list: titles already on Benflix never show in the lists, but can be opened here
 B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Glowfin" : `${n} more ${n === 1 ? "is" : "are"} already on Glowfin ›`}</button></p>` : "");
-B.yearsOf = (r) => (r.releaseDate || r.firstAirDate || "").slice(0, 4);
-
 // Glowfin R1: how many asks wait for Ben's Yes or No (movies, shows, anime, music and books together)
 B.rqWaitingCount = async () => {
   const me = await B.seerrMe();

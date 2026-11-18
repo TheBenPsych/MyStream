@@ -12,7 +12,7 @@ import javax.inject.Singleton
  */
 data class BookTile(
     val id: String,
-    /** book, audiobook, manga or comic */
+    /** book or audiobook */
     val kind: String,
     val name: String,
     val author: String,
@@ -27,7 +27,7 @@ data class BookTile(
     /** The small words under the cover, like "Vol 4 of 12" or "40%" */
     val line: String,
     val isNew: Boolean,
-    /** New volumes since you last opened a manga series ("+2") */
+    /** New books in a series since you last opened it ("+2") */
     val newCount: Int,
     val want: Boolean,
     /** The same book the other way (the audiobook of an ebook, or the other way round) */
@@ -35,13 +35,11 @@ data class BookTile(
     val readable: Boolean,
     val genres: List<String>,
     val lastAt: Long,
-    val vols: Int,
     /** Not on Benflix yet (a Want to read you asked for) */
     val notHere: Boolean = false,
     /** Sent from the TV to read on the phone */
     val sent: Boolean = false,
 ) {
-    val isManga: Boolean get() = kind == "manga" || kind == "comic"
     val isAudio: Boolean get() = kind == "audiobook"
 }
 
@@ -64,18 +62,6 @@ data class BookLibrary(
     /** Want to read books you asked for that aren't on Tower yet */
     val asked: List<BookTile> = emptyList(),
     val counts: Map<String, Int>,
-    val vols: Map<String, Int>,
-)
-
-data class BookVolume(
-    val id: String,
-    val name: String,
-    val done: Boolean,
-    val progress: Float,
-    val current: Boolean,
-    val cover: String?,
-    val isNew: Boolean,
-    val pdf: Boolean,
 )
 
 data class BookChapter(
@@ -99,7 +85,6 @@ data class BookPage(
     val tile: BookTile,
     val desc: String,
     val scores: List<BookScore>,
-    val volumes: List<BookVolume>,
     val chapters: List<BookChapter>,
     /** The volume OK opens: the one you're on, else the first you haven't read */
     val next: String?,
@@ -136,7 +121,7 @@ data class BookGroup(
     val titles: List<BookTile>,
 )
 
-/** One volume to read in the manga reader */
+/** One PDF to read in the page reader */
 data class BookVolInfo(
     val id: String,
     val titleId: String,
@@ -396,7 +381,6 @@ class BenflixBooks
                 titles = j.optJSONArray("titles").objects().map(::tile),
                 asked = j.optJSONArray("asked").objects().map(::tile),
                 counts = counts(j.optJSONObject("counts")),
-                vols = counts(j.optJSONObject("vols")),
             )
         }
 
@@ -423,19 +407,6 @@ class BenflixBooks
                 scores =
                     j.optJSONArray("scores").objects().map {
                         BookScore(it.optString("site"), it.optDouble("score", 0.0), it.optInt("outOf", 10))
-                    },
-                volumes =
-                    j.optJSONArray("volumes").objects().map {
-                        BookVolume(
-                            id = it.optString("id"),
-                            name = it.optString("name"),
-                            done = it.optBoolean("done"),
-                            progress = it.optDouble("progress", 0.0).toFloat(),
-                            current = it.optBoolean("current"),
-                            cover = url(it.text("cover")),
-                            isNew = it.optBoolean("new"),
-                            pdf = it.optBoolean("pdf"),
-                        )
                     },
                 chapters =
                     j.optJSONArray("chapters").objects().map {
@@ -843,7 +814,6 @@ class BenflixBooks
                 readable = j.optBoolean("readable", true),
                 genres = j.optJSONArray("genres").strings(),
                 lastAt = j.optLong("lastAt"),
-                vols = j.optInt("vols"),
                 notHere = j.optBoolean("notHere"),
                 sent = j.optBoolean("sent"),
             )

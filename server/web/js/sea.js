@@ -9,7 +9,6 @@ const INK='#14172e';
 function hx(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16));}
 function mix(a,b,t){const A=hx(a),B=hx(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 let gid=0;
-function gradStops(ci){return ci===KIDS?RAIN.map((c,i)=>`<stop offset="${i/3}" stop-color="${c}"/>`).join(''):`<stop offset="0" stop-color="${COL[ci][0]}"/><stop offset="1" stop-color="${COL[ci][1]}"/>`;}
 const main=ci=>ci===KIDS?'#a55be0':COL[ci][0];
 
 /* ---------- the 8 animals. p = {b body, s shade, l belly/light, e eye, w eye shine, k blush} ---------- */

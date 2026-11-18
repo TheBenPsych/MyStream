@@ -1,9 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -15,9 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.services.AniListFacts
@@ -25,8 +21,6 @@ import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.ui.cards.PersonCard
 import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
-import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** The Cast tab: one row of faces on TV, 3 across on phones */
 @Composable
@@ -66,29 +60,6 @@ fun TitleParentsGuide(
             .padding(horizontal = scope.side)
             .then(if (scope.wide) Modifier.widthIn(max = 700.dp) else Modifier),
     )
-}
-
-/** A short label + words pair list, for small "Details" lists inside a tab */
-@Composable
-fun TitleFactList(
-    scope: TitleTabScope,
-    facts: List<Pair<String, String>>,
-) {
-    if (facts.isEmpty()) return
-    Column(Modifier.padding(horizontal = scope.side)) {
-        facts.forEach { (label, value) ->
-            Row(Modifier.padding(vertical = 3.dp)) {
-                Text(
-                    text = label,
-                    color = BenflixColors.Muted,
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.width(120.dp),
-                )
-                Text(text = value, color = BenflixColors.Soft, fontSize = BenflixType.small)
-            }
-        }
-    }
 }
 
 /**

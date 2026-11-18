@@ -792,7 +792,6 @@ B.previewAll = (ids) => {
   PV.chain = list.slice(1);
   B.previewToggle(list[0], null, true);
 };
-B.previewChainOn = () => !!(PV.chain && PV.id);
 const pvNext = () => {
   const nx = PV.chain && PV.chain.shift();
   if (nx == null) return B.previewStop();

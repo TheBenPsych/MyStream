@@ -35,8 +35,6 @@ import com.github.damontecres.wholphin.ui.components.SliderColors
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.Dialog
 
-const val DRAG_THROTTLE_DELAY = 50L
-
 @Composable
 fun ImageFilterSliders(
     filter: VideoFilter,

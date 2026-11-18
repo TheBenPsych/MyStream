@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,14 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.services.BenflixCantFind
@@ -48,9 +43,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 /** Picks in the side list that aren't one of the tab's lists */
 internal const val PICK_YOURS = "__yours"
 internal const val PICK_WAITING = "__waiting"
-
-/** Amber, for the Waiting for you number */
-internal val WaitingAmber = Color(0xFFF2B544)
 
 /** One list in the side list (its [key] is what's saved as the pick) */
 internal data class SideList(
@@ -107,89 +99,6 @@ internal fun RequestSideFrame(
         }
         wall(Modifier.fillMaxWidth().weight(1f))
     }
-}
-
-/** One line in the TV side list. [onPick] runs when you land on it (the wall follows); [onClick] when you press OK. */
-@Composable
-internal fun SideEntry(
-    label: String,
-    selected: Boolean,
-    onPick: (() -> Unit)? = null,
-    dot: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    count: Int? = null,
-    countColor: Color? = null,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    Surface(
-        onClick = { (onClick ?: onPick)?.invoke() },
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = if (selected) BenflixColors.Raised else Color.Transparent,
-                contentColor = if (selected) BenflixColors.Text else BenflixColors.Soft,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .onFocusChanged { if (it.isFocused) onPick?.invoke() },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            Text(
-                text = label,
-                fontSize = BenflixType.body,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (count != null) {
-                Text(
-                    text = count.toString(),
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.Bold,
-                    color = countColor ?: androidx.tv.material3.LocalContentColor.current,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-            if (dot) {
-                Box(
-                    Modifier
-                        .padding(start = 8.dp)
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(BenflixColors.Warning),
-                )
-            }
-        }
-    }
-}
-
-/** A setting in the TV side list: its name, with On or Off in words */
-@Composable
-internal fun SideSwitch(
-    label: String,
-    on: Boolean,
-    onToggle: () -> Unit,
-) {
-    SideEntry(label = "$label: ${if (on) "On" else "Off"}", selected = false, onClick = onToggle)
-}
-
-@Composable
-internal fun SideHeading(text: String) {
-    Text(
-        text = text.uppercase(),
-        fontSize = BenflixType.tag,
-        fontWeight = FontWeight.Bold,
-        color = BenflixColors.Muted,
-        modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp),
-    )
 }
 
 /** The end of a list: "4 more are already on Benflix ›" (owned titles never show in the lists themselves) */

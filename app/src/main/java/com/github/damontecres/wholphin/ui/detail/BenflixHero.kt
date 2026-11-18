@@ -1,13 +1,8 @@
 package com.github.damontecres.wholphin.ui.detail
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,76 +12,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
-import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import org.jellyfin.sdk.model.api.ImageType
-
-/**
- * The movie / show page picture (approved dt-hero): the wide picture fills the page, darkened on the
- * left and at the bottom so the words on top stay readable. [dim] (0 to 1) darkens it further once you
- * scroll down to the rows. No glow.
- */
-@Composable
-fun HeroBackground(
-    item: BaseItem,
-    dim: () -> Float,
-    modifier: Modifier = Modifier,
-) {
-    val imageUrlService = LocalImageUrlService.current
-    val width = LocalConfiguration.current.screenWidthDp
-    val url =
-        remember(item.id) {
-            imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = (width * 2).coerceAtMost(1920))
-        }
-    Box(modifier = modifier.fillMaxSize()) {
-        if (url != null) {
-            AsyncImage(
-                model = url,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    BenflixShade.heroSide,
-                ),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    BenflixShade.bottom(0.35f),
-                ),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = dim() }
-                .background(BenflixColors.Tray.copy(alpha = .9f)),
-        )
-    }
-}
 
 /**
  * A button on the movie page: the main one (Play / Resume) is white with dark words; the rest are dark
@@ -137,51 +73,4 @@ fun HeroButton(
             )
         }
     }
-}
-
-/** The quiet right column: small grey labels with the names under them (Director, Starring, Audio) */
-@Composable
-fun HeroSideColumn(
-    lines: List<Pair<String, String>>,
-    modifier: Modifier = Modifier,
-) {
-    if (lines.isEmpty()) return
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.widthIn(max = 260.dp),
-    ) {
-        lines.forEach { (label, value) ->
-            Column {
-                Text(text = label, color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold)
-                Text(
-                    text = value,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-/** A small white "You are here" style tag */
-@Composable
-fun HeroTag(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        color = BenflixColors.Tray,
-        fontSize = BenflixType.tag,
-        fontWeight = FontWeight.ExtraBold,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier =
-            modifier
-                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-    )
 }

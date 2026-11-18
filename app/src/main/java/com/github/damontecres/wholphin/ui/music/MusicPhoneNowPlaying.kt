@@ -57,7 +57,6 @@ internal fun PhoneNowPlaying(
     duration: Long,
     playing: Boolean,
     liked: Boolean,
-    easy: Boolean,
     barsOn: Boolean,
     shuffle: ShuffleMode,
     boxHeight: Dp,
@@ -81,13 +80,13 @@ internal fun PhoneNowPlaying(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 22.dp),
             ) {
-                val coverSize = minOf(boxWidth - 44.dp, boxHeight * (if (easy) 0.24f else 0.3f))
+                val coverSize = minOf(boxWidth - 44.dp, boxHeight * 0.3f)
                 SwipeCover(audio, coverSize, onNext = viewModel::next, onPrevious = viewModel::previous)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = audio?.title.orEmpty(),
                     color = BenflixColors.Text,
-                    fontSize = if (easy) 28.sp else 24.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -120,9 +119,9 @@ internal fun PhoneNowPlaying(
                     height = 36.dp,
                 )
                 Spacer(Modifier.height(6.dp))
-                PlayerControls(viewModel, playing, shuffle, easy, playFocus, onPlayFocus = {}, big = true)
+                PlayerControls(viewModel, playing, shuffle, playFocus, onPlayFocus = {}, big = true)
                 Spacer(Modifier.height(10.dp))
-                PlayerRoundButtons(viewModel, liked, easy, size = 46.dp)
+                PlayerRoundButtons(viewModel, liked, size = 46.dp)
             }
             Spacer(Modifier.height(12.dp))
             // The panel peeks up from the bottom and takes whatever room is left (never an empty gap)
