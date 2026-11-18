@@ -216,6 +216,24 @@ def walk(page, presses=70, player=False):
 # ---- getting to each page with the remote ----
 
 HOMES = d.HOME_GREETING_RE + r"|^Hi there!$|^Welcome$"
+WHOS = r"^Add someone$|^Change server$|Who's watching"
+
+
+def is_home(root):
+    return d.find(root, HOMES) is not None and d.find(root, WHOS) is None
+
+
+def wait_home(timeout=60):
+    end = time.time() + timeout
+    while time.time() < end:
+        root = d.dump()
+        if is_home(root):
+            return True
+        if d.find(root, WHOS) is not None:
+            # Who's watching: the first profile has the focus
+            d.key("DPAD_CENTER", wait=4)
+        time.sleep(1)
+    return False
 
 
 def ensure_app():
@@ -239,10 +257,10 @@ def go_home():
     ensure_app()
     no_update_offer()
     for _ in range(6):
-        if d.find(d.dump(), HOMES) is not None:
+        if is_home(d.dump()):
             return True
         d.key("BACK", wait=1.2)
-    return d.find(d.dump(), HOMES) is not None
+    return wait_home(20)
 
 
 def open_rail():
@@ -411,7 +429,7 @@ def main():
         if n is not None:
             d.tap(n)
             time.sleep(1)
-    if d.wait_for(d.DOORS_RE, 60) is None:
+    if not wait_home(90):
         note("never got to Home")
         picture("no-home")
         F["never_home"] = True

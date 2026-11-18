@@ -419,7 +419,9 @@ def sign_in():
     while time.time() < end:
         step += 1
         root = dump()
-        if find(root, HOME_RE) is not None:
+        # Who's watching shows the holiday greeting too ("Happy Thanksgiving"), so it isn't Home while it has these
+        whos = find(root, r"^Add someone$|^Change server$|Who's watching") is not None
+        if find(root, HOME_RE) is not None and not whos:
             log("signed in")
             break
         if find(root, r"^Step 1 of \d+$") is not None:
@@ -550,7 +552,7 @@ def sign_in():
             time.sleep(2)
             continue
         n = find(root, rf"^{USER}$")
-        if n is not None and find(root, r"Who's watching|Select User") is not None:
+        if n is not None and (whos or find(root, r"Select User") is not None):
             f = focused_node(root)
             if MODE == "tv" and f is not None and (contains(f, n) or label_under(f, n)):
                 # Who's watching starts with the focus on the first profile: just press OK
