@@ -36,10 +36,19 @@ B.wireDescribe = (first) => {
     $(".info", top).innerHTML = B.describe(it);
     const src = B.backdrop(it, 1600);
     const art = $(".art", top);
+    // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.
+    // A new picture: the old one fades away, a short wait, then the new one fades in.
+    if (src === art.dataset.src) return;
+    art.dataset.src = src || "";
+    const hadPicture = art.classList.contains("on");
     art.classList.remove("on");
     if (src) {
       const img = new Image();
-      img.onload = () => { if (shown === it) { art.style.backgroundImage = `url('${src}')`; art.classList.add("on"); } };
+      const startedAt = Date.now();
+      img.onload = () => {
+        const wait = hadPicture ? Math.max(0, 500 - (Date.now() - startedAt)) : 0;
+        setTimeout(() => { if (shown === it && art.dataset.src === src) { art.style.backgroundImage = `url('${src}')`; art.classList.add("on"); } }, wait);
+      };
       img.src = src;
     }
   };
@@ -51,7 +60,22 @@ B.wireDescribe = (first) => {
   };
   B.page().addEventListener("mouseover", pointAt);
   B.page().addEventListener("focusin", pointAt);
-  B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+  // Ben 2026-11-18 (Wholphin style): the top area stays locked; only the rows scroll, under it
+  const rows = top.parentElement && top.parentElement.querySelector(":scope > .rows");
+  const fit = () => { if (rows) rows.style.height = Math.max(200, window.innerHeight - rows.getBoundingClientRect().top - (window.scrollY || 0)) + "px"; };
+  if (rows) {
+    document.body.classList.add("locked-top");
+    fit();
+    window.addEventListener("resize", fit);
+    // (phones: the top area's height follows its words, so fit again when it changes)
+    if (window.ResizeObserver) { const ro = new ResizeObserver(fit); ro.observe(top); B.onLeave(() => ro.disconnect()); }
+    // The row you move to with the keyboard jumps up whole, name and all, right under the top area
+    rows.addEventListener("focusin", (e) => { const r = e.target.closest(".rowx"); if (r) rows.scrollTo({ top: r.offsetTop - 4, behavior: "smooth" }); });
+  }
+  B.onLeave(() => {
+    B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt);
+    window.removeEventListener("resize", fit); document.body.classList.remove("locked-top");
+  });
   show(first);
 };
 const doorTop = () => `<section class="door-top" id="doorTop"><div class="art"></div><div class="info"></div></section>`;

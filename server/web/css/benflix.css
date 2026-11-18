@@ -229,6 +229,19 @@ input.field.inline { width: auto; flex: 1; min-width: 180px; }
 .door-top .art.on { opacity: 1; }
 .door-top .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--tray) 0%, rgba(var(--trayrgb),.85) 22%, rgba(var(--trayrgb),.2) 60%, rgba(var(--trayrgb),.1) 100%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb),0) 45%); }
 .door-top .info { position: relative; max-width: 620px; }
+/* Ben 2026-11-18 "Fade down": the picture fills the whole window behind the top area AND the rows, and stays still
+   while the rows scroll over it. Bright at the top, slowly darker going down, dark side on the left for the words. */
+#doorTop .art { position: fixed; right: auto; width: auto; height: auto; inset: 0; z-index: 0; pointer-events: none; background: center top/cover no-repeat; opacity: 0; transition: opacity .25s; }
+#doorTop .art.on { opacity: 1; transition: opacity .8s; }
+#doorTop .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.92) 0%, rgba(var(--trayrgb),.7) 25%, rgba(var(--trayrgb),0) 58%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),.2) 22%, rgba(var(--trayrgb),.72) 42%, rgba(var(--trayrgb),.85) 68%, rgba(var(--trayrgb),.9) 100%); }
+.door-top .info, #doorTop ~ * { position: relative; z-index: 1; }
+#doorTop ~ .rows .rowx h3 { text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+/* Locked top area (Wholphin style): the page itself doesn't scroll, the rows scroll under the top area and snap row by row */
+body.locked-top { overflow: hidden; }
+#doorTop ~ .rows { overflow-y: auto; overscroll-behavior: contain; margin-left: -8px; padding-left: 8px; scroll-snap-type: y proximity; scrollbar-width: none; padding-top: 6px; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px); mask-image: linear-gradient(180deg, transparent 0, #000 14px); }
+#doorTop ~ .rows::-webkit-scrollbar { display: none; }
+#doorTop ~ .rows .rowx { scroll-snap-align: start; }
+#doorTop ~ .rows::after { content: ""; display: block; height: 50vh; }
 .door-top .t { font-size: 42px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; margin: 0 0 10px; }
 .door-top .meta { color: var(--ink2); font-size: 16px; display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
 .door-top .ov { color: var(--ink2); font-size: 16px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-width: 600px; }
@@ -563,6 +576,7 @@ textarea.field { min-height: 90px; resize: vertical; }
   .door .d { font-size: 13px; }
   .door-top { height: auto; min-height: 0; padding-bottom: 16px; }
   .door-top .art { width: 100%; }
+  #doorTop .art::after { background: linear-gradient(180deg, rgba(var(--trayrgb),.35) 0%, rgba(var(--trayrgb),.1) 12%, rgba(var(--trayrgb),.6) 32%, rgba(var(--trayrgb),.88) 50%, rgba(var(--trayrgb),.9) 100%); }
   .door-top .t { font-size: 28px; }
   .door-top .ov { -webkit-line-clamp: 2; font-size: 14px; }
   .rowx h3 { font-size: 17px; }
@@ -1602,6 +1616,8 @@ body.nav-on #page { padding-left: var(--nrail); }
 body.nav-on .drail { left: var(--nrail); }
 body.nav-on .mbar { left: calc(var(--nrail) + 12px); }
 body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
+/* Full-screen pages that sit under the rail (Now playing, the game lobby, a title page's sticky bar) start right of it, so nothing on their left edge is hidden */
+body.nav-on .np, body.nav-on .lb, body.nav-on .tp .tp-bar { left: var(--nrail); }
 .brail { position: fixed; z-index: 70; left: 0; top: 0; bottom: 0; width: var(--nrail); display: flex; flex-direction: column; gap: 4px; padding: 16px 10px; overflow: hidden auto; scrollbar-width: none;
   background: linear-gradient(90deg, var(--tray) 72%, rgba(var(--trayrgb), .0)); transition: width .2s ease, background .2s ease, box-shadow .2s ease; }
 .brail[hidden], .bbar[hidden] { display: none; }
@@ -1613,6 +1629,7 @@ body.nav-on .ehunt { left: calc(var(--nrail) + 18px); }
 /* With a door's place panel open the dim starts where the panel ends, so the panel stays bright */
 body.nav-panel .brail::after { left: calc(var(--nopen) + min(300px, 100vw - var(--nopen))); }
 body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
+body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav-on:has(.brail.always) .tp .tp-bar { left: var(--nopen); }
 .rl-logo { display: flex; align-items: center; height: 46px; padding: 0 11px; margin-bottom: 8px; border-radius: 14px; flex: none; }
 .rl-logo .logo { font-size: 22px; }
 .rl-logo:focus-visible { outline: 2.5px solid #fff; outline-offset: 0; }
@@ -1702,6 +1719,7 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
 @media (max-width: 900px) {
   body.nav-on #page { padding-left: 0; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
   body.nav-on .brail { display: none; }
+  body.nav-on .np, body.nav-on .lb, body.nav-on .tp .tp-bar { left: 0; }
   body.nav-on .drail { left: 0; }
   body.nav-on .mbar { left: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); }
   body.nav-on .tp .tp-bar { bottom: calc(66px + env(safe-area-inset-bottom)); }

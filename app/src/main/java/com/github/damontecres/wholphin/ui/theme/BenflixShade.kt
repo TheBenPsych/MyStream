@@ -38,6 +38,19 @@ object BenflixShade {
                 0.7f to Color.Transparent,
             )
 
+    /**
+     * Home / For you "Fade down" (Ben 2026-11-18): clear at the top, darker by the end of the top area ([brightUntil]
+     * of the way down), then nearly dark (but never fully) to the bottom so the picture still shows faintly behind rows.
+     */
+    fun fadeDown(brightUntil: Float): Brush =
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            brightUntil * 0.55f to BenflixColors.Tray.copy(alpha = .2f),
+            brightUntil to BenflixColors.Tray.copy(alpha = .72f),
+            (brightUntil + 0.25f).coerceAtMost(0.95f) to BenflixColors.Tray.copy(alpha = .85f),
+            1f to BenflixColors.Tray.copy(alpha = .9f),
+        )
+
     /** The fade into the page at the bottom of any big picture, starting [from] of the way down */
     fun bottom(from: Float = 0.4f): Brush =
         Brush.verticalGradient(
