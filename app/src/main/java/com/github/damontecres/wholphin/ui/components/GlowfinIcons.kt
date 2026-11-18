@@ -73,6 +73,7 @@ enum class GlowfinIcon(
         listOf("M3.4 5.4h5.6a3 3 0 0 1 3 3V20a2.2 2.2 0 0 0-2.2-2H3.4z", "M20.6 5.4H15a3 3 0 0 0-3 3V20a2.2 2.2 0 0 1 2.2-2h6.4z"),
     ),
     REQUESTS("Requests", listOf("M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"), listOf("M12 8.3v7.4", "M8.3 12h7.4")),
+
     /** A chunky 8-tooth cog (Ben 2026-11-18: must never look like a sun) */
     SETTINGS(
         "Settings",

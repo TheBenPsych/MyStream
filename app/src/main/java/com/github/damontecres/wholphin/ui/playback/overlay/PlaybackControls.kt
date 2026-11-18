@@ -826,7 +826,13 @@ fun SeekBar(
                 null
             } else {
                 val realSec = (remainingSec / speed.coerceAtLeast(0.1f)).toLong()
-                "Ends at " + formatTime(context, java.time.LocalTime.now().plusSeconds(realSec))
+                "Ends at " +
+                    formatTime(
+                        context,
+                        java.time.LocalTime
+                            .now()
+                            .plusSeconds(realSec),
+                    )
             }
         }
     Column(
@@ -1197,4 +1203,3 @@ private fun ButtonPreview() {
         }
     }
 }
-

@@ -830,16 +830,30 @@ fun PlaybackPageContent(
                         .firstOrNull { it.index == state.currentPlayback?.subtitleIndex }
                         ?.codec in setOf("ass", "ssa")
                 }
-            val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+            val screenHeightPx =
+                with(density) {
+                    LocalConfiguration.current.screenHeightDp.dp
+                        .toPx()
+                }
             val subtitleLiftPx by animateFloatAsState(
                 when {
-                    styledSubtitles -> 0f
-                    controllerViewState.controlsVisible ->
+                    styledSubtitles -> {
+                        0f
+                    }
+
+                    controllerViewState.controlsVisible -> {
                         controllerViewState.controlsHeightPx
                             .takeIf { it > 0 }
                             ?.toFloat() ?: (screenHeightPx * SUBTITLE_LIFT_CONTROLS)
-                    showSegment || state.nextUp != null || state.movieNext != null -> screenHeightPx * SUBTITLE_LIFT_BUTTON
-                    else -> 0f
+                    }
+
+                    showSegment || state.nextUp != null || state.movieNext != null -> {
+                        screenHeightPx * SUBTITLE_LIFT_BUTTON
+                    }
+
+                    else -> {
+                        0f
+                    }
                 },
                 animationSpec = tween(durationMillis = 220),
                 label = "subtitleLift",
