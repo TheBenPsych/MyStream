@@ -85,8 +85,8 @@ import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
-import com.github.damontecres.wholphin.ui.door.doorHome
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
@@ -216,44 +216,57 @@ fun ChannelsPage(
     // Hidden channel types ("Edit types") are left out of the guide.
     val hidden by ChannelPrefs.hidden.collectAsState()
     val shown = remember(list, hidden) { list.filter { it.group() !in hidden } }
-    // Redesign 2 (section 6): the page sits in the shared door frame. Its side menu (chips on phones)
-    // jumps to Recently watched, Favourites (the top of the guide) and the rest of the Guide.
-    val frame = rememberDoorFrameState(BenflixDoor.LIVE_TV, jumps = true)
+    // Ben 2026-11-18: no slide-out menu any more. Live TV's places are word tabs along the top, like Movies:
+    // Guide (the whole page, as before), Favourites (only your favourite channels) and Recently watched
+    // (only the channels you watched lately, once there are some).
+    val frame = rememberDoorFrameState(BenflixDoor.LIVE_TV)
     val recentKeys by ChannelPrefs.recent.collectAsState()
     val hasRecent = remember(recentKeys, list) { recentKeys.any { k -> list.any { it.key == k } } }
     val sections =
         remember(hasRecent) {
             listOfNotNull(
-                doorHome(),
-                if (hasRecent) DoorSection(LIVE_RECENT, "Recently watched", BenflixIcon.REFRESH) else null,
+                DoorSection(DOOR_HOME, "Guide", BenflixIcon.CALENDAR),
                 DoorSection(LIVE_FAVOURITES, "Favourites", BenflixIcon.STAR),
-                DoorSection(LIVE_GUIDE, "Guide", BenflixIcon.CALENDAR, count = shown.size),
+                if (hasRecent) DoorSection(LIVE_RECENT, "Recently watched", BenflixIcon.REFRESH) else null,
             )
         }
     val isTv = rememberIsTv()
-    DoorFrame(frame, sections, modifier, phoneInset = true) { inner ->
-        BoxWithConstraints(modifier = inner) {
-            // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
-            val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
-            val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
-            GuideGrid(
-                all = list,
-                list = shown,
-                halfHours = halfHours,
-                dpm = dpm,
-                viewModel = viewModel,
-                frame = frame,
-                // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
-                nowNext = maxWidth < 600.dp,
-            )
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
+    DoorFrame(frame, sections, modifier, tabs = true) { inner ->
+        // TV and wide screens: the tabs sit over the top of the page, so the page starts under them.
+        // Phones: the usual side margins (the tabs already sit above the page)
+        val placed =
+            if (wide) {
+                inner.padding(top = LocalTopBarOverlap.current)
+            } else {
+                inner.padding(start = BenflixSpace.phoneEdge, end = 8.dp)
+            }
+        // Each tab is its own page, so switching starts it at the top
+        androidx.compose.runtime.key(frame.section) {
+            BoxWithConstraints(modifier = placed) {
+                // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
+                val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
+                val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
+                GuideGrid(
+                    all = list,
+                    list = shown,
+                    halfHours = halfHours,
+                    dpm = dpm,
+                    viewModel = viewModel,
+                    frame = frame,
+                    // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+                    nowNext = maxWidth < 600.dp,
+                    view = frame.section,
+                )
+            }
         }
     }
 }
 
-/** Live TV's side menu places (Home is the top of the page) */
+/** Live TV's tabs besides Guide (the frame's own Home) */
 private const val LIVE_FAVOURITES = "favourites"
 private const val LIVE_RECENT = "recent"
-private const val LIVE_GUIDE = "guide"
 
 /** The page's own left and right margins inside the door frame (TV: clear of the tucked side menu) */
 private fun liveEdges(isTv: Boolean): Dp = if (isTv) 40.dp + 16.dp else 8.dp
@@ -268,7 +281,14 @@ private fun GuideGrid(
     viewModel: ChannelsViewModel,
     frame: DoorFrameState,
     nowNext: Boolean = false,
+    /** The tab: Guide (DOOR_HOME, the whole page), Favourites or Recently watched */
+    view: String = DOOR_HOME,
 ) {
+    val onlyFavourites = view == LIVE_FAVOURITES
+    val onlyRecent = view == LIVE_RECENT
+    // Picking a tab keeps the remote on the tabs (like Movies); only the first open lands in the guide
+    val firstOpen = remember { frame.picks == 0 }
+
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
     // The guide starts at the last half hour and shows the next few hours. The clock ticks each
@@ -296,10 +316,19 @@ private fun GuideGrid(
     val favouriteChannels = remember(favourites, byKey) { favourites.mapNotNull { byKey[it] } }
     val recentKeys by ChannelPrefs.recent.collectAsState()
     val recentChannels = remember(recentKeys, byKey) { recentKeys.mapNotNull { byKey[it] } }
-    // Favourites are the guide's first group, then every type as before
+    // Favourites are the guide's first group, then every type as before.
+    // The Favourites and Recently watched tabs show only those channels, with no headings.
     val entries =
-        remember(list, favouriteChannels) {
+        remember(list, favouriteChannels, recentChannels, view) {
             buildList<GuideEntry> {
+                if (onlyFavourites) {
+                    favouriteChannels.forEach { add(GuideEntry.Channel(it, favourite = true)) }
+                    return@buildList
+                }
+                if (onlyRecent) {
+                    recentChannels.forEach { add(GuideEntry.Channel(it)) }
+                    return@buildList
+                }
                 if (favouriteChannels.isNotEmpty()) {
                     add(GuideEntry.Heading(FAVOURITES_GROUP))
                     favouriteChannels.forEach { add(GuideEntry.Channel(it, favourite = true)) }
@@ -323,7 +352,6 @@ private fun GuideGrid(
         }
     val groupFocus = remember(groupStarts) { groupStarts.associate { (_, _, entry) -> entry to FocusRequester() } }
     var pickedGroup by remember { mutableStateOf<String?>(null) }
-    val firstTypeEntry = remember(entries) { entries.firstOrNull { it is GuideEntry.Channel && !it.favourite } }
     val onRowFocus = { schedule: ChannelSchedule ->
         schedule.programAt(System.currentTimeMillis())?.let { focused = schedule to it }
     }
@@ -348,43 +376,26 @@ private fun GuideGrid(
         remember(recentKeys, favourites, byKey, declinedNow) {
             ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
         }
-    // The side menu's places: where each starts in the list, and what gets focus there
-    val recentFocus = remember { FocusRequester() }
-    val guideFocus = remember { FocusRequester() }
+    // The Recently watched row only shows on the Guide tab (its own tab lists those channels instead)
+    val showRecent = view == DOOR_HOME && recentChannels.isNotEmpty()
     val addFocus = remember { FocusRequester() }
-    val recentIndex = if (recentChannels.isNotEmpty()) 0 else -1
-    // The guide's heading, then its time ruler, then the favourites group (heading + channels)
+    val recentIndex = if (showRecent) 0 else -1
+    // The guide's heading comes after the Recently watched row (when there is one), then its time ruler
     val titleIndex = recentIndex + 1
-    val guideIndex = if (favouriteChannels.isEmpty()) titleIndex else titleIndex + 2 + 1 + favouriteChannels.size
     val scope = rememberCoroutineScope()
 
-    fun focusAt(key: String) {
-        when (key) {
-            LIVE_RECENT -> recentFocus.tryRequestFocus()
-            LIVE_FAVOURITES -> if (favouriteChannels.isEmpty()) addFocus.tryRequestFocus() else firstFocus.tryRequestFocus()
-            LIVE_GUIDE -> guideFocus.tryRequestFocus()
-            else -> if (!rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
-        }
-    }
-    frame.onJump = { key ->
-        scope.launch {
-            val index =
-                when (key) {
-                    LIVE_RECENT -> recentIndex.coerceAtLeast(0)
-                    LIVE_FAVOURITES -> titleIndex
-                    LIVE_GUIDE -> guideIndex
-                    else -> 0
-                }
-            listState.animateScrollToItem(index)
-            delay(JUMP_SETTLE_MS)
-            focusAt(key)
+    fun focusFirst() {
+        when {
+            onlyFavourites && favouriteChannels.isEmpty() -> addFocus.tryRequestFocus()
+            favouriteChannels.isNotEmpty() || onlyRecent -> firstFocus.tryRequestFocus()
+            !rowFocus.tryRequestFocus() -> firstFocus.tryRequestFocus()
         }
     }
     frame.toTop = {
         scope.launch {
             listState.animateScrollToItem(0)
             delay(JUMP_SETTLE_MS)
-            focusAt(DOOR_HOME)
+            focusFirst()
         }
     }
     LaunchedEffect(Unit) { snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it } }
@@ -393,7 +404,7 @@ private fun GuideGrid(
             DoorMemory.keep(
                 BenflixDoor.LIVE_TV,
                 DoorMemory.Spot(
-                    section = frame.section,
+                    section = view,
                     scroll = listState.firstVisibleItemIndex,
                     scrollOffset = listState.firstVisibleItemScrollOffset,
                 ),
@@ -401,31 +412,22 @@ private fun GuideGrid(
         }
     }
     LaunchedEffect(Unit) {
+        // A tab picked from the tabs keeps the remote on the tabs (Down goes into the page)
+        if (!firstOpen) return@LaunchedEffect
         delay(80)
-        // Opening Live TV again within 10 minutes comes back to the same part of the page
-        val spot = DoorMemory.recall(BenflixDoor.LIVE_TV)?.takeIf { it.scroll > 0 }
+        // Opening Live TV again within 10 minutes comes back to the same tab and part of the page
+        val spot = DoorMemory.recall(BenflixDoor.LIVE_TV)?.takeIf { it.scroll > 0 && it.section == view }
         if (spot != null) {
             listState.scrollToItem(spot.scroll, spot.scrollOffset)
             delay(JUMP_SETTLE_MS)
-            val at =
-                when {
-                    spot.scroll >= guideIndex && favouriteChannels.isNotEmpty() -> LIVE_GUIDE
-                    spot.scroll >= titleIndex -> if (favouriteChannels.isEmpty()) LIVE_GUIDE else LIVE_FAVOURITES
-                    spot.scroll == recentIndex -> LIVE_RECENT
-                    else -> DOOR_HOME
-                }
-            // Deep in the guide, keep the spot: focus the first channel on screen instead of jumping back up
-            if (at != LIVE_GUIDE || spot.scroll <= guideIndex) focusAt(at)
+            // Deep in the guide, keep the spot: the remote goes to the first channel on screen
+            if (spot.scroll <= titleIndex) focusFirst()
             return@LaunchedEffect
         }
-        // Ben: opens on the first favourite (now the top of the guide), else the first recent
+        // Ben: opens on the first favourite (the top of the guide), else the first recent
         // channel, else the first channel in the guide
         listState.scrollToItem(0)
-        if (favouriteChannels.isNotEmpty()) {
-            firstFocus.tryRequestFocus()
-        } else if (!rowFocus.tryRequestFocus()) {
-            firstFocus.tryRequestFocus()
-        }
+        focusFirst()
     }
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -452,9 +454,9 @@ private fun GuideGrid(
             modifier = Modifier.fillMaxSize(),
         ) {
             // Recently watched, then the full guide (favourites first)
-            if (recentChannels.isNotEmpty()) {
+            if (showRecent) {
                 item(key = "row-recent") {
-                    Box(Modifier.focusRequester(recentFocus)) {
+                    Box {
                         ChannelTileRow(title = "Recently watched") {
                             items(recentChannels, key = { "r-${it.key}" }) { schedule ->
                                 RecentCard(
@@ -483,28 +485,37 @@ private fun GuideGrid(
                         modifier = Modifier.padding(top = 10.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()),
                     ) {
                         Text(
-                            text = "Guide",
+                            text =
+                                when {
+                                    onlyFavourites -> "Favourites"
+                                    onlyRecent -> "Recently watched"
+                                    else -> "Guide"
+                                },
                             fontFamily = GlowfinDisplayFont,
                             fontSize = BenflixType.rowName,
                             fontWeight = FontWeight.Bold,
                             color = Glowfin.Text,
                             modifier = Modifier.padding(end = 8.dp),
                         )
-                        groupStarts.forEach { (name, index, entry) ->
-                            LiveChip(
-                                label = groupLabel(name),
-                                selected = pickedGroup == name,
-                                onClick = {
-                                    pickedGroup = name
-                                    scope.launch {
-                                        listState.animateScrollToItem(titleIndex + 2 + index)
-                                        delay(JUMP_SETTLE_MS)
-                                        groupFocus[entry]?.tryRequestFocus()
-                                    }
-                                },
-                            )
+                        if (view == DOOR_HOME) {
+                            groupStarts.forEach { (name, index, entry) ->
+                                LiveChip(
+                                    label = groupLabel(name),
+                                    selected = pickedGroup == name,
+                                    onClick = {
+                                        pickedGroup = name
+                                        scope.launch {
+                                            listState.animateScrollToItem(titleIndex + 2 + index)
+                                            delay(JUMP_SETTLE_MS)
+                                            groupFocus[entry]?.tryRequestFocus()
+                                        }
+                                    },
+                                )
+                            }
                         }
-                        LiveChip("Edit types", selected = false, onClick = { showTypes = true })
+                        if (view == DOOR_HOME) {
+                            LiveChip("Edit types", selected = false, onClick = { showTypes = true })
+                        }
                         LiveChip(
                             "+  Add channels",
                             selected = false,
@@ -525,6 +536,21 @@ private fun GuideGrid(
                             )
                         }
                     }
+                }
+            }
+            if (entries.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        text =
+                            if (onlyFavourites) {
+                                "No favourites yet. Hold OK on a channel (or press and hold on a phone) to add it, or pick + Add channels."
+                            } else {
+                                "No channels here yet."
+                            },
+                        fontSize = BenflixType.body,
+                        color = Glowfin.Dim,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
                 }
             }
             stickyHeader(key = "ruler") {
@@ -571,7 +597,6 @@ private fun GuideGrid(
                 val entryFocus =
                     Modifier
                         .then(if (entry === firstEntry) Modifier.focusRequester(firstFocus) else Modifier)
-                        .then(if (entry === firstTypeEntry) Modifier.focusRequester(guideFocus) else Modifier)
                         .then(groupFocus[entry]?.let { Modifier.focusRequester(it) } ?: Modifier)
                 if (nowNext) {
                     NowNextRow(

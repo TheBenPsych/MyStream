@@ -755,10 +755,12 @@ fun NavDrawer(
                     onPick = { nav.goBackTo(it) },
                     onPlaces =
                         placesDoor
-                            ?.takeIf {
-                                com.github.damontecres.wholphin.ui.door.DoorPlaces
-                                    .of(it)
-                                    .size > 1
+                            ?.takeIf { door ->
+                                // Pages with tabs along their top have no places sheet (Ben 2026-11-18: all of them)
+                                !door.hasPageTabs() &&
+                                    com.github.damontecres.wholphin.ui.door.DoorPlaces
+                                        .of(door)
+                                        .size > 1
                             }?.let { door -> { placesFor = door } },
                 )
                 DestinationContent(
@@ -801,7 +803,7 @@ fun NavDrawer(
                                     moreOpen = true
                                 }
 
-                                // Glowfin: Movies, Shows and Anime have their tabs on the page itself, so tapping
+                                // Glowfin: every page has its tabs on the page itself, so tapping
                                 // their bar spot again just goes back to the top of For you
                                 tab.door != null && tab.door == placesDoor && !tab.door.hasPageTabs() -> {
                                     // Tapping the door's tab again slides up its places (approved rx-phonepanel)

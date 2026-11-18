@@ -49,11 +49,11 @@
       ["My List", "plus", grid("shows", "mine=1&title=My%20List"), () => gridOf("shows") && has("mine") === "1"],
       kids ? null : ["Anime", "star", grid("shows", "anime=only&title=Anime"), () => gridOf("shows") && has("anime") === "only"],
     ];
+    // Ben 2026-11-18: the same places as the Live TV tabs
     const live = [
-      ["Home", "home", "#/live", () => true],
-      ["Favourites", "star", "jump:Favourites"],
-      ["Recently watched", "restart", "jump:Recently watched"],
-      ["Guide", "cal", "jump:Guide"],
+      ["Guide", "cal", "#/live", () => location.hash === "#/live"],
+      ["Favourites", "star", "#/live?v=fav", () => has("v") === "fav"],
+      ["Recently watched", "restart", "#/live?v=recent", () => has("v") === "recent"],
     ];
     // Glowfin G1: the same places as the Games tabs
     const games = [
@@ -63,12 +63,14 @@
       ["Party", "phone", "#/games?p=party", () => has("p") === "party"],
       ["Scores", "chart", "#/games?p=scores", () => has("p") === "scores"],
     ];
-    // Music redesign 3 (approved g2-places): the same four places as the TV and phones
+    // Ben 2026-11-18: the same places as the Music tabs (no Music search of its own; the menu's Search finds music)
+    const has2 = (c) => location.hash.startsWith("#/mlibrary") && has("c") === c;
     const music = [
-      ["Home", "home", "#/music", () => location.hash === "#/music"],
-      ["Search", "search", "#/msearch", () => location.hash.startsWith("#/msearch")],
-      ["Your library", "list", "#/mlibrary", () => location.hash.startsWith("#/mlibrary") || location.hash.startsWith("#/mgrid/") || location.hash === "#/songs" || location.hash === "#/liked"],
-      ["Ask for music", "plus", "#/requests?tab=music", () => false],
+      ["For you", "home", "#/music", () => location.hash === "#/music"],
+      ["Albums", "note", "#/mlibrary?c=albums", () => has2("albums")],
+      ["Artists", "user", "#/mlibrary?c=artists", () => has2("artists")],
+      ["Playlists", "list", "#/mlibrary?c=playlists", () => has2("playlists")],
+      ["Songs", "music", "#/songs", () => location.hash === "#/songs"],
     ];
     const place = () => has("p") || "home";
     const c = bookCounts || {};
@@ -92,9 +94,9 @@
   const doorOf = (hash) => {
     if (/^#\/(movies$|grid\/movies|browse\/movies)/.test(hash)) return "movies";
     if (/^#\/(shows$|grid\/shows|browse\/shows)/.test(hash)) return "shows";
-    if (/^#\/live$/.test(hash)) return "live";
+    if (/^#\/live(\?|$)/.test(hash)) return "live";
     if (/^#\/(games(\?|$)|console\/)/.test(hash)) return "games";
-    if (/^#\/(music$|msearch|mlibrary|mthemes\/|songs$|liked$|mgrid\/)/.test(hash)) return "music";
+    if (/^#\/(music$|mlibrary|mthemes\/|songs$|liked$|mgrid\/)/.test(hash)) return "music";
     if (/^#\/books(\?|$)/.test(hash)) return "books";
     if (/^#\/server(\/|$)/.test(hash)) return "server";
     return null;

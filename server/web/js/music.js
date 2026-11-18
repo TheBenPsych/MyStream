@@ -1236,95 +1236,9 @@
     draw();
   });
 
-  // ---------- Search inside Music (approved x-recentsearch) ----------
-  B.route(/^\/msearch$/, async (m, nav) => {
-    if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">Search</h1>
-      <input class="field msearch-box" id="mq" type="search" placeholder="What do you want to listen to?" autocomplete="off" value="${esc(B.q("q") || "")}">
-      <div id="mres"></div></div>`;
-    B.wireTop();
-    const box = $("#mq"), res = $("#mres");
-    let timer = 0, ticket = 0;
-    const keep = () => { const q = box.value.trim(); if (q.length >= 2) meSave("api/music/me/search", { q }); };
-    const recentHtml = async () => {
-      const mine = await B.musicMe();
-      const list = mine.searches || [];
-      if (!B.alive(nav) || box.value.trim().length >= 2) return;
-      res.innerHTML = (list.length ? `<div class="mlib-head"><h3 class="msub">Recent searches</h3><button class="btn small" data-rs="clear">Clear all</button></div>
-        <div class="mlib-list">${list.map((s) => `<div class="mrs"><button class="mrs-q" data-rq="${esc(s.q)}">${I("search")} ${esc(s.q)}</button><button class="circle" data-rx="${esc(s.q)}" title="Remove">${I("x")}</button></div>`).join("")}</div>`
-        : `<p class="dim">Your recent searches show here.</p>`) + `<div id="mbrowse"></div>`;
-      // Browse all: In season, moods, genres and decades as colour tiles
-      const th = ((await B.musicThemes().catch(() => ({}))).themes || []).slice();
-      if (!B.alive(nav) || box.value.trim().length >= 2 || !$("#mbrowse")) return;
-      const order = ["season", "lofi", "mood", "genre", "decade", "throwback"];
-      th.sort((p, q) => (order.indexOf(p.group) + 1 || 99) - (order.indexOf(q.group) + 1 || 99));
-      const COLS = ["#b83b5e", "#2e86ab", "#e07a1f", "#6a4c93", "#1b998b", "#c0392b", "#3d5a80", "#8e7d2b", "#9b2c6e", "#2d6a4f"];
-      const hue = (k) => COLS[[...String(k)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLS.length];
-      if (th.length) $("#mbrowse").innerHTML = `<h3 class="msub">Browse all</h3><div class="mbrowse">${th.map((t) => `<a class="mbtile" style="background:${hue(t.key)}" href="#/mix/${enc(t.key)}">${esc(t.name)}</a>`).join("")}</div>`;
-    };
-    const run = async () => {
-      const q = box.value.trim();
-      if (q.length < 2) return recentHtml();
-      const mine = ++ticket;
-      const st = `searchTerm=${enc(q)}`;
-      const [songs, artists, albums, pls] = await Promise.all([
-        items(`${st}&IncludeItemTypes=Audio&Limit=12&${SONG_FIELDS}`).catch(() => []),
-        items(`${st}&IncludeItemTypes=MusicArtist&Limit=10`).catch(() => []),
-        items(`${st}&IncludeItemTypes=MusicAlbum&Limit=12`).catch(() => []),
-        items(`${st}&IncludeItemTypes=Playlist&MediaTypes=Audio&Limit=8&Fields=ChildCount`).catch(() => []),
-      ]);
-      if (mine !== ticket || !B.alive(nav)) return;
-      const none = !songs.length && !artists.length && !albums.length && !pls.length;
-      // The one big Top result: an artist whose name fits, else the first song, album or playlist
-      const starts = (x) => (x.Name || "").toLowerCase().startsWith(q.toLowerCase());
-      const top = artists.find(starts) || songs.find(starts) || artists[0] || songs[0] || albums[0] || pls[0];
-      const topTag = top && top.Type === "Audio" ? "button" : "a";
-      const topHtml = top ? `<h3 class="msub">Top result</h3><${topTag} class="mtop" ${top.Type === "Audio" ? `type="button" data-topsong` : `href="#/${top.Type === "MusicArtist" ? "artist" : top.Type === "MusicAlbum" ? "album" : "playlist"}/${top.Id}"`}>
-          <span class="mtop-art ${top.Type === "MusicArtist" ? "round" : ""}" style="${cover(top, 200) ? `background-image:url('${cover(top, 200)}')` : ""}"></span>
-          <span><b>${esc(top.Name)}</b><small>${esc(top.Type === "MusicArtist" ? "Artist" : top.Type === "MusicAlbum" ? `Album · ${top.AlbumArtist || ""}` : top.Type === "Playlist" ? "Playlist" : `Song · ${artistOf(top)}`)}</small></span></${topTag}>` : "";
-      res.innerHTML = (none ? `<p class="dim">Nothing on Glowfin by that name yet.</p>` : topHtml + (songs.length ? `<h3 class="msub">Songs</h3><div class="msongs" id="ms">${songs.map((s, i) => songRow(s, i, { cover: true, artist: true })).join("")}</div>` : "")
-        + B.row("Artists", artists.map(artistCard)) + B.row("Albums", albums.map(albumCard)) + B.row("Playlists", pls.map(playlistCard))) + `<div id="mwords"></div><div id="mnothere"></div>`;
-      if (songs.length) wireSongs($("#ms"), songs, "Search", null);
-      const tp = $("[data-topsong]"); if (tp) tp.addEventListener("click", () => { keep(); M.playList([top], 0, false, "Search"); M.sourceId = null; });
-      // Music redesign 3 (lyrics search): a line you remember finds the song
-      if (q.split(/\s+/).length >= 2) {
-        B.call("GET", `api/music/lyricsearch?q=${enc(q)}`).then(async (j) => {
-          const hits = ((j && j.songs) || []).slice(0, 6);
-          const have = new Set(songs.map((x) => x.Id));
-          const found = [];
-          for (const h of hits) {
-            const got = (await items(`searchTerm=${enc(h.title)}&IncludeItemTypes=Audio&Limit=5&${SONG_FIELDS}`).catch(() => [])).find((x) => songKey(x.Name) === songKey(h.title)
-              && (!h.artist || (x.Artists || []).some((a) => a.toLowerCase().includes(h.artist.toLowerCase()) || h.artist.toLowerCase().includes(a.toLowerCase()))));
-            if (got && !have.has(got.Id) && !found.some((f) => f.s.Id === got.Id)) found.push({ s: got, line: h.line });
-          }
-          if (mine !== ticket || !B.alive(nav) || !$("#mwords") || !found.length) return;
-          const list = found.map((f) => f.s);
-          $("#mwords").innerHTML = `<h3 class="msub">Songs with these words</h3><div class="msongs" id="mwl">${found.map((f, i) => songRow(f.s, i, { cover: true, artist: true }) + `<div class="mword-line dim">\u201C${esc(f.line)}\u201D</div>`).join("")}</div>`;
-          wireSongs($("#mwl"), list, "Search", null);
-          if (none) { const d = res.querySelector("p.dim"); if (d && /Nothing on Glowfin/.test(d.textContent)) d.remove(); }
-        }).catch(() => {});
-      }
-      // Not on Benflix yet: songs from the music catalogue for these words, with a preview and Ask
-      const cat = await B.call("GET", `api/music/search?q=${enc(q)}`).catch(() => null);
-      if (mine !== ticket || !B.alive(nav) || !$("#mnothere")) return;
-      const out = ((cat && cat.songs) || []).filter((c) => !c.have).slice(0, 6);
-      if (out.length) {
-        $("#mnothere").innerHTML = `<h3 class="msub mask-h">Not on Glowfin yet</h3><div class="msongs" id="mnh">${out.map((c) => ghostRow(c, null, true)).join("")}</div>`;
-        wireGhosts($("#mnh"), () => keep());
-      } else if (none) $("#mnothere").innerHTML = `<p class="dim"><a href="#/requests?tab=music&q=${enc(q)}">Ask for music</a> to look further.</p>`;
-    };
-    box.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 300); });
-    box.addEventListener("keydown", (e) => { if (e.key === "Enter") keep(); });
-    res.addEventListener("click", (e) => {
-      const q = e.target.closest("[data-rq]"); if (q) { box.value = q.dataset.rq; run(); return; }
-      const x = e.target.closest("[data-rx]"); if (x) { meSave("api/music/me/search", { q: x.dataset.rx, remove: true }).then(recentHtml); return; }
-      if (e.target.closest("[data-rs=clear]")) { meSave("api/music/me/search", { clear: true }).then(recentHtml); return; }
-      // Opening or playing anything from the results keeps the words in Recent searches
-      if (e.target.closest("a, .srow")) keep();
-    });
-    run();
-    box.focus();
-  });
+  // Ben 2026-11-18: Music has no search of its own any more. The Search at the top of the menu finds songs,
+  // albums, artists and playlists (and music to ask for), so old links to Music search go there.
+  B.route(/^\/msearch$/, async () => B.go("#/search" + (B.q("q") ? "?q=" + encodeURIComponent(B.q("q")) : "")));
 
   // ---------- Music redesign 3: a song you asked for came in: a corner card offers to play it next (once) ----------
   let arrivedAt = 0;
