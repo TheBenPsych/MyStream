@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.door
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -263,6 +264,7 @@ private fun DoorSectionPage(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun WideDoor(
     state: DoorPageState,
