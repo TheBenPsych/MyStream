@@ -61,22 +61,27 @@ object BenflixColors {
     /** "Couldn't find it" on Requests */
     val CantFind = Color(0xFFFF8A8A)
 
-    val Movies: Color get() = KidsLook.palette?.movies ?: Color(0xFFFFB547)
-    val OnMovies: Color get() = KidsLook.palette?.onMovies ?: Color(0xFF211500)
-    val Shows: Color get() = KidsLook.palette?.shows ?: Color(0xFF7AA7FF)
-    val OnShows: Color get() = KidsLook.palette?.onShows ?: Color(0xFF0F1521)
-    val LiveTv = Glowfin.Aqua
-    val OnLiveTv = Color(0xFF081B19)
-    val Games: Color get() = KidsLook.palette?.games ?: Color(0xFFFF6F91)
-    val OnGames: Color get() = KidsLook.palette?.onGames ?: Color(0xFF210E12)
+    // Glowfin (Ben 2026-11-18): every area uses the same blue that Shows always had. The old Benflix colour per
+    // area (orange Movies, pink Games, aqua Live TV and Books, violet Music) is gone. Kids keeps its own colours.
+    private val Area = Color(0xFF7AA7FF)
+    private val OnArea = Color(0xFF0F1521)
 
-    /** Music: Glowfin's violet (M1, Nov 2026), with dark words on it */
-    val Music = Glowfin.Violet
-    val OnMusic = Color(0xFF160F26)
+    val Movies: Color get() = KidsLook.palette?.movies ?: Area
+    val OnMovies: Color get() = KidsLook.palette?.onMovies ?: OnArea
+    val Shows: Color get() = KidsLook.palette?.shows ?: Area
+    val OnShows: Color get() = KidsLook.palette?.onShows ?: OnArea
+    val LiveTv = Area
+    val OnLiveTv = OnArea
+    val Games: Color get() = KidsLook.palette?.games ?: Area
+    val OnGames: Color get() = KidsLook.palette?.onGames ?: OnArea
 
-    /** Books: Glowfin's aqua (B1, Nov 2026), with dark words on it */
-    val Books = Glowfin.Aqua
-    val OnBooks = Color(0xFF05222A)
+    /** Music: the same Glowfin area blue, with dark words on it */
+    val Music = Area
+    val OnMusic = OnArea
+
+    /** Books: the same Glowfin area blue, with dark words on it */
+    val Books = Area
+    val OnBooks = OnArea
 }
 
 /** The Home doors, in their fixed order (Music is the fifth) */

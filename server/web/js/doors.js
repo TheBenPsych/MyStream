@@ -10,8 +10,9 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // Server isn't a door: its menu (Redesign 2, approved sv2-glance) uses a white pill
-  const COLORS = { movies: "#FFB547", shows: "#7AA7FF", live: "#3FE0E8", games: "#FF6F91", music: "#A55BE0", books: "#3FE0E8", server: "#F1F2F5" };
-  const ON = { movies: "#211500", shows: "#0F1521", live: "#081B19", games: "#210E12", music: "#160F26", books: "#05222A", server: "#0B0C10" };
+  // Glowfin (Ben 2026-11-18): every area uses the same blue (the old Benflix colour per area is gone)
+  const COLORS = { movies: "#7AA7FF", shows: "#7AA7FF", live: "#7AA7FF", games: "#7AA7FF", music: "#7AA7FF", books: "#7AA7FF", server: "#F1F2F5" };
+  const ON = { movies: "#0F1521", shows: "#0F1521", live: "#0F1521", games: "#0F1521", music: "#0F1521", books: "#0F1521", server: "#0B0C10" };
   const ICON = {
     home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',

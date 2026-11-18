@@ -5,7 +5,7 @@
    Everything comes from the helper's /api/books. Your place is saved per profile, so it follows you to the TV and phone. */
 
 (() => {
-  const LIME = "#3FE0E8", ON_LIME = "#05222A"; // Glowfin aqua (B1)
+  const LIME = "#7AA7FF", ON_LIME = "#0F1521"; // the one Glowfin area colour (Ben 2026-11-18)
   const ICON = {
     book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/>',
     ears: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/>',

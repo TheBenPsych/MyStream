@@ -64,10 +64,10 @@ B.I = I;
 
 // ---------- doors ----------
 const DOORS = {
-  movies: { key: "movies", name: "Movies", desc: "Films for any night", color: "#FFB547", icon: "film" },
+  movies: { key: "movies", name: "Movies", desc: "Films for any night", color: "#7AA7FF", icon: "film" },
   shows: { key: "shows", name: "Shows", desc: "Series and episodes", color: "#7AA7FF", icon: "tv" },
-  live: { key: "live", name: "Live TV", desc: "Channels playing now", color: "#3FE0E8", icon: "live" },
-  games: { key: "games", name: "Games", desc: "Play in your browser", color: "#FF6F91", icon: "pad" },
+  live: { key: "live", name: "Live TV", desc: "Channels playing now", color: "#7AA7FF", icon: "live" },
+  games: { key: "games", name: "Games", desc: "Play in your browser", color: "#7AA7FF", icon: "pad" },
 };
 B.DOORS = DOORS;
 B.logo = () => `<span class="logo"><img class="fin" src="web/img/glowfin-mark.svg" alt=""><span class="lw">Glow<b>fin</b></span><span class="kt">kids</span></span>`;

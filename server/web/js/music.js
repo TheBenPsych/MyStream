@@ -5,7 +5,7 @@
    L likes the song. */
 
 (() => {
-  const MUSIC = "#A55BE0", ON_MUSIC = "#160F26";
+  const MUSIC = "#7AA7FF", ON_MUSIC = "#0F1521"; // the one Glowfin area colour (Ben 2026-11-18)
   B.DOORS.music = { key: "music", name: "Music", desc: "Your songs and playlists", color: MUSIC, icon: "note" };
   const I = B.I;
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

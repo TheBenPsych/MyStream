@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.games
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -189,9 +192,10 @@ private fun GameRow(
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gap = if (isTv) 16.dp else 12.dp
             // Ben: tall cards like movie and show posters, with room for the whole name (up to three lines)
-            val width: Dp = if (isTv) 150.dp else (maxWidth * 0.34f).coerceIn(104.dp, 150.dp)
-            // TV: a little shorter than a poster so the whole row fits under the top area (Ben, 2026-11-08)
-            val tileHeight = maxOf(width * if (isTv) 1.12f else 1.4f, posterTileHeight(isTv))
+            // Glowfin covers (2026-11-18): every tile is the game's own 2:3 cover, a little narrower on TV so the
+            // whole row still fits under the top area
+            val width: Dp = if (isTv) 120.dp else (maxWidth * 0.3f).coerceIn(100.dp, 140.dp)
+            val tileHeight = maxOf(width / GAME_COVER_RATIO, posterTileHeight(isTv))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
@@ -266,6 +270,17 @@ private fun RowTile(
         colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
         modifier = Modifier.glowFocus(shape).then(modifier),
     ) {
+        val cover = gameCover(g.key)
+        if (cover != null) {
+            // The cover already shows the name and the kind of game
+            Image(
+                painter = painterResource(cover),
+                contentDescription = g.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@Surface
+        }
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =

@@ -24,7 +24,7 @@
     easy: { name: "Easy to read", css: "OpenDyslexic, Verdana, sans-serif" },
   };
   const SIZES = [0.8, 0.9, 1, 1.12, 1.25, 1.4, 1.6, 1.85];
-  const LIME = "#3FE0E8";
+  const LIME = "#7AA7FF";
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };

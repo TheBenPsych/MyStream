@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -604,15 +605,41 @@ internal fun BoxScope.TitlePictureView(
         }
 
         is TitlePicture.Cover -> {
+            // Glowfin (Ben 2026-11-18): the cover itself, tiny and stretched (so it looks blurred on every TV, even
+            // ones too old for real blur and with almost no work), behind the whole top. Darker on the left for the
+            // words, and it fades into the page at the bottom with no edge. No more tinted box.
+            val context = LocalContext.current
+            val small =
+                remember(picture.url, picture.model) {
+                    val base = picture.model as? coil3.request.ImageRequest
+                    (
+                        base?.newBuilder() ?: picture.url?.let {
+                            coil3.request.ImageRequest
+                                .Builder(context)
+                                .data(it)
+                        }
+                    )?.size(24, 36)
+                        ?.build()
+                }
+            if (small != null) {
+                AsyncImage(
+                    model = small,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+                    alpha = .55f,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Box(Modifier.fillMaxSize().background(BenflixShade.heroSide))
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        androidx.compose.ui.graphics.Brush.linearGradient(
-                            0f to picture.tint.copy(alpha = .22f),
-                            1f to BenflixColors.Tray,
-                        ),
+                Modifier.fillMaxSize().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        (if (wide) .45f else .3f) to Color.Transparent,
+                        (if (wide) .9f else .8f) to BenflixColors.Tray,
                     ),
+                ),
             )
             if (picture.url != null || picture.model != null) {
                 AsyncImage(
