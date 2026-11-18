@@ -1115,7 +1115,7 @@
 
   // ---------- Your library (approved g2-library, x-recent) ----------
   const LIB_SORTS = ["Recently played", "Recently added", "A to Z", "Made by"];
-  B.route(/^\/mlibrary$/, async (m, nav) => {
+  B.route(/^\/mlibrary(?:\?.*)?$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
     // Glowfin (M1): the Albums, Artists and Playlists tabs are this page (?c=albums, artists or playlists)
     const tab = ["albums", "artists", "playlists"].includes(B.q("c")) ? B.q("c") : "all";

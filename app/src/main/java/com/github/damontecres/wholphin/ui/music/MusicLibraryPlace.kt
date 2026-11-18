@@ -543,7 +543,8 @@ private fun libraryOrder(
             // Recently played: what you played lately first (newest first), then the rest as they came
             else -> rest.sortedBy { played[it.place.key] ?: Int.MAX_VALUE }
         }
-    return liked + pinned + sorted
+    // (one row per album or playlist: a doubled one would close the page on some TVs)
+    return (liked + pinned + sorted).distinctBy { it.place.key }
 }
 
 /** Recently played (approved x-recent): every album, playlist and mix you played in the last 3 months, by day */
