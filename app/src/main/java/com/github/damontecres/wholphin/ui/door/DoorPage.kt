@@ -3,6 +3,8 @@ package com.github.damontecres.wholphin.ui.door
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,8 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -77,6 +77,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
@@ -372,63 +373,77 @@ internal fun WideDoor(
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
-        val topHeight = ((maxHeight - overlap) * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
+        // Ben 2026-11-18: sized like Wholphin's Home header (48 gap + 180 tall + 32 gap); it stays locked while rows move
+        val topGap = maxOf(overlap, WHOLPHIN_TOP_GAP)
+        val topHeight =
+            if (easy) {
+                ((maxHeight - overlap) * 0.40f).coerceIn(170.dp, 300.dp) + overlap
+            } else {
+                (topGap + WHOLPHIN_HEADER + WHOLPHIN_BOTTOM_GAP).coerceAtMost(maxHeight * 0.52f)
+            }
         // Ben 2026-11-18 (Fade down): the picture fills the whole page behind the rows, bright at the top and
         // slowly darker going down. It stays still while the rows move over it.
         PageBackdrop(
             item = preview,
             pageHeight = maxHeight,
-            brightUntil = ((topHeight + overlap) / maxHeight).coerceIn(0.2f, 0.7f),
+            brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.7f),
             overlap = overlap,
         )
         Column(Modifier.fillMaxSize()) {
-            PreviewArea(item = preview, easy = easy, height = topHeight + overlap, overlap = overlap)
-            LazyColumn(
-                state = columnState,
-                contentPadding = PaddingValues(bottom = 48.dp),
-                // Ben: a little more room between rows so the next row only just peeks in
-                verticalArrangement = Arrangement.spacedBy(if (isTv && !easy) 30.dp else 20.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .onFocusChanged {
-                            if (rowsHaveFocus && !it.hasFocus) rowsLostFocusAt = System.currentTimeMillis()
-                            rowsHaveFocus = it.hasFocus
-                        },
-            ) {
-                state.entries(extra.keys).forEach { entry ->
-                    val row = (entry as? DoorEntry.Real)?.row
-                    item(key = entry.key) {
-                        if (entry is DoorEntry.Extra) {
-                            extra[entry.key]?.invoke()
-                            return@item
-                        }
-                        if (row == null) {
-                            WaitingRow(posterWidth = posterWidth, showName = !isTv)
-                            return@item
-                        }
-                        DoorRow(
-                            row = row,
-                            posterWidth = posterWidth,
-                            showName = !isTv,
-                            onOpen = onOpen,
-                            startIndex = if (row.key == targetRow) targetIndex else 0,
-                            focusRequester = if (row.key == targetRow) restore else null,
-                            focusIndex = targetIndex,
-                            scrollKey = if (row.key == targetRow) topRequest else 0,
-                            onClick = onClick,
-                            onSeeAll = { onSeeAll(row) },
-                            onFocus = { index, item ->
-                                focused.value = item
-                                focusedKey = row.key
-                                viewModel.focusedRow = row.key
-                                viewModel.focusedIndex = index
+            PreviewArea(item = preview, easy = easy, height = topHeight, overlap = if (easy) overlap else topGap, topAligned = !easy)
+            // Like Wholphin: the row you move to jumps up whole (name and all) right under the locked top area
+            val defaultSpec = LocalBringIntoViewSpec.current
+            val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
+            CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+                LazyColumn(
+                    state = columnState,
+                    contentPadding = PaddingValues(bottom = 48.dp),
+                    // Ben: a little more room between rows so the next row only just peeks in
+                    verticalArrangement = Arrangement.spacedBy(if (isTv && !easy) 14.dp else 20.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .onFocusChanged {
+                                if (rowsHaveFocus && !it.hasFocus) rowsLostFocusAt = System.currentTimeMillis()
+                                rowsHaveFocus = it.hasFocus
                             },
-                        )
+                ) {
+                    state.entries(extra.keys).forEach { entry ->
+                        val row = (entry as? DoorEntry.Real)?.row
+                        item(key = entry.key) {
+                            CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                                if (entry is DoorEntry.Extra) {
+                                    extra[entry.key]?.invoke()
+                                    return@CompositionLocalProvider
+                                }
+                                if (row == null) {
+                                    WaitingRow(posterWidth = posterWidth, showName = !isTv)
+                                    return@CompositionLocalProvider
+                                }
+                                DoorRow(
+                                    row = row,
+                                    posterWidth = posterWidth,
+                                    showName = !isTv,
+                                    onOpen = onOpen,
+                                    startIndex = if (row.key == targetRow) targetIndex else 0,
+                                    focusRequester = if (row.key == targetRow) restore else null,
+                                    focusIndex = targetIndex,
+                                    scrollKey = if (row.key == targetRow) topRequest else 0,
+                                    onClick = onClick,
+                                    onSeeAll = { onSeeAll(row) },
+                                    onFocus = { index, item ->
+                                        focused.value = item
+                                        focusedKey = row.key
+                                        viewModel.focusedRow = row.key
+                                        viewModel.focusedIndex = index
+                                    },
+                                )
+                            }
+                        }
                     }
+                    // (Ben 2026-11-18: the "Can't decide?" pickers are gone everywhere)
                 }
-                // (Ben 2026-11-18: the "Can't decide?" pickers are gone everywhere)
             }
         }
     }
@@ -631,8 +646,19 @@ internal fun PageBackdrop(
                 imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() })
             }
         }
+    // Like Wholphin: another episode of the same show has the same picture, so it just stays. A new picture:
+    // the old one fades away, a short wait, then the new one fades in.
+    var shownUrl by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(url) {
+        if (url == shownUrl) return@LaunchedEffect
+        if (shownUrl != null) {
+            shownUrl = null
+            delay(PICTURE_GAP_MS)
+        }
+        shownUrl = url
+    }
     Box(Modifier.fillMaxSize()) {
-        Crossfade(targetState = url, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
+        Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
             if (picture != null) {
                 AsyncImage(
                     model = picture,
@@ -667,6 +693,8 @@ private fun PreviewArea(
     easy: Boolean,
     height: Dp,
     overlap: Dp = 0.dp,
+    /** Wholphin style: words start at the top gap instead of sitting in the middle */
+    topAligned: Boolean = false,
 ) {
     Box(
         Modifier
@@ -679,7 +707,7 @@ private fun PreviewArea(
                 easy = easy,
                 modifier =
                     Modifier
-                        .align(Alignment.CenterStart)
+                        .align(if (topAligned) Alignment.TopStart else Alignment.CenterStart)
                         .padding(start = SIDE, end = SIDE, top = overlap)
                         .widthIn(max = 560.dp),
             )
@@ -870,7 +898,7 @@ internal fun PhoneDoor(
     // page, go back to the top whenever something new arrives above what's showing.
     val columnState = rememberLazyListState()
     var touched by remember { mutableStateOf(false) }
-    val topKey = state.pick?.let { "pick" } ?: state.rows.firstOrNull()?.key
+    val topKey = state.rows.firstOrNull()?.key
     LaunchedEffect(topKey) {
         if (!touched && topKey != null) columnState.scrollToItem(0)
     }
@@ -880,125 +908,93 @@ internal fun PhoneDoor(
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
         // About 3.5 posters across
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
-        // Ben 2026-11-18 (Fade down): the picked title's picture fills the page behind everything
-        PageBackdrop(item = state.pick, pageHeight = maxHeight, brightUntil = 0.3f)
-        LazyColumn(
-            state = columnState,
-            contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            val pick = state.pick
-            if (pick != null) {
-                item(key = "pick") {
-                    PickedCard(pick, easy, onClick = { onClick(pick) }, Modifier.padding(horizontal = PHONE_SIDE))
-                }
-            } else if (!state.loaded) {
-                // Keeps the card's room while it's being picked, so the rows don't jump down when it arrives
-                item(key = "pick") {
-                    Box(
-                        Modifier
-                            .padding(horizontal = PHONE_SIDE)
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 11f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(BenflixColors.Raised),
-                    )
-                }
-            }
-            state.entries(extra.keys).forEach { entry ->
-                val row = (entry as? DoorEntry.Real)?.row
-                item(key = entry.key) {
-                    if (entry is DoorEntry.Extra) {
-                        extra[entry.key]?.invoke()
-                        return@item
+        // Ben 2026-11-18 (Fade down): the picked title's picture fills the page behind everything,
+        // and its words stay locked at the top while the rows scroll under them
+        val topHeight = (maxHeight * 0.36f).coerceIn(200.dp, 320.dp)
+        PageBackdrop(item = state.pick, pageHeight = maxHeight, brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f))
+        Column(Modifier.fillMaxSize()) {
+            PhoneTop(state.pick, easy, onClick = { state.pick?.let(onClick) }, Modifier.fillMaxWidth().height(topHeight))
+            LazyColumn(
+                state = columnState,
+                contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            ) {
+                state.entries(extra.keys).forEach { entry ->
+                    val row = (entry as? DoorEntry.Real)?.row
+                    item(key = entry.key) {
+                        if (entry is DoorEntry.Extra) {
+                            extra[entry.key]?.invoke()
+                            return@item
+                        }
+                        if (row == null) {
+                            WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
+                            return@item
+                        }
+                        DoorRow(
+                            row = row,
+                            posterWidth = posterWidth,
+                            showName = true,
+                            onOpen = onOpen,
+                            startIndex = 0,
+                            focusRequester = null,
+                            focusIndex = 0,
+                            onClick = onClick,
+                            onSeeAll = { onSeeAll(row) },
+                            onFocus = { _, _ -> },
+                            side = PHONE_SIDE,
+                        )
                     }
-                    if (row == null) {
-                        WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
-                        return@item
-                    }
-                    DoorRow(
-                        row = row,
-                        posterWidth = posterWidth,
-                        showName = true,
-                        onOpen = onOpen,
-                        startIndex = 0,
-                        focusRequester = null,
-                        focusIndex = 0,
-                        onClick = onClick,
-                        onSeeAll = { onSeeAll(row) },
-                        onFocus = { _, _ -> },
-                        side = PHONE_SIDE,
-                    )
                 }
             }
         }
     }
 }
 
-/** Phones: one title picked for this person, with its picture and info. Tap opens its page. */
+/** Phones: the locked top area. The picked title's words over its picture (drawn behind the page). Tap opens it. */
 @Composable
-private fun PickedCard(
-    item: BaseItem,
+private fun PhoneTop(
+    item: BaseItem?,
     easy: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val imageUrlService = LocalImageUrlService.current
-    val url = remember(item.id) { imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = 900) }
-    val shape = RoundedCornerShape(16.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
-        border = doorFocusBorder(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 11f),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            if (url != null) {
-                AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(0.25f to Color.Transparent, 1f to BenflixColors.Tray.copy(alpha = .92f))),
+    Box(modifier.then(if (item != null) Modifier.clickable(onClick = onClick) else Modifier)) {
+        if (item == null) return@Box
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = PHONE_SIDE, vertical = 12.dp),
+        ) {
+            Text(
+                text = item.title.orEmpty(),
+                color = BenflixColors.Text,
+                fontSize = BenflixType.pageTitle,
+                lineHeight = if (easy) 32.sp else 27.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp),
-            ) {
+            val meta = remember(item) { metaLine(item) }
+            if (meta.isNotEmpty()) {
                 Text(
-                    text = "PICKED FOR YOU",
+                    text = meta,
                     color = BenflixColors.Soft,
                     fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
+            }
+            item.data.overview?.takeIf { it.isNotBlank() }?.let {
                 Text(
-                    text = item.title.orEmpty(),
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.pageTitle,
-                    lineHeight = if (easy) 32.sp else 27.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    text = it,
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.tag,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
-                val meta = remember(item) { metaLine(item) }
-                if (meta.isNotEmpty()) {
-                    Text(
-                        text = meta,
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.tag,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
             }
         }
     }
@@ -1055,7 +1051,13 @@ internal fun EmptyDoor(
 private val SIDE = BenflixSpace.tvEdge
 private val PHONE_SIDE = BenflixSpace.phoneEdge
 
-private const val PICTURE_FADE_MS = 450
+private const val PICTURE_FADE_MS = 800
+private const val PICTURE_GAP_MS = 500L
+
+/** Wholphin's Home header sizes (HeaderUtils): gap above, words area, gap below */
+private val WHOLPHIN_TOP_GAP = 48.dp
+private val WHOLPHIN_HEADER = 180.dp
+private val WHOLPHIN_BOTTOM_GAP = 32.dp
 private const val PREVIEW_DELAY_MS = 500L
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
