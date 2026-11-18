@@ -85,8 +85,8 @@ import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
-import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
@@ -288,6 +288,7 @@ private fun GuideGrid(
     val onlyRecent = view == LIVE_RECENT
     // Picking a tab keeps the remote on the tabs (like Movies); only the first open lands in the guide
     val firstOpen = remember { frame.picks == 0 }
+
     fun widthFor(ms: Long): Dp = (ms / 60_000f * dpm).dp
 
     // The guide starts at the last half hour and shows the next few hours. The clock ticks each
