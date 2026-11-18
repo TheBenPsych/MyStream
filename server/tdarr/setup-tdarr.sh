@@ -198,7 +198,7 @@ for d in "${FOLDERS[@]}"; do
 \"settingsAudio\":false,\"audioExcludeSwitch\":true,\"audio_codec_names_exclude\":[],
 \"audio_size_range_include\":{\"min\":0,\"max\":10}},
 \"schedule\":$schedule,
-\"holdNewFiles\":true,\"holdFor\":3600,\"holdForDisplayUnit\":\"hours\",\"pluginStackOverview\":true,
+\"holdNewFiles\":false,\"holdFor\":3600,\"holdForDisplayUnit\":\"hours\",\"pluginStackOverview\":true,
 \"filterResolutionsSkip\":\"\",\"filterCodecsSkip\":\"\",\"filterContainersSkip\":\"\",\"filterHardlinked\":false,
 \"processPluginsSequentially\":true}"
   lib=$(printf '%s' "$lib" | tr -d '\n')
