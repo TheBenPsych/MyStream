@@ -73,15 +73,15 @@ enum class GlowfinIcon(
         listOf("M3.4 5.4h5.6a3 3 0 0 1 3 3V20a2.2 2.2 0 0 0-2.2-2H3.4z", "M20.6 5.4H15a3 3 0 0 0-3 3V20a2.2 2.2 0 0 1 2.2-2h6.4z"),
     ),
     REQUESTS("Requests", listOf("M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"), listOf("M12 8.3v7.4", "M8.3 12h7.4")),
+    /** A chunky 8-tooth cog (Ben 2026-11-18: must never look like a sun) */
     SETTINGS(
         "Settings",
         listOf(
-            "M12.74 2.83L14.83 3.25L15.19 5.77L16.54 6.67L19.00 6.04L20.19 7.81L18.66 9.85L18.98 11.44L21.17 12.74L20.75 14.83" +
-                "L18.23 15.19L17.33 16.54L17.96 19.00L16.19 20.19L14.15 18.66L12.56 18.98L11.26 21.17L9.17 20.75L8.81 18.23L7.46 17.33" +
-                "L5.00 17.96L3.81 16.19L5.34 14.15L5.02 12.56L2.83 11.26L3.25 9.17L5.77 8.81L6.67 7.46L6.04 5.00L7.81 3.81L9.85 5.34" +
-                "L11.44 5.02Z",
+            "M10.3 2.5h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4" +
+                "-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9" +
+                "-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z",
         ),
-        listOf("M12 9.3a2.7 2.7 0 1 0 0 5.4a2.7 2.7 0 1 0 0-5.4z"),
+        listOf("M12 8.8a3.2 3.2 0 1 0 0 6.4a3.2 3.2 0 1 0 0-6.4z"),
     ),
 
     // The video player's buttons (P1, Ben 2026-11-18). Back and Ahead get their "10" drawn in the middle by
@@ -91,6 +91,7 @@ enum class GlowfinIcon(
     BACK("Back", emptyList(), listOf("M12 4.4A7.6 7.6 0 1 1 4.86 9.4", "M14 2.6 12 4.4 14 6.2")),
     AHEAD("Ahead", emptyList(), listOf("M12 4.4A7.6 7.6 0 1 0 19.14 9.4", "M10 2.6 12 4.4 10 6.2")),
     NEXT("Next episode", listOf("M5.6 5.6 14.6 12 5.6 18.4z"), listOf("M18.4 5.6v12.8"), solid = true),
+    PREVIOUS("Previous episode", listOf("M18.4 5.6 9.4 12 18.4 18.4z"), listOf("M5.6 5.6v12.8"), solid = true),
     SUBTITLES(
         "Subtitles",
         listOf("M5 5.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"),

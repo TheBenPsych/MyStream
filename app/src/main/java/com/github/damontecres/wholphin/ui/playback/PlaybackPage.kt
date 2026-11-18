@@ -72,6 +72,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -396,7 +397,10 @@ fun PlaybackPageContent(
 
             PlaybackAction.Previous -> {
                 val pos = player.currentPosition
-                if (pos < player.maxSeekToPreviousPosition && state.hasPrevious) {
+                if (state.previousEpisodeId != null) {
+                    // Benflix: the Previous episode button goes to the episode before in the show
+                    viewModel.playPreviousEpisode()
+                } else if (pos < player.maxSeekToPreviousPosition && state.hasPrevious) {
                     viewModel.playPrevious()
                 } else {
                     player.seekToPrevious()
@@ -776,7 +780,7 @@ fun PlaybackPageContent(
                 player = player,
                 controllerViewState = controllerViewState,
                 showPlay = playPauseState.showPlay,
-                previousEnabled = true,
+                previousEnabled = state.previousEpisodeId != null || state.hasPrevious,
                 nextEnabled = state.hasNext,
                 episodesEnabled =
                     state.currentPlayback
@@ -818,12 +822,26 @@ fun PlaybackPageContent(
             // Subtitles
             // Benflix: subtitles slide up out of the way of the player bar, the Skip button and the
             // Up next card, and slide back down when they go. Moved (not shrunk), so the words stay the same size.
-            val subtitleLift by animateFloatAsState(
+            // Clean-up (Ben 2026-11-18): while the bar shows they sit just above it (its real height, not a guess).
+            // Styled ASS/SSA subtitles (anime) place their own words and signs, so they never move.
+            val styledSubtitles =
+                remember(state.currentPlayback?.subtitleIndex, state.currentMediaInfo.subtitleStreams) {
+                    state.currentMediaInfo.subtitleStreams
+                        .firstOrNull { it.index == state.currentPlayback?.subtitleIndex }
+                        ?.codec in setOf("ass", "ssa")
+                }
+            val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+            val subtitleLiftPx by animateFloatAsState(
                 when {
-                    controllerViewState.controlsVisible -> SUBTITLE_LIFT_CONTROLS
-                    showSegment || state.nextUp != null || state.movieNext != null -> SUBTITLE_LIFT_BUTTON
+                    styledSubtitles -> 0f
+                    controllerViewState.controlsVisible ->
+                        controllerViewState.controlsHeightPx
+                            .takeIf { it > 0 }
+                            ?.toFloat() ?: (screenHeightPx * SUBTITLE_LIFT_CONTROLS)
+                    showSegment || state.nextUp != null || state.movieNext != null -> screenHeightPx * SUBTITLE_LIFT_BUTTON
                     else -> 0f
                 },
+                animationSpec = tween(durationMillis = 220),
                 label = "subtitleLift",
             )
             val isImageSubtitles =
@@ -898,7 +916,7 @@ fun PlaybackPageContent(
                         .align(Alignment.TopCenter)
                         .background(Color.Transparent)
                         .graphicsLayer {
-                            translationY = -size.height * subtitleLift
+                            translationY = -subtitleLiftPx
                             alpha =
                                 if (!subtitleVisible) {
                                     0f
@@ -1440,7 +1458,7 @@ private const val DOUBLE_TAP_SEEK_MS = 10_000L
 /** Benflix redesign: seconds before the next movie starts by itself */
 private const val MOVIE_COUNTDOWN_SECONDS = 20L
 
-/** How far up (part of the screen height) subtitles move while the player bar shows */
+/** How far up (part of the screen height) subtitles move while the player bar shows, until its height is known */
 private const val SUBTITLE_LIFT_CONTROLS = .3f
 
 /** How far up subtitles move while a Skip button or Up next card shows */
