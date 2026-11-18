@@ -128,13 +128,13 @@ B.route(/^\/search/, async (m, nav) => {
       [DOORS.movies, mv.filter((x) => !anime(x)).map(itemLine)],
       [DOORS.shows, sh.filter((x) => !anime(x)).map(itemLine)],
       [{ name: "Anime", color: DOORS.shows.color, quiet: true }, [...sh, ...mv].filter(anime).map(itemLine)],
-      ...(kids ? [] : [[{ name: "Music", color: "#A55BE0" }, mine.map(itemLine)]]),
+      ...(kids ? [] : [[{ name: "Music", color: "#7AA7FF" }, mine.map(itemLine)]]),
       [DOORS.live, chans.map(chLine)],
       [DOORS.games, gl.map(gameLine)],
       ...(kids ? [] : [
-        [{ name: "Books", color: "#3FE0E8" }, books.map(bookLine)],
+        [{ name: "Books", color: "#7AA7FF" }, books.map(bookLine)],
         [{ name: "Ask for it: movies and shows", short: "Ask for it", color: "#F1F2F5" }, askTitles],
-        [{ name: "Ask for it: music", color: "#A55BE0", quiet: true }, askMusic],
+        [{ name: "Ask for it: music", color: "#7AA7FF", quiet: true }, askMusic],
         [{ name: "People", color: "#9AA0AE" }, people.map(personLine)],
       ]),
     ];

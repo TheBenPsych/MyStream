@@ -10,7 +10,7 @@
 :root {
   --tray: #0B0C10; --trayrgb: 11,12,16; --pg2: #16181E; --pg3: #1D2027; --pg4: #262932; --line: #2A2D35;
   --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10;
-  --movies: #FFB547; --shows: #7AA7FF; --live: #3DD6C6; --games: #FF6F91; --ask: #F1F2F5;
+  --movies: #7AA7FF; --shows: #7AA7FF; --live: #7AA7FF; --games: #7AA7FF; --ask: #F1F2F5;
   --ok: #5BD18B; --check: #E8D44D; --bad: #FF7A7A; --warn: #F5C04A;
   --r: 12px; --r2: 18px; --gutter: 48px; --bar: 76px;
   --poster-w: 168px;
@@ -648,7 +648,7 @@ textarea.field { min-height: 90px; resize: vertical; }
 .fix-pic.on { box-shadow: inset 0 0 0 3px var(--ink); }
 
 /* ---------- music (the violet fifth door) ---------- */
-:root { --music: #A55BE0; --onmusic: #160F26; }
+:root { --music: #7AA7FF; --onmusic: #0F1521; }
 .doors.five { grid-template-columns: repeat(5, 1fr); }
 .doors.grow .door:nth-child(5) { animation-delay: .28s; }
 .mpage { padding: 10px var(--gutter) 60px; }
@@ -820,7 +820,7 @@ button.np-ly:hover::after, button.np-ly:focus-visible::after { content: "Play fr
 .fixer-acts .btn { width: 100%; }
 
 /* ---------- Books (Glowfin aqua, B1) ---------- */
-:root { --books: #3FE0E8; }
+:root { --books: #7AA7FF; }
 .doors.six { grid-template-columns: repeat(6, 1fr); }
 /* Six doors side by side: the words under the name shrink with the window so they never run past the door */
 @media (min-width: 901px) { .doors.six .door { padding: 26px 20px; } .doors.six .door .d { font-size: min(18px, 1.15vw); } }
@@ -1074,10 +1074,17 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .details.tp { min-height: 100vh; }
 .tp .tp-hero { position: relative; height: calc(50vh + 52px); min-height: 480px; background: center top/cover no-repeat; }
 .tp .tp-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(var(--trayrgb),.97) 0%, rgba(var(--trayrgb),.8) 40%, rgba(var(--trayrgb),.2) 75%, rgba(var(--trayrgb),0) 100%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb),0) 45%); }
-.tp .tp-hero.covered { background: linear-gradient(160deg, color-mix(in srgb, var(--door) 22%, var(--tray)), var(--tray)); }
-.tp .tp-hero.covered::before { display: none; }
-.tp .tp-cover { position: absolute; right: 6%; top: calc(var(--bar) + 4vh); height: 64%; aspect-ratio: 2/3; border-radius: 12px; background: var(--pg3) center/cover no-repeat; box-shadow: 0 24px 48px rgba(0,0,0,.6); }
-.tp .tp-cover.sq { aspect-ratio: 1/1; height: 52%; }
+/* Covers (games, books, albums, people), Glowfin 2026-11-18: the cover blurred big behind the top (full width,
+   fading out at the bottom so there's no edge anywhere), the real cover on the right at its own shape, words on the left */
+.tp .tp-hero.covered { background: var(--tray); overflow: hidden; }
+.tp .tp-blur { position: absolute; inset: -120px -120px 0 -120px; z-index: 0; background: center/cover no-repeat; filter: blur(60px) saturate(1.25); opacity: .55; pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 40%, transparent 92%); mask-image: linear-gradient(180deg, #000 0%, #000 40%, transparent 92%); }
+.tp .tp-hero.covered::before { z-index: 1; background: linear-gradient(90deg, rgba(var(--trayrgb),.95) 0%, rgba(var(--trayrgb),.85) 30%, rgba(var(--trayrgb),.3) 75%, rgba(var(--trayrgb),.5) 100%); }
+.tp .tp-hero.covered .main { z-index: 2; }
+.tp .tp-hero.covered:has(.tp-cover) .main { padding-right: calc(var(--gutter) + min(26vw, 330px) + 48px); }
+.tp .tp-hero.covered .tp-name, .tp .tp-hero.covered .tp-story, .tp .tp-hero.covered .meta { max-width: none; align-self: flex-start; text-align: left; }
+.tp .tp-cover { position: absolute; z-index: 2; right: var(--gutter); top: calc(50% + var(--bar) / 2); transform: translateY(-50%); height: min(62%, 440px); width: auto; max-width: min(26vw, 330px); border-radius: 10px; box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
+.tp .tp-cover.sq { height: min(52%, 360px); }
 .tp .main { position: absolute; inset: 0; max-width: none; padding: 0 var(--gutter); display: grid; grid-template-rows: 9vh 19vh 8vh 9vh 5vh auto; grid-template-columns: minmax(0, 1fr); pointer-events: none; }
 .tp .main > * { pointer-events: auto; }
 .tp .tp-name { grid-row: 2; align-self: end; max-width: 55%; display: flex; flex-direction: column; gap: 4px; }
@@ -1129,8 +1136,10 @@ html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-siz
   .tp .tp-hero { height: auto; min-height: 0; background-size: 100% 30vh; background-position: top center; padding-top: 30vh; }
   .tp .tp-hero::before { height: 30vh; bottom: auto; background: linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb),0) 60%); }
   .tp .tp-hero.covered { padding-top: calc(var(--bar) + 26vh); }
-  .tp .tp-cover { left: 50%; right: auto; transform: translateX(-50%); top: calc(var(--bar) + 2vh); height: 24vh; }
+  .tp .tp-cover { left: 50%; right: auto; transform: translateX(-50%); top: calc(var(--bar) + 2vh); height: 24vh; max-width: 80vw; }
   .tp .tp-cover.sq { height: 22vh; }
+  .tp .tp-hero.covered:has(.tp-cover) .main { padding-right: 16px; }
+  .tp .tp-blur { inset: -80px -80px 0 -80px; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 25%, transparent 60%); mask-image: linear-gradient(180deg, #000 0%, #000 25%, transparent 60%); }
   .tp .main { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
   .tp .main > * { align-self: stretch; }
   .tp .tp-name { max-width: none; align-items: flex-start; text-align: left; }
@@ -1859,7 +1868,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .rl-i:hover, .rl-i:focus-visible { background: var(--glow); color: #fff; box-shadow: 0 0 18px -2px rgba(165, 91, 224, .8); }
 .rl-i:focus-visible { outline: none; }
 .rl-i.on { color: var(--ink); }
-.rl-i.on::before { left: -7px; top: 50%; bottom: auto; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--aqua); }
+.rl-i.on::before { left: -7px; top: 50%; bottom: auto; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--shows); }
 .rl-i.on:hover::before, .rl-i.on:focus-visible::before { display: none; }
 .rl-door.open, .rl-me.open { background: var(--pg4); color: var(--ink); }
 .rl-i.dark, .rl-i.dark.on { color: var(--ink2); }
@@ -2199,7 +2208,7 @@ svg.gi path.gd { stroke-width: 3.6; }
   .gtop { display: none; }
   .gscores { grid-template-columns: 1fr 1fr; gap: 10px; }
 }
-.gsaves { display: flex; flex-wrap: wrap; gap: 14px; }
+.gsaves { display: flex; flex-wrap: wrap; gap: 14px; padding: 0 var(--gutter); }
 .gsave { display: flex; flex-direction: column; gap: 4px; min-width: 220px; padding: 16px 18px; border-radius: 12px; background: var(--raise); color: var(--ink); text-decoration: none; }
 .gsave:hover, .gsave:focus-visible { box-shadow: var(--glowring); outline: 0; }
 .gsave small { color: var(--ink2); }
@@ -2220,5 +2229,27 @@ svg.gi path.gd { stroke-width: 3.6; }
 }
 /* Ben 2026-11-18: no dark fade across the very top on pages that show a picture (Home / For you pages, movie and show
    pages). The picture runs right to the top; the clock and top words get a soft shadow so they still read. */
-#page:has(#doorTop) > .top, #page:has(.tp-hero:not(.covered)) > .top { background: none; }
+#page:has(#doorTop) > .top, #page:has(.tp-hero) > .top { background: none; }
 .clock, .top .place { text-shadow: 0 1px 3px rgba(0,0,0,.55), 0 2px 14px rgba(0,0,0,.45); }
+/* Glowfin game pages (2026-11-18): the small kind line over the title, How to play cards, the leaderboard card,
+   More games as covers. Everything lines up with the title. */
+.tp .tp-kick { font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--door); }
+.bg-how { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0 var(--gutter); max-width: 1100px; }
+.bg-step { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 14px; background: var(--raise); line-height: 1.45; }
+.bg-step > b { font-family: "Glowfin Sora", sans-serif; font-size: 22px; color: var(--door); }
+.bg-step.bg-anime { margin: 0; align-items: flex-start; }
+.bg-board { display: flex; flex-direction: column; margin: 0 var(--gutter); max-width: 520px; padding: 8px 18px 12px; border-radius: 14px; background: var(--raise); }
+.bg-board > div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.bg-board > div span b { display: inline-block; width: 26px; color: var(--ink2); }
+.bg-board .m1 { color: #FDE68A !important; } .bg-board .m2 { color: #CBD5E1 !important; } .bg-board .m3 { color: #FDBA74 !important; }
+.bg-board .you { color: var(--door); border-bottom: 0; }
+.bg-board small { padding-top: 4px; }
+.bg-more { display: flex; gap: 16px; overflow-x: auto; padding: 4px var(--gutter) 8px; scrollbar-width: none; }
+.bg-more .poster { flex: 0 0 150px; }
+@media (max-width: 700px) {
+  .bg-how { padding: 0 16px; grid-template-columns: minmax(0, 1fr); }
+  .bg-board { margin: 0 16px; }
+  .bg-more { padding: 4px 16px 8px; }
+  .bg-more .poster { flex-basis: 120px; }
+  .gsaves { padding: 0 16px; }
+}

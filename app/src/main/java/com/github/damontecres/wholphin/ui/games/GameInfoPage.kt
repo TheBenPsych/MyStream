@@ -87,6 +87,15 @@ data class GamePageInfo(
     val movie: MovieGame?,
     val arcade: BuiltInGame?,
 ) {
+    /** The small line over the title: "Glowfin arcade", "Glowfin movie puzzle" or "Glowfin party game" */
+    val kicker: String
+        get() =
+            when {
+                arcade != null -> "Glowfin arcade"
+                movie?.group == MovieGameGroup.PARTY -> "Glowfin party game"
+                else -> "Glowfin movie puzzle"
+            }
+
     companion object {
         fun of(id: String): GamePageInfo? {
             val name = id.substringAfter(':')
@@ -225,6 +234,7 @@ fun GameInfoPage(
     val top = remember(info) { viewModel.top(info) }
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { playFocus.tryRequestFocus() }
+    val cover = remember(info) { gameCover(info.arcade?.name ?: info.movie?.name ?: "") }
 
     val buttons: @Composable () -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -287,24 +297,45 @@ fun GameInfoPage(
         // The words are never squeezed into a fixed box, so Play can't be cut off; if it's all too tall
         // for the TV, FitScreen shrinks it.
         Box(modifier.fillMaxSize().background(PuzzleBg)) {
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.68f)
-                    .align(Alignment.TopEnd)
-                    .clipToBounds(),
-            ) {
-                Preview(info, pictures)
+            if (cover != null) {
+                // Glowfin (2026-11-18): the game's own cover blurred behind the whole page, darker on the left for
+                // the words and fading into the page at the bottom; the cover itself on the right
+                GameCoverBackdrop(cover)
                 Box(
                     Modifier.fillMaxSize().background(
-                        Brush.horizontalGradient(0f to PuzzleBg, 0.45f to PuzzleBg.copy(alpha = .55f), 0.75f to Color.Transparent),
+                        Brush.horizontalGradient(0f to PuzzleBg, 0.32f to PuzzleBg.copy(alpha = .88f), 0.78f to PuzzleBg.copy(alpha = .3f)),
                     ),
                 )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 0.85f to PuzzleBg)))
+                GameCoverImage(
+                    cover,
+                    info.title,
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 48.dp, end = 64.dp)
+                        .fillMaxHeight(.46f),
+                )
+            }
+            if (cover == null) {
                 Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(0.45f to Color.Transparent, 0.8f to PuzzleBg),
-                    ),
-                )
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.68f)
+                        .align(Alignment.TopEnd)
+                        .clipToBounds(),
+                ) {
+                    Preview(info, pictures)
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.horizontalGradient(0f to PuzzleBg, 0.45f to PuzzleBg.copy(alpha = .55f), 0.75f to Color.Transparent),
+                        ),
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(0.45f to Color.Transparent, 0.8f to PuzzleBg),
+                        ),
+                    )
+                }
             }
             FitScreen(true) {
                 Column(
@@ -315,6 +346,13 @@ fun GameInfoPage(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxWidth(0.5f),
                     ) {
+                        Text(
+                            info.kicker.uppercase(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = BenflixType.tag,
+                            letterSpacing = 3.sp,
+                            color = BenflixColors.Games,
+                        )
                         Text(
                             info.title,
                             fontWeight = FontWeight.Bold,
@@ -359,11 +397,27 @@ fun GameInfoPage(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 24.dp),
         ) {
-            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clipToBounds()) {
-                Preview(info, pictures)
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to PuzzleBg)))
+            if (cover != null) {
+                // Glowfin (2026-11-18): the cover in the middle over the blurred cover, fading into the page
+                Box(Modifier.fillMaxWidth().height(300.dp).clipToBounds(), contentAlignment = Alignment.Center) {
+                    GameCoverBackdrop(cover)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to PuzzleBg)))
+                    GameCoverImage(cover, info.title, Modifier.padding(top = 24.dp).height(250.dp))
+                }
+            } else {
+                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clipToBounds()) {
+                    Preview(info, pictures)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to PuzzleBg)))
+                }
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    info.kicker.uppercase(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = BenflixType.tag,
+                    letterSpacing = 2.sp,
+                    color = BenflixColors.Games,
+                )
                 Text(info.title, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
                 Pills(info.pills)
                 Text(info.about, fontSize = BenflixType.lead, lineHeight = BenflixType.lead * 1.3f, color = BenflixColors.Text)

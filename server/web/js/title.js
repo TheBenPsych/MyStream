@@ -44,8 +44,11 @@
       return b.href && !b.off ? `<a class="${cls}" ${attrs} href="${b.href}">${inner}</a>` : `<button class="${cls}" ${attrs}>${inner}</button>`;
     };
     const meta = [opts.rating && !kids ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
+    // Covers (games, books, albums, people): the cover blurred big behind everything (no more tinted box), and
+    // the cover itself on the right at its own real shape (never cropped). Title and words stay on the left.
+    const coverUrl = opts.cover && opts.cover.url ? String(opts.cover.url).replace(/"/g, "%22") : "";
     const pic = opts.cover
-      ? `<div class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" style="${opts.cover.url ? `background-image:url('${opts.cover.url}')` : ""}"></div>`
+      ? `${coverUrl ? `<div class="tp-blur" style="background-image:url(&quot;${esc(coverUrl)}&quot;)"></div><img class="tp-cover ${opts.cover.ratio >= 1 ? "sq" : ""}" src="${esc(coverUrl)}" alt="">` : ""}`
       : "";
     // The whole story on the left, Details (studio, released, the file for you) on the right; one under the other on phones
     const overview = `${rows ? `<h3 class="tp-h">${esc(about.name)}</h3>` : ""}<div class="tp-ov"><div class="tp-ovl">${rows ? (opts.aboutStory ? `<div class="ov tp-about">${esc(opts.aboutStory)}</div>` : "") : `<div class="ov">${esc(opts.story || "")}</div>`}
@@ -53,7 +56,7 @@
     B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
         <div class="main">
-          <div class="tp-name"><h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : ""}<i class="tp-line"></i></div>
+          <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : ""}<i class="tp-line"></i></div>
           <div class="meta">${meta}${rows && opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}${opts.infoExtra || ""}</div>
           ${rows && opts.story ? `<div class="tp-story">${esc(opts.story)}</div>` : ""}
           <div class="btns">${buttons.map(btn).join("")}</div>

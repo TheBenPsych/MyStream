@@ -181,8 +181,9 @@ B.route(/^\/game\/(\d+)/, async (m, nav) => {
     title: g.name,
     color: DOORS.games.color,
     rows: true,
+    kicker: c.name,
     cover: { url: cover(g), ratio: 3 / 4 },
-    info: [c.name, info.year || g.year || "", genres.slice(0, 2).join(", "), info.players ? `${info.players} player${info.players > 1 ? "s" : ""}` : "1 player"],
+    info: [info.year || g.year || "", genres.slice(0, 2).join(", "), info.players ? `${info.players} player${info.players > 1 ? "s" : ""}` : "1 player"],
     story: info.summary || "",
     status: "Works with: Keyboard · Controller",
     buttons: [

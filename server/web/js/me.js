@@ -34,8 +34,8 @@ B.route(/^\/mine/, async (m, nav) => {
   $("#mw").innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end;margin-top:10px">
       <div><div class="dim" style="font-weight:700">${range === "month" ? "This month" : "This year"}</div><h1 class="bigweek">${esc(B.hm(secs))}</h1></div>
       <div class="row"><a class="chip ${range === "month" ? "on" : ""}" href="#/mine?range=month">This month</a><a class="chip ${range === "year" ? "on" : ""}" href="#/mine?range=year">This year</a></div></div>
-    <div class="doorbar"><i style="width:${(movieSecs / sum) * 100}%;background:${DOORS.movies.color}"></i><i style="width:${(showSecs / sum) * 100}%;background:${DOORS.shows.color}"></i></div>
-    <div class="legend">${["movies", "shows", "live", "games"].map((k) => `<span><i style="background:${DOORS[k].color}"></i>${DOORS[k].name}</span>`).join("")}</div>
+    <div class="doorbar"><i style="width:${(movieSecs / sum) * 100}%;background:#FFB547"></i><i style="width:${(showSecs / sum) * 100}%;background:#7AA7FF"></i></div>
+    <div class="legend">${["movies", "shows", "live", "games"].map((k) => `<span><i style="background:${({ movies: "#FFB547", shows: "#7AA7FF", live: "#3DD6C6", games: "#FF6F91" })[k]}"></i>${DOORS[k].name}</span>`).join("")}</div>
     <div class="tiles" style="margin-top:22px">
       <div class="tile"><div class="k">Most watched</div><div class="v" style="font-size:20px">${esc(most ? most[0] : "–")}</div></div>
       <div class="tile"><div class="k">Top genre</div><div class="v" style="font-size:20px">${esc(genre ? genre[0] : "–")}</div></div>
