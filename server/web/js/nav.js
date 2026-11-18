@@ -18,7 +18,7 @@
   const I = (n) => (B.doorIcon ? B.doorIcon(n) : B.I(n));
   const narrow = () => matchMedia("(max-width: 760px)").matches;
   // Pages that fill the whole window (the player, a game, a book, signing in) have no menu
-  const FULL = /^#\/(who|signin|play|playgame|game\/|read|lobby\/)/;
+  const FULL = /^#\/(who|signin|play|playgame|read|lobby\/)/;
   // Glowfin menu order (ui-2): Movies, Shows, (Anime), Live TV, Music, Games, Books
   const ORDER = ["movies", "shows", "live", "music", "games", "books"];
   const TEAL = "#3DD6C6";

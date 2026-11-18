@@ -38,6 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -335,7 +338,32 @@ fun GamesPage(
         }
     }
 
-    DoorFrame(frame, sections, modifier, tabs = true) { inner ->
+    // Ben 2026-11-18: a game's own page opens inside the page area (not over the whole screen), so the left
+    // menu stays there like on movie and show pages. The Games page underneath stays as it was (same rows,
+    // same place) but moves out of sight, so the remote can't land on it; closing the game page goes back to it.
+    val choice by viewModel.choice.collectAsState()
+    val gameOpen = choice != null
+    val pageFocus = remember { FocusRequester() }
+    var gameWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(gameOpen) {
+        if (gameOpen) {
+            gameWasOpen = true
+        } else if (gameWasOpen) {
+            delay(60)
+            pageFocus.tryRequestFocus()
+        }
+    }
+    Box(modifier.fillMaxSize()) {
+    DoorFrame(
+        frame,
+        sections,
+        Modifier
+            .fillMaxSize()
+            .offset { if (gameOpen) IntOffset(100_000, 0) else IntOffset.Zero }
+            .focusRequester(pageFocus)
+            .focusRestorer(),
+        tabs = true,
+    ) { inner ->
         // TV and wide screens: the tabs sit over the top of the page, so the page starts under them
         val top = if (wide) LocalTopBarOverlap.current else 0.dp
         Column(modifier = inner.fillMaxSize().padding(top = top).onFirstUserMove { userMoved = true }) {
@@ -754,7 +782,6 @@ fun GamesPage(
         }
     }
 
-    val choice by viewModel.choice.collectAsState()
     val info by viewModel.info.collectAsState()
     choice?.let { c ->
         GameDetailsPage(
@@ -805,6 +832,7 @@ fun GamesPage(
         )
     }
 
+    }
     if (askAddress) {
         StringInputDialog(
             input =

@@ -1766,8 +1766,8 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bgscore { color: var(--ink2); font-weight: 600; font-size: 14px; }
 .bgstage { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; overflow: hidden; }
 .bgcanvas { display: block; touch-action: none; border-radius: 12px 12px 0 0; }
-.bg-how { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,.7); color: #fff; padding: 8px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center; transition: opacity .6s; pointer-events: none; }
-.bg-how.gone { opacity: 0; }
+.bgstage > .bg-how { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,.7); color: #fff; padding: 8px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center; transition: opacity .6s; pointer-events: none; }
+.bgstage > .bg-how.gone { opacity: 0; }
 .bg-over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); padding: 16px; z-index: 3; }
 .bg-card { background: var(--pg2); border-radius: 16px; padding: 24px 28px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .bg-card h2 { margin: 0 0 10px; font-size: 26px; } .bg-card p { margin: 6px 0; line-height: 1.5; }
@@ -2244,6 +2244,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .bg-board .m1 { color: #FDE68A !important; } .bg-board .m2 { color: #CBD5E1 !important; } .bg-board .m3 { color: #FDBA74 !important; }
 .bg-board .you { color: var(--door); border-bottom: 0; }
 .bg-board small { padding-top: 4px; }
+.tp.tp-rows .tp-pane > .grid { padding: 0 var(--gutter); }
 .bg-more { display: flex; gap: 16px; overflow-x: auto; padding: 4px var(--gutter) 8px; scrollbar-width: none; }
 .bg-more .poster { flex: 0 0 150px; }
 @media (max-width: 700px) {
@@ -2252,4 +2253,5 @@ svg.gi path.gd { stroke-width: 3.6; }
   .bg-more { padding: 4px 16px 8px; }
   .bg-more .poster { flex-basis: 120px; }
   .gsaves { padding: 0 16px; }
+  .tp.tp-rows .tp-pane > .grid { padding: 0 16px; }
 }
