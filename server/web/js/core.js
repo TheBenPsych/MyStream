@@ -625,7 +625,7 @@ B.hrefOf = (it) => {
   if (it.Type === "Season") return `#/show/${it.SeriesId}?season=${it.Id}`;
   if (it.Type === "BoxSet") return `#/collection/${it.Id}`;
   if (it.Type === "Person") return `#/person/${it.Id}`;
-  if (it.Type === "TvChannel") return `#/live?play=${it.Id}`;
+  if (it.Type === "TvChannel") return `#/watch/${it.Id}`;
   return `#/movie/${it.Id}`;
 };
 // Redesign 2 (rows, posters and covers): the door colour for the short line on a card with no picture
