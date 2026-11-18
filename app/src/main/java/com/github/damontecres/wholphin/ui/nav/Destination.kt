@@ -180,11 +180,11 @@ sealed class Destination(
     @Serializable
     data object MusicDoor : Destination(false)
 
-    /** Benflix Books: the lime Books door (manga, comics, ebooks and audiobooks) */
+    /** Glowfin Books: ebooks and audiobooks (tabs For you, Books, Audiobooks, Series, Want to read) */
     @Serializable
     data object BooksDoor : Destination(false)
 
-    /** Benflix Books: one book's (or manga series') own page */
+    /** Glowfin Books: one book's own page */
     @Serializable
     data class BookTitle(
         val id: String,

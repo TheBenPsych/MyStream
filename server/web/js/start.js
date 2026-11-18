@@ -447,7 +447,7 @@ const noteLink = (text) => {
   const t = text.toLowerCase();
   if (/live ?tv|\bchannels?\b/.test(t)) return ["Open Live TV", "#/live"];
   if (/\bmusic\b|\bsongs?\b|\balbums?\b/.test(t) && DOORS.music && !B.me.kids) return ["Open Music", "#/music"];
-  if (/\bbooks?\b|\bmanga\b|\baudiobooks?\b/.test(t) && DOORS.books) return ["Open Books", "#/books"];
+  if (/\bbooks?\b|\baudiobooks?\b/.test(t) && DOORS.books) return ["Open Books", "#/books"];
   if (/\bgames?\b/.test(t)) return ["Open Games", "#/games"];
   if (/\brequests?\b/.test(t)) return ["Open Requests", "#/requests"];
   if (/\bshows?\b|\bepisodes?\b|\bseries\b/.test(t)) return ["Open Shows", "#/shows"];

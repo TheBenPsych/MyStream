@@ -423,8 +423,8 @@ B.yoursTab = async (nav) => {
     });
     if (bks) {
       const bw = new Set((bks.waiting || []).map((r) => r.id));
-      const all = (B.me.admin ? [].concat(bks.mine || [], bks.others || [], bks.mangaToAdd || []) : bks.mine || []).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i && !bw.has(r.id));
-      const line = (r) => ({ title: r.name, sub: [B.me.admin ? r.who : "", r.author, r.state === "manga" ? "manga" : (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r) });
+      const all = (B.me.admin ? [].concat(bks.mine || [], bks.others || []) : bks.mine || []).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i && !bw.has(r.id));
+      const line = (r) => ({ title: r.name, sub: [B.me.admin ? r.who : "", r.author, (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r) });
       all.forEach((r) => lines.push(Object.assign(line(r), { acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
       if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { who: r.who || "", acts: `<button class="btn small white" data-byes="${esc(r.id)}">Yes</button><button class="btn small" data-bno="${esc(r.id)}">No</button>` })));
     }

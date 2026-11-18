@@ -78,7 +78,7 @@ class BookRequestsViewModel
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         val query = MutableStateFlow("")
-        val found = MutableStateFlow<Pair<List<BookFound>, List<BookFound>>?>(null)
+        val found = MutableStateFlow<List<BookFound>?>(null)
         val searching = MutableStateFlow(false)
         val requests = MutableStateFlow<BookRequests?>(null)
         val note = MutableStateFlow<String?>(null)
@@ -225,7 +225,6 @@ fun BooksShelf(
             author = f.author,
             cover = f.cover,
             admin = admin,
-            manga = f.manga,
             onDismiss = { askFor = null },
             onAsk = { types ->
                 askFor = null
@@ -242,13 +241,13 @@ fun BooksShelf(
         ) {
             if (isTv) {
                 item(key = "search") {
-                    RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book, author or manga")
+                    RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book or author")
                 }
             }
             val f = found
             when {
                 query.trim().length < 2 -> {
-                    item(key = "type") { Muted("Type a book, an author or a manga.") }
+                    item(key = "type") { Muted("Type a book or an author.") }
                 }
 
                 f == null && searching -> {
@@ -257,19 +256,13 @@ fun BooksShelf(
 
                 f == null -> {}
 
-                f.first.isEmpty() && f.second.isEmpty() -> {
+                f.isEmpty() -> {
                     item(key = "nothing") { Muted("Nothing found. Try the author's name, or fewer words.") }
                 }
 
                 else -> {
-                    if (f.first.isNotEmpty()) {
-                        item(key = "books-title") { Heading("Books") }
-                        items(f.first, key = { "b" + it.key }) { FoundRow(it, viewModel, onAsk = { askFor = it }) }
-                    }
-                    if (f.second.isNotEmpty()) {
-                        item(key = "manga-title") { Heading("Manga") }
-                        items(f.second, key = { "m" + it.key }) { FoundRow(it, viewModel, onAsk = { askFor = it }) }
-                    }
+                    item(key = "books-title") { Heading("Books") }
+                    items(f, key = { "b" + it.key }) { FoundRow(it, viewModel, onAsk = { askFor = it }) }
                 }
             }
         }
@@ -303,7 +296,7 @@ fun BooksShelf(
         picked?.takeIf { p -> bookLists.any { it.key == p } } ?: bookLists.firstOrNull()?.key ?: ""
     var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }
     val waitingIds = r.waiting.map { it.id }.toSet()
-    val yours = (if (admin) r.mine + r.mangaToAdd + r.others else r.mine).distinctBy { it.id }.filter { it.id !in waitingIds }
+    val yours = (if (admin) r.mine + r.others else r.mine).distinctBy { it.id }.filter { it.id !in waitingIds }
     val yourLines =
         yours.map { b ->
             b.toAskLine(
@@ -431,8 +424,8 @@ fun BooksShelf(
         waitingCount = if (admin) r.waiting.size else null,
         onSearch = { searchOpen = true },
         loading = d == null,
-        searchLabel = "Search any book or manga",
-        phoneTop = { RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book, author or manga") },
+        searchLabel = "Search any book",
+        phoneTop = { RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book or author") },
         phoneWall = query.trim().length < 2,
         phoneAlt = searchList,
         wall = wall,
@@ -656,8 +649,7 @@ private fun FoundRow(
                 listOfNotNull(
                     f.author.takeIf { it.isNotBlank() },
                     f.year?.toString(),
-                    f.volumes?.let { "$it volumes" },
-                    f.score?.let { (if (f.manga) "AniList " else "Open Library ") + "%.1f".format(it) },
+                    f.score?.let { "Open Library " + "%.1f".format(it) },
                 )
             if (bits.isNotEmpty()) {
                 Text(

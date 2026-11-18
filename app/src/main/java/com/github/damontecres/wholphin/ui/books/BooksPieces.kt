@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 
 /** Book covers are a little taller than wide (2 by 3), like a paperback */
 const val BOOK_RATIO = 2f / 3f
@@ -62,7 +63,7 @@ fun BookCoverImage(
                 .clip(BenflixShapes.Card)
                 .background(BenflixColors.PanelHigh),
     ) {
-        // Redesign 2: no cover = the dark card with the big white name and a lime line; covers fade in
+        // No cover = the dark card with the big white name and an aqua line; covers fade in
         if (url == null || failed) {
             com.github.damontecres.wholphin.ui.cards.NoPictureCard(
                 name = name,
@@ -85,7 +86,7 @@ fun BookCoverImage(
 }
 
 /**
- * One book in a row or grid: the cover (with a lime bar for how far through, "+2" for new volumes, a
+ * One book in a row or grid: the cover (with an aqua bar for how far through, "+2" for new volumes, a
  * headphones mark for audiobooks), then its name and a small line ("Vol 4 of 12", "40%", the author).
  */
 @Composable
@@ -112,6 +113,7 @@ fun BookCard(
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier =
                 Modifier
+                    .glowFocus()
                     .fillMaxWidth()
                     .aspectRatio(BOOK_RATIO)
                     .onFocusChanged { if (it.isFocused) onFocus?.invoke() },
@@ -176,7 +178,7 @@ fun BookCard(
     }
 }
 
-/** The thin lime bar along the bottom of a cover */
+/** The thin aqua bar along the bottom of a cover */
 @Composable
 fun ProgressStrip(
     progress: Float,
@@ -217,7 +219,7 @@ fun BookTag(
     )
 }
 
-/** A chip: lime when picked, dark otherwise (Not started / In progress / Finished, and the phone's menu) */
+/** A chip: aqua when picked, dark otherwise (Not started / In progress / Finished) */
 @Composable
 fun BookChip(
     label: String,

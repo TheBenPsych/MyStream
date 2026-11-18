@@ -403,7 +403,6 @@ internal fun com.github.damontecres.wholphin.services.BookRequest.toAskLine(
 ): AskLine {
     val kinds =
         when {
-            state == "manga" -> "manga"
             types.containsAll(listOf("ebook", "audiobook")) -> "ebook and audiobook"
             types.contains("audiobook") -> "audiobook"
             else -> "ebook"

@@ -1,17 +1,18 @@
-/* Benflix web: Books, the lime sixth door (manga, comics, ebooks and audiobooks, from Tower's own folders).
-   The same side menu as the TV (Home, Manga, Comics, Books, Audiobooks, Series, Authors, Want to read,
-   Finished), book pages, the ebook reader (js/reader.js, keys: arrows / Page Up / Page Down / Space), a page
-   reader for manga and comics, audiobooks in a bar along the bottom, and Requests > Books.
+/* Glowfin web: Books (ebooks and audiobooks, from Tower's own folders; manga removed by Ben 2026-11-18).
+   The same tabs as the TV (For you, Books, Audiobooks, Series, Want to read), book pages, the ebook reader
+   (js/reader.js, keys: arrows / Page Up / Page Down / Space), audiobooks in a bar along the bottom (every button:
+   Back 15, Pause, Ahead 30, Speed, Sleep, Chapters, volume, Stop), and Requests > Books.
    Everything comes from the helper's /api/books. Your place is saved per profile, so it follows you to the TV and phone. */
 
 (() => {
-  const LIME = "#B9E36A", ON_LIME = "#141C05";
+  const LIME = "#3FE0E8", ON_LIME = "#05222A"; // Glowfin aqua (B1)
   const ICON = {
     book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/>',
     ears: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/>',
     b15: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">15</text>',
     f30: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">30</text>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
+    chapters: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/>',
   };
   // The shared title page (title.js) draws icons with the main set, so lend it the headphones
   if (typeof P === "object" && !P.ears) P.ears = ICON.ears;
@@ -27,7 +28,7 @@
   const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
   const hm = (s) => { const m = Math.round((s || 0) / 60); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}`; };
   const clock = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
-  const kindWord = (k) => ({ manga: "Manga", comic: "Comic", audiobook: "Audiobook" }[k] || "Book");
+  const kindWord = (k) => (k === "audiobook" ? "Audiobook" : "Book");
 
   // ---------- cards ----------
   const card = (t, href) => {
@@ -35,77 +36,122 @@
     const bar = t.status === "reading" && t.progress > 0.005 ? `<span class="bk-bar"><i style="width:${Math.max(3, t.progress * 100)}%"></i></span>` : "";
     const done = t.status === "done" ? `<span class="bk-tick">${B.I("check")}</span>` : "";
     const ears = t.kind === "audiobook" ? `<span class="bk-ears">${I("ears")}</span>` : "";
-    return `<a class="poster bk" href="${href || "#/book/" + enc(t.id)}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)"><span class="nt">${esc(t.name)}</span></div>`}${tag}${ears}${done}${bar}</div>
+    return `<a class="poster bk" href="${href || (t.notHere ? "#/requests?tab=books" : "#/book/" + enc(t.id))}"><div class="im">${t.cover ? `<img class="art" src="${pic(t.cover)}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:var(--books)"><span class="nt">${esc(t.name)}</span></div>`}${tag}${ears}${done}${bar}</div>
       <div class="cap"><span class="nm">${esc(t.name)}</span><small>${esc(t.notHere ? "Not on Glowfin yet" : t.line || "")}</small></div></a>`;
   };
   const grid = (tiles) => tiles.length ? `<div class="bk-grid">${tiles.map((t) => card(t)).join("")}</div>` : "";
 
-  // ---------- the Books page: side menu + Home rows or a section grid ----------
-  const PLACES = [["home", "Home"], ["manga", "Manga"], ["comic", "Comics"], ["book", "Books"], ["audiobook", "Audiobooks"], ["series", "Series"], ["authors", "Authors"], ["want", "Want to read"], ["finished", "Finished"]];
+  // ---------- the Books page (Glowfin B1): tabs For you | Books | Audiobooks | Series | Want to read ----------
+  // For you: a top area about the book you're on (its cover fades in on the right), then Keep going (books and
+  // audiobooks together), New for you, the top book lists and the rest. The other tabs are grids with chips.
+  const PLACES = [["home", "For you"], ["book", "Books"], ["audiobook", "Audiobooks"], ["series", "Series"], ["want", "Want to read"]];
   const CHIPS = [["all", "All"], ["not", "Not started"], ["reading", "In progress"], ["done", "Finished"]];
   const SORTS = [["added", "Recently added"], ["name", "A to Z"], ["author", "Author"], ["read", "Last read"]];
   const sortName = (s) => String(s || "").toLowerCase().replace(/^(the|a|an) /, "");
+  // For you's rows: Keep going first, then New for you, then the top lists and the rest (Want to read has its own tab)
+  B.booksForYou = (rows) => {
+    const kept = (rows || []).filter((r) => r.key !== "want" && r.tiles && r.tiles.length)
+      .map((r) => (r.key === "deck" ? Object.assign({}, r, { title: "Keep going" }) : r));
+    const at = (k) => (k === "deck" ? 0 : k === "new" ? 1 : 2);
+    return kept.map((r, i) => [r, i]).sort((a, b) => at(a[0].key) - at(b[0].key) || a[1] - b[1]).map(([r]) => r);
+  };
+  // "Keep reading · 64%" over the name in the top area
+  const kickOf = (t) => {
+    if (t.status === "reading") return (t.kind === "audiobook" ? "Keep listening" : "Keep reading") + " · " + Math.round((t.progress || 0) * 100) + "%";
+    if (t.status === "done") return "Finished";
+    return t.new ? "New for you" : kindWord(t.kind);
+  };
+  const topLine = (t) => [t.author, t.series ? (t.seriesIndex ? "Book " + String(t.seriesIndex).replace(/\.0$/, "") + " of " : "") + t.series : "", t.linked ? "ebook and audiobook" : t.kind === "audiobook" ? "audiobook" : "ebook"].filter(Boolean).join(" · ");
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
-    const place = B.q("p") || "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
-    B.page().innerHTML = B.top("Books", LIME) + `<div class="bk-page"><nav class="bk-side" id="bkSide"></nav><div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
+    const place = PLACES.some(([k]) => k === B.q("p")) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
+    B.page().innerHTML = B.top("Books", LIME) + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
     B.wireTop();
     let home;
     try {
       home = await B.cached("books-home", 15000, () => api("GET", "home"));
     } catch (e) {
       if (!B.alive(nav)) return;
-      $("#bkMain").innerHTML = `<div class="wrap"><div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(e.message)}</p><p class="sub">If Books is new, Tower's Glowfin helper needs its setup run once more.</p></div>`;
+      $("#bkMain").innerHTML = `<div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(e.message)}</p><p class="sub">If Books is new, Tower's Glowfin helper needs its setup run once more.</p>`;
       return;
     }
     if (!B.alive(nav)) return;
     const counts = home.counts || {};
     if (B.railCounts) B.railCounts("books", counts);
-    const shown = PLACES.filter(([k]) => (k !== "manga" || counts.manga) && (k !== "comic" || counts.comic));
     const link = (o) => "#/books?" + new URLSearchParams(Object.assign({ p: place, c: chip, s: sort }, o)).toString();
-    $("#bkSide").innerHTML = shown.map(([k, l]) => `<a class="${k === place ? "on" : ""}" href="${link({ p: k, c: "all" })}">${esc(l)}${counts[k] ? `<small>${counts[k]}</small>` : ""}</a>`).join("");
     const main = $("#bkMain");
     if (home.empty) {
-      main.innerHTML = `<div class="wrap"><div class="h1">No books on Glowfin yet</div><p class="sub">Put books, audiobooks or manga in Tower's ${esc((home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books, Audiobooks and Manga folders")}, and they show up here within 10 minutes.</p>
-        ${home.requests && !B.me.kids ? '<a class="btn white" href="#/requests?tab=books">Ask for a book</a>' : ""}</div>`;
+      if ($("#bkTop")) $("#bkTop").remove();
+      main.innerHTML = `<div class="h1">No books on Glowfin yet</div><p class="sub">Put books or audiobooks in Tower's ${esc((home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books and Audiobooks folders")}, and they show up here within 10 minutes.</p>
+        ${home.requests && !B.me.kids ? '<a class="btn white" href="#/requests?tab=books">Ask for a book</a>' : ""}`;
       return;
     }
     if (place === "home") {
-      main.innerHTML = (home.rows || []).map((r) => B.row(r.title, r.tiles.map((t) => card(t)))).join("") +
-        (home.requests && !B.me.kids ? '<div class="wrap" style="padding-top:8px"><a class="btn" href="#/requests?tab=books">' + B.I("plus") + " Ask for a book</a></div>" : "");
+      const rows = B.booksForYou(home.rows);
+      main.innerHTML = rows.map((r) => B.row(r.title, r.tiles.map((t) => card(t)))).join("") +
+        (home.requests && !B.me.kids ? '<div style="padding-top:8px"><a class="btn" href="#/requests?tab=books">' + B.I("plus") + " Ask for a book</a></div>" : "");
+      const all = {};
+      rows.forEach((r) => r.tiles.forEach((t) => { all[t.id] = t; }));
+      wireBooksTop(all, rows[0] && rows[0].tiles[0]);
+      const f = $("#bkMain .poster"); if (f) f.focus({ preventScroll: true });
       return;
     }
-    if (place === "series" || place === "authors") {
-      const list = await B.cached("books-" + place, 60000, async () => (await api("GET", place))[place] || []);
+    if (place === "series") {
+      const list = await B.cached("books-series", 60000, async () => (await api("GET", "series")).series || []);
       if (!B.alive(nav)) return;
       const g = group != null ? list.find((x) => x.name === group) : null;
       if (g) {
-        main.innerHTML = `<div class="wrap" style="padding-bottom:0"><a class="btn small" href="${link({ g: "" }).replace(/&?g=/, "")}">${B.I("left")} ${place === "series" ? "Series" : "Authors"}</a><div class="h1">${esc(g.name)}</div><p class="sub">${esc(g.line || "")}</p></div><div class="wrap">${grid(g.titles)}</div>`;
+        main.innerHTML = `<a class="btn small" href="${link({ g: "" }).replace(/&?g=/, "")}">${B.I("left")} Series</a><div class="h1">${esc(g.name)}</div><p class="sub">${esc(g.line || "")}</p>${grid(g.titles)}`;
         return;
       }
-      main.innerHTML = `<div class="wrap"><div class="h1">${place === "series" ? "Series" : "Authors"}</div>` +
-        (list.length ? `<div class="bk-grid">${list.map((x) => card({ id: x.name, name: x.name, cover: x.cover, line: x.line, kind: x.kind }, link({ g: x.name }))).join("")}</div>` : `<p class="sub">Nothing here yet.</p>`) + "</div>";
+      main.innerHTML = list.length ? `<div class="bk-grid">${list.map((x) => card({ id: x.name, name: x.name, cover: x.cover, line: x.line, kind: x.kind }, link({ g: x.name }))).join("")}</div>` : `<p class="sub">Books in a series show up here.</p>`;
       return;
     }
     const lib = await B.cached("books-lib", 15000, () => api("GET", "library"));
     if (!B.alive(nav)) return;
-    let tiles = (lib.titles || []).filter((t) => place === "want" ? t.want : place === "finished" ? t.status === "done" : t.kind === place);
+    let tiles = (lib.titles || []).filter((t) => (place === "want" ? t.want : t.kind === place));
+    if (place === "want") tiles = tiles.concat(lib.asked || []);
     if (chip !== "all") tiles = tiles.filter((t) => t.status === chip);
     const by = {
       added: (a, b) => b.added - a.added,
       name: (a, b) => sortName(a.name).localeCompare(sortName(b.name)),
       author: (a, b) => sortName(a.author).localeCompare(sortName(b.author)) || (a.seriesIndex || 0) - (b.seriesIndex || 0),
       read: (a, b) => (b.lastAt || 0) - (a.lastAt || 0),
-    }[sort];
+    }[sort] || ((a, b) => b.added - a.added);
     tiles.sort(by);
-    const title = (PLACES.find(([k]) => k === place) || [0, "Books"])[1];
-    main.innerHTML = `<div class="wrap"><div class="h1">${esc(title)}</div>
-      <div class="row" style="margin:8px 0 18px;flex-wrap:wrap;gap:8px">${place === "finished" ? "" : CHIPS.map(([k, l]) => `<a class="chip ${k === chip ? "on" : ""}" style="--accent:${LIME}" href="${link({ c: k })}">${l}</a>`).join("")}
+    main.innerHTML = `<div class="row bk-chips">${CHIPS.map(([k, l]) => `<a class="chip ${k === chip ? "on" : ""}" style="--accent:${LIME}" href="${link({ c: k })}">${l}</a>`).join("")}
         <select class="field" id="bkSort" style="max-width:200px;padding:7px 12px;border-radius:99px">${SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      ${grid(tiles) || `<p class="sub">${place === "want" ? "Nothing in Want to read yet. Press Want to read on any book's page." : "Nothing here with this chip."}</p>`}</div>`;
+      ${grid(tiles) || `<p class="sub">${place === "want" ? "Nothing in Want to read yet. Press Want to read on any book's page." : "Nothing here with this chip."}</p>`}`;
     $("#bkSort").onchange = (e) => B.go(link({ s: e.target.value }));
   });
 
+  // The top area on For you: what the book you're on is, with its cover fading in on the right. It waits a moment
+  // after you stop moving, so passing along a row stays smooth.
+  function wireBooksTop(byId, first) {
+    const top = $("#bkTop");
+    if (!top) return;
+    let timer, shown = null;
+    const show = (t) => {
+      if (!t || t === shown) return;
+      shown = t;
+      $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(t))}</div><h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p>`;
+      const art = $(".art", top);
+      art.classList.remove("on");
+      art.innerHTML = t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "";
+      requestAnimationFrame(() => art.classList.add("on"));
+    };
+    const pointAt = (e) => {
+      const a = e.target.closest("#bkMain .poster.bk");
+      if (!a) return;
+      const id = decodeURIComponent((a.getAttribute("href") || "").replace(/^#\/book\//, ""));
+      clearTimeout(timer);
+      timer = setTimeout(() => show(byId[id]), shown ? 350 : 0);
+    };
+    B.page().addEventListener("mouseover", pointAt);
+    B.page().addEventListener("focusin", pointAt);
+    B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+    show(first);
+  }
   // ---------- a book's page ----------
   B.route(/^\/book\/([^?]+)/, async (m, nav) => {
     const id = decodeURIComponent(m[1]);
@@ -113,69 +159,57 @@
     B.wireTop();
     const t = await api("GET", "title/" + enc(id));
     if (!B.alive(nav)) return;
-    const manga = t.kind === "manga" || t.kind === "comic", audio = t.kind === "audiobook";
+    const audio = t.kind === "audiobook";
     const place = t.place || {};
-    // Redesign 2: the shared title page. Cover where the picture goes; Read / Listen, the other way you have
-    // it, Want to read, In this series, More. Tabs: Overview, In this series, More by the author, More like this.
+    // Glowfin B1: the D1 title page. Cover on the right; Read / Listen (the other way you have it gets its own
+    // button), Want to read, More. Under the buttons: About this book in big words, then In this series, More by
+    // the author and More like this, one row after another.
     let main = null;
-    if (manga) {
-      const nv = (t.volumes || []).find((v) => v.id === t.next);
-      if (nv) main = { label: `${nv.progress > 0 && !nv.done ? "Keep reading" : "Read"} ${nv.name}`, icon: "book", href: `#/books/pages/${enc(nv.id)}` };
-    } else if (audio) {
+    if (audio) {
       main = { label: place.pos ? "Keep listening" : "Listen", icon: "ears", onClick: () => BK.play(t), note: t.secondsLeft && t.secondsLeft < t.seconds ? hm(t.secondsLeft) + " left" : "" };
     } else if (t.readable) {
       main = t.file === ".pdf"
         ? { label: "Open the PDF", icon: "book", onClick: () => window.open(`api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}`, "_blank", "noopener") }
         : { label: place.pct > 0.005 && t.status !== "done" ? "Keep reading " + Math.round(place.pct * 100) + "%" : "Read", icon: "book", href: `#/books/read/${enc(t.id)}` };
     }
-    if (!main) main = { label: "Read", icon: "book", off: !t.readable && !audio && !manga ? "This kind of file can't be opened in Glowfin. EPUB and PDF can." : "Nothing to open yet" };
-    const series = t.series && !manga ? [...(t.moreBy || []), ...(t.moreLike || [])].filter((x, i, all) => x.series === t.series && x.id !== t.id && all.findIndex((y) => y.id === x.id) === i) : [];
-    const vols = manga ? t.volumes || [] : [];
-    const hasSeries = vols.length || series.length;
-    const grid = (list, f) => (list.length ? `<div class="grid tp-grid">${list.map(f || ((x) => card(x))).join("")}</div>` : "");
+    if (!main) main = { label: "Read", icon: "book", off: !t.readable && !audio ? "This kind of file can't be opened in Glowfin. EPUB and PDF can." : "Nothing to open yet" };
+    const series = t.series ? [...(t.moreBy || []), ...(t.moreLike || [])].filter((x, i, all) => x.series === t.series && x.id !== t.id && all.findIndex((y) => y.id === x.id) === i) : [];
+    const grid = (list) => (list.length ? `<div class="grid tp-grid">${list.map((x) => card(x)).join("")}</div>` : "");
     const strip = B.tpStrip([...(t.scores || []).map((s) => [s.site, (+s.score).toFixed(1)]), t.narrator ? ["Read by", t.narrator, true] : null]);
     const notes = [t.missing ? `<p class="sub" style="color:#E8D44D">Tower is missing ${t.missing} part${t.missing === 1 ? "" : "s"} of this audiobook.</p>` : "",
-      t.placeLine ? `<p class="sub">${esc(t.placeLine)}</p>` : "",
       audio && (t.chapters || []).length > 1 ? `<h4 style="margin:12px 0 8px">${t.chapters.length} chapters</h4><div class="row" style="flex-wrap:wrap;gap:8px">${t.chapters.slice(0, 80).map((c, i) => `<button class="chip" data-ch="${i}">${i + 1}. ${esc(c.title)}${c.seconds ? " · " + hm(c.seconds) : ""}</button>`).join("")}</div>` : ""].join("");
     const tp = B.titlePage({
       title: t.name,
       color: LIME,
+      rows: true,
+      aboutFirst: true,
+      aboutName: "About this book",
+      aboutStory: t.desc || "",
       cover: { url: t.cover ? pic(t.cover.replace("w=320", "w=640")) : "", ratio: 2 / 3 },
-      info: [kindWord(t.kind), t.author, t.year || "", audio && t.seconds ? hm(t.seconds) : "", !audio && !manga && t.minutes ? "About " + hm(t.minutes * 60) + " to read" : "", t.series && !manga ? t.series + (t.seriesIndex ? " #" + t.seriesIndex : "") : ""],
+      info: [kindWord(t.kind), t.author, t.year || "", audio && t.seconds ? hm(t.seconds) : "", !audio && t.minutes ? "About " + hm(t.minutes * 60) + " to read" : "", t.series ? t.series + (t.seriesIndex ? " #" + t.seriesIndex : "") : ""],
+      // "Listening is at the same spot" (in aqua under the buttons)
+      status: t.placeLine || "",
       buttons: [
         main,
         t.other ? (t.other.kind === "audiobook" ? { label: "Listen", icon: "ears", onClick: async () => BK.play(await api("GET", "title/" + enc(t.other.id))) } : { label: "Read", icon: "book", href: `#/books/read/${enc(t.other.id)}` }) : null,
         { label: t.want ? "On Want to read" : "Want to read", icon: t.want ? "check" : "plus", onClick: async () => { await api("POST", "want", { id: t.id, want: !t.want }); B.cache = {}; B.render(); } },
-        { label: "In this series", icon: "list", off: hasSeries ? "" : "This one isn't part of a series", onClick: () => tp.open("In this series") },
         { label: "More", icon: "more", onClick: () => B.tpMore(t.name, [
-          manga ? null : { label: t.status === "done" ? "Mark not finished" : "Mark finished", icon: "check", onClick: async () => { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; B.render(); } },
+          { label: t.status === "done" ? "Mark not finished" : "Mark finished", icon: "check", onClick: async () => { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; B.render(); } },
           t.kind === "book" && t.readable && t.file === ".epub" ? { label: "Download", icon: "dl", href: `api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}` } : null,
         ]) },
       ].filter(Boolean),
-      story: t.desc || "",
       strip,
       overviewExtra: notes ? `<div class="wrap0" style="max-width:760px;margin-top:10px">${notes}</div>` : "",
       tabs: [
-        { name: "In this series", id: "tpSeries", html: vols.length
-          ? `<p class="dim wrap0" style="margin-bottom:10px">${vols.length} volume${vols.length === 1 ? "" : "s"}${t.totalVols > vols.length ? " of " + t.totalVols : ""} · right-click a volume to mark it read</p>` +
-            grid(vols, (v) => card({ id: v.id, name: v.name, cover: v.cover || t.cover, status: v.done ? "done" : v.progress > 0 ? "reading" : "not", progress: v.progress, line: v.current && !v.done ? "Reading now" : "", new: v.new }, "#/books/pages/" + enc(v.id)).replace('<a class="poster bk"', `<a class="poster bk" data-vol="${esc(v.id)}"`))
-          : grid(series) },
+        { name: "In this series", id: "tpSeries", html: grid(series) },
         { name: "More by " + (t.author || "this author"), id: "tpBy", html: grid(t.moreBy || []) },
         { name: "More like this", id: "tpLike", html: grid(t.moreLike || []) },
       ],
     });
+    if (t.placeLine) { const w = $("#tpWhy"); if (w) w.classList.add("bk-place"); }
     tp.root.addEventListener("click", (e) => {
       const ch = e.target.closest("[data-ch]");
       if (ch) BK.play(t, +ch.dataset.ch);
-    });
-    tp.root.addEventListener("contextmenu", async (e) => {
-      const v = e.target.closest("[data-vol]");
-      if (!v) return;
-      e.preventDefault();
-      const before = confirm("Mark this volume as read.\n\nOK = this one and every one before it\nCancel = just this one");
-      await api("POST", "mark", { id: v.dataset.vol, done: true, before });
-      B.cache = {};
-      B.render();
     });
     api("POST", "opened/" + enc(t.id)).catch(() => {});
   });
@@ -194,83 +228,6 @@
     const keys = (e) => { if (e.key === "Escape" && !r.back()) r.close(); };
     document.addEventListener("keydown", keys);
     B.onLeave(() => { document.removeEventListener("keydown", keys); document.body.classList.remove("reading"); r.save(); B.cache = {}; });
-  });
-
-  // ---------- the page reader (manga and comics) ----------
-  B.route(/^\/books\/pages\/([^?]+)/, async (m, nav) => {
-    const id = decodeURIComponent(m[1]);
-    B.page().innerHTML = `<div class="bk-pages" id="bkp" tabindex="0">${B.spinner()}</div>`;
-    const v = await api("GET", "vol/" + enc(id));
-    if (!B.alive(nav)) return;
-    if (v.pdf) {
-      $("#bkp").innerHTML = `<div class="center"><div><div class="h1">${esc(v.name)}</div><p class="sub">This volume is a PDF.</p><a class="btn white" target="_blank" rel="noopener" href="api/books/file/${enc(id)}?api_key=${enc(B.me.token)}">Open the PDF</a> <button class="btn" onclick="B.back()">Back</button></div></div>`;
-      return;
-    }
-    const mode = (v.mode && v.mode.mode) || "page";
-    let rtl = ((v.mode && v.mode.dir) || (v.rtl ? "rtl" : "ltr")) === "rtl";
-    let page = Math.min(Math.max(0, (v.place && v.place.page) || 0), v.pages - 1), since = Date.now();
-    const src = (n) => `api/books/vol/${enc(id)}/p/${n}?w=1600&api_key=${enc(B.me.token)}`;
-    const save = (finished) => {
-      const secs = Math.round((Date.now() - since) / 1000); since = Date.now();
-      api("POST", "place/" + enc(id), { page, pages: v.pages, pct: finished ? 1 : page / v.pages, seconds: Math.min(secs, 3000), finished: !!finished }).catch(() => {});
-    };
-    let saveT;
-    const box = $("#bkp");
-    const draw = () => {
-      if (page >= v.pages) {
-        save(true);
-        box.innerHTML = `<div class="center"><div>${v.next ? `<div class="kick" style="color:${LIME}">NEXT VOLUME</div><div class="h1">${esc(v.next.name)}</div><a class="btn white" href="#/books/pages/${enc(v.next.id)}">Read it</a>` : `<div class="h1">You finished ${esc(v.name)}</div>`} <button class="btn" onclick="B.go('#/book/${enc(v.title)}')">Back to the book</button></div></div>`;
-        return;
-      }
-      if (mode === "scroll") {
-        box.innerHTML = `<div class="bk-strip">${Array.from({ length: v.pages }, (_, n) => `<img loading="lazy" src="${src(n)}" alt="Page ${n + 1}" data-n="${n}">`).join("")}<button class="btn white" style="margin:30px auto;display:block" data-end>Done</button></div>`;
-        const img = box.querySelector(`[data-n="${page}"]`);
-        if (img) img.scrollIntoView();
-        return;
-      }
-      const two = mode === "spread" && page > 0 && page + 1 < v.pages;
-      const shown = two ? [page, page + 1] : [page];
-      box.innerHTML = `<div class="bk-spread ${rtl ? "rtl" : ""}">${shown.map((n) => `<img src="${src(n)}" alt="Page ${n + 1}">`).join("")}</div>
-        <div class="bk-pbar"><button class="btn small" data-back>${B.I("left")} Back</button><span>${esc(v.series)} · ${esc(v.name)} · page ${page + 1} of ${v.pages}</span>
-        <button class="chip" data-dir>${rtl ? "Right to left" : "Left to right"}</button></div>`;
-      if (page + 1 < v.pages) { const pre = new Image(); pre.src = src(page + (two ? 2 : 1)); }
-      clearTimeout(saveT); saveT = setTimeout(() => save(false), 1500);
-    };
-    const step = (d) => {
-      const two = mode === "spread" && page > 0;
-      page = Math.max(0, Math.min(v.pages, page + d * (two ? 2 : 1)));
-      draw();
-    };
-    box.onclick = (e) => {
-      if (e.target.closest("[data-back]")) return B.go("#/book/" + enc(v.title));
-      if (e.target.closest("[data-end]")) { page = v.pages; return draw(); }
-      if (e.target.closest("[data-dir]")) { rtl = !rtl; api("POST", "place/" + enc(id), { readerMode: { mode, dir: rtl ? "rtl" : "ltr" } }).catch(() => {}); return draw(); }
-      if (mode === "scroll" || e.target.closest("a,button")) return;
-      const left = e.clientX < window.innerWidth / 2;
-      step(left === rtl ? 1 : -1);
-    };
-    const keys = (e) => {
-      if (mode === "scroll") return;
-      if (e.key === "ArrowRight") step(rtl ? -1 : 1);
-      else if (e.key === "ArrowLeft") step(rtl ? 1 : -1);
-      else if (e.key === " " || e.key === "PageDown") step(1);
-      else if (e.key === "PageUp") step(-1);
-      else if (e.key === "Escape") B.go("#/book/" + enc(v.title));
-      else return;
-      e.preventDefault();
-    };
-    document.addEventListener("keydown", keys);
-    if (mode === "scroll") {
-      const watch = setInterval(() => {
-        const imgs = $$("img[data-n]", box);
-        const top = imgs.find((im) => im.getBoundingClientRect().bottom > 80);
-        if (top && +top.dataset.n !== page) { page = +top.dataset.n; save(false); }
-      }, 2000);
-      B.onLeave(() => clearInterval(watch));
-    }
-    B.onLeave(() => { document.removeEventListener("keydown", keys); if (page < v.pages) save(false); B.cache = {}; });
-    draw();
-    api("POST", "opened/" + enc(v.title)).catch(() => {});
   });
 
   // ---------- audiobooks: a bar along the bottom of every page ----------
@@ -347,7 +304,7 @@
       bar.innerHTML = `<button class="mbar-open" data-open title="Open the book"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
         <div class="mbar-ctl"><button class="circle" data-a="b15" title="Back 15 seconds">${I("b15")}</button><button class="circle white" data-a="toggle" title="Play or pause"></button><button class="circle" data-a="f30" title="Ahead 30 seconds">${I("f30")}</button>
         <select class="field bk-speed" title="Speed">${[0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3].map((s) => `<option value="${s}">${s}x</option>`).join("")}</select>
-        <button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button>${B.volume("", "circle")}<button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
+        <button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button><button class="circle" data-a="chapters" title="Chapters">${I("chapters")}</button>${B.volume("", "circle")}<button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
         <div class="mbar-line"><i></i></div>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
@@ -359,10 +316,13 @@
           else if (k === "f30") BK.seek(30);
           else if (k === "stop") BK.stop();
           else if (k === "sleep") {
-            const m = prompt("Sleep timer: minutes (15, 30, 45 or 60). Leave empty to turn it off.", "30");
-            sleepAt = m && +m > 0 ? Date.now() + +m * 60000 : 0;
-            B.toast(sleepAt ? `Sleep timer: ${+m} minutes` : "Sleep timer off");
-          }
+            // Each press moves to the next choice: 15, 30, 45, 60 minutes, then off
+            const left = sleepAt ? Math.ceil((sleepAt - Date.now()) / 60000) : 0;
+            const next = [15, 30, 45, 60].find((x) => x > left + 1) || 0;
+            sleepAt = next ? Date.now() + next * 60000 : 0;
+            a.classList.toggle("on", !!sleepAt);
+            B.toast(sleepAt ? `Sleep timer: ${next} minutes` : "Sleep timer off");
+          } else if (k === "chapters") chapterList(a);
           return;
         }
         if (e.target.closest("[data-open]") && BK.now) B.go("#/book/" + enc(BK.now.t.id));
@@ -386,6 +346,26 @@
     $("[data-a=toggle]", bar).innerHTML = audio.paused ? B.I("play") : B.I("pause");
     $(".mbar-line i", bar).style.width = (t.seconds ? (p / t.seconds) * 100 : 0) + "%";
   }
+  // Chapters: a small list over the bar; the one you're in is lit, and picking one jumps there
+  function chapterList(btn) {
+    const old = $(".bk-chlist");
+    if (old) { old.remove(); return; }
+    if (!BK.now || !BK.now.chapters.length) { B.toast("This audiobook has no chapters"); return; }
+    const at = chapterAt(pos());
+    const box = document.createElement("div");
+    box.className = "bk-chlist";
+    box.innerHTML = `<b>Chapters</b>` + BK.now.chapters.map((c, i) => `<button class="${i === at ? "on" : ""}" data-chi="${i}"><span>${esc(c.title || "Chapter " + (i + 1))}</span><small>${c.seconds ? hm(c.seconds) : ""}</small></button>`).join("");
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-chi]");
+      if (!b) return;
+      const c = BK.now && BK.now.chapters[+b.dataset.chi];
+      if (c) BK.seek((c.at || 0) - pos());
+      box.remove();
+    });
+    document.body.appendChild(box);
+    const on = $("button.on", box); if (on) on.scrollIntoView({ block: "center" });
+    setTimeout(() => document.addEventListener("click", function off(e) { if (!box.contains(e.target) && e.target !== btn) { box.remove(); document.removeEventListener("click", off); } }), 0);
+  }
   window.addEventListener("beforeunload", () => { if (BK.now && !audio.paused) BK.save(); });
 
   // ---------- Requests > Books ----------
@@ -395,9 +375,9 @@
     const rows = $("#rows");
     const input = $("#rq");
     const admin = B.me.admin;
-    input.placeholder = "Search any book, author or manga";
+    input.placeholder = "Search any book or author";
     rows.innerHTML = `<div id="bfound"></div><div class="grid-wrap rqsplit" id="bsplit"><nav class="rqside" id="bside"></nav><div class="grid-body" id="bwall">${B.spinner()}</div></div>`;
-    let d = null, req = null, picked = null, ownedOpen = null, results = { books: [], manga: [] }, t;
+    let d = null, req = null, picked = null, ownedOpen = null, results = { books: [] }, t;
     const bookLists = () => {
       if (!d) return [];
       const nyt = (d.rows || []).find((r) => (r.items || []).length && /Fiction/.test(r.title) && !/Nonfiction/.test(r.title));
@@ -411,7 +391,7 @@
       return out;
     };
     const reqLine = (r, answer) => ({
-      title: r.name, sub: [admin ? r.who : "", r.author, r.state === "manga" ? "manga" : (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r), who: answer && admin ? r.who || "" : "",
+      title: r.name, sub: [admin ? r.who : "", r.author, (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r), who: answer && admin ? r.who || "" : "",
       acts: answer ? `<button class="btn small white" data-yes="${esc(r.id)}">Yes</button><button class="btn small" data-no="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : ""}${r.canRetry ? `<button class="btn small" data-retry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-forget="${esc(r.id)}">${B.I("x")}</button>`,
     });
@@ -419,9 +399,9 @@
       const side = $("#bside"), wall = $("#bwall");
       if (!side || !wall) return;
       const ls = bookLists();
-      const r = req || { mine: [], waiting: [], others: [], mangaToAdd: [], problems: [] };
+      const r = req || { mine: [], waiting: [], others: [], problems: [] };
       const waitIds = new Set((r.waiting || []).map((x) => x.id));
-      const mine = (admin ? [].concat(r.mine || [], r.mangaToAdd || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i && !waitIds.has(x.id));
+      const mine = (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i && !waitIds.has(x.id));
       const cur = picked === "yours" || picked === "waiting" ? null : ls.find((l) => l.id === picked) || ls[0];
       side.innerHTML = B.rqSide(ls, cur ? cur.id : picked, mine.length, admin ? (r.waiting || []).length : null);
       const notes = ((admin && r.problems) || []).map((p) => `<div class="note">${esc(p)}</div>`).join("")
@@ -457,7 +437,7 @@
       try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bwall").innerHTML = `<div class="note">Couldn't load the book lists. ${esc(e.message)}</div>`; return; }
       if (B.alive(nav)) draw();
     };
-    const found = (f, manga) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.volumes ? f.volumes + " volumes" : "", f.score ? (manga ? "AniList " : "Open Library ") + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
+    const found = (f) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.score ? "Open Library " + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
       <div class="acts">${f.have ? `<a class="btn small" href="#/book/${enc(f.have)}">Ready to read</a>` : f.asked ? B.rqPillHtml(B.bookPill({ state: "", words: f.asked })) : `<button class="btn small white" data-askfor="${esc(f.key)}">Ask for it</button>`}</div></div>`;
     const search = async (text) => {
       const box = $("#bfound");
@@ -465,18 +445,16 @@
       $("#bsplit").style.display = on ? "none" : "";
       if (!on) { box.innerHTML = ""; return draw(); }
       box.innerHTML = B.spinner();
-      results = await api("GET", "search?q=" + enc(text.trim())).catch((e) => ({ books: [], manga: [], error: e.message }));
+      results = await api("GET", "search?q=" + enc(text.trim())).catch((e) => ({ books: [], error: e.message }));
       if (!B.alive(nav) || input.value.trim() !== text.trim()) return;
-      box.innerHTML = (results.books.length ? `<section class="rowx"><h3>Books</h3><div class="wrap" style="padding-bottom:0"><div class="list">${results.books.map((f) => found(f, false)).join("")}</div></div></section>` : "") +
-        (results.manga.length ? `<section class="rowx"><h3>Manga</h3><div class="wrap" style="padding-bottom:0"><div class="list">${results.manga.map((f) => found(f, true)).join("")}</div></div></section>` : "") ||
+      box.innerHTML = (results.books.length ? `<section class="rowx"><h3>Books</h3><div class="wrap" style="padding-bottom:0"><div class="list">${results.books.map((f) => found(f)).join("")}</div></div></section>` : "") ||
         `<div class="wrap empty">${esc(results.error || "Nothing found. Try the author's name, or fewer words.")}</div>`;
     };
     // The one Ask for it panel: Ebook and audiobook (first), Ebook, or Audiobook. Asking adds it to Want to read too.
     const askPanel = (f) => {
-      const manga = results.manga.includes(f);
       const p = B.side(`<h3>${esc(f.name)}</h3><p class="dim">${esc(f.author || "")}</p><h4 style="margin:14px 0 8px">Ask for ${esc(f.name)}</h4>
         <p class="dim">Also adds it to Want to read${admin ? "" : ". Ben says yes first"}.</p>
-        ${manga ? `<button class="opt" data-types="">${admin ? "Ask for it" : "Ask Ben"}</button>` : `<button class="opt" data-types="ebook,audiobook">Ebook and audiobook</button><button class="opt" data-types="ebook">Ebook</button><button class="opt" data-types="audiobook">Audiobook</button>`}`);
+        <button class="opt" data-types="ebook,audiobook">Ebook and audiobook</button><button class="opt" data-types="ebook">Ebook</button><button class="opt" data-types="audiobook">Audiobook</button>`);
       p.addEventListener("click", (ev) => {
         const o = ev.target.closest("[data-types]");
         if (!o) return;
@@ -502,7 +480,7 @@
       if (!b) return;
       if (b.dataset.bq != null) return BQ.quick(b, () => shelves());
       if (b.dataset.askfor != null) {
-        const f = results.books.concat(results.manga).find((x) => x.key === b.dataset.askfor);
+        const f = results.books.find((x) => x.key === b.dataset.askfor);
         if (f) askPanel(f);
         return;
       }

@@ -72,7 +72,7 @@ class AudiobookViewModel
 
 /**
  * The audiobook player (approved design, like Music's Now playing): the cover on the left, the book, the
- * chapter, a lime line with the time, back 15 / play / ahead 30, speed and the sleep timer; the chapters
+ * chapter, an aqua line with the time, back 15 / play / ahead 30, speed and the sleep timer; the chapters
  * in a column on the right (TV and tablets) or below (phones).
  */
 @Composable
@@ -173,7 +173,7 @@ private fun PlayerInfo(
     onSleep: () -> Unit,
 ) {
     val svc = viewModel.audiobooks
-    // The same title, line and buttons as Music's now playing, in the Books lime
+    // The same title, line and buttons as Music's now playing, in the Books aqua
     com.github.damontecres.wholphin.ui.music.NowPlayingTitle(
         kicker = "Now playing · Audiobook",
         title = n.name,
@@ -373,7 +373,7 @@ private fun sleepNow(n: AudiobookNow): String =
     }
 
 /**
- * While an audiobook plays and you're anywhere outside Books (approved): a lime pill left of the clock on
+ * While an audiobook plays and you're anywhere outside Books (approved): an aqua pill left of the clock on
  * TV with the book's name. OK opens the player.
  */
 @Composable
@@ -422,7 +422,7 @@ fun AudiobookPill(
     }
 }
 
-/** Phones: a slim bar along the bottom while an audiobook plays, with play/pause and a thin lime line */
+/** Phones: a slim bar along the bottom while an audiobook plays, with play/pause and a thin aqua line */
 @Composable
 fun AudiobookMiniBar(
     modifier: Modifier = Modifier,

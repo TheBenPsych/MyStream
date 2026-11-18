@@ -1,9 +1,12 @@
 package com.github.damontecres.wholphin.ui.books
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -39,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -63,20 +66,26 @@ import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
+import com.github.damontecres.wholphin.ui.music.MusicRowName
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 /**
- * Benflix Books: inside the lime Books door (approved design). Redesign 2 (section 6): the side menu moved
- * into the shared [DoorFrame] rail every door has (Home, Manga, Comics, Books, Audiobooks, Series, Authors,
- * Want to read, Finished; Manga and Comics only once there are some). Phones: the same places as chips. Home has On deck, New for you,
- * Want to read and Recently added; each section page is a grid with Not started / In progress / Finished.
+ * Glowfin Books (Ben's B1 pick, Nov 2026): the same word tabs as Movies and Music along the top: For you, Books,
+ * Audiobooks, Series, Want to read. For you: on TV and wide screens a top area about the book you're on ("Keep
+ * reading · 64%", its name big, the author and series), its cover fading in on the right; then Keep going (books
+ * and audiobooks together), New for you, the top book lists and a few more rows. The other tabs are grids with
+ * Not started / In progress / Finished chips and a sort. Phones: the same tabs and rows. Manga is gone (Ben).
  */
 @Composable
 fun BooksDoorPage(
@@ -99,19 +108,19 @@ fun BooksDoorPage(
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     val easy = preferences.appPreferences.benflixPreferences.easyRead
     val home = state.home
-    val places = remember(home?.counts) { viewModel.places(home?.counts.orEmpty()) }
-    val edge = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+    val edge = side(wide)
     val frame = rememberDoorFrameState(BenflixDoor.BOOKS)
-    // The rail picks the place (opening the door again within 10 minutes starts on the one you were on)
+    // The tabs pick the place (opening Books again within 10 minutes starts on the one you were on)
     LaunchedEffect(frame.section) {
         viewModel.place.value = BooksPlace.entries.firstOrNull { placeKey(it) == frame.section } ?: BooksPlace.HOME
     }
-    // Picking a place (even the one you're on) closes an open series or author
+    // Picking a tab (even the one you're on) closes an open series
     LaunchedEffect(frame.picks) { if (frame.picks > 0) viewModel.group.value = null }
     DisposableEffect(Unit) { onDispose { DoorMemory.keep(BenflixDoor.BOOKS, DoorMemory.Spot(section = frame.section)) } }
-    // Back closes an open series or author first; the frame then goes back to Books Home, then leaves
+    // Back closes an open series first; the frame then goes back to For you, then leaves
     BackHandler(group != null) { viewModel.group.value = null }
 
+    val overlap = LocalTopBarOverlap.current
     if (!state.loaded) {
         Box(modifier.fillMaxSize())
         return
@@ -122,7 +131,7 @@ fun BooksDoorPage(
         LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = modifier.fillMaxSize().padding(horizontal = edge, vertical = 32.dp),
+            modifier = modifier.fillMaxSize().padding(start = edge, end = edge, top = overlap + 32.dp),
         ) {
             Title("Couldn't reach the Books helper on Tower")
             Text(
@@ -146,50 +155,9 @@ fun BooksDoorPage(
         return
     }
     val onTile: (BookTile) -> Unit = { viewModel.open(it) }
-    val content: @Composable (Modifier) -> Unit = { m ->
-        when {
-            home.empty -> {
-                EmptyBooks(home.folders, home.canAsk && !viewModel.isKids, viewModel, m)
-            }
-
-            group != null -> {
-                GroupPage(group!!, wide, easy, onTile, onBack = { viewModel.group.value = null }, modifier = m)
-            }
-
-            place == BooksPlace.HOME -> {
-                BooksHomeRows(home.rows, wide, easy, home.canAsk && !viewModel.isKids, viewModel, frame, onTile, m)
-            }
-
-            place == BooksPlace.SERIES -> {
-                GroupGrid(
-                    state.series,
-                    "series",
-                    wide,
-                    easy,
-                    onGroup = { viewModel.group.value = it },
-                    modifier = m,
-                )
-            }
-
-            place == BooksPlace.AUTHORS -> {
-                GroupGrid(
-                    state.authors,
-                    "authors",
-                    wide,
-                    easy,
-                    onGroup = { viewModel.group.value = it },
-                    modifier = m,
-                )
-            }
-
-            else -> {
-                SectionGrid(viewModel, place, wide, easy, onTile, m)
-            }
-        }
-    }
     val sections =
-        remember(places, home.counts) {
-            places.map { p ->
+        remember(home.counts) {
+            BooksPlace.entries.map { p ->
                 DoorSection(
                     key = placeKey(p),
                     label = p.label,
@@ -198,30 +166,73 @@ fun BooksDoorPage(
                 )
             }
         }
-    DoorFrame(frame, sections, modifier, ready = state.loaded) { inner -> content(inner) }
+    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true) { inner ->
+        // TV and wide screens: the tabs sit over the top of the page, so the grids start under them
+        val top = if (wide) LocalTopBarOverlap.current else 0.dp
+        when {
+            home.empty -> {
+                EmptyBooks(home.folders, home.canAsk && !viewModel.isKids, viewModel, inner.padding(top = top, start = edge))
+            }
+
+            group != null -> {
+                GroupPage(group!!, wide, easy, onTile, onBack = { viewModel.group.value = null }, modifier = inner.padding(top = top))
+            }
+
+            place == BooksPlace.HOME -> {
+                BooksForYou(home.rows, wide, easy, home.canAsk && !viewModel.isKids, viewModel, frame, onTile, inner)
+            }
+
+            place == BooksPlace.SERIES -> {
+                GroupGrid(state.series, wide, easy, onGroup = { viewModel.group.value = it }, modifier = inner.padding(top = top))
+            }
+
+            else -> {
+                SectionGrid(viewModel, place, wide, easy, onTile, inner.padding(top = top))
+            }
+        }
+    }
 }
 
-/** The rail's key for a place (Home is the frame's own Home) */
+/** The tab's key (For you is the frame's own Home) */
 private fun placeKey(place: BooksPlace): String = if (place == BooksPlace.HOME) DOOR_HOME else place.name
 
 private fun placeIcon(place: BooksPlace): BenflixIcon =
     when (place) {
         BooksPlace.HOME -> BenflixIcon.HOME
-        BooksPlace.MANGA, BooksPlace.COMICS, BooksPlace.BOOKS -> BenflixIcon.BOOK
+        BooksPlace.BOOKS -> BenflixIcon.BOOK
         BooksPlace.AUDIOBOOKS -> BenflixIcon.HEADPHONES
         BooksPlace.SERIES -> BenflixIcon.LIST
-        BooksPlace.AUTHORS -> BenflixIcon.PERSON
         BooksPlace.WANT -> BenflixIcon.STAR
-        BooksPlace.FINISHED -> BenflixIcon.CHECK
     }
+
+private fun side(wide: Boolean): Dp = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+
+/**
+ * For you's rows (B1): Keep going first (books and audiobooks together), then New for you, then the top book
+ * lists and the rest in Tower's order. Want to read has its own tab, so it isn't a row here.
+ */
+fun forYouRows(rows: List<BookRow>): List<BookRow> {
+    val kept =
+        rows
+            .filter { it.key != "want" && it.tiles.isNotEmpty() }
+            .map { if (it.key == "deck") it.copy(title = "Keep going") else it }
+    return kept.sortedBy {
+        when (it.key) {
+            "deck" -> 0
+            "new" -> 1
+            else -> 2
+        }
+    }
+}
 
 @Composable
 private fun Title(text: String) {
     Text(
         text = text,
         color = BenflixColors.Text,
+        fontFamily = GlowfinDisplayFont,
         fontSize = BenflixType.pageTitle,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
     )
 }
 
@@ -238,7 +249,7 @@ private fun cardWidth(
     }
 
 @Composable
-private fun BooksHomeRows(
+private fun BooksForYou(
     rows: List<BookRow>,
     wide: Boolean,
     easy: Boolean,
@@ -248,23 +259,34 @@ private fun BooksHomeRows(
     onTile: (BookTile) -> Unit,
     modifier: Modifier,
 ) {
-    val edge = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+    val edge = side(wide)
     val w = cardWidth(wide, easy)
     val isTv = rememberIsTv()
-    // Ben (dr-p-empty): a row with nothing in it is left out
-    val shownRows = remember(rows) { rows.filter { it.tiles.isNotEmpty() } }
+    val shownRows = remember(rows) { forYouRows(rows) }
     val listState = rememberLazyListState()
     val first = remember { FocusRequester() }
-    // Redesign 2: the top area describes the book you're on (TV and wide screens)
-    var focused by remember { mutableStateOf<BookTile?>(null) }
+    // The book the remote is on: only the top area reads it, so moving along a row doesn't rebuild the page
+    val lit = remember { mutableStateOf<BookTile?>(null) }
     var focusedRow by remember { mutableIntStateOf(0) }
     var topRequest by remember { mutableIntStateOf(0) }
+    // True while focus is somewhere in the rows (not the tabs or the menu)
+    var rowsFocused by remember { mutableStateOf(false) }
     LaunchedEffect(shownRows.isNotEmpty(), topRequest) {
         if (shownRows.isEmpty()) return@LaunchedEffect
         if (topRequest > 0) listState.scrollToItem(0)
-        delay(120)
-        // TV: the door opens on the first card of the top row, with the menu tucked away
-        if (isTv) first.tryRequestFocus()
+        // TV: Books opens on the first book of Keep going. The cards can take a moment to appear (and the menu
+        // may grab focus first), so keep asking for a little while until a card has it.
+        if (!isTv) return@LaunchedEffect
+        var steady = 0
+        repeat(40) {
+            delay(60)
+            if (rowsFocused) {
+                if (++steady >= 4) return@LaunchedEffect
+            } else {
+                steady = 0
+                first.tryRequestFocus()
+            }
+        }
     }
     LaunchedEffect(Unit) {
         snapshotFlow { listState.firstVisibleItemIndex == 0 && focusedRow == 0 }.collect { frame.atTop = it }
@@ -273,25 +295,19 @@ private fun BooksHomeRows(
         focusedRow = 0
         topRequest++
     }
-    Column(modifier) {
-        if (wide && !easy) {
-            BooksTopArea(focused ?: shownRows.firstOrNull()?.tiles?.firstOrNull(), edge)
+    Column(modifier.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
+        if (wide) {
+            BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), easy, LocalTopBarOverlap.current)
         }
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(if (wide) BenflixSpace.tvRowGap else BenflixSpace.phoneRowGap),
-            contentPadding = PaddingValues(top = if (wide) 12.dp else 4.dp, bottom = 48.dp),
+            verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
+            contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
             itemsIndexed(shownRows, key = { _, row -> row.key }) { rowIndex, row ->
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = row.title,
-                        color = BenflixColors.Text,
-                        fontSize = BenflixType.rowName,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = edge),
-                    )
+                Column {
+                    MusicRowName(row.title, Modifier.padding(start = edge, bottom = 8.dp))
                     val rowState = rememberLazyListState()
                     if (rowIndex == 0) {
                         LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
@@ -299,7 +315,7 @@ private fun BooksHomeRows(
                     LazyRow(
                         state = rowState,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(start = edge, end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge),
+                        contentPadding = PaddingValues(horizontal = edge),
                     ) {
                         itemsIndexed(row.tiles, key = { _, it -> row.key + it.id }) { i, tile ->
                             BookCard(
@@ -307,7 +323,7 @@ private fun BooksHomeRows(
                                 w,
                                 onClick = { onTile(tile) },
                                 onFocus = {
-                                    focused = tile
+                                    lit.value = tile
                                     focusedRow = rowIndex
                                 },
                                 modifier = if (rowIndex == 0 && i == 0) Modifier.focusRequester(first) else Modifier,
@@ -334,86 +350,77 @@ private fun BooksHomeRows(
 }
 
 /**
- * Redesign 2 (section 6): the Books top area, like every door's: the book you're on, its cover on the
- * right fading into the dark, and its name, author and where you are in it on the left.
+ * Glowfin (B1) top area on TV and wide screens: what the book you're on is ("Keep reading · 64%", its name big,
+ * the author, which book of the series, ebook and/or audiobook), with its cover fading in on the right. It waits
+ * half a second after you stop moving, so passing along a row stays smooth on older TVs.
  */
 @Composable
 private fun BooksTopArea(
-    tile: BookTile?,
-    edge: Dp,
+    lit: State<BookTile?>,
+    first: BookTile?,
+    easy: Boolean,
+    overlap: Dp,
 ) {
-    val config = LocalConfiguration.current
-    val height = (config.screenHeightDp * 0.30f).dp.coerceIn(150.dp, 260.dp)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(height),
-    ) {
-        if (tile != null) {
+    var shown by remember { mutableStateOf<BookTile?>(null) }
+    LaunchedEffect(Unit) {
+        snapshotFlow { lit.value }.collectLatest { tile ->
+            if (tile == null) return@collectLatest
+            if (shown != null) delay(TOP_AREA_WAIT_MS)
+            shown = tile
+        }
+    }
+    val tile = shown ?: first ?: return
+    val edge = side(true)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val height = (maxWidth * 0.2f).coerceIn(150.dp, 230.dp) + overlap
+        Box(Modifier.fillMaxWidth().height(height)) {
+            // The cover on the right, standing like a book, fading into the page at the bottom
             Box(
                 Modifier
                     .align(Alignment.TopEnd)
+                    .padding(top = overlap, end = edge)
                     .fillMaxHeight()
-                    .aspectRatio(1.6f),
+                    .aspectRatio(BOOK_RATIO),
             ) {
-                BookCoverImage(tile.cover, tile.name, Modifier.fillMaxSize(), audio = tile.isAudio)
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                0f to BenflixColors.Tray,
-                                0.55f to BenflixColors.Tray.copy(alpha = .55f),
-                                1f to BenflixColors.Tray.copy(alpha = .1f),
-                            ),
-                        ),
-                )
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to BenflixColors.Tray)),
-                )
+                Crossfade(targetState = tile, animationSpec = tween(250), label = "booksTopCover") { t ->
+                    BookCoverImage(t.cover, t.name, Modifier.fillMaxSize(), audio = t.isAudio)
+                }
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Glowfin.Ink)))
             }
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier =
                     Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = edge, end = edge)
-                        .widthIn(max = 600.dp),
+                        .align(Alignment.BottomStart)
+                        .padding(start = edge, end = edge, bottom = 10.dp)
+                        .widthIn(max = 620.dp),
             ) {
                 Text(
-                    text = kindName(tile.kind).uppercase(),
-                    color = BenflixColors.Books,
-                    fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    text = tile.name,
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.pageTitle,
-                    fontWeight = FontWeight.ExtraBold,
+                    text = topKicker(tile),
+                    color = Glowfin.Dim,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val line = listOf(tile.author, tile.series, tile.line).filter { it.isNotBlank() }.distinct().joinToString(" · ")
-                if (line.isNotEmpty()) {
+                Text(
+                    text = tile.name,
+                    color = Glowfin.Text,
+                    fontFamily = GlowfinDisplayFont,
+                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                val line = topLine(tile)
+                if (line.isNotBlank()) {
                     Text(
                         text = line,
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.body,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (tile.genres.isNotEmpty()) {
-                    Text(
-                        text = tile.genres.take(3).joinToString(" · "),
-                        color = BenflixColors.Muted,
-                        fontSize = BenflixType.small,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 6.dp),
                     )
                 }
             }
@@ -421,13 +428,31 @@ private fun BooksTopArea(
     }
 }
 
-private fun kindName(kind: String): String =
-    when (kind) {
-        "manga" -> "Manga"
-        "comic" -> "Comic"
-        "audiobook" -> "Audiobook"
+private const val TOP_AREA_WAIT_MS = 500L
+
+/** "Keep reading · 64%" over the name */
+private fun topKicker(t: BookTile): String =
+    when {
+        t.status == "reading" -> (if (t.isAudio) "Keep listening" else "Keep reading") + " · ${(t.progress * 100).toInt()}%"
+        t.status == "done" -> "Finished"
+        t.isNew -> "New for you"
+        t.isAudio -> "Audiobook"
         else -> "Book"
     }
+
+/** "R. Vale · Book 2 of The Drift · ebook and audiobook" */
+private fun topLine(t: BookTile): String =
+    listOfNotNull(
+        t.author.takeIf { it.isNotBlank() },
+        t.series.takeIf { it.isNotBlank() }?.let { s ->
+            t.seriesIndex?.let { "Book " + it.toString().removeSuffix(".0") + " of " + s } ?: s
+        },
+        when {
+            t.linked != null -> "ebook and audiobook"
+            t.isAudio -> "audiobook"
+            else -> "ebook"
+        },
+    ).joinToString(" · ")
 
 @Composable
 private fun SectionGrid(
@@ -443,35 +468,24 @@ private fun SectionGrid(
     val sort by viewModel.sort.collectAsState()
     val lib = state.library
     val tiles = remember(lib, place, filter, sort) { lib?.let { viewModel.sectionTiles(it, place, filter, sort) }.orEmpty() }
-    val edge = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+    val edge = side(wide)
     val w = cardWidth(wide, easy)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding =
-            PaddingValues(
-                start = edge,
-                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
-                top = 12.dp,
-                bottom = 48.dp,
-            ),
+        contentPadding = PaddingValues(start = edge, end = edge, top = 12.dp, bottom = 48.dp),
         modifier = modifier,
     ) {
-        item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (wide) Title(place.label)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (place != BooksPlace.FINISHED) {
-                        items(BookFilter.entries, key = { it.name }) { f ->
-                            BookChip(f.label, f == filter, onClick = { viewModel.filter.value = f })
-                        }
-                    }
-                    item(key = "sort") {
-                        BookChip("Sort: ${sort.label}", false, onClick = {
-                            viewModel.sort.value = BookSort.entries[(sort.ordinal + 1) % BookSort.entries.size]
-                        })
-                    }
+        item(key = "chips", span = { GridItemSpan(maxLineSpan) }) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(BookFilter.entries, key = { it.name }) { f ->
+                    BookChip(f.label, f == filter, onClick = { viewModel.filter.value = f })
+                }
+                item(key = "sort") {
+                    BookChip("Sort: ${sort.label}", false, onClick = {
+                        viewModel.sort.value = BookSort.entries[(sort.ordinal + 1) % BookSort.entries.size]
+                    })
                 }
             }
         }
@@ -483,10 +497,10 @@ private fun SectionGrid(
             item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     text =
-                        when (place) {
-                            BooksPlace.WANT -> "Nothing in Want to read yet. Press Want to read on any book's page."
-                            BooksPlace.FINISHED -> "Books you finish show up here."
-                            else -> "Nothing here with this chip."
+                        if (place == BooksPlace.WANT && filter == BookFilter.ALL) {
+                            "Nothing in Want to read yet. Press Want to read on any book's page."
+                        } else {
+                            "Nothing here with this chip."
                         },
                     color = BenflixColors.Muted,
                     fontSize = BenflixType.body,
@@ -499,34 +513,24 @@ private fun SectionGrid(
     }
 }
 
-/** Series or Authors: one card each (the first book's cover), opening a grid of their books */
+/** Series: one card each (the first book's cover), opening a grid of its books */
 @Composable
 private fun GroupGrid(
     groups: List<BookGroup>?,
-    what: String,
     wide: Boolean,
     easy: Boolean,
     onGroup: (BookGroup) -> Unit,
     modifier: Modifier,
 ) {
-    val edge = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+    val edge = side(wide)
     val w = cardWidth(wide, easy)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding =
-            PaddingValues(
-                start = edge,
-                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
-                top = 12.dp,
-                bottom = 48.dp,
-            ),
+        contentPadding = PaddingValues(start = edge, end = edge, top = 12.dp, bottom = 48.dp),
         modifier = modifier,
     ) {
-        if (wide) {
-            item(key = "title", span = { GridItemSpan(maxLineSpan) }) { Title(if (what == "series") "Series" else "Authors") }
-        }
         when {
             groups == null -> {
                 item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
@@ -537,7 +541,7 @@ private fun GroupGrid(
             groups.isEmpty() -> {
                 item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        text = if (what == "series") "Books in a series show up here." else "No authors yet.",
+                        text = "Books in a series show up here.",
                         color = BenflixColors.Muted,
                         fontSize = BenflixType.body,
                     )
@@ -545,7 +549,7 @@ private fun GroupGrid(
             }
 
             else -> {
-                items(groups, key = { what + it.name + it.kind }) { g ->
+                items(groups, key = { "series" + it.name + it.kind }) { g ->
                     BookCard(
                         tile =
                             BookTile(
@@ -579,7 +583,7 @@ private fun GroupGrid(
     }
 }
 
-/** One series or author: their books in order */
+/** One series: its books in order */
 @Composable
 private fun GroupPage(
     group: BookGroup,
@@ -589,19 +593,13 @@ private fun GroupPage(
     onBack: () -> Unit,
     modifier: Modifier,
 ) {
-    val edge = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge
+    val edge = side(wide)
     val w = cardWidth(wide, easy)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding =
-            PaddingValues(
-                start = edge,
-                end = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge,
-                top = 12.dp,
-                bottom = 48.dp,
-            ),
+        contentPadding = PaddingValues(start = edge, end = edge, top = 12.dp, bottom = 48.dp),
         modifier = modifier,
     ) {
         item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
@@ -611,8 +609,9 @@ private fun GroupPage(
                     Text(
                         text = group.name,
                         color = BenflixColors.Text,
+                        fontFamily = GlowfinDisplayFont,
                         fontSize = BenflixType.pageTitle,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -643,7 +642,7 @@ private fun EmptyBooks(
             Text(
                 text =
                     if (folders.isEmpty()) {
-                        "Put books, audiobooks or manga in Tower's Media folder (Books, Audiobooks, Manga), and they show up here within 10 minutes."
+                        "Put books or audiobooks in Tower's Media folder (Books, Audiobooks), and they show up here within 10 minutes."
                     } else {
                         "Put them in these folders on Tower, and they show up here within 10 minutes: " + folders.joinToString(", ")
                     },

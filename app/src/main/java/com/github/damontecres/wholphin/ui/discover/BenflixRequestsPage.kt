@@ -2171,7 +2171,7 @@ private fun RequestList(
                     emptyList()
                 } else {
                     val waitingIds = b.waiting.map { it.id }.toSet()
-                    (if (mineOnly) b.mine else b.waiting + b.mine + b.others + b.mangaToAdd)
+                    (if (mineOnly) b.mine else b.waiting + b.mine + b.others)
                         .distinctBy { it.id }
                         .map { r ->
                             r.toAskLine(

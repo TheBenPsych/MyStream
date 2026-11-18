@@ -19,27 +19,21 @@ import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import javax.inject.Inject
 
-/** The places in the Books side menu (TV) or chips (phones), in the approved order */
+/** Glowfin B1 (Ben 2026-11-18): the Books tabs, the same on TV, phones and the browser */
 enum class BooksPlace(
     val label: String,
 ) {
-    HOME("Home"),
-    MANGA("Manga"),
-    COMICS("Comics"),
+    HOME("For you"),
     BOOKS("Books"),
     AUDIOBOOKS("Audiobooks"),
     SERIES("Series"),
-    AUTHORS("Authors"),
     WANT("Want to read"),
-    FINISHED("Finished"),
     ;
 
     /** The book kind a section page shows (null = not a one-kind page) */
     val kind: String?
         get() =
             when (this) {
-                MANGA -> "manga"
-                COMICS -> "comic"
                 BOOKS -> "book"
                 AUDIOBOOKS -> "audiobook"
                 else -> null
@@ -70,11 +64,10 @@ data class BooksState(
     val home: BooksHome? = null,
     val library: BookLibrary? = null,
     val series: List<BookGroup>? = null,
-    val authors: List<BookGroup>? = null,
     val problem: String? = null,
 )
 
-/** The Books door: Home rows, every book (for the section pages), series and authors. Loads once, refreshes on return. */
+/** The Books page: For you's rows, every book (for the tabs) and the series. Loads once, refreshes on return. */
 @HiltViewModel
 class BooksViewModel
     @Inject
@@ -134,7 +127,6 @@ class BooksViewModel
                 // and the page opens as soon as Home's rows are in (it used to wait for the whole library too)
                 val lib = async { safe { books.library() } }
                 val series = async { safe { books.series() } }
-                val authors = async { safe { books.authors() } }
                 val home =
                     try {
                         books.home()
@@ -144,7 +136,6 @@ class BooksViewModel
                         Timber.w(ex, "Books: couldn't load home")
                         lib.cancel()
                         series.cancel()
-                        authors.cancel()
                         // Last time's page stays up if there is one
                         _state.update {
                             if (it.home != null) {
@@ -159,8 +150,7 @@ class BooksViewModel
                 loadedAt = System.currentTimeMillis()
                 lib.await()?.let { l -> _state.update { it.copy(library = l) } }
                 val s = series.await()
-                val a = authors.await()
-                _state.update { it.copy(series = s ?: it.series, authors = a ?: it.authors) }
+                _state.update { it.copy(series = s ?: it.series) }
                 val key = memoryKey() ?: return@coroutineScope
                 memory[key] = System.currentTimeMillis() to _state.value
             }
@@ -174,8 +164,7 @@ class BooksViewModel
         ): List<BookTile> {
             val base =
                 when (p) {
-                    BooksPlace.WANT -> lib.titles.filter { it.want }
-                    BooksPlace.FINISHED -> lib.titles.filter { it.status == "done" }
+                    BooksPlace.WANT -> lib.titles.filter { it.want } + lib.asked
                     else -> p.kind?.let { k -> lib.titles.filter { it.kind == k } } ?: lib.titles
                 }
             val chipped =
@@ -206,17 +195,13 @@ class BooksViewModel
             }
         }
 
-        /** The menu places that have something in them (Manga and Comics hide until some exist) */
-        fun places(counts: Map<String, Int>): List<BooksPlace> =
-            BooksPlace.entries.filter {
-                when (it) {
-                    BooksPlace.MANGA -> (counts["manga"] ?: 0) > 0
-                    BooksPlace.COMICS -> (counts["comic"] ?: 0) > 0
-                    else -> true
-                }
-            }
-
         fun open(tile: BookTile) {
+            // A book you asked for that isn't on Tower yet: Requests > Books, where its progress is
+            if (tile.notHere) {
+                com.github.damontecres.wholphin.ui.discover.RequestsJump.books = true
+                navigationManager.navigateTo(com.github.damontecres.wholphin.ui.nav.Destination.Requests)
+                return
+            }
             lastKey = tile.id
             navigationManager.navigateTo(
                 com.github.damontecres.wholphin.ui.nav.Destination

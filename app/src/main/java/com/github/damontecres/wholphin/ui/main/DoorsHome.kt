@@ -141,7 +141,7 @@ fun noteLink(
     return when {
         has("live ?tv|\\bchannels?\\b") -> "Open Live TV" to Destination.Channels
         has("\\bmusic\\b|\\bsongs?\\b|\\balbums?\\b") && !kids -> "Open Music" to Destination.MusicDoor
-        has("\\bbooks?\\b|\\bmanga\\b|\\baudiobooks?\\b") -> "Open Books" to Destination.BooksDoor
+        has("\\bbooks?\\b|\\baudiobooks?\\b") -> "Open Books" to Destination.BooksDoor
         has("\\bgames?\\b") -> "Open Games" to Destination.Games
         has("\\brequests?\\b") -> "Open Requests" to Destination.Requests
         has("\\bshows?\\b|\\bepisodes?\\b|\\bseries\\b") -> "Open Shows" to Destination.ShowsDoor

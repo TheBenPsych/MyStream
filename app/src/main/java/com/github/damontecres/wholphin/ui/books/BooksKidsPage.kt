@@ -161,8 +161,6 @@ fun BooksKidsPage(
 
 fun kindWord(kind: String): String =
     when (kind) {
-        "manga" -> "Manga"
-        "comic" -> "Comic"
         "audiobook" -> "Audiobook"
         else -> "Book"
     }
