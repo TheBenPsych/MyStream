@@ -75,7 +75,10 @@ object FitRobot {
         val node: SemanticsNode,
     )
 
-    fun check(root: SemanticsNode): List<Finding> {
+    fun check(
+        root: SemanticsNode,
+        mustShow: List<String> = emptyList(),
+    ): List<Finding> {
         val found = mutableListOf<Finding>()
         val boxes = mutableListOf<TextBox>()
         val screen =
@@ -96,7 +99,17 @@ object FitRobot {
                     val cutH = full.width - vis.width
                     // Cut at the bottom of a list that keeps going down is normal; cut at the top never is
                     val topCut = vis.top > full.top + 1f
-                    if (cutV > 3f && (topCut || !inScroller(node, SemanticsProperties.VerticalScrollAxisRange, startCut = false))) {
+                    if (cutV > 3f &&
+                        (
+                            topCut ||
+                                !inScroller(
+                                    node,
+                                    SemanticsProperties.VerticalScrollAxisRange,
+                                    startCut = false,
+                                    minHeight = screen.height * .4f,
+                                )
+                        )
+                    ) {
                         val where = if (topCut) "top" else "bottom"
                         found += Finding("CUT", words, vis, "${cutV.toInt()}px of its $where is hidden")
                     }
@@ -135,6 +148,12 @@ object FitRobot {
                 }
             }
         }
+        // Words the page must show somewhere (like the original Japanese name), not quietly leave out
+        mustShow.forEach { words ->
+            if (boxes.none { it.text.contains(words) }) {
+                found += Finding("MISSING", words, Rect.Zero, "not on the page at all")
+            }
+        }
         return found
     }
 
@@ -143,10 +162,13 @@ object FitRobot {
         node: SemanticsNode,
         axis: androidx.compose.ui.semantics.SemanticsPropertyKey<androidx.compose.ui.semantics.ScrollAxisRange>,
         startCut: Boolean,
+        /** Small scrolling boxes (like a title page's tab area) must still show whole rows: only big lists count */
+        minHeight: Float = 0f,
     ): Boolean {
         var p = node.parent
         while (p != null) {
             p.config.getOrNull(axis)?.let { range ->
+                if (p.boundsInRoot.height < minHeight) return false
                 val value = range.value()
                 val max = range.maxValue()
                 return if (startCut) value > 0f else value < max
@@ -163,6 +185,7 @@ object FitRobot {
         scene: String,
         content: @Composable () -> Unit,
         after: (() -> Unit)? = null,
+        mustShow: List<String> = emptyList(),
     ): List<Finding> {
         rule.setContent(content)
         rule.mainClock.advanceTimeBy(1500)
@@ -171,7 +194,7 @@ object FitRobot {
         rule.mainClock.advanceTimeBy(1500)
         rule.waitForIdle()
         val root = rule.onRoot(useUnmergedTree = true).fetchSemanticsNode()
-        val findings = check(root)
+        val findings = check(root, mustShow)
         val name = "$device-$scene"
         runCatching {
             val bmp =

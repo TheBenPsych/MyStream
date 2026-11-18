@@ -396,9 +396,9 @@ internal fun EpisodesSection(
         } else if (oneChipLine) {
             // Fits the title page's tab area (the bottom 40% of the screen) with the chips and the episode line
             // above the pictures, so landing on a picture never slides them off the top (Ben's TV, 2026-11-18)
-            val above = (if (seasons.size > 1 || groups.isNotEmpty()) 46.dp else 34.dp) + 36.dp
+            val above = (if (seasons.size > 1 || groups.isNotEmpty()) 42.dp else 34.dp) + 30.dp
             val below = 30.dp + if (anyUpcoming) 18.dp else 0.dp
-            ((fitHeight - above - below) * 16f / 9f).coerceIn(150.dp, 210.dp)
+            ((fitHeight - above - below) * 16f / 9f).coerceIn(120.dp, 210.dp)
         } else if (wide) {
             210.dp
         } else {
@@ -413,7 +413,7 @@ internal fun EpisodesSection(
             LazyRow(
                 contentPadding = PaddingValues(horizontal = side),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = if (oneChipLine) 8.dp else 12.dp),
             ) {
                 if (seasons.size > 1) {
                     itemsIndexed(seasons) { index, season ->
@@ -471,7 +471,7 @@ internal fun EpisodesSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
-                        .padding(start = side, end = side, bottom = 14.dp)
+                        .padding(start = side, end = side, bottom = if (oneChipLine) 8.dp else 14.dp)
                         .widthIn(max = 900.dp),
             )
         }

@@ -365,11 +365,13 @@ private fun WideTitlePage(
         TitlePictureView(picture, wide = true)
         // Title + door colour line: 9% down. The words shrink to fit this space, so a long title with an
         // original name under it never runs into the info line (Ben's TV, 2026-11-18).
-        val titleRoom = h * .19f - 6.dp
+        // It may grow up into the empty space under the header (from 3% down), so a long title keeps its
+        // original name instead of shrinking it away
+        val titleRoom = h * .25f - 6.dp
         Column(
             modifier =
                 Modifier
-                    .padding(start = side, top = h * .09f)
+                    .padding(start = side, top = h * .03f)
                     .widthIn(max = maxWidth * .55f)
                     .height(titleRoom),
             verticalArrangement = Arrangement.Bottom,

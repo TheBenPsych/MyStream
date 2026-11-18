@@ -115,6 +115,8 @@ class FitScene(
     val content: @Composable () -> Unit,
     /** Something to focus after drawing (by the words on it), like the first poster of a row */
     val focusText: String? = null,
+    /** Words that must be on the page somewhere */
+    val mustShow: List<String> = emptyList(),
 )
 
 /** The real app frame around a TV page: the tucked rail on the left and the page header on top */
@@ -266,8 +268,15 @@ object FitScenes {
     fun all(): List<FitScene> =
         buildList {
             // Ben's photo: the anime show page on the Ask for similar tab, with the first poster focused
-            add(FitScene("anime-ask-focused", animePage("Ask for similar"), focusText = "Revenger"))
-            add(FitScene("anime-ask", animePage("Ask for similar")))
+            add(
+                FitScene(
+                    "anime-ask-focused",
+                    animePage("Ask for similar"),
+                    focusText = "Revenger",
+                    mustShow = listOf(FitWords.JAPANESE.take(6)),
+                ),
+            )
+            add(FitScene("anime-ask", animePage("Ask for similar"), mustShow = listOf(FitWords.JAPANESE.take(6))))
             add(FitScene("anime-ask-second-row", animePage("Ask for similar"), focusText = "Zoids"))
             add(FitScene("anime-episodes-focused", animePage("Episodes"), focusText = "E5"))
             add(FitScene("anime-long-season-focused", animePage("Episodes", longSeason = true), focusText = "E5"))

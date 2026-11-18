@@ -88,6 +88,7 @@ private fun runScene(
         device = device,
         scene = name,
         content = { FitFrame(tv = tv) { scene.content() } },
+        mustShow = scene.mustShow,
         after =
             scene.focusText?.let { words ->
                 {
