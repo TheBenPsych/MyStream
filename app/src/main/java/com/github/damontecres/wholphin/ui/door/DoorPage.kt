@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -374,6 +373,14 @@ internal fun WideDoor(
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
         val topHeight = ((maxHeight - overlap) * if (easy) 0.40f else 0.36f).coerceIn(170.dp, 300.dp)
+        // Ben 2026-11-18 (Fade down): the picture fills the whole page behind the rows, bright at the top and
+        // slowly darker going down. It stays still while the rows move over it.
+        PageBackdrop(
+            item = preview,
+            pageHeight = maxHeight,
+            brightUntil = ((topHeight + overlap) / maxHeight).coerceIn(0.2f, 0.7f),
+            overlap = overlap,
+        )
         Column(Modifier.fillMaxSize()) {
             PreviewArea(item = preview, easy = easy, height = topHeight + overlap, overlap = overlap)
             LazyColumn(
@@ -605,8 +612,54 @@ private fun DoorRow(
 }
 
 /**
- * The top area: the focused title's wide picture on the right, fading into the dark tray; the words
- * on clean dark on the left (name, info line, scores, a short story, and Resume for things started).
+ * Ben 2026-11-18 "Fade down": the title's wide picture fills the whole page, still, behind the top area AND the rows.
+ * Bright at the top, slowly darker going down so the rows stay easy to read, with a dark side on the left for the words.
+ * Speed: one picture + three plain gradients, no blur, nothing moving except the swap when the title changes.
+ */
+@Composable
+internal fun PageBackdrop(
+    item: BaseItem?,
+    pageHeight: Dp,
+    brightUntil: Float,
+    overlap: Dp = 0.dp,
+) {
+    val imageUrlService = LocalImageUrlService.current
+    val density = LocalDensity.current
+    val url =
+        remember(item?.id, pageHeight) {
+            item?.let {
+                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() })
+            }
+        }
+    Box(Modifier.fillMaxSize()) {
+        Crossfade(targetState = url, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
+            if (picture != null) {
+                AsyncImage(
+                    model = picture,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Box(Modifier.fillMaxSize().background(BenflixShade.topAreaSide))
+        Box(Modifier.fillMaxSize().background(BenflixShade.fadeDown(brightUntil)))
+        if (overlap > 0.dp) {
+            // A light shade at the very top so the bar's words stay easy to read
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(overlap * 1.6f)
+                    .background(Brush.verticalGradient(0f to BenflixColors.Tray.copy(alpha = .55f), 1f to Color.Transparent)),
+            )
+        }
+    }
+}
+
+/**
+ * The top area: the focused title's words on the left (name, info line, scores, a short story, and Resume
+ * for things started). The picture itself is drawn behind the whole page by [PageBackdrop].
  */
 @Composable
 private fun PreviewArea(
@@ -615,60 +668,11 @@ private fun PreviewArea(
     height: Dp,
     overlap: Dp = 0.dp,
 ) {
-    val imageUrlService = LocalImageUrlService.current
-    val density = LocalDensity.current
-    val url =
-        remember(item?.id, height) {
-            item?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { height.roundToPx() })
-            }
-        }
     Box(
         Modifier
             .fillMaxWidth()
             .height(height),
     ) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .fillMaxWidth(PICTURE_WIDTH)
-                .fillMaxHeight(),
-        ) {
-            Crossfade(targetState = url, animationSpec = tween(PICTURE_FADE_MS), label = "doorPicture") { picture ->
-                if (picture != null) {
-                    AsyncImage(
-                        model = picture,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        BenflixShade.topAreaSide,
-                    ),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        BenflixShade.bottom(0.5f),
-                    ),
-            )
-            if (overlap > 0.dp) {
-                // A light shade at the very top so the bar's words stay easy to read
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(overlap * 1.6f)
-                        .background(Brush.verticalGradient(0f to BenflixColors.Tray.copy(alpha = .55f), 1f to Color.Transparent)),
-                )
-            }
-        }
         if (item != null) {
             PreviewWords(
                 item = item,
@@ -876,6 +880,8 @@ internal fun PhoneDoor(
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
         // About 3.5 posters across
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
+        // Ben 2026-11-18 (Fade down): the picked title's picture fills the page behind everything
+        PageBackdrop(item = state.pick, pageHeight = maxHeight, brightUntil = 0.3f)
         LazyColumn(
             state = columnState,
             contentPadding = PaddingValues(bottom = 32.dp),
@@ -1049,8 +1055,6 @@ internal fun EmptyDoor(
 private val SIDE = BenflixSpace.tvEdge
 private val PHONE_SIDE = BenflixSpace.phoneEdge
 
-/** The picture takes the right 62% of the top area */
-private const val PICTURE_WIDTH = 0.62f
 private const val PICTURE_FADE_MS = 450
 private const val PREVIEW_DELAY_MS = 500L
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
