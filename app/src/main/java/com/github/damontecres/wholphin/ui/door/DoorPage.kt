@@ -1050,8 +1050,7 @@ internal fun EmptyDoor(
     }
 }
 
-/** TV side margin */
-// Ben 2026-11-18: the page starts right next to the side menu (was the 48dp TV edge, which left a big empty gap)
+/** TV side margin. Ben 2026-11-18: the page starts right next to the side menu (was 48dp, a big empty gap) */
 private val SIDE = 16.dp
 
 /** Wholphin-style picture: this much of the page's width and height, in the top right */
