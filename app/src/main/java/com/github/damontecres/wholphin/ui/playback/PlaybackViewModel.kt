@@ -2503,8 +2503,6 @@ private val DAMAGED_FILE_ERRORS =
         PlaybackException.ERROR_CODE_DECODING_FAILED,
     )
 
-/** Wait a moment after play/subtitles before the passthrough kick */
-
 /** How it shows on Ben's Server page problem list */
 private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatically)"
 
