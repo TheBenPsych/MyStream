@@ -194,6 +194,7 @@ fun SearchDoorResults(
                 musicAsk
                     .filter { (plain(it.title) + "|" + plain(it.artist)) !in have }
                     .map { AskEntry.Music(it) }
+
             // Ben 2026-11-18: movies, shows and anime always come first, songs and albums after them.
             // Inside each group the closest names come first.
             fun closestFirst(list: List<AskEntry>) =
