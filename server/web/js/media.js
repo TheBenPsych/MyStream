@@ -178,7 +178,7 @@ B.route(/^\/shows$/, async (m, nav) => {
   const anime = await B.animeIds("Series");
   const notAnime = (ep) => !anime.has(ep.SeriesId || ep.Id);
   const fewer = B.me.kids;
-  const [resume, next, latestEps, fresh, because, best, missing] = await Promise.all([
+  const [resume, next, latestEps, fresh, because, best, missing, top] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
     q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`).catch(() => []),
@@ -186,6 +186,7 @@ B.route(/^\/shows$/, async (m, nav) => {
     fewer ? null : becauseRow("Series", (id) => !anime.has(id)).catch(() => null),
     fewer ? [] : fromLibs(main, "Series", "CommunityRating", "&IsPlayed=false").then((l) => l.sort((a, b) => (b.CommunityRating || 0) - (a.CommunityRating || 0))),
     fewer ? [] : B.trendingMissing("tv"),
+    fewer ? [] : B.trending("Series").catch(() => []),
   ]);
   if (!B.alive(nav)) return;
   const one = (list) => { const seen = new Set(); return list.filter((e) => notAnime(e) && !seen.has(e.SeriesId) && seen.add(e.SeriesId)); };
@@ -205,6 +206,7 @@ B.route(/^\/shows$/, async (m, nav) => {
   };
   pageRows([
     B.row("Continue watching", cont.map(epCard)),
+    B.row("Top 10 shows this week", B.top10(top)),
     B.row("Next up", nextUp.map(epCard)),
     fewer ? "" : B.row("New episodes", Object.keys(newCount).map((id) => sById[id]).filter(Boolean).map((sh) => B.posterCard(sh, { newCount: newCount[sh.Id] }))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
@@ -244,8 +246,8 @@ B.route(/^\/anime$/, async (m, nav) => {
   const fresh = freshShows.concat(films).sort(newestFirst("DateCreated")).slice(0, 20);
   pageRows([
     B.row("Continue watching", cont.map(card)),
-    B.row("Airing this season", airing.map((it) => B.posterCard(it))),
     top.length >= 3 ? B.row("Top 10 anime", B.top10(top)) : "",
+    B.row("Airing this season", airing.map((it) => B.posterCard(it))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     B.row("Hidden gem anime", gems.map((it) => B.posterCard(it))),
     B.row("Anime movies", films.slice(0, 20).map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
@@ -306,7 +308,7 @@ B.route(/^\/grid\/(movies|shows)/, async (m, nav) => {
       <input class="search-in" id="gText" placeholder="Search ${esc(door.name.toLowerCase())}" value="${esc(st.text)}">
     </div>
     <div class="slim" id="slim">&nbsp;</div>
-    <div class="grid-wrap"><div class="grid-body" id="gBody">${B.spinner()}</div><div class="letters hidden" id="letters"></div></div>`;
+    <div class="grid-wrap${st.anime === "only" ? " big-cards" : ""}"><div class="grid-body" id="gBody">${B.spinner()}</div><div class="letters hidden" id="letters"></div></div>`;
   B.wireTop();
   const labels = { all: "Anime: All", only: "Anime only", hide: "Hide anime" };
   const wlabels = { all: "All shows", notstarted: "Not started", watching: "Watching", finished: "Finished" };
