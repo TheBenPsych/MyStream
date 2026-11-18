@@ -59,6 +59,7 @@ object PageRows {
 
             Page.SHOWS -> {
                 listOf(
+                    DoorViewModel.TOP_10 to "Top 10 this week",
                     DoorViewModel.NEW_EPISODES to "New episodes",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.NEW to "Recently added",
@@ -69,8 +70,8 @@ object PageRows {
 
             Page.ANIME -> {
                 listOf(
-                    DoorViewModel.AIRING to "Airing this season",
                     DoorViewModel.TOP_10_ANIME to "Top 10 anime",
+                    DoorViewModel.AIRING to "Airing this season",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.GEMS to "Hidden gem anime",
                     DoorViewModel.ANIME_MOVIES to "Anime movies",

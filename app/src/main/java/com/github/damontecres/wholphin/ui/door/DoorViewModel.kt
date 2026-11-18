@@ -333,7 +333,16 @@ class DoorViewModel
             userId: UUID,
             page: PageRows.Page,
             fixed: List<String>,
-        ): List<String> = fixed + PageRows.shown(context, userId, page).filter { it !in fixed }
+        ): List<String> {
+            val shown = PageRows.shown(context, userId, page).filter { it !in fixed }
+            // Ben 2026-11-18: Top 10 sits right under Continue watching on Movies, Shows and Anime (when it's on)
+            val top = shown.filter { it == TOP_10 || it == TOP_10_ANIME }
+            return if (page == PageRows.Page.HOME || top.isEmpty()) {
+                fixed + shown
+            } else {
+                listOf(fixed.first()) + top + fixed.drop(1) + (shown - top.toSet())
+            }
+        }
 
         /**
          * Glowfin Movies, For you (ui-7): Continue watching, Top 10 this week, Because you watched, Recently added,
@@ -431,6 +440,13 @@ class DoorViewModel
                     if (!easy) {
                         val fresh = data.newEpisodes(userId, next.mapNotNull { it.data.seriesId }.distinct())
                         putOrRemove(order, DoorRowData(NEW_EPISODES, "New episodes", fresh))
+                    }
+                }
+                if (!easy) {
+                    launch {
+                        val dislikes = disliked.await()
+                        val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = false).filter { it.id !in dislikes }
+                        putOrRemove(order, DoorRowData(TOP_10, "Top 10 shows this week", items, style = DoorRowStyle.TOP10))
                     }
                 }
                 launch {
@@ -674,6 +690,12 @@ class DoorViewModel
                     else -> libs.ofKind(LibraryKind.SHOWS)
                 }
             return data.everything(userId, parents, type)
+        }
+
+        /** Movies > Collections: every box set on Tower (Harry Potter Collection and so on) */
+        suspend fun boxSets(): List<BaseItem> {
+            val userId = serverRepository.currentUser?.id ?: return emptyList()
+            return data.boxSets(userId)
         }
 
         /** The anime library for the Anime page's Genres tab (shows first, else movies) */

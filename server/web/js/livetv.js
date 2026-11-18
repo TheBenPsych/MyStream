@@ -39,6 +39,32 @@ B.channels = () => B.cached("channels", 60000, async () => {
 });
 const nowOn = (c) => { const t = Date.now(); return c._progs.find((p) => new Date(p.StartDate) <= t && new Date(p.EndDate) > t) || c.CurrentProgram || null; };
 const logo = (c, h) => (c.ImageTags && c.ImageTags.Primary ? B.img(c.Id, "Primary", { h: h || 120, tag: c.ImageTags.Primary }) : "");
+// Easier-to-see logos (2026-11-18): logos sit on white plates, but some stations (Bloomberg, CBS...)
+// send a white logo with a see-through background that vanished on white. Look at each logo once and
+// give the white ones a dark slate plate instead. Answers are remembered by picture address.
+const lightLogos = new Map();
+const LOGO_SPOTS = ".chcard .im img, .guide .ch img, .nnrow img, .sideguide img, #pl .topline img.chlogo";
+const isLightLogo = (img) => {
+  try {
+    const w = 48, h = Math.max(1, Math.round(48 * (img.naturalHeight || 1) / (img.naturalWidth || 1)));
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h).data;
+    let solid = 0, light = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 140) { solid++; if (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114 > 205000) light++; }
+    }
+    return solid > 0 && solid < (d.length / 4) * 0.92 && light > solid * 0.55;
+  } catch (e) { return false; }
+};
+document.addEventListener("load", (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.matches(LOGO_SPOTS)) return;
+  if (!lightLogos.has(img.src)) lightLogos.set(img.src, isLightLogo(img));
+  img.classList.toggle("lightlogo", lightLogos.get(img.src));
+}, true);
 const chCard = (c) => {
   const p = nowOn(c);
   B.items[c.Id] = c;
@@ -82,10 +108,10 @@ B.route(/^\/live$/, async (m, nav) => {
   const narrow = window.matchMedia("(max-width: 600px)").matches;
   const nowNextRows = (chs) => chs.map((c) => {
     const p = nowOn(c), n = c._progs.find((x) => new Date(x.StartDate) > Date.now());
-    return `<a class="nnrow" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="nnch">${logo(c, 60) ? `<img src="${logo(c, 60)}" alt="" loading="lazy">` : ""}<span class="num">${prefs.favourites.includes(c.Name) ? `<span class="star">★</span> ` : ""}${esc(c.ChannelNumber || "")}</span></span><span class="nnnow">${esc(p ? p.Name : c.Name)}</span><span class="nnnext">${esc(n ? n.Name : "")}</span></a>`;
+    return `<a class="nnrow" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="nnch">${logo(c, 100) ? `<img src="${logo(c, 100)}" alt="" loading="lazy">` : ""}<span class="num">${prefs.favourites.includes(c.Name) ? `<span class="star">★</span> ` : ""}${esc(c.ChannelNumber || "")}</span></span><span class="nnnow">${esc(p ? p.Name : c.Name)}</span><span class="nnnext">${esc(n ? n.Name : "")}</span></a>`;
   }).join("");
   const nowLeft = () => pctX(Date.now());
-  const guideRows = (chs) => narrow ? nowNextRows(chs) : chs.map((c) => `<div class="grow-ch"><a class="ch" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="num">${esc(c.ChannelNumber || "")}</span>${logo(c, 72) ? `<img src="${logo(c, 72)}" alt="" loading="lazy">` : ""}<span class="nm">${esc(c.Name)}</span>${prefs.favourites.includes(c.Name) ? `<span class="star">★</span>` : ""}</a>
+  const guideRows = (chs) => narrow ? nowNextRows(chs) : chs.map((c) => `<div class="grow-ch"><a class="ch" href="#/watch/${c.Id}" data-id="${esc(c.Id)}"><span class="num">${esc(c.ChannelNumber || "")}</span>${logo(c, 120) ? `<img src="${logo(c, 120)}" alt="" loading="lazy">` : ""}<span class="nm">${esc(c.Name)}</span>${prefs.favourites.includes(c.Name) ? `<span class="star">★</span>` : ""}</a>
     <div class="progs">${(c._progs.length ? c._progs : [{ Name: "No guide for this channel", StartDate: new Date(t0).toISOString(), EndDate: new Date(t0 + span).toISOString(), _none: true }]).filter((p) => new Date(p.EndDate) > t0 && new Date(p.StartDate) < t0 + span).map((p) => {
       const a = pctX(new Date(p.StartDate)), b = pctX(new Date(p.EndDate)), on = new Date(p.StartDate) <= Date.now() && new Date(p.EndDate) > Date.now();
       return `<button class="prog ${on ? "now" : ""}" style="left:${a}%;width:calc(${b - a}% - 4px)" data-ch="${esc(c.Id)}" data-p="${esc(p.Id || "")}">${esc(p.Name)}<small>${esc(B.clock(new Date(p.StartDate)))}</small>${on ? `<i class="pbar" style="width:${Math.round(((Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate))) * 100)}%"></i>` : ""}</button>`;
@@ -192,7 +218,7 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
   // times in place of chapters. The side guide still opens with the left arrow.
   B.page().innerHTML = `<div class="player ui" id="pl"><video id="v" playsinline autoplay></video><div class="shadeT"></div><div class="shadeB"></div><div class="center-msg" id="msg"></div>
     <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button>
-      ${logo(c, 120) ? `<img src="${logo(c, 120)}" alt="" style="height:40px;max-width:100px;object-fit:contain">` : ""}
+      ${logo(c, 160) ? `<img class="chlogo" src="${logo(c, 160)}" alt="">` : ""}
       <div><div class="tt">${esc(c.ChannelNumber || "")} · ${esc(c.Name)} ${prefs.favourites.includes(c.Name) ? "★" : ""}</div><div class="rating" id="bTop">Tuning in…</div></div></div>
     <div class="controls" id="banner">
       <div class="chap" id="bChap"></div>
@@ -260,7 +286,7 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     if ($(".sideguide")) return $(".sideguide").remove();
     const g = document.createElement("div");
     g.className = "sideguide";
-    g.innerHTML = usable.map((x) => { const p = nowOn(x); return `<button data-go="${esc(x.Id)}" class="${x.Id === c.Id ? "on" : ""}">${logo(x, 64) ? `<img src="${logo(x, 64)}" alt="" loading="lazy">` : ""}<span><b>${esc(x.ChannelNumber || "")} ${esc(x.Name)}</b><br><span class="dim">${esc(p ? `${p.Name} · ${minsLeft(p)} min left` : "")}</span></span></button>`; }).join("");
+    g.innerHTML = usable.map((x) => { const p = nowOn(x); return `<button data-go="${esc(x.Id)}" class="${x.Id === c.Id ? "on" : ""}">${logo(x, 100) ? `<img src="${logo(x, 100)}" alt="" loading="lazy">` : ""}<span><b>${esc(x.ChannelNumber || "")} ${esc(x.Name)}</b><br><span class="dim">${esc(p ? `${p.Name} · ${minsLeft(p)} min left` : "")}</span></span></button>`; }).join("");
     pl.appendChild(g);
     pl.classList.add("ui");
     g.onclick = (e) => { const b = e.target.closest("[data-go]"); if (b) B.go(`#/watch/${b.dataset.go}`); };
