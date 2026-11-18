@@ -254,8 +254,11 @@ find_slskd() {
   if [ -z "$c" ]; then echo "  skip  No slskd app found. That's fine: music then only comes through Lidarr."; return; fi
   app=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}' "$c")
   yml="$app/slskd.yml"
-  # The first API key in slskd's settings (SoulSync usually made one), or the one typed here last time
-  key=$(sed -n '/api_keys:/,/^[^ ]/p' "$yml" 2>/dev/null | sed -n 's/^ *key: *["'\'']*\([^"'\'' ]*\).*/\1/p' | head -1)
+  # An API key in slskd's settings that can download (readwrite or admin before read-only ones), or the one typed here last time
+  key=$(sed -n '/api_keys:/,/^[^ ]/p' "$yml" 2>/dev/null | awk '
+    /^ *key:/ { k=$2; gsub(/["\047]/, "", k); keys[++n]=k; role[n]="" }
+    /^ *role:/ { r=$2; gsub(/["\047]/, "", r); role[n]=tolower(r) }
+    END { for (i=1;i<=n;i++) if (role[i]!="readonly") { print keys[i]; exit } if (n) print keys[1] }')
   [ -n "$key" ] || key=$(sed -n 's/^SLSKD_KEY=//p' "$MUSIC_ENV" | head -1)
   if [ -z "$key" ]; then
     printf "  slskd's API key (in SoulSync's settings, or slskd.yml), or just press Enter to skip: "
