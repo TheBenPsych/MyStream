@@ -58,14 +58,20 @@ const GROUPS = [
   { id: "help", label: "Help", icon: "help", line: "" },
   { id: "behind", label: "Behind the scenes", icon: "key", line: "Main profile only", adminOnly: true },
 ];
-const setRow = (t, s, control, id) => `<div class="setrow" ${id ? `id="${id}"` : ""}><div class="grow"><div class="t">${esc(t)}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>${control}</div>`;
+// Glowfin (S1): the setting's name, its current choice in aqua on the right, and one explaining line while it's lit
+const setRow = (t, s, control, id) => `<div class="setrow" data-title="${esc(t)}" ${id ? `id="${id}"` : ""}><div class="grow"><div class="t">${esc(t)}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>${control}</div>`;
+// Choices open in the small list on the right (like the TV), and save straight away
+const pickFrom = (b, options, current, onPick) => {
+  const row = b.closest(".setrow");
+  B.dropdown(b, options, current, onPick, { side: true, title: row ? row.dataset.title : "" });
+};
 const valBtn = (key, label) => `<button class="valbtn${label === "On" ? " on" : ""}" data-pick="${esc(key)}">${esc(label)}</button>`;
 B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   const groups = GROUPS.filter((g) => !g.adminOnly || B.me.admin);
   const g = groups.find((x) => x.id === m[1]) || groups[0];
   B.page().innerHTML = B.top("Settings", null, { solid: true }) + `<div class="split">
-    <nav><input class="field navsearch" id="setSearch" placeholder="Find a setting" autocomplete="off"><div class="find-hits" id="findHits"></div>${groups.map((x) => `<a href="#/settings/${x.id}" class="${x === g ? "on" : ""}">${I(x.icon)}${esc(x.label)}</a>`).join("")}</nav>
+    <nav><div class="splith">Settings</div><input class="field navsearch" id="setSearch" placeholder="Find a setting" autocomplete="off"><div class="find-hits" id="findHits"></div>${groups.map((x) => `<a href="#/settings/${x.id}" class="${x === g ? "on" : ""}${x.id === "behind" ? " admin" : ""}">${esc(x.label)}</a>`).join("")}</nav>
     <main><h2>${esc(g.label)}</h2>${g.line ? `<div class="group-line" style="margin-top:4px">${esc(g.line)}</div>` : ""}<div id="sp">${B.spinner()}</div></main></div>`;
   B.wireTop();
   // Approved ss-family + ss-q-find: "Find a setting" lists matches as you type. For Ben it also finds Server tools.
@@ -178,9 +184,9 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       const saveCfg = (change) => B.busy(null, async () => { change(cfg); await B.jf("POST", `/Users/Configuration?userId=${B.uid()}`, cfg).catch(() => B.jf("POST", `/Users/${B.uid()}/Configuration`, cfg)); B.render(); });
       if (k === "autoplay") { B.setWebSetting("autoplay", ws.autoplay === false); cfg.EnableNextEpisodeAutoPlay = ws.autoplay === false; saveCfg(() => {}); }
       if (k === "autoskip") { B.setWebSetting("autoskip", !ws.autoskip); B.render(); }
-      if (k === "subMode") B.dropdown(b, subModes.map(([value, l]) => ({ value, label: l })), cfg.SubtitleMode || "Default", (v) => saveCfg((c) => { c.SubtitleMode = v; }));
-      if (k === "subLang") B.dropdown(b, subLangs.map(([value, l]) => ({ value, label: l })), subLang, (v) => saveCfg((c) => { c.SubtitleLanguagePreference = v; }));
-      if (k === "audioLang") B.dropdown(b, langs.map(([value, l]) => ({ value, label: l })), cfg.AudioLanguagePreference || "", (v) => saveCfg((c) => { c.AudioLanguagePreference = v; c.PlayDefaultAudioTrack = !v; }));
+      if (k === "subMode") pickFrom(b, subModes.map(([value, l]) => ({ value, label: l })), cfg.SubtitleMode || "Default", (v) => saveCfg((c) => { c.SubtitleMode = v; }));
+      if (k === "subLang") pickFrom(b, subLangs.map(([value, l]) => ({ value, label: l })), subLang, (v) => saveCfg((c) => { c.SubtitleLanguagePreference = v; }));
+      if (k === "audioLang") pickFrom(b, langs.map(([value, l]) => ({ value, label: l })), cfg.AudioLanguagePreference || "", (v) => saveCfg((c) => { c.AudioLanguagePreference = v; c.PlayDefaultAudioTrack = !v; }));
     };
   }
   if (g.id === "picture") {
@@ -189,7 +195,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
       + setRow("Music bars", "The towers of coloured squares that move with the music on Now playing.", valBtn("musicBars", ws.musicBarsOff ? "Off" : "On"));
     sp.onclick = (e) => {
       const b = e.target.closest("[data-pick]"); if (!b) return;
-      if (b.dataset.pick === "quality") B.dropdown(b, q.map(([value, label]) => ({ value, label })), ws.quality || "auto", (v) => { B.setWebSetting("quality", v); B.render(); });
+      if (b.dataset.pick === "quality") pickFrom(b, q.map(([value, label]) => ({ value, label })), ws.quality || "auto", (v) => { B.setWebSetting("quality", v); B.render(); });
       if (b.dataset.pick === "musicBars") { B.setWebSetting("musicBarsOff", !ws.musicBarsOff); B.render(); }
     };
   }
@@ -265,7 +271,7 @@ const QA = [
 B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   const sec = HELP.find((h) => h.id === m[1]) || HELP[0];
   B.page().innerHTML = B.top("Help and updates", null, { solid: true }) + `<div class="split">
-    <nav>${HELP.map((h) => `<a href="#/help/${h.id}" class="${h === sec ? "on" : ""}">${I(h.icon)}${esc(h.label)}</a>`).join("")}</nav>
+    <nav><div class="splith">Help</div>${HELP.map((h) => `<a href="#/help/${h.id}" class="${h === sec ? "on" : ""}">${esc(h.label)}</a>`).join("")}</nav>
     <main><h2>${esc(sec.label)}</h2><div id="hp" style="margin-top:14px">${B.spinner()}</div></main></div>`;
   B.wireTop();
   const hp = $("#hp");

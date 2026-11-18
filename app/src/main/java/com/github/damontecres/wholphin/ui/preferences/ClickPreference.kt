@@ -4,9 +4,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 
+/**
+ * Glowfin (S1): a setting you press. A short line under it is its current value (aqua, on the right);
+ * a longer one explains it and shows while you're on it. Pass [value] to say which is which.
+ */
 @Composable
 fun ClickPreference(
     title: String,
@@ -15,19 +17,16 @@ fun ClickPreference(
     summary: String? = null,
     onLongClick: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    value: String? = null,
 ) {
-    ListItem(
-        selected = false,
+    val (shortValue, explain) = if (value != null) value to summary else splitSummary(summary)
+    GlowfinSettingRow(
+        title = title,
+        value = shortValue,
+        explain = explain,
         onClick = onClick,
         onLongClick = onLongClick,
-        headlineContent = {
-            PreferenceTitle(title)
-        },
-        supportingContent = {
-            PreferenceSummary(summary)
-        },
         interactionSource = interactionSource,
         modifier = modifier,
-        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }

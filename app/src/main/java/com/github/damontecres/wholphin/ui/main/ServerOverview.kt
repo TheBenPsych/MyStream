@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -138,7 +140,8 @@ internal fun ServerBanner(
             Text(
                 text = headline,
                 fontSize = BenflixType.pageTitle,
-                fontWeight = FontWeight.ExtraBold,
+                fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                fontWeight = FontWeight.SemiBold,
                 color = BenflixColors.Text,
             )
         }
@@ -168,27 +171,55 @@ internal fun ServerBanner(
     }
 }
 
+/**
+ * Glowfin (S1): one plain status box ("Tower" / OK, "Downloads" / Check / 1 stuck). Words, not just colours,
+ * so it reads at a glance from the sofa.
+ */
 @Composable
 private fun StatusPill(
     label: String,
     light: Light,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    val name = label.substringBefore(":").trim()
+    val detail = label.substringAfter(":", "").trim()
+    val word =
+        when (light) {
+            Light.GOOD -> "OK"
+            Light.WARN -> "Check"
+            Light.BAD -> "Problem"
+            Light.UNKNOWN -> "Checking"
+        }
+    Column(
         modifier =
             Modifier
-                .clip(BenflixShapes.Pill)
-                .background(BenflixColors.Raised)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .width(150.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
-        Box(
-            Modifier
-                .size(9.dp)
-                .clip(CircleShape)
-                .background(lightColor(light)),
+        Text(
+            text = name,
+            fontSize = 12.sp,
+            color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, color = BenflixColors.Text)
+        Text(
+            text = word,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (light == Light.UNKNOWN) com.github.damontecres.wholphin.ui.theme.Glowfin.Dim else lightColor(light),
+            maxLines = 1,
+        )
+        if (detail.isNotEmpty()) {
+            Text(
+                text = detail,
+                fontSize = 12.sp,
+                color = com.github.damontecres.wholphin.ui.theme.Glowfin.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

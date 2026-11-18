@@ -187,6 +187,8 @@ fun DoorFrame(
     ownRail: Boolean = false,
     /** Glowfin (ui-7): the places as word tabs along the page's top (Movies, Shows, Anime) */
     tabs: Boolean = false,
+    /** Glowfin (S1): TV shows [ownRail]'s places as a plain list under this heading, like Settings (Server) */
+    sideListTitle: String? = null,
     content: @Composable (Modifier) -> Unit,
 ) {
     val isTv = rememberIsTv()
@@ -294,6 +296,10 @@ fun DoorFrame(
         }
         return
     }
+    if (sideListTitle != null && sections.size > 1) {
+        GlowfinSideListFrame(state, sections, sideListTitle, modifier, content)
+        return
+    }
     if (sections.size <= 1) {
         Box(modifier.fillMaxSize()) {
             content(Modifier.fillMaxSize().padding(start = if (isTv) RAIL_TUCKED - CONTENT_TUCK else 0.dp))
@@ -309,6 +315,51 @@ fun DoorFrame(
                 .focusRestorer(),
         )
         DoorRail(state, sections, alwaysOpen = !isTv)
+    }
+}
+
+/** Glowfin (S1): the places in a plain list on the left (always open, words only), the page on the right */
+@Composable
+private fun GlowfinSideListFrame(
+    state: DoorFrameState,
+    sections: List<DoorSection>,
+    title: String,
+    modifier: Modifier,
+    content: @Composable (Modifier) -> Unit,
+) {
+    val active = remember { FocusRequester() }
+    val overlap = LocalTopBarOverlap.current
+    Row(modifier.fillMaxSize()) {
+        com.github.damontecres.wholphin.ui.preferences.GlowfinSideListPanel {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .focusRestorer(active)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = overlap),
+            ) {
+                com.github.damontecres.wholphin.ui.preferences
+                    .GlowfinPageHeading(title)
+                sections.forEach { section ->
+                    val on = section.key == state.section
+                    com.github.damontecres.wholphin.ui.preferences.GlowfinListRow(
+                        label = section.label,
+                        selected = on,
+                        onClick = { state.pick(section.key) },
+                        modifier = if (on) Modifier.focusRequester(active) else Modifier,
+                    )
+                }
+            }
+        }
+        content(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .focusRequester(state.content)
+                .focusRestorer(),
+        )
     }
 }
 

@@ -187,6 +187,7 @@ fun <T> ComposablePreference(
                 },
                 modifier = modifier,
                 interactionSource = interactionSource,
+                subtitles = subtitles,
                 subtitleDisplay = { index, _ ->
                     subtitles?.getOrNull(index)?.takeIf { it.isNotNullOrBlank() }?.let {
                         {

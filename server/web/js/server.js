@@ -112,7 +112,8 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   const sub = sec.subs.find(([id]) => id === m[2]) ? m[2] : sec.subs[0][0];
   const group = sec.id === "tools" ? groupOf(sub) : null;
   const chips = group ? group.subs : sec.subs;
-  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="srv"><main><div class="srv-kicker">Server</div><h2>${esc(sec.label)}</h2>
+  // Glowfin (S1): Overview / Watching / Library / People / Tools in a plain list on the left, like Settings
+  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="split srv-split"><nav><div class="splith">Server</div>${SECTIONS.map((x) => `<a href="#/server/${x.id}" class="${x === sec ? "on" : ""}">${esc(x.label)}</a>`).join("")}</nav><main class="srv"><h2>${esc(sec.label)}</h2>
       ${group ? toolTiles(group) : ""}
       ${chips.length > 1 ? `<div class="tabs">${chips.map(([id, label]) => `<a class="chip ${id === sub ? "on" : ""}" href="#/server/${sec.id}/${id}">${esc(label)}</a>`).join("")}</div>` : ""}
       <div id="main" class="subpage"></div></main>
@@ -175,7 +176,12 @@ PAGES.overview = (el) => {
       const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
       const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";
       const reason = health.length ? health[0][1] + (health.length > 1 ? ` (and ${health.length - 1} more below)` : "") : "";
-      const pill = (label, l) => `<span class="srv-pill"><span class="dot ${l === "ok" ? "" : l}"></span>${esc(label)}</span>`;
+      // Glowfin (S1): plain OK / Check / Problem boxes with words
+      const pill = (label, l) => {
+        const [name, detail] = label.split(": ");
+        const word = l === "ok" ? "OK" : l === "warn" ? "Check" : l === "bad" ? "Problem" : "Off";
+        return `<span class="srv-pill srv-box ${l}"><small>${esc(name)}</small><b>${word}</b>${detail ? `<em>${esc(detail)}</em>` : ""}</span>`;
+      };
       let html = problemsNote(t.problems);
       html += `<div class="srv-banner ${level}"><div class="h"><span class="big-dot"></span>${esc(headline)}</div>${reason ? `<div class="r">${esc(reason)}</div>` : ""}
         <div class="pills">${pill(info ? "Jellyfin" : "Jellyfin: not answering", info ? "ok" : "bad")}${pill(down.length ? `Tower: ${down.length} app${down.length === 1 ? "" : "s"} down` : "Tower", down.length ? "bad" : apps.length ? "ok" : "off")}${pill(stuck.length ? `Downloads: ${stuck.length} stuck` : "Downloads", stuck.length ? "warn" : "ok")}${info ? `<span class="dim">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</span>` : ""}</div></div>`;

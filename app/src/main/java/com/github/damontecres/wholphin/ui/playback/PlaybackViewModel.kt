@@ -181,6 +181,13 @@ class PlaybackViewModel
 
         val currentPlayer = MutableStateFlow<PlayerInstance?>(null)
 
+        override fun onCleared() {
+            super.onCleared()
+            // Glowfin Help and updates: "After this show" installs the update once the player closes
+            com.github.damontecres.wholphin.services.UpdateAfterShow
+                .playerClosed(navigationManager)
+        }
+
         internal lateinit var player: Player
 
         /** Benflix: gets videos ready early (null in tests) */

@@ -271,6 +271,7 @@ fun TrailerAppSetting(
             saved = value
         },
         valueDisplay = { _, item -> AppLabel(item.name, item.icon) },
+        labels = choices.map { it.name },
         interactionSource = interactionSource,
         modifier = modifier,
     )

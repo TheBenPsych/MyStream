@@ -117,8 +117,11 @@ fun PreferencesContent(
     // as cards, with the section menu drawn beside it
     hostedGroup: PreferenceGroup<AppPreferences>? = null,
     hostedQuery: String? = null,
+    // Glowfin (S1): Behind the scenes shows all its groups on the right of Settings
+    hostedGroups: List<PreferenceGroup<AppPreferences>>? = null,
+    hostedTitle: Int? = null,
 ) {
-    val hosted = hostedGroup != null || hostedQuery != null
+    val hosted = hostedGroup != null || hostedQuery != null || hostedGroups != null
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
@@ -204,6 +207,7 @@ fun PreferencesContent(
     fun isShown(pref: AppPreference<AppPreferences, *>): Boolean =
         (isTv || pref != AppPreference.ScreensaverSettings) &&
             (!isTv || pref != AppPreference.MobileDataQualityPref) &&
+            (!isTv || pref != AppPreference.HapticsPref) &&
             (isAdmin || pref != AppPreference.ServerPage) &&
             (isAdmin || pref != AppPreference.OmdbKey) &&
             (!guest || pref in guestPreferences)
@@ -235,7 +239,7 @@ fun PreferencesContent(
         }
     val prefList =
         when (preferenceScreenOption) {
-            PreferenceScreenOption.BASIC -> searchResults ?: hostedGroup?.let { listOf(it) } ?: basicPreferences
+            PreferenceScreenOption.BASIC -> searchResults ?: hostedGroups ?: hostedGroup?.let { listOf(it) } ?: basicPreferences
             PreferenceScreenOption.ADVANCED -> advancedPreferences
             PreferenceScreenOption.EXO_PLAYER -> ExoPlayerPreferences
             PreferenceScreenOption.MPV -> MpvPreferences
@@ -305,7 +309,7 @@ fun PreferencesContent(
                     if (hosted && searchResults != null) {
                         stringResource(R.string.benflix_settings_search_results)
                     } else if (hosted) {
-                        stringResource(hostedGroup?.title ?: screenTitle)
+                        stringResource(hostedTitle ?: hostedGroup?.title ?: screenTitle)
                     } else {
                         stringResource(preferenceScreenOption.benflixPageInfo().title)
                     },
@@ -410,7 +414,7 @@ fun PreferencesContent(
                         return@forEachIndexed
                     }
                     // Benflix: a small grey heading between groups, only when a page has more than one
-                    if (!hosted && prefList.size > 1) {
+                    if ((!hosted || hostedGroups != null) && prefList.size > 1) {
                         item {
                             BenflixSettingsHeading(stringResource(group.title))
                         }
@@ -882,6 +886,7 @@ fun PreferencesContent(
                                             summary = players[selectedIndex].name,
                                             interactionSource = interactionSource,
                                             possibleValues = players,
+                                            labels = players.map { it.name },
                                             selectedIndex = selectedIndex,
                                             onValueChange = { index ->
                                                 scope.launch(ExceptionHandler()) {

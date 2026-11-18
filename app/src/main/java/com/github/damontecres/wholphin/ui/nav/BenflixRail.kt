@@ -1008,11 +1008,10 @@ private fun ProfilePanel(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 12.dp * scale, vertical = 8.dp),
         ) {
-            PanelRow(
-                icon = BenflixIcon.SWITCH,
+            // Glowfin (S1): plain words, the lit line lifted with the aqua bar, like Settings
+            com.github.damontecres.wholphin.ui.preferences.GlowfinListRow(
                 label = "Switch profile",
-                note = null,
-                scale = scale,
+                selected = false,
                 onClick = {
                     onPicked()
                     model.onSwitchProfile()
@@ -1029,12 +1028,11 @@ private fun ProfilePanel(
                             .background(BenflixColors.Line),
                     )
                 }
-                PanelRow(
-                    icon = item.icon,
+                com.github.damontecres.wholphin.ui.preferences.GlowfinListRow(
                     label = item.title,
+                    selected = false,
+                    labelColor = if (item.apart) Glowfin.Dim else Glowfin.Text,
                     note = item.note,
-                    scale = scale,
-                    muted = item.apart,
                     onClick = {
                         onPicked()
                         item.onClick()

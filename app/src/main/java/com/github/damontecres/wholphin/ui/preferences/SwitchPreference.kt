@@ -4,9 +4,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.SwitchColors
 import androidx.tv.material3.SwitchDefaults
@@ -43,33 +40,15 @@ fun SwitchPreference(
     onLongClick: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
-    ListItem(
-        selected = false,
+    // Glowfin (S1): the words On and Off in aqua on the right; the explaining line shows while you're on it
+    GlowfinSettingRow(
+        title = title,
+        value = if (value) "On" else "Off",
+        explain = summary?.takeIf { it.isNotBlank() },
         onClick = onClick,
         onLongClick = onLongClick,
-        headlineContent = {
-            PreferenceTitle(title)
-        },
-        supportingContent = {
-            PreferenceSummary(summary)
-        },
-        // Benflix redesign: the words On and Off instead of a switch
-        trailingContent = {
-            androidx.compose.foundation.layout.Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement =
-                    androidx.compose.foundation.layout.Arrangement
-                        .spacedBy(8.dp),
-            ) {
-                androidx.tv.material3.Text(
-                    text = if (value) "On" else "Off",
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                )
-            }
-        },
         interactionSource = interactionSource,
         modifier = modifier,
-        scale = ListItemDefaults.scale(focusedScale = 1f),
     )
 }
 

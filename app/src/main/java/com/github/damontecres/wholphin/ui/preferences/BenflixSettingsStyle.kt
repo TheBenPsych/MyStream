@@ -43,31 +43,16 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
  * headings between groups, and on TV a "where you are" panel on the left.
  */
 
-/** Each setting sits on its own dark rounded card */
+/** Glowfin (S1): settings sit straight on the page (the row you're on lifts itself), so this is only spacing */
 @Composable
-fun benflixSettingCard(): Modifier =
-    Modifier
-        .padding(vertical = 4.dp)
-        .clip(RoundedCornerShape(10.dp))
-        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
+fun benflixSettingCard(): Modifier = Modifier.padding(vertical = 1.dp)
 
 /**
  * Benflix look A: a soft band of the profile colour across the top of the page, fading into
  * the dark background, like the details pages.
  */
 @Composable
-fun Modifier.benflixLookABackground(): Modifier {
-    val accent = com.github.damontecres.wholphin.ui.theme.BenflixRed
-    val base = MaterialTheme.colorScheme.background
-    return this
-        .background(base)
-        .background(
-            androidx.compose.ui.graphics.Brush.verticalGradient(
-                0f to accent.copy(alpha = .22f),
-                .4f to Color.Transparent,
-            ),
-        )
-}
+fun Modifier.benflixLookABackground(): Modifier = this.background(com.github.damontecres.wholphin.ui.theme.Glowfin.Ink)
 
 /** Benflix look A: the small "SETTINGS" style label above a big page title */
 @Composable
@@ -93,25 +78,13 @@ fun BenflixLookABadge(
     )
 }
 
-/** The big title at the top of a settings page (Benflix look A: a small SETTINGS label above it) */
+/** Glowfin (S1): the page's name in Sora at the top of a settings page */
 @Composable
 fun BenflixSettingsTitle(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
-    ) {
-        BenflixLookABadge(stringResource(R.string.settings))
-        Text(
-            text = text,
-            fontSize = BenflixType.hero,
-            lineHeight = if (rememberIsTv()) 42.sp else 36.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
+    GlowfinPageHeading(text = text, modifier = modifier.padding(start = 8.dp, top = 14.dp))
 }
 
 /** A small grey heading between groups of settings */
@@ -125,11 +98,11 @@ fun BenflixSettingsHeading(
         fontSize = BenflixType.small,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.2.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 4.dp, top = 16.dp, bottom = 4.dp),
+                .padding(start = 16.dp, top = 18.dp, bottom = 6.dp),
     )
 }
 
@@ -215,18 +188,18 @@ fun BenflixSettingsFrame(
     val isTv = rememberIsTv()
     if (isTv) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            horizontalArrangement = Arrangement.spacedBy(28.dp),
             modifier =
                 modifier
                     .fillMaxSize()
                     .benflixLookABackground()
-                    .padding(start = 32.dp, end = 32.dp, top = 24.dp),
+                    .padding(end = 32.dp),
         ) {
             WhereYouArePanel(
                 info = info,
                 modifier =
                     Modifier
-                        .width(320.dp)
+                        .width(300.dp)
                         .fillMaxHeight(),
             )
             content(
@@ -240,7 +213,7 @@ fun BenflixSettingsFrame(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
+                    .benflixLookABackground(),
         ) {
             content(Modifier.fillMaxSize())
         }
@@ -252,72 +225,52 @@ private fun WhereYouArePanel(
     info: BenflixSettingsPageInfo,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
-        // Same header as the main Settings page
+    // Glowfin (S1): the same left list as Settings, showing the page you're on lit
+    Column(
+        modifier =
+            modifier
+                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Deep)
+                .padding(start = 14.dp, end = 14.dp, top = 20.dp),
+    ) {
+        GlowfinPageHeading(stringResource(R.string.settings))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 12.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-            ) {
-                Icon(
-                    imageVector = BenflixIcon.GEAR.vector,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-            Text(
-                text = stringResource(R.string.settings),
-                fontWeight = FontWeight.Bold,
-                fontSize = BenflixType.rowName,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        // The page you are on, drawn like a picked row in the Settings menu
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise)
+                    .padding(start = 0.dp),
         ) {
-            Icon(
-                imageVector = info.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(24.dp),
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(44.dp)
+                    .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua),
             )
             Text(
                 text = stringResource(info.title),
-                fontSize = BenflixType.lead,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = com.github.damontecres.wholphin.ui.theme.Glowfin.Text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp),
             )
         }
         Text(
             text = stringResource(info.hint),
-            fontSize = BenflixType.body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp,
+            color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
             modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
         )
         Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.benflix_settings_back_hint),
-            fontSize = BenflixType.small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            fontSize = 12.sp,
+            color =
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Dim
+                    .copy(alpha = 0.8f),
             modifier = Modifier.padding(start = 8.dp, end = 8.dp),
         )
     }
