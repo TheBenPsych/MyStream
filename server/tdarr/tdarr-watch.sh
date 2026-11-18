@@ -36,7 +36,9 @@ set_paused() { # $1 = true or false
 if [ "$1" = "pause" ]; then
   answer=$(curl -fs -m 20 http://127.0.0.1:8097/busy 2>/dev/null)
   [ -n "$answer" ] || exit 0
-  if echo "$answer" | grep -q '"busy": true'; then
+  # Only real watching counts (something playing, or Jellyfin not answering). Just having the app open
+  # doesn't: a TV left on the Home screen kept Tdarr paused most of the night (2026-11-18).
+  if echo "$answer" | grep -q '"busy": true' && echo "$answer" | grep -qiE 'playing|answer'; then
     if [ ! -f "$FLAG" ] && set_paused true; then
       touch "$FLAG"
       note "Paused: $(echo "$answer" | sed -n 's/.*"why": "\([^"]*\)".*/\1/p')"
