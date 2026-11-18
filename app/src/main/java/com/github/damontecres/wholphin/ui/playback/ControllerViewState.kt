@@ -24,6 +24,9 @@ class ControllerViewState internal constructor(
     private var _controlsVisible by mutableStateOf(false)
     val controlsVisible get() = _controlsVisible
 
+    /** Benflix: how tall the controls at the bottom are (in pixels), so subtitles can slide up above them */
+    var controlsHeightPx by mutableStateOf(0)
+
     fun showControls(milliseconds: Long = hideMilliseconds) {
         if (controlsEnabled) {
             _controlsVisible = true

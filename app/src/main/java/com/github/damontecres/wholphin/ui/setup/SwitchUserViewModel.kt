@@ -48,17 +48,12 @@ import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.authenticateUserByName
 import org.jellyfin.sdk.api.client.extensions.displayPreferencesApi
 import org.jellyfin.sdk.api.client.extensions.imageApi
-import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.quickConnectApi
 import org.jellyfin.sdk.api.client.extensions.systemApi
 import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.model.ServerVersion
-import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.QuickConnectDto
 import org.jellyfin.sdk.model.api.QuickConnectResult
-import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -117,7 +112,6 @@ class SwitchUserViewModel
                         )
                     }
                     launch { checkPictures(serverUsers.map { it.user }) }
-                    loadPosterWall(serverUsers.map { it.user })
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error fetching users for server $server")
                     _state.update {
@@ -186,75 +180,6 @@ class SwitchUserViewModel
                     }
                 }
             }
-        }
-
-        /**
-         * Posters for the sliding wall behind "Who's watching?", fetched with a saved sign-in on this device.
-         * Only titles rated PG-13 or lower, so nothing scary shows up for the kids.
-         */
-        private suspend fun loadPosterWall(users: List<JellyfinUser>) {
-            val user = users.firstOrNull { it.accessToken != null && !it.requireLogin } ?: return
-            // Benflix speed: the wall from earlier today is shown straight away (its pictures are already
-            // on the device), and a new random wall is only fetched once a day. A new wall every start
-            // meant 40 fresh pictures the server had to make, right while Home was trying to load.
-            val wallPrefs = context.getSharedPreferences("benflix_poster_wall", Context.MODE_PRIVATE)
-            val wallKey = "wall_${server.id}"
-            val saved =
-                wallPrefs
-                    .getString(wallKey, null)
-                    ?.split('\n')
-                    ?.filter { it.isNotBlank() }
-                    .orEmpty()
-            val savedAt = wallPrefs.getLong("${wallKey}_at", 0L)
-            if (saved.isNotEmpty()) _state.update { it.copy(posterWall = saved) }
-            val wallFresh = saved.isNotEmpty() && System.currentTimeMillis() - savedAt in 0 until POSTER_WALL_KEEP_MS
-            try {
-                val api = jellyfin.createApi(server.url, accessToken = user.accessToken)
-                if (!wallFresh) loadNewPosterWall(api, user, wallPrefs, wallKey)
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Could not load posters for the profile screen")
-            }
-        }
-
-        private suspend fun loadNewPosterWall(
-            api: org.jellyfin.sdk.api.client.ApiClient,
-            user: JellyfinUser,
-            wallPrefs: android.content.SharedPreferences,
-            wallKey: String,
-        ) {
-            val posters =
-                api.itemsApi
-                    .getItems(
-                        GetItemsRequest(
-                            userId = user.id,
-                            recursive = true,
-                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                            imageTypes = listOf(ImageType.PRIMARY),
-                            sortBy = listOf(ItemSortBy.RANDOM),
-                            maxOfficialRating = "PG-13",
-                            hasParentalRating = true,
-                            limit = POSTER_WALL_COUNT,
-                        ),
-                    ).content.items
-                    .map { item ->
-                        api.imageApi.getItemImageUrl(
-                            itemId = item.id,
-                            imageType = ImageType.PRIMARY,
-                            fillHeight = POSTER_WALL_HEIGHT,
-                            quality = 80,
-                        )
-                    }
-            if (posters.isEmpty()) return
-            // Only shown now when there was nothing saved; otherwise it's tomorrow's wall, so the
-            // wall on screen doesn't jump while someone is picking a profile
-            if (state.value.posterWall.isEmpty()) _state.update { it.copy(posterWall = posters) }
-            wallPrefs
-                .edit()
-                .putString(wallKey, posters.joinToString("\n"))
-                .putLong("${wallKey}_at", System.currentTimeMillis())
-                .apply()
         }
 
         /**
@@ -614,15 +539,7 @@ data class SwitchUserState(
     val loginAttempts: Int = 0,
     val serverVersion: ServerVersion? = null,
     val serverVersionSupported: ServerVersionSupported = ServerVersionSupported.UNKNOWN,
-    // Poster image addresses for the sliding wall behind the profiles
-    val posterWall: List<String> = emptyList(),
 )
-
-private const val POSTER_WALL_COUNT = 12
-
-/** Benflix speed: a new random poster wall once a day */
-private const val POSTER_WALL_KEEP_MS = 24L * 60 * 60 * 1000
-private const val POSTER_WALL_HEIGHT = 260
 
 /** How long Who's watching spends checking profile pictures with the server */
 private const val PICTURE_CHECK_MS = 6_000L

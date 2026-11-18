@@ -812,6 +812,7 @@ class PlaybackViewModel
                     if (recap == null) player.play()
                 }
                 mutableState.update { it.copy(recap = recap) }
+                findPreviousEpisode(base)
                 listenForSegments(item.id)
                 watchForAfterCreditsScene(item.id)
                 watchForMovieNext(item)
@@ -1387,6 +1388,13 @@ class PlaybackViewModel
         fun autoPlayMovieNext() {
             BenflixAutoplayChain.count++
             playMovieNext()
+        }
+
+        /** Benflix: the player's Previous episode button. Swaps this player for the episode before, like Episodes does */
+        fun playPreviousEpisode() {
+            val previous = state.value.previousEpisodeId ?: return
+            navigationManager.goBack()
+            navigationManager.navigateTo(Destination.Playback(previous, 0L))
         }
 
         fun playMovieNext() {

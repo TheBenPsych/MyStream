@@ -89,28 +89,29 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="pause-art"><div class="t">${esc(isEp ? it.SeriesName : it.Name)}</div>${isEp ? `<div style="font-size:20px;font-weight:600;margin:4px 0 8px">S${it.ParentIndexNumber} E${it.IndexNumber} · ${esc(it.Name)}</div>` : ""}<div class="ov">${esc(it.Overview || "")}</div></div>
     <div class="shadeT"></div><div class="shadeB"></div>
     <div class="center-msg" id="msg"></div>
-    <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button>
-      <div><div class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</div><div class="rating">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</div></div></div>
+    <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button></div>
     <div class="pcorner"><button class="skip hidden" id="pSkip"></button><div class="upnext hidden" id="pNext"></div></div>
     <div class="eprow hidden" id="pEps"></div>
-    <div class="controls p1">
-      <div class="chap" id="pChap"></div>
+    <div class="controls p1 p4">
+      <div class="tline"><span class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</span><span class="st">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</span><span class="ends" id="pEnds"></span></div>
+      <div class="srow"><span id="pTime">0:00</span>
       <div class="bar" id="pBar"><div class="track"><u id="pBuf"></u><b id="pDone"></b></div><span id="pTicks"></span><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
-      <div class="times"><span id="pTime">0:00</span><span id="pEnds"></span></div>
+      <span id="pLeft"></span></div>
       <div class="row2 p1row">
-        <div class="p1l"><span class="chap2" id="pChap2"></span></div>
+        <div class="p1l">
+        <button class="pbtn" id="pGear" title="Settings: quality, speed and Fix a problem">${I("gear")}</button>
+        ${isEp ? `<button class="pbtn" id="pList" title="Episodes (E)">${I("eps")}</button>` : ""}
+        </div>
         <div class="p1c">
+        ${isEp ? `<button class="pbtn" id="pPv" title="Previous episode (P)" disabled>${I("prev")}</button>` : ""}
         <button class="pbtn" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}</button>
         <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
         <button class="pbtn" id="pFw" title="Ahead 10 seconds (right arrow)">${I("fwd10")}</button>
         ${isEp ? `<button class="pbtn" id="pNx" title="Next episode (N)">${I("next")}</button>` : ""}
         </div>
         <div class="p1r">
-        <button class="pbtn lab" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}<em>Subtitles</em></button>
-        <button class="pbtn lab" id="pAud" title="Audio: pick the language or sound track">${I("audio")}<em>Audio</em></button>
-        ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
-        <button class="pbtn lab" id="pGear" title="Settings: audio, subtitle timing, quality and Fix a problem">${I("gear")}<em>Settings</em></button>
-        <span class="lab vlab">${B.volume("pVol")}<em>Volume</em></span>
+        <button class="pbtn" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}</button>
+        <button class="pbtn" id="pAud" title="Audio and volume (M mutes)">${I("audio")}</button>
         <span class="extra">
           <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
           ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
@@ -229,6 +230,30 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       });
     });
   }
+  // Ben (clean-up): while the controls show, subtitles slide up to sit just above them, then back down.
+  // Only plain lines that don't place themselves (styled ones with their own spot stay where they are).
+  let cueLift = 0;
+  const liftCue = (c) => {
+    if (!("snapToLines" in c)) return;
+    if (c.bfLine === undefined) { if (c.line !== "auto") { c.bfLine = null; return; } c.bfLine = "auto"; }
+    if (c.bfLine === null) return;
+    if (cueLift > 0) { c.snapToLines = false; c.lineAlign = "end"; c.line = Math.max(10, 100 - cueLift); }
+    else { c.snapToLines = true; c.lineAlign = "start"; c.line = "auto"; }
+  };
+  const liftCues = () => {
+    const vh = v.getBoundingClientRect().height || 1;
+    const want = pl.classList.contains("ui") ? Math.min(45, ((ctl.offsetHeight + 12) / vh) * 100) : 0;
+    if (Math.abs(want - cueLift) < 0.5) return;
+    cueLift = want;
+    Array.from(v.textTracks).forEach((t) => {
+      if (t.mode !== "showing") return;
+      Array.from(t.cues || []).forEach(liftCue);
+      // Lines already on screen are taken off and put back, so the browser redraws them in the new spot
+      Array.from(t.activeCues || []).forEach((c) => { try { t.removeCue(c); t.addCue(c); } catch (e) {} });
+    });
+  };
+  new MutationObserver(liftCues).observe(pl, { attributes: true, attributeFilter: ["class"] });
+  v.textTracks.addEventListener("addtrack", (ev) => { ev.track.addEventListener("cuechange", () => Array.from(ev.track.activeCues || []).forEach(liftCue)); });
   const delayText = () => subDelay === 0 ? "Right now: not moved" : `Right now: ${Math.abs(subDelay).toFixed(1)} seconds ${subDelay > 0 ? "later" : "earlier"}`;
   const nudgeSubs = (by) => {
     const on = ((source && source.MediaStreams) || []).find((x) => x.Type === "Subtitle" && x.Index === subIndex);
@@ -253,9 +278,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     $("#pBuf").style.width = Math.max(0, Math.min(100, (buf / T) * 100)) + "%";
     $("#pKnob").style.left = Math.max(0, Math.min(100, (t / T) * 100)) + "%";
     $("#pTime").textContent = B.hms(t);
-    $("#pEnds").textContent = `Ends at ${B.clock(new Date(Date.now() + ((T - t) / (v.playbackRate || 1)) * 1000))} · −${B.hms(Math.max(0, T - t))}`;
-    const ch = segs.find((s) => t >= s.start && t < s.end);
-    $("#pChap").textContent = $("#pChap2").textContent = ch ? ch.name || "" : "";
+    $("#pEnds").textContent = `Ends at ${B.clock(new Date(Date.now() + ((T - t) / (v.playbackRate || 1)) * 1000))}`;
+    $("#pLeft").textContent = `−${B.hms(Math.max(0, T - t))}`;
   };
   const barTime = (e) => { const r = $("#pBar").getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * total(); };
   $("#pBar").onclick = (e) => { v.currentTime = barTime(e); poke(); };
@@ -296,10 +320,10 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pBar").onmouseleave = () => { $("#pHover").classList.add("hidden"); $("#pPrev").classList.add("hidden"); };
 
   // ---------- controls ----------
-  const poke = () => {
+  const poke = (ms) => {
     pl.classList.add("ui");
     clearTimeout(uiTimer);
-    uiTimer = setTimeout(() => { if (!v.paused && !$("#pEps:not(.hidden)") && !$(".player .panel")) pl.classList.remove("ui"); }, 5000);
+    uiTimer = setTimeout(() => { if (!v.paused && !$("#pEps:not(.hidden)") && !$(".player .panel")) pl.classList.remove("ui"); }, typeof ms === "number" ? ms : 5000);
   };
   pl.addEventListener("mousemove", poke);
   pl.addEventListener("click", (e) => { if (e.target === v || e.target.classList.contains("center-msg")) { v.paused ? v.play() : v.pause(); } poke(); });
@@ -322,13 +346,13 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pPlay").onclick = () => (v.paused ? v.play() : v.pause());
   $("#pBk").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 10); poke(); };
   $("#pFw").onclick = () => { v.currentTime = Math.min(total(), v.currentTime + 10); poke(); };
-  B.wireVolume($("#pVol").parentNode, v, "volume");
   $("#pBack").onclick = () => leave();
   $("#pSub").onclick = () => openPanel("subs");
   $("#pAud").onclick = () => openPanel("audio");
-  $("#pGear").onclick = () => openPanel();
+  $("#pGear").onclick = () => openPanel("settings");
   $("#pKeys").onclick = () => showKeys();
-  v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(); report("/Progress"); });
+  // Ben (clean-up): pressing Play puts the controls away quickly, just long enough to see it switch
+  v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(600); report("/Progress"); });
   v.addEventListener("pause", () => {
     $("#pPlay").innerHTML = I("play"); pl.classList.add("ui"); report("/Progress");
     clearTimeout(pausedTimer); pausedTimer = setTimeout(() => { if (v.paused) pl.classList.add("paused-long"); }, 5000);
@@ -422,6 +446,17 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   // Swap this episode for the next one in the browser history, so Back never lands on the one before
   const goNext = (n) => { if (away()) return B.dropKept(); finish(); B.go(`#/play/${n.Id}`, { replace: true }); };
   $("#pNx") && ($("#pNx").onclick = async () => { const n = await findNext(); if (n) goNext(n); else B.toast("That was the last episode."); });
+  // Previous episode (clean-up, Ben 2026-11-18): the episode before in the show, dimmed on the first one
+  let prevEp = null;
+  if (isEp && it.SeriesId) {
+    B.get(`/Shows/${it.SeriesId}/Episodes?userId=${u}&AdjacentTo=${it.Id}`).then((r) => {
+      const list = (r.Items || []).filter((x) => x.Id === it.Id || (x.ParentIndexNumber || 0) !== 0);
+      const i = list.findIndex((x) => x.Id === it.Id);
+      prevEp = i > 0 ? list[i - 1] : null;
+      const b = $("#pPv"); if (b && prevEp) b.disabled = false;
+    }).catch(() => {});
+  }
+  $("#pPv") && ($("#pPv").onclick = () => { if (prevEp) goNext(prevEp); else B.toast("This is the first episode."); });
 
   v.addEventListener("timeupdate", () => {
     if (stopped) return; // the page has gone (the bar isn't there any more)
@@ -484,36 +519,64 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       done.catch(() => {});
     });
   };
-  const openPanel = (focus) => {
-    if ($(".player .panel")) return $(".player .panel").remove();
+  // Clean-up (Ben 2026-11-18): Subtitles, Audio and Settings each open their own box, nothing repeated
+  const openPanel = (kind) => {
+    const old = $(".player .panel");
+    if (old) { old.remove(); if (old.dataset.kind === kind) return; }
     const streams = (source && source.MediaStreams) || [];
     const audio = streams.filter((s) => s.Type === "Audio"), subs = streams.filter((s) => s.Type === "Subtitle");
     const subOn = subIndex !== -1, cur = subs.find((x) => x.Index === subIndex) || {};
     const canMove = subOn && cur.IsTextSubtitleStream !== false;
     const p = document.createElement("div");
     p.className = "panel";
-    p.innerHTML = `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">Settings</h3>
-      <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(B.lastPlayed.title || "")}</p>
-      <h4 id="psSubs">Subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}${s.IsTextSubtitleStream === false ? "<small>pictures, can't be moved</small>" : ""}</button>`).join("")}
-      <h4 id="psAudio">Audio</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
-      <h4>Subtitle timing</h4>${canMove ? `<p class="dim" style="font-size:13px;margin:-4px 0 8px">Words show up before people talk? Press + to make them later. Words come after? Press −. (Keys: G sooner, H later.) <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-10, "−10 s"], [-1, "−1 s"], [-0.5, "−½ s"], [0.5, "+½ s"], [1, "+1 s"], [10, "+10 s"], [0, "Reset"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : `<p class="dim" style="font-size:13px;margin:-4px 0 8px">${subOn ? "These subtitles are pictures, so they can't be moved here. Try Subtitles wrong below." : "Turn subtitles on first (just above)."}</p>`}
+    p.dataset.kind = kind;
+    const head = (title) => `<button class="circle" style="float:right" data-x>${I("x")}</button><h3 style="margin:4px 0 0">${title}</h3>
+      <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(B.lastPlayed.title || "")}</p>`;
+    const volOn = !v.muted && v.volume > 0, volPct = Math.round((v.muted ? 0 : v.volume) * 100);
+    if (kind === "subs") p.innerHTML = head("Subtitles") + `
+      <h4 id="psSubs">Pick subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}${s.IsTextSubtitleStream === false ? "<small>pictures, can't be moved</small>" : ""}</button>`).join("")}
+      <h4>Something off?</h4>
+      <button class="opt" data-subwrong>${I("sub")} Subtitle timing<small>${!subOn ? "Turn subtitles on above first" : B.me.kids ? "Move them yourself below" : "Let Tower line them up, or move them yourself below"}</small></button>
+      <div class="timing hidden">${!B.me.kids && subOn ? `<button class="opt" data-towerfix>Let Tower line them up<small>Tower matches the words to the voices</small></button>` : ""}
+      ${canMove ? `<p class="dim" style="font-size:13px;margin:8px 0 8px">Or move them yourself. Words show up before people talk? Press + to make them later. Words come after? Press −. (Keys: G sooner, H later.) <b data-delaynow>${esc(delayText())}</b></p><div class="delay-row">${[[-10, "−10 s"], [-1, "−1 s"], [-0.5, "−½ s"], [0.5, "+½ s"], [1, "+1 s"], [10, "+10 s"], [0, "Reset"]].map(([d, label]) => `<button class="opt" data-delay="${d}">${label}</button>`).join("")}</div>` : subOn ? `<p class="dim" style="font-size:13px;margin:8px 0">These subtitles are pictures, so they can't be moved by hand.</p>` : ""}</div>
+      ${!B.me.kids ? `<button class="opt" data-better>${I("sub")} Find other subtitles<small>${subOn ? "Bazarr deletes these and gets different ones" : "Bazarr looks for subtitles"}</small></button>` : ""}`;
+    else if (kind === "audio") p.innerHTML = head("Audio") + `
+      <h4 id="psAudio">Sound track</h4>${audio.map((s) => `<button class="opt ${s.Index === audioIndex ? "on" : ""}" data-a="${s.Index}">${esc(s.DisplayTitle || s.Language || "Track")}</button>`).join("") || '<p class="dim">One sound track.</p>'}
+      <h4>Volume</h4>
+      <div class="pvol"><button class="circle" data-mute title="Sound on / off (M)">${I(volOn ? "vol" : "mute")}</button><input type="range" min="0" max="100" step="1" value="${volPct}" style="--v:${volPct}%" aria-label="Volume" data-vol><b data-volnum>${volPct}%</b></div>`;
+    else p.innerHTML = head("Settings") + `
       <h4>Quality</h4>${QUALITY_STEPS.map((k) => `<button class="opt ${(settings.quality || "auto") === k ? "on" : ""}" data-q="${k}">${QUALITY_WORDS[k]}</button>`).join("")}
       <h4>Play speed</h4><div class="delay-row">${SPEEDS.map((r) => `<button class="opt ${v.playbackRate === r ? "on" : ""}" data-speed="${r}">${r === 1 ? "Normal" : r + "×"}</button>`).join("")}</div>
       ${series ? `<h4>This show</h4><button class="opt ${alwaysSkip.intro.has(plain(series)) ? "on" : ""}" data-skip="intro">Always skip the intro</button><button class="opt ${alwaysSkip.outro.has(plain(series)) ? "on" : ""}" data-skip="outro">Always skip the credits</button>` : ""}
       ${alsoOk ? `<h4>Also counts for</h4><p class="dim" style="font-size:13px;margin:-4px 0 8px">Tick who's watching with you. When this ends, it's marked watched for them too.</p><div data-alsolist><p class="dim">Looking for family profiles…</p></div>` : ""}
       <h4>Fix a problem</h4>
       <button class="opt" data-nosound>${I("flag")} No sound<small>Glowfin brings it back</small></button>
-      <button class="opt" data-subwrong>${I("sub")} Subtitles wrong<small>${subOn && !B.me.kids ? "Tower lines them up" : "Pick others above"}</small></button>
-      ${!B.me.kids ? `<button class="opt" data-better>${I("sub")} Find other subtitles<small>${subOn ? "Bazarr deletes these and gets different ones" : "Bazarr looks for subtitles"}</small></button>` : ""}
       ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Glowfin finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
       <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
       <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
     pl.classList.add("ui");
-    if (alsoOk) drawAlso(p);
-    if (focus === "subs") { const on = $(".opt.on[data-s]", p) || $("[data-s]", p); if (on) on.focus(); }
-    if (focus === "audio") { const h = $("#psAudio", p); if (h) h.scrollIntoView({ block: "start" }); const on = $(".opt.on[data-a]", p) || $("[data-a]", p); if (on) on.focus({ preventScroll: true }); }
+    if (alsoOk && kind === "settings") drawAlso(p);
+    if (kind === "subs") { const on = $(".opt.on[data-s]", p) || $("[data-s]", p); if (on) on.focus(); }
+    if (kind === "audio") { const on = $(".opt.on[data-a]", p) || $("[data-a]", p); if (on) on.focus({ preventScroll: true }); }
+    // The volume slider in the Audio box (the bar has none now)
+    const vr = $("[data-vol]", p);
+    if (vr) {
+      const draw = () => {
+        const pct = Math.round((v.muted ? 0 : v.volume) * 100);
+        vr.value = pct; vr.style.setProperty("--v", pct + "%");
+        $("[data-volnum]", p).textContent = pct + "%";
+        $("[data-mute]", p).innerHTML = I(pct === 0 ? "mute" : "vol");
+      };
+      let saveT;
+      vr.addEventListener("input", () => {
+        v.volume = vr.value / 100; if (+vr.value > 0) v.muted = false; draw();
+        clearTimeout(saveT); saveT = setTimeout(() => B.setWebSetting("volume", v.volume), 300);
+      });
+      vr.addEventListener("change", () => vr.blur()); // so Space and the arrow keys go back to the player
+      $("[data-mute]", p).onclick = (e) => { e.stopPropagation(); v.muted = !v.muted; if (!v.muted && v.volume === 0) v.volume = 0.5; draw(); };
+    }
     p.onclick = async (e) => {
       if (e.target.closest("[data-x]")) return p.remove();
       const a = e.target.closest("[data-a]"), s = e.target.closest("[data-s]"), qq = e.target.closest("[data-q]"), sk = e.target.closest("[data-skip]");
@@ -534,10 +597,10 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       if (e.target.closest("[data-stutter]")) { p.remove(); return fixPicture(); }
       if (e.target.closest("[data-better]")) { p.remove(); return fixSubs(true); }
       if (e.target.closest("[data-subwrong]")) {
-        if (subOn && !B.me.kids) { p.remove(); return fixSubs(); }
-        const first = $("#psSubs", p); if (first) first.scrollIntoView({ block: "start" });
-        return B.toast(subOn ? "Pick other subtitles at the top." : "Turn subtitles on at the top first.");
+        if (!subOn) return B.toast("Turn subtitles on at the top first.");
+        return $(".timing", p).classList.toggle("hidden");
       }
+      if (e.target.closest("[data-towerfix]")) { p.remove(); return fixSubs(); }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
       if (s) {
@@ -605,7 +668,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const keys = (e) => {
     if (e.target.tagName === "INPUT" || $(".shade")) return;
     const k = e.key;
-    if (k === " " || k === "k") { e.preventDefault(); v.paused ? v.play() : v.pause(); }
+    if (k === " " || k === "k") { e.preventDefault(); v.paused ? v.play() : v.pause(); return; } // play/pause set how long the controls stay
     else if (k === "ArrowLeft") { v.currentTime = Math.max(0, v.currentTime - 10); }
     else if (k === "ArrowRight") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "ArrowUp") { e.preventDefault(); v.volume = Math.min(1, v.volume + 0.1); B.setWebSetting("volume", v.volume); }
@@ -613,12 +676,13 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if (k === "j") { v.currentTime = Math.max(0, v.currentTime - 10); }
     else if (k === "l") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "f" || k === "F") full();
-    else if (k === "m" || k === "M") $("#pVol").click();
+    else if (k === "m" || k === "M") { v.muted = !v.muted; B.toast(v.muted ? "Sound off (M turns it back on)" : "Sound on"); }
     else if (k === "s" || k === "S" || k === "c" || k === "C") toggleSubs();
     else if (k === "g" || k === "G") nudgeSubs(-0.5);
     else if (k === "h" || k === "H") nudgeSubs(0.5);
     else if (k === "Enter") { const sk = $("#pSkip:not(.hidden)"); if (sk) sk.click(); else return; }
     else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
+    else if ((k === "p" || k === "P") && $("#pPv")) $("#pPv").click();
     else if (k === "e" && $("#pList")) $("#pList").click();
     else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) { v.currentTime = (total() * +k) / 10; }
     else if (k === "?" || (k === "/" && e.shiftKey)) { e.preventDefault(); showKeys(); return; }
@@ -642,7 +706,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const KEYS = [
     ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
     ["F", "Full screen"], ["M", "Sound on / off"], ["C or S", "Subtitles on / off"], ["G / H", "Subtitles earlier / later"], ["Enter", "Skip intro or credits"],
-    ["N", "Next episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
+    ["N / P", "Next / previous episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
   ];
   const showKeys = () => {
     const old = $(".player .keys-help");

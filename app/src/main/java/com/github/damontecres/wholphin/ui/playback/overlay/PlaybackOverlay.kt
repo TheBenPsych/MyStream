@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -51,7 +52,6 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Chapter
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.components.TimeDisplay
-import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.playback.AnalyticsState
 import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.CurrentPlayback
@@ -110,6 +110,34 @@ fun PlaybackOverlay(
         state = newState
     }
 
+// The name in plain words, on the one line above the bar (clean-up v4, same on TV and phone).
+    // Movies: name, then "2023 · PG-13". Episodes: the show's name, then 'S2 E5 · "Episode"'.
+    val topTitle =
+        remember(item) {
+            if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
+                item.data.seriesName?.takeIf { it.isNotBlank() } ?: item.title
+            } else {
+                item?.title
+            }
+        }
+    val topLine =
+        remember(item, live) {
+            if (live != null) {
+                live.topLine()
+            } else if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
+                listOfNotNull(
+                    item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
+                    item.data.name
+                        ?.takeIf { it.isNotBlank() && it != item.data.seriesName }
+                        ?.let { "\u201C$it\u201D" },
+                ).joinToString(" · ").ifBlank { null }
+            } else {
+                listOfNotNull(
+                    item?.data?.productionYear?.toString(),
+                    item?.data?.officialRating?.takeIf { it.isNotBlank() },
+                ).joinToString(" · ").ifBlank { null }
+            }
+        }
     Box(
         modifier = modifier,
         contentAlignment = Alignment.BottomCenter,
@@ -134,12 +162,16 @@ fun PlaybackOverlay(
                             ),
                     )
                 }
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(scrimBrush),
-            )
+            // Ben (clean-up v4): a short fade, only behind the controls at the bottom
+            Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(.36f)
+                            .background(scrimBrush),
+                )
+            }
         }
 
         AnimatedContent(
@@ -190,11 +222,14 @@ fun PlaybackOverlay(
                         },
                         currentSegment = currentSegment,
                         onChangeState = onChangeState,
+                        title = topTitle,
+                        subtitle = topLine,
                         modifier =
                             Modifier
                                 .padding(bottom = 8.dp)
                                 .onGloballyPositioned {
                                     controllerHeight = with(density) { it.size.height.toDp() }
+                                    controllerViewState.controlsHeightPx = it.size.height
                                 },
                         seekBarInteractionSource = seekBarInteractionSource,
                         chapters = chapters,
@@ -243,76 +278,6 @@ fun PlaybackOverlay(
             }
         }
 
-        // Top left: the name in plain words (Glowfin P1, same on TV and phone).
-        // Movies: name, then "2023 · PG-13". Episodes: the show's name, then 'S2 E5 · "Episode"'.
-        val topTitle =
-            remember(item) {
-                if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
-                    item.data.seriesName?.takeIf { it.isNotBlank() } ?: item.title
-                } else {
-                    item?.title
-                }
-            }
-        val topLine =
-            remember(item, live) {
-                if (live != null) {
-                    live.topLine()
-                } else if (item?.type == org.jellyfin.sdk.model.api.BaseItemKind.EPISODE) {
-                    listOfNotNull(
-                        item.data.parentIndexNumber?.let { s -> item.data.indexNumber?.let { e -> "S$s E$e" } },
-                        item.data.name
-                            ?.takeIf { it.isNotBlank() && it != item.data.seriesName }
-                            ?.let { "\u201C$it\u201D" },
-                    ).joinToString(" · ").ifBlank { null }
-                } else {
-                    listOfNotNull(
-                        item?.data?.productionYear?.toString(),
-                        item?.data?.officialRating?.takeIf { it.isNotBlank() },
-                    ).joinToString(" · ").ifBlank { null }
-                }
-            }
-        AnimatedVisibility(
-            visible = !showDebugInfo && topTitle.isNotNullOrBlank() && controllerViewState.controlsVisible,
-            enter = fadeIn(BenflixMotion.enter()),
-            exit = fadeOut(BenflixMotion.exit()),
-            modifier =
-                Modifier
-                    .align(Alignment.TopStart),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(topScrim),
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth(.7f)
-                            .padding(start = 28.dp, top = 22.dp, bottom = 40.dp),
-                ) {
-                    Text(
-                        text = topTitle.orEmpty(),
-                        color = Color.White,
-                        fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
-                        fontSize = BenflixType.rowName * 1.25f,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    topLine?.let {
-                        Text(
-                            text = it,
-                            color = Color(0xFFD6D9EC),
-                            fontSize = BenflixType.body,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
         AnimatedVisibility(
             visible = !showDebugInfo && showClock && controllerViewState.controlsVisible,
             enter = fadeIn(BenflixMotion.enter()),
@@ -361,12 +326,6 @@ fun PlaybackOverlay(
         }
     }
 }
-
-/** Soft shade at the top so the name stays readable over bright pictures */
-private val topScrim =
-    Brush.verticalGradient(
-        colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
-    )
 
 /**
  * The view state of the overlay

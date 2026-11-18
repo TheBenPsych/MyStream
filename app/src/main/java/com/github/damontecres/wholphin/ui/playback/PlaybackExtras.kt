@@ -62,6 +62,40 @@ internal suspend fun PlaybackViewModel.warmNextNearEnd(itemId: UUID) {
 }
 
 /**
+ * Benflix: finds the episode before [item] in its show (specials left out), so the player's Previous episode
+ * button can go there, or stay dimmed on the first episode
+ */
+internal fun PlaybackViewModel.findPreviousEpisode(item: BaseItemDto) {
+    mutableState.update { it.copy(previousEpisodeId = null) }
+    if (item.type != BaseItemKind.EPISODE) return
+    val seriesId = item.seriesId ?: return
+    viewModelScope.launchIO {
+        try {
+            val previous =
+                withTimeoutOrNull(RECAP_LOOKUP_MS) {
+                    val episodes =
+                        api.tvShowsApi
+                            .getEpisodes(
+                                GetEpisodesRequest(
+                                    seriesId = seriesId,
+                                    userId = serverRepository.currentUser?.id,
+                                    adjacentTo = item.id,
+                                ),
+                            ).content.items
+                            .filter { it.id == item.id || (it.parentIndexNumber ?: 0) != 0 }
+                    val index = episodes.indexOfFirst { it.id == item.id }
+                    episodes.getOrNull(index - 1)?.takeIf { index > 0 }?.id
+                }
+            mutableState.update { it.copy(previousEpisodeId = previous) }
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            Timber.v(ex, "No previous episode")
+        }
+    }
+}
+
+/**
  * Benflix: if the last episode of this show was watched more than two weeks ago,
  * a short "here's where you left off" card shows before the next one starts.
  */
