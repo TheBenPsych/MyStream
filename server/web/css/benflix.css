@@ -2218,3 +2218,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 @media (max-width: 600px) {
   .guide .ghead, .guide .grow-ch { grid-template-columns: minmax(0, 1fr); }
 }
+/* Ben 2026-11-18: no dark fade across the very top on pages that show a picture (Home / For you pages, movie and show
+   pages). The picture runs right to the top; the clock and top words get a soft shadow so they still read. */
+#page:has(#doorTop) > .top, #page:has(.tp-hero:not(.covered)) > .top { background: none; }
+.clock, .top .place { text-shadow: 0 1px 3px rgba(0,0,0,.55), 0 2px 14px rgba(0,0,0,.45); }

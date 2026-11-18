@@ -43,7 +43,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -673,15 +672,7 @@ internal fun PageBackdrop(
         }
         Box(Modifier.fillMaxSize().background(BenflixShade.topAreaSide))
         Box(Modifier.fillMaxSize().background(BenflixShade.fadeDown(brightUntil)))
-        if (overlap > 0.dp) {
-            // A light shade at the very top so the bar's words stay easy to read
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(overlap * 1.6f)
-                    .background(Brush.verticalGradient(0f to BenflixColors.Tray.copy(alpha = .55f), 1f to Color.Transparent)),
-            )
-        }
+        // Ben 2026-11-18: no dark shade across the very top; the picture runs right up, the clock has a shadow
     }
 }
 
