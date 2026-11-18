@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -387,20 +388,24 @@ private fun SeekBarDisplay(
                     strokeWidth = size.height,
                     cap = StrokeCap.Round,
                 )
-                // Chapter cuts: small dark gaps across the line
-                val gap = 3.dp.toPx()
+                // Chapter marks (approved P1 sheet): small white marks standing a little above and below the line
+                val markWidth = 2.dp.toPx()
+                val markHeight = size.height + 5.dp.toPx()
                 chapterMarks.forEach { mark ->
                     val x = size.width * mark
-                    drawRect(
-                        color = Color.Black,
-                        topLeft = Offset(x - gap / 2, 0f),
-                        size = Size(gap, size.height),
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = .7f),
+                        topLeft = Offset(x - markWidth / 2, yOffset - markHeight / 2),
+                        size = Size(markWidth, markHeight),
+                        cornerRadius = CornerRadius(markWidth / 2),
                     )
                 }
+                // The knob: white, a thin dark gap, an aqua ring and a soft violet glow
                 val knob = Offset(x = size.width.times(shownProgress), y = yOffset)
                 val knobRadius = size.height + 2
-                drawCircle(color = Glowfin.Violet.copy(alpha = .35f), radius = knobRadius + 6.dp.toPx(), center = knob)
-                drawCircle(color = Glowfin.Aqua, radius = knobRadius + 2.5.dp.toPx(), center = knob)
+                drawCircle(color = Glowfin.Violet.copy(alpha = .35f), radius = knobRadius + 7.dp.toPx(), center = knob)
+                drawCircle(color = Glowfin.Aqua, radius = knobRadius + 3.5.dp.toPx(), center = knob)
+                drawCircle(color = Color(0xFF05060D), radius = knobRadius + 1.5.dp.toPx(), center = knob)
                 drawCircle(color = Color.White, radius = knobRadius, center = knob)
             },
         )
