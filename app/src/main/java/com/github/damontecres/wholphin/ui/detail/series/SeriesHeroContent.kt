@@ -54,7 +54,6 @@ import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
-import com.github.damontecres.wholphin.ui.detail.title.TitleFacts
 import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
 import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
@@ -98,7 +97,7 @@ class SeriesHeroActions(
  * Benflix Redesign 2: a show's own page on the shared title page frame. It opens on the Episodes tab
  * (season chips and one row of wide episode pictures). Buttons: Resume S2 E4 (or Play), Episodes,
  * Trailer (greyed out when there isn't one), My List, More. Tabs: Episodes, Overview, More like this,
- * Cast, Parents' guide, Did you know. Anime shows get Characters and voices instead of Parents' guide.
+ * Cast, Parents' guide. Anime shows get Characters and voices instead of Parents' guide.
  */
 @Composable
 fun SeriesHeroContent(
@@ -229,9 +228,6 @@ fun SeriesHeroContent(
             }
             if (!anime && state.parentsGuide.isNotEmpty()) {
                 add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
-            }
-            if (state.facts.isNotEmpty()) {
-                add(TitleTab("Did you know") { scope -> TitleFacts(scope, state.facts, BenflixColors.Shows) })
             }
         }
     TitlePage(

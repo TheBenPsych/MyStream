@@ -70,7 +70,7 @@ try:  # Report card, tidy-up, night-time play test and subtitle fixer, in benfli
 except ImportError:
     care = None
 
-try:  # "Did you know" facts for every movie and show, gathered nightly, in benflix_facts.py
+try:  # Parents' guide for the web version, in benflix_facts.py ("Did you know" facts were removed)
     import benflix_facts as facts
 except ImportError:
     facts = None
@@ -1400,11 +1400,6 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "The Live TV list is still being made. Try again in about 15 minutes.")
                 with open(found[0], "rb") as f:
                     return self.send(200, f.read(), found[1])
-            if facts is not None and method == "GET" and path == "/facts/titles.txt":
-                # Every movie and show with how many facts it has, to copy into a chat (at home only)
-                if via_internet:
-                    raise HelperError(403, "This list only works at home.")
-                return self.send(200, facts.titles_text(few="few" in query).encode("utf-8"), "text/plain; charset=utf-8")
             if web is not None and method in ("GET", "HEAD") and (
                 path in ("/", "/web", "/index.html", "/sw.js", "/manifest.webmanifest") or path.startswith("/web/")
             ):
@@ -1462,7 +1457,7 @@ class Handler(BaseHTTPRequestHandler):
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
                 return self.send(status, answer)
             if path.startswith("/api/facts/"):
-                # "Did you know" facts for a movie or show page and the screensaver (anyone signed in)
+                # Parents' guide for the web version (anyone signed in). Did you know facts were removed.
                 if facts is None:
                     raise HelperError(503, "Facts aren't on the server yet. Run the Benflix setup command again.")
                 status, answer = facts.route(method, path, query, token, user_id, is_admin)

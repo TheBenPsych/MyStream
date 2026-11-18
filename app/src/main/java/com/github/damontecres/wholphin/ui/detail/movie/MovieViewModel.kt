@@ -90,7 +90,6 @@ class MovieViewModel
         private val playbackPrep: PlaybackPrep,
         private val collectionLookup: CollectionLookup,
         private val parentsGuide: ParentsGuide,
-        private val funFacts: com.github.damontecres.wholphin.services.BenflixFunFacts,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -173,11 +172,6 @@ class MovieViewModel
                 viewModelScope.launchIO {
                     val guide = parentsGuide.guideFor(movie.data)
                     if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
-                }
-                // Benflix "Did you know" facts that cycle on the page
-                viewModelScope.launchIO {
-                    val facts = funFacts.forItem(movie)
-                    if (facts.isNotEmpty()) _state.update { it.copy(facts = facts) }
                 }
                 // Benflix redesign: "Part 1 of 3" and the "In this collection" row
                 viewModelScope.launchIO {
@@ -386,8 +380,6 @@ data class MovieState(
     val collection: MovieCollection? = null,
     /** Benflix "Parents' guide" (empty = none) */
     val parentsGuide: List<ParentsGuideLine> = emptyList(),
-    /** Benflix "Did you know" facts about this title (empty = none, so the spot isn't shown) */
-    val facts: List<String> = emptyList(),
 ) {
     val movie: BaseItem? = (loading as? DataLoadingState.Success<BaseItem>)?.data
 }
