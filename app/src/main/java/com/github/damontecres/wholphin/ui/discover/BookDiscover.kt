@@ -423,7 +423,7 @@ private fun AskCover(
     }
 }
 
-/** Top 10: a tall outlined number tucked half behind the cover (like Movies and Shows) */
+/** Top 10 (Glowfin T1): the glowing number fully beside the cover, in an equal-width box */
 @Composable
 private fun Top10Book(
     rank: Int,
@@ -432,30 +432,8 @@ private fun Top10Book(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
-    var focused by remember { mutableStateOf(false) }
-    val coverHeight = width / BOOK_RATIO
-    val numberHeight = coverHeight * 0.9f
-    val numberSize = with(LocalDensity.current) { numberHeight.toSp() }
-    val pull = if (rank.toString().startsWith("1")) -numberHeight * 0.08f else 0.dp
-    Row(verticalAlignment = Alignment.Top) {
-        Text(
-            text = rank.toString(),
-            style =
-                TextStyle(
-                    fontSize = numberSize,
-                    fontFamily = BenflixTitleFont,
-                    lineHeight = numberSize,
-                    letterSpacing = (-1).sp,
-                    drawStyle = Stroke(width = 5f, join = StrokeJoin.Round),
-                ),
-            color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.offset(x = pull, y = coverHeight * 0.12f),
-        )
-        Box(Modifier.offset(x = pull - width * 0.2f).onFocusChanged { focused = it.hasFocus }) {
-            AskCover(c, width, ranked = false, onClick = onClick, onLongClick = onLongClick)
-        }
+    com.github.damontecres.wholphin.ui.components.GlowRanked(rank = rank, posterHeight = width / BOOK_RATIO) {
+        AskCover(c, width, ranked = false, onClick = onClick, onLongClick = onLongClick)
     }
 }
 

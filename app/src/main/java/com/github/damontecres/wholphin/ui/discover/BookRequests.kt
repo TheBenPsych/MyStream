@@ -300,7 +300,7 @@ fun BooksShelf(
         }
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
     val pickedKey =
-        picked?.takeIf { p -> p == PICK_YOURS || p == PICK_WAITING || bookLists.any { it.key == p } } ?: bookLists.firstOrNull()?.key ?: ""
+        picked?.takeIf { p -> bookLists.any { it.key == p } } ?: bookLists.firstOrNull()?.key ?: ""
     var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }
     val waitingIds = r.waiting.map { it.id }.toSet()
     val yours = (if (admin) r.mine + r.mangaToAdd + r.others else r.mine).distinctBy { it.id }.filter { it.id !in waitingIds }
@@ -519,67 +519,80 @@ private fun BookWall(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(books.size, key = { "${list.key}-$it-${books[it].key}" }) { i ->
-            val c = books[i]
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box {
-                    Surface(
-                        onClick = { onOpen(c) },
-                        onLongClick = { onAsk(c) },
-                        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
-                        colors =
-                            ClickableSurfaceDefaults.colors(
-                                containerColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                            ),
-                        border = doorFocusBorder(BenflixShapes.Card),
-                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(BOOK_RATIO)
-                                .onFocusChanged { if (it.isFocused) onFocus(c) },
-                    ) {
-                        BookCoverImage(c.cover, c.name, Modifier.fillMaxSize(), audio = c.audioOnly)
-                    }
-                    if (list.ranked && i < 10) {
-                        Text(
-                            "No. ${i + 1}",
-                            color = BenflixColors.Tray,
-                            fontSize = BenflixType.tag,
-                            fontWeight = FontWeight.ExtraBold,
-                            modifier =
-                                Modifier
-                                    .padding(6.dp)
-                                    .background(BenflixColors.Text, BenflixShapes.Pill)
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                        )
+        // Glowfin Top 10 rule: the first ten sit in one row, each number fully beside its cover
+        val top = if (list.ranked) books.take(10) else emptyList()
+        if (top.isNotEmpty()) {
+            item(key = "${list.key}-top10", span = { GridItemSpan(maxLineSpan) }) {
+                val w = if (isTv) 110.dp else 92.dp
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(count = top.size, key = { "${list.key}-top-$it-${top[it].key}" }) { i ->
+                        com.github.damontecres.wholphin.ui.components.GlowRanked(rank = i + 1, posterHeight = w / BOOK_RATIO) {
+                            BookWallTile(top[i], onOpen, onAsk, onFocus, Modifier.width(w))
+                        }
                     }
                 }
-                Text(
-                    c.name,
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val asked = c.asked?.let { bookPill("", it) }
-                Text(
-                    asked?.words ?: if (c.have != null) "Ready to read" else c.award ?: c.author,
-                    color = asked?.color ?: BenflixColors.Muted,
-                    fontSize = BenflixType.tag,
-                    fontWeight = if (asked != null) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
+        }
+        val rest = books.drop(top.size)
+        items(rest.size, key = { "${list.key}-$it-${rest[it].key}" }) { i ->
+            BookWallTile(rest[i], onOpen, onAsk, onFocus)
         }
         if (owned > 0) {
             item(key = "${list.key}-owned", span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.padding(top = 8.dp)) { OwnedMoreButton(owned, ownedOpen, onOwned) }
             }
         }
+    }
+}
+
+/** One cover on the Books wall, its name and state under it */
+@Composable
+private fun BookWallTile(
+    c: BookCard,
+    onOpen: (BookCard) -> Unit,
+    onAsk: (BookCard) -> Unit,
+    onFocus: (BookCard) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
+        Box {
+            Surface(
+                onClick = { onOpen(c) },
+                onLongClick = { onAsk(c) },
+                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                    ),
+                border = doorFocusBorder(BenflixShapes.Card),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(BOOK_RATIO)
+                        .onFocusChanged { if (it.isFocused) onFocus(c) },
+            ) {
+                BookCoverImage(c.cover, c.name, Modifier.fillMaxSize(), audio = c.audioOnly)
+            }
+        }
+        Text(
+            c.name,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val asked = c.asked?.let { bookPill("", it) }
+        Text(
+            asked?.words ?: if (c.have != null) "Ready to read" else c.award ?: c.author,
+            color = asked?.color ?: BenflixColors.Muted,
+            fontSize = BenflixType.tag,
+            fontWeight = if (asked != null) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

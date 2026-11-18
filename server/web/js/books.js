@@ -411,8 +411,8 @@
       return out;
     };
     const reqLine = (r, answer) => ({
-      title: r.name, sub: [admin ? r.who : "", r.author, r.state === "manga" ? "manga" : (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r),
-      acts: answer ? `<button class="btn small white" data-yes="${esc(r.id)}">Approve</button><button class="btn small" data-no="${esc(r.id)}">Decline</button>`
+      title: r.name, sub: [admin ? r.who : "", r.author, r.state === "manga" ? "manga" : (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r), who: answer && admin ? r.who || "" : "",
+      acts: answer ? `<button class="btn small white" data-yes="${esc(r.id)}">Yes</button><button class="btn small" data-no="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : ""}${r.canRetry ? `<button class="btn small" data-retry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-forget="${esc(r.id)}">${B.I("x")}</button>`,
     });
     const draw = () => {
@@ -447,7 +447,7 @@
         ? `<div class="rqline bq-line"><a class="cv" href="${aboutHref(hero)}" style="${hero.cover ? `background-image:url('${esc(outPic(hero.cover))}')` : ""}"></a><div class="grow"><div class="kick" style="color:${LIME}">BOOK OF THE WEEK · #1 NYT FICTION</div>
           <b>${esc([hero.name, hero.author, hero.year, hero.line].filter(Boolean).join(" · "))}</b></div>${hero.have ? "" : hero.asked ? B.rqPillHtml(B.bookPill({ state: "", words: hero.asked })) : `<button class="btn small white" data-bq="${esc(hero.key)}">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`}</div>`
         : `<div class="rqline" id="bline"> </div>`;
-      wall.innerHTML = notes + line + `<div class="grid">${shown.map((c, i) => BQ.card(c, false).replace(/<\/div>\s*<div class="cap">/, cur.ranked && i < 10 ? `<span class="rqrank">${i + 1}</span></div><div class="cap">` : `</div><div class="cap">`)).join("")}</div>${B.rqOwned(owned, ownedOpen === cur.id)}`;
+      wall.innerHTML = notes + line + `${B.rqGrid(shown.map((c) => BQ.card(c, false)), !!cur.ranked)}${B.rqOwned(owned, ownedOpen === cur.id)}`;
     };
     const lists = async () => {
       try { req = await api("GET", "requests"); } catch (e) { if (!req) B.toast(e.message); }

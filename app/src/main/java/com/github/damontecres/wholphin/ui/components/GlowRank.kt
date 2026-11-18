@@ -1,8 +1,11 @@
 package com.github.damontecres.wholphin.ui.components
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -87,3 +90,22 @@ private const val RANK_BOX_SHARE = 1.0f
 
 /** The gap between a number and its poster */
 val RankGap = 6.dp
+
+/**
+ * A Top 10 poster with its [GlowRankNumber] fully beside it, in the number's equal-width box (Ben's rule).
+ * [posterHeight] is the picture's height (not counting any name under it), so the number's foot lines up
+ * with the picture's bottom edge.
+ */
+@Composable
+fun GlowRanked(
+    rank: Int,
+    posterHeight: Dp,
+    modifier: Modifier = Modifier,
+    poster: @Composable () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.Top, modifier = modifier) {
+        GlowRankNumber(rank = rank, posterHeight = posterHeight)
+        Spacer(Modifier.width(RankGap))
+        poster()
+    }
+}

@@ -515,7 +515,7 @@ private fun MusicShelfContent(viewModel: MusicRequestsViewModel) {
         }
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
     val pickedKey =
-        picked?.takeIf { p -> p == PICK_YOURS || p == PICK_WAITING || lists.any { it.key == p } } ?: lists.firstOrNull()?.key ?: ""
+        picked?.takeIf { p -> lists.any { it.key == p } } ?: lists.firstOrNull()?.key ?: ""
     var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }
     val all = s?.requests.orEmpty()
     val waiting = if (admin) all.filter { it.waiting } else emptyList()
@@ -794,66 +794,27 @@ private fun MusicWall(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(tiles.size, key = { "$listKey-${tiles[it].key}-$it" }) { i ->
-            val t = tiles[i]
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box {
-                    Surface(
-                        onClick = t.onClick,
-                        onLongClick = t.onLongClick,
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
-                        colors =
-                            ClickableSurfaceDefaults.colors(
-                                containerColor = BenflixColors.Raised,
-                                focusedContainerColor = BenflixColors.Raised,
-                            ),
-                        border = doorFocusBorder(RoundedCornerShape(10.dp)),
-                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .onFocusChanged { if (it.isFocused) onFocusLine(t.focusLine) },
-                    ) {
-                        AsyncImage(
-                            model = t.cover,
-                            contentDescription = t.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+        // Glowfin Top 10 rule: the first ten sit in one row, each number fully beside its cover
+        val top = tiles.filter { (it.rank ?: Int.MAX_VALUE) <= 10 }
+        if (top.isNotEmpty()) {
+            item(key = "$listKey-top10", span = {
+                androidx.compose.foundation.lazy.grid
+                    .GridItemSpan(maxLineSpan)
+            }) {
+                val w = if (isTv) 120.dp else 96.dp
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(count = top.size, key = { "$listKey-top-${top[it].key}-$it" }) { i ->
+                        val t = top[i]
+                        com.github.damontecres.wholphin.ui.components.GlowRanked(rank = t.rank ?: i + 1, posterHeight = w) {
+                            MusicWallTile(t.copyWithoutRank(), onFocusLine, Modifier.width(w))
+                        }
                     }
-                    t.rank?.let { n ->
-                        Text(
-                            text = "No. $n",
-                            fontSize = BenflixType.tag,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = BenflixColors.Tray,
-                            modifier =
-                                Modifier
-                                    .padding(6.dp)
-                                    .background(BenflixColors.Text, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 1.dp),
-                        )
-                    }
-                }
-                Text(
-                    text = t.name,
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.Bold,
-                    color = BenflixColors.Text,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!t.line.isNullOrBlank()) {
-                    Text(
-                        text = t.line,
-                        fontSize = BenflixType.tag,
-                        color = BenflixColors.Muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
             }
+        }
+        val rest = tiles.drop(top.size)
+        items(rest.size, key = { "$listKey-${rest[it].key}-$it" }) { i ->
+            MusicWallTile(rest[i], onFocusLine)
         }
         if (owned > 0) {
             item(key = "$listKey-owned", span = {
@@ -865,6 +826,75 @@ private fun MusicWall(
         }
     }
 }
+
+/** One square cover on the music wall, its name and line under it */
+@Composable
+private fun MusicWallTile(
+    t: WallTile,
+    onFocusLine: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
+        Box {
+            Surface(
+                onClick = t.onClick,
+                onLongClick = t.onLongClick,
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = BenflixColors.Raised,
+                        focusedContainerColor = BenflixColors.Raised,
+                    ),
+                border = doorFocusBorder(RoundedCornerShape(10.dp)),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .onFocusChanged { if (it.isFocused) onFocusLine(t.focusLine) },
+            ) {
+                AsyncImage(
+                    model = t.cover,
+                    contentDescription = t.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            t.rank?.let { n ->
+                Text(
+                    text = "No. $n",
+                    fontSize = BenflixType.tag,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = BenflixColors.Tray,
+                    modifier =
+                        Modifier
+                            .padding(6.dp)
+                            .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                )
+            }
+        }
+        Text(
+            text = t.name,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            color = BenflixColors.Text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!t.line.isNullOrBlank()) {
+            Text(
+                text = t.line,
+                fontSize = BenflixType.tag,
+                color = BenflixColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun WallTile.copyWithoutRank() = WallTile(key, cover, name, line, focusLine, onClick, null, onLongClick)
 
 /** Discover: Top songs, New releases, Top albums, Top artists and Genres (for everything, or one genre) */
 private fun LazyListScope.discoverRows(

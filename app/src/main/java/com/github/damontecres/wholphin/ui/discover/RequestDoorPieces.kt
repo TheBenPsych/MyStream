@@ -163,9 +163,10 @@ fun RequestPreview(
                 Text(
                     text = item.title.orEmpty(),
                     color = BenflixColors.Text,
+                    fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
                     fontSize = BenflixType.pageTitle,
                     lineHeight = BenflixType.pageTitle * 1.15f,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -221,12 +222,17 @@ fun RequestDoorRow(
     cornerNoteFor: (DiscoverItem) -> String? = { null },
     subtitleFor: (DiscoverItem) -> String? = { null },
     ranked: Boolean = false,
+    /** Anything after the posters, like "3 more are already on Glowfin" */
+    trailing: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null,
+    /** Phones: names under the posters (TV shows the name in the top area) */
+    namesOnTv: Boolean = false,
 ) {
     val first = remember { FocusRequester() }
     Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
             text = title,
             color = BenflixColors.Text,
+            fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
             fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -245,7 +251,7 @@ fun RequestDoorRow(
                     RequestPoster(
                         item = item,
                         width = if (isTv) 120.dp else 104.dp,
-                        showName = !isTv,
+                        showName = !isTv || namesOnTv,
                         subtitle = subtitleFor(item),
                         cornerNote = cornerNoteFor(item),
                         onClick = { onClick(item) },
@@ -260,40 +266,20 @@ fun RequestDoorRow(
                     poster(Modifier)
                 }
             }
+            trailing?.invoke(this)
         }
     }
 }
 
-/** Top 10: a tall outlined number tucked half behind the poster (like the Books page and the doors) */
+/** Top 10 (Glowfin T1): the glowing number fully beside the poster, in an equal-width box */
 @Composable
 private fun RankedPoster(
     rank: Int,
     width: Dp,
     poster: @Composable (Modifier) -> Unit,
 ) {
-    var focused by remember { mutableStateOf(false) }
-    val posterHeight = width / POSTER_RATIO
-    val numberHeight = posterHeight * 0.8f
-    val numberSize = with(LocalDensity.current) { numberHeight.toSp() }
-    Row(verticalAlignment = Alignment.Top) {
-        Text(
-            text = rank.toString(),
-            style =
-                TextStyle(
-                    fontSize = numberSize,
-                    fontFamily = BenflixTitleFont,
-                    lineHeight = numberSize,
-                    letterSpacing = (-1).sp,
-                    drawStyle = Stroke(width = 5f, join = StrokeJoin.Round),
-                ),
-            color = if (focused) BenflixColors.Text else Color(0xFF5A5E6A),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.offset(y = posterHeight * 0.2f),
-        )
-        Box(Modifier.offset(x = -width * 0.18f).onFocusChanged { focused = it.hasFocus }) {
-            poster(Modifier)
-        }
+    com.github.damontecres.wholphin.ui.components.GlowRanked(rank = rank, posterHeight = width / POSTER_RATIO) {
+        poster(Modifier)
     }
 }
 
