@@ -556,7 +556,66 @@
       Object.defineProperty(o, "lights", { enumerable: true, get: () => [blade()] });
       return o;
     })(),
-    make("stpatricks", is("spOn"), true, ["#0F2A17", "#08170D"], ["#2E9E5B", "#7BD389", "#E8C15A"], "St. Patrick's pick", { countdown: cd(() => B.sp), pickTags: ["ireland"], pickWords: ["Irish"] }),
+    // St. Patrick's Day: charms for the door icons, bunting and a shamrock patch on Home (same as the app's StPatricksNav.kt)
+    make("stpatricks", is("spOn"), true, ["#0E2B1D", "#081710"], ["#3DBE6C", "#E2B33C", "#F3F0E4"], "St. Patrick's pick", Object.assign({ countdown: cd(() => B.sp), pickTags: ["ireland"], pickWords: ["Irish", "Ireland", "Brooklyn", "The Quiet Man", "The Commitments", "Sing Street", "The Secret of Kells", "Song of the Sea", "Wolfwalkers"] }, (() => {
+      const G = "#E2B33C", GD = "#8A6414", CL = "#3DBE6C", CLL = "#5FD889", EM = "#16603A", EMD = "#0B3A22", CR = "#F3F0E4";
+      let seed = 7;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const leaf = (fill, vein) => `<path d="M0 0C-7 -4 -11 -12 -6 -16.5C-2.5 -19 0 -16 0 -13.5C0 -16 2.5 -19 6 -16.5C11 -12 7 -4 0 0Z" fill="${fill}" stroke="${EMD}" stroke-width=".9"/>${vein ? '<path d="M0 -1.5V-12M-3.5 -14q-2 1.5 -2.5 4" stroke="#fff" stroke-opacity=".4" stroke-width=".85" fill="none" stroke-linecap="round"/>' : ""}`;
+      // a shamrock whose stem meets the ground at x,y (the outer group places it, the inner one sways)
+      const shamrock = (x, y, s, lean, fill, vein, sway) => `<g transform="translate(${x.toFixed(1)} ${y}) scale(${s.toFixed(2)})"><g class="${sway ? "spn-grass" : ""}" style="animation-delay:-${(rnd() * 4).toFixed(2)}s"><g transform="rotate(${lean.toFixed(1)})"><path d="M0 0C2 -8 -1 -14 0 -20" stroke="${EM}" stroke-width="2" fill="none" stroke-linecap="round"/><g transform="translate(0 -20)">${[0, 120, 240].map((a) => `<g transform="rotate(${a})">${leaf(fill, vein)}</g>`).join("")}<circle r="1.6" fill="${EM}"/></g></g></g></g>`;
+      const css = "<style>.spn-sway{transform-box:fill-box;transform-origin:50% 0;animation:spnSway 3.6s ease-in-out infinite}@keyframes spnSway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}.spn-grass{transform-box:fill-box;transform-origin:50% 100%;animation:spnGrass 4.4s ease-in-out infinite}@keyframes spnGrass{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}.sp-trim.top:has(.spn-sway){right:auto;max-width:none;height:max(34px,5vw);width:calc(max(34px,5vw) * 20)}.sp-trim.bottom:has(.spn-grass){max-width:none;height:max(30px,3.4vw);width:calc(max(30px,3.4vw) * 30)}.home:has(.spn-grass){overflow-x:clip}@media (min-width:761px){.sp-trim.top:has(.spn-sway){top:var(--bar)}}</style>";
+      // Bunting: green, white and gold cloth flags in swags across the top (1200 x 60), hung just below the greeting and
+      // clock line on wide screens so it never crowds them. The trims keep their shape on
+      // every screen: they grow with the screen's width and the far end is cut off rather than squashed
+      const bunting = () => {
+        const W = 1200, swags = 3, sw = W / swags, cols = [EM, CR, G];
+        let out = css + `<defs><linearGradient id="spnShade" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient></defs>`;
+        let k = 0;
+        for (let s = 0; s < swags; s++) {
+          const x0 = s * sw, sag = 18;
+          out += `<path d="M${x0} 5Q${x0 + sw / 2} ${5 + sag * 2} ${x0 + sw} 5" stroke="#D9CFB2" stroke-width="1.6" fill="none"/>`;
+          const n = Math.round(sw / 32);
+          for (let i = 0; i < n; i++) {
+            const t = (i + 0.5) / n, x = x0 + t * sw, y = 5 + sag * 4 * t * (1 - t), ang = Math.atan2(sag * 4 * (1 - 2 * t), sw) * 57.3;
+            const c = cols[k++ % 3], white = c === CR;
+            out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang.toFixed(1)})"><g class="spn-sway" style="animation-delay:-${((i * 0.37 + s) % 3.6).toFixed(2)}s"><path d="M-13 0L13 0L0 34Z" fill="${c}"/><path d="M-13 0L13 0L0 34Z" fill="url(#spnShade)"/><path d="M-13 0H13V3.5H-13Z" fill="#000" fill-opacity=".22"/><path d="M-10.5 6H10.5" stroke="${white ? "#B9AE8C" : "#fff"}" stroke-opacity="${white ? 1 : 0.4}" stroke-width=".8" stroke-dasharray="2 1.6"/>${white ? `<g transform="translate(0 21) scale(.4)">${shamrock(0, 0, 1, 0, CL, false, false)}</g>` : ""}</g></g>`;
+          }
+          out += `<circle cx="${x0}" cy="5" r="3" fill="${G}" stroke="${GD}"/>`;
+        }
+        return out + `<circle cx="${W}" cy="5" r="3" fill="${G}" stroke="${GD}"/>`;
+      };
+      // Shamrock patch along the bottom (drawn 1920 x 64, shrunk to the kit's 1200 x 40), kept low so the news cards
+      // floating just above it never hide the tops. Each shamrock and flower is
+      // drawn once and reused, and only the front row moves, so old TVs' browsers keep up.
+      const patch = () => {
+        const W = 1920;
+        const stem = `<path d="M0 0C2 -8 -1 -14 0 -20" stroke="${EM}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+        const head = (fill, vein) => `${stem}<g transform="translate(0 -20)">${[0, 120, 240].map((a) => `<g transform="rotate(${a})">${leaf(fill, vein)}</g>`).join("")}<circle r="1.6" fill="${EM}"/></g>`;
+        let pet = "";
+        for (let i = 0; i < 22; i++) {
+          const a = i * 2.4, r = (i % 3 + 2) * 1.3, px = (Math.cos(a) * r).toFixed(1), py = (Math.sin(a) * r * 0.9).toFixed(1);
+          pet += `<ellipse cx="${px}" cy="${py}" rx="1.5" ry="2.6" transform="rotate(${(a * 57).toFixed(0)} ${px} ${py})" fill="${i % 5 ? "#F7F5EE" : "#F2D9DF"}"/>`;
+        }
+        const defs = `<defs><linearGradient id="spnLeaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${EM}"/><stop offset="1" stop-color="${CLL}"/></linearGradient><g id="spnBack">${head("#1F6E3E", false)}</g><g id="spnFront">${head("url(#spnLeaf)", true)}</g><g id="spnFlower"><path d="M0 0C2 -10 -1 -20 0 -28" stroke="${EM}" stroke-width="1.6" fill="none"/><g transform="translate(0 -31)"><circle r="5.6" fill="#C9C3B0"/>${pet}</g></g></defs>`;
+        const put = (id, x, y, sc, lean, move) => `<g transform="translate(${x.toFixed(0)} ${y}) scale(${sc.toFixed(2)})">${move ? `<g class="spn-grass" style="animation-delay:-${(rnd() * 4).toFixed(1)}s">` : "<g>"}<use href="#${id}" transform="rotate(${lean.toFixed(0)})"/></g></g>`;
+        let back = "", front = "", fl = "";
+        for (let x = 4; x < W; x += 12 + rnd() * 8) back += put("spnBack", x, 64, (0.45 + rnd() * 0.35) * 0.9, -25 + rnd() * 50, false);
+        for (let x = 40; x < W; x += 90 + rnd() * 80) fl += put("spnFlower", x, 66, 0.5 + rnd() * 0.25, 0, true);
+        for (let x = 10; x < W; x += 16 + rnd() * 12) front += put("spnFront", x, 66, 0.5 + rnd() * 0.4, -20 + rnd() * 40, true);
+        return css + defs + `<g transform="scale(.625)">${back}${fl}${front}</g>`;
+      };
+      const charm = (door) => `<image href="web/img/sp/sp_icon_${door}.png" x="-3" y="-3" width="30" height="30"/>`;
+      return {
+        icons: {
+          home: `<path d="M3 11l9-7 9 7M5 10v10h14V10" stroke="${CL}" fill="none"/><path d="M10 20v-5h4v5" stroke="${G}" fill="none"/>`,
+          search: `<circle cx="11" cy="11" r="6" stroke="${G}" fill="none"/><path d="M15.5 15.5L20 20" stroke="${G}" stroke-width="2.2"/>`,
+          movies: charm("movies"), shows: charm("shows"), live: charm("live"), games: charm("games"), music: charm("music"), books: charm("books"),
+        },
+        topTrim: bunting(),
+        bottomTrim: patch(),
+      };
+    })())),
     july4(),
     NY(make("newyear", is("nyOn"), true, ["#16224A", "#0B1230"], ["#E8B84A", "#C9D1DE"], "New Year pick", { countdown: cd(() => B.ny) })),
     // Thanksgiving (approved 2026-11-17, sheet nav-13b g2-swag): harvest-brown rail, the rail icons themselves in

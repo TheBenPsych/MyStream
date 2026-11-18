@@ -231,6 +231,12 @@ img/sp/sp_charm_live.png
 img/sp/sp_charm_movies.png
 img/sp/sp_charm_music.png
 img/sp/sp_charm_shows.png
+img/sp/sp_icon_books.png
+img/sp/sp_icon_games.png
+img/sp/sp_icon_live.png
+img/sp/sp_icon_movies.png
+img/sp/sp_icon_music.png
+img/sp/sp_icon_shows.png
 img/sp/sp_coin.png
 img/sp/sp_knob.png
 img/sp/sp_mark_hat.png
