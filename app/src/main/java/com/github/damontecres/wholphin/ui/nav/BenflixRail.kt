@@ -456,9 +456,20 @@ fun BenflixRail(
                                     quiet = false
                                 } else if (came && !model.alwaysOpen) {
                                     // (an arrow pressed just before picking the page doesn't count: only one after it)
+                                    val now = android.os.SystemClock.uptimeMillis()
                                     val asked =
-                                        (LastRemoteKey.movedRecently() && LastRemoteKey.moveAt > leftAt) ||
-                                            android.os.SystemClock.uptimeMillis() - invitedAt < INVITE_MS
+                                        if (now - leftAt < SETTLE_MS) {
+                                            // Ben 2026-11-18: the menu sometimes stayed open after picking a page. While
+                                            // the new page is still loading, the focus has nowhere to go, so pressing
+                                            // Down (to reach the first row) or a ☰ Menu press from just before the pick
+                                            // landed it on the menu, which then opened. Now only Left, or ☰ Menu pressed
+                                            // after the pick, opens it while the page loads.
+                                            (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
+                                                (invitedAt > leftAt && now - invitedAt < INVITE_MS)
+                                        } else {
+                                            (LastRemoteKey.movedRecently() && LastRemoteKey.moveAt > leftAt) ||
+                                                now - invitedAt < INVITE_MS
+                                        }
                                     quiet = !asked
                                     if (!asked) strays++
                                 }
@@ -474,12 +485,12 @@ fun BenflixRail(
                                     if (event.type == KeyEventType.KeyDown) contentFocus.tryRequestFocus()
                                     true
                                 } else if (quiet && !model.alwaysOpen) {
-                                    // The menu is tucked away but holding the focus while a page loads: Left, Up
-                                    // or Down opens it on the page you're in; OK goes to the page instead of
-                                    // pressing a button you can't see
+                                    // The menu is tucked away but holding the focus while a page loads: Left opens
+                                    // it on the page you're in; Up, Down and OK go to the page instead (Ben
+                                    // 2026-11-18: pressing Down to reach the first row opened the menu)
                                     if (event.type == KeyEventType.KeyDown) {
                                         when (event.key) {
-                                            Key.DirectionLeft, Key.DirectionUp, Key.DirectionDown -> focusCurrent()
+                                            Key.DirectionLeft -> focusCurrent()
                                             else -> contentFocus.tryRequestFocus()
                                         }
                                     }
@@ -1111,10 +1122,13 @@ private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
 private const val DIM = .66f
 private const val STRAY_RETRY_MS = 150L
-private const val STRAY_TRIES = 40
+private const val STRAY_TRIES = 54
 
 /** How long after ☰ Menu (or the menu's own focus calls) the focus arriving on the menu counts as wanted */
 private const val INVITE_MS = 900L
+
+/** After picking a page, how long the menu treats focus landing on it as "fell here" unless Left was pressed */
+private const val SETTLE_MS = 8_000L
 private const val TIP_PREFS = "benflix_rail_tip"
 private const val TIP_DELAY_MS = 2500L
 private const val TIP_SHOW_MS = 7000L
