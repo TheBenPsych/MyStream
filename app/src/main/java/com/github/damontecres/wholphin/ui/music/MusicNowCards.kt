@@ -140,7 +140,7 @@ fun AboutPanel(
             if (viewModel.canAsk) {
                 AboutCard("Songs like this to ask for") {
                     Text(
-                        "Songs like this one that aren't on Benflix yet. Play 30 seconds of each, then ask for the ones you like.",
+                        "Songs like this one that aren't on Glowfin yet. Play 30 seconds of each, then ask for the ones you like.",
                         fontSize = BenflixType.small,
                         color = BenflixColors.Soft,
                     )
@@ -201,7 +201,7 @@ fun MusicPlayOnDialog(
                 else -> {
                     if (list.isEmpty()) {
                         Text(
-                            "No other screen found. Open Benflix on the TV (any page), then try again.",
+                            "No other screen found. Open Glowfin on the TV (any page), then try again.",
                             fontSize = BenflixType.body,
                             color = BenflixColors.Soft,
                         )

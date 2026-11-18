@@ -39,7 +39,7 @@ enum class BenflixTipId(
 ) {
     HOME_TV("Deep in the rows? Press Back to jump to the top, and again for the menu."),
     HOME_PHONE("Scroll down for more rows. The bar at the bottom takes you anywhere."),
-    SEARCH("Search can find any movie, show or actor. Not on Benflix yet? You can ask for it."),
+    SEARCH("Search can find any movie, show or actor. Not on Glowfin yet? You can ask for it."),
     SKIP_INTRO("See Skip intro in the corner? Press OK on it to jump past the opening song."),
 }
 

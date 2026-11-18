@@ -152,7 +152,7 @@ fun ChannelSchedule.group(): String =
         LiveTvGroups.lastOrNull { number >= it.first }?.second ?: "Live TV"
     }
 
-const val BENFLIX_GROUP = "Benflix channels"
+const val BENFLIX_GROUP = "Glowfin channels"
 
 /** The starred channels' tile on the Channels page */
 const val FAVOURITES_GROUP = "Favourites"

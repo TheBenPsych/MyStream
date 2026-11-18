@@ -56,7 +56,7 @@
     if (isSunday(d)) {
       const n = hunt.found(d).length;
       if (n >= 6) return "The golden egg is open. Happy Easter!";
-      return n ? `${n} of 6 eggs found` : "Six eggs are hidden around Benflix today";
+      return n ? `${n} of 6 eggs found` : "Six eggs are hidden around Glowfin today";
     }
     const n = Math.round((easterSunday(d.getFullYear()) - dayOf(d)) / 864e5);
     return n === 1 ? "1 day to Easter" : n > 1 ? `${n} days to Easter` : "";

@@ -1341,7 +1341,7 @@ private fun FinishStep(
         color = Color.White,
         textAlign = TextAlign.Center,
     )
-    Text("Opening Benflix…", fontSize = BenflixType.lead, color = BenflixColors.Muted)
+    Text("Opening Glowfin…", fontSize = BenflixType.lead, color = BenflixColors.Muted)
 }
 
 /** How long "All set" shows before Home opens */
@@ -1357,7 +1357,7 @@ private fun BroughtOverStep(viewModel: WelcomeViewModel) {
     val subtitles by viewModel.subtitles.collectAsState()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    StepTitle("We brought your settings over", "Benflix has a new look. Here's what you picked before.")
+    StepTitle("We brought your settings over", "Glowfin has a new look. Here's what you picked before.")
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =

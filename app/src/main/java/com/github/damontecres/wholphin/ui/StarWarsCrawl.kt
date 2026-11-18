@@ -129,7 +129,7 @@ fun StarWarsCrawl(onDone: () -> Unit) {
         }
         // 0 to 3 s: the blue line
         Text(
-            text = "A short time ago, on a Benflix not so far away….",
+            text = "A short time ago, on a Glowfin not so far away….",
             color = IntroBlue,
             fontFamily = StarWarsFont,
             fontSize = (w * .022f).coerceIn(13f, 24f).sp,
@@ -238,6 +238,6 @@ fun StarWarsCrawl(onDone: () -> Unit) {
 private val CRAWL =
     listOf(
         "It is a time of popcorn. Brave viewers, settled on their couch, have won their first free evening in weeks.",
-        "During the battle for the remote, the family found every film of the saga, waiting on Benflix.",
+        "During the battle for the remote, the family found every film of the saga, waiting on Glowfin.",
         "Pursued by snacks and blankets, everyone races home to press Play….",
     )

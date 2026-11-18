@@ -834,7 +834,7 @@ class HomeDoorsViewModel
                     image = item?.posterUrl ?: entry.posterUrl,
                     destination = null,
                     news = true,
-                    fullText = "$why If one turns up, it'll come to Benflix by itself.$note",
+                    fullText = "$why If one turns up, it'll come to Glowfin by itself.$note",
                     goTo = ("See details" to (item?.destination ?: Destination.Requests)),
                     at =
                         day
@@ -901,7 +901,7 @@ class HomeDoorsViewModel
             return listOf(
                 HomeRow(
                     id = "update-$version",
-                    kind = "Benflix update",
+                    kind = "Glowfin update",
                     title = "A new version is ready to install",
                     kindColor = HomeKind.Other,
                     image = null,

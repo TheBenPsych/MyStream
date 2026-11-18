@@ -140,7 +140,7 @@ class BenflixSeerrLink
                     Request
                         .Builder()
                         .url("$base/JellyfinEnhanced/jellyseerr/user-status")
-                        .header("Authorization", "MediaBrowser Client=\"Benflix\", Token=\"$token\"")
+                        .header("Authorization", "MediaBrowser Client=\"Glowfin\", Token=\"$token\"")
                         .build()
                 val body =
                     withContext(Dispatchers.IO) {

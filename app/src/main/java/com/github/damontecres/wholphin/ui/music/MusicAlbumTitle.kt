@@ -175,7 +175,7 @@ fun AlbumTitlePage(
                 add(
                     TitleTab("Similar albums") { scope ->
                         AlbumRow(
-                            title = "Similar albums on Benflix",
+                            title = "Similar albums on Glowfin",
                             albums = state.similar,
                             side = scope.side,
                             size = if (scope.wide) 120.dp else 108.dp,

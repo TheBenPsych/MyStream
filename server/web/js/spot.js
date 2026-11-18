@@ -3,7 +3,7 @@
    ("Because you watched Dune"), the name, a short line, Play and More info, and dots. It slides to the next pick
    every 10 seconds until you press or click anything. Play within a second of a slide plays the pick you were
    looking at. Right arrow past More info goes to the next pick; on phones you swipe.
-   Picks: Ben's picks on Kids; otherwise "Because you watched ..." movies and shows mixed with New on Benflix.
+   Picks: Ben's picks on Kids; otherwise "Because you watched ..." movies and shows mixed with New on Glowfin.
    They're kept for a few hours so Home opens straight away, then made fresh.
    Everything sits in one closure: the web scripts share one scope, so nothing here is a top-level name. */
 
@@ -72,7 +72,7 @@
     ]);
     const like = async (it) => (it ? (await get(`/Items/${it.Id}/Similar?userId=${u}&Limit=12&Fields=${F}`)).filter(good).map((x) => toPick(x, `Because you watched ${it.Name}`)) : []);
     const [m, s] = await Promise.all([like(lastMovie[0]), like(lastShow[0])]);
-    const fresh = newest.filter(good).map((x) => toPick(x, "New on Benflix"));
+    const fresh = newest.filter(good).map((x) => toPick(x, "New on Glowfin"));
     // Movies and shows take turns, with something new every third pick
     const out = [], seen = new Set();
     const take = (list) => { while (list.length) { const p = list.shift(); if (!seen.has(p.id)) { seen.add(p.id); out.push(p); return; } } };

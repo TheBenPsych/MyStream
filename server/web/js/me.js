@@ -42,7 +42,7 @@ B.route(/^\/mine/, async (m, nav) => {
       <div class="tile"><div class="k">Things watched</div><div class="v" style="font-size:20px">${inRange.length}</div></div>
       <div class="tile"><div class="k">See your year</div><div class="v" style="font-size:20px">${new Date().getMonth() === 11 ? "Wrapped" : "In December"}</div></div>
     </div>
-    <p class="dim" style="font-size:14px">Time counts every TV, phone and browser where you watch Benflix.</p></div>
+    <p class="dim" style="font-size:14px">Time counts every TV, phone and browser where you watch Glowfin.</p></div>
     <div class="rows">${B.row("Watched lately", latelyItems.map((x) => B.posterCard(byId[x.SeriesId] || x)))}${B.row("You liked", liked.map((x) => B.posterCard(x)))}</div>`;
 });
 
@@ -54,7 +54,7 @@ const GROUPS = [
   { id: "look", label: "Look", icon: "gear", line: "Only this browser" },
   { id: "family", label: "Family", icon: "heart", line: "Follows you", adminOnly: true },
   { id: "devices", label: "Phones and TVs", icon: "phone", line: "Sign in a TV or phone with a code" },
-  { id: "install", label: "Install Benflix", icon: "dl", line: "Only this computer" },
+  { id: "install", label: "Install Glowfin", icon: "dl", line: "Only this computer" },
   { id: "help", label: "Help", icon: "help", line: "" },
   { id: "behind", label: "Behind the scenes", icon: "key", line: "Main profile only", adminOnly: true },
 ];
@@ -74,14 +74,14 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     ["Skip intros by themselves", "skip intro credits", "#/settings/watching"], ["Next episode by itself", "autoplay next episode", "#/settings/watching"],
     ["Quality", "quality picture slow", "#/settings/picture"], ["Sounds", "sound volume notes music bars", "#/settings/picture"],
     ["Text size", "text size bigger zoom", "#/settings/look"], ["Password", "password", "#/settings/you"], ["Profile picture", "picture photo avatar", "#/settings/you"],
-    ["Sign in a TV or phone", "code quick connect sign in tv phone", "#/settings/devices"], ["Install Benflix", "install app", "#/settings/install"],
+    ["Sign in a TV or phone", "code quick connect sign in tv phone", "#/settings/devices"], ["Install Glowfin", "install app", "#/settings/install"],
     ["Help and updates", "help update how", "#/settings/help"],
   ].concat(B.me.admin ? [
     ["People and their limits", "people family kids limits", "#/settings/family"], ["Reset this browser", "reset behind", "#/settings/behind"],
     ["Server: Who's watching now", "watching streams stop", "#/server/watching/now"], ["Server: People and accounts", "users add person account", "#/server/people/people"],
     ["Server: Library checkup", "checkup tidy unwatched biggest", "#/server/tools/tidy"], ["Server: Fix posters", "poster pictures art", "#/server/tools/posters"],
     ["Server: Find copies", "find better copy missing episodes", "#/server/tools/find"], ["Server: Downloads", "download stuck sonarr radarr", "#/server/tools/downloads"],
-    ["Server: Messages", "message note send", "#/server/tools/messages"], ["Server: Benflix versions", "versions update out of date", "#/server/tools/versions"],
+    ["Server: Messages", "message note send", "#/server/tools/messages"], ["Server: Glowfin versions", "versions update out of date", "#/server/tools/versions"],
     ["Server: Track names", "track names audio subtitle labels", "#/server/tools/tracks"], ["Server: Setup command", "setup command tower helper terminal", "#/server/tools/setup"],
     ["Server: Apps on Tower", "apps docker restart", "#/server/tools/apps"], ["Server: Chores and restart", "chores restart jellyfin tasks", "#/server/tools/chores"],
     ["Server: Live TV lists", "live tv channels guide", "#/server/tools/livetv"], ["Server: Book lists", "books nyt hardcover keys", "#/server/tools/booklists"],
@@ -163,7 +163,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
   if (g.id === "look") {
     const size = ws.textSize || (ws.easy && !B.me.kids ? 125 : 100);
-    sp.innerHTML = setRow("Text size", "Makes everything in Benflix bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
+    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`)
       + (B.me.kids ? "" : setRow("Easy mode", "Bigger words and fewer choices: Home shows your four doors used most and one Keep watching row, and doors show fewer rows.", valBtn("easy", ws.easy ? "On" : "Off")))
       + (B.me.kids ? "" : setRow("Christmas look", "In December, until New Year's: the Christmas room on Who's watching, with the tree, the train and the parade past the window.", valBtn("xmas", B.xmasOff() ? "Off" : "On")))
       + (B.me.kids ? "" : setRow("Friday the 13th look", "Only on a Friday the 13th, Kids too: the room with the sleeping black cat on Who's watching, lucky charms on the doors, and lucky green colours.", valBtn("f13", B.f13Off() ? "Off" : "On").replace('class="valbtn"', `class="valbtn${B.f13Off() ? "" : " on13"}"`)))
@@ -209,16 +209,16 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     $("#qcf").onsubmit = (e) => { e.preventDefault(); const c = $("#qcCode").value.trim().toUpperCase(); if (!c) { $("#qcCode").focus(); return B.toast("Type the 6-letter code from the TV or phone first."); } B.busy(null, async () => { await B.jf("POST", `/QuickConnect/Authorize?code=${enc(c)}&userId=${B.uid()}`); $("#qcCode").value = ""; return "Done. That TV or phone is signing in as " + B.me.name + "."; }); };
   }
   if (g.id === "install") {
-    sp.innerHTML = setRow("Install Benflix on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`);
+    sp.innerHTML = setRow("Install Glowfin on this computer", B.installLine(), `<button class="valbtn" id="installBtn">${B.installed() ? "Installed" : "Install"}</button>`);
     $("#installBtn").onclick = () => B.install();
   }
-  if (g.id === "help") sp.innerHTML = setRow("Help and updates", "How to use Benflix, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
+  if (g.id === "help") sp.innerHTML = setRow("Help and updates", "How to use Glowfin, questions and answers, and what's new.", `<a class="valbtn" href="#/help">Open</a>`);
   if (g.id === "behind") {
-    sp.innerHTML = `<div class="warnbox">These are for fixing things. Changing them can make Benflix act oddly in this browser.</div>
+    sp.innerHTML = `<div class="warnbox">These are for fixing things. Changing them can make Glowfin act oddly in this browser.</div>
       ${setRow("Get the newest web version now", "Normally Tower checks every hour by itself.", `<a class="valbtn" href="#/server/tools/webversion">Open</a>`)}
       ${setRow("Reset this browser", "Forgets every profile and setting saved in this browser. Nothing on the server changes.", `<button class="valbtn" id="resetAll">Reset</button>`)}`;
     $("#resetAll").onclick = async () => {
-      if (!(await B.ask("Reset Benflix in this browser?", "Everyone will need to sign in again here.", "Reset"))) return;
+      if (!(await B.ask("Reset Glowfin in this browser?", "Everyone will need to sign in again here.", "Reset"))) return;
       try { Object.keys(localStorage).filter((k) => k.startsWith("benflix")).forEach((k) => localStorage.removeItem(k)); sessionStorage.clear(); } catch (e) {}
       location.hash = "#/signin"; location.reload();
     };
@@ -273,18 +273,18 @@ setInterval(() => B.kidsLook(), 60000);
 const HELP = [
   { id: "updates", label: "Updates", icon: "dl" },
   { id: "new", label: "What's new", icon: "plus" },
-  { id: "how", label: "How to use Benflix", icon: "help" },
+  { id: "how", label: "How to use Glowfin", icon: "help" },
   { id: "qa", label: "Questions and answers", icon: "search" },
   { id: "report", label: "Report a problem", icon: "flag" },
   { id: "about", label: "About this app", icon: "info" },
 ];
 const QA = [
   ["Why won't a video play?", "Some files need the server to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
-  ["Can I use this away from home?", "Yes, once Ben has set it up: open your Benflix internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
-  ["Can I install it like an app?", "Yes. Settings > Install Benflix. It gets its own window and icon in the dock or Start menu."],
-  ["Can I put Benflix on a Fire TV stick?", "Older Fire TV sticks, Fire TV Cubes and TVs with Fire TV built in work (their About page says Fire OS). The newest sticks run Vega OS, which can't install Benflix: that's the Fire TV Stick 4K Select (2025), the Fire TV Stick HD (2026) and newer. Check in Settings › My Fire TV › About before you try. Google TV devices always work."],
+  ["Can I use this away from home?", "Yes, once Ben has set it up: open your Glowfin internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
+  ["Can I install it like an app?", "Yes. Settings > Install Glowfin. It gets its own window and icon in the dock or Start menu."],
+  ["Can I put Glowfin on a Fire TV stick?", "Older Fire TV sticks, Fire TV Cubes and TVs with Fire TV built in work (their About page says Fire OS). The newest sticks run Vega OS, which can't install Glowfin: that's the Fire TV Stick 4K Select (2025), the Fire TV Stick HD (2026) and newer. Check in Settings › My Fire TV › About before you try. Google TV devices always work."],
   ["How do I add someone to Who's watching here?", "Press “Add someone” under the pictures on Who's watching and sign in with their name and password, or with a code from a TV or phone."],
-  ["Where are Benflix's own channels and games?", "Benflix's own channels and the Benflix games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
+  ["Where are Glowfin's own channels and games?", "Glowfin's own channels and the Glowfin games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
   ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on the server, so they're the same on the TV, phone and here."],
   ["How do I skip intros by themselves?", "Settings > Watching > Skip intros and credits by themselves. Or open the player's Audio and subtitles panel and pick Always skip the intro for that show."],
   ["Keyboard keys in the player?", "Space pauses, the left and right arrows jump 10 seconds, up and down change the sound, F is full screen, M mutes, S turns subtitles on and off, Enter skips the intro, N is the next episode, Esc goes back. Press ? in the player to see them all."],
@@ -298,7 +298,7 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   const hp = $("#hp");
   if (sec.id === "updates") {
     const s = await B.call("GET", "api/web/version").catch(() => ({}));
-    hp.innerHTML = `<p class="dim">Benflix in a browser updates itself: Tower checks for a new version when it starts and then every hour. Reload the page to use the newest one.</p>
+    hp.innerHTML = `<p class="dim">Glowfin in a browser updates itself: Tower checks for a new version when it starts and then every hour. Reload the page to use the newest one.</p>
       <div class="list"><div class="item"><div class="grow"><div class="t">Last checked</div><div class="s">${s.checked ? esc(B.when(new Date(s.checked * 1000).toISOString())) : "Not yet"}</div></div><div class="acts"><button class="btn small white" onclick="location.reload()">Reload now</button></div></div></div>
       <p class="dim">The TV and phone app update from Settings > Help and updates on each device.</p>`;
   }
@@ -312,7 +312,7 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   }
   if (sec.id === "how") {
     hp.innerHTML = `<div class="list">
-      ${[["Home", "Pick a door: Movies, Shows, Live TV or Games. Your picture in the top corner opens your menu."], ["Rows", "Point at a poster to see what it is at the top. Press it to open its page. Arrows at the sides of a row scroll it."], ["Playing", "Press Play or Resume. Move the mouse to see the controls. Space pauses, arrows jump 10 seconds."], ["Live TV", "Press a channel to watch. Up and down change channel, left opens the guide, typing a number jumps to that channel."], ["Search", "The magnifying glass at the top looks through everything, and shows what you can ask for if it isn't on Benflix."], ["My List", "Press My List on any movie or show page to save it for later."]].map(([t, s]) => `<div class="item"><div class="grow"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div></div>`).join("")}</div>`;
+      ${[["Home", "Pick a door: Movies, Shows, Live TV or Games. Your picture in the top corner opens your menu."], ["Rows", "Point at a poster to see what it is at the top. Press it to open its page. Arrows at the sides of a row scroll it."], ["Playing", "Press Play or Resume. Move the mouse to see the controls. Space pauses, arrows jump 10 seconds."], ["Live TV", "Press a channel to watch. Up and down change channel, left opens the guide, typing a number jumps to that channel."], ["Search", "The magnifying glass at the top looks through everything, and shows what you can ask for if it isn't on Glowfin."], ["My List", "Press My List on any movie or show page to save it for later."]].map(([t, s]) => `<div class="item"><div class="grow"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div></div>`).join("")}</div>`;
   }
   if (sec.id === "qa") {
     hp.innerHTML = `<input class="field" id="qaSearch" placeholder="Search questions" style="margin-bottom:14px"><div id="qaList"></div>`;
@@ -327,8 +327,8 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   if (sec.id === "about") {
     const info = await B.get("/System/Info/Public").catch(() => ({}));
     hp.innerHTML = `<div class="list">
-      <div class="item"><div class="grow"><div class="t">Benflix in a browser</div><div class="s">Runs on Tower's Benflix helper. Signed in as ${esc(B.me.name)}.</div></div></div>
+      <div class="item"><div class="grow"><div class="t">Glowfin in a browser</div><div class="s">Runs on Tower's Glowfin helper. Signed in as ${esc(B.me.name)}.</div></div></div>
       <div class="item"><div class="grow"><div class="t">Server</div><div class="s">${esc(info.ServerName || "")} · Jellyfin ${esc(info.Version || "")}</div></div></div>
-      <div class="item"><div class="grow"><div class="t">Made from</div><div class="s">Benflix is built on Wholphin (GPL-2.0) by damontecres. Video in the browser uses hls.js (Apache-2.0). Console games use EmulatorJS (GPL-3.0).</div></div></div></div>`;
+      <div class="item"><div class="grow"><div class="t">Made from</div><div class="s">Glowfin is built on Wholphin (GPL-2.0) by damontecres. Video in the browser uses hls.js (Apache-2.0). Console games use EmulatorJS (GPL-3.0).</div></div></div></div>`;
   }
 });

@@ -172,7 +172,7 @@ fun MissingSongRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = if (withCover) "${song.artist} · Not on Benflix" else "Not on Benflix",
+                        text = if (withCover) "${song.artist} · Not on Glowfin" else "Not on Glowfin",
                         color = BenflixColors.Muted.copy(alpha = .75f),
                         fontSize = BenflixType.small,
                         maxLines = 1,
@@ -249,7 +249,7 @@ fun CatalogueAlbumCard(
             CoverImage(album.cover, Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Color(0x66000000), BenflixShapes.Card))
             Text(
-                "Not on Benflix",
+                "Not on Glowfin",
                 color = BenflixColors.Tray,
                 fontSize = BenflixType.small,
                 fontWeight = FontWeight.ExtraBold,
@@ -297,7 +297,7 @@ fun CatalogueArtistRow(
         MusicRowName(title, Modifier.padding(start = side, bottom = 8.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = side), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             items(artists, key = { "fan-${it.first.id}" }) { (artist, here) ->
-                CatalogueArtistCard(artist, if (here) "On Benflix" else "None yet", size) { onClick(artist, here) }
+                CatalogueArtistCard(artist, if (here) "On Glowfin" else "None yet", size) { onClick(artist, here) }
             }
         }
     }

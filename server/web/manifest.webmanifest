@@ -1,6 +1,6 @@
 {
-  "name": "Benflix",
-  "short_name": "Benflix",
+  "name": "Glowfin",
+  "short_name": "Glowfin",
   "description": "Movies, shows, Live TV and games from Tower",
   "start_url": "./",
   "scope": "./",

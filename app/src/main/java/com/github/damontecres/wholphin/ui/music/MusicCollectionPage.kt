@@ -434,7 +434,7 @@ fun MusicCollectionPage(
                                     if (state.addsLoading) {
                                         "Looking for songs that fit..."
                                     } else if (state.catalogue) {
-                                        "Not on Benflix yet. Press a song to ask for it. " +
+                                        "Not on Glowfin yet. Press a song to ask for it. " +
                                             "Play previews hears 30 seconds of each, one after another.$okNote"
                                     } else {
                                         if (kind == CollectionKind.PLAYLIST) {
@@ -479,7 +479,7 @@ fun MusicCollectionPage(
                 if (state.similar.isNotEmpty()) {
                     item(key = "similar") {
                         AlbumRow(
-                            title = "Similar albums on Benflix",
+                            title = "Similar albums on Glowfin",
                             albums = state.similar,
                             side = side,
                             size = if (wide) 132.dp else 116.dp,
@@ -666,7 +666,7 @@ private fun CollectionHero(
             CollectionKind.PLAYLIST -> "Playlist"
             CollectionKind.MIX -> if (state.themed) "Playlist by theme · new every morning" else "Made for you · new every morning"
             CollectionKind.LIKED -> "Your playlist"
-            CollectionKind.SONGS -> "Every song on Benflix"
+            CollectionKind.SONGS -> "Every song on Glowfin"
         }
     val line =
         listOfNotNull(

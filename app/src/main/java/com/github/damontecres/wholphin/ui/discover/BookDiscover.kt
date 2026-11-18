@@ -317,7 +317,7 @@ private fun BookHero(
                 when {
                     c.have != null -> {
                         MusicButton(
-                            "On Benflix",
+                            "On Glowfin",
                             BenflixIcon.CHECK,
                             primary = true,
                             onClick = { onOpen(c) },
@@ -965,7 +965,7 @@ private fun AboutTop(
             when {
                 a.have != null -> {
                     MusicButton(
-                        "On Benflix",
+                        "On Glowfin",
                         BenflixIcon.CHECK,
                         primary = true,
                         onClick = { a.have?.let { viewModel.navigationManager.navigateTo(Destination.BookTitle(it)) } },
@@ -1153,7 +1153,7 @@ private fun SeriesLine(
                     )
                     val line =
                         when {
-                            b.have != null -> "On Benflix"
+                            b.have != null -> "On Glowfin"
                             b.asked != null -> b.asked
                             b.isThis -> "This book"
                             else -> null

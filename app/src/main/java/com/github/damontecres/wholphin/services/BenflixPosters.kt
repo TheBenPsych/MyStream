@@ -227,8 +227,8 @@ class BenflixPosters
                 val night = j.optJSONObject("night")
                 val filled = night?.optInt("filled", -1) ?: -1
                 when {
-                    filled > 0 -> "Last night Benflix filled in $filled missing picture${if (filled == 1) "" else "s"} by itself."
-                    filled == 0 -> "Benflix checks for missing pictures every night and fills them in."
+                    filled > 0 -> "Last night Glowfin filled in $filled missing picture${if (filled == 1) "" else "s"} by itself."
+                    filled == 0 -> "Glowfin checks for missing pictures every night and fills them in."
                     else -> null
                 }
             } catch (ex: CancellationException) {

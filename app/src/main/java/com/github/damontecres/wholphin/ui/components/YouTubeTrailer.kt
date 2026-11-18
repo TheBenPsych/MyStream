@@ -570,7 +570,7 @@ private fun FailedMessage(
                 if (nothingToOpen) {
                     "There's no YouTube app on this device to open it in."
                 } else {
-                    "This trailer can't play inside Benflix. YouTube only lets some videos play on YouTube itself."
+                    "This trailer can't play inside Glowfin. YouTube only lets some videos play on YouTube itself."
                 },
             color = Color.White,
             fontSize = if (isTv) BenflixType.lead else BenflixType.body,

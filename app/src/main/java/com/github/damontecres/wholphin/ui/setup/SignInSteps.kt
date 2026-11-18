@@ -264,11 +264,11 @@ fun SignInScreens(
                         Question("Sign in with a code", "No password needed")
                         PhoneCode(code = phoneCode, problem = phoneProblem, onTryAgain = actions.startPhone)
                         Line(
-                            "On a TV or phone that's already signed in, open My Benflix, then Quick Connect, and type this code.",
+                            "On a TV or phone that's already signed in, open My Glowfin, then Quick Connect, and type this code.",
                         )
                         SignInButton("Type it in instead") { goBack() }
                     } else {
-                        Question("Sign in to Benflix", "Signing in to $serverName")
+                        Question("Sign in to Glowfin", "Signing in to $serverName")
                         PhoneField(
                             label = "Name",
                             value = name,
@@ -330,7 +330,7 @@ private fun PhoneHalf(
         lineHeight = BenflixType.pageTitle * 1.15f,
         fontWeight = FontWeight.ExtraBold,
     )
-    Line("On your phone, open Benflix, then My Benflix › Quick Connect, and type this code:")
+    Line("On your phone, open Glowfin, then My Glowfin › Quick Connect, and type this code:")
     PhoneCode(code = code, problem = problem, onTryAgain = onTryAgain)
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
@@ -340,7 +340,7 @@ private fun PhoneHalf(
         ) {
             QrCode(text = serverUrl.trimEnd('/') + "/web/#/quickconnect", modifier = Modifier.size(96.dp))
         }
-        Line("No Benflix on your phone? Scan this with its camera, sign in, and type the code there.", BenflixColors.Muted)
+        Line("No Glowfin on your phone? Scan this with its camera, sign in, and type the code there.", BenflixColors.Muted)
     }
 }
 

@@ -76,6 +76,8 @@ fun BenflixIntro(
     val logoAlpha = remember { mutableFloatStateOf(0f) }
     val screenAlpha = remember { mutableFloatStateOf(1f) }
     val glide = remember { mutableFloatStateOf(0f) }
+    // Glowfin (Ben 2026-11-18): the fin glows up once, gently, while the logo fades in and holds
+    val glow = remember { mutableFloatStateOf(0f) }
     var logoRect by remember { mutableStateOf<Rect?>(null) }
     var markRect by remember { mutableStateOf<Rect?>(null) }
     var target by remember { mutableStateOf<Pair<Rect, Rect>?>(null) }
@@ -89,6 +91,7 @@ fun BenflixIntro(
             // The logo fades in, then it holds
             runIntroTimeline((FADE_MS + HOLD_MS) * f, pace) { t ->
                 logoAlpha.floatValue = (t / (FADE_MS * f)).coerceIn(0f, 1f)
+                glow.floatValue = kotlin.math.sin(Math.PI * (t / ((FADE_MS + HOLD_MS) * f)).coerceIn(0f, 1f)).toFloat()
             }
             // Wait for Who's watching to be ready and settled (a slow server goes on anyway)
             val whoMark = waitForSettled(WAIT_FOR_PAGE_MS) { BenflixIntroState.whoMark }
@@ -125,6 +128,7 @@ fun BenflixIntro(
         )
         BenflixWordLogo(
             height = INTRO_LOGO_HEIGHT.dp,
+            glow = glow.floatValue,
             markModifier = Modifier.onGloballyPositioned { if (glide.floatValue == 0f) markRect = it.boundsInWindow() },
             modifier =
                 Modifier

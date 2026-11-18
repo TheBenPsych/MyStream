@@ -5,7 +5,7 @@
      Touch screens that are wide enough keep the rail open all the time.
    - Phone-sized windows: a bottom bar (Home, Movies, Shows, Music, More). Tap the door you're in again for its places.
    - Kids: a bigger rail with only Movies, Shows and Games, and no Requests.
-   - When Benflix opens, the rail's icons light up one after another in their door colours (in place of the doors
+   - When Glowfin opens, the rail's icons light up one after another in their door colours (in place of the doors
      growing on Home), with the same door notes.
    Everything sits in one closure: the web scripts share one scope, so nothing here is a top-level name. */
 
@@ -71,7 +71,7 @@
     if (!show) { closePanel(); if (rail) rail.hidden = true; if (bar) bar.hidden = true; return; }
     if (!rail) {
       rail = document.createElement("nav");
-      rail.id = "brail"; rail.className = "brail"; rail.setAttribute("aria-label", "Benflix menu");
+      rail.id = "brail"; rail.className = "brail"; rail.setAttribute("aria-label", "Glowfin menu");
       document.body.appendChild(rail);
       rail.addEventListener("click", onRail);
       rail.addEventListener("keydown", (e) => {
@@ -264,7 +264,7 @@
     if (!narrow()) { if (bar) bar.hidden = true; return; }
     if (!bar) {
       bar = document.createElement("nav");
-      bar.id = "bbar"; bar.className = "bbar"; bar.setAttribute("aria-label", "Benflix menu");
+      bar.id = "bbar"; bar.className = "bbar"; bar.setAttribute("aria-label", "Glowfin menu");
       document.body.appendChild(bar);
       bar.addEventListener("click", onTab);
     }

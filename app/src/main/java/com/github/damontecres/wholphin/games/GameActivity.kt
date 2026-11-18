@@ -1332,7 +1332,7 @@ class GameActivity : ComponentActivity() {
                     if (failed) {
                         val focus = remember { FocusRequester() }
                         LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-                        MenuButton("Back to Benflix", modifier = Modifier.focusRequester(focus)) { finish() }
+                        MenuButton("Back to Glowfin", modifier = Modifier.focusRequester(focus)) { finish() }
                     }
                 }
             }

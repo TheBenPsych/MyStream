@@ -385,7 +385,7 @@ fun MusicArtistPage(
     }
     val counts =
         listOfNotNull(
-            state.songTotal.takeIf { it > 0 }?.let { "${songCount(it)} on Benflix" },
+            state.songTotal.takeIf { it > 0 }?.let { "${songCount(it)} on Glowfin" },
             if (artist?.favorite == true) "Following" else null,
         ).joinToString(" · ")
     val tint =
@@ -652,7 +652,7 @@ fun MusicArtistPage(
             if (state.loaded && state.topSongs.isEmpty() && state.albums.isEmpty() && state.singles.isEmpty()) {
                 item(key = "none") {
                     Text(
-                        "No songs by $name on Benflix yet.",
+                        "No songs by $name on Glowfin yet.",
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.body,
                         modifier = Modifier.padding(start = side, top = 16.dp),

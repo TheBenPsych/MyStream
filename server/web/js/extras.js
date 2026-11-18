@@ -1,12 +1,12 @@
 /* Benflix web: pieces the TV and phone app already had on movie, show and people pages, brought to
    the browser (2026-11-10 "Find features missing from web"):
      - "Part 1 of 3" + In this collection (movies in a collection)
-     - Ask for similar tab (titles of the same kind that aren't on Benflix yet, from Requests)
+     - Ask for similar tab (titles of the same kind that aren't on Glowfin yet, from Requests)
      - Parents' guide (IMDb's guide, through Tower)
      - Season 4 is out. Ask for it (once you've watched everything of a show)
      - Anime extras: AniList score, English and Japanese names, next episode countdown, fan tags,
        characters and their voices
-     - Not on Benflix yet (everything of an actor's or director's that isn't here, ask for many at once)
+     - Not on Glowfin yet (everything of an actor's or director's that isn't here, ask for many at once)
      - Search in plain words ("funny 90s movie under 2 hours")
    Everything here waits for the page's own parts first, and quietly shows nothing when a source
    can't be reached. Kids never see the asking parts. */
@@ -103,7 +103,7 @@
     const path = kind === "movie" ? "movies" : "tv";
     const more = keep(await pages((gs.length ? gs : [null]).flatMap((g) => [1, 2].map((n) => g ? `/discover/${path}/genre/${g}?page=${n}` : `/discover/${path}?page=${n}`)))).slice(0, 30);
     if (!B.alive(nav) || (!best.length && !more.length)) return;
-    const note = `<small class="dim">Only ${esc(label)} · not on Benflix yet</small>`;
+    const note = `<small class="dim">Only ${esc(label)} · not on Glowfin yet</small>`;
     add(box, (best.length ? B.row("Closest matches", best.map((r) => B.askCard(r))) : "") +
       (more.length ? B.row(`More ${label} to ask for`, more.map((r) => B.askCard(r))) : ""));
     const h = box.querySelector(".rowx h3");
@@ -150,7 +150,7 @@
     // At the end of the Episodes tab
     const btns = $("#tpEpisodes") || $(".details .btns");
     if (!btns) return;
-    btns.insertAdjacentHTML(btns.id === "tpEpisodes" ? "beforeend" : "afterend", `<div class="nextask wrap0"><span>${esc(words)}. They aren't on Benflix yet.</span><button class="btn white" id="askNext">${I("plus")} Ask for ${newer.length === 1 ? "it" : "them"}</button></div>`);
+    btns.insertAdjacentHTML(btns.id === "tpEpisodes" ? "beforeend" : "afterend", `<div class="nextask wrap0"><span>${esc(words)}. They aren't on Glowfin yet.</span><button class="btn white" id="askNext">${I("plus")} Ask for ${newer.length === 1 ? "it" : "them"}</button></div>`);
     $("#askNext").onclick = (e) => B.busy(e.currentTarget, async () => {
       await B.seerr("/request", "POST", { mediaType: "tv", mediaId: tmdb, seasons: newer });
       $(".nextask").remove();
@@ -278,7 +278,7 @@
     const html = box
       ? `<div class="grid tp-grid">${list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c)).join("")}</div>
         <div class="wrap0 acts" style="justify-content:flex-start;margin-top:14px"><button class="btn" id="askRest">${I("plus")} Ask for several at once</button><a class="btn" href="#/requests?q=${enc(p.Name)}">${I("search")} Search for more</a></div>`
-      : B.row(`Not on Benflix yet (${list.length})`, list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c))) +
+      : B.row(`Not on Glowfin yet (${list.length})`, list.filter((c) => c.posterPath).slice(0, 30).map((c) => B.askCard(c))) +
         `<div class="wrap"><button class="btn" id="askRest">${I("plus")} Ask for several at once</button></div>`;
     if (box) box.insertAdjacentHTML("beforeend", html);
     else if (wrap) wrap.insertAdjacentHTML("beforebegin", html); else add($(".rows"), html);

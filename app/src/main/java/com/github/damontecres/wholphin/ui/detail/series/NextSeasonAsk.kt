@@ -199,7 +199,7 @@ fun NextSeasonAsk(
                     Text("Ask for $words")
                 }
                 Text(
-                    text = if (seasons.size == 1) "$words is out, but not on Benflix yet" else "$words are out, but not on Benflix yet",
+                    text = if (seasons.size == 1) "$words is out, but not on Glowfin yet" else "$words are out, but not on Glowfin yet",
                     fontSize = BenflixType.small,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

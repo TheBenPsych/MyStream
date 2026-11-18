@@ -236,13 +236,13 @@ class AniListSync
                                     true
                                 } catch (ex: AniListSignedOutException) {
                                     signOutLocal(userId)
-                                    showToast(context, "AniList signed you out. Sign in again on My Benflix to keep ticking off episodes.")
+                                    showToast(context, "AniList signed you out. Sign in again on My Glowfin to keep ticking off episodes.")
                                     true
                                 } catch (ex: MalSignedOutException) {
                                     mal.signedOut(userId)
                                     showToast(
                                         context,
-                                        "MyAnimeList signed you out. Sign in again on My Benflix to keep ticking off episodes.",
+                                        "MyAnimeList signed you out. Sign in again on My Glowfin to keep ticking off episodes.",
                                     )
                                     true
                                 } catch (ex: CancellationException) {

@@ -170,7 +170,7 @@ fun FixMatchDialog(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Benflix will swap in the right details and pictures from the internet.",
+                text = "Glowfin will swap in the right details and pictures from the internet.",
                 fontSize = BenflixType.small,
                 color = BenflixColors.Soft,
             )

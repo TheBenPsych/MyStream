@@ -67,7 +67,7 @@ const DOORS = {
   games: { key: "games", name: "Games", desc: "Play in your browser", color: "#FF6F91", icon: "pad" },
 };
 B.DOORS = DOORS;
-B.logo = () => `<span class="logo"><span class="sq"><i></i><i></i><i></i><i></i></span>Benflix</span>`;
+B.logo = () => `<span class="logo"><img class="fin" src="web/img/glowfin-mark.svg" alt=""><span class="lw">Glow<b>fin</b></span><span class="kt">kids</span></span>`;
 
 // ---------- profiles (people signed in on this browser) ----------
 // Each person keeps their own Jellyfin sign-in, like profiles on the TV.
@@ -183,7 +183,7 @@ B.call = async (method, path, body, opts) => {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    const err = new Error("Couldn't reach Benflix on the server. Is it on?"); err.status = 0; throw err;
+    const err = new Error("Couldn't reach Glowfin on the server. Is it on?"); err.status = 0; throw err;
   }
   const text = await r.text();
   let data = null;
@@ -948,11 +948,11 @@ B.hm = (sec) => { const m = Math.round(sec / 60); return m >= 60 ? `${Math.floor
 // (http://10.0.0.58:8097) the button explains the browser's own "open as window" shortcut instead.
 B.installPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); B.installPrompt = e; });
-window.addEventListener("appinstalled", () => { B.installPrompt = null; B.toast && B.toast("Benflix is installed. Look for it in your dock or Start menu."); });
+window.addEventListener("appinstalled", () => { B.installPrompt = null; B.toast && B.toast("Glowfin is installed. Look for it in your dock or Start menu."); });
 B.installed = () => { try { return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (e) { return false; } };
-B.installLine = () => B.installed() ? "Benflix is open in its own window." : "Its own window and icon in the dock or Start menu, no browser tabs.";
+B.installLine = () => B.installed() ? "Glowfin is open in its own window." : "Its own window and icon in the dock or Start menu, no browser tabs.";
 B.install = async () => {
-  if (B.installed()) return B.toast("Benflix is already installed here.");
+  if (B.installed()) return B.toast("Glowfin is already installed here.");
   if (B.installPrompt) {
     const p = B.installPrompt;
     B.installPrompt = null;
@@ -966,7 +966,7 @@ B.install = async () => {
     : edge
       ? "In Edge: the ⋯ menu (top right) > Apps > Install this site as an app."
       : "In Chrome: the ⋮ menu (top right) > Cast, save and share > Install page as app. If you only see Create shortcut, pick it and tick Open as window.";
-  B.ask("Install Benflix", steps, "OK").catch(() => {});
+  B.ask("Install Glowfin", steps, "OK").catch(() => {});
 };
 if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

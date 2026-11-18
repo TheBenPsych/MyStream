@@ -237,7 +237,7 @@ fun PhoneTip(modifier: Modifier = Modifier) {
             Text("📱", fontSize = 11.sp)
         }
         Text(
-            "Phone as a controller: on your phone open Benflix > Games > Use this phone as a controller",
+            "Phone as a controller: on your phone open Glowfin > Games > Use this phone as a controller",
             color = Color.White.copy(alpha = 0.8f),
             fontSize = 12.sp,
         )

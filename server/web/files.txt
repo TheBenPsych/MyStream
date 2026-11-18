@@ -17,6 +17,7 @@ fonts/outfit_regular.ttf
 fonts/outfit_semibold.ttf
 icons/icon-192.png
 icons/icon-512.png
+icons/icon-32.png
 index.html
 js/ask.js
 js/books.js
@@ -265,3 +266,6 @@ img/hw/hwnav_shows.png
 fonts/subtitle_atkinson_bold.ttf
 fonts/subtitle_atkinson_bolditalic.ttf
 fonts/atkinson_hyperlegible.LICENSE.txt
+img/glowfin-mark.svg
+fonts/glowfin_sora_light.ttf
+fonts/glowfin_sora_semibold.ttf

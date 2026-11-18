@@ -98,7 +98,7 @@ class PlayOnTvViewModel
                                 }.sortedByDescending { it.lastActivityDate }
                                 .distinctBy { it.deviceId }
                                 .mapNotNull { s ->
-                                    val device = s.deviceName ?: "Benflix"
+                                    val device = s.deviceName ?: "Glowfin"
                                     val name =
                                         if (s.userId != me && !s.userName.isNullOrBlank()) "$device (${s.userName})" else device
                                     val song =
@@ -271,9 +271,9 @@ fun PlayOnTvButton(
                         if (list.isEmpty() && castScreens.isEmpty()) {
                             Text(
                                 if (castOk) {
-                                    "No TV found. Open Benflix on the TV, or check the Chromecast TV is on the same Wi-Fi."
+                                    "No TV found. Open Glowfin on the TV, or check the Chromecast TV is on the same Wi-Fi."
                                 } else {
-                                    "No TV found. Open Benflix on the TV, then try again."
+                                    "No TV found. Open Glowfin on the TV, then try again."
                                 },
                             )
                         }
@@ -333,7 +333,7 @@ fun PhoneRemoteDialog(
 
                     else -> {
                         if (list.isEmpty()) {
-                            Text("No TV found. Open Benflix on the TV, then try again.")
+                            Text("No TV found. Open Glowfin on the TV, then try again.")
                             RemoteKey("Look again") { viewModel.look() }
                         }
                         list.forEach { s -> RemoteKey(s.name, wide = true) { screen = s } }

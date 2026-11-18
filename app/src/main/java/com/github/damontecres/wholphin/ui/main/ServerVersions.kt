@@ -36,7 +36,7 @@ private const val WAY_BEHIND = 10
 
 /** Benflix: the message the "Message everyone out of date" button starts with */
 const val UPDATE_MESSAGE =
-    "There's a new Benflix update! Go to Settings > Help > Install update to get it."
+    "There's a new Glowfin update! Go to Settings > Help > Install update to get it."
 
 /**
  * Benflix: turns Jellyfin's device list into one row per person per Benflix TV or phone.
@@ -59,7 +59,9 @@ internal fun appVersionRows(
     return devices
         .filter { d ->
             val id = d.id.orEmpty()
-            val isBenflix = id.startsWith("benflix-") || d.appName.equals("Benflix", ignoreCase = true)
+            val isBenflix =
+                id.startsWith("benflix-") ||
+                    (d.appName.equals("Benflix", ignoreCase = true) || d.appName.equals("Glowfin", ignoreCase = true))
             isBenflix && !id.startsWith("benflix-web-")
         }.distinctBy { (it.id ?: "") + "|" + it.lastUserId }
         .map { d ->
@@ -124,7 +126,7 @@ fun LazyListScope.versionItems(
     onMessage: (ids: Set<UUID>, title: String, prefill: String) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
 ) {
-    item { sectionTitle("Benflix versions") }
+    item { sectionTitle("Glowfin versions") }
     if (versions == null) {
         item {
             ServerActionRow(
@@ -140,9 +142,9 @@ fun LazyListScope.versionItems(
         ServerActionRow(
             headline =
                 when {
-                    rows.isEmpty() -> "No Benflix TVs or phones have connected yet"
+                    rows.isEmpty() -> "No Glowfin TVs or phones have connected yet"
                     old.isEmpty() -> "Everyone is up to date"
-                    else -> "${old.size} of ${rows.size} Benflix device" + (if (rows.size == 1) " is" else "s are") + " out of date"
+                    else -> "${old.size} of ${rows.size} Glowfin device" + (if (rows.size == 1) " is" else "s are") + " out of date"
                 },
             supporting =
                 (versions.latest?.let { "The newest version is $it. " } ?: "Couldn't check the newest version right now. ") +

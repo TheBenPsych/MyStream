@@ -142,7 +142,7 @@ fun ShowPicker(
                 Text(
                     when (tab) {
                         ShowTab.SEARCH -> if (query.isBlank()) "Type or say what you want to watch." else "Nothing found for \"$query\"."
-                        ShowTab.MY_LIST -> "Nothing in My List yet. Add things with the heart on Benflix."
+                        ShowTab.MY_LIST -> "Nothing in My List yet. Add things with the heart on Glowfin."
                         else -> "Nothing here yet."
                     },
                     color = Color.White.copy(alpha = 0.7f),

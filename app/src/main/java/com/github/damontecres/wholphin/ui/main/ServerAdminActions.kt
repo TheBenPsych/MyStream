@@ -183,7 +183,7 @@ class BenflixServerActions
             restartJob = null
             _plannedRestart.value = null
             try {
-                messageEveryone("Never mind, Benflix isn't restarting after all.")
+                messageEveryone("Never mind, Glowfin isn't restarting after all.")
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {

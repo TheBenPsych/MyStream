@@ -355,7 +355,7 @@ class AnimeExtrasViewModel
                         if (person != null) {
                             navigationManager.navigateTo(BaseItem(person).destination())
                         } else {
-                            showToast(context, "${voices.first().name} isn't in anything else on Benflix yet")
+                            showToast(context, "${voices.first().name} isn't in anything else on Glowfin yet")
                         }
                     }
                 } catch (ex: CancellationException) {

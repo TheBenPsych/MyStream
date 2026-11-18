@@ -509,7 +509,7 @@ internal fun PlaybackViewModel.findMissingSubtitles(item: BaseItem) {
                 ) {
                     return@launchIO
                 }
-                showToast(context, "No subtitles in your language, so Benflix found some", Toast.LENGTH_SHORT)
+                showToast(context, "No subtitles in your language, so Glowfin found some", Toast.LENGTH_SHORT)
                 downloadAndSwitchSubtitles(pick.id, onMain { player.isPlaying }, quiet = true)
             } catch (ex: CancellationException) {
                 throw ex

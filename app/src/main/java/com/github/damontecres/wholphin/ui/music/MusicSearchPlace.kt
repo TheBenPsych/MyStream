@@ -469,9 +469,9 @@ private fun LazyListScope.searchResults(
                 if (results.searching) {
                     "Looking…"
                 } else if (results.notHere.isNotEmpty()) {
-                    "Nothing on Benflix by that name yet."
+                    "Nothing on Glowfin by that name yet."
                 } else {
-                    "Nothing on Benflix by that name. Try Ask for music to get it."
+                    "Nothing on Glowfin by that name. Try Ask for music to get it."
                 },
             )
         }
@@ -557,7 +557,7 @@ private fun LazyListScope.notHere(
     if (results.notHere.isEmpty()) return
     item(key = "nothere-title") {
         Text(
-            "Not on Benflix yet",
+            "Not on Glowfin yet",
             color = MusicAskColor,
             fontSize = BenflixType.rowName,
             fontWeight = FontWeight.ExtraBold,

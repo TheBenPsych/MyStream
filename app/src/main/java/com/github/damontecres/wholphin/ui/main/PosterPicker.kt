@@ -414,7 +414,7 @@ fun PosterPickerPage(
                 }
 
                 state.tab == PosterTab.SEASONS && state.seasons.isEmpty() -> {
-                    Text("This show has no seasons in Benflix yet.", fontSize = BenflixType.body, color = Color(0xFFA7A9B0))
+                    Text("This show has no seasons in Glowfin yet.", fontSize = BenflixType.body, color = Color(0xFFA7A9B0))
                 }
 
                 choices.isEmpty() -> {

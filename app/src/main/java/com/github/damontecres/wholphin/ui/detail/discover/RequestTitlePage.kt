@@ -89,7 +89,7 @@ fun RequestTitlePage(
             }
 
             availability == SeerrAvailability.PROCESSING -> {
-                TitleButton("On its way", BenflixIcon.DOWNLOAD, {}, note = "Benflix is getting it now")
+                TitleButton("On its way", BenflixIcon.DOWNLOAD, {}, note = "Glowfin is getting it now")
             }
 
             here -> {
@@ -105,7 +105,7 @@ fun RequestTitlePage(
         buildList {
             add(first)
             if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
-                add(TitleButton("Ask for the rest", BenflixIcon.REQUESTS, requestOnClick, note = "Some of it isn't on Benflix yet"))
+                add(TitleButton("Ask for the rest", BenflixIcon.REQUESTS, requestOnClick, note = "Some of it isn't on Glowfin yet"))
             }
             add(
                 TitleButton(

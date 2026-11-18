@@ -66,7 +66,7 @@ class AniListButtonViewModel
                 Timber.w(ex, "Could not open the AniList sign-in page")
             }
             com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
-                "Sign in on your phone instead: Benflix > My Benflix > AniList. This TV picks it up by itself.",
+                "Sign in on your phone instead: Glowfin > My Glowfin > AniList. This TV picks it up by itself.",
             )
         }
     }
@@ -122,7 +122,7 @@ class MalButtonViewModel
                 Timber.w(ex, "Could not open the MyAnimeList sign-in page")
             }
             com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
-                "Sign in on your phone instead: Benflix > My Benflix > MyAnimeList. This TV picks it up by itself.",
+                "Sign in on your phone instead: Glowfin > My Glowfin > MyAnimeList. This TV picks it up by itself.",
             )
         }
     }
@@ -242,7 +242,7 @@ private fun AniListSignOutDialog(
                 )
                 Text(
                     text =
-                        "Anime episodes you finish on Benflix are ticked off on your $site list. " +
+                        "Anime episodes you finish on Glowfin are ticked off on your $site list. " +
                             "Signing out stops this on all your TVs and phones.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),

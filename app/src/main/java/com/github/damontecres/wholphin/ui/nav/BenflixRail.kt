@@ -420,16 +420,11 @@ fun BenflixRail(
                             .focusProperties { canFocus = false }
                             .clickable(onClickLabel = "Home", onClick = model.onHome),
                 ) {
-                    BenflixMark(size = 26.dp * scale)
+                    BenflixMark(size = 30.dp * scale)
                     if (open) {
                         Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = "Benflix",
-                            color = BenflixColors.Text,
-                            fontSize = 19.sp * scale,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                        )
+                        com.github.damontecres.wholphin.ui.components
+                            .GlowfinWord(fontSize = 19.sp * scale)
                     }
                 }
                 Spacer(Modifier.height(4.dp * scale))

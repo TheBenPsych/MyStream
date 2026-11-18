@@ -1419,7 +1419,7 @@ private fun PlaylistSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 16.dp).widthIn(max = 900.dp)) {
         Text("Playlists", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
         Text(
-            "Paste a Spotify, YouTube Music or Deezer playlist link. Benflix asks for every song you don't have yet and " +
+            "Paste a Spotify, YouTube Music or Deezer playlist link. Glowfin asks for every song you don't have yet and " +
                 "makes the same playlist in your music as they arrive.",
             fontSize = BenflixType.small,
             color = BenflixColors.Soft,

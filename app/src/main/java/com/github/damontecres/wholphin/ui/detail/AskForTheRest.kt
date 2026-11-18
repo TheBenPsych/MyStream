@@ -278,13 +278,13 @@ private fun AskForTheRestDialog(
                     .padding(24.dp),
         ) {
             Text(
-                text = "Not on Benflix yet",
+                text = "Not on Glowfin yet",
                 color = BenflixColors.Text,
                 fontSize = BenflixType.rowName,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Everything with $name that Benflix doesn't have. Tick the ones you want.",
+                text = "Everything with $name that Glowfin doesn't have. Tick the ones you want.",
                 color = BenflixColors.Muted,
                 fontSize = BenflixType.small,
             )

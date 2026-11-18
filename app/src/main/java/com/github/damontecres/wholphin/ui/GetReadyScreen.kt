@@ -136,9 +136,9 @@ fun GetReadyScreen(onDone: () -> Unit) {
             )
             Text(
                 if (working) {
-                    "Getting ready… Press Install on the next screen. It takes a moment, then Benflix opens again."
+                    "Getting ready… Press Install on the next screen. It takes a moment, then Glowfin opens again."
                 } else {
-                    "Benflix needs to get ready for this ${if (isTv) "TV" else "phone"} so menus are smooth from the start. " +
+                    "Glowfin needs to get ready for this ${if (isTv) "TV" else "phone"} so menus are smooth from the start. " +
                         "Press Get ready, then Install on the next screen."
                 },
                 color = BenflixColors.Soft,

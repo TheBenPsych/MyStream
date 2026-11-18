@@ -1439,7 +1439,7 @@ private fun EasyChoices(
     ) {
         EasyButton("My channels", "Your favourites and the full guide", onMyChannels, Modifier.focusRequester(first))
         if (news != null) EasyButton("Put the news on", news.title, { onWatch(news) })
-        if (benflix != null) EasyButton("Benflix channels", "No ads, from your own movies and shows", { onWatch(benflix) })
+        if (benflix != null) EasyButton("Glowfin channels", "No ads, from your own movies and shows", { onWatch(benflix) })
     }
 }
 

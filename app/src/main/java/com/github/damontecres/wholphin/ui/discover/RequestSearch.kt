@@ -182,7 +182,7 @@ internal fun RequestSearchScreen(
             val line =
                 focused?.let { item ->
                     listOfNotNull(item.title, item.releaseDate?.year?.toString(), item.statusLine()).joinToString(" · ")
-                } ?: "Only titles that aren't on Benflix yet show here"
+                } ?: "Only titles that aren't on Glowfin yet show here"
             Text(
                 text = line,
                 color = BenflixColors.Soft,
@@ -257,7 +257,7 @@ internal fun RequestSearchScreen(
 private fun DiscoverItem.statusLine(): String? =
     when (availability) {
         SeerrAvailability.PENDING, SeerrAvailability.PROCESSING -> "Already asked for"
-        SeerrAvailability.PARTIALLY_AVAILABLE -> "Some of it is on Benflix"
+        SeerrAvailability.PARTIALLY_AVAILABLE -> "Some of it is on Glowfin"
         else -> if (type == SeerrItemType.PERSON) null else "Ask for it"
     }
 

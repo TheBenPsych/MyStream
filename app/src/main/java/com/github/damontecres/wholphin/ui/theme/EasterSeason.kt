@@ -78,7 +78,7 @@ object EasterSeason {
             return when {
                 found >= EasterHunt.ALL -> "The golden egg is open. Happy Easter!"
                 found > 0 -> "$found of 6 eggs found"
-                else -> "Six eggs are hidden around Benflix today"
+                else -> "Six eggs are hidden around Glowfin today"
             }
         }
         return when (val days = ChronoUnit.DAYS.between(date, easterSunday(date.year))) {

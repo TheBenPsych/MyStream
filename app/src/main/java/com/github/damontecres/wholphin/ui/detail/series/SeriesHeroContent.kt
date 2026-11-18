@@ -309,7 +309,7 @@ fun SeriesHeroContent(
     if (showRate) {
         BenflixChoiceDialog(
             title = "Rate ${series.title}",
-            subtitle = "This shapes what Benflix picks for you",
+            subtitle = "This shapes what Glowfin picks for you",
             onDismissRequest = { showRate = false },
             choices =
                 listOf(

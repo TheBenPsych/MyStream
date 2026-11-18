@@ -96,7 +96,7 @@ fun EmberRoadPage(
 
             EmberScreen.FAILED -> {
                 Text(
-                    "Ember Road couldn't start. Try updating Benflix.",
+                    "Ember Road couldn't start. Try updating Glowfin.",
                     color = EmberText,
                     fontSize = 20.sp,
                     modifier = Modifier.align(Alignment.Center),
@@ -228,7 +228,7 @@ private fun TitleScreen(
             if (isTv) {
                 // A quiet hint, not a sales pitch
                 Text(
-                    "Psst… Ember Road works really well on a phone too. Phones can join this game from Games on Benflix.",
+                    "Psst… Ember Road works really well on a phone too. Phones can join this game from Games on Glowfin.",
                     color = EmberDim.copy(alpha = 0.7f),
                     fontSize = 13.sp,
                 )
@@ -281,7 +281,7 @@ private fun LobbyScreen(vm: EmberViewModel) {
     LaunchedEffect(Unit) { first.tryRequestFocus() }
     EmberPage("Playing on the couch?", isTv = true) {
         Text(
-            "Everyone can join from their phone: open Benflix on the phone, go to Games, pick Ember Road and then " +
+            "Everyone can join from their phone: open Glowfin on the phone, go to Games, pick Ember Road and then " +
                 "\"Join the TV's game\". When something happens on the road, every phone and the TV votes (a tie goes to the TV). " +
                 "Other buttons, like Keep going or Make camp, work straight away for whoever presses first. " +
                 "Phones can also type commands and play the mini-games, and they can join later too.",

@@ -615,7 +615,7 @@ fun MusicNowPlayingPage(
                         onJump = if (lyrics.isTimed()) viewModel::seekTo else null,
                     )
                 } else if (noLyrics) {
-                    PanelNote("No words for this song yet", "Benflix looks for them every night, so they may turn up tomorrow.")
+                    PanelNote("No words for this song yet", "Glowfin looks for them every night, so they may turn up tomorrow.")
                 } else {
                     Text("Looking for the words…", color = BenflixColors.Soft, fontSize = BenflixType.body)
                 }

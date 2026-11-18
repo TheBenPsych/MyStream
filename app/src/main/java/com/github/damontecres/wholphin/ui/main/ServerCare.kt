@@ -469,7 +469,7 @@ internal fun LazyListScope.careLibraryItems(
                     },
                 supporting =
                     if (!playtest.on) {
-                        "Run the Benflix setup command on Tower again."
+                        "Run the Glowfin setup command on Tower again."
                     } else {
                         "${plural(playtest.checkedThisWeek, "new file")} checked this week" +
                             (playtest.last?.let { " · last check ${day(it)}" } ?: "")

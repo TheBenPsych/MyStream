@@ -337,7 +337,7 @@
     tall: { w: 390, h: 844, win: null, cart: [110, 8, 0.5] },
   };
   /** the fonts the room's signs are written in (the web's own font names first) */
-  const fixFonts = (s) => s.replace(/font-family="'Berkshire Swash',serif"/g, `font-family="'Benflix Xmas','Berkshire Swash',serif"`);
+  const fixFonts = (s) => s.replace(/font-family="'Berkshire Swash',serif"/g, `font-family="'Glowfin Xmas','Berkshire Swash',serif"`);
 
   /**
    * Builds the room into an <svg> element. Returns { at(t) } which poses everything at t seconds.
