@@ -15,8 +15,6 @@
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // The doors' own few extra icons (Collections, Audiobooks, Guide) come from js/doors.js
   const I = (n) => (B.doorIcon ? B.doorIcon(n) : B.I(n));
-  // A holiday can swap in its own icon set (js/holidaynav.js icons)
-  const HI = (key, n) => (B.holidayIcon ? B.holidayIcon(key, I(n)) : I(n));
   const narrow = () => matchMedia("(max-width: 760px)").matches;
   // Pages that fill the whole window (the player, a game, a book, signing in) have no menu
   const FULL = /^#\/(who|signin|play|playgame|game\/|read|lobby\/)/;
@@ -50,14 +48,11 @@
   const railHtml = () => {
     const kids = !!(B.me && B.me.kids);
     const spot = spotOf(location.hash);
-    // Holiday marks (js/holidaynav.js): the decoration hangs beside the icon you're on, each door has its item
-    const h = B.holidayNav ? B.holidayNav() : null;
-    const mark = (here) => (h && h.mark && here ? `<i class="rl-mark">${B.holidaySvg(h.mark, "0 0 12 18")}</i>` : "");
-    const item = (key, icon, label, color, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="#/${key}" style="--c:${color || "var(--ink)"}" title="${esc(label)}">${HI(key, icon)}${mark(spot === key)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
+    const item = (key, icon, label, color, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="#/${key}" style="--c:${color || "var(--ink)"}" title="${esc(label)}">${I(icon)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
       ${item("home", "home", "Home")}
       ${item("search", "search", "Search")}
-      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" style="--c:${d.color}" title="${esc(d.name)}" aria-haspopup="true">${HI(d.key, d.icon)}${mark(spot === d.key)}<span class="rl-t">${esc(d.name)}</span></button>`).join("")}
+      ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" style="--c:${d.color}" title="${esc(d.name)}" aria-haspopup="true">${I(d.icon)}<span class="rl-t">${esc(d.name)}</span></button>`).join("")}
       <div class="rl-gap"></div>
       ${kids ? "" : item("requests", "plus", "Requests", TEAL, `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <button type="button" class="rl-i rl-me" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
@@ -87,10 +82,6 @@
     rail.hidden = false;
     rail.classList.toggle("kids", !!B.me.kids);
     rail.classList.toggle("always", alwaysOpen());
-    // Holiday marks: the rail takes the holiday's colours
-    const h = B.holidayNav ? B.holidayNav() : null;
-    rail.classList.toggle("holiday", !!h);
-    if (h) { rail.style.setProperty("--hr1", h.rail[0]); rail.style.setProperty("--hr2", h.rail[1]); }
     const html = railHtml();
     if (rail.dataset.html !== html) {
       const had = document.activeElement && rail.contains(document.activeElement) ? (document.activeElement.dataset.door || document.activeElement.dataset.k) : null;
@@ -272,9 +263,7 @@
     const spot = spotOf(location.hash);
     const list = tabs();
     const on = list.some((t) => t.key === spot) ? spot : "more";
-    const h = B.holidayNav ? B.holidayNav() : null;
-    const deco = (t) => (h && h.mark && t.key === on ? `<b class="bt-mark">${B.holidaySvg(h.mark, "0 0 12 18")}</b>` : "");
-    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}" style="--c:${t.color}"><i>${HI(t.key, t.icon)}${t.key === "more" && B.newsDot ? '<b class="rl-dot"></b>' : ""}${deco(t)}</i><span>${esc(t.label)}</span></button>`).join("");
+    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}" style="--c:${t.color}"><i>${I(t.icon)}${t.key === "more" && B.newsDot ? '<b class="rl-dot"></b>' : ""}</i><span>${esc(t.label)}</span></button>`).join("");
     if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
   };
   const onTab = (e) => {
@@ -335,9 +324,6 @@
     lighting = true;
     icons.forEach((x) => { x.classList.remove("lit"); x.classList.add("dark"); });
     // Top to bottom: Home and Search first, then each door
-    // While a holiday is on the icons light up in its colours (approved hq-start A)
-    const h = B.holidayNav ? B.holidayNav() : null;
-    if (h) icons.forEach((x, i) => x.style.setProperty("--lc", h.lights[i % h.lights.length]));
     icons.forEach((x, i) => setTimeout(() => { x.classList.remove("dark"); x.classList.add("lit"); setTimeout(() => x.classList.remove("lit"), 700); }, 120 + i * 140));
     setTimeout(() => { lighting = false; }, 160 + icons.length * 140);
   };

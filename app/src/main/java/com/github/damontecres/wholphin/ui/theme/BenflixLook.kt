@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 
 /**
  * The Benflix look (redesign, Nov 2026): one calm dark tray for everyone, white words, neutral greys,
@@ -23,97 +22,28 @@ object BenflixColors {
     val Muted: Color get() = KidsLook.palette?.muted ?: Color(0xFF9497A3)
 
     /** Pills, chips and small raised things */
-    val Raised: Color get() =
-        vg(VgLook.Raised) ?: ed(EdLook.Raised) ?: pc(PcLook.Raised) ?: ny(NyLook.Raised) ?: j4(J4Look.Raised) ?: sp(SpLook.Raised)
-            ?: KidsLook.palette?.raised
-            ?: f13(F13Look.Raised)
-            ?: xmas(XmasLook.PineRaised)
-            ?: tg(TgLook.Raised) ?: sw(SwLook.Raised)
-            ?: hw(HwLook.Raised)
-            ?: ea(EaLook.Raised)
-            ?: vl(ValLook.Raised)
-            ?: Color(0xFF15171D)
+    val Raised: Color get() = KidsLook.palette?.raised ?: Color(0xFF15171D)
 
     /** Menus and panels */
-    val Panel: Color get() =
-        vg(VgLook.Panel) ?: ed(EdLook.Panel) ?: pc(PcLook.Panel) ?: ny(NyLook.Panel) ?: j4(J4Look.Panel) ?: sp(SpLook.Panel)
-            ?: KidsLook.palette?.panel
-            ?: f13(F13Look.Panel)
-            ?: xmas(XmasLook.PineDark)
-            ?: tg(TgLook.Panel)
-            ?: hw(HwLook.Panel)
-            ?: ea(EaLook.Panel)
-            ?: sw(SwLook.Panel)
-            ?: vl(ValLook.Panel)
-            ?: Color(0xFF16181E)
+    val Panel: Color get() = KidsLook.palette?.panel ?: Color(0xFF16181E)
 
     /** The lighter side of a panel (profile card picture side) */
-    val PanelHigh: Color get() =
-        vg(VgLook.PanelHigh) ?: ed(EdLook.PanelHigh) ?: pc(PcLook.PanelHigh) ?: ny(NyLook.PanelHigh) ?: j4(J4Look.PanelHigh)
-            ?: sp(SpLook.PanelHigh)
-            ?: KidsLook.palette?.panelHigh
-            ?: f13(F13Look.PanelHigh)
-            ?: xmas(XmasLook.PineHigh)
-            ?: tg(TgLook.PanelHigh) ?: sw(SwLook.PanelHigh)
-            ?: hw(HwLook.PanelHigh)
-            ?: ea(EaLook.PanelHigh)
-            ?: vl(ValLook.PanelHigh)
-            ?: Color(0xFF1D2027)
+    val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: Color(0xFF1D2027)
 
     /** The "you are here" ring around whatever the remote is on: white, or sunny yellow on Kids */
     val Focus: Color get() = KidsLook.palette?.accent ?: Color(0xFFF1F2F5)
 
     /** A button the remote is on fills with this: white, or sunny yellow on Kids */
-    val FocusFill: Color get() =
-        vg(VgLook.Cyan) ?: ed(EdLook.Leaf) ?: pc(PcLook.Butter) ?: ny(NyLook.Gold) ?: j4(J4Look.Red) ?: sp(SpLook.Clover)
-            ?: KidsLook.palette?.accent
-            ?: f13(F13Look.Green)
-            ?: xmas(XmasLook.Red)
-            ?: tg(TgLook.Orange)
-            ?: hw(HwLook.Orange)
-            ?: ea(EaLook.Lilac)
-            ?: sw(SwLook.Red)
-            ?: vl(ValLook.Rose)
-            ?: Color.White
+    val FocusFill: Color get() = KidsLook.palette?.accent ?: Color.White
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() =
-        vg(VgLook.OnCyan) ?: ed(EdLook.OnLeaf) ?: pc(PcLook.OnButter) ?: ny(NyLook.OnGold) ?: j4(Color.White) ?: sp(SpLook.OnClover)
-            ?: KidsLook.palette?.onAccent
-            ?: f13(F13Look.OnGreen)
-            ?: xmas(Color.White)
-            ?: tg(Color.White)
-            ?: hw(HwLook.OnOrange)
-            ?: ea(EaLook.OnLilac)
-            ?: sw(Color.White)
-            ?: vl(Color.White)
-            ?: Color(0xFF0B0C10)
+    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: Color(0xFF0B0C10)
 
     /** Thin lines and panel edges */
-    val Line: Color get() =
-        vg(VgLook.Line) ?: ed(EdLook.Line) ?: pc(PcLook.Line) ?: ny(NyLook.Line) ?: j4(J4Look.Line) ?: sp(SpLook.Line)
-            ?: KidsLook.palette?.line
-            ?: f13(F13Look.Line)
-            ?: xmas(XmasLook.PineLine)
-            ?: tg(TgLook.Line)
-            ?: hw(HwLook.Line)
-            ?: ea(EaLook.Line)
-            ?: sw(SwLook.Line)
-            ?: vl(ValLook.Line)
-            ?: Color(0xFF2A2D35)
+    val Line: Color get() = KidsLook.palette?.line ?: Color(0xFF2A2D35)
 
     /** The focused row in a list or menu */
-    val FocusRow: Color get() =
-        vg(VgLook.Purple) ?: ed(EdLook.Ocean) ?: pc(PcLook.Red) ?: ny(NyLook.Midnight) ?: j4(J4Look.Navy) ?: sp(SpLook.Emerald)
-            ?: KidsLook.palette?.focusRow
-            ?: f13(F13Look.Black)
-            ?: xmas(XmasLook.Pine)
-            ?: tg(TgLook.Brown)
-            ?: hw(HwLook.Purple)
-            ?: ea(EaLook.Green)
-            ?: sw(SwLook.Button)
-            ?: vl(ValLook.Wine)
-            ?: Color(0xFF262932)
+    val FocusRow: Color get() = KidsLook.palette?.focusRow ?: Color(0xFF262932)
 
     /** Dims the page behind a menu (no blur, so it stays quick on older TVs) */
     val Dim = Color(0xB8050608)
@@ -143,45 +73,6 @@ object BenflixColors {
     /** Music, the fifth door: soft violet with dark words */
     val Music = Color(0xFFB69CFF)
     val OnMusic = Color(0xFF160F26)
-
-    /** Christmas look: [c] while it's on (December until New Year's, not on Kids), else null */
-    private fun xmas(c: Color): Color? = if (XmasLook.on) c else null
-
-    /** Friday the 13th look: [c] while it's on (only on a Friday the 13th, Kids too), else null */
-    private fun f13(c: Color): Color? = if (F13Look.on) c else null
-
-    /** Thanksgiving look: [c] while it's on (16 to 30 Nov, not on Kids), else null */
-    private fun tg(c: Color): Color? = if (TgLook.on) c else null
-
-    /** Halloween look: [c] while it's on (1 to 31 Oct, not on Kids), else null */
-    private fun hw(c: Color): Color? = if (HwLook.on) c else null
-
-    /** Valentine's look: [c] while it's on (1 to 14 Feb, not on Kids), else null */
-    private fun vl(c: Color): Color? = if (ValLook.on) c else null
-
-    /** Popcorn Day look: [c] while it's on (19 Jan, Kids too, so it wins over the Kids colours), else null */
-    private fun pc(c: Color): Color? = if (PcLook.on) c else null
-
-    /** New Year's look: [c] while it's on (27 Dec to 1 Jan, Kids too, so it wins over the Kids colours), else null */
-    private fun ny(c: Color): Color? = if (NyLook.on) c else null
-
-    /** Video Games Day look: [c] while it's on (12 Sep, Kids too, so it wins over the Kids colours), else null */
-    private fun vg(c: Color): Color? = if (VgLook.on) c else null
-
-    /** Easter look: [c] while it's on (Monday to Easter Sunday, Kids too: the Kids colours step aside), else null */
-    private fun ea(c: Color): Color? = if (EaLook.on) c else null
-
-    /** St. Patrick's Day look: [c] while it's on (10 to 17 Mar, Kids too, so it wins over the Kids colours), else null */
-    private fun sp(c: Color): Color? = if (SpLook.on) c else null
-
-    /** Earth Day look: [c] while it's on (Earth week, Kids too, so it wins over the Kids colours), else null */
-    private fun ed(c: Color): Color? = if (EdLook.on) c else null
-
-    /** 4th of July look: [c] while it's on (1 to 4 Jul, Kids too, so it wins over the Kids colours), else null */
-    private fun j4(c: Color): Color? = if (J4Look.on) c else null
-
-    /** Star Wars Day look: [c] on 4 May (Kids too), else null */
-    private fun sw(c: Color): Color? = if (SwLook.on) c else null
 
     /** Books, the sixth door: lime with dark words */
     val Books = Color(0xFFB9E36A)
@@ -215,21 +106,9 @@ enum class BenflixDoor(
                 BOOKS -> BenflixColors.Books
             }
 
-    /** The words on the door itself: white on every door in the Christmas, Thanksgiving and New Year's and 4th of July looks (Ben: Books too) */
+    /** The words on the door itself */
     val labelColor: Color
-        get() =
-            if (XmasLook.on || TgLook.on || HwLook.on || NyLook.on || J4Look.on || ValLook.on || PcLook.on || SwLook.on ||
-                EdLook.on || F13Look.on ||
-                SpLook.on || EaLook.on || VgLook.on
-            ) {
-                Color.White
-            } else {
-                onColor
-            }
-
-    /** Christmas look: the colour of the glass ornament hanging on this door */
-    val ornamentColor: Color
-        get() = lerp(color, Color.White, .12f)
+        get() = onColor
 
     /** Words on top of [color] */
     val onColor: Color

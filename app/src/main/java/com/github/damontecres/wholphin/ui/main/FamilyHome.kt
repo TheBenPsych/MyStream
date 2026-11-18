@@ -52,37 +52,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.EaLook
-import com.github.damontecres.wholphin.ui.theme.EdLook
-import com.github.damontecres.wholphin.ui.theme.F13Look
-import com.github.damontecres.wholphin.ui.theme.HolidayFont
-import com.github.damontecres.wholphin.ui.theme.HwLook
-import com.github.damontecres.wholphin.ui.theme.J4Look
 import com.github.damontecres.wholphin.ui.theme.KidsLook
-import com.github.damontecres.wholphin.ui.theme.NyLook
-import com.github.damontecres.wholphin.ui.theme.PcLook
-import com.github.damontecres.wholphin.ui.theme.PixelFont
-import com.github.damontecres.wholphin.ui.theme.SpLook
-import com.github.damontecres.wholphin.ui.theme.StarWarsDay
-import com.github.damontecres.wholphin.ui.theme.StarWarsFont
-import com.github.damontecres.wholphin.ui.theme.SwLook
-import com.github.damontecres.wholphin.ui.theme.TgLook
-import com.github.damontecres.wholphin.ui.theme.ValLook
-import com.github.damontecres.wholphin.ui.theme.VgLook
-import com.github.damontecres.wholphin.ui.theme.blurb
-import com.github.damontecres.wholphin.ui.theme.eaDoorCharm
-import com.github.damontecres.wholphin.ui.theme.edDoorLife
-import com.github.damontecres.wholphin.ui.theme.f13DoorCharm
-import com.github.damontecres.wholphin.ui.theme.hwDoorCharm
-import com.github.damontecres.wholphin.ui.theme.j4DoorCharm
-import com.github.damontecres.wholphin.ui.theme.nyDoorCharm
-import com.github.damontecres.wholphin.ui.theme.pcDoorSnack
-import com.github.damontecres.wholphin.ui.theme.spDoorCharm
-import com.github.damontecres.wholphin.ui.theme.swDoorMoment
-import com.github.damontecres.wholphin.ui.theme.tgDoorCharm
-import com.github.damontecres.wholphin.ui.theme.valDoorCharm
-import com.github.damontecres.wholphin.ui.theme.vgDoorKeepsake
-import com.github.damontecres.wholphin.ui.theme.xmasDoorOrnament
 import java.util.UUID
 
 /**
@@ -226,45 +196,16 @@ fun FamilyHome(
         Column {
             Text(
                 text = greeting,
-                // Star Wars Day: the greeting is in yellow crawl lettering
-                color = if (SwLook.on) StarWarsDay.CrawlYellow else BenflixColors.Text,
-                // Video Games Day look (Kids too): the greeting is in pixel capitals, smaller as they're very wide
-                fontSize = BenflixType.pageTitle * scale * (if (VgLook.on) .6f else 1f),
-                // Thanksgiving, Halloween, New Year's, Valentine's, St. Patrick's, Popcorn Day, Earth Day and Friday the 13th
-                // (Kids too) and Easter looks (not on Kids, which keeps its round letters): the greeting is in the curly
-                // holiday font. Star Wars Day: yellow crawl lettering
-                fontWeight =
-                    if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || HwLook.on || PcLook.on || EdLook.on || F13Look.on ||
-                        SpLook.on || VgLook.on ||
-                        (EaLook.on && kind != FamilyKind.KIDS)
-                    ) {
-                        FontWeight.Normal
-                    } else if (SwLook.on) {
-                        FontWeight.Bold
-                    } else {
-                        FontWeight.ExtraBold
-                    },
-                fontFamily =
-                    if (VgLook.on) {
-                        PixelFont
-                    } else if (TgLook.on || NyLook.on || J4Look.on || ValLook.on || HwLook.on || PcLook.on || EdLook.on || F13Look.on ||
-                        SpLook.on ||
-                        (EaLook.on && kind != FamilyKind.KIDS)
-                    ) {
-                        HolidayFont
-                    } else if (SwLook.on) {
-                        StarWarsFont
-                    } else {
-                        null
-                    },
+                color = BenflixColors.Text,
+                fontSize = BenflixType.pageTitle * scale,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (kind == FamilyKind.KIDS) {
                 // Ben: Kids profiles are shared by every kid on the TV, so no names, just a friendly question
                 Text(
-                    // Halloween on Kids: "Happy Halloween! What do you want to watch?"
-                    text = if (HwLook.charmsOn) "Happy Halloween! What do you want to watch?" else "What do you want to watch?",
+                    text = "What do you want to watch?",
                     color = BenflixColors.Soft,
                     fontSize = BenflixType.lead,
                     fontWeight = FontWeight.SemiBold,
@@ -350,7 +291,7 @@ fun FamilyHome(
                 doors.shown.forEach { door ->
                     FamilyDoor(
                         door = door,
-                        line = data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.blurb,
+                        line = data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.description,
                         scale = scale,
                         labelAlpha = labelAlpha(door.ordinal),
                         onClick = { onDoor(door) },
@@ -385,7 +326,7 @@ fun FamilyHome(
                     pair.forEach { door ->
                         FamilyDoor(
                             door = door,
-                            line = if (perRow == 3) null else data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.blurb,
+                            line = if (perRow == 3) null else data.lines[door] ?: if (kind == FamilyKind.KIDS) null else door.description,
                             scale = scale,
                             labelAlpha = labelAlpha(door.ordinal),
                             onClick = { onDoor(door) },
@@ -422,7 +363,7 @@ fun FamilyHome(
                 doors.more.forEach { door ->
                     FamilyDoor(
                         door = door,
-                        line = door.blurb,
+                        line = door.description,
                         scale = scale,
                         labelAlpha = 1f,
                         onClick = {
@@ -484,35 +425,6 @@ private fun FamilyDoor(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = labelAlpha }
-                // Halloween: a charm on every door, the friendly ones on Kids
-                .hwDoorCharm(door, kids)
-                .then(
-                    // Popcorn Day look: a movie snack stands on every door, Kids too
-                    if (kids) {
-                        Modifier
-                            .nyDoorCharm(door)
-                            .j4DoorCharm(door)
-                            .pcDoorSnack(door)
-                            .swDoorMoment(door)
-                            .spDoorCharm(door)
-                    } else {
-                        Modifier
-                            .xmasDoorOrnament(door)
-                            .tgDoorCharm(door)
-                            .valDoorCharm(door)
-                            .nyDoorCharm(door)
-                            .j4DoorCharm(door)
-                            .swDoorMoment(door)
-                            .pcDoorSnack(door)
-                            .spDoorCharm(door)
-                    },
-                ).edDoorLife(door) // Earth Day look: Kids gets the living things on the doors too
-                // Video Games Day look: Kids gets the game keepsakes too
-                .vgDoorKeepsake(door)
-                // Friday the 13th look: the charms hang on Kids doors too
-                .f13DoorCharm(door)
-                // Easter look: Kids gets the charms too
-                .eaDoorCharm(door)
                 .padding(if (small) 14.dp else 22.dp),
         ) {
             BenflixIconImage(

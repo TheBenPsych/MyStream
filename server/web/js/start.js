@@ -26,40 +26,11 @@ B.route(/^\/who$/, async () => {
   const list = B.profiles();
   if (!list.length) return B.go("#/signin");
   const last = load("benflix.last");
-  // Christmas (approved 2026-11-16): the cosy room with the tree, the train and the parade, 1 to 26 December
-  const xmas = B.xmasOn();
-  // Thanksgiving (approved 2026-11-16): the feast table room, 16 to 30 November
-  const feast = !xmas && B.tgOn();
-  // Friday the 13th (approved 2026-11-17): the room with the sleeping black cat, that day only (it takes over any
-  // season room, because B.xmasOn and B.tgOn are off that day)
-  const f13 = B.f13On();
-  // Valentine's Day (approved 2026-11-17): the table set for two, 1 to 14 February, petals falling on the 14th
-  const val = !xmas && !feast && !f13 && B.valOn();
-  // New Year's (approved 2026-11-17): the party room, 27 December to 1 January, with a 10-second countdown at midnight
-  const ny = !xmas && !feast && !f13 && B.nyOn();
-  // 4th of July (approved 2026-11-17): the cookout room, 1 to 4 July, with the big fireworks show from 9 PM on the 4th
-  const j4 = !xmas && !feast && !ny && B.j4On();
-  // Easter (approved 2026-11-17): the spring morning room with the egg tree and the pet rabbit, Monday to Easter Sunday
-  const easter = !xmas && !feast && !ny && !j4 && B.eaOn();
-  const eaNow = new Date(), eaFound = easter && B.ea.isSunday(eaNow) && B.ea.hunt.all(eaNow);
-  const eaCrack = eaFound && !B.ea.hunt.cracked(eaNow);
-  // Popcorn Day (approved 2026-11-17): the popcorn cart room, just 19 January, the heap growing through the day
-  const pcRoom = !xmas && !feast && !ny && !val && B.pcOn();
-  // Star Wars Day (approved 2026-11-17): the desert home, 4 May only. The laser sword matches each profile's side
-  const sw = !xmas && !feast && !ny && !val && !pcRoom && B.swOn();
-  // Earth Day (approved 2026-11-17): the plant corner and the spring window, all Earth week
-  const earth = !xmas && !feast && !ny && B.edOn();
-  // Halloween (approved 2026-11-17): the spooky room, 1 to 31 October; bats and "Happy Halloween!" from 5 PM on the 31st
-  const hw = !xmas && !feast && !ny && B.hwOn();
-  // St. Patrick's Day (approved 2026-11-17): the rainy Irish room, 10 to 17 March, with a rainbow on the 17th
-  const sp = !xmas && !feast && !f13 && !ny && !val && !pcRoom && !sw && !earth && !hw && B.spOn();
-  // Video Games Day (approved 2026-11-17): the arcade room, 12 September
-  const arcade = !xmas && !feast && !f13 && !ny && !j4 && !val && !pcRoom && !sw && !earth && !hw && !sp && !easter && B.vgOn();
   const order = list.slice().sort((a, b) => (!!a.kids - !!b.kids) || a.name.localeCompare(b.name));
   B.page().innerHTML = `<div class="who fade-in">
-    ${xmas || feast || f13 || ny || j4 || val || pcRoom || sw || earth || hw || sp || easter || arcade ? '<svg class="xroom" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>' : '<div class="wall" aria-hidden="true"></div>'}
+    <div class="wall" aria-hidden="true"></div>
     ${B.logo()}
-    ${xmas ? `<h1 class="xmas">${esc(B.xmasGreeting())}</h1>${B.xmas.countdown(new Date()) ? `<p class="xcount">${esc(B.xmas.countdown(new Date()))}</p>` : ""}` : feast ? `<h1 class="xmas">${esc(B.tg.greeting())}</h1>` : f13 ? `<h1 class="xmas">${esc(B.f13.greeting())}</h1><p class="xline">${esc(B.f13.line())}</p>`: ny ? `<h1 class="xmas" id="nyGreet">${esc(B.ny.greeting(new Date()))}</h1><p class="xcount nycount" id="nyCount">${esc(B.ny.countdown(new Date()))}</p>` : j4 ? `<h1 class="xmas">${esc(B.j4.greeting())}</h1><p class="xcount j4count" id="j4Count">${esc(B.j4.countdown(new Date()))}</p>` : val ? `<h1 class="xmas">${esc(B.val.greeting(new Date()))}</h1><p class="xcount vcount">${esc(B.val.countdown(new Date()))}</p>` : pcRoom ? `<h1 class="xmas">${esc(B.pc.greeting())}</h1><p class="xcount pcline">${esc(B.pc.line())}</p>` : sw ? `<h1 class="swh">${esc(B.sw.greeting())}</h1>` : earth ? `<h1 class="xmas">${esc(B.ed.greeting())}</h1><p class="xcount edline">${esc(B.ed.line(new Date()))}</p>` : hw ? `<h1 class="xmas" id="hwGreet">${esc(B.hw.greeting(new Date()))}</h1><p class="xcount" id="hwCount">${esc(B.hw.countdown(new Date()))}</p>` : sp ? `<h1 class="xmas">${esc(B.sp.greeting(new Date()))}</h1>${B.sp.countdown(new Date()) ? `<p class="xcount spcount">${esc(B.sp.countdown(new Date()))}</p>` : ""}` : easter ? `<h1 class="xmas" id="eaGreet">${esc(eaFound && !eaCrack ? "You found all six!" : B.ea.greeting())}</h1>${B.ea.countdown(eaNow) ? `<p class="xcount ea">${esc(B.ea.countdown(eaNow))}</p>` : ""}` : arcade ? `<h1 class="vgh">${esc(B.vg.greeting())}</h1><p class="vgline">${esc(B.vg.LINE)}</p>` : "<h1>Who's watching?</h1>"}
+    <h1>Who's watching?</h1>
     <div class="people">${order.map((p) => `<button class="person${p.kids ? " small" : ""}" data-id="${esc(p.id)}">${B.picHtml(p, "", 260)}<span>${esc(p.name)}</span>${p.expired ? '<span class="gone">Sign in again</span>' : ""}</button>`).join("")}</div>
     <p class="hint">Change your picture any time in Settings › You</p>
     <div class="add"><button class="linkbtn" id="addSomeone">Add someone</button></div>
@@ -77,80 +48,10 @@ B.route(/^\/who$/, async () => {
       B.doorsGrow = true;
       B.go("#/home");
     };
-    // Friday the 13th: the sleeping cat opens its eyes and yawns before Home opens
-    const svg = $(".who .xroom");
-    if (f13 && svg && svg.scene && svg.clock && !svg.dataset.waking) {
-      svg.dataset.waking = "1";
-      svg.scene.wake(svg.clock());
-      setTimeout(open, 1500);
-    } else if (!f13 || !svg || !svg.dataset.waking) open();
+    open();
   };
   $("#addSomeone").onclick = () => B.go("#/signin");
-  if (xmas || feast || f13 || ny || j4 || val || pcRoom || sw || earth || hw || sp || easter || arcade) {
-    const svg = $(".who .xroom");
-    const tall = () => innerWidth < innerHeight * 0.8;
-    const room = xmas ? B.xmas : feast ? B.tg : f13 ? B.f13 : val ? B.val : pcRoom ? B.pc : j4 ? B.j4 : sw ? B.sw : ny ? B.ny : hw ? B.hw : sp ? B.sp : easter ? B.ea : earth ? B.ed : B.vg;
-    // Star Wars Day: the blade takes the side of the profile you're on (or the last one picked)
-    let side = B.swSide(last);
-    if (sw) {
-      const onTo = (e) => { const b = e.target.closest && e.target.closest(".person"); if (b && svg.scene && svg.scene.blade) { side = B.swSide(b.dataset.id); svg.scene.blade(side); } };
-      $(".who .people").addEventListener("focusin", onTo);
-      $(".who .people").addEventListener("mouseover", onTo);
-    }
-    let clock = null;
-    // Easter Sunday: once all six hidden eggs are found, the golden egg cracks open (the first time), then stays open
-    const draw = () => { if (!svg.isConnected) return; const scene = room.build(svg, { layout: tall() ? "tall" : "wide", open: eaFound && !eaCrack, side }); svg.dataset.shape = tall() ? "tall" : "wide"; if (!svg.dataset.playing) { svg.dataset.playing = "1"; const c = room.play(svg, { at: (t) => svg.scene && svg.scene.at(t) }); if (typeof c === "function") { clock = c; svg.clock = c; } } svg.scene = scene; };
-    draw();
-    if (eaCrack) {
-      B.ea.hunt.setCracked(eaNow);
-      setTimeout(() => { if (svg.scene && svg.scene.crack) svg.scene.crack(clock ? clock() : 0); }, 900);
-      setTimeout(() => { const g = $("#eaGreet"); if (g) g.textContent = "You found all six!"; }, 3100);
-    }
-    if (hw) {
-      // Halloween: at 5 PM on the 31st the bats come out and the greeting gets its "!"
-      let was = B.hw.stage(new Date());
-      const tick = () => {
-        if (!svg.isConnected) return;
-        const d = new Date(), g = $("#hwGreet"), c = $("#hwCount");
-        if (g) g.textContent = B.hw.greeting(d);
-        if (c) c.textContent = B.hw.countdown(d);
-        const st = B.hw.stage(d);
-        if (st !== was) { was = st; draw(); }
-        setTimeout(tick, 30000);
-      };
-      setTimeout(tick, 30000);
-    }
-    if (j4) {
-      // 4th of July: the line under the greeting keeps up, and at 9 PM on the 4th the fireworks show starts
-      let was = B.j4.variant(new Date());
-      const tick = () => {
-        if (!svg.isConnected) return;
-        const d = new Date(), c = $("#j4Count");
-        if (c) c.textContent = B.j4.countdown(d);
-        const v = B.j4.variant(d);
-        if (v !== was) { was = v; draw(); }
-        setTimeout(tick, 20000);
-      };
-      tick();
-    }
-    if (ny) {
-      // New Year's: the greeting counts down the last 10 seconds of the year, then the room pops open with confetti
-      let was = B.ny.variant(new Date());
-      const tick = () => {
-        if (!svg.isConnected) return;
-        const d = new Date();
-        const g = $("#nyGreet"), c = $("#nyCount");
-        if (g) g.textContent = B.ny.greeting(d);
-        if (c) c.textContent = B.ny.countdown(d);
-        const v = B.ny.variant(d);
-        if (v !== was) { was = v; draw(); if (svg.scene && svg.scene.celebrate && clock) svg.scene.celebrate(clock()); }
-        setTimeout(tick, B.ny.countdownSecs(d) || (d.getMonth() === 11 && d.getDate() === 31 && d.getHours() === 23 && d.getMinutes() >= 58) ? 250 : 20000);
-      };
-      tick();
-    }
-    const onResize = () => { if (!svg.isConnected) return removeEventListener("resize", onResize); if (svg.dataset.shape !== (tall() ? "tall" : "wide")) draw(); };
-    addEventListener("resize", onResize);
-  } else whoWall(list);
+  whoWall(list);
 });
 
 // 12 still posters (PG-13 or lower), picked once a day and kept, so the wall costs nothing most days
@@ -326,46 +227,19 @@ B.route(/^\/home$/, async (m, nav) => {
   const doors = keys.map((k) => DOORS[k]);
   // Navigation redesign: Easy mode gets the normal Home (the rail has every door); Kids get their own
   const small = kids;
-  // Video Games Day look: the Games door nudges you to play something today
-  const vgDay = B.vgOn();
-  const doorDesc = (d) => (vgDay && d.key === "games" ? "Play something today" : d.desc);
-  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(doorDesc(d))}</div></div></a>`;
+  const doorHtml = (d) => `<a class="door" data-door="${d.key}" href="#/${d.key}" style="--c:${d.color}">${I(d.icon)}<div><div class="n">${esc(d.name)}</div><div class="d" id="dl-${d.key}">${kids ? "" : esc(d.desc)}</div></div></a>`;
   // Ben: Kids profiles are shared by every kid in the house, so no names there, just a friendly question
-  // Thanksgiving look: "Happy Thanksgiving, Ben" in the curly holiday font (html.tg .greet.tgh)
-  const tgGreet = !kids && B.tgOn();
-  // Friday the 13th look (Kids too): "Happy Friday the 13th, Ben" in the curly holiday font, and a lucky line
-  // instead of the weather (filled in by B.loadBoard once the news is in)
-  const f13 = B.f13On();
-  // Valentine's look: "Happy Valentine's Day, Ben" in the curly holiday font, with "4 days to Valentine's Day" under it
-  const valGreet = !kids && !tgGreet && !f13 && B.valOn();
-  // New Year's look: "Happy New Year, Ben" in the curly holiday font, with "4 days to 2027" leading the line under it
-  const nyGreet = !kids && !f13 && B.nyOn();
-  // Earth Day look: "Happy Earth Day, Ben" in the curly holiday font (Kids too), "Earth week, day 3" under it
-  const edGreet = B.edOn();
-  // 4th of July look: "Happy 4th of July, Ben" in the curly holiday font, with "2 days to the Fourth" leading the line under it
-  const j4Greet = !kids && B.j4On();
-  // Popcorn Day look: "Happy Popcorn Day, Ben" in the curly holiday font (Kids too), "It's National Popcorn Day" under it
-  const pcGreet = B.pcOn();
-  // Star Wars Day: "May the 4th be with you, Ben" in yellow crawl lettering (html.sw .greet.swg), Kids too
-  const swGreet = B.swOn();
-  // St. Patrick's Day look: "Happy St. Patrick's Day, Ben" in the curly holiday font, with "3 days to St. Patrick's Day" under it
-  const spGreet = !kids && B.spOn();
-  // Halloween look: "Happy Halloween, Ben" in the curly holiday font, with "14 days to Halloween" under it;
-  // Kids gets "Happy Halloween! What do you want to watch?"
-  const hwOn = B.hwOn(), hwGreet = !kids && hwOn;
-  // Easter look: "Happy Easter, Ben" in the curly holiday font, with the countdown leading the line under it
-  const eaGreet = !nyGreet && !tgGreet && !valGreet && !pcGreet && !swGreet && !j4Greet && !edGreet && !spGreet && !hwGreet && !f13 && B.eaOn();
-  const greet = kids ? `${f13 ? "Happy Friday the 13th!" : edGreet ? "Happy Earth Day!" : pcGreet ? "Happy Popcorn Day!" : swGreet ? "May the 4th be with you!" : "Hi there!"}<small class="kq">${hwOn ? "Happy Halloween! " : ""}What do you want to watch?</small>` : `${esc(vgDay ? B.vg.greeting() : f13 ? "Happy Friday the 13th" : edGreet ? "Happy Earth Day" : hwGreet ? "Happy Halloween" : pcGreet ? "Happy Popcorn Day" : swGreet ? B.sw.greeting() : spGreet ? "Happy St. Patrick\u2019s Day" : j4Greet ? "Happy 4th of July" : nyGreet ? "Happy New Year" : tgGreet ? "Happy Thanksgiving" : valGreet ? "Happy Valentine’s Day" : eaGreet ? "Happy Easter" : (B.holiday() || B.greeting()))}, ${esc(B.me.name)}`;
+  const greet = kids ? `Hi there!<small class="kq">What do you want to watch?</small>` : `${esc(B.greeting())}, ${esc(B.me.name)}`;
   if (small) {
     B.page().innerHTML = B.top("") + `<div class="home fam spotted ${kids ? "kidsh" : "easyh"}">
-      <div class="greet${edGreet || pcGreet ? " tgh" : ""}${swGreet ? " swg" : ""}${f13 ? " f13h" : ""}">${greet}</div>
+      <div class="greet">${greet}</div>
       ${B.spotHtml()}
       <div id="famrow">${B.spinner()}</div>
     </div>`;
   } else {
-    const wx = f13 ? B.f13Lucky(0, 0) : B.savedWeather();
+    const wx = B.savedWeather();
     B.page().innerHTML = B.top("") + `<div class="home board spotted ${grow ? "grow" : ""}">
-      <div class="bgreet"><div class="greet${tgGreet || nyGreet || j4Greet || valGreet || pcGreet || edGreet || spGreet ? " tgh" : eaGreet ? " eah" : ""}${swGreet ? " swg" : ""}${hwGreet ? " hwh" : ""}${f13 ? " f13h" : ""}">${greet}</div>${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${hwGreet && B.hw.homeLine(new Date()) ? `<div class="wx hwc">${esc(B.hw.homeLine(new Date()))}</div>` : ""}${j4Greet && B.j4.countdown(new Date()) ? `<div class="wx j4c">${esc(B.j4.countdown(new Date()))}</div>` : ""}${nyGreet && B.ny.countdown(new Date()) ? `<div class="wx nyc">${esc(B.ny.countdown(new Date()))}</div>` : ""}${eaGreet && B.ea.countdown(new Date()) ? `<div class="wx eac">${esc(B.ea.countdown(new Date()))}</div>` : ""}${valGreet && B.val.countdown(new Date()) ? `<div class="wx vlc">${esc(B.val.countdown(new Date()))}</div>` : ""}${pcGreet ? `<div class="wx pcw">${esc("It\u2019s National Popcorn Day")}</div>` : ""}${edGreet ? `<div class="wx edw">${esc(B.ed.line(new Date()))}</div>` : ""}${spGreet && B.sp.countdown(new Date()) ? `<div class="wx spc">${esc(B.sp.countdown(new Date()))}</div>` : ""}<div class="wx" id="wx">${esc(vgDay ? [B.vg.LINE, wx].filter(Boolean).join(" · ") : wx)}</div></div>
+      <div class="bgreet"><div class="greet">${greet}</div><div class="wx" id="wx">${esc(wx)}</div></div>
       ${B.spotHtml()}
       <div class="bmain"><div class="blist" id="blist"></div></div>
     </div>`;
@@ -576,7 +450,7 @@ B.loadBoard = async (nav) => {
   if (weather) {
     const line = weather.ready ? `${dayName()} · ${weather.line}` : "";
     try { localStorage.setItem("benflix.weather", JSON.stringify({ line, at: Date.now() })); } catch (e) {}
-    if (!B.f13On()) $("#wx").textContent = B.vgOn() ? [B.vg.LINE, line].filter(Boolean).join(" · ") : line;
+    $("#wx").textContent = line;
   }
   // News: a note from the server owner, a fix, new episodes, new music, new books, requests that are ready
   const c = (prefs && prefs.CustomPrefs) || {};
@@ -629,10 +503,6 @@ B.loadBoard = async (nav) => {
   });
   reqs.ready.forEach(add);
   cant.forEach(add);
-  // Holiday marks (approved hq-count A): the first card counts down to the day (js/holidaynav.js)
-  const hol = B.holidayNav ? B.holidayNav() : null;
-  const left = hol ? hol.countdown() : "";
-  if (left) add({ id: `holiday-${hol.key}-${new Date().toDateString()}`, kind: hol.countdownKind || "Countdown", title: left, full: left, kc: hol.lights[0], href: "", t: Infinity });
   // Did you know: about a movie or show this person can watch (Tower picks them)
   const factRows = ((facts && facts.facts) || []).map((f) => {
     let text = f.fact;
@@ -643,8 +513,6 @@ B.loadBoard = async (nav) => {
   lastFacts = factRows.map((f) => f.fid).join(",");
   const keep = (r) => !cleared.has(r.id) && !clearedNow.has(r.id);
   boardParts = { news: news.filter(keep).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 12), way: reqs.way.filter(keep), facts: factRows.filter(keep) };
-  // Friday the 13th look: "Lucky you: 3 new episodes and 1 request ready" under the greeting
-  if (B.f13On() && $("#wx")) $("#wx").textContent = B.f13Lucky(boardParts.news.filter((r) => /^New episode/.test(r.kind)).length, boardParts.news.filter((r) => r.kind === "Ready to watch").length);
   drawBoard();
   homeNotices(c, reqs.ready);
 };
@@ -673,27 +541,12 @@ const homeNotices = async (c, ready) => {
 // Every row can be pressed (a row with nowhere to go opens a pop-up with all its words), and the X beside it
 // clears it. Clear all (top right of the panel) clears the whole list. New news still shows when it comes.
 let boardParts = { news: [], way: [], facts: [] };
-// New Year's look: each kind of notice gets its own small gold mark (html.ny .brow small::before)
-const nyMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "glass" : k.startsWith("ready") ? "star" : k.startsWith("on the way") ? "clock" : k.includes("live") ? "ball" : "spark"; };
-// Video Games Day look: each kind of news gets its own pixel picture (a TV, a star, an hourglass or a joystick)
-const vgMark = (r) => {
-  if (!(B.vgOn && B.vgOn())) return "";
-  const k = String(r.kind || "").toLowerCase();
-  const m = k.includes("live") ? "live" : k.includes("episode") ? "ep" : r.kc === KIND_READY ? "ready" : r.kc === KIND_WAY ? "way" : "";
-  return m ? `<img class="vgmark" src="web/img/vg/vg_mark_${m}.png" alt="">` : "";
-};
-// Halloween look: each kind of notice gets its own mark (html.hw .brow small[data-hw]::before)
-const hwMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("ready") || k.includes("is ready") ? "sweet" : k.startsWith("on the way") ? "spider" : k.startsWith("new") ? "moon" : "cauldron"; };
-// Valentine's look: each kind of notice gets its own small mark (html.val .brow small::before)
-const valMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "choc" : k.startsWith("ready") ? "rose" : k.startsWith("on the way") ? "letter" : k.includes("live") ? "balloon" : "choc"; };
-// St. Patrick's Day look: each kind of notice gets its own small mark (html.sp .brow small::before)
-const spMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("ready") || k.includes("is ready") ? "pot" : k.startsWith("on the way") || k.includes("arrives") ? "rainbow" : k.startsWith("new") ? "horseshoe" : "hat"; };
 const rowHtml = (r, n) => {
   const logo = `<span class="lgthumb"><i></i><i></i><i></i><i></i></span>`;
   return `<div class="bitem${r.kc === KIND_FACT ? " fact" : ""}">
     <${r.href ? `a href="${esc(r.href)}"` : `button type="button"`} class="brow" data-row="${n}">
     ${r.img ? `<span class="th" style="background-image:url('${esc(r.img)}')"></span>` : logo}
-    <div class="tx"><small style="color:${r.kc}" data-vmark="${valMark(r.kind)}" data-mark="${nyMark(r.kind)}" data-hw="${hwMark(r.kind)}" data-pc="${B.pcMark(r.kind)}" data-ed="${B.edMark(r.kind)}" data-sp="${spMark(r.kind)}">${vgMark(r)}${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
+    <div class="tx"><small style="color:${r.kc}">${esc(r.kind)}</small><b><i>${esc(r.title)}</i></b></div></${r.href ? "a" : "button"}>
     <button type="button" class="bx" data-clear="${n}" title="Clear" aria-label="Clear ${esc(r.title)}">${I("x")}</button></div>`;
 };
 const live = (list) => list.filter((r) => !clearedNow.has(r.id));
@@ -788,127 +641,6 @@ const fitRows = (list) => {
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 
-// Christmas look: on from 1 to 26 December (New Year's has the 27th on) unless switched off in Settings › Look (this browser)
-B.xmas = window.BenflixXmas;
-B.xmasOff = () => { try { return localStorage.getItem("benflix.xmasOff") === "1"; } catch (e) { return false; } };
-B.setXmasOff = (off) => { try { localStorage.setItem("benflix.xmasOff", off ? "1" : "0"); } catch (e) {} };
-B.xmasOn = () => !!B.xmas && B.xmas.season(new Date()) && !B.xmasOff() && !B.f13On();
-B.xmasGreeting = () => (new Date().getDate() === 24 ? "Merry Christmas Eve" : "Merry Christmas");
-// Thanksgiving look: on from 16 to 30 November unless switched off in Settings › Look (this browser)
-B.tg = window.BenflixFeast;
-B.tgOff = () => { try { return localStorage.getItem("benflix.tgOff") === "1"; } catch (e) { return false; } };
-B.setTgOff = (off) => { try { localStorage.setItem("benflix.tgOff", off ? "1" : "0"); } catch (e) {} };
-B.tgOn = () => !!B.tg && B.tg.season(new Date()) && !B.tgOff() && !B.f13On();
-// Halloween look: on from 1 to 31 October unless switched off in Settings › Look (this browser)
-B.hw = window.BenflixHalloween;
-B.hwOff = () => { try { return localStorage.getItem("benflix.hwOff") === "1"; } catch (e) { return false; } };
-B.setHwOff = (off) => { try { localStorage.setItem("benflix.hwOff", off ? "1" : "0"); } catch (e) {} };
-B.hwOn = () => !!B.hw && B.hw.season(new Date()) && !B.hwOff() && !B.f13On();
-// Valentine's look: on from 1 to 14 February unless switched off in Settings › Look (this browser), not on Kids
-B.val = window.BenflixValentine;
-B.valOff = () => { try { return localStorage.getItem("benflix.valOff") === "1"; } catch (e) { return false; } };
-B.setValOff = (off) => { try { localStorage.setItem("benflix.valOff", off ? "1" : "0"); } catch (e) {} };
-B.valOn = () => !!B.val && B.val.season(new Date()) && !B.valOff() && !B.f13On();
-// New Year's look: on from 27 December to 1 January unless switched off in Settings › Look (this browser), Kids too
-B.ny = window.BenflixNewYear;
-B.nyOff = () => { try { return localStorage.getItem("benflix.nyOff") === "1"; } catch (e) { return false; } };
-B.setNyOff = (off) => { try { localStorage.setItem("benflix.nyOff", off ? "1" : "0"); } catch (e) {} };
-B.nyOn = () => !!B.ny && B.ny.season(new Date()) && !B.nyOff() && !B.f13On();
-// Easter look: Monday to Easter Sunday (worked out each year), Kids too, unless switched off in Settings › Look (this browser)
-B.ea = window.BenflixEaster;
-B.eaOff = () => { try { return localStorage.getItem("benflix.eaOff") === "1"; } catch (e) { return false; } };
-B.setEaOff = (off) => { try { localStorage.setItem("benflix.eaOff", off ? "1" : "0"); } catch (e) {} };
-B.eaOn = () => !!B.ea && B.ea.season(new Date()) && !B.eaOff() && !B.f13On();
-/** Easter look: which small mark a notice gets (egg, chick when something is ready, paw prints on the way, tulip for live) */
-B.eaMark = (title) => {
-  const k = String(title || "").toLowerCase();
-  if (k.includes("ready")) return "ready";
-  if (k.includes("on the way") || k.includes("arrives")) return "way";
-  if (k.includes("live")) return "live";
-  return "ep";
-};
-// Earth Day look: Earth week (22 to 28 April, or after Easter week) unless switched off in Settings › Look (this browser), Kids too
-B.ed = window.BenflixEarth;
-B.edOff = () => { try { return localStorage.getItem("benflix.edOff") === "1"; } catch (e) { return false; } };
-B.setEdOff = (off) => { try { localStorage.setItem("benflix.edOff", off ? "1" : "0"); } catch (e) {} };
-B.edOn = () => !!B.ed && B.ed.season(new Date()) && !B.edOff();
-// the mark for each kind of Home news (html.ed .brow small[data-ed]): sprout = new, flower = ready, bud = on the way, Earth = the rest
-B.edMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.includes("ready") || k.includes("fixed") ? "bloom" : /way|waiting|search|almost|coming|arrives/.test(k) ? "bud" : /new|sent|from /.test(k) ? "sprout" : "globe"; };
-// Video Games Day look: on 12 September (Kids too) unless switched off in Settings › Look (this browser)
-B.vg = window.BenflixArcade;
-B.vgOff = () => { try { return localStorage.getItem("benflix.vgOff") === "1"; } catch (e) { return false; } };
-B.setVgOff = (off) => { try { localStorage.setItem("benflix.vgOff", off ? "1" : "0"); } catch (e) {} };
-B.vgOn = () => !!B.vg && B.vg.season(new Date()) && !B.vgOff();
-// 4th of July look: on from 1 to 4 July unless switched off in Settings › Look (this browser), Kids too
-B.j4 = window.BenflixJuly4;
-B.j4Off = () => { try { return localStorage.getItem("benflix.j4Off") === "1"; } catch (e) { return false; } };
-B.setJ4Off = (off) => { try { localStorage.setItem("benflix.j4Off", off ? "1" : "0"); } catch (e) {} };
-B.j4On = () => !!B.j4 && B.j4.season(new Date()) && !B.j4Off();
-// Star Wars Day look: 4 May only, Kids too, unless switched off in Settings › Look (this browser)
-B.sw = window.BenflixStarWars;
-B.swOff = () => { try { return localStorage.getItem("benflix.swOff") === "1"; } catch (e) { return false; } };
-B.setSwOff = (off) => { try { localStorage.setItem("benflix.swOff", off ? "1" : "0"); } catch (e) {} };
-B.swOn = () => !!B.sw && B.sw.season(new Date()) && !B.swOff();
-// Each profile picks a side on Star Wars Day: "light" (blue laser swords) or "dark" (red), kept in this browser
-B.swSides = () => { try { return JSON.parse(localStorage.getItem("benflix.swSides") || "{}") || {}; } catch (e) { return {}; } };
-B.swSide = (id) => (B.swSides()[id] === "dark" ? "dark" : "light");
-B.setSwSide = (id, side) => { try { const s = B.swSides(); s[id] = side; localStorage.setItem("benflix.swSides", JSON.stringify(s)); } catch (e) {} };
-// The opening crawl, the first time Benflix opens in this browser on 4 May. Any key, click or tap skips it.
-B.swCrawl = () => new Promise((done) => {
-  const day = new Date().toDateString();
-  let seen = null; try { seen = localStorage.getItem("benflix.swCrawl"); } catch (e) {}
-  if (!B.swOn() || seen === day) return done();
-  try { localStorage.setItem("benflix.swCrawl", day); } catch (e) {}
-  const ov = document.createElement("div");
-  ov.className = "swcrawl";
-  ov.innerHTML = `<div class="intro">A short time ago, on a Benflix not so far away….</div><div class="big">MAY THE 4TH</div>
-    <div class="crawlbox"><div class="crawltext"><p class="ep">Episode IV</p><p class="ti">A NEW NIGHT IN</p><p>It is a time of popcorn. Brave viewers, settled on their couch, have won their first free evening in weeks.</p><p>During the battle for the remote, the family found every film of the saga, waiting on Benflix.</p><p>Pursued by snacks and blankets, everyone races home to press Play….</p></div></div>`;
-  document.body.appendChild(ov);
-  let over = false;
-  const end = () => { if (over) return; over = true; removeEventListener("keydown", skip, true); ov.remove(); done(); };
-  const skip = (e) => { e.preventDefault(); e.stopPropagation(); end(); };
-  addEventListener("keydown", skip, true);
-  ov.addEventListener("pointerdown", end);
-  setTimeout(end, 13200);
-});
-// Popcorn Day look: just 19 January unless switched off in Settings › Look (this browser), Kids too
-B.pc = window.BenflixPopcorn;
-B.pcOff = () => { try { return localStorage.getItem("benflix.pcOff") === "1"; } catch (e) { return false; } };
-B.setPcOff = (off) => { try { localStorage.setItem("benflix.pcOff", off ? "1" : "0"); } catch (e) {} };
-B.pcOn = () => !!B.pc && B.pc.season(new Date()) && !B.pcOff();
-// the mark for each kind of Home news (html.pc .brow small[data-pc]): ticket, bucket, kernel or film reel
-B.pcMark = (kind) => { const k = String(kind || "").toLowerCase(); return k.startsWith("new") ? "ticket" : k.startsWith("ready") || k.includes("is ready") ? "bucket" : k.startsWith("on the way") || k.includes("arrives") ? "kernel" : k.includes("live") ? "reel" : "puff_hull"; };
-// Friday the 13th look: only on a Friday the 13th, midnight to midnight, unless switched off in Settings › Look
-// (this browser). It takes over any season look that day, and Kids gets it too.
-B.f13 = window.BenflixF13;
-B.f13Off = () => { try { return localStorage.getItem("benflix.f13Off") === "1"; } catch (e) { return false; } };
-B.setF13Off = (off) => { try { localStorage.setItem("benflix.f13Off", off ? "1" : "0"); } catch (e) {} };
-B.f13On = () => !!B.f13 && B.f13.season(new Date()) && !B.f13Off();
-B.f13Lucky = (eps, ready) => {
-  const parts = [eps ? `${eps} new episode${eps === 1 ? "" : "s"}` : "", ready ? `${ready} request${ready === 1 ? "" : "s"} ready` : ""].filter(Boolean);
-  const line = parts.length ? `Lucky you: ${parts.join(" and ")}` : "Lucky you: the couch is a black-cat-free zone";
-  // kept for the first Today card on the day (js/holidaynav.js, approved hn-q-f13card A)
-  const rest = line.replace(/^Lucky you: /, "");
-  B.f13LastLucky = rest.charAt(0).toUpperCase() + rest.slice(1);
-  return line;
-};
-
-// St. Patrick's Day look: on from 10 to 17 March unless switched off in Settings › Look (this browser), Kids too
-B.sp = window.BenflixStPatricks;
-B.spOff = () => { try { return localStorage.getItem("benflix.spOff") === "1"; } catch (e) { return false; } };
-B.setSpOff = (off) => { try { localStorage.setItem("benflix.spOff", off ? "1" : "0"); } catch (e) {} };
-B.spOn = () => !!B.sp && B.sp.season(new Date()) && !B.spOff();
-
-// Big holidays only, clean and simple
-B.holiday = () => {
-  const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate();
-  if (md === 1225) return "Merry Christmas";
-  if (md === 101) return "Happy New Year";
-  if (md === 1031) return "Happy Halloween";
-  if (md === 704) return "Happy 4th of July";
-  return "";
-};
-
 // ---------- profile menu ----------
 // Computers: it slides out beside the rail like a door's panel (js/nav.js B.openMePanel). Phone-sized windows and
 // pages without the rail: the corner card. Requests isn't listed: it has its own spot on the rail and in More.
@@ -992,8 +724,6 @@ B.start = async () => {
     B.pick(picked);
     return B.render();
   }
-  // Star Wars Day: the opening crawl first (once on 4 May)
-  await B.swCrawl();
   if (!location.hash || location.hash === "#/" || location.hash === "#/who") {
     if (B.profiles().length) {
       history.replaceState(null, "", "#/who");

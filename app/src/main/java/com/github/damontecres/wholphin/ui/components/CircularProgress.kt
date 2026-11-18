@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.components
 
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
@@ -38,203 +35,15 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CircularProgress(modifier: Modifier = Modifier) {
-    // Video Games Day look: eight pixel blocks in a ring, lighting up one after another
-    if (com.github.damontecres.wholphin.ui.theme.VgLook.on) {
-        com.github.damontecres.wholphin.ui.theme
-            .VgLoadingBlocks(modifier)
-        return
-    }
-    // Halloween look: a bat flies round a pumpkin orange ring on witch purple
-    if (com.github.damontecres.wholphin.ui.theme.HwLook.on) {
-        com.github.damontecres.wholphin.ui.theme
-            .HwLoadingBat(modifier)
-        return
-    }
-    // Popcorn Day look: loading is a ring of kernels popping one after another
-    if (com.github.damontecres.wholphin.ui.theme.PcLook.on) {
-        com.github.damontecres.wholphin.ui.theme
-            .PcLoadingRing(modifier)
-        return
-    }
-    // Valentine's look: instead of a ring, a heart that fills up with rose red from the bottom, over and over
-    if (com.github.damontecres.wholphin.ui.theme.ValLook.on) {
-        val pour =
-            androidx.compose.animation.core
-                .rememberInfiniteTransition(label = "valHeart")
-        val fill by pour.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec =
-                androidx.compose.animation.core.infiniteRepeatable(
-                    androidx.compose.animation.core
-                        .tween(1600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                ),
-            label = "valHeartFill",
-        )
-        Box(modifier = modifier) {
-            com.github.damontecres.wholphin.ui.theme.ValLoadingHeart(
-                fill = fill,
-                modifier =
-                    Modifier
-                        .fillMaxSize(.9f)
-                        .align(Alignment.Center),
-            )
-        }
-        return
-    }
-    val tg = com.github.damontecres.wholphin.ui.theme.TgLook.on
-    // Friday the 13th look: the loading ring is a clock with 13 hours and a hand that goes round
-    if (com.github.damontecres.wholphin.ui.theme.F13Look.on) {
-        com.github.damontecres.wholphin.ui.theme.F13LoadingClock(
-            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
-        )
-        return
-    }
-    val sw = com.github.damontecres.wholphin.ui.theme.SwLook.on
-    // New Year's look: the loading ring is a clock face ticking round to midnight
-    if (com.github.damontecres.wholphin.ui.theme.NyLook.on) {
-        com.github.damontecres.wholphin.ui.theme.NyLoadingClock(
-            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
-        )
-        return
-    }
-    // St. Patrick's Day look: a rainbow sweeps round the ring into a pot of gold in the middle
-    if (com.github.damontecres.wholphin.ui.theme.SpLook.on) {
-        com.github.damontecres.wholphin.ui.theme.SpLoadingRainbow(
-            modifier.then(Modifier.defaultMinSize(40.dp, 40.dp)),
-        )
-        return
-    }
-    val ed = com.github.damontecres.wholphin.ui.theme.EdLook.on
-    // 4th of July look: the loading ring is a red, white and blue firework blooming round the circle
-    if (com.github.damontecres.wholphin.ui.theme.J4Look.on) {
-        com.github.damontecres.wholphin.ui.theme.J4LoadingBurst(
-            modifier.then(Modifier.defaultMinSize(36.dp, 36.dp)),
-        )
-        return
-    }
-    val ea = !tg && com.github.damontecres.wholphin.ui.theme.EaLook.on
     Box(modifier = modifier) {
-        // Star Wars Day: light speed inside a laser red ring on black
-        if (sw) {
-            val turn =
-                androidx.compose.animation.core
-                    .rememberInfiniteTransition(label = "swStreaks")
-            val angle by turn.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec =
-                    androidx.compose.animation.core.infiniteRepeatable(
-                        androidx.compose.animation.core
-                            .tween(9000, easing = androidx.compose.animation.core.LinearEasing),
-                    ),
-                label = "swStreaksAngle",
-            )
-            com.github.damontecres.wholphin.ui.theme.SwLoadingStreaks(
-                Modifier
-                    .fillMaxSize(.9f)
-                    .align(Alignment.Center)
-                    .rotate(angle),
-            )
-        }
         CircularProgressIndicator(
-            // Thanksgiving look: a pumpkin orange ring on harvest brown, with a red maple leaf turning slowly inside
-            // Easter look: a lilac ring on meadow green, with a cracked painted egg rocking inside
-            // Earth Day look: a leaf green ring on ocean blue, with the Earth turning inside
-            color =
-                if (tg) {
-                    com.github.damontecres.wholphin.ui.theme.TgLook.Orange
-                } else if (ea) {
-                    com.github.damontecres.wholphin.ui.theme.EaLook.Lilac
-                } else if (ed) {
-                    com.github.damontecres.wholphin.ui.theme.EdLook.Leaf
-                } else if (sw) {
-                    com.github.damontecres.wholphin.ui.theme.SwLook.Red
-                } else {
-                    BenflixColors.Text
-                },
-            trackColor =
-                if (tg) {
-                    com.github.damontecres.wholphin.ui.theme.TgLook.Brown
-                } else if (ea) {
-                    com.github.damontecres.wholphin.ui.theme.EaLook.Green
-                } else if (ed) {
-                    com.github.damontecres.wholphin.ui.theme.EdLook.Ocean
-                } else if (sw) {
-                    com.github.damontecres.wholphin.ui.theme.SwLook.Button
-                } else {
-                    androidx.compose.ui.graphics.Color.Transparent
-                },
+            color = BenflixColors.Text,
+            trackColor = androidx.compose.ui.graphics.Color.Transparent,
             modifier =
                 Modifier
                     .fillMaxSize()
                     .align(Alignment.Center),
         )
-        if (tg) {
-            val turn =
-                androidx.compose.animation.core
-                    .rememberInfiniteTransition(label = "tgLeaf")
-            val angle by turn.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec =
-                    androidx.compose.animation.core.infiniteRepeatable(
-                        androidx.compose.animation.core
-                            .tween(6000, easing = androidx.compose.animation.core.LinearEasing),
-                    ),
-                label = "tgLeafAngle",
-            )
-            com.github.damontecres.wholphin.ui.theme.TgLoadingLeaf(
-                Modifier
-                    .fillMaxSize(.62f)
-                    .align(Alignment.Center)
-                    .rotate(angle),
-            )
-        }
-        if (ea) {
-            val rock =
-                androidx.compose.animation.core
-                    .rememberInfiniteTransition(label = "eaEgg")
-            val tilt by rock.animateFloat(
-                initialValue = -12f,
-                targetValue = 12f,
-                animationSpec =
-                    androidx.compose.animation.core.infiniteRepeatable(
-                        androidx.compose.animation.core
-                            .tween(800, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
-                    ),
-                label = "eaEggTilt",
-            )
-            com.github.damontecres.wholphin.ui.theme.EaLoadingEgg(
-                Modifier
-                    .fillMaxSize(.66f)
-                    .align(Alignment.Center)
-                    .rotate(tilt),
-            )
-        }
-        if (ed) {
-            val spin =
-                androidx.compose.animation.core
-                    .rememberInfiniteTransition(label = "edGlobe")
-            val turn by spin.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec =
-                    androidx.compose.animation.core.infiniteRepeatable(
-                        androidx.compose.animation.core
-                            .tween(5000, easing = androidx.compose.animation.core.LinearEasing),
-                    ),
-                label = "edGlobeTurn",
-            )
-            com.github.damontecres.wholphin.ui.theme.EdLoadingGlobe(
-                turn = { turn },
-                modifier =
-                    Modifier
-                        .fillMaxSize(.66f)
-                        .align(Alignment.Center),
-            )
-        }
     }
 }
 

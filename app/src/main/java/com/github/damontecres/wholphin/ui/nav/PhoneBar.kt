@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,10 +39,6 @@ import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.HolidayArtBox
-import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
-import com.github.damontecres.wholphin.ui.theme.HolidayOrUsualIcon
-import com.github.damontecres.wholphin.ui.theme.holidayKey
 
 /** One tab along the phone's bottom bar */
 data class PhoneTab(
@@ -89,7 +84,6 @@ fun PhoneBottomBar(
     onTab: (PhoneTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val holiday = remember { HolidayNavKit.current() }
     Row(
         modifier =
             modifier
@@ -128,20 +122,12 @@ fun PhoneBottomBar(
                                     RoundedCornerShape(50),
                                 ),
                     ) {
-                        HolidayOrUsualIcon(
+                        BenflixIconImage(
                             tab.icon,
-                            key = tab.door?.holidayKey ?: tab.key,
                             color = if (on) tab.color else BenflixColors.Soft,
                             size = 24.dp,
+                            contentDescription = null,
                         )
-                        // Holiday marks: the holiday's optional decoration hangs from the tab you're on
-                        val mark = holiday?.mark
-                        if (on && mark != null) {
-                            HolidayArtBox(
-                                mark,
-                                Modifier.align(Alignment.TopStart).offset(x = 4.dp, y = (-10).dp).size(12.dp, 18.dp),
-                            )
-                        }
                         // Approved ix-badges: on phones the white dot for new notices sits on More
                         if (tab.key == TAB_MORE && moreDot) {
                             Box(
