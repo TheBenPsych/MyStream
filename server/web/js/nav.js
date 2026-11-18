@@ -90,7 +90,7 @@
       ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
       ${kids ? "" : item("requests", "requests", "Requests", "", `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <div class="rl-gap"></div>
-      <button type="button" class="rl-i rl-me ${spot === "me" ? "on" : ""}" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
+      <button type="button" class="rl-i rl-me ${spot === "me" ? "on" : ""}" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
   };
   const paint = () => {
     const hash = location.hash || "";
@@ -196,7 +196,7 @@
     const spot = spotOf(location.hash);
     const list = tabs();
     const on = list.some((t) => t.key === spot) ? spot : "more";
-    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}"><i>${G(t.icon)}${t.key === "more" && B.newsDot ? '<b class="rl-dot"></b>' : ""}</i><span>${esc(t.label)}</span></button>`).join("");
+    const html = list.map((t) => `<button type="button" class="bt ${t.key === on ? "on" : ""}" data-tab="${t.key}"><i>${G(t.icon)}</i><span>${esc(t.label)}</span></button>`).join("");
     if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
   };
   const onTab = (e) => {

@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Button
@@ -32,14 +31,11 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.BenflixLibraryCheckup
 import com.github.damontecres.wholphin.services.BenflixMessages
-import com.github.damontecres.wholphin.services.BenflixNote
-import com.github.damontecres.wholphin.services.BenflixNotes
 import com.github.damontecres.wholphin.services.BenflixPeople
 import com.github.damontecres.wholphin.services.BenflixProblems
 import com.github.damontecres.wholphin.services.CheckupItem
 import com.github.damontecres.wholphin.services.CheckupSection
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.NoteKind
 import com.github.damontecres.wholphin.services.ProblemReport
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.DialogItem
@@ -66,10 +62,8 @@ import org.jellyfin.sdk.model.api.UserDto
 import timber.log.Timber
 import javax.inject.Inject
 
-/** What the Server page's tools show: the note, people and the library checkup */
+/** What the Server page's tools show: people and the library checkup */
 data class ServerToolsState(
-    val note: BenflixNote? = null,
-    val welcome: BenflixNote? = null,
     /** Benflix: null until the People section is first opened */
     val people: List<UserDto>? = null,
     val checkup: List<CheckupSection>? = null,
@@ -77,8 +71,6 @@ data class ServerToolsState(
     /** A message to show in a pop-up, like a new password */
     val message: Pair<String, String>? = null,
     val busy: Boolean = false,
-    /** Benflix: true once the notes were read (they load when Messages is first opened) */
-    val notesLoaded: Boolean = false,
     /** Benflix: the server's libraries, for "Which libraries they see" */
     val libraries: List<org.jellyfin.sdk.model.api.BaseItemDto>? = null,
     /** Benflix: "What takes the most space" (null until asked) */
@@ -86,8 +78,6 @@ data class ServerToolsState(
     val spaceBusy: Boolean = false,
     /** Benflix: the people list couldn't be read (Refresh tries again) */
     val peopleFailed: Boolean = false,
-    /** Benflix: the notes couldn't be read (Refresh tries again) */
-    val notesFailed: Boolean = false,
     /** Benflix: this device can't hold a live connection to the server, so live pop-ups can't get through */
     val liveBlocked: Boolean = false,
     /** Benflix: which Benflix version each TV and phone had when it last connected (null until loaded) */
@@ -100,7 +90,6 @@ class ServerToolsViewModel
     @Inject
     constructor(
         private val serverRepository: ServerRepository,
-        private val notes: BenflixNotes,
         private val people: BenflixPeople,
         private val checkup: BenflixLibraryCheckup,
         val navigationManager: NavigationManager,
@@ -116,34 +105,11 @@ class ServerToolsViewModel
 
         private val userId get() = serverRepository.currentUser?.id
 
-        private var notesAsked = false
         private var peopleAsked = false
 
         init {
             viewModelScope.launch {
                 benflixMessages.liveBlocked.collect { blocked -> _state.update { it.copy(liveBlocked = blocked) } }
-            }
-        }
-
-        /** Benflix: the notes only load when the Messages section is first opened */
-        fun loadNotes() {
-            if (notesAsked) return
-            val id = userId ?: return
-            notesAsked = true
-            _state.value = _state.value.copy(notesFailed = false)
-            viewModelScope.launch {
-                try {
-                    // Benflix: a note sent to only some people isn't in Ben's own copy, so look at theirs too
-                    val note = notes.readSent(id)
-                    val welcome = notes.read(id, NoteKind.WELCOME)
-                    _state.value = _state.value.copy(note = note, welcome = welcome, notesLoaded = true)
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Server tools: could not read the notes")
-                    notesAsked = false
-                    _state.value = _state.value.copy(notesFailed = true)
-                }
             }
         }
 
@@ -168,16 +134,6 @@ class ServerToolsViewModel
                 _state.value = _state.value.copy(libraries = actions.libraries())
             }
         }
-
-        private suspend fun readSentOrNull(id: java.util.UUID): BenflixNote? =
-            try {
-                notes.readSent(id)
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.w(ex, "Server tools: could not read the note back")
-                null
-            }
 
         private var versionsJob: kotlinx.coroutines.Job? = null
 
@@ -220,7 +176,6 @@ class ServerToolsViewModel
         /** Benflix: Refresh (and pull to refresh) tries again whatever couldn't be read the first time */
         fun retryFailed() {
             if (_state.value.peopleFailed) loadPeople()
-            if (_state.value.notesFailed) loadNotes()
             if (_state.value.versionsFailed) loadVersions()
         }
 
@@ -306,43 +261,6 @@ class ServerToolsViewModel
                 navigationManager.navigateTo(Destination.MediaItem(item.id, item.type))
             }
         }
-
-        fun publishNote(
-            text: String,
-            expiresAt: Long? = null,
-            onlyFor: Set<java.util.UUID>? = null,
-        ) = work {
-            val count = notes.publish(text, NoteKind.NOTE, expiresAt, onlyFor)
-            val id = userId
-            _state.value =
-                _state.value.copy(
-                    note = id?.let { readSentOrNull(it) },
-                    message =
-                        if (text.isBlank()) {
-                            "Note removed" to "It won't show on Home any more."
-                        } else {
-                            "Note sent" to "It will show at the top of Home for $count " +
-                                (if (count == 1) "person" else "people") +
-                                (expiresAt?.let { " until ${untilText(it)}" } ?: "") + "."
-                        },
-                )
-        }
-
-        fun publishWelcome(text: String) =
-            work {
-                notes.publish(text, NoteKind.WELCOME)
-                val id = userId
-                _state.value =
-                    _state.value.copy(
-                        welcome = id?.let { notes.read(it, NoteKind.WELCOME) },
-                        message =
-                            if (text.isBlank()) {
-                                "Welcome note removed" to "New people won't see a welcome note."
-                            } else {
-                                "Welcome note saved" to "Everyone sees it once, on their first Home screen."
-                            },
-                    )
-            }
 
         fun addPerson(name: String) {
             if (name.isBlank()) return
@@ -585,10 +503,6 @@ class ServerToolsViewModel
 
 /** Which pop-up the Server tools are showing */
 sealed interface ServerToolsDialog {
-    data object WriteNote : ServerToolsDialog
-
-    data object WriteWelcome : ServerToolsDialog
-
     data object WritePopup : ServerToolsDialog
 
     /** Benflix: a pop-up message for one person (from their People menu) */
@@ -623,16 +537,9 @@ sealed interface ServerToolsDialog {
         val user: UserDto,
     ) : ServerToolsDialog
 
-    /** Benflix: how long a Home note shows */
-    data class NoteHowLong(
-        val text: String,
-    ) : ServerToolsDialog
-
-    /** Benflix: who gets the Home note or pop-up (everyone, or picked people) */
+    /** Benflix: who gets the pop-up (everyone, or picked people) */
     data class SendTo(
         val text: String,
-        val popup: Boolean,
-        val expiresAt: Long? = null,
         val picked: Set<java.util.UUID> = emptySet(),
     ) : ServerToolsDialog
 
@@ -788,49 +695,12 @@ fun LazyListScope.problemReportItems(
     }
 }
 
-/** Benflix: the note on Home, the welcome note and the pop-up */
+/** Benflix: the pop-up message */
 fun LazyListScope.messageItems(
     state: ServerToolsState,
     showDialog: (ServerToolsDialog) -> Unit,
     sectionTitle: @Composable (String) -> Unit,
 ) {
-    item { sectionTitle("Note on everyone's Home") }
-    item {
-        ServerActionRow(
-            headline =
-                when {
-                    state.notesLoaded -> state.note?.text ?: "Write a note"
-                    state.notesFailed -> NOTES_FAILED
-                    else -> "Checking…"
-                },
-            supporting =
-                if (state.note == null) {
-                    "Like \"New Marvel movies added!\" It shows at the top of Home for everyone until they close it."
-                } else {
-                    "Showing on Home now" + (state.note.expiresAt?.let { " until ${untilText(it)}" } ?: "") +
-                        ". Click to change it, or save it empty to remove it."
-                },
-            onClick = { showDialog(ServerToolsDialog.WriteNote) },
-        )
-    }
-    item { sectionTitle("Welcome note") }
-    item {
-        ServerActionRow(
-            headline =
-                when {
-                    state.notesLoaded -> state.welcome?.text ?: "Write a welcome note"
-                    state.notesFailed -> NOTES_FAILED
-                    else -> "Checking…"
-                },
-            supporting =
-                if (state.welcome == null) {
-                    "Everyone sees it once, on their first Home screen. Like \"Welcome to Glowfin! Ask me if you can't find something.\""
-                } else {
-                    "Welcome note. Click to change it, or save it empty to remove it."
-                },
-            onClick = { showDialog(ServerToolsDialog.WriteWelcome) },
-        )
-    }
     item { sectionTitle("Pop-up") }
     if (state.liveBlocked) {
         item {
@@ -860,8 +730,6 @@ private const val LIVE_BLOCKED_HELP =
 
 /** Benflix: the device id every Benflix app has, so other Jellyfin apps aren't counted as reached */
 private const val BENFLIX_DEVICE_PREFIX = "benflix-"
-
-private const val NOTES_FAILED = "Couldn't read the notes. Press Refresh to try again."
 
 /** Benflix: how long this device took to open Benflix last time */
 fun LazyListScope.startupSpeedItem(sectionTitle: @Composable (String) -> Unit) {
@@ -989,55 +857,6 @@ fun ServerToolsDialogs(
     showDialog: (ServerToolsDialog) -> Unit = {},
 ) {
     when (dialog) {
-        ServerToolsDialog.WriteNote -> {
-            StringInputDialog(
-                input =
-                    StringInput(
-                        title = "Note on everyone's Home",
-                        value = state.note?.text,
-                        keyboardOptions =
-                            KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Done,
-                            ),
-                        onSubmit = {},
-                        maxLines = 3,
-                    ),
-                onSave = {
-                    if (it.isBlank()) {
-                        onDismiss()
-                        viewModel.publishNote(it)
-                    } else {
-                        // Benflix: next, how long it shows and who gets it
-                        showDialog(ServerToolsDialog.NoteHowLong(it))
-                    }
-                },
-                onDismissRequest = onDismiss,
-            )
-        }
-
-        ServerToolsDialog.WriteWelcome -> {
-            StringInputDialog(
-                input =
-                    StringInput(
-                        title = "Welcome note (shown once to each person)",
-                        value = state.welcome?.text,
-                        keyboardOptions =
-                            KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Done,
-                            ),
-                        onSubmit = {},
-                        maxLines = 3,
-                    ),
-                onSave = {
-                    onDismiss()
-                    viewModel.publishWelcome(it)
-                },
-                onDismissRequest = onDismiss,
-            )
-        }
-
         ServerToolsDialog.WritePopup -> {
             StringInputDialog(
                 input =
@@ -1053,7 +872,7 @@ fun ServerToolsDialogs(
                         maxLines = 3,
                     ),
                 onSave = {
-                    if (it.isBlank()) onDismiss() else showDialog(ServerToolsDialog.SendTo(it, popup = true))
+                    if (it.isBlank()) onDismiss() else showDialog(ServerToolsDialog.SendTo(it))
                 },
                 onDismissRequest = onDismiss,
             )
@@ -1251,49 +1070,14 @@ fun ServerToolsDialogs(
             )
         }
 
-        is ServerToolsDialog.NoteHowLong -> {
-            val day = 24 * 60 * 60 * 1000L
-            DialogPopup(
-                showDialog = true,
-                title = "Show the note until…",
-                dialogItems =
-                    listOf(
-                        null to "I take it down",
-                        day to "Tomorrow (1 day)",
-                        3 * day to "3 days",
-                        7 * day to "1 week",
-                    ).map { (length, label) ->
-                        DialogItem(
-                            headlineContent = { Text(label) },
-                            onClick = {
-                                showDialog(
-                                    ServerToolsDialog.SendTo(
-                                        text = dialog.text,
-                                        popup = false,
-                                        expiresAt = length?.let { System.currentTimeMillis() + it },
-                                    ),
-                                )
-                            },
-                        )
-                    },
-                onDismissRequest = onDismiss,
-                dismissOnClick = false,
-                waitToLoad = false,
-            )
-        }
-
         is ServerToolsDialog.SendTo -> {
             val send: (Set<java.util.UUID>?) -> Unit = { who ->
                 onDismiss()
-                if (dialog.popup) {
-                    viewModel.sendPopup(dialog.text, who)
-                } else {
-                    viewModel.publishNote(dialog.text, dialog.expiresAt, who)
-                }
+                viewModel.sendPopup(dialog.text, who)
             }
             DialogPopup(
                 showDialog = true,
-                title = if (dialog.popup) "Pop it up for…" else "Put the note on…",
+                title = "Pop it up for…",
                 dialogItems =
                     buildList {
                         add(
@@ -1432,8 +1216,7 @@ fun ServerToolsDialogs(
                 title = "Mark \"${dialog.report.title}\" fixed?",
                 body =
                     "${dialog.report.problem}, reported by ${dialog.report.userName} on ${dialog.report.device}. " +
-                        "Their app log was sent to the server's log folder. This takes it off the list, " +
-                        "and ${dialog.report.userName} sees \"Ben fixed ${dialog.report.title}\" on their Home.",
+                        "Their app log was sent to the server's log folder. This takes it off the list.",
                 onCancel = onDismiss,
                 onConfirm = {
                     onDismiss()
@@ -1487,16 +1270,6 @@ internal fun listNames(names: List<String>): String =
         1 -> names[0]
         else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
     }
-
-/** Benflix: like "Wed 9:00 PM" */
-internal fun untilText(at: Long): String =
-    java.time.Instant
-        .ofEpochMilli(at)
-        .atZone(java.time.ZoneId.systemDefault())
-        .format(
-            java.time.format.DateTimeFormatter
-                .ofPattern("EEE h:mm a"),
-        )
 
 /** Benflix: "What takes the most space" in the Library section */
 fun LazyListScope.spaceItems(

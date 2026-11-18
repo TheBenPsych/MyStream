@@ -77,7 +77,6 @@ TYPES = {
 }
 THUMB_WIDTHS = (160, 320, 640, 1200)
 NEW_DAYS = 14  # "New for you" keeps a title this long unless it's opened
-NEWS_DAYS = 3  # Home news pills last this long
 GIVE_UP_AFTER = 7 * 86400  # A request still not found after a week says "Couldn't find it"
 KIDS_WORDS = ("juvenile", "children", "picture book", "kids", "middle grade", "for young readers")
 ADULT_WORDS = ("hentai", "ecchi", "erotic", "erotica", "adult", "smut", "mature")
@@ -1733,30 +1732,6 @@ def opened(user_id, tid):
     return {"ok": True}
 
 
-def news(user_id, is_kids):
-    """Home's news pills: a new volume of a series you read, and a book you asked for being ready"""
-    u = _user(user_id)
-    out = []
-    cutoff = time.time() - NEWS_DAYS * 86400
-    for t in list(_lib["titles"].values()):
-        if t["kind"] in ("manga", "comic") and any(v in u["done"] or v in u["place"] for v in t["vols"]) and visible(is_kids, t):
-            fresh = [v for v in t["vols"] if _lib["vols"][v]["added"] > cutoff and v not in u["done"]]
-            if fresh:
-                v = _lib["vols"][fresh[-1]]
-                out.append({"id": "bk-" + fresh[-1], "text": f"{t['name']} {v['name']} arrived", "title": t["id"], "at": v["added"],
-                            "name": t["name"], "line": f"New: {v['name']} is here", "cover": cover_url(t["id"], 160)})
-    for r in _state["requests"]:
-        if r.get("user") == user_id and r.get("readyAt", 0) > cutoff and r.get("title"):
-            out.append({"id": "bkr-" + r["id"], "text": f"{r['name']} is ready", "title": r["title"], "at": r["readyAt"],
-                        "name": r["name"], "line": "The book you asked for is ready", "cover": cover_url(r["title"], 160)})
-    for tid, at in u["sent"].items():
-        if at > cutoff and tid in _lib["titles"]:
-            out.append({"id": f"bks-{tid}-{at}", "text": f"{_lib['titles'][tid]['name']} is ready on your phone", "title": tid, "at": at,
-                        "name": _lib["titles"][tid]["name"], "line": "Ready on your phone", "cover": cover_url(tid, 160)})
-    out.sort(key=lambda n: -n["at"])
-    return {"news": out[:3]}
-
-
 def stats(user_id, days=7):
     """Minutes read and listened (for My watching), and a year of it for Wrapped"""
     u = _user(user_id)
@@ -2904,7 +2879,8 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         if method == "GET" and path == "/api/books/authors":
             return 200, authors_list(user_id, is_kids)
         if method == "GET" and path == "/api/books/news":
-            return 200, news(user_id, is_kids)
+            # Home has no news any more (Ben 2026-11-18); older apps get an empty list
+            return 200, {"news": []}
         if method == "GET" and path == "/api/books/stats":
             return 200, stats(user_id, int(q("days") or 7))
         if method == "GET" and path == "/api/books/status":

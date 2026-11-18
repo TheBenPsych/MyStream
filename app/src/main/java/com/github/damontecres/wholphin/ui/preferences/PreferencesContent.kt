@@ -36,7 +36,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
@@ -72,7 +71,6 @@ import com.github.damontecres.wholphin.services.SpeedStats
 import com.github.damontecres.wholphin.services.UpdateChecker
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
-import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingSpinner
 import com.github.damontecres.wholphin.ui.components.ScrollableDialog
 import com.github.damontecres.wholphin.ui.ifElse
@@ -639,32 +637,10 @@ fun PreferencesContent(
                                         }
                                     }
 
-                                    AppPreference.RunSetupAgain -> {
-                                        val context = LocalContext.current
-                                        ClickPreference(
-                                            title = stringResource(pref.title),
-                                            onClick = {
-                                                viewModel.currentUser.value?.id?.let {
-                                                    com.github.damontecres.wholphin.ui.main.WelcomeViewModel
-                                                        .restart(context, it)
-                                                }
-                                                viewModel.navigationManager.navigateTo(Destination.Welcome)
-                                            },
-                                            modifier = focusModifier,
-                                            summary = "Picture, subtitles, word size and parent PIN",
-                                            onLongClick = null,
-                                            interactionSource = interactionSource,
-                                        )
-                                    }
-
                                     AppPreference.ThingsYouLovePref -> {
                                         ClickPreference(
                                             title = stringResource(pref.title),
-                                            onClick = {
-                                                com.github.damontecres.wholphin.ui.main.WelcomeViewModel.only =
-                                                    com.github.damontecres.wholphin.ui.main.WelcomeStep.FAVORITES
-                                                viewModel.navigationManager.navigateTo(Destination.Welcome)
-                                            },
+                                            onClick = { viewModel.navigationManager.navigateTo(Destination.ThingsYouLove) },
                                             modifier = focusModifier,
                                             summary = "Pick a few favourites, and your rows fill up with things like them",
                                             onLongClick = null,

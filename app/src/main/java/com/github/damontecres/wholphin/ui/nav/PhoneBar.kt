@@ -148,7 +148,7 @@ fun PhoneBottomBar(
                             size = 24.dp,
                             contentDescription = null,
                         )
-                        // Approved ix-badges: on phones the white dot for new notices sits on More
+                        // On phones a white dot sits on More when an app update is ready
                         if (tab.key == TAB_MORE && moreDot) {
                             Box(
                                 Modifier

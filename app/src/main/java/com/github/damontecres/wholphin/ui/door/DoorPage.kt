@@ -274,8 +274,6 @@ internal fun WideDoor(
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
     modifier: Modifier,
-    /** Glowfin Home: rows the page draws itself (What's new), by key, in their spot in the row order */
-    extra: Map<String, @Composable () -> Unit> = emptyMap(),
 ) {
     val onOpen: (Destination) -> Unit = { viewModel.navigationManager.navigateTo(it) }
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
@@ -410,14 +408,10 @@ internal fun WideDoor(
                                 rowsHaveFocus = it.hasFocus
                             },
                 ) {
-                    state.entries(extra.keys).forEach { entry ->
+                    state.entries().forEach { entry ->
                         val row = (entry as? DoorEntry.Real)?.row
                         item(key = entry.key) {
                             CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-                                if (entry is DoorEntry.Extra) {
-                                    extra[entry.key]?.invoke()
-                                    return@CompositionLocalProvider
-                                }
                                 if (row == null) {
                                     WaitingRow(posterWidth = posterWidth, showName = !isTv)
                                     return@CompositionLocalProvider
@@ -463,18 +457,13 @@ private sealed interface DoorEntry {
     data class Waiting(
         override val key: String,
     ) : DoorEntry
-
-    /** A row the page draws itself (Home's What's new) */
-    data class Extra(
-        override val key: String,
-    ) : DoorEntry
 }
 
 /**
  * Ben: grey placeholder rows hold each row's place until it loads, so rows don't pop in above
  * each other. A row that turns out empty just goes away. Same key as the real row, so it swaps in place.
  */
-private fun DoorPageState.entries(extra: Set<String> = emptySet()): List<DoorEntry> {
+private fun DoorPageState.entries(): List<DoorEntry> {
     if (order.isEmpty()) {
         // Before the door knows its rows (it's still finding the libraries): a few grey rows
         return if (!loaded && rows.isEmpty()) List(WAITING_ROWS) { DoorEntry.Waiting("waiting-$it") } else rows.map { DoorEntry.Real(it) }
@@ -482,11 +471,7 @@ private fun DoorPageState.entries(extra: Set<String> = emptySet()): List<DoorEnt
     val byKey = rows.associateBy { it.key }
     return order.mapNotNull { key ->
         byKey[key]?.let { DoorEntry.Real(it) }
-            ?: when (key) {
-                in extra -> DoorEntry.Extra(key)
-                in pending -> DoorEntry.Waiting(key)
-                else -> null
-            }
+            ?: if (key in pending) DoorEntry.Waiting(key) else null
     }
 }
 
@@ -885,7 +870,6 @@ internal fun PhoneDoor(
     onSeeAll: (DoorRowData) -> Unit,
     onOpen: (Destination) -> Unit,
     modifier: Modifier,
-    extra: Map<String, @Composable () -> Unit> = emptyMap(),
 ) {
     // Ben: open at the very top. The picked card and rows load in one by one; until you touch the
     // page, go back to the top whenever something new arrives above what's showing.
@@ -913,13 +897,9 @@ internal fun PhoneDoor(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) {
-                state.entries(extra.keys).forEach { entry ->
+                state.entries().forEach { entry ->
                     val row = (entry as? DoorEntry.Real)?.row
                     item(key = entry.key) {
-                        if (entry is DoorEntry.Extra) {
-                            extra[entry.key]?.invoke()
-                            return@item
-                        }
                         if (row == null) {
                             WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
                             return@item

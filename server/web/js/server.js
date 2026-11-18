@@ -953,71 +953,25 @@ PAGES.problems = (el) => {
       await updatePrefs(r.userId, (c) => {
         const left = String(c["benflix.problems"] || "").split("\n").filter((l) => l && !l.startsWith(r.raw + "|"));
         c["benflix.problems"] = left.length ? left.join("\n") : null;
-        const fixed = String(c["benflix.fixed"] || "").split("\n").filter(Boolean);
-        fixed.push(r.raw + "|" + r.title.replace(/[|\n]/g, " "));
-        c["benflix.fixed"] = fixed.slice(-5).join("\n");
+        c["benflix.fixed"] = null;
       });
       drawReports();
-      return `Done. ${r.user} will see “Ben fixed ${r.title}” on their Home.`;
+      return `Done. ${r.title} is off the list.`;
     });
   };
   drawReports(); drawServer();
 };
 
 PAGES.messages = (el) => {
-  el.innerHTML = `<h2>Messages</h2><p class="sub">Notes on everyone's Home, the welcome note new people see once, and pop-ups on screens that are on right now.</p><div id="ms">${loading()}</div>`;
-  const decode = (v) => {
-    if (!v) return null; const i = v.indexOf("\n"); if (i <= 0) return null;
-    const head = v.slice(0, i), exp = +(head.split("~")[1] || 0);
-    return { text: v.slice(i + 1), expires: exp || null };
-  };
-  const draw = async () => {
-    try {
-      const p = await getPrefs(B.me.id);
-      const c = p.CustomPrefs || {};
-      const note = decode(c["benflix.note"]), welcome = decode(c["benflix.welcome"]);
-      if (current !== "messages") return;
-      const live = note && (!note.expires || note.expires > Date.now()) ? note : null;
-      $("#ms").innerHTML = `
-        <h3 class="section-title">Note on Home</h3>
-        <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
-          <textarea class="field" id="noteText" rows="3" placeholder="Like: Server is getting new drives Saturday morning" style="resize:vertical;margin:0">${esc(live ? live.text : "")}</textarea>
-          <div class="row"><label class="s">Take it down after
-            <select class="field" id="noteDays" style="min-width:0;width:auto;display:inline-block;padding:6px 10px"><option value="0">never</option><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>1 week</option><option value="30">1 month</option></select></label>
-            <span style="flex:1"></span><button class="btn small" data-note="clear">Remove note</button><button class="btn small red" data-note="save">Put on Home</button></div>
-          ${live && live.expires ? `<div class="s">Showing now, until ${esc(when(new Date(live.expires).toISOString()))}.</div>` : live ? `<div class="s">Showing now.</div>` : ""}
-        </div></div>
-        <h3 class="section-title">Welcome note</h3>
-        <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
-          <textarea class="field" id="welText" rows="3" placeholder="Shows once to each person the first time they open Glowfin" style="resize:vertical;margin:0">${esc(welcome ? welcome.text : "")}</textarea>
-          <div class="row"><span style="flex:1"></span><button class="btn small" data-wel="clear">Remove</button><button class="btn small red" data-wel="save">Save welcome note</button></div>
-        </div></div>
+  el.innerHTML = `<h2>Messages</h2><p class="sub">Pop-ups on screens that are on right now.</p><div id="ms">
         <h3 class="section-title">Pop-up right now</h3>
         <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
           <input class="field" id="popText" placeholder="Like: Restarting the server in 5 minutes" style="margin:0">
           <div class="row"><span class="s" style="flex:1">Shows for 15 seconds on every Glowfin screen that's on.</span><button class="btn small red" id="popSend">Send pop-up</button></div>
-        </div></div>`;
-    } catch (err) { if (current === "messages") $("#ms").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
-  };
-  const publish = async (key, text, expires) => {
-    const all = await users();
-    const value = text ? Date.now() + (expires ? "~" + expires : "") + "\n" + text : null;
-    let n = 0;
-    for (const u of all) { try { await updatePrefs(u.Id, (c) => { c[key] = value; }); n++; } catch (err) {} }
-    return n;
-  };
+        </div></div></div>`;
   el.onclick = async (e) => {
-    const nb = e.target.closest("[data-note]"), wb = e.target.closest("[data-wel]"), pb = e.target.closest("#popSend");
-    if (nb) {
-      const text = nb.dataset.note === "save" ? $("#noteText").value.trim() : "";
-      if (nb.dataset.note === "save" && !text) return B.toast("Type a note first.");
-      const days = +$("#noteDays").value;
-      busy(nb, async () => { const n = await publish("benflix.note", text, text && days ? Date.now() + days * 86400000 : null); draw(); return text ? `The note is on ${n} people's Home.` : "Note removed."; });
-    } else if (wb) {
-      const text = wb.dataset.wel === "save" ? $("#welText").value.trim() : "";
-      if (wb.dataset.wel === "save" && !text) return B.toast("Type a welcome note first.");
-      busy(wb, async () => { await publish("benflix.welcome", text, null); draw(); return text ? "Welcome note saved." : "Welcome note removed."; });
-    } else if (pb) {
+    const pb = e.target.closest("#popSend");
+    if (pb) {
       const text = $("#popText").value.trim(); if (!text) return B.toast("Type the pop-up first.");
       busy(pb, async () => {
         const s = ((await jf("GET", "/Sessions?activeWithinSeconds=960")) || []).filter((x) => x.SupportsRemoteControl && x.Id);
@@ -1028,7 +982,6 @@ PAGES.messages = (el) => {
       });
     }
   };
-  draw();
 };
 
 // ---------- Versions: which Benflix each TV and phone had when it last connected ----------

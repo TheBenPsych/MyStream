@@ -36,7 +36,6 @@ object PageRows {
         when (page) {
             Page.HOME -> {
                 listOf(
-                    WHATS_NEW to "What's new",
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.TOP_10 to "Top 10 this week",
                     DoorViewModel.BECAUSE to "Because you watched…",
@@ -134,9 +133,6 @@ object PageRows {
         userId: UUID,
         page: Page,
     ) = "$userId-${page.name}"
-
-    /** Home's "What's new" row: the news cards (request arrivals, notes from Ben, Tower news) */
-    const val WHATS_NEW = "whatsnew"
 
     private const val PREFS = "glowfin_page_rows"
 }

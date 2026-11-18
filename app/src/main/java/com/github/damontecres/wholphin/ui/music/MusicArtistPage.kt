@@ -248,7 +248,7 @@ class MusicArtistViewModel
             }
         }
 
-        /** Follow: new music from them shows as a news pill on Home */
+        /** Follow: they're one of your artists */
         fun toggleFollow() {
             val artist = _state.value.artist ?: return
             viewModelScope.launchIO {
@@ -356,7 +356,6 @@ fun MusicArtistPage(
         .RegisterTopBarDown(playFocus)
     var menuFor by remember { mutableStateOf<BaseItem?>(null) }
     var pageMenu by remember { mutableStateOf(false) }
-    var sendTo by remember { mutableStateOf(false) }
     var singlesOn by androidx.compose.runtime.saveable
         .rememberSaveable { mutableStateOf(false) }
     val artist = state.artist
@@ -689,15 +688,6 @@ fun MusicArtistPage(
                         ),
                     )
                 }
-                add(
-                    com.github.damontecres.wholphin.ui.components.DialogItem(
-                        headlineContent = { Text("Send to someone") },
-                        onClick = {
-                            pageMenu = false
-                            sendTo = true
-                        },
-                    ),
-                )
                 if (state.topSongs.isNotEmpty()) {
                     add(
                         com.github.damontecres.wholphin.ui.components.DialogItem(
@@ -716,14 +706,6 @@ fun MusicArtistPage(
             dialogItems = entries,
             onDismissRequest = { pageMenu = false },
             dismissOnClick = false,
-        )
-    }
-    if (sendTo) {
-        SendToDialog(
-            place =
-                com.github.damontecres.wholphin.services
-                    .MusicPlace("artist", id.toString(), name),
-            onDismiss = { sendTo = false },
         )
     }
 }

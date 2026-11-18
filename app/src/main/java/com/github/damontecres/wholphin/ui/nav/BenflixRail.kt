@@ -54,13 +54,11 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -70,17 +68,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.BenflixIntroState
-import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixMark
@@ -99,7 +94,6 @@ import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
-import org.jellyfin.sdk.model.api.ImageType
 
 /** The door each rail icon draws */
 fun BenflixDoor.railIcon(): BenflixIcon =
@@ -226,7 +220,6 @@ class RailModel(
     val requestsCount: Int,
     val user: JellyfinUser,
     val userImageUrl: String?,
-    val badge: Boolean,
     val big: Boolean,
     /** Wide touch screens: no remote to open it, so it stays open with names */
     val alwaysOpen: Boolean,
@@ -920,17 +913,6 @@ private fun ProfileRailButton(
                     imageUrl = if (kids) null else model.userImageUrl,
                     modifier = Modifier.size(PICTURE * scale),
                 )
-                if (model.badge) {
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 3.dp, y = (-3).dp)
-                            .size(PICTURE * scale * 0.42f)
-                            .background(BenflixColors.Tray, CircleShape)
-                            .padding(2.5.dp)
-                            .background(BenflixColors.Text, CircleShape),
-                    )
-                }
             }
             if (open) {
                 Spacer(Modifier.width(11.dp * scale))

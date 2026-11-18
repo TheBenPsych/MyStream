@@ -46,8 +46,6 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.ItemRow
-import com.github.damontecres.wholphin.ui.components.BenflixTip
-import com.github.damontecres.wholphin.ui.components.BenflixTipId
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.FocusableItemRow
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
@@ -127,7 +125,6 @@ fun HomePageContent(
     onHeroItemShown: (BaseItem?) -> Unit = {},
     onClickDiscover: (DiscoverItem) -> Unit = {},
     onUpdateDiscoverBackdrop: (DiscoverItem) -> Unit = {},
-    showNote: Boolean = false,
 ) {
     // An item focused in the trending rows, which aren't part of homeRows
     var extraFocus by remember { mutableStateOf<Any?>(null) }
@@ -394,12 +391,10 @@ fun HomePageContent(
                                                     .padding(top = 8.dp),
                                         )
                                     }
-                                    if (showNote) HomeNoteCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                                 }
                             } else {
                                 Column {
                                     pageHeader()
-                                    if (showNote) HomeNoteCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                                 }
                             }
                         }
@@ -426,9 +421,6 @@ fun HomePageContent(
                                     // Benflix: long-press Play or More info for the item's menu (My List and more)
                                     onLongClickItem = { onLongClickItem(RowColumn(-1, -1), it) },
                                 )
-                                if (showNote && isTv) {
-                                    HomeNoteCard(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 12.dp))
-                                }
                             }
                         }
                     }
@@ -812,10 +804,6 @@ fun HomePageContent(
             }
 
             else -> {}
-        }
-        // Benflix first-time tip (only on the real Home page)
-        if (showNote) {
-            BenflixTip(tip = if (isTv) BenflixTipId.HOME_TV else BenflixTipId.HOME_PHONE)
         }
     }
 }

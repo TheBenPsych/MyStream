@@ -303,9 +303,9 @@ sealed class Destination(
         val gameName: String,
     ) : Destination(true)
 
-    /** Benflix: the welcome setup the first time a person uses Benflix */
+    /** Benflix: Settings > You > Things you love (pick a few favourites) */
     @Serializable
-    data object Welcome : Destination(true)
+    data object ThingsYouLove : Destination(true)
 
     /** Benflix: "Guess the movie" game made from your own library */
     @Serializable
