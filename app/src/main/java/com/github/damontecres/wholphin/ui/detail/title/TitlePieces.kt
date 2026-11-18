@@ -3,9 +3,7 @@ package com.github.damontecres.wholphin.ui.detail.title
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -18,9 +16,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.MalFacts
-import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.ui.cards.PersonCard
-import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
 
 /** The Cast tab: one row of faces on TV, 3 across on phones */
 @Composable
@@ -46,20 +42,6 @@ fun TitleCastRow(
             PersonCard(person = p, onClick = { onClick(p) }, onLongClick = {}, modifier = Modifier.width(width))
         }
     }
-}
-
-/** The Parents' guide tab */
-@Composable
-fun TitleParentsGuide(
-    scope: TitleTabScope,
-    lines: List<ParentsGuideLine>,
-) {
-    ParentsGuideBlock(
-        lines,
-        Modifier
-            .padding(horizontal = scope.side)
-            .then(if (scope.wide) Modifier.widthIn(max = 700.dp) else Modifier),
-    )
 }
 
 /**

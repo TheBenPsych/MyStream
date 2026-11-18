@@ -41,7 +41,6 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
 import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
-import com.github.damontecres.wholphin.ui.detail.title.TitleParentsGuide
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
@@ -202,19 +201,17 @@ fun MovieHeroContent(
                 )
             }
             add(
-                TitleTab("About") { scope ->
+                TitleTab("About", info = true) { scope ->
                     TitleOverview(
                         scope = scope,
                         title = movie.title.orEmpty(),
                         story = null,
                         strip = strip,
                         details = remember(movie, isAdmin) { titleDetails(movie, isAdmin) },
+                        guide = if (!easy) state.parentsGuide else emptyList(),
                     )
                 },
             )
-            if (!easy && state.parentsGuide.isNotEmpty()) {
-                add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
-            }
         }
     TitlePage(
         title = movie.title.orEmpty(),

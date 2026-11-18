@@ -2,7 +2,10 @@ package com.github.damontecres.wholphin.ui.detail.title
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,18 +23,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -67,6 +73,7 @@ import kotlinx.coroutines.launch
  * story, then the same rows. A slim Play bar shows once Play scrolls away.
  */
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun WideRowsTitlePage(
     title: String,
@@ -105,92 +112,139 @@ internal fun WideRowsTitlePage(
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = pictureAlpha }) {
             TitlePictureView(picture, wide = true)
         }
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(bottom = 56.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item(key = "head", contentType = "head") {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = h * .64f)
-                            .padding(start = side, end = side, top = h * .08f),
-                ) {
-                    Column(Modifier.widthIn(max = w * .55f)) {
-                        TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = true)
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.widthIn(max = w * .75f),
+        // Ben 2026-11-18: moving along the buttons (Play, Trailer, My List, More) made the page bob up and down:
+        // each button asked the list to scroll it into view, then the "back to the top" scroll pulled it up
+        // again. While a button has the focus the list doesn't scroll for it at all; the top just stays put.
+        val defaultSpec = LocalBringIntoViewSpec.current
+        // Ben 2026-11-18: About (words only, nothing to press) sat below the last row and the remote could never
+        // scroll down to it. Now reaching the last row you can press scrolls the page right to the end.
+        var focusedRow by remember { mutableStateOf<Int?>(null) }
+        val lastPressable = sections.indexOfLast { !it.info }
+        val toEnd = focusedRow != null && focusedRow == lastPressable && lastPressable < sections.lastIndex
+        LaunchedEffect(toEnd) {
+            if (toEnd) listState.animateScrollToItem(sections.size)
+        }
+        val onButtons = rememberUpdatedState(focusedButton != null || toEnd)
+        val holdOnButtons = remember(defaultSpec) { HoldStillSpec(defaultSpec) { onButtons.value } }
+        CompositionLocalProvider(LocalBringIntoViewSpec provides holdOnButtons) {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = 56.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item(key = "head", contentType = "head") {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = h * .64f)
+                                .padding(start = side, end = side, top = h * .08f),
                     ) {
-                        InfoLine(info, rating)
-                        ScoreLine(scores)
-                        infoExtra?.invoke()
-                    }
-                    if (!story.isNullOrBlank()) {
-                        Text(
-                            text = story,
-                            color = BenflixColors.Soft,
-                            fontSize = BenflixType.body,
-                            lineHeight = BenflixType.body * 1.4f,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = w * .5f),
-                        )
-                    }
-                    Column(Modifier.padding(top = 6.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.focusRestorer(firstButton),
-                        ) {
-                            buttons.forEachIndexed { index, b ->
-                                TitleButtonView(
-                                    button = b,
-                                    primary = index == 0,
-                                    big = big,
-                                    onFocus = {
-                                        if (it) {
-                                            focusedButton = index
-                                            // Back up on the buttons: show the whole top again
-                                            coroutines.launch { listState.backToTop() }
-                                        } else if (focusedButton == index) {
-                                            focusedButton = null
-                                        }
-                                    },
-                                    modifier = if (index == 0) Modifier.focusRequester(firstButton) else Modifier,
-                                )
-                            }
+                        Column(Modifier.widthIn(max = w * .55f)) {
+                            TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = true)
                         }
-                        val focused = focusedButton?.let { buttons.getOrNull(it) }
-                        val line = focused?.off ?: focused?.note ?: statusLine
-                        Box(Modifier.height(26.dp).padding(top = 8.dp)) {
-                            if (!line.isNullOrBlank()) {
-                                Text(
-                                    text = line,
-                                    color = if (focused?.off != null) BenflixColors.Soft else BenflixColors.Muted,
-                                    fontSize = BenflixType.small,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.widthIn(max = w * .75f),
+                        ) {
+                            InfoLine(info, rating)
+                            ScoreLine(scores)
+                            infoExtra?.invoke()
+                        }
+                        if (!story.isNullOrBlank()) {
+                            Text(
+                                text = story,
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.body,
+                                lineHeight = BenflixType.body * 1.4f,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = w * .5f),
+                            )
+                        }
+                        Column(Modifier.padding(top = 6.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.focusRestorer(firstButton),
+                            ) {
+                                buttons.forEachIndexed { index, b ->
+                                    TitleButtonView(
+                                        button = b,
+                                        primary = index == 0,
+                                        big = big,
+                                        onFocus = {
+                                            if (it) {
+                                                focusedButton = index
+                                                // Back up on the buttons: show the whole top again
+                                                coroutines.launch { listState.backToTop() }
+                                            } else if (focusedButton == index) {
+                                                focusedButton = null
+                                            }
+                                        },
+                                        modifier = if (index == 0) Modifier.focusRequester(firstButton) else Modifier,
+                                    )
+                                }
+                            }
+                            val focused = focusedButton?.let { buttons.getOrNull(it) }
+                            val line = focused?.off ?: focused?.note ?: statusLine
+                            Box(Modifier.height(26.dp).padding(top = 8.dp)) {
+                                if (!line.isNullOrBlank()) {
+                                    Text(
+                                        text = line,
+                                        color = if (focused?.off != null) BenflixColors.Soft else BenflixColors.Muted,
+                                        fontSize = BenflixType.small,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-            sections.forEach { section ->
-                item(key = "row-${section.name}", contentType = "row") {
-                    Column(Modifier.fillMaxWidth().padding(top = 22.dp)) {
-                        if (section.heading) RowHeading(section.name, section.note, side)
-                        section.content(TitleTabScope(side = side, wide = true))
+                sections.forEachIndexed { index, section ->
+                    item(key = "row-${section.name}", contentType = "row") {
+                        // (the rows' own sideways scrolling stays as it was)
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 22.dp)
+                                    .onFocusChanged {
+                                        if (it.hasFocus) {
+                                            focusedRow = index
+                                        } else if (focusedRow == index) {
+                                            focusedRow = null
+                                        }
+                                    },
+                            ) {
+                                if (section.heading) RowHeading(section.name, section.note, side)
+                                section.content(TitleTabScope(side = side, wide = true))
+                            }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Scrolls like [base], except not at all while [hold] says so */
+@OptIn(ExperimentalFoundationApi::class)
+private class HoldStillSpec(
+    private val base: BringIntoViewSpec,
+    private val hold: () -> Boolean,
+) : BringIntoViewSpec {
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float>
+        get() = base.scrollAnimationSpec
+
+    override fun calculateScrollDistance(
+        offset: Float,
+        size: Float,
+        containerSize: Float,
+    ): Float = if (hold()) 0f else base.calculateScrollDistance(offset, size, containerSize)
 }
 
 @Composable

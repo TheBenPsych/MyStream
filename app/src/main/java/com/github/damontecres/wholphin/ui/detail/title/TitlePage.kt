@@ -113,6 +113,8 @@ class TitleTab(
     val heading: Boolean = true,
     /** Glowfin rows pages: a quiet note beside the row name ("Not on Glowfin yet") */
     val note: String? = null,
+    /** Glowfin rows pages: only words, nothing to press (About), so the page scrolls it in for the row above */
+    val info: Boolean = false,
     val content: @Composable (TitleTabScope) -> Unit,
 )
 
@@ -943,8 +945,13 @@ fun TitleOverview(
     modifier: Modifier = Modifier,
     extra: (@Composable () -> Unit)? = null,
     details: List<Pair<String, String>> = emptyList(),
+    /** Ben 2026-11-18: the Parents' guide sits in About (beside Details on TV) instead of a row of its own */
+    guide: List<com.github.damontecres.wholphin.services.ParentsGuideLine> = emptyList(),
 ) {
     var showStory by remember { mutableStateOf(false) }
+    // (a part already in Details, like "Network CBS", isn't said twice)
+    val shownStrip = remember(strip, details) { strip.filter { p -> details.none { it.first == p.label } } }
+    val hasLeft = !story.isNullOrBlank() || shownStrip.isNotEmpty() || extra != null
     val left: @Composable (Modifier) -> Unit = { m ->
         var cut by remember(story) { mutableStateOf(false) }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = m) {
@@ -960,11 +967,11 @@ fun TitleOverview(
                 )
                 if (cut) TitleTextLink("More", onClick = { showStory = true })
             }
-            if (strip.isNotEmpty()) {
+            if (shownStrip.isNotEmpty()) {
                 val text =
-                    remember(strip) {
+                    remember(shownStrip) {
                         buildAnnotatedString {
-                            strip.forEachIndexed { i, p ->
+                            shownStrip.forEachIndexed { i, p ->
                                 if (i > 0) append("     ")
                                 withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(p.label) }
                                 if (p.value != null) {
@@ -979,13 +986,21 @@ fun TitleOverview(
             extra?.invoke()
         }
     }
-    if (scope.wide && details.isNotEmpty()) {
+    if (scope.wide && (details.isNotEmpty() || guide.isNotEmpty())) {
+        // TV: side by side in one short block, so all of it fits on the screen at once
         Row(
             horizontalArrangement = Arrangement.spacedBy(48.dp),
             modifier = modifier.padding(start = scope.side, end = scope.side).fillMaxWidth(),
         ) {
-            left(Modifier.weight(1.2f).widthIn(max = 760.dp))
-            TitleDetailsList(details, wide = true, modifier = Modifier.weight(1f).widthIn(max = 560.dp))
+            if (hasLeft) left(Modifier.weight(1.2f).widthIn(max = 760.dp))
+            if (details.isNotEmpty()) TitleDetailsList(details, wide = true, modifier = Modifier.weight(1f).widthIn(max = 560.dp))
+            if (guide.isNotEmpty()) {
+                com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock(
+                    guide,
+                    compact = true,
+                    modifier = Modifier.weight(1f).widthIn(max = 460.dp),
+                )
+            }
         }
     } else {
         Column(
@@ -995,8 +1010,11 @@ fun TitleOverview(
                     .padding(start = scope.side, end = scope.side)
                     .then(if (scope.wide) Modifier.widthIn(max = 760.dp) else Modifier.fillMaxWidth()),
         ) {
-            left(Modifier.fillMaxWidth())
+            if (hasLeft) left(Modifier.fillMaxWidth())
             if (details.isNotEmpty()) TitleDetailsList(details, wide = false)
+            if (guide.isNotEmpty()) {
+                com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock(guide, compact = true)
+            }
         }
     }
     if (showStory && !story.isNullOrBlank()) {

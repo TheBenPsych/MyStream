@@ -2285,6 +2285,9 @@ body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-logo .log
   #doorTop .art::after { background: none; }
 }
 .rl-i.on:hover, .rl-i.on:focus-visible { color: #fff; }
+/* Ben 2026-11-18: the plain blue was too close to the grey icons, so the page you're on uses the logo's gradient */
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path { stroke: url(#rlOn); }
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path.gf { fill: url(#rlOn); fill-opacity: .35; stroke: none; }
 
 /* Ben 2026-11-18 (approved music-reach-1): the Now playing spot under the logo while a song plays */
 .rl-now { padding: 0 8px; margin-bottom: 4px; }

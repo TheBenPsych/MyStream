@@ -94,7 +94,9 @@
     const now = nowSong && !kids
       ? `<button type="button" class="rl-i rl-now ${nowSong.playing ? "playing" : ""}" data-k="now" title="Now playing: ${esc(nowSong.name)}"><span class="rl-cov" style="background-image:url('${esc(nowSong.art || "")}')"><i></i><i></i><i></i><i></i></span><span class="rl-t"><b>${esc(nowSong.name)}</b><small>${esc(nowSong.artist || "Now playing")}</small></span></button>`
       : "";
-    return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
+    // The page you're on: its icon painted in the logo's purple-to-aqua gradient (Ben 2026-11-18, same as the TV)
+    return `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rlOn" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#A55BE0"/><stop offset=".55" stop-color="#1FA8E6"/><stop offset="1" stop-color="#3FE0E8"/></linearGradient></defs></svg>
+      <a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
       ${now}
       ${kids ? "" : item("search", "search", "Search")}
       ${item("home", "home", "Home")}
