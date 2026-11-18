@@ -80,8 +80,11 @@ import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixMark
+import com.github.damontecres.wholphin.ui.components.GlowfinBlue
+import com.github.damontecres.wholphin.ui.components.GlowfinCyan
 import com.github.damontecres.wholphin.ui.components.GlowfinIcon
 import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
+import com.github.damontecres.wholphin.ui.components.GlowfinPurple
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorPlaces
 import com.github.damontecres.wholphin.ui.door.DoorSection
@@ -1272,9 +1275,9 @@ private const val DIM = .66f
 /** The logo's gradient, corner to corner across one icon */
 private val RailOnBrush =
     Brush.linearGradient(
-        0f to com.github.damontecres.wholphin.ui.components.GlowfinPurple,
-        0.55f to com.github.damontecres.wholphin.ui.components.GlowfinBlue,
-        1f to com.github.damontecres.wholphin.ui.components.GlowfinCyan,
+        0f to GlowfinPurple,
+        0.55f to GlowfinBlue,
+        1f to GlowfinCyan,
     )
 
 /** The page gets the focus offered every 100 ms for up to 15 s (a slow server on a weak TV) */

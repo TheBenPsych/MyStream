@@ -61,10 +61,12 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
+import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -946,7 +948,7 @@ fun TitleOverview(
     extra: (@Composable () -> Unit)? = null,
     details: List<Pair<String, String>> = emptyList(),
     /** Ben 2026-11-18: the Parents' guide sits in About (beside Details on TV) instead of a row of its own */
-    guide: List<com.github.damontecres.wholphin.services.ParentsGuideLine> = emptyList(),
+    guide: List<ParentsGuideLine> = emptyList(),
 ) {
     var showStory by remember { mutableStateOf(false) }
     // (a part already in Details, like "Network CBS", isn't said twice)
@@ -995,7 +997,7 @@ fun TitleOverview(
             if (hasLeft) left(Modifier.weight(1.2f).widthIn(max = 760.dp))
             if (details.isNotEmpty()) TitleDetailsList(details, wide = true, modifier = Modifier.weight(1f).widthIn(max = 560.dp))
             if (guide.isNotEmpty()) {
-                com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock(
+                ParentsGuideBlock(
                     guide,
                     compact = true,
                     modifier = Modifier.weight(1f).widthIn(max = 460.dp),
@@ -1013,7 +1015,7 @@ fun TitleOverview(
             if (hasLeft) left(Modifier.fillMaxWidth())
             if (details.isNotEmpty()) TitleDetailsList(details, wide = false)
             if (guide.isNotEmpty()) {
-                com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock(guide, compact = true)
+                ParentsGuideBlock(guide, compact = true)
             }
         }
     }
