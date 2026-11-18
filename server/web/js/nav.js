@@ -128,10 +128,27 @@
   // Wide touch screens (a tablet on its side) keep the rail open with names: there's nothing to point with
   const alwaysOpen = () => matchMedia("(hover: none) and (min-width: 1100px)").matches;
 
+  // Ben 2026-11-18: picking a page from the menu tucks the menu away for good and lands on the first card of
+  // the page's first row (it used to stay open, or open itself again, while the new page loaded)
+  let landing = 0;
+  const landOnPage = (byKeys) => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (!byKeys) return;
+    const n = ++landing;
+    const until = Date.now() + 4000;
+    const tryIt = () => {
+      if (n !== landing) return;
+      const page = $("#page");
+      const first = page && ($(".rowx .strip > a, .rowx .strip > button, .rowx .strip .poster", page) || $(".poster, .card", page));
+      if (first && first.offsetParent !== null) { first.focus({ preventScroll: true }); return; }
+      if (Date.now() < until) setTimeout(tryIt, 120);
+    };
+    setTimeout(tryIt, 60);
+  };
   const onRail = (e) => {
     const d = e.target.closest("[data-door]");
     // Glowfin (ui-7): Movies and Shows have their places as tabs on the page, so they open straight away
-    if (d && (d.dataset.door === "movies" || d.dataset.door === "shows")) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); return; }
+    if (d && (d.dataset.door === "movies" || d.dataset.door === "shows")) { e.preventDefault(); closePanel(); B.go("#/" + d.dataset.door); landOnPage(e.detail === 0); return; }
     if (d) { e.preventDefault(); openPanel(d.dataset.door, e.detail === 0); return; }
     const k = e.target.closest("[data-k]");
     if (!k) return;
@@ -142,6 +159,7 @@
       return;
     }
     closePanel();
+    landOnPage(e.detail === 0 && k.dataset.k !== "search");
   };
 
   // ---------- a door's panel ----------
@@ -181,7 +199,7 @@
       if (!a) return;
       const jump = a.dataset.jump;
       closePanel();
-      if (rail) rail.blur && document.activeElement && document.activeElement.blur();
+      landOnPage(e.detail === 0);
       if (jump) { e.preventDefault(); B.doorJump ? B.doorJump(door, jump) : B.go("#/" + door); }
     });
     panel.addEventListener("keydown", (e) => {
