@@ -629,7 +629,7 @@ class SearchViewModel
                                             searchTerm = query,
                                             recursive = true,
                                             includeItemTypes = otherTypes,
-                                            fields = SlimItemFields,
+                                            fields = SearchRowFields,
                                             limit = SEARCH_LIMIT,
                                         ),
                                     ).content.items
@@ -718,7 +718,7 @@ class SearchViewModel
                                 GetItemsRequest(
                                     userId = serverRepository.currentUser?.id,
                                     ids = ids,
-                                    fields = SlimItemFields,
+                                    fields = SearchRowFields,
                                 ),
                             ).toBaseItems(api, false)
                     items + extra.sortedBy { ids.indexOf(it.id) }
@@ -1039,6 +1039,9 @@ private val allSearchableTypes =
     )
 
 private const val SEARCH_LIMIT = 50
+
+/** Search rows also need where a title lives and its genres, to put anime in its own row */
+private val SearchRowFields = SlimItemFields + org.jellyfin.sdk.model.api.ItemFields.PATH + org.jellyfin.sdk.model.api.ItemFields.GENRES
 
 /** Searched on their own in the combined search, so movies and shows can't crowd them out */
 private val COMBINED_MUSIC_TYPES =

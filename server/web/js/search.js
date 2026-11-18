@@ -1,9 +1,8 @@
-/* Benflix web: Search (Redesign 2, Ben 2026-11-10: "door cards"). Typing starts in the box straight away.
-   Before typing: your last 6 searches (each with a ✕, plus Clear all), Popular and Browse. While typing:
-   whole-name suggestions as chips under the box, then one card per door in a 3 by 2 grid (Movies, Shows,
-   Music, Live TV, Games, Books): a thin door-colour line on top, name, count, the best 3 results with bigger
-   pictures in their own shape, and See all. People and the white Ask for it door sit below the grid. Doors
-   with nothing are named in one small line. Kids get Movies, Shows, Live TV and Games only. */
+/* Benflix web: Search. Typing starts in the box straight away. Before typing: your last 6 searches (each with a ✕,
+   plus Clear all), Popular and Browse. While typing: whole-name suggestions as chips under the box, then rows like
+   Home (Ben 2026-11-18): Movies, Shows, Anime, Music, Live TV, Games, Books, Ask for it (movies and shows, then music)
+   and People, each a row of poster cards with See all at the end. Rows with nothing are named in one small line.
+   Kids get Movies, Shows, Anime, Live TV and Games only. */
 "use strict";
 
 const recentKey = () => "benflix.search." + B.me.id;
@@ -82,51 +81,73 @@ B.route(/^\/search/, async (m, nav) => {
       .map((n, i) => ({ n, i, s: plain(n).startsWith(pt) ? 0 : 1 })).sort((a, b) => a.s - b.s || a.i - b.i).slice(0, 6).map((x) => x.n);
     const bold = (n) => { const at = n.toLowerCase().indexOf(t.toLowerCase()); return at < 0 ? esc(n) : `${esc(n.slice(0, at))}<b>${esc(n.slice(at, at + t.length))}</b>${esc(n.slice(at + t.length))}`; };
     $("#schips").innerHTML = sugg.map((n) => `<button class="pill sg" data-sugg="${esc(n)}"><span>${bold(n)}</span></button>`).join("");
-    // One line per thing: the picture with the name and year beside it (Ben, 2026-11-09)
-    const line = (href, attrs, img, name, sub, square, asked) => `<${href ? `a href="${href}"` : "button"} class="sline big" ${attrs || ""} title="${esc(name)}"><span class="pic ${square ? "sq" : ""}" ${img ? `style="background-image:url('${img}')"` : ""}></span><span class="txt"><b>${esc(name)}</b><small>${esc(sub || "")}</small>${asked ? `<em>Asked</em>` : ""}</span></${href ? "a" : "button"}>`;
+    // Ben 2026-11-18: rows like Home. Each thing is a poster card in its row (squares for music and channels, circles
+    // for people) and the same thing as one line in the See all list
+    const line = (href, attrs, img, name, sub, square, asked, round) => {
+      const tag = href ? `a href="${href}"` : "button";
+      const end = href ? "a" : "button";
+      const isAsk = /data-(m)?ask=/.test(attrs || "");
+      const shape = round ? "rd" : square ? "sq" : "";
+      return {
+        c: `<${tag} class="poster scard ${shape}" ${attrs || ""} title="${esc(name)}"><div class="im">${img ? `<img class="art" src="${img}" alt="" loading="lazy" decoding="async">` : `<div class="noart"><span class="nt">${esc(name)}</span></div>`}${isAsk ? `<span class="askp">${asked ? "Asked" : "Ask"}</span>` : ""}</div><div class="cap"><span class="nm">${esc(name)}</span><small>${esc(sub || "")}</small></div></${end}>`,
+        l: `<${tag} class="sline big" ${attrs || ""} title="${esc(name)}"><span class="pic ${square ? "sq" : ""}" ${img ? `style="background-image:url('${img}')"` : ""}></span><span class="txt"><b>${esc(name)}</b><small>${esc(sub || "")}</small>${asked ? `<em>Asked</em>` : ""}</span></${end}>`,
+      };
+    };
     const kindOf = { Movie: "Movie", BoxSet: "Collection", Series: "Show", Episode: "Episode", Audio: "Song", MusicAlbum: "Album", MusicArtist: "Artist", Playlist: "Playlist" };
     const itemLine = (x) => {
+      B.items[x.Id] = x;
       const music = ["Audio", "MusicAlbum", "MusicArtist", "Playlist"].includes(x.Type);
       const tag = x.ImageTags && x.ImageTags.Primary;
-      const img = tag ? B.img(x.Id, "Primary", { h: 120, tag }) : x.AlbumId && music ? B.img(x.AlbumId, "Primary", { h: 120 }) : "";
+      const img = tag ? B.img(x.Id, "Primary", { h: 360, tag }) : x.AlbumId && music ? B.img(x.AlbumId, "Primary", { h: 360 }) : "";
       const href = x.Type === "Audio" ? (x.AlbumId ? `#/album/${x.AlbumId}` : "#/songs") : x.Type === "MusicAlbum" ? `#/album/${x.Id}` : x.Type === "MusicArtist" ? `#/artist/${x.Id}` : x.Type === "Playlist" ? `#/playlist/${x.Id}` : B.hrefOf(x);
       const sub = [kindOf[x.Type], music ? x.AlbumArtist || (x.Artists || [])[0] : x.ProductionYear].filter(Boolean).join(" · ");
       return line(href, `data-id="${esc(x.Id)}"`, img, x.Name, sub, music);
     };
-    const chLine = (c) => line(`#/watch/${c.Id}`, "", c.ImageTags && c.ImageTags.Primary ? B.img(c.Id, "Primary", { h: 120, tag: c.ImageTags.Primary }) : "", c.Name, [c.ChannelNumber, "Live channel"].filter(Boolean).join(" · "), true);
+    const chLine = (c) => line(`#/watch/${c.Id}`, "", c.ImageTags && c.ImageTags.Primary ? B.img(c.Id, "Primary", { h: 300, tag: c.ImageTags.Primary }) : "", c.Name, [c.ChannelNumber, "Live channel"].filter(Boolean).join(" · "), true);
     const gameLine = (g) => line(`#/game/${g.id}`, "", g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "", g.name, g.console);
-    const titleLine = (r) => { B.askCard(r); return line(null, `data-ask="${esc(r.mediaType)}:${esc(r.id)}"`, r.posterPath ? `https://image.tmdb.org/t/p/w154${r.posterPath}` : "", r.title || r.name || "", [r.mediaType === "tv" ? "Show" : "Movie", (r.releaseDate || r.firstAirDate || "").slice(0, 4)].filter(Boolean).join(" · "), false, r.mediaInfo && r.mediaInfo.status > 1); };
+    const titleLine = (r) => { B.askCard(r); return line(null, `data-ask="${esc(r.mediaType)}:${esc(r.id)}"`, r.posterPath ? `https://image.tmdb.org/t/p/w342${r.posterPath}` : "", r.title || r.name || "", [r.mediaType === "tv" ? "Show" : "Movie", (r.releaseDate || r.firstAirDate || "").slice(0, 4)].filter(Boolean).join(" · "), false, r.mediaInfo && r.mediaInfo.status > 1); };
     const musicAskLine = (x) => line(null, `data-mask="${x.kind}:${x.id}"`, x.cover, x.title, `${x.kind === "album" ? "Album" : "Song"} · ${x.artist}`, true, !!x.asked);
     const bookPic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
     const bookLine = (b) => line(`#/book/${enc(b.id)}`, "", bookPic(b.cover), b.name, [b.kind === "audiobook" ? "Audiobook" : "Book", b.author].filter(Boolean).join(" · "));
-    const personLine = (x) => line(`#/person/${x.Id}`, "", x.ImageTags && x.ImageTags.Primary ? B.img(x.Id, "Primary", { h: 120, tag: x.ImageTags.Primary }) : "", x.Name, "Person");
+    const personLine = (x) => line(`#/person/${x.Id}`, "", x.ImageTags && x.ImageTags.Primary ? B.img(x.Id, "Primary", { h: 300, tag: x.ImageTags.Primary }) : "", x.Name, "Person", false, false, true);
     // Ask for it (Ben 2026-11-18): movies, shows and anime always first, songs and albums after. Closest names first inside each group
     const closestFirst = (list) => list.map((e, i) => ({ e, i, s: score(e.name) })).sort((a, b) => a.s - b.s || a.i - b.i).map((x) => x.e.html);
-    const askAll = [...closestFirst(ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) }))), ...closestFirst(mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) })))];
+    const askTitles = closestFirst(ask.map((x) => ({ name: x.title || x.name, html: titleLine(x) })));
+    const askMusic = closestFirst(mAsk.map((x) => ({ name: x.title, html: musicAskLine(x) })));
     // What the words describe joins the names (first when few names match, like the TV app)
     const withWords = (list, type) => {
       const have = new Set(list.map((x) => x.Id));
       const extra = described.filter((x) => x.Type === type && !have.has(x.Id));
       return list.length < 3 ? [...extra, ...list] : [...list, ...extra];
     };
-    const doors = [
-      [DOORS.movies, withWords(movies, "Movie").map(itemLine)],
-      [DOORS.shows, withWords(shows, "Series").map(itemLine)],
+    // Glowfin: anime shows and movies get their own row, like the Anime page
+    const anime = (x) => /anime/i.test(x.Path || "") || (x.Genres || []).some((g) => /^anime$/i.test(g));
+    const mv = withWords(movies, "Movie"), sh = withWords(shows, "Series");
+    // Ben 2026-11-18: one row per kind, always in this order. Movies and shows to ask for sit above music to ask for
+    const rows = [
+      [DOORS.movies, mv.filter((x) => !anime(x)).map(itemLine)],
+      [DOORS.shows, sh.filter((x) => !anime(x)).map(itemLine)],
+      [{ name: "Anime", color: DOORS.shows.color, quiet: true }, [...sh, ...mv].filter(anime).map(itemLine)],
       ...(kids ? [] : [[{ name: "Music", color: "#A55BE0" }, mine.map(itemLine)]]),
       [DOORS.live, chans.map(chLine)],
       [DOORS.games, gl.map(gameLine)],
-      ...(kids ? [] : [[{ name: "Books", color: "#3FE0E8" }, books.map(bookLine)]]),
+      ...(kids ? [] : [
+        [{ name: "Books", color: "#3FE0E8" }, books.map(bookLine)],
+        [{ name: "Ask for it: movies and shows", short: "Ask for it", color: "#F1F2F5" }, askTitles],
+        [{ name: "Ask for it: music", color: "#A55BE0", quiet: true }, askMusic],
+        [{ name: "People", color: "#9AA0AE" }, people.map(personLine)],
+      ]),
     ];
-    const below = kids ? [] : [[{ name: "Ask for it", color: "#F1F2F5", ask: true }, askAll], [{ name: "People", color: "#9AA0AE" }, people.map(personLine)]];
-    const all = [...doors, ...below];
-    const full = doors.filter((d) => d[1].length), lower = below.filter((d) => d[1].length), none = all.filter((d) => !d[1].length);
-    const card = ([door, lines], max) => `<div class="dcard ${door.ask ? "askdoor" : ""}" style="--c:${door.color}"><h4>${esc(door.name)} <small class="dim">${lines.length}</small>${lines.length > max ? `<button class="seeall" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h4><div class="dl ${door.ask ? "two" : ""}">${lines.slice(0, max).join("")}</div></div>`;
-    const anything = full.length || lower.length;
-    lastDoors = all;
-    $("#sres").innerHTML = `${anything && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].name)).join(" · ")}</div>` : ""}
-    ${full.length ? `<div class="dcards">${full.map((d) => card(d, 3)).join("")}</div>` : ""}
-    ${lower.length ? `<div class="dbelow">${lower.map((d) => card(d, d[0].ask ? 4 : 3)).join("")}</div>` : ""}
-    ${!anything ? `<div class="wrap empty">Nothing found for “${esc(t)}”. Check the spelling${kids ? "" : ", or ask for it on the Requests page"}.</div>` : ""}`;
+    const full = rows.filter((d) => d[1].length), none = rows.filter((d) => !d[1].length && !d[0].quiet);
+    const MAX = 10;
+    const row = ([door, list]) => `<section class="rowx srow" style="--c:${door.color}"><h3><i class="bar"></i>${esc(door.name)} <small class="dim">${list.length}</small>${list.length > MAX ? `<button class="more" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h3>
+      <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
+      <div class="strip">${list.slice(0, MAX).map((x) => x.c).join("")}${list.length > MAX ? `<button class="poster see" data-seeall="${esc(door.name)}">See all</button>` : ""}</div>
+      <button class="arrow r" data-scroll="1" aria-label="Scroll right">${I("right")}</button></section>`;
+    lastDoors = rows;
+    $("#sres").innerHTML = `${full.length && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].short || d[0].name)).join(" · ")}</div>` : ""}
+    ${full.map(row).join("")}
+    ${!full.length ? `<div class="wrap empty">Nothing found for “${esc(t)}”. Check the spelling${kids ? "" : ", or ask for it on the Requests page"}.</div>` : ""}`;
     lastAsk = mAsk;
   };
   const remember = () => {
@@ -135,7 +156,7 @@ B.route(/^\/search/, async (m, nav) => {
   };
   let timer;
   box.oninput = () => { clearTimeout(timer); timer = setTimeout(() => { history.replaceState(null, "", "#/search?q=" + enc(box.value)); run(box.value); }, 250); };
-  box.onkeydown = (e) => { if (e.key === "Enter") { remember(); const f = $("#sres a, #sres button"); if (f) f.focus(); } };
+  box.onkeydown = (e) => { if (e.key === "Enter") { remember(); const f = $("#sres .strip a, #sres .strip button"); if (f) f.focus(); } };
   $("#schips").addEventListener("click", (e) => {
     const c = e.target.closest("[data-sugg]");
     if (!c) return;
@@ -152,7 +173,7 @@ B.route(/^\/search/, async (m, nav) => {
       // See all: that door's whole list in a side panel
       const d = lastDoors.find((x) => x[0].name === sa.dataset.seeall);
       if (!d) return;
-      const s = B.side(`<h3>${esc(d[0].name)} <small class="dim">${d[1].length}</small></h3><div class="dl seelist">${d[1].join("")}</div>`);
+      const s = B.side(`<h3>${esc(d[0].name)} <small class="dim">${d[1].length}</small></h3><div class="dl seelist">${d[1].map((x) => x.l).join("")}</div>`);
       s.addEventListener("click", (ev) => { if (ev.target.closest("a")) { remember(); B.closeAll(); } });
       return;
     }

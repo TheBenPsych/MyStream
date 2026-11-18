@@ -522,6 +522,17 @@ textarea.field { min-height: 90px; resize: vertical; }
 .dcard .dl { display: flex; flex-direction: column; gap: 4px; }
 .dcard .dl.two { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
 .seelist { display: flex; flex-direction: column; gap: 4px; }
+/* Search rows (Ben 2026-11-18): rows like Home, a colour line before each name, square music and round people */
+.srow h3 .bar { width: 4px; height: 18px; border-radius: 2px; background: var(--c); flex: none; }
+.srow h3 small { font-size: 15px; font-weight: 600; }
+.srow h3 .more { margin-left: auto; }
+.poster.scard { font: inherit; }
+.poster.scard.sq { width: calc(var(--poster-w) * 1.15); }
+.poster.scard.sq .im { aspect-ratio: 1; }
+.poster.scard.rd { width: calc(var(--poster-w) * .85); background: none; text-align: center; }
+.poster.scard.rd .im { aspect-ratio: 1; border-radius: 50%; }
+.poster.scard .noart { font-size: 15px; }
+.poster.scard .askp { position: absolute; top: 7px; right: 7px; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 99px; }
 .sline.big .pic { width: 54px; height: 81px; }
 .sline.big .pic.sq { width: 72px; height: 72px; }
 .sline.big .txt b { font-size: 15px; }
