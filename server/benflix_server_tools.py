@@ -51,7 +51,7 @@ APP_NAMES = (
     ("trailarr", "Trailarr"),
     ("romm", "Games library (RomM)"),
     ("mariadb", "Games database"),
-    ("benflix-games", "Benflix helper"),
+    ("benflix-games", "Glowfin helper"),
 )
 SELF = "benflix-games"  # Restarting the helper from itself would cut off its own answer
 
@@ -198,7 +198,7 @@ def up_seconds():
 
 def _docker(method, path, timeout=30):
     if not os.path.exists(DOCKER_SOCK):
-        raise ToolError(503, "The helper can't see your apps yet. Run the Benflix setup command on the server again.")
+        raise ToolError(503, "The helper can't see your apps yet. Run the Glowfin setup command on the server again.")
     conn = http.client.HTTPConnection("localhost", timeout=timeout)
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.settimeout(timeout)
@@ -419,7 +419,7 @@ def restart_app(name):
     if app is None:
         raise ToolError(404, "That app isn't on the server.")
     if not app["restartable"]:
-        raise ToolError(400, "The Benflix helper can't restart itself. Restart it in Unraid's Docker tab.")
+        raise ToolError(400, "The Glowfin helper can't restart itself. Restart it in Unraid's Docker tab.")
     _docker("POST", f"/containers/{urllib.parse.quote(name)}/restart?t=15", timeout=90)
     _forget()
     return {"message": f"{app['nice']} restarted. Give it a minute to wake up."}
@@ -439,7 +439,7 @@ def _arr(app, method, path, body=None, timeout=20):
     url, key = ARRS[app]
     nice = "Sonarr" if app == "sonarr" else "Radarr"
     if not (url and key):
-        raise ToolError(503, f"{nice} isn't connected to the helper yet. Run the Benflix setup command on the server again.")
+        raise ToolError(503, f"{nice} isn't connected to the helper yet. Run the Glowfin setup command on the server again.")
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
         url + path,
@@ -453,7 +453,7 @@ def _arr(app, method, path, body=None, timeout=20):
             return json.loads(raw) if raw else None
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
-            raise ToolError(502, f"{nice} didn't accept the helper's key. Run the Benflix setup command again.")
+            raise ToolError(502, f"{nice} didn't accept the helper's key. Run the Glowfin setup command again.")
         raise ToolError(502, f"{nice} answered with an error ({e.code}).")
     except (urllib.error.URLError, OSError):
         raise ToolError(502, f"Couldn't reach {nice}. Check it's running.")
@@ -795,13 +795,13 @@ def tracks_status():
         state = dict(_tracks, lines=list(_tracks["lines"]))
     state.update(ready=tracks_ready(), folders=_folders(), undo_files=_undo_files())
     if not state["ready"]:
-        state["problem"] = "The track tool isn't set up on the server yet. Run the Benflix setup command on the server again."
+        state["problem"] = "The track tool isn't set up on the server yet. Run the Glowfin setup command on the server again."
     return state
 
 
 def tracks_start(mode, folder=None, undo_file=None):
     if not tracks_ready():
-        raise ToolError(503, "The track tool isn't set up on the server yet. Run the Benflix setup command again.")
+        raise ToolError(503, "The track tool isn't set up on the server yet. Run the Glowfin setup command again.")
     # Ben's qBittorrent stops seeding after a minute, so files that still have a second copy in Downloads
     # are safe to edit (otherwise most new episodes would be skipped)
     cmd = [sys.executable, "-u", TRACKS_SCRIPT, "--log-dir", TRACK_LOGS, "--include-hardlinked"]

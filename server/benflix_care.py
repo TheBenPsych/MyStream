@@ -129,7 +129,7 @@ def remember_admin(token, user_id):
 def _get(path, token=None):
     token = token or _admin()[0]
     if not token:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     status, data, _ = _jf("GET", path, token=token)
     if status != 200:
         raise CareError(502, f"Jellyfin answered with an error ({status}).")
@@ -566,7 +566,7 @@ def _cover(cues, frames, speech):
 def _stream_info(item_id, index=None):
     token, user = _admin()
     if not token:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     it = _get(f"/Items/{item_id}?" + urllib.parse.urlencode({"userId": user or "", "Fields": "Path,MediaStreams,MediaSources"}))
     if it and "Items" in it:
         it = (it.get("Items") or [None])[0]
@@ -825,9 +825,9 @@ def _auto_sync(it):
 
 def sync_request(item_id, index, better=False):
     if not (_dir and ffmpeg_ok()):
-        raise CareError(503, "The subtitle fixer isn't on Tower yet. Run the Benflix setup command again.")
+        raise CareError(503, "The subtitle fixer isn't on Tower yet. Run the Glowfin setup command again.")
     if better and not bazarr_ok():
-        raise CareError(503, "Bazarr isn't connected to Tower yet. Run the Benflix setup command again.")
+        raise CareError(503, "Bazarr isn't connected to Tower yet. Run the Glowfin setup command again.")
     with _lock:
         job = _sync_jobs.get(item_id)
         if job and job["state"] in ("waiting", "working"):
@@ -926,9 +926,9 @@ def tidy(fresh=False):
     """The tidy-up lists. Looking through everything can take a while on a big library, so it works in
     the background and answers {"working": true} until it's done (the Server page asks again)."""
     if _tools is None:
-        raise CareError(503, "The Server page tools aren't on Tower yet. Run the Benflix setup command again.")
+        raise CareError(503, "The Server page tools aren't on Tower yet. Run the Glowfin setup command again.")
     if not _admin()[0]:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     with _lock:
         c = _cache.get("tidy")
         if c and not fresh and time.time() - c[0] < 6 * 3600:
@@ -956,7 +956,7 @@ def _tidy_work():
 def _tidy_build():
     token = _admin()[0]
     if not token:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     last = _watched_lately(token)
     lib = _library(token)
     rows = []
@@ -1053,7 +1053,7 @@ def report(fresh=False, extra=None):
             return dict(c[1], **(extra or {}))
     token, user = _admin()
     if not token:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     now = time.time()
     week = now - 7 * DAY
     # What got added
@@ -1196,7 +1196,7 @@ def signin_out(body):
         raise CareError(400, "Which device?")
     token = _admin()[0]
     if not token:
-        raise CareError(503, "Tower needs the main profile to sign in on Benflix once first.")
+        raise CareError(503, "Tower needs the main profile to sign in on Glowfin once first.")
     status, _, _ = _jf("DELETE", "/Devices?id=" + urllib.parse.quote(dev), token=token)
     if status not in (200, 204):
         raise CareError(502, f"Jellyfin couldn't sign that device out ({status}).")

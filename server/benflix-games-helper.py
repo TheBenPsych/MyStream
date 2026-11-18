@@ -247,7 +247,7 @@ def check_signed_in(token):
     """Only people signed in to Jellyfin get the games. Returns (account id, is admin, is kids account).
     Kids accounts only get games rated for everyone (see kids_safe)."""
     if not token:
-        raise HelperError(401, "Sign in to Benflix first.")
+        raise HelperError(401, "Sign in to Glowfin first.")
     with _lock:
         known = _tokens.get(token)
         if known and time.time() - known[0] < 600:
@@ -259,7 +259,7 @@ def check_signed_in(token):
         with urllib.request.urlopen(req, timeout=10) as r:
             user = json.loads(r.read())
     except urllib.error.HTTPError:
-        raise HelperError(401, "Your Benflix sign-in wasn't accepted. Try signing in again.")
+        raise HelperError(401, "Your Glowfin sign-in wasn't accepted. Try signing in again.")
     except (urllib.error.URLError, OSError):
         raise HelperError(502, "The games helper couldn't reach Jellyfin to check your sign-in.")
     policy = user.get("Policy") or {}
@@ -379,7 +379,7 @@ def asking_for(token, body):
     for p in family_people(token):
         if p["id"].replace("-", "").lower() == want:
             return p["id"], p["name"]
-    raise HelperError(400, "That person can't be asked for (they're not on Benflix, or it's the Kids profile).")
+    raise HelperError(400, "That person can't be asked for (they're not on Glowfin, or it's the Kids profile).")
 
 
 # Ratings that mean "fine for kids" (ESRB, PEGI, CERO, USK) and ones that mean "not for kids"
@@ -1042,7 +1042,7 @@ def busy_now():
     Jellyfin could be asked (it needs Ben to have opened Benflix once since Tower started)."""
     quiet_for = time.time() - _last_use["at"]
     if quiet_for < QUIET_FOR_S:
-        return {"busy": True, "why": "Benflix was used in the last 15 minutes", "jellyfin": None}
+        return {"busy": True, "why": "Glowfin was used in the last 15 minutes", "jellyfin": None}
     token = (getattr(skips, "_admin", None) or {}).get("token") if skips is not None else None
     if not token:
         return {"busy": False, "why": "", "jellyfin": False}
@@ -1068,10 +1068,10 @@ def household_popular():
             return _popular["items"]
         token = (getattr(skips, "_admin", None) or {}).get("token") if skips is not None else None
         if not token:
-            raise HelperError(503, "Ben needs to open Benflix once so Tower can see what everyone watched.")
+            raise HelperError(503, "Ben needs to open Glowfin once so Tower can see what everyone watched.")
         status, data, _ = jellyfin_call("GET", "/Users", token=token)
         if status != 200:
-            raise HelperError(503, "Tower couldn't read the people list. Ben needs to open Benflix again.")
+            raise HelperError(503, "Tower couldn't read the people list. Ben needs to open Glowfin again.")
         cutoff = time.time() - POPULAR_DAYS * 86400
         people, plays = {}, {}
         for user in json.loads(data):
@@ -1287,7 +1287,7 @@ class Handler(BaseHTTPRequestHandler):
     def admin_route(self, method, path, query):
         """The Server page tools. Returns False when the path isn't one of them."""
         if tools is None:
-            raise HelperError(503, "The Server page tools aren't on the server yet. Run the Benflix setup command again.")
+            raise HelperError(503, "The Server page tools aren't on the server yet. Run the Glowfin setup command again.")
         if method == "POST" and path == "/api/admin/livetv/refresh" and livetv is not None:
             return self.send(200, {"started": livetv.refresh(), **livetv.status()})
         if method == "GET" and path == "/api/admin/arrivals" and arrivals is not None:
@@ -1421,7 +1421,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(404, "Not found")
             if method == "GET" and path in ("/", "/web", "/index.html"):
                 if not os.path.isfile(WEB_PAGE):
-                    raise HelperError(404, "The tools page isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(404, "The tools page isn't on the server yet. Run the Glowfin setup command again.")
                 with open(WEB_PAGE, "rb") as f:
                     return self.send(200, f.read(), "text/html; charset=utf-8")
             if method == "POST" and path == "/api/web/login":
@@ -1453,24 +1453,24 @@ class Handler(BaseHTTPRequestHandler):
             if method == "POST" and path == "/api/livetv/broken":
                 # Benflix "This channel is broken" (anyone signed in)
                 if livetv is None:
-                    raise HelperError(503, "Live TV isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Live TV isn't on the server yet. Run the Glowfin setup command again.")
                 return self.send(200, livetv.report_broken(self.read_json(), user_id))
             if path.startswith("/api/skips/"):
                 # Skip intro / credits times for the player (anyone signed in; fixes not from kids accounts)
                 if skips is None:
-                    raise HelperError(503, "Skip times aren't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Skip times aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
                 return self.send(status, answer)
             if path.startswith("/api/facts/"):
                 # "Did you know" facts for a movie or show page and the screensaver (anyone signed in)
                 if facts is None:
-                    raise HelperError(503, "Facts aren't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Facts aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = facts.route(method, path, query, token, user_id, is_admin)
                 return self.send(status, answer)
             if path.startswith("/api/home/") or path.startswith("/api/admin/home/"):
                 # Home's weather line (everyone signed in); setting the town is admin only (and at home only, above)
                 if home is None:
-                    raise HelperError(503, "Home's weather isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Home's weather isn't on the server yet. Run the Glowfin setup command again.")
                 answer = home.route(method, path, self.read_json, is_admin)
                 if answer is None:
                     raise HelperError(404, "Not found")
@@ -1478,7 +1478,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/lobby/"):
                 # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
                 if lobby is None:
-                    raise HelperError(503, "The Lobby isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "The Lobby isn't on the server yet. Run the Glowfin setup command again.")
                 try:
                     status, answer = lobby.route(method, path, self.read_json, user_id, _names.get(user_id, ""), is_admin, is_kids)
                 except lobby.LobbyError as e:
@@ -1501,7 +1501,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
-                    raise HelperError(503, "Music isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Music isn't on the server yet. Run the Glowfin setup command again.")
                 status, answer = music.route(
                     method, path, query, token, user_id, is_admin, read_json, is_kids=is_kids, user_name=_names.get(user_id, ""), for_person=for_person
                 )
@@ -1509,7 +1509,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/books/"):
                 # Books: manga, ebooks and audiobooks (everyone; Kids only see kids' books)
                 if books is None:
-                    raise HelperError(503, "Books aren't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "Books aren't on the server yet. Run the Glowfin setup command again.")
                 answer = books.route(method, path, query, token, user_id, is_admin, is_kids, read_json, user_name=_names.get(user_id, ""), for_person=for_person)
                 if answer[0] == "file":
                     return self.send_range(answer[1], answer[2], head=(method == "HEAD"))
@@ -1519,7 +1519,7 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/subsync/"):
                 # The player's "Subtitles are off" button: Tower lines them up with the voices
                 if care is None:
-                    raise HelperError(503, "The subtitle fixer isn't on the server yet. Run the Benflix setup command again.")
+                    raise HelperError(503, "The subtitle fixer isn't on the server yet. Run the Glowfin setup command again.")
                 if is_kids:
                     raise HelperError(403, "Ask a grown-up to fix these subtitles.")
                 status, answer = care.user_route(method, path, self.read_json)

@@ -25,7 +25,7 @@ _weather = {}
 _place = {}
 _last_problem = None
 
-UA = "Benflix/1.0 (home media app; https://github.com/TheBenPsych/MyStream)"
+UA = "Glowfin/1.0 (home media app; https://github.com/TheBenPsych/MyStream)"
 EVERY = 3600  # seconds between weather checks
 GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"

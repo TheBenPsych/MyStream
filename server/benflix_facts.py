@@ -39,7 +39,7 @@ _auto = {}  # Jellyfin item id -> {"name", "year", "type", "facts", "at", "page"
 _titles = {}  # Jellyfin item id -> {"name", "year", "type", "imdb", "tmdb"}
 
 CHECKED_URL = "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/facts/title-facts.json"
-UA = "Benflix/1.0 (home media app; https://github.com/TheBenPsych/MyStream)"
+UA = "Glowfin/1.0 (home media app; https://github.com/TheBenPsych/MyStream)"
 PER_NIGHT = 1500  # Wikipedia lookups in one night (about one a second, so well under an hour)
 RETRY_DAYS = 30  # titles with no facts are looked at again after this long (Wikipedia pages grow)
 MAX_AUTO = 4
@@ -553,7 +553,7 @@ def titles_text(few=False):
     Every movie and show with its fact counts, for sending to a chat (at home only). With few=True, only
     titles with fewer than 2 facts so far (the ones that need hand-checked facts most), in a short form.
     """
-    lines = ["# Benflix titles and their facts: name (year) | type | IMDb | hand-checked | found on Wikipedia", ""]
+    lines = ["# Glowfin titles and their facts: name (year) | type | IMDb | hand-checked | found on Wikipedia", ""]
     for item_id, t in sorted(_titles.items(), key=lambda kv: (kv[1].get("type") or "", _norm(kv[1].get("name")))):
         if t.get("type") not in ("Movie", "Series"):
             continue
@@ -567,7 +567,7 @@ def titles_text(few=False):
             f"{checked} | {found if found is not None else 'not yet'}"
         )
     if not _titles:
-        lines.append("Nothing yet. Tower gathers the list about 10 minutes after the helper starts, once Ben has signed in on Benflix.")
+        lines.append("Nothing yet. Tower gathers the list about 10 minutes after the helper starts, once Ben has signed in on Glowfin.")
     return "\n".join(lines) + "\n"
 
 
