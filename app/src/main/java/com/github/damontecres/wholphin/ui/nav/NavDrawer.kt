@@ -48,7 +48,6 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SetupDestination
 import com.github.damontecres.wholphin.services.SetupNavigationManager
 import com.github.damontecres.wholphin.ui.launchDefault
-import com.github.damontecres.wholphin.ui.music.isMusicPage
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.toServerString
@@ -895,8 +894,6 @@ fun NavDrawer(
         return
     }
     val underBar = destination.underTopBar()
-    // TV Music pages show the player strip at the bottom instead of the pill by the clock
-    val musicStrip = destination.isMusicPage()
     // Benflix remote shortcuts (hold Back for Home, Play plays, Search, page jumps)
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val shortcutScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -946,7 +943,6 @@ fun NavDrawer(
             big = easy,
             overPicture = underBar,
             downTarget = if (underBar) LocalTopBarDown.current else null,
-            hideMusicPill = musicStrip,
             modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
         )
     }
@@ -1016,11 +1012,6 @@ fun NavDrawer(
                                             end = if (destination.fullBleed()) 0.dp else 16.dp,
                                         ),
                             )
-                            // Music redesign 3 (approved r3-q-tvbar): the slim player strip along the bottom of Music pages
-                            if (musicStrip) {
-                                com.github.damontecres.wholphin.ui.music
-                                    .MusicStrip()
-                            }
                         }
                         header()
                     }
@@ -1042,10 +1033,6 @@ fun NavDrawer(
                                     end = if (destination.fullBleed()) 0.dp else 16.dp,
                                 ),
                     )
-                    if (musicStrip) {
-                        com.github.damontecres.wholphin.ui.music
-                            .MusicStrip()
-                    }
                 }
             }
         }

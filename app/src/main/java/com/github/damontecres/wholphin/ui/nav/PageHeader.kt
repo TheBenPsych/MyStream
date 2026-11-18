@@ -78,8 +78,6 @@ fun BenflixPageHeader(
     overPicture: Boolean = false,
     /** Pages under the header can name where Down goes (see [TopBarDown]) */
     downTarget: TopBarDown? = null,
-    /** Music pages have the player strip along the bottom instead (Music redesign 3) */
-    hideMusicPill: Boolean = false,
 ) {
     val scale = if (big) 1.2f else 1f
     val down =
@@ -140,11 +138,10 @@ fun BenflixPageHeader(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = if (overPicture) Modifier.softShadow() else Modifier,
         ) {
-            // Benflix music: while music plays, a pill left of the clock (OK opens Now playing)
-            if (!hideMusicPill) {
-                com.github.damontecres.wholphin.ui.music
-                    .MusicNowPill(scale = scale, modifier = down)
-            }
+            // Benflix music: while music plays, a pill left of the clock on every page, Music too (OK opens
+            // Now playing; Ben 2026-11-18 approved music-reach-1, the old strip at the bottom of Music pages is gone)
+            com.github.damontecres.wholphin.ui.music
+                .MusicNowPill(scale = scale, modifier = down)
             // Benflix Books: while an audiobook plays, a lime pill (OK opens the player)
             com.github.damontecres.wholphin.ui.books
                 .AudiobookPill(scale = scale, modifier = down)

@@ -306,6 +306,8 @@
       swipe(bar, () => M.next(), () => M.prev(), 60);
     }
     const on = !!s;
+    // Ben 2026-11-18 (approved music-reach-1): the menu's Now playing spot under the logo
+    if (B.railNow) B.railNow(on ? { name: s.Name || "", artist: artistOf(s), art: cover(s, 120) || "", playing: !audio.paused } : null);
     bar.classList.toggle("hidden", !on);
     document.body.classList.toggle("has-mbar", on);
     if (M.onDraw) M.onDraw();
@@ -320,6 +322,7 @@
     drawNow();
   }
   M.draw = draw;
+  M.openNow = () => openNow();
   const act = (a) => {
     if (a === "prev") M.prev();
     else if (a === "next") M.next();

@@ -2238,3 +2238,20 @@ body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-logo .log
   #doorTop .art::after { background: none; }
 }
 .rl-i.on:hover, .rl-i.on:focus-visible { color: #fff; }
+
+/* Ben 2026-11-18 (approved music-reach-1): the Now playing spot under the logo while a song plays */
+.rl-now { padding: 0 8px; margin-bottom: 4px; }
+.rl-now .rl-cov { position: relative; flex: none; width: 30px; height: 30px; border-radius: 7px; background: var(--raise, #1A1E38) center / cover no-repeat;
+  box-shadow: 0 0 0 1.5px #A55BE0, 0 0 12px -2px rgba(165, 91, 224, .7); overflow: hidden; display: flex; align-items: flex-end; justify-content: center; gap: 2px; padding: 0 6px 3px; }
+.rl-now .rl-cov::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 13px; background: rgba(11, 13, 26, .55); }
+.rl-now .rl-cov i { position: relative; flex: 1; height: 40%; border-radius: 1px; background: linear-gradient(0deg, #A55BE0, #3FE0E8); }
+.rl-now.playing .rl-cov i { animation: rlnow .9s ease-in-out infinite alternate; }
+.rl-now.playing .rl-cov i:nth-child(2) { animation-delay: -.35s; }
+.rl-now.playing .rl-cov i:nth-child(3) { animation-delay: -.65s; }
+.rl-now.playing .rl-cov i:nth-child(4) { animation-delay: -.15s; }
+@keyframes rlnow { from { height: 20%; } to { height: 55%; } }
+.rl-now .rl-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.rl-now .rl-t b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-now .rl-t small { font-size: 11px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-now:hover .rl-t small, .rl-now:focus-visible .rl-t small { color: #fff; }
+@media (prefers-reduced-motion: reduce) { .rl-now.playing .rl-cov i { animation: none; } }

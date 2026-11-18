@@ -1,54 +1,31 @@
 package com.github.damontecres.wholphin.ui.music
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.NowPlayingStatus
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import javax.inject.Inject
@@ -147,102 +124,6 @@ class MusicPlacesViewModel
             viewModelScope.launchIO { musicService.setLiked(id, !st.liked) }
         }
     }
-
-/**
- * TV (approved r3-q-tvbar): on Music pages a slim player strip along the bottom while music plays, in place of
- * the pill by the clock: the song (OK opens Now playing), how far through it is, and Previous, Play/Pause, Next,
- * the heart and Up next.
- */
-@Composable
-fun MusicStrip(
-    modifier: Modifier = Modifier,
-    viewModel: MusicPlacesViewModel = hiltViewModel(),
-) {
-    val music by viewModel.musicService.state.collectAsState()
-    val audio = music.currentAudio
-    if (music.queueSize == 0 || audio == null) return
-    val playing = music.status == NowPlayingStatus.PLAYING
-    var progress by remember { mutableFloatStateOf(0f) }
-    var now by remember { mutableStateOf("") }
-    var length by remember { mutableStateOf("") }
-    LaunchedEffect(audio.key) {
-        while (true) {
-            val p = viewModel.musicService.player
-            val d = p.duration.takeIf { it > 0 } ?: audio.runtime?.inWholeMilliseconds ?: 0L
-            progress = if (d > 0) (p.currentPosition.toFloat() / d).coerceIn(0f, 1f) else 0f
-            now = clockOf(p.currentPosition)
-            length = if (d > 0) clockOf(d) else ""
-            delay(500)
-        }
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Deep)
-                .padding(start = 40.dp, end = 32.dp, top = 8.dp, bottom = 8.dp),
-    ) {
-        val shape = RoundedCornerShape(10.dp)
-        Surface(
-            onClick = viewModel::open,
-            shape = ClickableSurfaceDefaults.shape(shape),
-            colors =
-                ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Transparent,
-                    focusedContainerColor = BenflixColors.FocusRow,
-                ),
-            border = focusRing(shape),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-            modifier = Modifier.width(300.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(6.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    CoverImage(audio.imageUrl, Modifier.size(44.dp), shape = RoundedCornerShape(6.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PlayingBars(playing, size = 12.dp)
-                        Text(
-                            audio.title.orEmpty(),
-                            color = BenflixColors.Text,
-                            fontSize = BenflixType.small,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Text(
-                        audio.artistNames.orEmpty(),
-                        color = BenflixColors.Muted,
-                        fontSize = BenflixType.tag,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-        Text(now, color = BenflixColors.Muted, fontSize = BenflixType.tag, fontWeight = FontWeight.SemiBold)
-        // Music player 2026-11-17: the same tower progress line as Now playing
-        SmallTowerLine(progress, playing, Modifier.weight(1f).height(18.dp), towers = 60)
-        Text(length, color = BenflixColors.Muted, fontSize = BenflixType.tag, fontWeight = FontWeight.SemiBold)
-        MusicButton(null, BenflixIcon.PREVIOUS, onClick = viewModel::previous)
-        MusicButton(null, if (playing) BenflixIcon.PAUSE else null, filledPlay = !playing, primary = true, onClick = viewModel::playPause)
-        MusicButton(null, BenflixIcon.NEXT, onClick = viewModel::next)
-        MusicButton(null, BenflixIcon.HEART, filledHeart = music.liked, onClick = viewModel::like)
-        MusicButton("Up next", BenflixIcon.LIST, onClick = viewModel::upNext)
-    }
-}
-
-private fun clockOf(ms: Long): String {
-    val s = (ms / 1000).coerceAtLeast(0)
-    return "%d:%02d".format(s / 60, s % 60)
-}
 
 fun tileName(tile: MusicTile): String =
     when (tile) {
