@@ -620,18 +620,19 @@ const fitRows = (list) => {
 };
 addEventListener("resize", () => { const l = $("#blist"); if (l) fitRows(l); });
 
-// ---------- profile menu ----------
-// Computers: it slides out beside the rail like a door's panel (js/nav.js B.openMePanel). Phone-sized windows and
-// pages without the rail: the corner card. Requests isn't listed: it has its own spot on the rail and in More.
+// ---------- your page (Me) ----------
+// Ben 2026-11-18 (approved profile-page-1): your picture opens a full page like every other menu spot, with
+// big tiles for My watching, Settings, Server, Lobby, Help and Report a problem. Requests isn't listed: it has
+// its own spot on the rail and in More. [where, icon, name, short line]
 B.profileItems = () => [
-  ["#/mine", "chart", "My watching"],
-  B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together"] : null,
-  ["#/settings", "gear", "Settings"],
-  B.me && B.me.admin ? ["#/server", "server", "Server"] : null,
-  ["#/help", "help", "Help and updates"],
-  ["report", "flag", "Report a problem"],
+  ["#/mine", "chart", "My watching", "Your hours, top shows and streaks"],
+  ["#/settings", "gear", "Settings", "Picture, sound, subtitles, Home rows"],
+  B.me && B.me.admin ? ["#/server", "server", "Server", "Who's watching and how the server is doing"] : null,
+  B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together", "Start or join a room"] : null,
+  ["#/help", "help", "Help and updates", "Guides and what's new"],
+  ["report", "flag", "Report a problem", "Send a note about what went wrong"],
 ].filter(Boolean);
-// Where a profile menu line goes (shared by the slide-out and the corner card)
+// Where a Me page tile goes
 B.profileGo = (where) => {
   B.closeAll();
   if (where === "signout") return B.signOut();
@@ -641,23 +642,29 @@ B.profileGo = (where) => {
 B.openMenu = async (byKeys) => {
   if (!B.me) return;
   if (B.me.kids) return B.go("#/who");
-  if (B.openMePanel && B.openMePanel(byKeys)) return;
-  B.closeAll();
-  B.shade();
-  const c = document.createElement("div");
-  c.className = "menu-card";
+  B.meByKeys = !!byKeys;
+  if (location.hash === "#/me") return;
+  B.go("#/me");
+};
+B.route(/^\/me$/, async (m, nav) => {
+  if (!B.me) return B.go("#/who");
+  if (B.me.kids) return B.go("#/who");
   const items = B.profileItems();
-  c.innerHTML = `<div class="left">${B.picHtml(B.me, "", 220)}<div><div class="nm">${esc(B.me.name)}</div><div class="wt" id="wt">&nbsp;</div></div><button class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div>
-    <div class="list">${items.map(([href, icon, label]) => `<button data-go="${href}">${I(icon)}${esc(label)}</button>`).join("")}
-      <div class="sep"></div><button class="out" data-go="signout">${I("out")}Sign out</button></div>`;
-  document.body.appendChild(c);
-  $("button[data-go]", c).focus();
-  c.onclick = (e) => {
+  B.page().innerHTML = B.top("Me", null) + `<div class="wrap mepage">
+    <div class="me-hero">${B.picHtml(B.me, "", 220)}<div><h1>${esc(B.me.name)}</h1><div class="me-wt" id="meWt">&nbsp;</div>
+      <button type="button" class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div></div>
+    <div class="me-tiles">${items.map(([where, icon, label, line]) => `<button type="button" class="me-tile ${where === "#/server" ? "admin" : ""}" data-go="${esc(where)}"><span class="me-ic">${I(icon)}</span><span class="me-tx"><b>${esc(label)}</b><small>${esc(line || "")}</small></span></button>`).join("")}</div>
+    <button type="button" class="me-out" data-go="signout">${I("out")}<span>Sign out</span></button>
+  </div>`;
+  B.wireTop();
+  const page = $(".mepage");
+  page.addEventListener("click", (e) => {
     const b = e.target.closest("[data-go]"); if (!b) return;
     B.profileGo(b.dataset.go);
-  };
-  B.watchTime().then((w) => { const el = $("#wt"); if (el) el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
-};
+  });
+  if (B.meByKeys) { B.meByKeys = false; const first = $(".me-tile", page); if (first) first.focus(); }
+  B.watchTime().then((w) => { const el = $("#meWt"); if (el && B.alive(nav)) el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
+});
 
 B.signOut = async () => {
   if (!(await B.ask(`Sign ${B.me.name} out of Glowfin in this browser?`, "Your lists and settings stay safe on the server. Sign back in any time.", "Sign out"))) return;

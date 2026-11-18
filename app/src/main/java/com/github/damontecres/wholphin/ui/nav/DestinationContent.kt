@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.tv.material3.MaterialTheme
@@ -64,6 +65,8 @@ fun DestinationContent(
     preferences: UserPreferences,
     onClearBackdrop: () -> Unit,
     modifier: Modifier = Modifier,
+    /** The Me page's lines (the menu owns them) */
+    me: MeModel? = null,
 ) {
     if (destination.fullScreen) {
         LaunchedEffect(Unit) { onClearBackdrop.invoke() }
@@ -516,6 +519,11 @@ fun DestinationContent(
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             com.github.damontecres.wholphin.ui.detail.discover
                 .AnimeGenrePage(destination.picked, modifier)
+        }
+
+        Destination.Me -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            CompositionLocalProvider(LocalMeModel provides me) { MePage(modifier) }
         }
 
         Destination.MyBenflix -> {

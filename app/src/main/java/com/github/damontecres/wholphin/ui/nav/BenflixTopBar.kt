@@ -273,6 +273,8 @@ data class ProfileMenuItem(
     val note: String? = null,
     /** Sign out sits apart at the bottom */
     val apart: Boolean = false,
+    /** The Me page's short line under the name, like "Picture, sound, subtitles" */
+    val line: String? = null,
 )
 
 /**

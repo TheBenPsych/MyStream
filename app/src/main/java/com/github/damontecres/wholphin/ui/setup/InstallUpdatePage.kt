@@ -581,7 +581,7 @@ private fun WhatsNewBox(
 }
 
 /**
- * Glowfin (S1): "You have version 4.12", then "Version 4.13 is ready" with Install now and After this show
+ * Glowfin (S1): "You have version 4.12", then "Version 4.13 is ready" with Install now (Ben 2026-11-18: no "After this show")
  * ("You're up to date" when nothing is newer).
  */
 @Composable
@@ -594,7 +594,6 @@ private fun UpdateActions(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var waiting by remember { mutableStateOf(com.github.damontecres.wholphin.services.UpdateAfterShow.pending) }
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier,
@@ -611,13 +610,6 @@ private fun UpdateActions(
             fontWeight = FontWeight.SemiBold,
             fontSize = 26.sp,
         )
-        if (newer && waiting) {
-            Text(
-                text = "It installs by itself when what you're watching ends.",
-                color = Glowfin.Aqua,
-                fontSize = 14.sp,
-            )
-        }
         // Start on Install now (or Back when there's nothing to get), so one OK press works
         val firstFocus = remember { FocusRequester() }
         LaunchedEffect(Unit) { firstFocus.requestFocusWhenReady() }
@@ -631,20 +623,9 @@ private fun UpdateActions(
                     primary = true,
                     onClick = {
                         com.github.damontecres.wholphin.services.UpdateAfterShow.pending = false
-                        waiting = false
                         onInstallRelease()
                     },
                     modifier = Modifier.focusRequester(firstFocus),
-                )
-                GlowfinTextButton(
-                    label = "After this show",
-                    onClick = {
-                        com.github.damontecres.wholphin.services.UpdateAfterShow.pending = true
-                        waiting = true
-                        com.github.damontecres.wholphin.ui.components.BenflixNotices
-                            .pill("Glowfin installs it when what you're watching ends")
-                        onCancel()
-                    },
                 )
             } else {
                 GlowfinTextButton(
