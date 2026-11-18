@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.discover
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,13 +69,12 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.detail.discover.findAnimeInRequests
+import com.github.damontecres.wholphin.ui.detail.discover.searchNameFor
 import com.github.damontecres.wholphin.ui.nav.Destination
-import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,12 +107,15 @@ data class OwnedAnime(
     val ids: Set<Int>,
     val malIds: Set<Int>,
     val names: Set<String>,
+    /** Benflix (2026-11-18): each show here, by "al:<AniList id>", "mal:<id>" and "n:<clean name>" */
+    val shows: Map<String, OwnedShow> = emptyMap(),
 ) {
     fun has(card: AnimeCard): Boolean {
         if (card.id > 0 && card.id in ids) return true
         if (card.malId?.let { it in malIds } == true) return true
         val cleaned = card.titles.map { AniListService.clean(it) }.filter { it.isNotEmpty() }
         if (cleaned.any { it in names }) return true
+        if (baseNames(card.titles).any { it in names }) return true
         // A new season of a show that's here ("Show Season 2") counts as here
         return card.later && cleaned.any { t -> names.any { n -> n.length >= 5 && t.startsWith(n) } }
     }
@@ -122,9 +123,34 @@ data class OwnedAnime(
     /** The same check for a Mix and match tags poster (later seasons are already folded into their first) */
     fun has(item: AniListBrowseItem): Boolean {
         if (item.id > 0 && item.id in ids) return true
-        return item.titles.map { AniListService.clean(it) }.any { it.isNotEmpty() && it in names }
+        if (item.titles.map { AniListService.clean(it) }.any { it.isNotEmpty() && it in names }) return true
+        // "Show Season 2" when "Show" is here (Ben 2026-11-18: Slime Season 2 showed up though Slime is here)
+        return baseNames(item.titles).any { it in names }
     }
+
+    /** The show on Benflix this poster belongs to, when it's here */
+    fun showFor(item: AniListBrowseItem): OwnedShow? {
+        if (item.id > 0) shows["al:${item.id}"]?.let { return it }
+        item.titles
+            .map { AniListService.clean(it) }
+            .firstNotNullOfOrNull { n -> n.takeIf { it.isNotEmpty() }?.let { shows["n:$it"] } }
+            ?.let { return it }
+        return baseNames(item.titles).firstNotNullOfOrNull { shows["n:$it"] }
+    }
+
+    private fun baseNames(titles: List<String>) =
+        titles
+            .mapNotNull { AniListService.seasonBase(it) }
+            .map { AniListService.clean(it) }
+            .filter { it.length >= 3 }
 }
+
+/** One show on Benflix: its Jellyfin id and TMDB number (null when Jellyfin doesn't know it) */
+data class OwnedShow(
+    val jellyfinId: java.util.UUID,
+    val tmdb: Int?,
+    val isSeries: Boolean,
+)
 
 /**
  * Benflix (Ben, 2026-11-16): what anime is already on Benflix, shared by the Anime tab and the Mix and match
@@ -162,27 +188,48 @@ class OwnedAnimeIndex
                 val ids = mutableSetOf<Int>()
                 val malIds = mutableSetOf<Int>()
                 val names = mutableSetOf<String>()
+                val shows = mutableMapOf<String, OwnedShow>()
                 libraries.forEach { lib ->
-                    aniList.knownIndex(lib).values.forEach { e ->
-                        if (e.id > 0) ids += e.id
+                    val dtos = aniListLibraries.titlesIn(lib, userId)
+                    val showOf =
+                        dtos.associate { dto ->
+                            dto.id to
+                                OwnedShow(
+                                    jellyfinId = dto.id,
+                                    tmdb = dto.providerIds?.get("Tmdb")?.toIntOrNull(),
+                                    isSeries = dto.type == org.jellyfin.sdk.model.api.BaseItemKind.SERIES,
+                                )
+                        }
+                    aniList.knownIndex(lib).forEach { (jellyfinId, e) ->
+                        if (e.id > 0) {
+                            ids += e.id
+                            showOf[jellyfinId]?.let { shows.putIfAbsent("al:${e.id}", it) }
+                        }
                         e.malId?.takeIf { it > 0 }?.let { malIds += it }
                     }
-                    aniListLibraries.titlesIn(lib, userId).forEach { dto ->
+                    dtos.forEach { dto ->
+                        val show = showOf.getValue(dto.id)
                         listOfNotNull(dto.name, dto.originalTitle)
                             .map { AniListService.clean(it) }
                             .filter { it.isNotEmpty() }
-                            .forEach { names += it }
+                            .forEach {
+                                names += it
+                                shows.putIfAbsent("n:$it", show)
+                            }
                         dto.providerIds
                             ?.get("AniList")
                             ?.toIntOrNull()
-                            ?.let { ids += it }
+                            ?.let {
+                                ids += it
+                                shows.putIfAbsent("al:$it", show)
+                            }
                         dto.providerIds
                             ?.get("MyAnimeList")
                             ?.toIntOrNull()
                             ?.let { malIds += it }
                     }
                 }
-                OwnedAnime(ids, malIds, names)
+                OwnedAnime(ids, malIds, names, shows)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
@@ -211,7 +258,6 @@ enum class AnimePick(
 class AnimeRequestsViewModel
     @Inject
     constructor(
-        @param:ApplicationContext private val context: Context,
         private val discover: AnimeDiscover,
         private val aniList: AniListService,
         private val ownedIndex: OwnedAnimeIndex,
@@ -336,11 +382,13 @@ class AnimeRequestsViewModel
                         Timber.w(ex, "Could not find %s in Requests", card.title)
                         null
                     }
-                if (found == null) showToast(context, "Couldn't find ${card.title} in Requests yet. Try Search anime.")
                 withContext(WholphinDispatchers.Main) {
                     _opening.value = null
                     if (found != null) {
                         if (then != null) then(found) else navigationManager.navigateTo(found.destination)
+                    } else {
+                        // Benflix (Ben, 2026-11-18): never a dead end. Search shows it with everything to ask for
+                        navigationManager.navigateTo(Destination.Search(searchNameFor(card.titles)))
                     }
                 }
             }

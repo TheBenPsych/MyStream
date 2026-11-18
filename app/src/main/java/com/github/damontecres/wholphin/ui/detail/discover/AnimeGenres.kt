@@ -73,8 +73,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -318,14 +321,62 @@ class AnimeGenrePageViewModel
         private val malBrowse: MalBrowse,
         private val ownedIndex: com.github.damontecres.wholphin.ui.discover.OwnedAnimeIndex,
         private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
+        private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
         val navigationManager: NavigationManager,
     ) : ViewModel() {
         /** Benflix (Ben, 2026-11-16): anime already on Benflix is left out of the list */
         private val _owned = MutableStateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?>(null)
         val owned: StateFlow<com.github.damontecres.wholphin.ui.discover.OwnedAnime?> = _owned
 
+        /** null while the first page loads */
+        private val _items = MutableStateFlow<List<AniListBrowseItem>?>(null)
+        val items: StateFlow<List<AniListBrowseItem>?> = _items
+
+        /**
+         * Benflix (Ben, 2026-11-18): shows that are on Benflix but missing aired episodes come back, tagged
+         * MISSING EPISODES, like the rest of Requests. AniList id -> the show's TMDB number.
+         */
+        private val _missing = MutableStateFlow<Map<Int, Int>>(emptyMap())
+        val missing: StateFlow<Map<Int, Int>> = _missing
+        private val checked = mutableSetOf<Int>()
+        private val checkLimit = kotlinx.coroutines.sync.Semaphore(3)
+
         init {
             viewModelScope.launch(WholphinDispatchers.IO) { _owned.value = ownedIndex.get() }
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                combine(_owned, _items) { o, i -> o to i }
+                    .collect { (o, i) -> if (o != null && i != null) checkOwned(o, i) }
+            }
+        }
+
+        /** Each show here that's on the list: is every aired episode on Benflix? */
+        private fun checkOwned(
+            owned: com.github.damontecres.wholphin.ui.discover.OwnedAnime,
+            items: List<AniListBrowseItem>,
+        ) {
+            items.forEach { item ->
+                if (item.isMovie || !owned.has(item)) return@forEach
+                val show = owned.showFor(item)?.takeIf { it.isSeries } ?: return@forEach
+                val tmdb = show.tmdb ?: return@forEach
+                if (!synchronized(checked) { checked.add(item.id) }) return@forEach
+                viewModelScope.launch(WholphinDispatchers.IO) {
+                    checkLimit.withPermit {
+                        try {
+                            val tv =
+                                seerrService.api
+                                    .getRaw("/tv/$tmdb")
+                                    ?.let { Json.parseToJsonElement(it).jsonObject } ?: return@withPermit
+                            if (showArrival.wholeShowHere(tv, show.jellyfinId) == false) {
+                                _missing.update { it + (item.id to tmdb) }
+                            }
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Couldn't check %s for missing episodes", item.title)
+                        }
+                    }
+                }
+            }
         }
 
         private val _picked = MutableStateFlow<List<String>>(emptyList())
@@ -367,9 +418,6 @@ class AnimeGenrePageViewModel
         private val _kind = MutableStateFlow(AniListKind.ALL)
         val kind: StateFlow<AniListKind> = _kind
 
-        /** null while the first page loads */
-        private val _items = MutableStateFlow<List<AniListBrowseItem>?>(null)
-        val items: StateFlow<List<AniListBrowseItem>?> = _items
         private val _failed = MutableStateFlow(false)
         val failed: StateFlow<Boolean> = _failed
 
@@ -518,16 +566,16 @@ class AnimeGenrePageViewModel
          * Opens a title's request page. AniList and Requests (TMDB) don't share numbers, so it's found in
          * Requests by its names and year.
          */
-        fun open(
-            item: AniListBrowseItem,
-            notFound: () -> Unit,
-        ) {
+        fun open(item: AniListBrowseItem) {
             if (_opening.value != null) return
             _opening.value = item.id
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val found =
                     try {
-                        findInRequests(item)
+                        // A show here but missing episodes: its own request page, by the TMDB number Jellyfin has
+                        _missing.value[item.id]?.let { tmdb ->
+                            seerrService.createDiscoverItem(seerrService.api.tvApi.tvTvIdGet(tvId = tmdb))
+                        } ?: findInRequests(item)
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
@@ -536,7 +584,8 @@ class AnimeGenrePageViewModel
                     }
                 withContext(WholphinDispatchers.Main) {
                     _opening.value = null
-                    if (found != null) navigationManager.navigateTo(found.destination) else notFound()
+                    // Benflix (Ben, 2026-11-18): never a dead end. Search shows it with everything to ask for
+                    navigationManager.navigateTo(found?.destination ?: Destination.Search(searchNameFor(item.titles)))
                 }
             }
         }
@@ -595,11 +644,20 @@ internal suspend fun findAnimeInRequests(
         }
     }
     val wantedType = if (isMovie) SeerrItemType.MOVIE else SeerrItemType.TV
-    val names = titles.filter { name -> name.any { it.isLetterOrDigit() && it.code < 0x2E80 } }.take(3)
+
+    fun latin(name: String) = name.any { it.isLetterOrDigit() && it.code < 0x2E80 }
+    // Benflix (Ben, 2026-11-18): "Slime Season 2" is the show "Slime" in Requests, so its name without the season is tried too
+    val bases = titles.mapNotNull { AniListService.seasonBase(it) }
+    val names = (titles.filter(::latin).take(3) + bases.filter(::latin).take(2)).distinct()
     val wanted =
         titles
             .map { AniListService.clean(it) }
             .filter { it.isNotEmpty() }
+            .toSet()
+    val baseWanted =
+        bases
+            .map { AniListService.clean(it) }
+            .filter { it.length >= 3 }
             .toSet()
     for (name in names) {
         val results =
@@ -625,8 +683,19 @@ internal suspend fun findAnimeInRequests(
                 n.length >= 4 && wanted.any { w -> w.startsWith(n) || n.startsWith(w) } && yearOk(d, 2)
             }?.let { return it }
         results.firstOrNull { nameOf(it) in wanted }?.let { return it }
+        // A later season: the show it belongs to started the same year or before
+        results
+            .firstOrNull { d ->
+                nameOf(d) in baseWanted && (year == null || (d.releaseDate?.year ?: year) <= year)
+            }?.let { return it }
     }
     return null
+}
+
+/** Benflix: the name to look an anime up by in Search (a later season's show name, in letters when there is one) */
+internal fun searchNameFor(titles: List<String>): String {
+    val name = titles.firstOrNull { t -> t.any { it.isLetterOrDigit() && it.code < 0x2E80 } } ?: titles.firstOrNull().orEmpty()
+    return AniListService.seasonBase(name) ?: name
 }
 
 /**
@@ -653,8 +722,10 @@ fun AnimeGenrePage(
     val failed by viewModel.failed.collectAsState()
     val opening by viewModel.opening.collectAsState()
     val owned by viewModel.owned.collectAsState()
-    // Benflix (Ben, 2026-11-16): leave out anime already on Benflix
-    val shownItems = remember(items, owned) { items?.filterNot { owned?.has(it) == true } }
+    val missing by viewModel.missing.collectAsState()
+    // Benflix (Ben, 2026-11-16): leave out anime already on Benflix, unless it's missing aired episodes
+    val shownItems =
+        remember(items, owned, missing) { items?.filterNot { owned?.has(it) == true && it.id !in missing } }
     val hereCount = (items?.size ?: 0) - (shownItems?.size ?: 0)
     // Most of a page already here: fetch on so the wall still fills up
     LaunchedEffect(items?.size, shownItems?.size) {
@@ -823,13 +894,8 @@ fun AnimeGenrePage(
                     AnimePoster(
                         anime = anime,
                         busy = opening == anime.id,
-                        onClick = {
-                            viewModel.open(anime) {
-                                com.github.damontecres.wholphin.ui.components.BenflixNotices.pill(
-                                    "Couldn't find ${anime.title} in Requests",
-                                )
-                            }
-                        },
+                        missingEpisodes = anime.id in missing,
+                        onClick = { viewModel.open(anime) },
                     )
                 }
             }
@@ -841,6 +907,7 @@ fun AnimeGenrePage(
 private fun AnimePoster(
     anime: AniListBrowseItem,
     busy: Boolean,
+    missingEpisodes: Boolean,
     onClick: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -864,7 +931,25 @@ private fun AnimePoster(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                 )
-                if (anime.isMovie) {
+                if (missingEpisodes) {
+                    Text(
+                        text =
+                            androidx.compose.ui.res
+                                .stringResource(com.github.damontecres.wholphin.R.string.badge_some_on_benflix),
+                        color = Color.White,
+                        fontSize = BenflixType.tag,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp)
+                                .background(
+                                    com.github.damontecres.wholphin.ui.AppColors.Discover.Green,
+                                    RoundedCornerShape(6.dp),
+                                ).padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                } else if (anime.isMovie) {
                     Text(
                         text = "MOVIE",
                         color = Color.White,
