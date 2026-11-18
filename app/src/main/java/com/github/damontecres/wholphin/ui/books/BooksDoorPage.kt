@@ -106,8 +106,6 @@ fun BooksDoorPage(
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easy = false
     val home = state.home
     val edge = side(wide)
     val frame = rememberDoorFrameState(BenflixDoor.BOOKS)
@@ -176,19 +174,19 @@ fun BooksDoorPage(
             }
 
             group != null -> {
-                GroupPage(group!!, wide, easy, onTile, onBack = { viewModel.group.value = null }, modifier = inner.padding(top = top))
+                GroupPage(group!!, wide, onTile, onBack = { viewModel.group.value = null }, modifier = inner.padding(top = top))
             }
 
             place == BooksPlace.HOME -> {
-                BooksForYou(home.rows, wide, easy, home.canAsk && !viewModel.isKids, viewModel, frame, onTile, inner)
+                BooksForYou(home.rows, wide, home.canAsk && !viewModel.isKids, viewModel, frame, onTile, inner)
             }
 
             place == BooksPlace.SERIES -> {
-                GroupGrid(state.series, wide, easy, onGroup = { viewModel.group.value = it }, modifier = inner.padding(top = top))
+                GroupGrid(state.series, wide, onGroup = { viewModel.group.value = it }, modifier = inner.padding(top = top))
             }
 
             else -> {
-                SectionGrid(viewModel, place, wide, easy, onTile, inner.padding(top = top))
+                SectionGrid(viewModel, place, wide, onTile, inner.padding(top = top))
             }
         }
     }
@@ -238,22 +236,12 @@ private fun Title(text: String) {
 }
 
 /** How wide a card is: TV and tablets fit about 7 across, phones 3 */
-private fun cardWidth(
-    wide: Boolean,
-    easy: Boolean,
-): Dp =
-    when {
-        wide && easy -> 170.dp
-        wide -> 140.dp
-        easy -> 130.dp
-        else -> 108.dp
-    }
+private fun cardWidth(wide: Boolean): Dp = if (wide) 140.dp else 108.dp
 
 @Composable
 private fun BooksForYou(
     rows: List<BookRow>,
     wide: Boolean,
-    easy: Boolean,
     canAsk: Boolean,
     viewModel: BooksViewModel,
     frame: DoorFrameState,
@@ -261,7 +249,7 @@ private fun BooksForYou(
     modifier: Modifier,
 ) {
     val edge = side(wide)
-    val w = cardWidth(wide, easy)
+    val w = cardWidth(wide)
     val isTv = rememberIsTv()
     val shownRows = remember(rows) { forYouRows(rows) }
     val listState = rememberLazyListState()
@@ -298,7 +286,7 @@ private fun BooksForYou(
     }
     Column(modifier.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
         if (wide) {
-            BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), easy, LocalTopBarOverlap.current)
+            BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), LocalTopBarOverlap.current)
         }
         LazyColumn(
             state = listState,
@@ -359,7 +347,6 @@ private fun BooksForYou(
 private fun BooksTopArea(
     lit: State<BookTile?>,
     first: BookTile?,
-    easy: Boolean,
     overlap: Dp,
 ) {
     var shown by remember { mutableStateOf<BookTile?>(null) }
@@ -407,7 +394,7 @@ private fun BooksTopArea(
                     text = tile.name,
                     color = Glowfin.Text,
                     fontFamily = GlowfinDisplayFont,
-                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
+                    fontSize = BenflixType.pageTitle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -460,7 +447,6 @@ private fun SectionGrid(
     viewModel: BooksViewModel,
     place: BooksPlace,
     wide: Boolean,
-    easy: Boolean,
     onTile: (BookTile) -> Unit,
     modifier: Modifier,
 ) {
@@ -470,7 +456,7 @@ private fun SectionGrid(
     val lib = state.library
     val tiles = remember(lib, place, filter, sort) { lib?.let { viewModel.sectionTiles(it, place, filter, sort) }.orEmpty() }
     val edge = side(wide)
-    val w = cardWidth(wide, easy)
+    val w = cardWidth(wide)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -519,12 +505,11 @@ private fun SectionGrid(
 private fun GroupGrid(
     groups: List<BookGroup>?,
     wide: Boolean,
-    easy: Boolean,
     onGroup: (BookGroup) -> Unit,
     modifier: Modifier,
 ) {
     val edge = side(wide)
-    val w = cardWidth(wide, easy)
+    val w = cardWidth(wide)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -573,7 +558,6 @@ private fun GroupGrid(
                                 readable = true,
                                 genres = emptyList(),
                                 lastAt = 0,
-                                vols = 0,
                             ),
                         width = w,
                         onClick = { onGroup(g) },
@@ -589,13 +573,12 @@ private fun GroupGrid(
 private fun GroupPage(
     group: BookGroup,
     wide: Boolean,
-    easy: Boolean,
     onTile: (BookTile) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier,
 ) {
     val edge = side(wide)
-    val w = cardWidth(wide, easy)
+    val w = cardWidth(wide)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(w),
         horizontalArrangement = Arrangement.spacedBy(14.dp),

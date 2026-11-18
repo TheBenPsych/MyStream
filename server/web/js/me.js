@@ -200,7 +200,6 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     };
   }
   if (g.id === "look") {
-    // Glowfin (ui-17): Easy mode is gone; Text size stays
     const size = ws.textSize || 100;
     sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`);
     sp.onclick = (e) => {
@@ -232,7 +231,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     };
   }
 });
-// Easy mode starts 25% bigger (the Text size steps still change it)
+// Text size (Settings > Look) zooms the whole page in this browser
 B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || 100; document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); };
 window.addEventListener("hashchange", () => B.applyLook());
 // Kids look (Ben's pick kc-sky, 13 Nov 2026): Sky and Sunshine blue and yellow with round letters while a Kids

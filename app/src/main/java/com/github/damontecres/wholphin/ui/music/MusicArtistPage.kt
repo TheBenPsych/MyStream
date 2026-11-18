@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -345,8 +343,6 @@ fun MusicArtistPage(
     androidx.lifecycle.compose.LifecycleResumeEffect(viewModel.preview) { onPauseOrDispose { viewModel.preview.stop() } }
     val state by viewModel.state.collectAsState()
     val music by actions.musicService.state.collectAsState()
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easy = false
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
@@ -394,27 +390,26 @@ fun MusicArtistPage(
     val buttons: @Composable () -> Unit = {
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             item(key = "play") {
-                MusicButton(if (wide || easy) "Play" else null, null, filledPlay = true, primary = true, big = easy, onClick = {
+                MusicButton(if (wide) "Play" else null, null, filledPlay = true, primary = true, onClick = {
                     playAll(false)
                 }, modifier = Modifier.focusRequester(playFocus))
             }
             item(
                 key = "shuffle",
-            ) { MusicButton(if (easy) "Shuffle" else null, BenflixIcon.SHUFFLE, big = easy, onClick = { playAll(true) }) }
+            ) { MusicButton(null, BenflixIcon.SHUFFLE, onClick = { playAll(true) }) }
             item(key = "follow") {
                 MusicButton(
                     if (artist?.favorite == true) "Following" else "Follow",
                     if (artist?.favorite == true) BenflixIcon.CHECK else BenflixIcon.PLUS,
-                    big = easy,
                     onClick = viewModel::toggleFollow,
                 )
             }
             item(key = "radio") {
-                MusicButton(if (wide || easy) "Artist radio" else null, BenflixIcon.NOTE, big = easy, onClick = {
+                MusicButton(if (wide) "Artist radio" else null, BenflixIcon.NOTE, onClick = {
                     artist?.let { actions.startRadio(it) }
                 })
             }
-            item(key = "more") { MusicButton(if (easy) "More" else null, BenflixIcon.MORE, big = easy, onClick = { pageMenu = true }) }
+            item(key = "more") { MusicButton(null, BenflixIcon.MORE, onClick = { pageMenu = true }) }
         }
     }
     val songRow: @Composable (BaseItem, Int, List<BaseItem>, String?) -> Unit = { song, index, list, line ->
@@ -429,7 +424,6 @@ fun MusicArtistPage(
                 isCurrent = music.currentAudio?.id == song.id,
                 isPlaying = music.status == NowPlayingStatus.PLAYING,
                 liked = song.id in state.liked,
-                big = easy,
                 onClick = { actions.playList(list, index, false, artist, name, place = place) },
                 onMore = { menuFor = song },
                 modifier = Modifier.weight(1f),
@@ -555,7 +549,6 @@ fun MusicArtistPage(
                                     preview = viewModel.preview,
                                     onAsk = { viewModel.askFor(line.song) },
                                     withCover = true,
-                                    big = easy,
                                     modifier = Modifier.padding(horizontal = side - 10.dp).widthIn(max = if (wide) 900.dp else 2000.dp),
                                 )
                             }

@@ -94,8 +94,6 @@ fun MusicDoorPage(
     LaunchedEffect(state.loaded || state.rows.isNotEmpty()) {
         if (state.loaded || state.rows.isNotEmpty()) DoorWipe.ready()
     }
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easy = false
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
@@ -213,13 +211,8 @@ fun MusicDoorPage(
 
     // For you (M1): Made for you, Your playlists, then the rest (Artists has its own tab now)
     val rows =
-        remember(state.rows, easy, viewModel.isAdmin) {
-            val kept =
-                if (easy) {
-                    state.rows.filter { it.key == "mixes" || it.key == "playlists" || it.key == "jump" }
-                } else {
-                    state.rows.filter { it.key != "artists" }
-                }
+        remember(state.rows, viewModel.isAdmin) {
+            val kept = state.rows.filter { it.key != "artists" }
             val order = listOf("mixes", "playlists")
             val sorted = kept.sortedBy { r -> order.indexOf(r.key).let { if (it < 0) order.size else it } }
             sorted.map { r ->
@@ -232,14 +225,7 @@ fun MusicDoorPage(
                 }
             }
         }
-    val cardSize =
-        if (easy) {
-            168.dp
-        } else if (wide) {
-            136.dp
-        } else {
-            118.dp
-        }
+    val cardSize = if (wide) 136.dp else 118.dp
     val firstFocus = remember { FocusRequester() }
     // True while focus is somewhere in the page (not the tabs or the menu)
     var rowsFocused by remember { mutableStateOf(false) }
@@ -317,7 +303,6 @@ fun MusicDoorPage(
                     MusicTopArea(
                         lit = lit,
                         first = rows.firstOrNull()?.tiles?.firstOrNull(),
-                        easy = easy,
                         overlap = LocalTopBarOverlap.current,
                     )
                 }
@@ -430,7 +415,6 @@ private fun MusicSectionPage(
 private fun MusicTopArea(
     lit: androidx.compose.runtime.State<MusicTile?>,
     first: MusicTile?,
-    easy: Boolean,
     overlap: Dp,
 ) {
     var shown by remember { mutableStateOf<MusicTile?>(null) }
@@ -482,7 +466,7 @@ private fun MusicTopArea(
                     text = tileName(tile),
                     color = Glowfin.Text,
                     fontFamily = GlowfinDisplayFont,
-                    fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
+                    fontSize = BenflixType.pageTitle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

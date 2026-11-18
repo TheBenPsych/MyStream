@@ -44,7 +44,6 @@ import androidx.media3.common.Player
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
-import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.BenflixTip
@@ -68,14 +67,6 @@ import timber.log.Timber
 import java.time.LocalDate
 
 private const val HERO_ROTATE_MS = 7_000L
-
-val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
-    get() =
-        (this as? HomeRowLoadingState.Success).let { row ->
-            row?.rowType is HomeRowConfig.ContinueWatching ||
-                row?.rowType is HomeRowConfig.NextUp ||
-                row?.rowType is HomeRowConfig.ContinueWatchingCombined
-        }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

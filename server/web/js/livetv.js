@@ -5,8 +5,6 @@
 
 const TYPES = [[100, "News"], [200, "Movies"], [300, "Comedy"], [400, "Drama & Crime"], [500, "Reality"], [600, "Kids & Family"], [700, "Sports"], [800, "Sci-Fi & Anime"], [900, "Classic TV"], [1100, "Documentaries & Nature"], [1200, "Food & Home"], [1300, "Holiday"]];
 const typeOf = (num) => { const n = Math.floor(parseFloat(num) / 100) * 100; const t = TYPES.find((x) => x[0] === n); return t ? t[1] : "More channels"; };
-B.liveTypes = TYPES;
-
 // Favourites, recently watched and hidden types follow the person (same place the TV app keeps them)
 const chPrefs = {
   async read() {

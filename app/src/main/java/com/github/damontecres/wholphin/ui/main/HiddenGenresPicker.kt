@@ -23,7 +23,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -221,83 +220,5 @@ fun HiddenGenresDialog(onDismiss: () -> Unit) {
             HiddenGenresPicker()
             Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Done") }
         }
-    }
-}
-
-/**
- * Benflix redesign (setup, approved p2-gen-rows): one row per genre with "More of this" and "Hide for me".
- * More of this gets its own row in the Movies and Shows doors; hidden is hidden everywhere for this person.
- */
-@Composable
-fun GenreRowsPicker(
-    modifier: Modifier = Modifier,
-    viewModel: HiddenGenresViewModel = hiltViewModel(),
-) {
-    val genres by viewModel.genres.collectAsState()
-    val hidden by viewModel.hidden.collectAsState()
-    val more by viewModel.more.collectAsState()
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(genres.isNotEmpty()) { if (genres.isNotEmpty()) focus.tryRequestFocus() }
-    if (genres.isEmpty()) {
-        Text("Loading genres…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.widthIn(max = 720.dp).fillMaxWidth()) {
-        genres.forEachIndexed { index, genre ->
-            val key = genre.lowercase()
-            androidx.compose.foundation.layout.Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    genre,
-                    fontSize = BenflixType.lead,
-                    fontWeight = FontWeight.Bold,
-                    color = if (key in hidden) Color.White.copy(alpha = .45f) else Color.White,
-                    modifier = Modifier.weight(1f),
-                )
-                GenreChoice(
-                    text = "More of this",
-                    on = key in more,
-                    onClick = { viewModel.toggleMore(genre) },
-                    modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
-                )
-                GenreChoice(text = "Hide for me", on = key in hidden, onClick = { viewModel.toggle(genre) })
-            }
-        }
-    }
-}
-
-@Composable
-private fun GenreChoice(
-    text: String,
-    on: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(50)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = if (on) Color.White else Color(0xFF2A2A30),
-                contentColor = if (on) Color(0xFF0B0C10) else Color.White,
-                focusedContainerColor = if (on) Color.White else Color(0xFF45454F),
-                focusedContentColor = if (on) Color(0xFF0B0C10) else Color.White,
-            ),
-        border =
-            ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), inset = (-3).dp, shape = shape),
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier,
-    ) {
-        Text(
-            if (on) "✓ $text" else text,
-            fontSize = BenflixType.body,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-        )
     }
 }

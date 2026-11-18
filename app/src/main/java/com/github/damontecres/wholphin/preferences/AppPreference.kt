@@ -1295,18 +1295,6 @@ sealed interface AppPreference<Pref, T> {
                 valueToIndex = { LATE_NIGHT_HOURS.indexOf(it).coerceAtLeast(0) },
             )
 
-        val EasyRead =
-            AppSwitchPreference<AppPreferences>(
-                title = R.string.benflix_easy_read,
-                defaultValue = false,
-                getter = { it.benflixPreferences.easyRead },
-                setter = { prefs, value ->
-                    prefs.updateBenflixPreferences { easyRead = value }
-                },
-                summaryOn = R.string.benflix_easy_read_on,
-                summaryOff = R.string.benflix_easy_read_off,
-            )
-
         val SmartResume =
             AppSwitchPreference<AppPreferences>(
                 title = R.string.benflix_smart_resume,

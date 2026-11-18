@@ -255,38 +255,17 @@ fun RoundWordButton(
 
 /**
  * Shuffle, Previous, Play/Pause, Next. Ben: on the TV remote Left/Right only move between these (they don't
- * skip songs), so Previous and Next are real buttons. Easy mode: big pills with words.
+ * skip songs), so Previous and Next are real buttons.
  */
 @Composable
 fun PlayerControls(
     viewModel: MusicNowPlayingViewModel,
     playing: Boolean,
     shuffle: ShuffleMode,
-    easy: Boolean,
     playFocus: FocusRequester,
     onPlayFocus: (Boolean) -> Unit,
     big: Boolean = false,
 ) {
-    if (easy) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            MusicButton("Previous", BenflixIcon.PREVIOUS, onClick = viewModel::previous, big = true)
-            MusicButton(
-                if (playing) "Pause" else "Play",
-                if (playing) BenflixIcon.PAUSE else null,
-                filledPlay = !playing,
-                primary = true,
-                big = true,
-                onClick = viewModel::playPause,
-                modifier = Modifier.focusRequester(playFocus).onFocusChanged { if (it.isFocused) onPlayFocus(true) },
-            )
-            MusicButton("Next song", BenflixIcon.NEXT, onClick = viewModel::next, big = true)
-        }
-        return
-    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(if (big) 18.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -402,27 +381,13 @@ private fun PlainCircle(
     }
 }
 
-/** Like, Play on, Stop, More (Ben's picks). Easy mode: pills with words. */
+/** Like, Play on, Stop, More (Ben's picks) */
 @Composable
 fun PlayerRoundButtons(
     viewModel: MusicNowPlayingViewModel,
     liked: Boolean,
-    easy: Boolean,
     size: Dp = 48.dp,
 ) {
-    if (easy) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            MusicButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, filledHeart = liked, onClick = viewModel::like)
-            MusicButton("Play on", BenflixIcon.TV, onClick = { viewModel.playOnOpen.value = true })
-            MusicButton("Stop", BenflixIcon.STOP, onClick = viewModel::stop)
-            MusicButton("More", BenflixIcon.MORE_VERT, onClick = viewModel::openMenu)
-        }
-        return
-    }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
         RoundWordButton(if (liked) "Liked" else "Like", BenflixIcon.HEART, onClick = viewModel::like, filledHeart = liked, size = size)
         RoundWordButton("Play on", BenflixIcon.TV, onClick = { viewModel.playOnOpen.value = true }, size = size)
@@ -438,7 +403,6 @@ fun PlayerTabs(
     tabs: List<PlayerTab>,
     noLyrics: Boolean,
     isTv: Boolean,
-    easy: Boolean,
     onTab: (PlayerTab) -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -470,7 +434,7 @@ fun PlayerTabs(
             ) {
                 Text(
                     t.label,
-                    fontSize = if (easy) BenflixType.lead else BenflixType.small,
+                    fontSize = BenflixType.small,
                     fontWeight = FontWeight.Bold,
                     color = if (faded && !on) BenflixColors.Muted.copy(alpha = .6f) else androidx.tv.material3.LocalContentColor.current,
                     maxLines = 1,

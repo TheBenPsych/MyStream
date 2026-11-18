@@ -1,9 +1,5 @@
 package com.github.damontecres.wholphin.ui.discover
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,13 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.GuestMode
@@ -111,31 +102,4 @@ fun RequestForButton(modifier: Modifier = Modifier) {
         onDismissRequest = { open = false },
         waitToLoad = false,
     )
-}
-
-/** The slim "Asking for" line at the top of each Requests tab (admins only) */
-@Composable
-fun RequestForBar(
-    modifier: Modifier = Modifier,
-    /** Where Up goes from the For button (Requests: the tab you're on), so the remote never gets stuck on it */
-    up: FocusRequester? = null,
-) {
-    val picked by RequestFor.picked.collectAsState()
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)),
-    ) {
-        RequestForButton(
-            modifier = if (up != null) Modifier.focusProperties { this.up = up } else Modifier,
-        )
-        Text(
-            text =
-                picked?.let { "Anything you ask for now is ${it.name}'s. They'll be told when it's ready." }
-                    ?: "Asking for someone in the family? Pick them first.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-        )
-    }
 }

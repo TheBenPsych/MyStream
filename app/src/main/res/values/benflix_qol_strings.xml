@@ -116,9 +116,6 @@
     <string name="benflix_connect_requests_summary">Sign in to requests once (Settings, More, Seerr) and you can ask for any movie or show</string>
 
     <!-- Easy-read mode -->
-    <string name="benflix_easy_read">Easy-read mode</string>
-    <string name="benflix_easy_read_on">Bigger text and brighter grey text</string>
-    <string name="benflix_easy_read_off">Normal text size</string>
     <!-- New Settings page: one line under each section in the menu -->
     <string name="benflix_settings_hint_profile">Name, picture, PIN, profile</string>
     <string name="benflix_settings_hint_watching">Next episode, resume, skip buttons, trailers</string>

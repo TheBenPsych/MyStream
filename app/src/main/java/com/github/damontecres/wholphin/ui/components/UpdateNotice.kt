@@ -1,30 +1,9 @@
 package com.github.damontecres.wholphin.ui.components
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,15 +71,6 @@ object UpdateNotice {
     }
 }
 
-/** True when the update should light up the dot on your picture (not hidden by "Mark all as seen") */
-@Composable
-fun rememberUpdateDot(): Boolean {
-    val alert = rememberUpdateAlert()
-    val version by UpdateNotice.version.collectAsState()
-    val hidden by UpdateNotice.dotHiddenFor.collectAsState()
-    return alert && version != hidden
-}
-
 /** True when the red "!" should show (an update is ready, and this isn't Kids) */
 @Composable
 fun rememberUpdateAlert(): Boolean {
@@ -109,30 +79,6 @@ fun rememberUpdateAlert(): Boolean {
     // Guest can't install updates either, so no "!" for them
     val guest by GuestMode.active.collectAsState()
     return version != null && !kids && !guest
-}
-
-/** The little red circle with a white "!" (or a small number, for requests that are here) */
-@Composable
-fun UpdateBang(
-    modifier: Modifier = Modifier,
-    size: Dp = 16.dp,
-    text: String = "!",
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .size(size)
-                .background(UPDATE_RED, CircleShape),
-    ) {
-        Text(
-            text = text,
-            color = Color(0xFF0B0C10),
-            fontSize = (size.value * (if (text.length > 1) .56f else .72f)).sp,
-            lineHeight = (size.value * .72f).sp,
-            fontWeight = FontWeight.Black,
-        )
-    }
 }
 
 /**
@@ -231,59 +177,4 @@ fun rememberRequestReadyCount(): Int {
     return if (kids || guest) 0 else count
 }
 
-/** The little triangle that points from the bubble to the button */
-@Composable
-private fun Pointer(up: Boolean) {
-    Canvas(
-        modifier =
-            Modifier
-                .padding(end = 14.dp)
-                .size(width = 14.dp, height = 7.dp),
-    ) {
-        val path =
-            Path().apply {
-                if (up) {
-                    moveTo(0f, size.height)
-                    lineTo(size.width / 2, 0f)
-                    lineTo(size.width, size.height)
-                } else {
-                    moveTo(0f, 0f)
-                    lineTo(size.width / 2, size.height)
-                    lineTo(size.width, 0f)
-                }
-                close()
-            }
-        drawPath(path, TIP_BG)
-    }
-}
-
-/** Lines the bubble's right edge up with the button's right edge, just under (or over) it, kept on screen */
-private class TipPosition(
-    private val above: Boolean,
-    private val gap: Int,
-    private val edge: Int,
-) : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize,
-    ): IntOffset {
-        // Point the triangle (21dp from the bubble's right edge) at the middle of the button
-        val pointerFromRight = edge * 21 / 8
-        val x =
-            (anchorBounds.center.x + pointerFromRight - popupContentSize.width)
-                .coerceIn(edge, (windowSize.width - popupContentSize.width - edge).coerceAtLeast(edge))
-        val y =
-            if (above) {
-                anchorBounds.top - popupContentSize.height - gap
-            } else {
-                anchorBounds.bottom + gap
-            }
-        return IntOffset(x, y.coerceAtLeast(0))
-    }
-}
-
 // Benflix redesign: the update dot is white with dark words, not red
-private val UPDATE_RED = Color(0xFFF2F2F4)
-private val TIP_BG = Color(0xF2232328)

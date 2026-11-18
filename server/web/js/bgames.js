@@ -98,7 +98,7 @@
     words.forEach((w) => { if ((cur + " " + w).trim().length > 11 && cur) { lines.push(cur); cur = w; } else cur = (cur + " " + w).trim(); });
     if (cur) lines.push(cur);
     const h = tall ? 300 : 300, w = 200;
-    const text = lines.slice(0, 3).map((l, i) => `<text x="16" y="${h - 22 - (lines.length - 1 - i) * 26}" font-family="Outfit,Arial,sans-serif" font-weight="700" font-size="23" fill="#fff">${esc(l)}</text>`).join("");
+    const text = lines.slice(0, 3).map((l, i) => `<text x="16" y="${h - 22 - (lines.length - 1 - i) * 26}" font-family="'Glowfin Sora',Arial,sans-serif" font-weight="700" font-size="23" fill="#fff">${esc(l)}</text>`).join("");
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#g)"/><circle cx="160" cy="52" r="70" fill="#fff" opacity=".08"/><circle cx="40" cy="120" r="34" fill="#fff" opacity=".06"/>${text}</svg>`;
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   };

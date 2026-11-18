@@ -1,36 +1,25 @@
 package com.github.damontecres.wholphin.ui.cards
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.FillerKind
 import com.github.damontecres.wholphin.services.animeEpisodeLabel
@@ -40,9 +29,7 @@ import com.github.damontecres.wholphin.services.subOnlyFor
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.glowFocus
-import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 
 /**
@@ -257,25 +244,6 @@ fun SeasonCard(
             CardNameUnder(name = title.orEmpty(), line = subtitle)
         }
     }
-}
-
-/**
- * Returns a [androidx.compose.runtime.State] which represents if the item has been focused for a while
- */
-@Composable
-fun rememberFocusedAfterDelay(interactionSource: MutableInteractionSource): androidx.compose.runtime.State<Boolean> {
-    val focused by interactionSource.collectIsFocusedAsState()
-    val state = remember { mutableStateOf(false) }
-
-    LaunchedEffect(focused) {
-        if (!focused) {
-            state.value = false
-            return@LaunchedEffect
-        }
-        delay(500L)
-        state.value = true
-    }
-    return state
 }
 
 /** Benflix: the colour of the SEASON FINALE / SERIES FINALE tag */

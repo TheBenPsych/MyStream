@@ -71,29 +71,6 @@ class AniListButtonViewModel
         }
     }
 
-/**
- * Benflix: the AniList button on My Benflix. Signed in, finished anime episodes are ticked off
- * on the person's AniList list by themselves.
- */
-@Composable
-fun AniListButton(viewModel: AniListButtonViewModel = hiltViewModel()) {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) { viewModel.refresh() }
-    val name by viewModel.sync.name.collectAsState()
-    var showSignOut by remember { mutableStateOf(false) }
-    Button(
-        onClick = {
-            if (name == null) viewModel.signIn(context) else showSignOut = true
-        },
-        scale = ButtonDefaults.scale(focusedScale = 1f),
-    ) {
-        Text(if (name == null) "AniList" else "AniList: $name")
-    }
-    if (showSignOut) {
-        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut)
-    }
-}
-
 @HiltViewModel
 class MalButtonViewModel
     @Inject
@@ -126,29 +103,6 @@ class MalButtonViewModel
             )
         }
     }
-
-/**
- * Benflix: the MyAnimeList button on My Benflix. Signed in, finished anime episodes are ticked off
- * on the person's MyAnimeList list by themselves (with or without AniList).
- */
-@Composable
-fun MalButton(viewModel: MalButtonViewModel = hiltViewModel()) {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) { viewModel.refresh() }
-    val name by viewModel.sync.name.collectAsState()
-    var showSignOut by remember { mutableStateOf(false) }
-    Button(
-        onClick = {
-            if (name == null) viewModel.signIn(context) else showSignOut = true
-        },
-        scale = ButtonDefaults.scale(focusedScale = 1f),
-    ) {
-        Text(if (name == null) "MyAnimeList" else "MyAnimeList: $name")
-    }
-    if (showSignOut) {
-        AniListSignOutDialog(name.orEmpty(), onDismiss = { showSignOut = false }, onSignOut = viewModel::signOut, site = "MyAnimeList")
-    }
-}
 
 /** Benflix: the MyAnimeList row in Settings > Profile, with what it does */
 @Composable

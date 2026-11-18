@@ -26,7 +26,6 @@
   // The shared title page (title.js) draws icons from the main set, so lend it shuffle
   if (typeof P === "object" && !P.shuffle && ICON.shuffle) P.shuffle = ICON.shuffle;
   const icon = (name, cls) => (ICON[name] ? `<svg class="i ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>` : I(name, cls));
-  B.musicIcon = icon;
   const len = (ticks) => B.hms((ticks || 0) / B.TICKS);
   const items = async (q) => ((await B.get(`/Users/${B.uid()}/Items?Recursive=true&${q}`)).Items || []);
   const cover = (it, h) => {
@@ -821,7 +820,6 @@
       } catch (e) { B.toast(e.message || "Couldn't send that right now. Try again in a minute."); }
     });
   };
-  B.musicSendTo = sendTo;
   // A song someone sent you (Home news): it plays, and its album opens
   B.route(/^\/song\/([\w-]+)/, async (m) => {
     const s = await B.get(`/Users/${B.uid()}/Items/${enc(m[1])}`).catch(() => null);
@@ -1088,19 +1086,16 @@
     const season = (themes.themes || []).filter((t) => t.group === "season");
     season.concat(mixes).forEach((x) => { r.byKey[x.key] = x; });
     const jump = recents.map((p) => placeCard(p, r, liked)).filter(Boolean).slice(0, 20);
-    const easy = false; // Glowfin (ui-17): Easy mode is gone
     const rows = [];
     if (mixes.length) rows.push(B.row("Made for you", mixes.map(mixCard)));
     rows.push(B.row("Your playlists", [likedCard(liked)].concat(pls.map(playlistCard), [askTile()], B.me.admin ? [importTile()] : [])));
     if (jump.length >= 2) rows.push(B.row("Jump back in", jump));
-    if (!easy) {
-      rows.push(themeRow(themes, "season"));
-      rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
-      if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
-      // Decades, Genres, Moods and Throwbacks are tiles in one Browse row at the bottom
-      const groups = ["lofi", "decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
-      if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
-    }
+    rows.push(themeRow(themes, "season"));
+    rows.push(B.row("Recently added", recent.map(albumCard), { more: "#/mgrid/recent" }));
+    if (played.length) rows.push(B.row("Most played albums", played.map(albumCard)));
+    // Decades, Genres, Moods and Throwbacks are tiles in one Browse row at the bottom
+    const groups = ["lofi", "decade", "genre", "mood", "throwback"].map((g) => [g, (themes.themes || []).filter((t) => t.group === g)]).filter(([, l]) => l.length);
+    if (groups.length) rows.push(B.row("Browse", groups.map(([g, l]) => browseCard(g, (themes.rows || {})[g] || THEME_ROWS[g], l))));
     $("#mrows").innerHTML = rows.join("");
     wireMusicTop();
     const f = $("#mrows .mcard"); if (f) f.focus({ preventScroll: true });

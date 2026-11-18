@@ -418,8 +418,6 @@ private const val CLIPS_RETRY_MS = 1_500L
 private const val CLIPS_BOOST_MB = 500
 
 // A quick flick this fast moves to the next clip, or a slow drag past a quarter of the screen
-private const val CLIPS_FLING_DP_PER_SEC = 300
-private const val CLIPS_SWIPE_FRACTION = .25f
 private const val CLIPS_FIRST = 2
 
 // How many trailers to remember on the device, and when to fetch more (trailers left to go)

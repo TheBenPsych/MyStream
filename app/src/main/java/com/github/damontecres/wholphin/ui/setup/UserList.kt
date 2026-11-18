@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,9 +35,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,7 +64,6 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.theme.themeIndex
-import com.github.damontecres.wholphin.ui.theme.toColor
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import java.util.UUID
@@ -686,12 +682,6 @@ fun avatarBackgroundFor(
 ): Color = SeaColours[seaColourIndex(id, res)].first
 
 /**
- * White or near-black, whichever is easier to see on [background]. White wins unless it is too
- * faint (light colours like gold, green and grey get a dark character instead).
- */
-fun avatarInkFor(background: Color): Color = if (1.05f / (background.luminance() + 0.05f) >= 3f) Color.White else Color(0xFF141418)
-
-/**
  * A Glowfin profile picture: one of the Storybook sea friends ([SeaFriend]) in the colour [background]
  * stands for (from [avatarBackgroundFor]). Kids always get the rainbow starfish. Clip [modifier] to a circle.
  */
@@ -850,9 +840,6 @@ private fun GuestProfileCard(
 /** The outline around the chosen profile */
 @Composable
 private fun profileBorderColor(): Color = BenflixColors.Focus
-
-/** How many see-through layers make up the profile glow */
-private const val GLOW_LAYERS = 3
 
 /** A strong dark shadow so names stay easy to read on top of the moving backgrounds */
 val ReadableTextShadow =

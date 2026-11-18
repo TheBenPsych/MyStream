@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,8 +86,6 @@ fun MusicCollectionPage(
     androidx.lifecycle.compose.LifecycleResumeEffect(viewModel.preview) { onPauseOrDispose { viewModel.preview.stop() } }
     val state by viewModel.state.collectAsState()
     val music by actions.musicService.state.collectAsState()
-    // Glowfin: Easy mode is gone (Ben, ui-17)
-    val easy = false
     val isTv = rememberIsTv()
     val config = LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
@@ -232,7 +229,6 @@ fun MusicCollectionPage(
             state = state,
             currentId = currentId,
             playing = playing,
-            easy = easy,
             onPlay = { actions.playList(songs, 0, false, state.item, sourceName, openNow = true, place = place) },
             onShuffle = { actions.playList(songs, 0, true, state.item, sourceName, openNow = true, place = place) },
             onLike = viewModel::toggleAlbumFavourite,
@@ -272,7 +268,6 @@ fun MusicCollectionPage(
                     CollectionHero(
                         state = state,
                         wide = wide,
-                        easy = easy,
                         height = heroHeight,
                         overlap = overlap,
                         side = side,
@@ -389,7 +384,6 @@ fun MusicCollectionPage(
                                 isCurrent = song.id == currentId,
                                 isPlaying = playing,
                                 liked = song.id in state.liked,
-                                big = easy,
                                 onClick = { if (!editing) play(pos, false) },
                                 onMore = { if (!editing) menuFor = index },
                                 modifier =
@@ -646,7 +640,6 @@ fun MusicCollectionPage(
 private fun CollectionHero(
     state: MusicCollectionState,
     wide: Boolean,
-    easy: Boolean,
     height: Dp,
     overlap: Dp,
     side: Dp,
@@ -733,32 +726,23 @@ private fun CollectionHero(
                 icon = null,
                 filledPlay = true,
                 primary = true,
-                big = easy,
                 onClick = onPlay,
                 modifier = Modifier.focusRequester(playFocus),
             )
-            MusicButton(if (easy) "Shuffle" else null, BenflixIcon.SHUFFLE, onClick = onShuffle, big = easy)
+            MusicButton(null, BenflixIcon.SHUFFLE, onClick = onShuffle)
             if (state.kind == CollectionKind.ALBUM && item != null) {
                 MusicButton(
-                    label = if (easy) (if (item.favorite) "Liked" else "Like") else null,
+                    label = null,
                     icon = BenflixIcon.HEART,
                     filledHeart = item.favorite,
                     onClick = onHeart,
-                    big = easy,
                 )
             }
             if (state.canEdit || state.kind == CollectionKind.ALBUM || state.songs.isNotEmpty()) {
                 MusicButton(
-                    if (editing) {
-                        "Done"
-                    } else if (easy) {
-                        "More"
-                    } else {
-                        null
-                    },
+                    if (editing) "Done" else null,
                     if (editing) BenflixIcon.CHECK else BenflixIcon.MORE,
                     onClick = onMore,
-                    big = easy,
                 )
             }
         }
@@ -803,8 +787,8 @@ private fun CollectionHero(
                 Text(
                     text = state.title,
                     color = BenflixColors.Text,
-                    fontSize = if (easy) 44.sp else BenflixType.hero,
-                    lineHeight = if (easy) 48.sp else 44.sp,
+                    fontSize = BenflixType.hero,
+                    lineHeight = 44.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -821,7 +805,7 @@ private fun CollectionHero(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                if (quiet.isNotBlank() && !easy) {
+                if (quiet.isNotBlank()) {
                     Text(
                         quiet,
                         color = BenflixColors.Muted,

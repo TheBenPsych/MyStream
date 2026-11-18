@@ -20,7 +20,7 @@
   const FONTS = {
     book: { name: "Book's own", css: "" },
     serif: { name: "Serif", css: "Georgia, 'Noto Serif', 'Droid Serif', serif" },
-    sans: { name: "Sans", css: "Outfit, 'Roboto', 'Noto Sans', sans-serif" },
+    sans: { name: "Sans", css: "'Glowfin Inter', 'Roboto', 'Noto Sans', sans-serif" },
     easy: { name: "Easy to read", css: "OpenDyslexic, Verdana, sans-serif" },
   };
   const SIZES = [0.8, 0.9, 1, 1.12, 1.25, 1.4, 1.6, 1.85];
@@ -112,8 +112,8 @@
         (doc.head || doc.documentElement).appendChild(s);
       }
       const easy = settings.font === "easy" ? `@font-face { font-family: OpenDyslexic; src: url("${new URL(base + "web/fonts/opendyslexic_regular.woff2", location.href).href}") format("woff2"); }` : "";
-      const outfit = `@font-face { font-family: Outfit; src: url("${new URL(base + "web/fonts/outfit_regular.ttf", location.href).href}"); }`;
-      s.textContent = `${easy}${outfit}
+      const inter = `@font-face { font-family: "Glowfin Inter"; src: url("${new URL(base + "web/fonts/glowfin_inter_regular.ttf", location.href).href}"); }`;
+      s.textContent = `${easy}${inter}
         html { margin: 0 !important; padding: 0 !important; height: ${g.h}px !important; overflow: hidden !important; background: ${t.bg} !important; font-size: ${basePx}px !important; }
         body { margin: 0 !important; padding: 0 !important; height: ${g.h}px !important; width: ${g.w}px !important; max-width: none !important;
           column-width: ${colW}px !important; column-gap: ${g.gap}px !important; column-fill: auto !important; column-count: auto !important;

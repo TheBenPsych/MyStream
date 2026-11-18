@@ -291,9 +291,3 @@ fun SwitchUserContent(
         )
     }
 }
-
-/** Screens shorter than this (in dp) get the compact Who's watching layout */
-private const val SHORT_SCREEN_DP = 600
-
-/** The smallest the Who's watching tiles get */
-private const val MIN_TILE_DP = 72f

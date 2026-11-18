@@ -1,9 +1,5 @@
 /* Benflix in a web browser. Colours, type and shapes from the approved redesign (2026-11-07):
-   dark tray, four door colours, Outfit, white outline focus, slightly rounded corners. */
-@font-face { font-family: "Outfit"; src: url("../fonts/outfit_regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Outfit"; src: url("../fonts/outfit_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
-@font-face { font-family: "Outfit"; src: url("../fonts/outfit_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
-@font-face { font-family: "Outfit"; src: url("../fonts/outfit_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+   dark tray, four door colours, white outline focus, slightly rounded corners. */
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "Fredoka"; src: url("../fonts/kids_fredoka_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
@@ -21,7 +17,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 "Glowfin Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 body { overflow-x: hidden; min-height: 100vh; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
@@ -38,7 +34,7 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 @font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
 @font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
 /* Glowfin logo (approved 2026-11-18): the fin mark, "Glow" light white + "fin" in the purple-to-cyan fade; Kids adds a small tag on the bottom line */
-.logo { display: inline-flex; align-items: baseline; gap: .3em; font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 300; color: var(--ink); white-space: nowrap; line-height: 1; }
+.logo { display: inline-flex; align-items: baseline; gap: .3em; font-family: "Glowfin Sora", sans-serif; font-weight: 300; color: var(--ink); white-space: nowrap; line-height: 1; }
 .logo .fin { width: 1.3em; height: 1.25em; display: block; align-self: center; }
 .logo .lw b { font-weight: 600; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .logo .kt { display: none; position: relative; top: -.37em; font-weight: 600; font-size: .36em; line-height: 1.25; padding: 0 .55em; margin-left: -.05em; border-radius: 999px; color: #0B0C12; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); }
@@ -899,9 +895,6 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
   .brow .tx small { font-size: 11px; } .brow .tx b { font-size: 15px; }
   .brow .th, .lgthumb { width: 46px; border-radius: 6px; }
   .lgthumb { grid-template-rows: repeat(2, 10px); }
-  /* Ben 2026-11-17 (Home news cards, phones too): the whole poster, smaller words, the fact in full */
-  .spotted .brow .th, .spotted .brow .lgthumb { width: 54px; aspect-ratio: 2 / 3; }
-  .spotted .brow .tx b { font-size: 14px; -webkit-line-clamp: 3; overflow-wrap: normal; }
 }
 
 /* Song previews: the round play button beside Ask for it, and on song covers */
@@ -979,7 +972,7 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .rqhead { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 14px; }
 .rqhead b { font-size: 22px; font-weight: 800; color: var(--ink); }
 .rqhead span { color: var(--ink3); font-size: 14px; }
-.rqrank { position: absolute; left: 8px; bottom: 8px; min-width: 32px; height: 32px; padding: 0 8px; display: grid; place-items: center; background: var(--ink); color: var(--tray); font: 800 17px "Outfit", sans-serif; border-radius: 9px; box-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
+.rqrank { position: absolute; left: 8px; bottom: 8px; min-width: 32px; height: 32px; padding: 0 8px; display: grid; place-items: center; background: var(--ink); color: var(--tray); font: 700 17px "Glowfin Sora", sans-serif; border-radius: 9px; box-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
 .rqsplit .grid .poster .cap { display: block; }
 .rqgenres { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .rqgenres .chip { justify-content: center; padding: 12px 16px; font-size: 15px; }
@@ -992,7 +985,7 @@ button.brow { width: 100%; background: none; border: 0; color: inherit; font: in
 .ancard.busy, .anep .busy { opacity: .6; cursor: progress; }
 .anfeels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .anfeel { display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; min-height: 108px; padding: 12px 14px; border: 0; border-radius: 14px; color: #fff; text-align: left; cursor: pointer; font: inherit; background: linear-gradient(140deg, var(--c), color-mix(in srgb, var(--c) 35%, #0B0C10)); }
-.anfeel b { font: 800 19px "Outfit", sans-serif; text-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+.anfeel b { font: 700 19px "Glowfin Sora", sans-serif; text-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
 .anfeel span { font-size: 13px; opacity: .88; }
 .anfeel:hover, .anfeel:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .ancal { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
@@ -1133,7 +1126,7 @@ html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-siz
 .tp.tp-rows .tp-hero { height: auto; min-height: 66vh; }
 .tp.tp-rows .main { position: relative; inset: auto; min-height: 66vh; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: calc(var(--bar) + 4vh) var(--gutter) 8px; }
 .tp.tp-rows .tp-name { max-width: 55%; }
-.tp.tp-rows .tp-name .t { font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 600; }
+.tp.tp-rows .tp-name .t { font-family: "Glowfin Sora", sans-serif; font-weight: 600; }
 .tp.tp-rows .meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .tp.tp-rows .tp-scores { display: inline-flex; gap: 14px; }
 .tp.tp-rows .tp-scores span { color: var(--ink3); font-size: 14px; font-weight: 600; }
@@ -1239,7 +1232,7 @@ body.has-rail #page > :not(.top):not(.drail) { margin-left: calc(var(--rail) - v
   body.has-rail .door-top { margin-top: 0; padding-top: 24px; }
 }
 
-/* Redesign 2, section 11: the Kids and Easy mode Homes (big doors, one Keep watching row) and the Kids badge */
+/* Redesign 2, section 11: the Kids Homes (big doors, one Keep watching row) and the Kids badge */
 .pbadge { background: #FFB547; color: #0B0C10; font-weight: 800; font-size: 15px; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
 .home.fam { gap: 18px; }
 .home.fam .fdoors { flex: 0 0 auto; height: min(44vh, 420px); min-height: 260px; }
@@ -1265,7 +1258,7 @@ body.has-rail #page > :not(.top):not(.drail) { margin-left: calc(var(--rail) - v
 }
 /* Benflix standard subtitle look (every player, every video): Atkinson Hyperlegible Bold, white with a
    black outline. Plain subtitle files only; picture subtitles from discs are drawn by Tower and stay as they are. */
-video::cue { color: #fff; background: transparent; font-family: "Benflix Subtitles", "Outfit", sans-serif; font-weight: 700; text-shadow: .075em 0 0 #000, -.075em 0 0 #000, 0 .075em 0 #000, 0 -.075em 0 #000, .053em .053em 0 #000, -.053em .053em 0 #000, .053em -.053em 0 #000, -.053em -.053em 0 #000, 0 2px 4px rgba(0,0,0,.6); }
+video::cue { color: #fff; background: transparent; font-family: "Benflix Subtitles", sans-serif; font-weight: 700; text-shadow: .075em 0 0 #000, -.075em 0 0 #000, 0 .075em 0 #000, 0 -.075em 0 #000, .053em .053em 0 #000, -.053em .053em 0 #000, .053em -.053em 0 #000, -.053em -.053em 0 #000, 0 2px 4px rgba(0,0,0,.6); }
 /* Live TV's red LIVE pill */
 .player .livepill { border: 0; border-radius: 6px; background: #d93a3a; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .04em; padding: 7px 12px; cursor: pointer; }
 .player .livepill:hover { filter: brightness(1.1); }
@@ -1341,7 +1334,7 @@ html.kids.night {
   --movies: #D9BFFF; --shows: #A9DCF5; --games: #B8F2EA; --ask: #B8F2EA;
   --kacc: #B8F2EA; --kon: #0B0D1A; --kshowsink: #0B0D1A;
 }
-html.kids, html.kids body { font-family: "Fredoka", "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif; }
+html.kids, html.kids body { font-family: "Fredoka", system-ui, -apple-system, "Segoe UI", sans-serif; }
 html.kids :focus-visible { outline-color: var(--kacc); outline-width: 4px; }
 html.kids .door { border-radius: 28px; transition: transform .15s; }
 html.kids .door[data-door="movies"] { --c: var(--movies) !important; }
@@ -1598,9 +1591,9 @@ body.has-mnp #page > :not(.top):not(.drail) { margin-right: 320px; }
 .srow.dragging { opacity: .45; }
 .srow.dropto { box-shadow: inset 0 -2px 0 var(--music); }
 
-/* ---------- Navigation redesign (approved 2026-11-17, js/nav.js and js/spot.js) ----------
+/* ---------- Navigation redesign (approved 2026-11-17, js/nav.js) ----------
    The icon rail down the left of every page (opens wider with names when you point at it or Tab into it), a door's
-   panel beside it, the page header with the named Back button, the phone bottom bar, and the new Home spotlight. */
+   panel beside it, the page header with the named Back button, the phone bottom bar. */
 :root { --nrail: 66px; --nopen: 228px; }
 body.nav-kids { --nrail: 80px; --nopen: 260px; }
 body.nav-on #page { padding-left: var(--nrail); }
@@ -1715,70 +1708,6 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   .nback { height: 36px; font-size: 14px; max-width: 180px; }
   .top .place.where { font-size: 13px; }
 }
-/* Home: the spotlight (six picks, one at a time) and the Today cards floating along the bottom */
-.home.spotted { position: relative; isolation: isolate; margin-top: calc(-1 * var(--bar)); padding-top: calc(var(--bar) + 6px); }
-.top:has(+ .home.spotted) { background: linear-gradient(rgba(var(--trayrgb), .55), rgba(var(--trayrgb), 0)); }
-.spot .sp-pics, .spot .sp-shade { position: absolute; left: 0; right: 0; top: 0; height: min(88vh, 60vw); z-index: -1; overflow: hidden; pointer-events: none; }
-.fam .spot .sp-pics, .fam .spot .sp-shade { height: min(72vh, 52vw); }
-.sp-pic { position: absolute; inset: 0; background-size: cover; background-position: center 20%; opacity: 0; transition: opacity .8s ease;
-  /* Smooth zoom: on the graphics card, steady speed, and never snapped to whole pixels (it bounced before) */
-  will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0) scale3d(1,1,1); animation: spzoom 12s linear forwards; }
-.sp-pic.on { opacity: 1; }
-.sp-pic.on.off { opacity: 0; }
-@keyframes spzoom { from { transform: translate3d(0,0,0) scale3d(1,1,1); } to { transform: translate3d(0,0,0) scale3d(1.06,1.06,1); } }
-.sp-shade { background: linear-gradient(90deg, rgba(var(--trayrgb), .94) 0%, rgba(var(--trayrgb), .6) 36%, rgba(var(--trayrgb), 0) 66%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb), 0) 45%); }
-.sp-info { position: relative; max-width: min(46%, 640px); margin-top: min(9vh, 7vw); min-height: 290px; }
-.spot.empty .sp-info { min-height: 0; }
-.sp-why { display: block; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
-.sp-name { margin: 6px 0 10px; font-size: clamp(30px, 4.2vw, 64px); font-weight: 800; line-height: 1.02; letter-spacing: -.02em; text-shadow: 0 2px 20px rgba(0,0,0,.5); }
-.sp-line { font-weight: 600; color: var(--ink); }
-.sp-about { margin: 10px 0 0; max-width: 560px; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.sp-btns { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
-.sp-dots { display: flex; gap: 8px; margin-top: 18px; }
-.sp-dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 99px; background: rgba(255,255,255,.35); cursor: pointer; transition: width .25s, background .25s; }
-.sp-dots button.on { width: 26px; background: #fff; }
-.board.spotted .bmain { display: block; height: auto; margin-top: auto; position: relative; z-index: 1; }
-@media (min-width: 761px) {
-  /* Ben 2026-11-17: the news cards float only a little (they sit near the bottom, just above the holiday trim), and
-     the greeting sits top left beside the rail, on the clock's line */
-  .home.board.spotted { min-height: 100vh; padding-bottom: 36px; }
-  .board.spotted .bgreet { position: absolute; z-index: 2; top: 0; left: var(--gutter); right: 220px; height: var(--bar); margin: 0;
-    display: flex; align-items: center; gap: 16px; white-space: nowrap; overflow: hidden; }
-  .board.spotted .bgreet .greet { font-size: 30px; }
-  .board.spotted .bgreet .wx { font-size: 15px; margin-top: 0; min-height: 0; overflow: hidden; text-overflow: ellipsis; }
-  .board.spotted .bgreet .wx:empty { display: none; }
-  .board.spotted .sp-info { margin-top: calc(min(9vh, 7vw) + 96px); }
-}
-@media (min-width: 901px) {
-  .spotted .bpanel { position: relative; height: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto; gap: 12px; padding: 0; background: none; }
-  .spotted .bhead { position: absolute; right: 0; top: -42px; }
-  .spotted .bitem, .spotted .bmore { min-height: 88px; height: calc(6.4 * var(--u)); border-radius: 14px; background: rgba(22,24,30,.88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 14px 30px rgba(0,0,0,.45); }
-  .spotted .bitem::before, .spotted .bmore::before { display: none; }
-  .spotted .bmore { flex-direction: column; justify-content: center; gap: 6px; }
-  /* Ben 2026-11-17: the cards share the whole width, the cover art fills almost the card's height so you see all of
-     it, the words are smaller (the episode line shows which one) */
-  .spotted .bpanel { display: flex; }
-  .spotted .bitem { flex: 1 1 0; min-width: 0; }
-  .spotted .bmore { flex: 0 0 auto; padding: 0 22px; }
-  .spotted .bitem, .spotted .bmore { height: max(100px, calc(5.4 * var(--u))); }
-  .spotted .brow { height: 100%; padding: 8px; column-gap: 12px; align-items: center; }
-  .spotted .brow .th, .spotted .brow .lgthumb { width: auto; height: 100%; aspect-ratio: 2 / 3; border-radius: 8px; }
-  .spotted .brow .th { background-size: cover; }
-  .spotted .brow .tx small { font-size: 11px; }
-  .spotted .brow .tx b { font-size: clamp(13px, calc(.8 * var(--u)), 16px); line-height: 1.25; -webkit-line-clamp: 3; overflow-wrap: normal; }
-}
-/* With music playing the cards float just above the player bar */
-@media (min-width: 761px) { body:has(.mbar:not(.hidden)) .home.board.spotted { padding-bottom: 96px; } }
-@media (max-width: 900px) {
-  .home.spotted { margin-top: 0; padding-top: 6px; }
-  .spot .sp-pics, .fam .spot .sp-pics { position: relative; height: auto; aspect-ratio: 16 / 10; margin: 12px calc(-1 * var(--gutter)) 0; z-index: 0; }
-  .spot .sp-shade { display: none; }
-  .sp-info { max-width: none; margin-top: 12px; min-height: 0; }
-  .sp-name { font-size: 28px; }
-  .sp-btns .btn { flex: 1; justify-content: center; }
-  /* Phone Home has nothing in the header: the greeting goes to the top */
-  .top:has(+ .home.spotted) { display: none; }
-}
 /* The where-am-I line beside the named Back: oldest first, and when it's too long the start is cut, not the end */
 .top .hstart .place.where { direction: ltr; display: flex; align-items: center; justify-content: flex-end; min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 1 auto; }
 .top .hstart .place.where > * { flex: none; }
@@ -1876,9 +1805,9 @@ body.nav-on:has(.brail.always) #page { padding-left: var(--nopen); }
   --glow: linear-gradient(135deg, var(--violet), var(--blue) 60%, var(--aqua));
   --glowring: 0 0 0 3px var(--aqua), 0 0 22px 4px rgba(165, 91, 224, .5);
 }
-html, body { font-family: "Glowfin Inter", "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif; }
+html, body { font-family: "Glowfin Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
 h1, h2, h3, .who h1 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; letter-spacing: -.01em; }
-html.kids, html.kids body, html.kids h1, html.kids h2, html.kids h3 { font-family: "Fredoka", "Outfit", system-ui, sans-serif; }
+html.kids, html.kids body, html.kids h1, html.kids h2, html.kids h3 { font-family: "Fredoka", system-ui, sans-serif; }
 :focus-visible { outline-color: var(--aqua); }
 /* Cards: the Glow ring */
 .poster:hover .im, .poster:focus-visible .im, .wide:hover .im, .wide:focus-visible .im, .mcard:hover .im, .mcard:focus-visible .im { box-shadow: var(--glowring); }
@@ -1931,7 +1860,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 /* Glowfin (ui-7): Movies, Shows and Anime tabs along the top. The one you're on is white with the glow line under it */
 .ptabs { display: flex; gap: 6px; padding: 10px var(--edge, 40px) 4px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 3; }
 .ptabs::-webkit-scrollbar { display: none; }
-.ptabs a { flex: none; position: relative; padding: 8px 14px 12px; border-radius: 999px; color: #9AA0C3; font-family: "Glowfin Sora", "Outfit", sans-serif; font-weight: 600; font-size: 16px; text-decoration: none; white-space: nowrap; }
+.ptabs a { flex: none; position: relative; padding: 8px 14px 12px; border-radius: 999px; color: #9AA0C3; font-family: "Glowfin Sora", sans-serif; font-weight: 600; font-size: 16px; text-decoration: none; white-space: nowrap; }
 .ptabs a .sm { display: none; }
 .ptabs a:hover, .ptabs a:focus-visible { background: #222645; color: #ECEEFB; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: 0 0 0 6px rgba(165,91,224,.25); }
 .ptabs a.on { color: #ECEEFB; font-weight: 700; }

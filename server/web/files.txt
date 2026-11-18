@@ -7,10 +7,6 @@ fonts/kids_fredoka_regular.ttf
 fonts/kids_fredoka_semibold.ttf
 fonts/opendyslexic.LICENSE.txt
 fonts/opendyslexic_regular.woff2
-fonts/outfit_bold.ttf
-fonts/outfit_medium.ttf
-fonts/outfit_regular.ttf
-fonts/outfit_semibold.ttf
 icons/icon-192.png
 icons/icon-512.png
 icons/icon-32.png
@@ -21,7 +17,6 @@ js/core.js
 js/sea.js
 js/doors.js
 js/nav.js
-js/spot.js
 js/extras.js
 js/fix.js
 js/games.js

@@ -380,16 +380,6 @@ fun PersonPageContent(
     )
 }
 
-fun rowTitle(
-    prefix: String,
-    state: RowLoadingState,
-): String =
-    if (state is RowLoadingState.Success) {
-        "$prefix (${state.items.size})"
-    } else {
-        prefix
-    }
-
 @Composable
 fun PersonHeader(
     name: String,
