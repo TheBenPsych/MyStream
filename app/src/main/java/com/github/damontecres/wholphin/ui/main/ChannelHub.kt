@@ -172,7 +172,7 @@ internal fun LogoPlate(
             contentDescription = null,
             contentScale = ContentScale.Fit,
             onSuccess = { state ->
-                if (url != null && url !in LogoTone.known) {
+                if (url != null && !LogoTone.known.containsKey(url)) {
                     val isLight = LogoTone.isLightLogo(state.result.image.toBitmap())
                     LogoTone.known[url] = isLight
                     light = isLight
