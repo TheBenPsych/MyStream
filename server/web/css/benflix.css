@@ -2253,3 +2253,24 @@ svg.gi path.gd { stroke-width: 3.6; }
   .bg-more .poster { flex-basis: 120px; }
   .gsaves { padding: 0 16px; }
 }
+
+/* ---------- Glowfin Me page (Ben 2026-11-18, approved profile-page-1): your picture opens a full page ---------- */
+.rl-me.on { background: var(--pg4); box-shadow: inset 0 0 0 2px var(--aqua); }
+.mepage { padding-top: 12px; max-width: 1180px; }
+.me-hero { display: flex; align-items: center; gap: 24px; margin: 6px 0 26px; }
+.me-hero .pic { width: 104px; height: 104px; font-size: 40px; flex: none; box-shadow: 0 0 0 3px rgba(63, 224, 232, .35); }
+.me-hero h1 { margin: 0; font-size: 34px; line-height: 1.1; overflow-wrap: anywhere; }
+.me-wt { color: var(--ink2); margin: 4px 0 10px; }
+.me-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.me-tile { display: flex; gap: 14px; align-items: flex-start; text-align: left; background: var(--deep); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-height: 92px; cursor: pointer; font: inherit; }
+.me-tile:hover, .me-tile:focus-visible { background: var(--pg4); outline: none; box-shadow: var(--glowring); }
+.me-ic { width: 40px; height: 40px; border-radius: 12px; background: var(--raise); display: grid; place-items: center; flex: none; }
+.me-ic svg { width: 22px; height: 22px; }
+.me-tx { min-width: 0; }
+.me-tx b { display: block; font-size: 17px; }
+.me-tx small { display: block; color: var(--ink2); font-size: 13px; line-height: 1.35; margin-top: 2px; }
+.me-tile.admin b, .me-tile.admin .me-ic { color: var(--check, #E8D44D); }
+.me-out { margin-top: 22px; display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: var(--ink2); font: inherit; font-weight: 600; padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+.me-out:hover, .me-out:focus-visible { background: var(--pg4); color: var(--ink); outline: none; }
+.me-out svg { width: 16px; height: 16px; }
+@media (max-width: 900px) { .me-tiles { grid-template-columns: 1fr; gap: 10px; } .me-tile { min-height: 0; padding: 12px 14px; } .me-hero { gap: 16px; margin-bottom: 16px; } .me-hero .pic { width: 68px; height: 68px; font-size: 28px; } .me-hero h1 { font-size: 24px; } }

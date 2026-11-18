@@ -68,7 +68,8 @@
   const spotOf = (hash) => {
     if (/^#\/home/.test(hash)) return "home";
     if (/^#\/(anime$|browse\/anime)/.test(hash) || /^#\/grid\/(shows|movies)\?(.*&)?anime=only/.test(hash)) return "anime";
-    if (/^#\/settings/.test(hash)) return "settings";
+    // Ben 2026-11-18: your page and everything it opens light up your picture
+    if (/^#\/(me|settings|server|help|mine|lobby)(\/|\?|$)/.test(hash)) return "me";
     if (/^#\/search/.test(hash)) return "search";
     if (/^#\/requests/.test(hash)) return "requests";
     return doorOf(hash) || "";
@@ -81,15 +82,15 @@
     const spot = spotOf(location.hash);
     const item = (key, icon, label, href, extra) => `<a class="rl-i ${spot === key ? "on" : ""}" data-k="${key}" href="${href || "#/" + key}" title="${esc(label)}">${G(icon)}<span class="rl-t">${esc(label)}</span>${extra || ""}</a>`;
     // Glowfin menu (ui-2): Search, Home, Movies, Shows, Anime, Live TV, Music, Games, Books, Requests, then your
-    // picture and Settings at the bottom. Kids (K1, ui-17): Home, Movies, Shows and Games, then the picture.
+    // picture at the bottom (Ben 2026-11-18: it opens the Me page, where Settings lives, so no second Settings
+    // spot). Kids (K1, ui-17): Home, Movies, Shows and Games, then the picture.
     return `<a class="rl-logo" href="#/home" title="Home">${B.logo()}</a>
       ${kids ? "" : item("search", "search", "Search")}
       ${item("home", "home", "Home")}
       ${doors().map((d) => `<button type="button" class="rl-i rl-door ${spot === d.key ? "on" : ""} ${openDoor === d.key ? "open" : ""}" data-door="${d.key}" title="${esc(d.name)}">${G(d.key)}<span class="rl-t">${esc(d.name)}</span></button>${d.key === "shows" && !kids ? item("anime", "anime", "Anime", ANIME) : ""}`).join("")}
       ${kids ? "" : item("requests", "requests", "Requests", "", `<b class="rl-count" ${reqCount ? "" : "hidden"}>${reqCount}</b>`)}
       <div class="rl-gap"></div>
-      <button type="button" class="rl-i rl-me" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>
-      ${kids ? "" : item("settings", "settings", "Settings")}`;
+      <button type="button" class="rl-i rl-me ${spot === "me" ? "on" : ""}" data-k="me" title="${esc(B.me ? B.me.name : "")}">${B.me ? B.picHtml(B.me, "", 100) : ""}${B.newsDot ? '<i class="rl-dot"></i>' : ""}<span class="rl-t">${esc(B.me ? B.me.name : "")}</span></button>`;
   };
   const paint = () => {
     const hash = location.hash || "";
@@ -111,7 +112,6 @@
         if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
         // Ben 2026-11-18: no slide-out menus for pages any more, so Right goes into the page you're on
         if (e.key === "ArrowRight" && document.activeElement.dataset.door) { e.preventDefault(); landOnPage(true); }
-        if (e.key === "ArrowRight" && document.activeElement.dataset.k === "me" && openDoor !== "me") { e.preventDefault(); B.openMenu(true); }
       });
     }
     rail.hidden = false;
@@ -155,7 +155,7 @@
     if (!k) return;
     if (k.dataset.k === "me") {
       e.preventDefault();
-      if (openDoor === "me") { closePanel(); return; }
+      closePanel();
       B.openMenu(e.detail === 0);
       return;
     }
@@ -174,40 +174,6 @@
   };
   // The rail button a panel belongs to (a door, or your picture)
   const railBtn = (key) => rail && (key === "me" ? $('[data-k="me"]', rail) : $(`[data-door="${key}"]`, rail));
-  // ---------- your picture's panel: the profile menu, sliding out beside the rail like a door's panel ----------
-  // Returns false when there's no rail to slide out from (phone-sized windows, full-window pages): the corner card shows instead
-  B.openMePanel = (byKeys) => {
-    if (!B.me || !rail || rail.hidden || narrow()) return false;
-    closePanel();
-    B.closeAll();
-    openDoor = "me";
-    const me = railBtn("me");
-    if (me) me.classList.add("open");
-    panel = document.createElement("div");
-    panel.className = "npanel np-me";
-    panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", B.me.name);
-    panel.innerHTML = `<div class="np-who">${B.picHtml(B.me, "", 220)}<b>${esc(B.me.name)}</b><small id="npWt">&nbsp;</small>
-        <button type="button" class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div>
-      <div class="np-list">${B.profileItems().map(([where, icon, label]) => `<button type="button" data-go="${esc(where)}">${I(icon)}<span>${esc(label)}</span></button>`).join("")}</div>
-      <div class="np-list np-end"><button type="button" class="np-out" data-go="signout">${I("out")}<span>Sign out</span></button></div>`;
-    document.body.appendChild(panel);
-    document.body.classList.add("nav-panel");
-    panel.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-go]");
-      if (!b) return;
-      closePanel();
-      B.profileGo(b.dataset.go);
-    });
-    panel.addEventListener("keydown", (e) => {
-      const items = $$("button", panel);
-      const at = items.indexOf(document.activeElement);
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[at + (e.key === "ArrowDown" ? 1 : -1)]; if (n) n.focus(); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); const back = railBtn("me"); closePanel(); if (back) back.focus(); }
-    });
-    if (byKeys) { const first = $("button", panel); if (first) first.focus(); }
-    if (B.watchTime) B.watchTime().then((w) => { const el = $("#npWt"); if (el && openDoor === "me") el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
-    return true;
-  };
   // ---------- phones: the bottom bar ----------
   // Glowfin (Ben, 2026-11-18): Home, Movies, Shows, Anime and More (Kids: Games in Anime's place)
   const tabs = () => {
@@ -251,7 +217,6 @@
       ${kids ? "" : sheetRow("#/search", "search", "Search")}
       ${rest.map((d) => sheetRow("#/" + d.key, d.key, d.name)).join("")}
       ${kids ? "" : sheetRow("#/requests", "requests", "Requests", "", reqCount ? String(reqCount) : "")}
-      ${kids ? "" : sheetRow("#/settings", "settings", "Settings")}
       <div class="sh-sep"></div>
       <button type="button" class="sh-row sh-me" data-me>${B.me ? B.picHtml(B.me, "", 100) : ""}<span>${esc(B.me ? B.me.name : "")}</span>${I("right")}</button>
     </div>`);
