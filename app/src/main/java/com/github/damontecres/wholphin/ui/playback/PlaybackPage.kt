@@ -210,7 +210,6 @@ fun PlaybackPageContent(
     val state by viewModel.state.collectAsState()
     val subtitleSearchState by viewModel.subtitleSearchState.collectAsState()
     val player = playerInstance.player
-    NightModeEffect(player)
     val playerBackend = playerInstance.backend
 
     val prefs = preferences.appPreferences.playbackPreferences

@@ -43,7 +43,7 @@ import javax.inject.Singleton
  * Their profile picture, "Always skip filler" and the Dubbed/Subbed pick for each anime follow them too.
  *
  * Things that only make sense on one device are not synced: player choice, Lite mode, refresh rate and
- * other display options, the screensaver, download folders, Night mode sound, which tiles the Who's
+ * other display options, the screensaver, download folders, which tiles the Who's
  * watching screen shows, the games server address, and these Benflix ones (see [withoutDeviceParts]):
  * the come-back timer ("Ask Who's watching again after"), mobile data quality, tap vibration on phones,
  * and "Styled subtitles in MPV" (it depends on whether this device can run MPV).

@@ -180,7 +180,6 @@ fun PlaybackDialog(
         }
 
         PlaybackDialogType.SETTINGS -> {
-            val nightOn = NightMode.isOn(context)
             val subtitleName =
                 when (settings.subtitleIndex) {
                     TrackIndex.ONLY_FORCED -> {
@@ -319,13 +318,6 @@ fun PlaybackDialog(
                         ),
                     )
                     add(PanelLine.Heading("More"))
-                    add(
-                        PanelLine.Row(
-                            label = stringResource(if (nightOn) R.string.night_mode_on else R.string.night_mode_off),
-                            note = stringResource(R.string.night_mode_summary),
-                            onClick = { NightMode.toggle(context) },
-                        ),
-                    )
                     add(
                         PanelLine.Row(
                             label =
