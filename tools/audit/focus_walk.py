@@ -227,8 +227,17 @@ def ensure_app():
         d.sign_in()
 
 
+def no_update_offer():
+    """This branch's build is older than the published one, so Benflix offers the update: Not now"""
+    root = d.dump()
+    if d.find(root, r"^Benflix got better$") is not None and d.find(root, r"^Not now$") is not None:
+        d.key("DPAD_RIGHT", wait=0.6)
+        d.key("DPAD_CENTER", wait=2)
+
+
 def go_home():
     ensure_app()
+    no_update_offer()
     for _ in range(6):
         if d.find(d.dump(), HOMES) is not None:
             return True
@@ -405,6 +414,7 @@ def main():
     if d.wait_for(d.DOORS_RE, 60) is None:
         note("never got to Home")
         picture("no-home")
+        F["never_home"] = True
         return
     trips = [
         ("home", lambda: (go_home(), walk("home", presses=50))),
@@ -446,4 +456,7 @@ if __name__ == "__main__":
     for v in F["vanished"]:
         print(f"- {v['page']}: the focus disappeared after {v.get('pressed', v.get('after'))} from '{v.get('from')}' [picture {v.get('shot')}]")
     print(f"{len(F['traps'])} stuck spots, {len(F['vanished'])} lost-focus spots, on {len(F['pages'])} pages", flush=True)
+    if F.get("never_home"):
+        print("The robot never got to Home, so nothing was walked", flush=True)
+        sys.exit(5)
     sys.exit(4 if F["traps"] else 0)

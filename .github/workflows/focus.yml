@@ -95,6 +95,7 @@ jobs:
           set -e
           echo "rc=$rc" > results/tv/exit.txt
           if [ $rc = 4 ]; then echo "::error::The remote gets stuck somewhere: see the list above"; exit 1; fi
+          if [ $rc != 0 ]; then echo "::error::The robot stopped early (code $rc)"; exit 1; fi
       - name: Shrink pictures
         if: always()
         run: |

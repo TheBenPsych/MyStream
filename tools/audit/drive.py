@@ -440,6 +440,15 @@ def sign_in():
                 tap(n)
                 time.sleep(2)
                 continue
+        # A branch build is older than the published one, so Benflix offers the update: not now
+        if find(root, r"^Benflix got better$") is not None and find(root, r"^Not now$") is not None:
+            if MODE == "tv":
+                key("DPAD_RIGHT", wait=0.6)
+                key("DPAD_CENTER", wait=2)
+            else:
+                tap(find(root, r"^Not now$"))
+                time.sleep(2)
+            continue
         if find(root, r"^What's your server address\?$") is not None:
             if find(root, "^" + re.escape(SERVER) + "$") is None:
                 type_answer(edit, SERVER)
