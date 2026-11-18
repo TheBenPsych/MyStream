@@ -89,7 +89,7 @@ class SoundWatchdog(
      * jump is what's broken, so it goes straight to asking the server for a fresh stream from here.
      */
     private val fromServerStream: () -> Boolean = { false },
-    /** Extra facts for the log (how it plays, which sound, Night mode) */
+    /** Extra facts for the log (how it plays, which sound) */
     private val describePlayback: () -> String = { "" },
 ) {
     private var job: Job? = null

@@ -335,7 +335,6 @@ class PlaybackViewModel
                         "fileSound=${audio?.codec} ${audio?.channels}ch",
                         "serverSound=${playback?.transcodeInfo?.audioCodec}",
                         "why=${playback?.transcodeInfo?.transcodeReasons?.joinToString("+")}",
-                        "night=${NightMode.isOn(context)}",
                         "passthrough=${SurroundPassthrough.isOn(context)}",
                     ).joinToString(", ")
                 },
