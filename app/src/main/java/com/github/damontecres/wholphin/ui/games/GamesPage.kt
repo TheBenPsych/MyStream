@@ -116,6 +116,11 @@ fun GamesPage(
     // Opening the door again within 10 minutes comes back to the same part of the page
     val recalled = remember { DoorMemory.recall(BenflixDoor.GAMES) }
     var userMoved by remember { mutableStateOf(recalled != null && recalled.scroll > 0) }
+    // Glowfin G1: the tabs (opening Games again within 10 minutes starts on the tab you were on)
+    val frame = rememberDoorFrameState(BenflixDoor.GAMES)
+    val scope = rememberCoroutineScope()
+    val tab = frame.section
+    val forYou = tab == DOOR_HOME
     val isTv = rememberIsTv()
     val context = LocalContext.current
     val config = LocalConfiguration.current
@@ -212,11 +217,6 @@ fun GamesPage(
         delay(FIRST_FOCUS_SETTLE_MS)
         if (isTv) focusRequester.tryRequestFocus()
     }
-    // Glowfin G1: the tabs (opening Games again within 10 minutes starts on the tab you were on)
-    val frame = rememberDoorFrameState(BenflixDoor.GAMES)
-    val scope = rememberCoroutineScope()
-    val tab = frame.section
-    val forYou = tab == DOOR_HOME
     frame.toTop = {
         scope.launch {
             pageScroll.animateScrollTo(0)
