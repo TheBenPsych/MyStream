@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -240,6 +241,9 @@ class RailModel(
     val onAnime: () -> Unit = {},
     /** Ben 2026-11-18: your picture opens the full Me page (Settings lives there, no second Settings spot) */
     val onMe: () -> Unit = {},
+    /** Ben 2026-11-18 (approved update-button-1): a glowing Update button above your picture, only when one is ready */
+    val updateReady: Boolean = false,
+    val onUpdate: () -> Unit = {},
 )
 
 private enum class Spot { HOME, SEARCH, ANIME, REQUESTS, PROFILE, SETTINGS }
@@ -572,6 +576,13 @@ fun BenflixRail(
                         )
                     }
                     Spacer(Modifier.weight(1f))
+                    if (model.updateReady) {
+                        UpdateRailButton(
+                            open = open,
+                            scale = scale,
+                            onClick = { leaveFor(model.onUpdate) },
+                        )
+                    }
                     ProfileRailButton(
                         model = model,
                         open = open,
@@ -643,6 +654,82 @@ fun BenflixRail(
         }
         // Approved rx-tip: the first time each profile sees it on a TV, a small bubble points at the rail
         if (!model.alwaysOpen) RailTip(model.user, scale)
+    }
+}
+
+/**
+ * Ben 2026-11-18 (approved update-button-1): an aqua ring with a down arrow, see-through inside, and
+ * "Update / New version ready" when the menu is open. Only shown when a new version is ready.
+ */
+@Composable
+private fun UpdateRailButton(
+    open: Boolean,
+    scale: Float,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(percent = 50)
+    val quiet = LocalRailQuiet.current
+    var hasFocus by remember { mutableStateOf(false) }
+    val focused = hasFocus && !quiet
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = Color.White,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier =
+            Modifier
+                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
+                .height(ITEM * scale)
+                .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
+                .onFocusChanged { hasFocus = it.isFocused },
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // Closed: the ring sits exactly in the middle ((42 - 28) / 2 = 7 each side)
+                modifier = Modifier.fillMaxSize().padding(start = 7.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+            ) {
+                val tint = if (focused) Color.White else Glowfin.Aqua
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier =
+                        Modifier
+                            .size(PICTURE * scale)
+                            .border(2.dp, tint, CircleShape),
+                ) {
+                    BenflixIconImage(BenflixIcon.DOWNLOAD, color = tint, size = 16.dp * scale)
+                }
+                if (open) {
+                    Spacer(Modifier.width(12.dp * scale))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Update",
+                            color = if (focused) Color.White else BenflixColors.Text,
+                            fontSize = BenflixType.body * scale,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "New version ready",
+                            color = tint,
+                            fontSize = 11.sp * scale,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -812,7 +812,7 @@ fun NavDrawer(
                     PhoneBottomBar(
                         tabs = tabs,
                         selected = phoneTabFor(destination, tabs),
-                        moreDot = badge,
+                        moreDot = badge || (updateAlert && !kids),
                         onTab = { tab ->
                             when {
                                 tab.key == TAB_HOME -> {
@@ -862,6 +862,15 @@ fun NavDrawer(
                         else -> user.name.orEmpty()
                     },
                 minutesWatched = if (easy) null else minutes,
+                onUpdate =
+                    if (updateAlert && !kids) {
+                        {
+                            moreOpen = false
+                            nav.navigateTo(Destination.UpdateApp)
+                        }
+                    } else {
+                        null
+                    },
                 onMe =
                     meModel?.let {
                         {
@@ -947,6 +956,8 @@ fun NavDrawer(
             showAnime = !kids && BenflixDoor.SHOWS in railDoors,
             onAnime = { goPlace(BenflixDoor.ANIME, com.github.damontecres.wholphin.ui.door.DOOR_HOME) },
             onMe = openMe,
+            updateReady = updateAlert && !kids,
+            onUpdate = { nav.navigateTo(Destination.UpdateApp) },
         )
     val header: @Composable () -> Unit = {
         BenflixPageHeader(

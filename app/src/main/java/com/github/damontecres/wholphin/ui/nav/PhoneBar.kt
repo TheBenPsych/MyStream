@@ -251,6 +251,8 @@ fun PhoneMoreSheet(
     minutesWatched: Long?,
     /** Ben 2026-11-18: tapping your picture opens the Me page (Settings, Help and the rest live there). Null = Kids/Guest */
     onMe: (() -> Unit)?,
+    /** Ben 2026-11-18 (approved update-button-1): Update is the first line when a new version is ready */
+    onUpdate: (() -> Unit)? = null,
     onDoor: (BenflixDoor) -> Unit,
     onSearch: () -> Unit,
     /** Glowfin: Anime has its own spot (null = hidden, like Kids' easy mode) */
@@ -265,6 +267,9 @@ fun PhoneMoreSheet(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.verticalScroll(rememberScrollState()),
         ) {
+            if (onUpdate != null) {
+                SheetRow(BenflixIcon.DOWNLOAD, "Update", Glowfin.Aqua, "New version", onUpdate)
+            }
             if (showSearch) SheetRow(null, "Search", BenflixColors.Soft, null, onSearch, glowIcon = GlowfinIcon.SEARCH)
             if (onAnime != null) SheetRow(null, "Anime", BenflixColors.Soft, null, onAnime, glowIcon = GlowfinIcon.ANIME)
             doors.forEach { door ->
