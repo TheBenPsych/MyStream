@@ -10,16 +10,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,22 +65,24 @@ import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 
-/** One door in search results */
+/** One row in search results, in the order the rows show (Ben 2026-11-18: rows like Home) */
 private enum class SearchDoor(
     val title: String,
     val color: Color,
     val forKids: Boolean = true,
-    /** The six door cards (3 by 2); People and Ask for it sit one Down below them */
-    val inGrid: Boolean = true,
+    /** The name in the small "Nothing in ..." line (null: never named there) */
+    val emptyName: String? = title,
 ) {
     MOVIES("Movies", BenflixColors.Movies),
     SHOWS("Shows", BenflixColors.Shows),
+    ANIME("Anime", BenflixColors.Shows, emptyName = null),
     MUSIC("Music", BenflixColors.Music, forKids = false),
     LIVE_TV("Live TV", BenflixColors.LiveTv),
     GAMES("Games", BenflixColors.Games),
     BOOKS("Books", BenflixColors.Books, forKids = false),
-    ASK("Ask for it", BenflixColors.Text, forKids = false, inGrid = false),
-    PEOPLE("People", BenflixColors.Soft, forKids = false, inGrid = false),
+    ASK("Ask for it: movies and shows", BenflixColors.Text, forKids = false, emptyName = "Ask for it"),
+    ASK_MUSIC("Ask for it: music", BenflixColors.Music, forKids = false, emptyName = null),
+    PEOPLE("People", BenflixColors.Soft, forKids = false),
 }
 
 /** Something in the Ask for it door: a movie or show (Seerr), or a song or album (Tower's music requests) */
@@ -160,9 +161,13 @@ fun SearchDoorResults(
     val kids = KidsMode.isActive
     val library =
         remember(items) {
+            val movies = items.filter { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.BOX_SET }
+            val shows = items.filter { it.type == BaseItemKind.SERIES || it.type == BaseItemKind.EPISODE }
             mapOf(
-                SearchDoor.MOVIES to items.filter { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.BOX_SET },
-                SearchDoor.SHOWS to items.filter { it.type == BaseItemKind.SERIES || it.type == BaseItemKind.EPISODE },
+                SearchDoor.MOVIES to movies.filterNot { it.isAnimeTitle() },
+                SearchDoor.SHOWS to shows.filterNot { it.isAnimeTitle() },
+                // Glowfin: anime shows and movies get their own row, like the Anime page
+                SearchDoor.ANIME to (shows + movies).filter { it.isAnimeTitle() },
                 // Kids search only ever finds kids titles (kd-p-search): live programmes have no kids rating, so none
                 SearchDoor.LIVE_TV to
                     if (kids) {
@@ -201,19 +206,30 @@ fun SearchDoorResults(
                 list.withIndex().sortedBy { (i, e) -> closeness(e.title, query) * 10_000 + i }.map { it.value }
             closestFirst(titles) + closestFirst(music)
         }
+    val askTitles = remember(ask) { ask.filterIsInstance<AskEntry.Title>() }
+    val askMusic = remember(ask) { ask.filterIsInstance<AskEntry.Music>() }
     val lines =
-        remember(library, ask, games, books) {
+        remember(library, askTitles, askMusic, games, books) {
             SearchDoor.entries.associateWith { door ->
                 when (door) {
                     SearchDoor.GAMES -> games.map { ResultLine.Game(it) }
+
                     SearchDoor.BOOKS -> if (kids) emptyList() else books.map { ResultLine.Book(it) }
-                    SearchDoor.ASK -> ask.map { ResultLine.Ask(it) }
+
+                    // Ben 2026-11-18: movies and shows to ask for get their own row, above songs and albums
+                    SearchDoor.ASK -> askTitles.map { ResultLine.Ask(it) }
+
+                    SearchDoor.ASK_MUSIC -> askMusic.map { ResultLine.Ask(it) }
+
                     else -> library[door].orEmpty().map { ResultLine.Item(it) }
                 }
             }
         }
     val shown = SearchDoor.entries.filter { lines[it].orEmpty().isNotEmpty() }
-    val empty = SearchDoor.entries.filter { lines[it].orEmpty().isEmpty() && (!kids || it.forKids) }
+    val empty =
+        SearchDoor.entries.filter {
+            lines[it].orEmpty().isEmpty() && it.emptyName != null && (!kids || it.forKids)
+        }
     var seeAll by remember { mutableStateOf<SearchDoor?>(null) }
     var asking by remember { mutableStateOf<SearchMusicAsk?>(null) }
     // Holding OK (or a long press) on a song opens its More menu (Ben also gets "Delete and find again" there)
@@ -269,130 +285,239 @@ fun SearchDoorResults(
         return
     }
 
-    val grid = shown.filter { it.inGrid }
-    val below = shown.filter { !it.inGrid }
-    // Approved: 2 results in each door card on TV (bigger pictures, nothing cut), 3 on phones. On TV the wide
-    // Ask for it card shows 4 (two across) and People 2, so the two cards line up
-    val cardLines = if (isTv) TV_CARD_LINES else PHONE_LINES
-    val belowLines: (SearchDoor) -> Int = {
-        if (!isTv) {
-            PHONE_LINES
-        } else if (it == SearchDoor.ASK) {
-            TV_ASK_LINES
-        } else {
-            TV_CARD_LINES
-        }
-    }
-    val firstDoor = (grid + below).firstOrNull()
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = if (isTv) 4.dp else 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+    val firstDoor = shown.firstOrNull()
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(if (isTv) 18.dp else 16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
+        modifier = modifier.fillMaxSize(),
     ) {
         // Approved: a typo still finds things, and says what it found
         if (didYouMean != null) {
-            Text(
-                text = "Did you mean $didYouMean?",
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        // Benflix "Search in plain words": what Benflix understood from the words
-        if (plainWords != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "didyoumean") {
                 Text(
-                    "SEARCHING BY IDEA",
-                    color = BenflixColors.Tray,
-                    fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp,
-                    modifier =
-                        Modifier
-                            .background(BenflixColors.Text, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-                Text(
-                    text = plainWords,
+                    text = "Did you mean $didYouMean?",
                     color = BenflixColors.Soft,
                     fontSize = BenflixType.body,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = edge(isTv)),
                 )
             }
         }
-        // Doors with nothing take one small line instead of a whole card
-        if (empty.isNotEmpty() && shown.isNotEmpty()) {
-            Text(
-                text = "Nothing in " + empty.joinToString(" · ") { it.title },
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.small,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        val perRow = if (isTv) 3 else 1
-        grid.chunked(perRow).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { door ->
-                    DoorCard(
-                        door = door,
-                        lines = lines[door].orEmpty(),
-                        max = cardLines,
-                        onOpen = open,
-                        onMore = more,
-                        onSeeAll = { seeAll = door },
-                        firstFocus = if (door == firstDoor) focusRequester else null,
-                        modifier = Modifier.weight(1f),
+        // Benflix "Search in plain words": what Benflix understood from the words
+        if (plainWords != null) {
+            item(key = "plainwords") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(start = edge(isTv), end = 16.dp),
+                ) {
+                    Text(
+                        "SEARCHING BY IDEA",
+                        color = BenflixColors.Tray,
+                        fontSize = BenflixType.tag,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp,
+                        modifier =
+                            Modifier
+                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                    Text(
+                        text = plainWords,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.body,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
-        if (below.isNotEmpty()) {
-            if (isTv && grid.isNotEmpty()) {
+        // Rows with nothing take one small line instead of a whole row
+        if (empty.isNotEmpty() && shown.isNotEmpty()) {
+            item(key = "nothing") {
                 Text(
-                    text = "Down for " + below.reversed().joinToString(" and ") { it.title } + " ›",
+                    text = "Nothing in " + empty.joinToString(" · ") { it.emptyName.orEmpty() },
                     color = BenflixColors.Muted,
                     fontSize = BenflixType.small,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(start = edge(isTv), end = 16.dp),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                // Ask for it first and wider, People beside it (stacked on phones)
-                val order = below.sortedBy { if (it == SearchDoor.ASK) 0 else 1 }
-                if (isTv) {
-                    order.forEach { door ->
-                        DoorCard(
-                            door = door,
-                            lines = lines[door].orEmpty(),
-                            max = belowLines(door),
-                            onOpen = open,
-                            onMore = more,
-                            onSeeAll = { seeAll = door },
-                            firstFocus = if (door == firstDoor) focusRequester else null,
-                            modifier = Modifier.weight(if (door == SearchDoor.ASK && order.size > 1) 2f else 1f),
+        }
+        items(shown, key = { it.name }) { door ->
+            SearchRow(
+                door = door,
+                lines = lines[door].orEmpty(),
+                isTv = isTv,
+                onOpen = open,
+                onMore = more,
+                onSeeAll = { seeAll = door },
+                firstFocus = if (door == firstDoor) focusRequester else null,
+            )
+        }
+    }
+}
+
+/** Space before the rows start: TV sits beside the side menu, phones keep a normal gutter */
+private fun edge(isTv: Boolean) = if (isTv) 4.dp else 16.dp
+
+/**
+ * One row, like a Home row: the kind's colour line, name and count, then its cards side by side. TV shows up to
+ * [ROW_MAX] cards with a See all card at the end when there are more; phones put See all beside the name.
+ */
+@Composable
+private fun SearchRow(
+    door: SearchDoor,
+    lines: List<ResultLine>,
+    isTv: Boolean,
+    onOpen: (ResultLine) -> Unit,
+    onMore: (ResultLine) -> (() -> Unit)?,
+    onSeeAll: () -> Unit,
+    firstFocus: FocusRequester? = null,
+) {
+    val few = remember(lines) { lines.take(ROW_MAX) }
+    val more = lines.size > ROW_MAX
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = edge(isTv), end = 16.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(width = 4.dp, height = 16.dp)
+                    .background(door.color, RoundedCornerShape(6.dp)),
+            )
+            Text(
+                text = door.title,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text("${lines.size}", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+            if (!isTv && more) {
+                Spacer(Modifier.weight(1f))
+                SeeAllChip(onClick = onSeeAll)
+            }
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(if (isTv) 14.dp else 10.dp),
+            contentPadding = PaddingValues(start = edge(isTv), end = 16.dp, top = 4.dp, bottom = 4.dp),
+        ) {
+            itemsIndexed(few, key = { _, l -> l.key }) { index, line ->
+                ResultPosterCard(
+                    line = line,
+                    isTv = isTv,
+                    onClick = { onOpen(line) },
+                    onLongClick = onMore(line),
+                    modifier = if (index == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier,
+                )
+            }
+            if (isTv && more) {
+                item(key = "seeall") {
+                    SeeAllCard(height = cardSize(few.last(), isTv).second, onClick = onSeeAll)
+                }
+            }
+        }
+    }
+}
+
+/** Most cards in one row; the rest are in See all */
+private const val ROW_MAX = 10
+
+/** The shape a card's picture takes */
+private enum class CardShape { POSTER, SQUARE, ROUND }
+
+private fun shapeOf(line: ResultLine): CardShape =
+    when (line) {
+        is ResultLine.Item -> {
+            when {
+                line.item.type == BaseItemKind.PERSON -> CardShape.ROUND
+                line.item.type in MUSIC_KINDS || line.item.type == BaseItemKind.TV_CHANNEL -> CardShape.SQUARE
+                else -> CardShape.POSTER
+            }
+        }
+
+        is ResultLine.Ask -> {
+            if (line.entry is AskEntry.Music) CardShape.SQUARE else CardShape.POSTER
+        }
+
+        is ResultLine.Game, is ResultLine.Book -> {
+            CardShape.POSTER
+        }
+    }
+
+/** A card picture's width and height: posters tall, music and channels square, people round */
+private fun cardSize(
+    line: ResultLine,
+    isTv: Boolean,
+): Pair<androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp> =
+    when (shapeOf(line)) {
+        CardShape.POSTER -> if (isTv) 104.dp to 156.dp else 100.dp to 150.dp
+        CardShape.SQUARE -> if (isTv) 128.dp to 128.dp else 112.dp to 112.dp
+        CardShape.ROUND -> if (isTv) 104.dp to 104.dp else 84.dp to 84.dp
+    }
+
+/** The name, picture and "Asked" mark for one result */
+private data class CardLook(
+    val name: String,
+    val url: String?,
+    val asked: Boolean,
+)
+
+@Composable
+private fun rememberCardLook(
+    line: ResultLine,
+    heightPx: Int,
+): CardLook {
+    val imageUrlService = LocalImageUrlService.current
+    return remember(line.key, heightPx) {
+        when (line) {
+            is ResultLine.Item -> {
+                CardLook(
+                    name = line.item.name.orEmpty(),
+                    url =
+                        if (line.item.type in MUSIC_KINDS) {
+                            imageUrlService.musicCover(line.item, heightPx)
+                        } else {
+                            imageUrlService.getItemImageUrl(
+                                line.item,
+                                ImageType.PRIMARY,
+                                fillHeight = heightPx,
+                                useSeriesForPrimary = true,
+                            )
+                        },
+                    asked = false,
+                )
+            }
+
+            is ResultLine.Game -> {
+                CardLook(line.game.title, null, false)
+            }
+
+            is ResultLine.Book -> {
+                CardLook(line.book.name, line.book.cover, false)
+            }
+
+            is ResultLine.Ask -> {
+                when (val e = line.entry) {
+                    is AskEntry.Title -> {
+                        CardLook(
+                            name = e.item.title.orEmpty(),
+                            url = e.item.posterUrl,
+                            asked =
+                                e.item.availability == SeerrAvailability.PENDING ||
+                                    e.item.availability == SeerrAvailability.PROCESSING ||
+                                    e.item.availability == SeerrAvailability.PARTIALLY_AVAILABLE,
                         )
                     }
-                    if (order.size == 1) Spacer(Modifier.weight(if (order[0] == SearchDoor.ASK) 1f else 2f))
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                        order.forEach { door ->
-                            DoorCard(
-                                door = door,
-                                lines = lines[door].orEmpty(),
-                                max = belowLines(door),
-                                onOpen = open,
-                                onMore = more,
-                                onSeeAll = { seeAll = door },
-                                firstFocus = if (door == firstDoor) focusRequester else null,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
+
+                    is AskEntry.Music -> {
+                        CardLook(e.item.title, e.item.cover, e.item.asked != null)
                     }
                 }
             }
@@ -400,84 +525,126 @@ fun SearchDoorResults(
     }
 }
 
-/** One door's card: thin door-colour line on top, name, count and See all, then the best few results */
+/** One card in a row: the picture in its kind's shape, then the name and a small line under it */
 @Composable
-private fun DoorCard(
-    door: SearchDoor,
-    lines: List<ResultLine>,
-    max: Int,
-    onOpen: (ResultLine) -> Unit,
-    onMore: (ResultLine) -> (() -> Unit)?,
-    onSeeAll: () -> Unit,
+private fun ResultPosterCard(
+    line: ResultLine,
+    isTv: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    firstFocus: FocusRequester? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    val ask = door == SearchDoor.ASK
-    Column(
-        modifier =
-            modifier
-                .clip(shape)
-                .background(if (ask) BenflixColors.Text.copy(alpha = .08f) else BenflixColors.Panel),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .background(door.color),
-        )
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp),
+    val (w, h) = cardSize(line, isTv)
+    val shape = if (shapeOf(line) == CardShape.ROUND) RoundedCornerShape(50) else RoundedCornerShape(8.dp)
+    val px = with(LocalDensity.current) { h.roundToPx() }
+    val look = rememberCardLook(line, px)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(w)) {
+        Surface(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            shape = ClickableSurfaceDefaults.shape(shape),
+            colors =
+                ClickableSurfaceDefaults.colors(
+                    containerColor = BenflixColors.Raised,
+                    contentColor = BenflixColors.Text,
+                    focusedContainerColor = BenflixColors.Raised,
+                    focusedContentColor = BenflixColors.Text,
+                ),
+            border = doorFocusBorder(shape),
+            // Smooth on weak TVs: no grow animation, just the focus ring
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            modifier = modifier.size(width = w, height = h),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = door.title,
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text("${lines.size}", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                if (lines.size > max) SeeAllChip(onClick = onSeeAll)
-            }
-            val few = lines.take(max)
-            if (door == SearchDoor.ASK && max > PHONE_LINES && rememberIsTv()) {
-                // TV: the wide Ask for it card shows its results two across
-                few.chunked(2).forEachIndexed { r, pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        pair.forEachIndexed { c, line ->
-                            ResultLineCard(
-                                line = line,
-                                onClick = { onOpen(line) },
-                                onLongClick = onMore(line),
-                                modifier =
-                                    Modifier.weight(1f).then(
-                                        if (r == 0 && c == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier,
-                                    ),
-                            )
-                        }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
-                    }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                if (line is ResultLine.Game) {
+                    GamePicture(line.game)
+                } else if (look.url != null) {
+                    AsyncImage(
+                        model = look.url,
+                        contentDescription = look.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Text(
+                        text = look.name,
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.small,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(8.dp),
+                    )
                 }
-            } else {
-                few.forEachIndexed { index, line ->
-                    ResultLineCard(
-                        line = line,
-                        onClick = { onOpen(line) },
-                        onLongClick = onMore(line),
-                        modifier = if (index == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier,
+                // Not on Glowfin yet: a small white "Ask" (or "Asked") mark in the corner
+                if (line is ResultLine.Ask) {
+                    Text(
+                        text = if (look.asked) "Asked" else "Ask",
+                        color = BenflixColors.Tray,
+                        fontSize = BenflixType.tag,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(5.dp)
+                                .background(BenflixColors.Text, RoundedCornerShape(50))
+                                .padding(horizontal = 7.dp, vertical = 1.dp),
                     )
                 }
             }
         }
+        Text(
+            text = look.name,
+            color = BenflixColors.Text,
+            fontSize = BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val sub = subLine(line)
+        if (sub.isNotBlank()) {
+            Text(
+                text = sub,
+                color = BenflixColors.Muted,
+                fontSize = BenflixType.tag,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
-/** Door cards on TV show 2 results each (approved), phones 3 */
-private const val TV_CARD_LINES = 2
-private const val TV_ASK_LINES = 4
-private const val PHONE_LINES = 3
+/** TV: the last card in a long row opens the whole list */
+@Composable
+private fun SeeAllCard(
+    height: androidx.compose.ui.unit.Dp,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = BenflixColors.Panel,
+                contentColor = BenflixColors.Text,
+                focusedContainerColor = BenflixColors.FocusFill,
+                focusedContentColor = BenflixColors.OnFocusFill,
+            ),
+        border = doorFocusBorder(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = Modifier.size(width = 104.dp, height = height),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text("See all ›", fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Glowfin: anime = it lives in a folder or library with "anime" in its name, or has the Anime genre */
+private fun BaseItem.isAnimeTitle(): Boolean =
+    data.path?.contains("anime", ignoreCase = true) == true ||
+        data.genres.orEmpty().any { it.equals("anime", ignoreCase = true) }
 
 /** One line in a door: something on Benflix, a game, or something to ask for */
 private sealed interface ResultLine {
