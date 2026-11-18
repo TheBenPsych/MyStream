@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -88,6 +91,7 @@ fun phoneTabFor(
 fun PhoneBottomBar(
     tabs: List<PhoneTab>,
     selected: String,
+    moreDot: Boolean,
     onTab: (PhoneTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -144,6 +148,16 @@ fun PhoneBottomBar(
                             size = 24.dp,
                             contentDescription = null,
                         )
+                        // On phones a white dot sits on More when an app update is ready
+                        if (tab.key == TAB_MORE && moreDot) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-12).dp, y = 1.dp)
+                                    .size(10.dp)
+                                    .background(BenflixColors.Text, CircleShape),
+                            )
+                        }
                     }
                     Text(
                         text = tab.label,
@@ -235,7 +249,10 @@ fun PhoneMoreSheet(
     userImageUrl: String?,
     userName: String,
     minutesWatched: Long?,
-    profileItems: List<ProfileMenuItem>?,
+    /** Ben 2026-11-18: tapping your picture opens the Me page (Settings, Help and the rest live there). Null = Kids/Guest */
+    onMe: (() -> Unit)?,
+    /** Ben 2026-11-18 (approved update-button-1): Update is the first line when a new version is ready */
+    onUpdate: (() -> Unit)? = null,
     onDoor: (BenflixDoor) -> Unit,
     onSearch: () -> Unit,
     /** Glowfin: Anime has its own spot (null = hidden, like Kids' easy mode) */
@@ -250,6 +267,9 @@ fun PhoneMoreSheet(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.verticalScroll(rememberScrollState()),
         ) {
+            if (onUpdate != null) {
+                SheetRow(BenflixIcon.DOWNLOAD, "Update", Glowfin.Aqua, "New version", onUpdate)
+            }
             if (showSearch) SheetRow(null, "Search", BenflixColors.Soft, null, onSearch, glowIcon = GlowfinIcon.SEARCH)
             if (onAnime != null) SheetRow(null, "Anime", BenflixColors.Soft, null, onAnime, glowIcon = GlowfinIcon.ANIME)
             doors.forEach { door ->
@@ -269,7 +289,11 @@ fun PhoneMoreSheet(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .then(if (onMe != null) Modifier.clickable(onClick = onMe) else Modifier)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 UserIconCardImage(
                     id = user.id,
@@ -290,18 +314,11 @@ fun PhoneMoreSheet(
                         Text(watchedWords(it), color = BenflixColors.Muted, fontSize = 12.sp, maxLines = 1)
                     }
                 }
+                if (onMe != null) {
+                    Text("Your page  ›", color = BenflixColors.Soft, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
-            SheetRow(BenflixIcon.SWITCH, "Switch profile", BenflixColors.Soft, null, onSwitchProfile)
-            profileItems.orEmpty().forEach { item ->
-                SheetRow(
-                    item.icon,
-                    item.title,
-                    if (item.apart) BenflixColors.Muted else BenflixColors.Soft,
-                    item.note,
-                    item.onClick,
-                    item.apart,
-                )
-            }
+            if (onMe == null) SheetRow(BenflixIcon.SWITCH, "Switch profile", BenflixColors.Soft, null, onSwitchProfile)
             Spacer(Modifier.height(4.dp))
         }
     }

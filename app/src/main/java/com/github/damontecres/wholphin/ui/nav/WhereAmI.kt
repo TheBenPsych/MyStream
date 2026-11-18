@@ -42,6 +42,7 @@ object WhereAmI {
             is Destination.Requests -> "Requests"
             is Destination.AnimeGenres -> destination.picked.joinToString(" + ").ifEmpty { "Anime deep search" }
             is Destination.MyBenflix -> "My Glowfin"
+            is Destination.Me -> "Me"
             is Destination.Favorites -> "My List"
             is Destination.Settings -> "Settings"
             is Destination.ServerStatus -> "Server"

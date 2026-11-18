@@ -360,6 +360,10 @@ sealed class Destination(
     @Serializable
     data object PosterFixer : Destination(false)
 
+    /** Glowfin (Ben 2026-11-18): your picture's full page: My watching, Settings, Server, Help and the rest */
+    @Serializable
+    data object Me : Destination(false)
+
     /** Benflix: admin-only page showing who's watching and how the server is doing */
     @Serializable
     data object ServerStatus : Destination(false)
