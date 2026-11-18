@@ -58,7 +58,8 @@ fun ApplicationContent(
     navigationManager: NavigationManager,
     preferences: UserPreferences,
     modifier: Modifier = Modifier,
-    enableTopScrim: Boolean = true,
+    // Ben 2026-11-18: no dark fade across the top of pictures (the clock has its own shadow)
+    enableTopScrim: Boolean = false,
     viewModel: ApplicationContentViewModel = hiltViewModel(),
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)

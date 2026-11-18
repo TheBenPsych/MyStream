@@ -60,7 +60,8 @@ fun Backdrop(
     backdropStyle: BackdropStyle,
     viewModel: ApplicationContentViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
-    enableTopScrim: Boolean = true,
+    // Ben 2026-11-18: no dark fade across the top of pictures (the clock has its own shadow)
+    enableTopScrim: Boolean = false,
     useExistingImageAsPlaceholder: Boolean = false,
     crossfadeDuration: Duration = 800.milliseconds,
 ) {
@@ -85,7 +86,8 @@ fun Backdrop(
     drawerIsOpen: Boolean,
     backdropStyle: BackdropStyle,
     modifier: Modifier = Modifier,
-    enableTopScrim: Boolean = true,
+    // Ben 2026-11-18: no dark fade across the top of pictures (the clock has its own shadow)
+    enableTopScrim: Boolean = false,
     useExistingImageAsPlaceholder: Boolean = false,
     crossfadeDuration: Duration = 800.milliseconds,
 ) {

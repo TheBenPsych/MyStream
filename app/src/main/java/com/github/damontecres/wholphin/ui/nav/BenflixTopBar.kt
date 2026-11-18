@@ -29,8 +29,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -45,6 +47,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -149,9 +152,20 @@ internal fun BigClock(scale: Float) {
     val parts = timeString.trim().split(' ', ' ', ' ')
     val time = parts.firstOrNull().orEmpty()
     val suffix = parts.drop(1).joinToString(" ")
+    // Ben 2026-11-18: no dark fade at the top of picture pages any more, so the clock gets a soft shadow instead
+    val shadowed =
+        LocalTextStyle.current.copy(
+            shadow =
+                Shadow(
+                    color = Color.Black.copy(alpha = .6f),
+                    offset = Offset(0f, 2f),
+                    blurRadius = 10f,
+                ),
+        )
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = time,
+            style = shadowed,
             color = BenflixColors.Soft,
             fontSize = 25.sp * scale,
             fontWeight = FontWeight.Bold,
@@ -161,6 +175,7 @@ internal fun BigClock(scale: Float) {
         if (suffix.isNotBlank()) {
             Text(
                 text = suffix,
+                style = shadowed,
                 color = BenflixColors.Muted,
                 fontSize = 13.sp * scale,
                 fontWeight = FontWeight.SemiBold,

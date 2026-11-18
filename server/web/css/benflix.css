@@ -1152,7 +1152,7 @@ html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-siz
 /* Glowfin D1 title pages (Ben 2026-11-18): story + buttons over the faded picture, every part a row underneath */
 .tp.tp-rows .tp-hero { height: auto; min-height: 66vh; }
 .tp.tp-rows .main { position: relative; inset: auto; min-height: 66vh; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: calc(var(--bar) + 4vh) var(--gutter) 8px; }
-.tp.tp-rows .tp-name { max-width: 55%; }
+.tp.tp-rows .tp-name { max-width: 55%; align-self: flex-start; }
 .tp.tp-rows .tp-name .t { font-family: "Glowfin Sora", sans-serif; font-weight: 600; }
 .tp.tp-rows .meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .tp.tp-rows .tp-scores { display: inline-flex; gap: 14px; }
@@ -2218,3 +2218,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 @media (max-width: 600px) {
   .guide .ghead, .guide .grow-ch { grid-template-columns: minmax(0, 1fr); }
 }
+/* Ben 2026-11-18: no dark fade across the very top on pages that show a picture (Home / For you pages, movie and show
+   pages). The picture runs right to the top; the clock and top words get a soft shadow so they still read. */
+#page:has(#doorTop) > .top, #page:has(.tp-hero:not(.covered)) > .top { background: none; }
+.clock, .top .place { text-shadow: 0 1px 3px rgba(0,0,0,.55), 0 2px 14px rgba(0,0,0,.45); }
