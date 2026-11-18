@@ -215,6 +215,9 @@ class AppUpgradeHandler
             /** Set once everyone was moved to the standard Benflix subtitle look (Atkinson, white, black outline) */
             private const val SUBTITLE_STANDARD_KEY = "benflix.subtitles.standardLook"
 
+            /** Set once TVs were moved to Refresh rate switching on */
+            private const val REFRESH_RATE_ON_KEY = "benflix.playback.refreshRateOn"
+
             private const val SUBFONT_FILE = "subfont.ttf"
             private const val SUBFONT_FALLBACK = "font-roboto/Roboto-Regular.ttf"
 
@@ -603,6 +606,19 @@ class AppUpgradeHandler
                     }
                 }
                 shadowPrefs.edit { putBoolean(SUBTITLE_STANDARD_KEY, true) }
+            }
+
+            // Benflix (Ben, 2026-11-18): TVs switch to the video's own frame rate (24 for shows and movies), so
+            // 24-frame video doesn't hitch on a 60 Hz screen. Every TV moves to it once; it can be turned off after.
+            if (!shadowPrefs.getBoolean(REFRESH_RATE_ON_KEY, false)) {
+                if (com.github.damontecres.wholphin.ui.touch
+                        .isTvDevice(context)
+                ) {
+                    appPreferences.updateData {
+                        it.updatePlaybackPreferences { refreshRateSwitching = true }
+                    }
+                }
+                shadowPrefs.edit { putBoolean(REFRESH_RATE_ON_KEY, true) }
             }
 
             if (previous.isLessThan(Version.fromString("1.0.10-0-g0"))) {
