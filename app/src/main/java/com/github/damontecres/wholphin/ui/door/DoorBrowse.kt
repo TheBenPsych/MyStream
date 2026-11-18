@@ -60,6 +60,12 @@ fun DoorBrowsePage(
             AllTitlesPage(door, true, viewModel, modifier)
             return
         }
+
+        // Ben 2026-11-18: every movie box set, one card each (opens to its movies)
+        DoorViewModel.BROWSE_COLLECTIONS -> {
+            BoxSetsPage(door, viewModel, modifier)
+            return
+        }
     }
     var library by remember { mutableStateOf<Library?>(null) }
     var looked by remember { mutableStateOf(false) }
@@ -155,6 +161,31 @@ private fun AllTitlesPage(
             },
         onClick = { viewModel.navigationManager.navigateTo(it.destination()) },
         modifier = modifier,
+        // Ben 2026-11-18: Anime's Shows and Movies tabs use the same big cards as its For you rows
+        bigCards = anime,
+    )
+}
+
+/** Movies > Collections: all of Tower's box sets in the shared [TitleGrid], one card per box set */
+@Composable
+private fun BoxSetsPage(
+    door: BenflixDoor,
+    viewModel: DoorViewModel,
+    modifier: Modifier = Modifier,
+) {
+    var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
+    LaunchedEffect(door) { loaded = viewModel.boxSets() }
+    val items = loaded ?: return LoadingPage(modifier.fillMaxSize())
+    TitleGrid(
+        title = "Collections",
+        items = items,
+        animeIds = emptySet(),
+        movies = true,
+        rememberKey = viewModel.gridKey(door, "collections"),
+        sorts = listOf(TitleSort.A_TO_Z, TitleSort.NEWEST, TitleSort.YEAR),
+        onClick = { viewModel.navigationManager.navigateTo(it.destination()) },
+        modifier = modifier,
+        noun = "collection" to "collections",
     )
 }
 

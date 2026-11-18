@@ -565,6 +565,24 @@ class DoorDataService
                 )
             }
 
+        /**
+         * Every movie box set this person can see (Harry Potter Collection and so on), wherever Jellyfin keeps it.
+         * Box sets live in Jellyfin's own Collections folder, not inside the Movies library, so this asks for all of them.
+         */
+        suspend fun boxSets(userId: UUID): List<BaseItem> =
+            items(
+                GetItemsRequest(
+                    userId = userId,
+                    includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                    recursive = true,
+                    sortBy = listOf(ItemSortBy.SORT_NAME),
+                    sortOrder = listOf(SortOrder.ASCENDING),
+                    fields = listOf(ItemFields.SORT_NAME, ItemFields.DATE_CREATED, ItemFields.CHILD_COUNT),
+                    enableUserData = true,
+                    limit = EVERYTHING_LIMIT,
+                ),
+            ).distinctBy { it.id }
+
         /** Every id in these libraries (used to tell anime apart), remembered for an hour */
         suspend fun idsIn(
             userId: UUID,

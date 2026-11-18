@@ -117,6 +117,10 @@ fun TitleGrid(
     sorts: List<TitleSort>,
     onClick: (BaseItem) -> Unit,
     modifier: Modifier = Modifier,
+    /** What one title / many titles are called in the count line; null = movie(s) or show(s) */
+    noun: Pair<String, String>? = null,
+    /** Cards as big as the For you rows (fewer across) */
+    bigCards: Boolean = false,
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
@@ -219,10 +223,11 @@ fun TitleGrid(
             item { SearchBox(value = search, onValueChange = { search = it }) }
         }
         val count = shown.size
-        val noun = if (movies) (if (count == 1) "movie" else "movies") else (if (count == 1) "show" else "shows")
+        val (one, many) = noun ?: if (movies) ("movie" to "movies") else ("show" to "shows")
+        val word = if (count == 1) one else many
         val watched = shown.count { it.data.userData?.played == true }
         Text(
-            text = "%,d %s · %,d watched · %s".format(count, noun, watched, sort.label),
+            text = "%,d %s · %,d watched · %s".format(count, word, watched, sort.label),
             color = BenflixColors.Muted,
             fontSize = BenflixType.small,
             fontWeight = FontWeight.SemiBold,
@@ -253,7 +258,17 @@ fun TitleGrid(
             return@Column
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val columns = if (isTv) 8 else ((maxWidth / 110.dp).toInt()).coerceIn(3, 8)
+            val columns =
+                when {
+                    // The For you rows' card size: 120dp on TVs, about 3.5 across on phones
+                    bigCards && isTv -> ((maxWidth + 12.dp) / (BIG_CARD + 12.dp)).toInt().coerceIn(4, 8)
+
+                    bigCards -> ((maxWidth / 128.dp).toInt()).coerceIn(2, 6)
+
+                    isTv -> 8
+
+                    else -> ((maxWidth / 110.dp).toInt()).coerceIn(3, 8)
+                }
             val width = (maxWidth - 12.dp * (columns - 1) - 8.dp) / columns
             var firstTitle = -1
             LazyVerticalGrid(
@@ -508,3 +523,6 @@ private fun SearchBox(
 }
 
 private const val PREFS = "benflix-grid"
+
+/** A For you row card's width on TVs */
+private val BIG_CARD = 120.dp
