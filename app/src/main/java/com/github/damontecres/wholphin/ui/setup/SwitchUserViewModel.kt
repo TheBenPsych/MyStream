@@ -541,9 +541,6 @@ data class SwitchUserState(
     val serverVersionSupported: ServerVersionSupported = ServerVersionSupported.UNKNOWN,
 )
 
-
-/** Benflix speed: a new random poster wall once a day */
-
 /** How long Who's watching spends checking profile pictures with the server */
 private const val PICTURE_CHECK_MS = 6_000L
 

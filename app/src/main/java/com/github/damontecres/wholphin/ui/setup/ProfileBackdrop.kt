@@ -105,7 +105,16 @@ fun NightSea(modifier: Modifier = Modifier) {
 
                     // Glow where the fin meets the water
                     squashed(horizon, .2f) {
-                        drawRect(finGlow, topLeft = Offset(finLeft - finW, horizon - finW), size = size.copy(width = finW * 3, height = finW * 2))
+                        drawRect(
+                            finGlow,
+                            topLeft = Offset(finLeft - finW, horizon - finW),
+                            size =
+                                size.copy(
+                                    width = finW * 3,
+                                    height =
+                                        finW * 2,
+                                ),
+                        )
                     }
                     // Mirror image: the fin flipped (a little shorter) and faded out going down
                     val area = Rect(finLeft - finW, horizon, finLeft + finW * 2, horizon + 50f * unit)
