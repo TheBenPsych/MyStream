@@ -120,9 +120,7 @@
   const stop = () => { stopped = true; if (timer) clearInterval(timer); timer = null; };
   const play = (p) => {
     if (p.type !== "Series") return B.go(`#/play/${p.id}?resume=1`);
-    const u = B.uid();
-    B.get(`/Shows/NextUp?SeriesId=${p.id}&UserId=${u}&Limit=1&EnableResumable=true`)
-      .then((r) => (r.Items || [])[0] || B.get(`/Shows/${p.id}/Episodes?UserId=${u}&Limit=1`).then((x) => (x.Items || [])[0]))
+    B.seriesNextEp(p.id)
       .then((ep) => B.go(ep ? `#/play/${ep.Id}?resume=1` : `#/show/${p.id}`))
       .catch(() => B.go(`#/show/${p.id}`));
   };

@@ -129,7 +129,7 @@ fun SubtitleStylePage(
                                 SubtitleView(context)
                             },
                             update = {
-                                it.setStyle(prefs.toSubtitleStyle())
+                                it.setStyle(prefs.toSubtitleStyle(it.context))
                                 it.setFixedTextSize(Dimension.SP, prefs.fontSize.toFloat())
                                 it.setCues(
                                     listOf(
@@ -153,7 +153,7 @@ fun SubtitleStylePage(
                         SubtitleView(context)
                     },
                     update = {
-                        it.setStyle(prefs.toSubtitleStyle())
+                        it.setStyle(prefs.toSubtitleStyle(it.context))
                         it.setFixedTextSize(Dimension.SP, prefs.fontSize.toFloat())
                         it.setCues(
                             listOf(
@@ -178,7 +178,7 @@ fun SubtitleStylePage(
                                 .apply {
                                     resetSubtitles()
                                 }.build()
-                                .toSubtitleStyle(),
+                                .toSubtitleStyle(it.context),
                         )
                         it.setCues(
                             listOf(

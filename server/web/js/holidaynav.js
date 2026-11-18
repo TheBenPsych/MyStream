@@ -50,6 +50,282 @@
   }, extra || {});
   const is = (name) => () => !!(B[name] && B[name]());
 
+  /* Easter's drawings, made from the approved Easter kit (easter.js loads first) */
+  function easterNav() {
+    const base = { countdown: cd(() => B.ea), pickTags: ["easter", "easter bunny"], pickWords: ["Easter", "Peter Rabbit"] };
+    const K = window.BenflixEaster && window.BenflixEaster.kit;
+    if (!K) return base;
+    const EGGS = [["#FFB8D2", "#7B5BD6", "zig"], ["#BFE6FF", "#3F7FD0", "dots"], ["#FFF1A6", "#F08A24", "stripes"], ["#C9F2C0", "#E8508A", "flowers"], ["#E3D5FF", "#4AA8C8", "waves"], ["#FFD9B8", "#5AAE52", "checks"]];
+    // svg.i draws lines with currentColor and no fill: put the drawing's own defaults back
+    const plain = (s) => `<g fill="#000" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter">${s}</g>`;
+    // the part of each charm (on its 240 x 220 door) that is the thing itself, without the pin and ribbon
+    const CROP = { movies: "144 34 84 102", shows: "140 28 92 106", live: "144 42 84 100", games: "128 18 116 104", music: "136 4 104 140", books: "146 10 80 130" };
+    const icons = {};
+    Object.keys(CROP).forEach((k) => { icons[k] = plain(`<svg x="0" y="0" width="24" height="24" viewBox="${CROP[k]}">${K.CHARM[k]()}</svg>`); });
+    const sway = "<style>.eaSw{transform-box:fill-box;transform-origin:50% 0;animation:eaSw 4.5s ease-in-out infinite}@keyframes eaSw{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}</style>";
+    // A painted egg on a pink ribbon, hanging from a pearl pin (viewBox 0 0 12 18)
+    const mark = plain(`${sway}<g class="eaSw"><path d="M6 1.4V5.6" stroke="#C25A86" stroke-width=".9"/>${K.egg(6, 11.4, 4.6, 6.2, "#FFB8D2", "#7B5BD6", "zig", { nosh: true })}</g><circle cx="6" cy="1.4" r="1.4" fill="#F4F1EA" stroke="#B8B0A0" stroke-width=".3"/>`);
+    // Wide and cut to the screen (slice), so the eggs keep their shape at any width: 2 units = 1 pixel. Ben
+    // 2026-11-17: the greeting now sits top left on the clock's line, so the ribbon stays in a thin band along the
+    // very top with its eggs ending above the greeting's letters, and the grass stays inside its own box so it
+    // never covers the news cards. Phones put the greeting at the top of the picture: eggs there hang only on the
+    // right, past the words
+    const wide = (h, art) => (cls) => `<svg class="${cls || ""}" viewBox="0 0 4800 ${h}" preserveAspectRatio="xMinYMin slice" style="height:${h / 2}px" aria-hidden="true">${plain(art)}</svg>`;
+    let top = sway.replace("</style>", "@media (max-width:700px){.eaL{display:none}}</style>"), rope = "M0 6";
+    const step = 300, pins = [];
+    for (let x = 0; x < 4800; x += step) { rope += `Q${x + step / 2} ${6 + 24} ${x + step} 6`; pins.push(x); }
+    top += `<path d="${rope}" stroke="#C25A86" stroke-width="9" fill="none"/><path d="${rope}" stroke="#F28DB2" stroke-width="6" fill="none"/><path d="${rope}" stroke="#FFD0E2" stroke-width="1.6" fill="none" transform="translate(0 -1.5)"/>`;
+    pins.forEach((x, i) => {
+      const m = x + step / 2, e = EGGS[i % 6];
+      top += `<g class="eaSw${m < 560 ? " eaL" : ""}" style="animation-delay:${(-i * 0.7).toFixed(1)}s"><path d="M${m} 18V25" stroke="#C25A86" stroke-width="2.4"/>${K.egg(m, 39, 11, 15, e[0], e[1], e[2])}</g>`;
+      top += `<circle cx="${x}" cy="6" r="5" fill="#F4F1EA" stroke="#B8B0A0"/><circle cx="${x - 1.6}" cy="4.4" r="1.6" fill="#fff"/>`;
+    });
+    // Spring grass with tulips and eggs half hidden in it
+    let seed = 3;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const grass = (yb, h) => { let s = ""; for (let x = 0; x < 4800; x += 5) { const hh = h * (0.55 + rnd() * 0.6), lean = (rnd() - 0.5) * 18; s += `<path d="M${x} ${yb}q${(lean * 0.3).toFixed(1)} ${(-hh * 0.6).toFixed(1)} ${lean.toFixed(1)} ${(-hh).toFixed(1)}" stroke="${["#3E8A45", "#5AAE52", "#7CCB6A", "#4FA052"][(x / 5) % 4]}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`; } return s; };
+    let bottom = `<rect x="0" y="58" width="4800" height="14" fill="#24502F"/>` + grass(72, 40);
+    for (let i = 0, x = 60; x < 4800; i++, x += 150) {
+      if (i % 2) { const e = EGGS[i % 6]; bottom += K.egg(x, 46, 17, 23, e[0], e[1], e[2]); }
+      else bottom += `<path d="M${x} 32V72" stroke="#3E8A45" stroke-width="3.4"/>` + K.tulip(x, 36, ["#FF6F91", "#FFD23F", "#FFFFFF", "#C9B2F5"][(i / 2) % 4], (i % 5 - 2) * 4, 1.2);
+    }
+    bottom += grass(72, 22);
+    return Object.assign(base, { icons, mark, topTrim: wide(56, top), bottomTrim: wide(72, bottom) });
+  }
+  // New Year's (Ben 2026-11-17, "Midnight Fringe"): the rail and phone-tab icons are the New Year party charms,
+  // a gold and silver foil fringe across the top of Home, confetti along the bottom. At midnight the fringe flashes
+  // and fresh confetti falls for half a minute; from New Year's Day the pick is a fresh-start film.
+  const NY = (() => {
+    const G = "#E8B84A", GL = "#F7D98A", GD = "#B98F2E", GE = "#7A5A16", S = "#C9D1DE", SD = "#8E97A8", K = "#1B1B1F";
+    const f = (n) => +n.toFixed(2);
+    const star = (cx, cy, o, i) => {
+      const p = [];
+      for (let k = 0; k < 10; k++) { const r = k % 2 ? i : o, a = -Math.PI / 2 + k * Math.PI / 5; p.push([f(cx + r * Math.cos(a)), f(cy + r * Math.sin(a))]); }
+      let s = `<path d="M${p.map((q) => q.join(" ")).join("L")}Z" fill="${G}"/>`;
+      for (let k = 0; k < 10; k += 2) {
+        s += `<path d="M${cx} ${cy}L${p[k].join(" ")}L${p[(k + 1) % 10].join(" ")}Z" fill="${GD}"/>`;
+        s += `<path d="M${cx} ${cy}L${p[k].join(" ")}L${p[(k + 9) % 10].join(" ")}Z" fill="${GL}" fill-opacity=".7"/>`;
+      }
+      return s + `<path d="M${p.map((q) => q.join(" ")).join("L")}Z" fill="none" stroke="${GE}" stroke-width=".55"/>`;
+    };
+    const spark = (x, y, r, dur) => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z" fill="#fff"><animate attributeName="opacity" values="1;.2;1" dur="${dur}s" repeatCount="indefinite"/></path>`;
+    const balloon = (cx, cy, rx, ry, c, e) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${c}" stroke="${e}" stroke-width=".5"/><ellipse cx="${f(cx - rx * .37)}" cy="${f(cy - ry * .37)}" rx="${f(rx * .25)}" ry="${f(ry * .31)}" fill="#fff" fill-opacity=".55"/><path d="M${f(cx - .9)} ${f(cy + ry + .9)}L${f(cx + .9)} ${f(cy + ry + .9)}L${cx} ${f(cy + ry - .2)}Z" fill="${c}"/>`;
+    const g = (inner) => `<g stroke="none" stroke-linecap="round">${inner}</g>`;
+    // the watch face's ticks
+    let ticks = "";
+    for (let h = 0; h < 12; h++) {
+      const a = h * Math.PI / 6, r1 = h % 3 ? 5.9 : 5.3;
+      ticks += `<line x1="${f(12 + r1 * Math.sin(a))}" y1="${f(14 - r1 * Math.cos(a))}" x2="${f(12 + 6.6 * Math.sin(a))}" y2="${f(14 - 6.6 * Math.cos(a))}" stroke="${K}" stroke-width="${h % 3 ? .4 : .7}"/>`;
+    }
+    // the mirror ball's tiles
+    const TL = ["#D7DDE8", "#AEB7C6", "#6E788A", "#E9EEF5", "#9CC3E6", "#BFC7D4"];
+    let tiles = "";
+    for (let row = 0, y = 5; y < 23; y += 1.85, row++) for (let col = 0, x = 3 + (row % 2) * .9; x < 21; x += 1.85, col++) tiles += `<rect x="${f(x)}" y="${f(y)}" width="1.6" height="1.6" fill="${TL[(row * 7 + col * 3 + row * col) % 6]}"/>`;
+    // the rosette's pleats
+    let pleats = "";
+    for (let k = 0; k < 18; k++) {
+      const a0 = 2 * Math.PI * k / 18 - Math.PI / 2, a1 = 2 * Math.PI * (k + 1) / 18 - Math.PI / 2, am = (a0 + a1) / 2;
+      pleats += `<path d="M12 12L${f(12 + 11.4 * Math.cos(a0))} ${f(12 + 11.4 * Math.sin(a0))}L${f(12 + 10.5 * Math.cos(am))} ${f(12 + 10.5 * Math.sin(am))}L${f(12 + 11.4 * Math.cos(a1))} ${f(12 + 11.4 * Math.sin(a1))}Z" fill="${k % 2 ? K : G}"${k % 2 ? ` stroke="${GD}" stroke-width=".35"` : ""}/>`;
+    }
+    const bell = (cx, cy, tilt) => `<g transform="translate(${cx} ${cy}) rotate(${tilt} 0 -5)"><g><animateTransform attributeName="transform" type="rotate" values="-6 0 -5;6 0 -5;-6 0 -5" dur="2.6s" repeatCount="indefinite"/><path d="M-1.3 -5C-3.8 -4.6 -3.8 -1 -4 1.6L-5.2 4.2L5.2 4.2L4 1.6C3.8 -1 3.8 -4.6 1.3 -5Z" fill="${G}" stroke="${GE}" stroke-width=".45"/><line x1="-2.4" y1="-3" x2="-2.9" y2="2.4" stroke="${GL}" stroke-width=".8"/><circle cx="0" cy="5.1" r="1.1" fill="${GD}"/></g></g>`;
+    const icons = {
+      home: g(star(12, 13, 10.5, 4.4) + spark(20.5, 3.8, 2.6, 2.8)),
+      books: g(`<g><animateTransform attributeName="transform" type="rotate" values="-5 12 1.5;5 12 1.5;-5 12 1.5" dur="4.8s" repeatCount="indefinite"/><line x1="12" y1="1.5" x2="12" y2="7" stroke="${G}" stroke-width=".9"/><circle cx="12" cy="1.5" r="1.5" fill="${GL}" stroke="${GE}" stroke-width=".4"/>${star(12, 15, 8.6, 3.7)}</g>`),
+      movies: g(`<g stroke="#EDEDED" stroke-width=".45"><line x1="7.5" y1="13.6" x2="12.5" y2="22.5"/><line x1="16.8" y1="12.2" x2="12.5" y2="22.5"/><line x1="12.5" y1="17" x2="12.5" y2="22.5"/></g><g><animateTransform attributeName="transform" type="translate" values="0 0;0 -.7;0 0" dur="3.6s" repeatCount="indefinite"/>${balloon(7.5, 7.6, 5.2, 6, G, GE)}</g><g><animateTransform attributeName="transform" type="translate" values="0 -.6;0 .2;0 -.6" dur="3.2s" repeatCount="indefinite"/>${balloon(16.8, 6.6, 4.7, 5.6, S, SD)}</g>${star(12.5, 14.2, 3.9, 1.7)}<circle cx="12.5" cy="22.5" r="1.3" fill="${G}"/>`),
+      shows: g(`<line x1="12" y1="0" x2="12" y2="3" stroke="${G}" stroke-width=".9"/><circle cx="12" cy="2.4" r="1.5" fill="none" stroke="${G}" stroke-width=".7"/><rect x="10.6" y="3.4" width="2.8" height="2.2" fill="${G}"/><circle cx="12" cy="14" r="9.4" fill="${GD}"/><circle cx="12" cy="14" r="8.8" fill="${G}"/><circle cx="12" cy="14" r="7.2" fill="#FBF4E2"/>${ticks}<line x1="12" y1="14" x2="11.86" y2="10" stroke="${K}" stroke-width="1.1"/><line x1="12" y1="14" x2="11.4" y2="8.2" stroke="${K}" stroke-width=".7"/><line x1="12" y1="14" x2="12" y2="8" stroke="#D7263D" stroke-width=".35"><animateTransform attributeName="transform" type="rotate" from="0 12 14" to="360 12 14" dur="60s" repeatCount="indefinite"/></line><circle cx="12" cy="14" r=".7" fill="${K}"/>`),
+      live: g(`<line x1="12" y1="0" x2="12" y2="3.2" stroke="${G}" stroke-width=".7"/><rect x="10.5" y="3" width="3" height="2" fill="${G}"/><clipPath id="nyBall"><circle cx="12" cy="14" r="9"/></clipPath><circle cx="12" cy="14" r="9" fill="${SD}"/><g clip-path="url(#nyBall)">${tiles}</g><circle cx="12" cy="14" r="9" fill="none" stroke="${K}" stroke-opacity=".6" stroke-width=".5"/>${spark(8.2, 10.2, 2.6, 2.4)}${spark(16.4, 17.4, 1.8, 3.1)}`),
+      games: g(`<g><animateTransform attributeName="transform" type="rotate" values="-4 12 12;4 12 12;-4 12 12" dur="7.8s" repeatCount="indefinite"/>${pleats}</g><circle cx="12" cy="12" r="5" fill="${K}"/><circle cx="12" cy="12" r="4.4" fill="none" stroke="${G}" stroke-width=".9"/>${star(12, 12.2, 3, 1.25)}`),
+      music: g(`<line x1="12" y1="4.5" x2="7.6" y2="9" stroke="${G}" stroke-width=".8"/><line x1="12" y1="4.5" x2="16.4" y2="9" stroke="${G}" stroke-width=".8"/>${bell(7.3, 14.6, -14)}${bell(16.7, 14.6, 14)}<ellipse cx="9.3" cy="3.3" rx="2.5" ry="1.7" fill="none" stroke="${G}" stroke-width=".8"/><ellipse cx="14.7" cy="3.3" rx="2.5" ry="1.7" fill="none" stroke="${G}" stroke-width=".8"/><circle cx="12" cy="3.3" r="1.3" fill="${G}"/>`),
+    };
+    // steady 0..1 numbers so the fringe and confetti look the same every time
+    const h = (i, s) => { let x = Math.imul(i, 374761393) + Math.imul(s, 668265263); x = Math.imul(x ^ (x >>> 13), 1274126177); return ((x ^ (x >>> 16)) & 0xffff) / 65535; };
+    const bursting = () => { const d = new Date(); return d.getMonth() === 0 && d.getDate() === 1 && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() < 30; };
+    // Short (about 16px of the 44px strip) so it stays above the greeting, now on the clock's line
+    const fringe = (burst) => {
+      const cols = [G, GL, S, GD, "#fff"];
+      let s = `<style>.nyf{animation:nyf 3.4s ease-in-out infinite}.nyf.b{animation-duration:.25s}@keyframes nyf{50%{opacity:.72}}</style><rect width="1200" height="4" fill="${G}"/>`;
+      for (let i = 0; i < 380; i++) {
+        const x = f(i * 3.16 + h(i, 1)), len = f(22 * (.6 + .4 * h(i, 2))), sw = f(Math.sin(i * .37) * 1.4);
+        s += `<path class="nyf${burst ? " b" : ""}" style="animation-delay:-${f(h(i, 3) * 3.4)}s" d="M${x} 2Q${f(x + sw * .3)} ${f(len / 2)} ${f(x + sw)} ${len}L${f(x + sw + 2.3)} ${f(len - .6)}Q${f(x + 2.3)} ${f(len / 2)} ${f(x + 2.3)} 2Z" fill="${cols[Math.min(4, Math.floor(h(i, 3) * 5))]}"/>`;
+      }
+      return s;
+    };
+    const confetti = (burst) => {
+      const cols = [G, S, GL, "#7FA6FF", "#fff"];
+      const piece = (i, x, y) => (i % 4 === 0
+        ? `<circle cx="${x}" cy="${y}" r="${f(2 + h(i, 6) * 1.2)}" fill="${cols[i % 5]}"/>`
+        : `<rect x="${f(x - 4)}" y="${f(y - 1.6)}" width="${f(6.5 + h(i, 8) * 3)}" height="3.2" fill="${cols[i % 5]}" transform="rotate(${f(h(i, 7) * 180)} ${x} ${y})"/>`);
+      let s = "";
+      for (let i = 0; i < 170; i++) s += piece(i, f(h(i, 4) * 1200), f(40 * (.35 + .6 * h(i, 5))));
+      if (burst) for (let i = 0; i < 90; i++) s += `<g><animateTransform attributeName="transform" type="translate" values="0 -40;0 40" dur="${f(1.6 + h(i, 11))}s" begin="-${f(h(i, 10) * 2)}s" repeatCount="15"/>${piece(i + 1, f(h(i, 9) * 1200), 0)}</g>`;
+      return s;
+    };
+    const eve = ["New Year", "Harry Met Sally", "The Apartment", "Trading Places", "Hudsucker"];
+    const fresh = ["About Time", "Groundhog Day", "Walter Mitty", "Yes Man", "Julie & Julia", "Soul", "Inside Out"];
+    // Getters, so the midnight burst and the New Year's Day pick are worked out each time Home draws
+    return (entry) => Object.defineProperties(entry, {
+      icons: { value: icons, enumerable: true },
+      topTrim: { get: () => fringe(bursting()), enumerable: true },
+      bottomTrim: { get: () => confetti(bursting()), enumerable: true },
+      pickWords: { get: () => (new Date().getMonth() === 0 ? fresh : eve), enumerable: true },
+      pickTags: { get: () => (new Date().getMonth() === 0 ? [] : ["new year's eve"]), enumerable: true },
+    });
+  })();
+
+  /* ---------- 4th of July (approved 2026-11-17, sheet july4-nav-1-directions; the app's ui/theme/July4Nav.kt) ----------
+     The rail and phone-tab icons in red, white and blue taken in turn, a twinkling gold star beside the one you're
+     on, pleated fan bunting in swags across the top of Home, lit sparklers along the bottom, bigger fireworks over
+     the bunting on the 4th from 9 PM, and "It's the 4th!" on the day. Kids too. */
+  const july4 = () => {
+    const RD = "#E0404F", RDK = "#9E1E2C", NV = "#24366E", CR = "#F4F0E8", CRS = "#CFC7B8";
+    const f = (n) => Math.round(n * 10) / 10;
+    const starD = (x, y, r, ri = 0.42) => { let d = ""; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * ri : r; d += (k ? "L" : "M") + f(x + Math.cos(a) * rr) + " " + f(y + Math.sin(a) * rr); } return d + "Z"; };
+    const fan = (cx, top, r) => {
+      let o = "";
+      for (let i = 0; i < 10; i++) {
+        const a0 = i * Math.PI / 10, a1 = (i + 1) * Math.PI / 10, am = (a0 + a1) / 2, c = i % 2 ? CR : RD;
+        const P = (a) => `${f(cx + Math.cos(a) * r)} ${f(top + Math.sin(a) * r)}`;
+        o += `<path d="M${cx} ${top}L${P(a0)}L${P(am)}Z" fill="${c}"/><path d="M${cx} ${top}L${P(am)}L${P(a1)}Z" fill="${c === RD ? RDK : CRS}"/>`;
+      }
+      const r2 = r * 0.45;
+      o += `<path d="M${f(cx - r2)} ${top}A${f(r2)} ${f(r2)} 0 0 0 ${f(cx + r2)} ${top}Z" fill="${NV}" stroke="${CR}" stroke-width="${f(r * 0.07)}"/>`;
+      [[-0.55, 0.35], [0, 0.6], [0.55, 0.35]].forEach(([dx, dy]) => { o += `<path d="${starD(cx + dx * r2 * 0.8, top + dy * r2 * 0.8, r2 * 0.24)}" fill="#fff"/>`; });
+      return o + `<rect x="${f(cx - r - 1)}" y="${f(top - r * 0.08)}" width="${f(2 * r + 2)}" height="${f(r * 0.16)}" rx="${f(r * 0.08)}" fill="${NV}"/><circle cx="${cx}" cy="${top + 1}" r="2.6" fill="#E9C46A"/>`;
+    };
+    // Fan bunting in swags, gently swaying. Ben 2026-11-17: the greeting sits top left on the clock's line (clock
+    // top right), so the bunting only hangs in the gap between them (phones: right of the greeting). Drawn for the
+    // screen's own width, so the fans never stretch.
+    const bunting = (W, narrow) => {
+      const x0 = W * (narrow ? 0.66 : 0.34), x1 = W * (narrow ? 1 : 0.86), n = Math.max(1, Math.round((x1 - x0) / 170)), w = (x1 - x0) / n, top = 3;
+      let o = "<style>.j4sw{transform-box:fill-box;transform-origin:50% 0;animation:j4sw 3.4s ease-in-out infinite}@keyframes j4sw{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}@media (prefers-reduced-motion:reduce){.j4sw{animation:none}}</style>";
+      for (let i = 0; i < n; i++) { const x = x0 + i * w; o += `<path d="M${f(x)} ${top}Q${f(x + w / 2)} ${top + 30} ${f(x + w)} ${top}" fill="none" stroke="${NV}" stroke-width="3"/><path d="M${f(x)} ${top}Q${f(x + w / 2)} ${top + 26} ${f(x + w)} ${top}" fill="none" stroke="${CR}" stroke-opacity=".6" stroke-width="1"/>`; }
+      for (let i = 0; i <= n; i++) o += `<g class="j4sw" style="animation-delay:${-i * 0.45}s">${fan(x0 + i * w, top, i % 2 ? 27 : 33)}</g>`;
+      return o;
+    };
+    // The big show on the night of the 4th: bursts blooming one after another over the right of the picture, below
+    // the greeting and clock line and clear of the pick's words
+    const fireworks = (W) => {
+      let o = "<style>.j4fw{transform-box:fill-box;transform-origin:center;animation:j4fw 3.6s ease-out infinite}@keyframes j4fw{0%{transform:scale(.1);opacity:0}8%{opacity:1}45%{transform:scale(1);opacity:1}70%,100%{transform:scale(1.08);opacity:0}}</style>";
+      ["#E0404F", "#FFFFFF", "#7FA0FF", "#FFD25A", "#E0404F"].forEach((c, i) => {
+        const x = W * (0.52 + i * 0.1), y = 110 + ((i * 7) % 3) * 22, r = 34 + 8 * (i % 2);
+        let rays = "";
+        for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; rays += `<path d="M${f(x + Math.cos(a) * r * 0.3)} ${f(y + Math.sin(a) * r * 0.3)}L${f(x + Math.cos(a) * r)} ${f(y + Math.sin(a) * r)}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(x + Math.cos(a) * r * 1.12)}" cy="${f(y + Math.sin(a) * r * 1.12)}" r="1.8" fill="${c}"/>`; }
+        o += `<g class="j4fw" style="animation-delay:${-i * 0.75}s">${rays}</g>`;
+      });
+      return o;
+    };
+    const topTrim = (cls) => {
+      const W = Math.max(320, Math.round(window.innerWidth || 1200)), narrow = W <= 760, d = now();
+      const show = d.getMonth() === 6 && d.getDate() === 4 && d.getHours() >= 21;
+      return `<svg class="${cls || ""}" viewBox="0 0 ${W} 44" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible">${bunting(W, narrow)}${show ? fireworks(W) : ""}</svg>`;
+    };
+    // Sparklers fizzing along the bottom of Home
+    const sparklers = () => {
+      let o = "<style>.j4sp{animation:j4sp .45s steps(2) infinite}.j4sp:nth-of-type(2n){animation-delay:-.22s}@keyframes j4sp{50%{opacity:.5}}@media (prefers-reduced-motion:reduce){.j4sp{animation:none}}</style>";
+      const n = 16;
+      for (let i = 0; i < n; i++) {
+        const x = (i + 0.5) * 1200 / n, lean = (i % 2 ? 1 : -1) * 5, tx = x + lean, ty = 22; // low, so the lit tips show below the Today cards
+        o += `<path d="M${f(x - lean * 0.2)} 40L${f(tx)} ${ty}" stroke="#8A8F9C" stroke-width="1.6"/><path d="M${f(x - lean * 0.2)} 40L${f(x - lean * 0.05)} 32" stroke="#5A4632" stroke-width="3"/><circle cx="${f(tx)}" cy="${ty}" r="7" fill="#FFD25A" fill-opacity=".22"/>`;
+        let sp = "";
+        for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + i, r = k % 2 ? 4.5 : 7.5; sp += `<path d="M${f(tx)} ${ty}L${f(tx + Math.cos(a) * r)} ${f(ty + Math.sin(a) * r)}" stroke="${["#FFF3C4", "#FFD25A", "#fff"][k % 3]}" stroke-width="1"/>`; }
+        o += `<g class="j4sp">${sp}</g><circle cx="${f(tx)}" cy="${ty}" r="2.6" fill="#FFF9E0"/>`;
+      }
+      return o;
+    };
+    // A twinkling gold star beside the icon you're on (drawn a bit bigger than its little box so it reads from the couch)
+    const star = `<style>.rl-mark svg,.bt-mark svg{overflow:visible}</style><g><animateTransform attributeName="transform" type="rotate" values="-10 6 9;10 6 9;-10 6 9" dur="2.2s" repeatCount="indefinite"/><circle cx="6" cy="9" r="11" fill="#FFD25A" fill-opacity=".22"/><path d="${starD(6, 9, 11)}" fill="#FFD25A"/><path d="${starD(6, 9, 5.4)}" fill="#FFF3C4"/></g>`;
+    // The usual icons in red, white and blue. While the rail lights up at start-up they follow the light-up colours.
+    const COL = { home: "#FF5A68", movies: "#FFFFFF", shows: "#7FA0FF", live: "#FF5A68", games: "#FFFFFF", music: "#7FA0FF", books: "#FF5A68", search: "#FFFFFF", requests: "#7FA0FF", more: "#FFFFFF" };
+    const NAME = { home: "home", search: "search", requests: "plus", more: "more" };
+    const usual = (key) => {
+      const n = NAME[key] || (B.DOORS && B.DOORS[key] && B.DOORS[key].icon) || key;
+      let svg = "";
+      try { svg = B.doorIcon ? B.doorIcon(n) : B.I(n); } catch (e) { svg = ""; }
+      return String(svg).replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+    };
+    const icons = {};
+    Object.keys(COL).forEach((k) => Object.defineProperty(icons, k, { enumerable: true, get: () =>
+      `<style>.rl-i.dark .j4i,.rl-i.lit .j4i{stroke:currentColor!important;color:inherit!important}</style><g class="j4i" style="stroke:${COL[k]};color:${COL[k]}">${usual(k)}</g>` }));
+    const h = make("july4", is("j4On"), true, ["#14214A", "#0B1430"], ["#E0404F", "#FFFFFF", "#7FA0FF"], "4th of July pick", {
+      mark: star,
+      bottomTrim: sparklers(),
+      icons,
+      countdown: () => { const d = now(); if (d.getMonth() === 6 && d.getDate() === 4 && is("j4On")()) return "It's the 4th!"; return cd(() => B.j4)(); },
+      pickWords: ["Independence Day", "Sandlot", "Jaws", "1776", "Yankee Doodle", "National Treasure"],
+    });
+    // The bunting, with the big show on the 4th from 9 PM
+    h.topTrim = topTrim;
+    return h;
+  };
+  // Earth Day (approved by Ben 2026-11-17, sheet "Earth Day, put together"): an ocean blue rail whose icons turn into
+  // Earth Day icons in sea-to-land colours (grey like the others while the rail is still dark at start-up), clouds
+  // and birds along the top of Home, and a short meadow with flowers and a bee along the bottom. The app's twin is
+  // ui/theme/EarthDayNav.kt.
+  const ed = (() => {
+    const DIM = "<style>.rl-i.dark .edn-o{stroke:currentColor}</style>";
+    const h = (i) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.547; return x - Math.floor(x); };
+    const f = (n) => Math.round(n * 10) / 10;
+    const cloud = (x, y, s) => '<g transform="translate(' + f(x) + " " + f(y) + ") scale(" + f(s * 100) / 100 + ')">'
+      + '<g fill="#C9D9E6"><circle cx="2" cy="16" r="10"/><circle cx="20" cy="17" r="11"/><circle cx="40" cy="17" r="10"/><circle cx="56" cy="15" r="8"/></g>'
+      + '<g fill="#F2F7FB"><circle cx="2" cy="12" r="10"/><circle cx="18" cy="4" r="15"/><circle cx="36" cy="6" r="13"/><circle cx="20" cy="14" r="10"/><circle cx="40" cy="13" r="10"/><circle cx="55" cy="12" r="8"/></g></g>';
+    let clouds = "";
+    for (let i = 0; i < 3; i++) clouds += cloud(20 + i * 195 + h(i + 40) * 40, 9 + h(i + 80) * 3, 0.62 + h(i) * 0.12);
+    let birds = "";
+    [[0, 0], [-16, -5], [-16, 5], [-32, -10], [-32, 10]].forEach(([x, y], k) => {
+      birds += '<path class="edn-flap" style="animation-delay:-' + f(k * 0.17) + 's" d="M' + (x - 6) + " " + y + "q3 -4 6 0q3 -4 6 0" + '" stroke="#E8F3FF" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
+    });
+    const top = '<g><style>'
+      + ".edn-drift{animation:edn-drift 40s ease-in-out infinite alternate}@keyframes edn-drift{to{transform:translateX(-20px)}}"
+      + ".edn-flock{animation:edn-flock 20s linear infinite}@keyframes edn-flock{0%{transform:translate(0,42px);opacity:0}5%{opacity:1}60%{transform:translate(600px,32px);opacity:1}61%,100%{transform:translate(600px,32px);opacity:0}}"
+      + ".edn-flap{transform-box:fill-box;transform-origin:50% 100%;animation:edn-flap .6s ease-in-out infinite}@keyframes edn-flap{50%{transform:scaleY(-.6)}}"
+      + "@media (prefers-reduced-motion:reduce){.edn-drift,.edn-flock,.edn-flap{animation:none}}</style>"
+      + '<g class="edn-drift">' + clouds + '</g><g class="edn-flock">' + birds + "</g></g>";
+    const grassC = ["#2F7A34", "#3E9440", "#4FA846", "#6BC35A"];
+    let grass = ["", "", ""];
+    for (let i = 0, x = -4; x < 1206; i++, x += 4) {
+      const tall = 7 + h(i) * 10, b = h(i + 500) * 6 - 3;
+      grass[i % 3] += '<path d="M' + f(x) + " 41Q" + f(x + b * 0.3) + " " + f(40 - tall * 0.6) + " " + f(x + b) + " " + f(40 - tall) + "Q" + f(x + 2 + b * 0.3) + " " + f(40 - tall * 0.5) + " " + f(x + 4) + ' 41Z" fill="' + grassC[Math.floor(h(i + 900) * 4)] + '"/>';
+    }
+    let flowers = "";
+    for (let i = 0, x = 18; x < 1200; i++, x += 38 + h(i + 1700) * 24) {
+      const y = 40 - (14 + h(i + 1300) * 5), k = i % 4;
+      let head = "";
+      if (k === 0) { for (let p = 0; p < 10; p++) head += '<ellipse cx="' + f(x) + '" cy="' + f(y - 3.4) + '" rx="1.2" ry="3" fill="#fff" transform="rotate(' + p * 36 + " " + f(x) + " " + f(y) + ')"/>'; head += '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="2" fill="#F4C542"/>'; }
+      else if (k === 1) head = '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="4.6" fill="#E8453C"/><circle cx="' + f(x - 1) + '" cy="' + f(y - 1.4) + '" r="2.8" fill="#FF6A55"/><circle cx="' + f(x) + '" cy="' + f(y) + '" r="1.5" fill="#2A1A1A"/>';
+      else if (k === 2) { for (let p = 0; p < 8; p++) head += '<path d="M' + f(x) + " " + f(y) + "l" + f(Math.cos(p * 0.785) * 4.6) + " " + f(Math.sin(p * 0.785) * 4.6) + '" stroke="#4C7BE0" stroke-width="2" stroke-linecap="round"/>'; head += '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="1.5" fill="#2B4FA8"/>'; }
+      else { for (let p = 0; p < 5; p++) head += '<circle cx="' + f(x + Math.cos(p * 1.256) * 2.3) + '" cy="' + f(y + Math.sin(p * 1.256) * 2.3) + '" r="2.1" fill="#FFD23F"/>'; head += '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="1.2" fill="#E89A1A"/>'; }
+      flowers += '<path d="M' + f(x) + " 41L" + f(x) + " " + f(y) + '" stroke="#2F7A34" stroke-width="1.3"/>' + head;
+    }
+    const bee = '<g class="edn-bee"><ellipse class="edn-wing" cx="-0.5" cy="-4.4" rx="3" ry="2.2" fill="#E8F6FF" opacity=".85"/><ellipse cx="0" cy="0" rx="4.4" ry="3.1" fill="#F4C542"/><path d="M-1.2 -3v6M1.6 -2.8v5.6" stroke="#222" stroke-width="1.3"/></g>';
+    const bottom = '<g id="ednMeadow"><style>'
+      + ".edn-sw{transform-box:fill-box;transform-origin:50% 100%;animation:edn-sw 4s ease-in-out infinite}.edn-sw.b{animation-delay:-1.3s}.edn-sw.c{animation-delay:-2.6s;animation-duration:5s}@keyframes edn-sw{50%{transform:skewX(-5deg)}}"
+      + ".edn-bee{animation:edn-bee 24s ease-in-out infinite}@keyframes edn-bee{0%{transform:translate(40px,22px)}25%{transform:translate(330px,19px)}50%{transform:translate(620px,23px)}75%{transform:translate(900px,19px)}100%{transform:translate(1180px,22px)}}"
+      + ".edn-wing{transform-box:fill-box;transform-origin:50% 100%;animation:edn-flap .15s linear infinite}@keyframes edn-flap{50%{transform:scaleY(-.6)}}"
+      + "@media (prefers-reduced-motion:reduce){.edn-sw,.edn-bee,.edn-wing{animation:none}}</style>"
+      + '<g class="edn-sw a">' + grass[0] + "</g>" + flowers + '<g class="edn-sw b">' + grass[1] + '</g><g class="edn-sw c">' + grass[2] + "</g>" + bee + "</g>";
+    // Whole <svg>s (B.holidaySvg takes a function), so nothing is stretched or cut on any screen width (Ben
+    // 2026-11-17: trims mustn't crowd the greeting or get cut off):
+    // - top: the clouds and birds keep to the middle of the top edge (46% to 86% across), clear of the greeting on
+    //   the left and the clock on the right
+    // - bottom: the meadow is drawn at one fixed size that fits its 36px and repeated along the width, so flowers and the
+    //   bee are never cropped
+    const topSvg = (cls) => `<svg class="${cls || ""}" aria-hidden="true"><svg x="46%" width="40%" height="100%" viewBox="0 3 640 41" preserveAspectRatio="xMidYMin meet">${top}</svg></svg>`;
+    const bottomSvg = (cls) => `<svg class="${cls || ""}" aria-hidden="true"><g transform="translate(0 -16) scale(1.3)">${bottom}<use href="#ednMeadow" x="1200"/><use href="#ednMeadow" x="2400"/><use href="#ednMeadow" x="3600"/></g></svg>`;
+    return {
+      top: topSvg,
+      bottom: bottomSvg,
+      icons: {
+        home: DIM + '<path d="M3 11l9-7 9 7" class="edn-o" stroke="#A8DCF7"/><path d="M5 10v10h14V10" class="edn-o" stroke="#A8DCF7"/><path d="M12 20v-3.75" stroke="#5DB64E" stroke-width="1.6" fill="none"/><path d="M12 16.75c-3.25 0 -4.5 -2 -4.5 -4.25 2.75 0 4.5 1.5 4.5 4.25z" fill="#7CD36B" stroke="none"/><path d="M12 16.75c3.25 0 4.5 -2 4.5 -4.25 -2.75 0 -4.5 1.5 -4.5 4.25z" fill="#4FA846" stroke="none"/>',
+        movies: DIM + '<rect x="3" y="9" width="18" height="11" rx="1.8" class="edn-o" stroke="#7FC8F2"/><path d="M3 9l16.5 -4.2 0.8 2.9L4 12" class="edn-o" stroke="#7FC8F2"/><path d="M8.5 7.6l2 2.6M13.5 6.3l2 2.6" class="edn-o" stroke="#7FC8F2"/><path d="M12 18.5v-3" stroke="#5DB64E" stroke-width="1.6" fill="none"/><path d="M12 15.9c-2.6 0 -3.6 -1.6 -3.6 -3.4 2.2 0 3.6 1.2 3.6 3.4z" fill="#7CD36B" stroke="none"/><path d="M12 15.9c2.6 0 3.6 -1.6 3.6 -3.4 -2.2 0 -3.6 1.2 -3.6 3.4z" fill="#4FA846" stroke="none"/>',
+        shows: DIM + '<rect x="2.5" y="7" width="17" height="12" rx="2" class="edn-o" stroke="#56BDEB"/><path d="M7 22h8" class="edn-o" stroke="#56BDEB"/><g transform="translate(18.5 6.2) rotate(15)" stroke="none"><path d="M0 0C-1 -4 -5 -5 -5.5 -2C-5.6 0 -3 1 0 0z" fill="#F08A24"/><path d="M0 0C1 -4 5 -5 5.5 -2C5.6 0 3 1 0 0z" fill="#F08A24"/><path d="M0 0C-1 2.5 -4 3.4 -4 1.4z" fill="#E06A10"/><path d="M0 0C1 2.5 4 3.4 4 1.4z" fill="#E06A10"/><path d="M0 -2.5V2" stroke="#2A1A10" stroke-width="1"/></g>',
+        live: DIM + '<path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8" class="edn-o" stroke="#7CD36B"/><circle cx="12" cy="12" r="3.2" fill="#2A74AE" stroke="none"/><path d="M10.4 10.6c1-.6 2 0 1.6 1-.5 1 .8 1.4 0.2 2.4-1 .2-2.2-.6-2.3-1.7z" fill="#7CD36B" stroke="none"/>',
+        games: DIM + '<path d="M7.2 6.8h9.6c2.4 0 4 1.5 4.6 3.9l1 5c.5 2.6-1.1 4.2-3.1 4.2-1.4 0-2.3-.8-3-1.9l-.9-1.4H8.6l-.9 1.4c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.6-3.1-4.2l1-5c.6-2.4 2.2-3.9 4.6-3.9z" class="edn-o" stroke="#8FD86F"/><path d="M7 10.4v4M5 12.4h4" class="edn-o" stroke="#8FD86F"/><circle cx="16.4" cy="12.3" r="2.6" fill="#E0281E" stroke="none"/><path d="M16.4 9.8v5" stroke="#1a1a1a" stroke-width=".8"/><circle cx="15.4" cy="11.6" r=".55" fill="#1a1a1a" stroke="none"/><circle cx="17.5" cy="12.9" r=".55" fill="#1a1a1a" stroke="none"/><circle cx="16.4" cy="9.9" r=".9" fill="#1a1a1a" stroke="none"/>',
+        music: DIM + '<path d="M9 18V5" class="edn-o" stroke="#B5E37A"/><circle cx="6" cy="18" r="3" class="edn-o" stroke="#B5E37A"/><path d="M9 5c4-1.6 8-1 11 2.2-3.6 1.6-7.8 1.6-11 0z" fill="#7CD36B" stroke="none"/><path d="M9.5 5.6c3 .3 6.2.9 9.6 1.6" stroke="#2F7A34" stroke-width=".8"/>',
+        books: DIM + '<path d="M4 5a2 2 0 0 1 2 -2h13v16H6a2 2 0 0 0 -2 2z" class="edn-o" stroke="#E8F5A0"/><path d="M4 21V5" class="edn-o" stroke="#E8F5A0"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(0 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(36 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(72 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(108 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(144 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(180 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(216 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(252 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(288 12 10.4)"/><ellipse cx="12" cy="7.6" rx=".9" ry="2.3" fill="#fff" stroke="none" transform="rotate(324 12 10.4)"/><circle cx="12" cy="10.4" r="1.3" fill="#F4C542" stroke="none"/><path d="M12 11.7v5" stroke="#4FA846" stroke-width="1.1"/>',
+      },
+    };
+  })();
+
   // ---------- Christmas art (approved "Classic big bulbs", sheet nav-13-christmas) ----------
   // Door icons are small full-colour drawings on a 48 grid (drawn at half size into the 24 box); a small gold
   // snowflake marks the icon you're on (no hanging bulb: it didn't attach to every kind of button); big glass
@@ -87,7 +363,7 @@
       let k = 0;
       for (let i = 0; i < n; i++) [0.17, 0.5, 0.83].forEach((t) => { out += bulb(i * step + step * t, top + sag * 4 * t * (1 - t) - 1, C9[k % 5], k); k++; });
       for (let i = 0; i <= n; i++) out += `<circle cx="${(i * step).toFixed(1)}" cy="${top}" r="2.2" fill="#2a3b2f"/>`;
-      return `<svg class="${cls || ""}${xday() ? " xday" : ""}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible">${out}</svg>`;
+      return `<svg class="${cls || ""}${xday() ? " xday" : ""}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin slice" aria-hidden="true" style="overflow:visible;top:var(--bar)">${out}</svg>`;
     };
     // soft snow drifts (fine to stretch)
     const drift = (W, base, amp, seed) => {
@@ -119,7 +395,7 @@
     const T = {
       movies: `<g transform="rotate(-14 16 16)"><path d="M3 9h26v4.3a2.7 2.7 0 0 0 0 5.4V23H3v-4.3a2.7 2.7 0 0 0 0-5.4z" fill="${ROSE}" stroke="#FFD5DC" stroke-width=".8"/><path d="M21.5 10v12" stroke="#FFE3E8" stroke-width="1" stroke-dasharray="1.4 1.2"/>${heart(7.2, 10.6, 10, "#fff")}<path d="M23.5 13.5h3.5M23.5 16h3.5M23.5 18.5h3.5" stroke="#FFE3E8" stroke-width="1"/></g>`,
       shows: `<path d="M6 1.5 16 12 26 1.5" stroke="#E8C15A" stroke-width="1.4" stroke-dasharray="1.6 .9" fill="none"/>${heart(4, 9, 24, "url(#vlGold)", 'stroke="#8A5D12" stroke-width=".9"')}<path d="M16 15v13" stroke="#8A5D12" stroke-width=".7" opacity=".7"/>${heart(9.5, 14, 13, "none", 'stroke="#FFF2C4" stroke-width="1.4" opacity=".9"')}<circle cx="16" cy="12.6" r="1.6" fill="url(#vlGold)" stroke="#8A5D12" stroke-width=".6"/>`,
-      live: `<g>${heart(3, 0, 26, "url(#vlFoil)", 'stroke="#8E0F2E" stroke-width=".6"')}<ellipse cx="10.5" cy="7.5" rx="2.6" ry="3.6" fill="#fff" opacity=".55" transform="rotate(-30 10.5 7.5)"/><path d="M15.2 22.6l.8 1.4.8-1.4z" fill="#B11F3F"/><animateTransform attributeName="transform" type="translate" values="0 -.7;0 .7;0 -.7" dur="3.9s" repeatCount="indefinite"/></g><path d="M16 24c-2 2 2 3 0 5s1.5 2 .5 3" stroke="#F4E9D8" stroke-width=".9" fill="none"/>`,
+      live: `<g>${heart(3, 0, 26, "url(#vlFoil)", 'stroke="#8E0F2E" stroke-width=".6"')}<ellipse cx="10.5" cy="7.5" rx="2.6" ry="3.6" fill="#fff" opacity=".55" transform="rotate(-30 10.5 7.5)"/><path d="M15.2 22.6l.8 1.4.8-1.4z" fill="#B11F3F"/></g><path d="M16 24c-2 2 2 3 0 5s1.5 2 .5 3" stroke="#F4E9D8" stroke-width=".9" fill="none"/>`,
       games: `<g transform="rotate(10 16 16)"><rect x="7" y="2.5" width="18" height="26" rx="2.4" fill="#FFFDF7" stroke="#D9CFC2" stroke-width=".8"/>${heart(9.5, 9.5, 13, ROSE)}<path d="M9.4 9 L11 3.6 L12.6 9 M10 7.2 H12 M22.6 23.4 L21 28.8 L19.4 23.4 M22 25.2H20" stroke="${ROSE}" stroke-width="1.1" stroke-linecap="round" fill="none"/></g>`,
       music: `${heart(1, 1.5, 30, "#B5173A")}${heart(5, 5.5, 22, "none", 'stroke="#7A0E28" stroke-width=".8"')}${heart(8.5, 9, 15, "none", 'stroke="#7A0E28" stroke-width=".8"')}<path d="M7 9.5c1.5-2.5 4-3 6-1.5" stroke="#fff" stroke-width="1.1" opacity=".45" fill="none"/><circle cx="16" cy="15.5" r="4" fill="#FFE3E8"/><circle cx="16" cy="15.5" r="1" fill="#2a0a14"/>`,
       books: `<g transform="rotate(-8 16 16)"><rect x="2.5" y="7" width="27" height="18" rx="1.6" fill="#F6EBDD" stroke="#CDBBA5" stroke-width=".7"/><path d="M2.8 7.6 16 17.5 29.2 7.6" stroke="#CDBBA5" stroke-width=".9" fill="none"/><path d="M2.8 24.4 12.5 15M29.2 24.4 19.5 15" stroke="#E0D2BF" stroke-width=".7"/><path d="M16 12.2c2.7 0 5 1.8 5 4.6s-2.3 5-5 5-5.2-2-5-5 2.3-4.6 5-4.6z" fill="#B11F3F"/>${heart(12.6, 13.6, 6.8, "#7E0F2B")}</g>`,
@@ -166,9 +442,91 @@
   const ALL = [
     make("friday13", is("f13On"), true, ["#141414", "#0A0A0A"], ["#9BE15D", "#C9D0E0"], "Friday the 13th pick", { pickWords: ["Friday the 13th"], pickTags: ["slasher"] }),
     make("videogames", is("vgOn"), true, ["#1A1030", "#0E0819"], ["#FF6F91", "#3DD6C6", "#FFE14D", "#7AA7FF"], "Game Day pick", { pickTags: ["video game"], pickWords: ["Game"] }),
-    make("earthday", () => is("edOn")() && !is("eaOn")(), true, ["#12261A", "#0A160F"], ["#5BD18B", "#3FA7D6", "#8BC34A"], "Earth Day pick", { pickTags: ["nature", "environment"], pickWords: ["Earth"] }),
+    make("earthday", () => is("edOn")() && !is("eaOn")(), true, ["#0E2C44", "#0B1A26"], ["#A8DCF7", "#A8DCF7", "#7FC8F2", "#56BDEB", "#7CD36B", "#8FD86F", "#B5E37A", "#E8F5A0", "#7CD36B"], "Earth Day pick", {
+      pickTags: ["nature", "environmentalism", "wildlife", "nature documentary"], pickWords: ["Earth", "Planet"],
+      icons: ed.icons, topTrim: ed.top, bottomTrim: ed.bottom,
+      countdown: () => { try { const d = window.BenflixEarth ? window.BenflixEarth.day(new Date()) : 0; return d ? "Earth week · day " + d + " of 7 · Planet Earth picks on Movies and Shows" : ""; } catch (e) { return ""; } },
+    }),
     make("halloween", is("hwOn"), true, ["#24140A", "#120A05"], ["#FF8A1F", "#8E44AD", "#7CFC00"], "Halloween pick", { countdown: cd(() => B.hw), pickTags: ["halloween"], pickWords: ["Halloween"] }),
-    make("popcorn", is("pcOn"), true, ["#2A220E", "#17130A"], ["#F5D76E", "#D7263D", "#FFFFFF"], "Popcorn Day pick"),
+    // Popcorn Day (approved 2026-11-17, Ben: LOVE Cinema marquee): cinema-red rail with butter and red icons, a
+    // popped piece beside the icon you're on, chasing bulbs across the top of Home, a heap of popcorn along the
+    // bottom that grows through the day, hours left as the first Today card, a popcorn movie as the first pick
+    ((pc) => {
+      const h = make("popcorn", is("pcOn"), true, ["#5A1218", "#1E0C0E"], [pc.BUT, pc.RED], "Popcorn Day pick", pc.extra());
+      // the trims are drawn for the window's width when Home asks, so the bulbs and popcorn stay round
+      Object.defineProperty(h, "topTrim", { enumerable: true, get: () => pc.top() });
+      Object.defineProperty(h, "bottomTrim", { enumerable: true, get: () => pc.bottom() });
+      return h;
+    })({
+      BUT: "#F6C744", RED: "#FF5A52",
+      // one popped piece at (x, y), radius r, squashed back into a circle when the trim is stretched (sx, sy)
+      puff(x, y, r, sx, sy, flip) {
+        const L = [[-.42, .12, .55], [.44, .1, .55], [0, -.36, .6], [.05, .4, .52]];
+        let s = `<ellipse cx="${x}" cy="${y + r * .25 / sy}" rx="${r * .95 / sx}" ry="${r * .95 / sy}" fill="#000" fill-opacity=".28"/>`;
+        for (const [a, b, k] of L) s += `<ellipse cx="${x + a * r * flip / sx}" cy="${y + b * r / sy}" rx="${k * r / sx}" ry="${k * r / sy}" fill="url(#pcPuff)"/>`;
+        return s + `<ellipse cx="${x - .18 * r * flip / sx}" cy="${y - .42 * r / sy}" rx="${.16 * r / sx}" ry="${.16 * r / sy}" fill="#fff" fill-opacity=".7"/>`;
+      },
+      grad: '<defs><radialGradient id="pcPuff" cx=".4" cy=".35" r=".75"><stop offset=".45" stop-color="#FFF4D6"/><stop offset="1" stop-color="#E2A93A"/></radialGradient>'
+        + '<radialGradient id="pcBulb" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8DA"/><stop offset=".55" stop-color="#F6C744"/><stop offset="1" stop-color="#C48A12"/></radialGradient>'
+        + '<radialGradient id="pcGlow"><stop offset="0" stop-color="#F6C744" stop-opacity=".75"/><stop offset="1" stop-color="#F6C744" stop-opacity="0"/></radialGradient></defs>',
+      // how stretched Home's trims are right now (they fill the picture's width, 44px and 36px tall)
+      wide() { return Math.max(320, (window.innerWidth || 1200) - (matchMedia("(max-width: 760px)").matches ? 0 : 88)) / 1200; },
+      // a slim sign along the very top (12px strip, bulbs on its edge) so it stays clear of the greeting and clock
+      top() {
+        const sx = this.wide(), sy = 44 / 60, r = 6.5, step = 36 / sx, n = Math.ceil(1200 / step), band = 12 / sy;
+        let s = this.grad + '<style>.pcb{animation:pcchase 1.2s steps(1) infinite}@keyframes pcchase{0%{opacity:1}33%{opacity:.4}66%{opacity:1}}</style>'
+          + '<linearGradient id="pcStrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6E1016"/><stop offset=".5" stop-color="#9E2129"/><stop offset="1" stop-color="#6E1016"/></linearGradient>'
+          + `<rect width="1200" height="${band}" fill="url(#pcStrip)"/><rect y="${band - 3 / sy}" width="1200" height="${3 / sy}" fill="#F6C744"/>`;
+        for (let i = 0; i <= n; i++) {
+          const x = i * step + step / 2, y = band;
+          s += `<g class="pcb" style="animation-delay:${-(i % 3) * .4}s"><ellipse cx="${x}" cy="${y}" rx="${r * 1.7 / sx}" ry="${r * 1.7 / sy}" fill="url(#pcGlow)"/>`
+            + `<ellipse cx="${x}" cy="${y}" rx="${r / sx}" ry="${r / sy}" fill="url(#pcBulb)"/></g>`;
+        }
+        return s;
+      },
+      bottom() {
+        const sx = this.wide(), sy = 36 / 40, h = new Date().getHours(), full = h < 12 ? .55 : h < 17 ? .78 : 1, r0 = 7.5;
+        // one puff drawn once (radius 1), then placed many times
+        let seed = 11, s = this.grad + `<defs><g id="pcP">${this.puff(0, 0, 1, 1, 1, 1)}</g></defs>`;
+        const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+        for (let row = 0; row < 3; row++) {
+          const count = Math.floor((1200 * sx) / (r0 * 1.5) * (1.15 - row * .3) * full);
+          const y = 40 - (r0 * 1.25 + row * r0 * 1.1 * full) / sy;
+          for (let i = 0; i < count; i++) {
+            const x = rnd() * 1200, r = r0 * (.8 + rnd() * .45), yy = y - rnd() * r0 * .25 / sy, f = rnd() < .5 ? 1 : -1;
+            s += `<use href="#pcP" transform="translate(${x.toFixed(1)} ${yy.toFixed(1)}) scale(${(f * r / sx).toFixed(3)} ${(r / sy).toFixed(3)})"/>`;
+          }
+        }
+        return s;
+      },
+      // the usual icon's lines, in butter or red with a soft glow
+      icon(n, c) {
+        const svg = (B.doorIcon || B.I)(n) || "";
+        const inner = svg.replace(/^\s*<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+        return `<g style="color:${c};stroke:${c};filter:drop-shadow(0 0 2px ${c})">${inner}</g>`;
+      },
+      extra() {
+        const pc = this, BUT = this.BUT, RED = this.RED;
+        const ICONS = { home: ["home", BUT], search: ["search", RED], movies: ["film", RED], shows: ["tv", BUT], live: ["live", RED], games: ["pad", BUT], music: ["note", RED], books: ["book", BUT], requests: ["plus", BUT], more: ["more", BUT] };
+        const icons = {};
+        // the web's own icon names come from core.js, which loads first, so each is drawn when the rail asks
+        for (const [k, [n, c]] of Object.entries(ICONS)) Object.defineProperty(icons, k, { enumerable: true, get: () => pc.icon((B.DOORS[k] && B.DOORS[k].icon) || n, c) });
+        const out = {
+          icons,
+          mark: `${this.grad}${this.puff(6, 10, 6, 1, 1, 1)}`,
+          countdown: () => {
+            const d = now();
+            if (d.getMonth() !== 0 || d.getDate() !== 19) return "";
+            const left = 24 - d.getHours();
+            return left <= 1 ? "Last hour of Popcorn Day · grab a bowl" : `${left} hours of Popcorn Day left · grab a bowl`;
+          },
+          countdownKind: "Popcorn Day",
+          pickTags: ["blockbuster"],
+          pickWords: ["Jurassic Park", "Back to the Future", "Ghostbusters", "Raiders of the Lost Ark", "Jaws"],
+        };
+        return out;
+      },
+    }),
     // Star Wars Day (Ben 2026-11-17, sheet starwars-7-icons): the saga drawings replace the rail and tab icons, each
     // in its own colour; a short lit laser sword in the profile's side colour marks where you are; Home stays plain
     // (no trims) with the "May the 4th" card; start-up icons ignite in the side colour. Same drawings as the app's
@@ -199,8 +557,8 @@
       return o;
     })(),
     make("stpatricks", is("spOn"), true, ["#0F2A17", "#08170D"], ["#2E9E5B", "#7BD389", "#E8C15A"], "St. Patrick's pick", { countdown: cd(() => B.sp), pickTags: ["ireland"], pickWords: ["Irish"] }),
-    make("july4", is("j4On"), true, ["#101A33", "#0A0F1F"], ["#D7263D", "#FFFFFF", "#3F6FD8"], "4th of July pick", { countdown: cd(() => B.j4), pickWords: ["Independence Day"] }),
-    make("newyear", is("nyOn"), true, ["#141A2E", "#0B0E1A"], ["#E8C15A", "#C9D0E0"], "New Year's pick", { countdown: cd(() => B.ny), pickTags: ["new year's eve"], pickWords: ["New Year"] }),
+    july4(),
+    NY(make("newyear", is("nyOn"), true, ["#16224A", "#0B1230"], ["#E8B84A", "#C9D1DE"], "New Year pick", { countdown: cd(() => B.ny) })),
     // Thanksgiving (approved 2026-11-17, sheet nav-13b g2-swag): harvest-brown rail, the rail icons themselves in
     // gold, pumpkin orange and cranberry, a short leaf garland swagging across the top of Home with an acorn at each
     // low point and now and then a leaf drifting down, and only two pumpkins in Home's bottom-right corner.
@@ -229,7 +587,7 @@
       const LEAF = [["#f0603a", "#9c2414"], ["#ffa040", "#c2561f"], ["#ffd76a", "#c88a26"], ["#c8384e", "#6e1626"], ["#d8742e", "#7a3a14"]];
       const g2 = (id, a, b, x2) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2 || 1}" y2="${x2 ? 0 : 1}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
       const defs = `<defs>${LEAF.map(([a, b], i) => g2("tgl" + i, a, b)).join("")}${g2("tgnut", "#e0a35c", "#6e4020", 1)}${g2("tgcup", "#8a5a32", "#4a2d16")}${g2("tgpk", "#ffa24a", "#a5441a")}${g2("tgpw", "#fbf4e4", "#b5a586")}<radialGradient id="tgbr" cx=".35" cy=".35"><stop offset="0" stop-color="#fff0b0"/><stop offset=".5" stop-color="#d9a940"/><stop offset="1" stop-color="#7a5418"/></radialGradient></defs>`;
-      const css = "<style>.sp-trim.top:has(.tgn){height:auto;aspect-ratio:20/1;overflow:visible}.sp-trim.bottom:has(.tgn){height:auto;aspect-ratio:30/1;overflow:visible}"
+      const css = "<style>.sp-trim.top:has(.tgn){top:var(--bar);height:auto;aspect-ratio:20/1;overflow:visible}.sp-trim.bottom:has(.tgn){height:auto;aspect-ratio:30/1;overflow:visible}"
         + ".tgn .sw{animation:tgsw 4.5s ease-in-out infinite alternate}@keyframes tgsw{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}"
         + ".tgn .fall{animation:tgfall 13s linear infinite}@keyframes tgfall{0%{transform:translate(0,0) rotate(0);opacity:0}5%{opacity:1}30%{transform:translate(40px,90px) rotate(100deg)}60%{transform:translate(-10px,180px) rotate(210deg)}90%{opacity:1}100%{transform:translate(20px,260px) rotate(320deg);opacity:0}}</style>";
       let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -262,9 +620,10 @@
       })();
       // Bottom: only the bottom-right corner (viewBox 1200 x 40 kept at 30:1, drawn upward from the bottom edge)
       const bottom = (() => {
-        const R = 1188;
-        const leaves = [[R - 96, -55, 0], [R - 70, 30, 2], [R - 4, 70, 1], [R - 112, -20, 3]].map(([x, r, c], i) => leaf(x, 37, r, 22, c, i % 2 === 1)).join("");
-        return `${defs}<g class="tgn">${leaves}${pumpkin(R - 36, 39, 50, 34)}${pumpkin(R - 76, 39, 30, 21, true)}${acorn(R - 98, 28, 0.6, 70)}</g>`;
+        // Small enough to sit in the gap under the Today cards (about 20 of the 40 units)
+        const R = 1190;
+        const leaves = [[R - 62, -55, 0], [R - 46, 30, 2], [R - 2, 70, 1], [R - 72, -20, 3]].map(([x, r, c], i) => leaf(x, 39, r, 13, c, i % 2 === 1)).join("");
+        return `${defs}<g class="tgn">${leaves}${pumpkin(R - 22, 39.5, 30, 20)}${pumpkin(R - 48, 39.5, 18, 12.5, true)}${acorn(R - 62, 33, 0.36, 70)}</g>`;
       })();
       return {
         icons,
@@ -276,7 +635,11 @@
       };
     })()),
     make("valentine", is("valOn"), false, ["#3A1226", "#200A15"], ["#E8405E", "#A8284F"], "Valentine's pick", { icons: VAL.icons, topTrim: VAL.topTrim, bottomTrim: VAL.bottomTrim, countdown: VAL.countdown, pickTags: ["valentine's day"], pickWords: ["Valentine", "Princess Bride", "Notting Hill", "Harry Met Sally"] }),
-    make("easter", is("eaOn"), true, ["#1F2433", "#121522"], ["#F7B2D9", "#B8E0D2", "#FFE29A", "#C3B1E1"], "Easter pick", { countdown: cd(() => B.ea), pickTags: ["easter"], pickWords: ["Easter"] }),
+    // Easter (approved 2026-11-17, thread "Fit Easter theme to new navigation", direction A "Easter tree ribbon"):
+    // meadow-green rail, the door icons become the Easter tree charms, a painted egg on a ribbon hangs by the icon
+    // you're on, a pink satin ribbon swags across the top of Home with painted eggs swaying, and spring grass with
+    // tulips and eggs runs along the bottom. Kids too. The drawings come from easter.js (BenflixEaster.kit).
+    make("easter", is("eaOn"), true, ["#122019", "#0B150F"], ["#FFB8D2", "#BFE6FF", "#FFF1A6", "#C9F2C0", "#E3D5FF", "#FFD9B8"], "Easter pick", easterNav()),
     // Christmas: Classic big bulbs (approved 2026-11-17), art below (XMAS), the same as the app's ChristmasNav.kt
     make("christmas", is("xmasOn"), false, ["#0F2A1D", "#0B1912"], ["#D7263D", "#2E9E5B", "#E8C15A"], "Christmas pick", { countdown: () => { const d = new Date(); return d.getMonth() === 11 && d.getDate() === 25 ? "Merry Christmas!" : cd(() => B.xmas)(); }, pickTags: ["christmas", "santa claus"], pickWords: ["Christmas", "Santa", "Grinch", "Elf", "Home Alone", "Polar Express", "Klaus"], icons: XMAS.icons, mark: XMAS.mark, topTrim: XMAS.topTrim, bottomTrim: XMAS.bottomTrim }),
   ];

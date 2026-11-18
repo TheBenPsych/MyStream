@@ -13,7 +13,8 @@ Loaded by benflix-games-helper.py (it sits next to it on Tower). Three jobs:
     show's facts). /facts/titles.txt (at home only) lists every title and how many facts it has.
 
 Facts stay short (they're shown on a TV in a small spot), never about endings or deaths (no spoilers),
-and never news-style lines like release dates or box office.
+and never plain information like who directed it, release dates, budgets or script drafts. Only lines that
+tell a little behind-the-scenes story are kept (see fun_score), and old saved ones are checked again.
 
 Saves its notes in /skips/facts (next to the skip times).
 """
@@ -41,7 +42,7 @@ CHECKED_URL = "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/serve
 UA = "Benflix/1.0 (home media app; https://github.com/TheBenPsych/MyStream)"
 PER_NIGHT = 1500  # Wikipedia lookups in one night (about one a second, so well under an hour)
 RETRY_DAYS = 30  # titles with no facts are looked at again after this long (Wikipedia pages grow)
-MAX_AUTO = 6
+MAX_AUTO = 4
 MAX_LEN = 170
 MIN_LEN = 45
 
@@ -50,28 +51,70 @@ SECTIONS = re.compile(
     r"Special effects|Music|Soundtrack|Animation|Conception|Origins?|Background|Behind the scenes)[^=]*==\n",
     re.IGNORECASE,
 )
-GOOD_WORDS = (
-    "budget", "originally", "improvis", "real ", "actual", "practical", "record", "inspired", "nickname",
-    "first time", "props", "turned down", "accident", "injur", "secret", "replaced", "auditioned", "ad-lib",
-    "by hand", "for real", "animatronic", "puppet", "trained", "learned to", "did his own", "did her own",
-    "stunt", "costume", "makeup", "prosthetic", "weeks", "hours", "built", "hand-made", "handmade",
-    "based on", "named after", "cameo", "rejected", "almost", "nearly", "instead of", "reshot", "rewrote",
-    "voice", "sound of", "recorded", "composed", "shaved", "gained", "lost ", "pounds", "kilograms",
-    "insisted", "refused", "favorite", "favourite", "tribute", "homage", "easter egg",
-)
-BORING_WORDS = (
-    "was asked", "announced", "confirmed", "in talks", "negotiat", "reported", "principal photography",
-    "wrapped", "release date", "box office", "joined the cast", "was cast", "were cast", "signed on",
-    "set to", "expected to", "would return", "screenplay", "deal", "years ago", "anniversary", "years old",
-    "premiere", "grossed", "distribution", "distributor", "rights to", "trailer", "teaser", "streaming",
-    "according to", "citation", "lawsuit", "sued", "allegation",
-)
-SPOILER_WORDS = (
-    "ending", "twist", "dies", "death of", "killed", "is killed", "final scene", "last scene", "climax",
-    "reveal", "spoiler", "murder", "suicide", "funeral", "the end of the film", "the end of the series",
-)
+# A fact has to tell a little story (something real, secret, improvised, hidden, hand-made...), not just
+# who made it, when, where or for how much. Each STRONG cue is worth 2 points, each WEAK cue 1, and a
+# sentence needs 2 points. Ben (2026-11-17): lines like "Within 12 hours, Scott returned the script with
+# notes" are not fun facts. Any DULL or UNSAFE cue throws the sentence out, whatever its points.
+# The app has the same lists in FunFactRules.kt: change both together.
+RULES_VERSION = 2  # titles looked up with older rules are looked up again
+STRONG = [
+ r"improvis", r"ad-lib", r"unscripted", r"\bgenuine", r"reaction (?:was|were) real", r"\bwas real\b", r"\bwere real\b", r"\bfor real\b",
+ r"\breal (?:gang|animals?|snow|food|tattoo|bugs?|fire|explosions?|scream|bees|spiders?|snakes?|rats?|cockroach)",
+ r"\baccidental|\bby accident|\bhad an accident|\bin an accident", r"(?:was|were|got) (?:badly |seriously |slightly )?injured|injured (?:his|her|their|himself|herself)|(?:minor|serious) injur", r"\bbroke (?:his|her|their) ", r"nicknamed", r"easter egg", r"\bcameo", r"\bhomage\b", r"\btribute to\b",
+ r"turned down", r"refused to", r"in secret", r"\bsecretly\b", r"did not (?:inform|tell|warn)", r"didn't (?:tell|warn)", r"without (?:telling|warning)",
+ r"never broke character", r"stayed in character", r"method act", r"did (?:his|her|their|all of his|all of her|most of his|most of her) own", r"own stunts",
+ r"stunt doubles", r"learned (?:to|how to) (?!be\b)", r"\bshaved\b", r"\bgained \d", r"\blost \d", r"\bpounds\b", r"kilograms",
+ r"animatronic", r"\bpuppet", r"\bbackwards\b", r"made (?:of|from|out of|with) (?:real |actual )?(?:foam|wax|chocolate|ketchup|syrup|jelly|gelatin|cereal|candy|cardboard|paper|clay|plasticine|food|bread|lego|corn|rubber|hair|soap|cotton)",
+ r"\bsounds? (?:of|effects?|for)\b.{0,60}\b(?:were|was) (?:made|created|recorded|based|generated)", r"\bvoiced? (?:of|by) (?:his|her) (?:own )?(?:son|daughter|wife|husband|mother|father)",
+ r"\bby mistake|\bmistakenly\b|\bby accident", r"\bby chance\b", r"\bprank", r"\bon a dare\b", r"\bfell asleep", r"\bvomit|\bthrew up",
+ r"\bin one take|\bsingle take|\bonly one take|\bfirst take|\bone continuous", r"\bnamed (?:after|for) (?:his|her|their|a|the director|the writer|[A-Z])",
+ r"\bhidden (?:in|on|throughout|inside)", r"\bspelled backwards", r"\breal-life\b", r"\bfull-size|\bfull-scale|\blife-size",
+ r"\bwhole (?:town|village|street|house)", r"\bactually (?:filmed|shot|built|made|real|ate|did|cried|hit|fell|broke|got)",
+ r"\bthe same (?:costume|set|prop|car|house|dress)", r"\breused\b", r"\bwore (?:his|her) own", r"\b\d+ (?:takes|costume changes|wigs|outfits)",
+ r"\bbanned\b", r"\bscared\b|\bterrified\b|\bfrightened\b", r"\bthought it was (?:a |an )?real", r"\bpopping candy|\bpop rocks",
+ r"\bboot ?camp\b|\btraining camp\b|\bcheerleading camp", r"\bbefore (?:he|she) (?:was|became) famous",
+]
+
+WEAK = [
+ r"\boriginally\b", r"\balmost\b", r"\bnearly\b", r"inspired by", r"\bactually\b", r"\bsurpris", r"\bfan of\b", r"\bparrot|\bdogs?\b|\bcats?\b|\bhorses?\b",
+ r"\bjok", r"\bfoam\b", r"\bwax\b", r"\bgallons\b", r"\bfirst (?:ever|film to|movie to|time a)", r"\bthousands? of\b", r"\bfirst choice|\bonly choice",
+ r"\bpractical effects?\b", r"\bprosthetic", r"by hand|hand-?made|hand-drawn|hand-painted", r"\bmade (?:of|from|out of)\b",
+ r"\bhis (?:son|daughter|wife|mother|father|dog)\b|\bher (?:son|daughter|husband|mother|father|dog)\b", r"\bown (?:car|house|home|clothes|money|dog|family)\b",
+ r"\bto avoid\b", r"\bcrushed\b|\bflooded\b|\bexploded\b|\bblew up\b", r"\bscream", r"\breversed\b|\bflipped\b|\bupside down",
+ r"\bresemble\b", r"\bmodel(?:l)?ed (?:on|after)\b", r"\bbased on (?:his|her|their|a real|real|an actual|the real)", r"\bfriends?\b", r"\bcousin\b|\bbrother\b|\bsister\b",
+]
+
+DULL = [
+ r"announc", r"confirm", r"in talks", r"negotiat", r"\breport", r"principal photography", r"\bwrapped\b", r"release",
+ r"box office", r"joined the (?:cast|project|film)", r"\bwas cast\b", r"\bwere cast\b", r"\bcast as\b", r"signed on", r"\bset to\b", r"expected to",
+ r"would return", r"screenplay", r"\bscript", r"\bdraft", r"rewr", r"re-wr", r"\bdeal\b", r"\bpremiere", r"\bgross", r"distribut", r"\brights\b",
+ r"trailer", r"streaming", r"according to", r"citation", r"lawsuit", r"\bsued\b", r"allegation", r"\bexecutive", r"\bproducer", r"\bproduced\b",
+ r"\bhired\b", r"\bbudget", r"\bmillion\b", r"\bbillion\b", r"\bfinanc", r"\bfund", r"\bpitch", r"\bdevelopment\b", r"greenl", r"green light", r"\bschedul",
+ r"filming (?:began|took place|started|commenced|location)", r"\bwas shot (?:in|at|on)\b", r"\bwere shot (?:in|at|on)\b", r"\bon location\b", r"\blocations?\b",
+ r"soundtrack", r"\bscore\b", r"\balbum", r"\blabel\b", r"\bcredited\b", r"critic", r"controvers", r"backlash", r"commercial", r"percent", r"%",
+ r"\bstudios?\b", r"\boption", r"\bcontract", r"\bagent\b", r"\bacquir", r"\bpurchas", r"\bbought\b", r"\bsequel", r"\bfranchise", r"\bmarketing",
+ r"\bsales\b", r"\bsold\b", r"\bawards?\b", r"\bnominat", r"\boscar", r"\bacademy\b", r"\bfestival", r"\bscreening", r"\btest audience",
+ r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b", r"\b(?:19|20)\d\d\b",
+ r"\bwas considered\b", r"\bwere considered\b", r"\bconsidered for\b", r"\bdirect(?:ed|or)? the film\b", r"\bwas directed\b", r"\bto direct\b", r"\bto star\b",
+ r"\bnovel by\b", r"\bbased on the\b", r"\badaptation\b", r"\badapt", r"\bpre-production\b", r"\bpost-production\b", r"\bediting\b", r"\bedited\b",
+ r"\btitle (?:was|is)\b", r"\bworking title\b", r"\bcodename\b|\bcode name\b", r"\bdelayed (?:the )?(?:release|production|filming|shoot)", r"\bpostpon", r"\bcancel", r"\bsecrecy\b",
+ r"\b(?:was|were) cut\b", r"^[^,]{0,60},\s*(?:they|he|she|it)\s", r"\bstated\b", r"\bsaid\b", r"\bsays\b", r"\bexplained\b", r"\bcommented\b", r"\bdescribed\b", r"\bbelieved\b",
+]
+
+UNSAFE = [r"end of the (?:film|movie|series|show|season)", r"\bkill", r"\bdead\b", r"\bdies\b", r"\bdied\b", r"\bdeath", r"\bcorpse", r"\bmurder", r"\bsuicide", r"\bfuneral", r"\bending\b", r"\btwist",
+ r"\bclimax", r"\breveal", r"\bspoiler", r"final scene", r"last scene", r"\bnud", r"\bnaked", r"\bsex", r"\bpenis", r"\bdrug", r"\bheroin", r"\bcocaine",
+ r"\bbullshit|\bfuck|\bshit\b", r"\bdrunk", r"\brape", r"\bpregnan", r"\bdisown", r"\bbigot|\bracis|\bwhitewash", r"\bpoison", r"\bdecapitat", r"\bblood"]
+
+STRONG = [re.compile(p) if p.startswith("\\bnamed") else re.compile(p, re.IGNORECASE) for p in STRONG]
+WEAK = [re.compile(p, re.IGNORECASE) for p in WEAK]
+DULL = [re.compile(p, re.IGNORECASE) for p in DULL]
+UNSAFE = [re.compile(p, re.IGNORECASE) for p in UNSAFE]
+FIRST_PERSON = re.compile(r"(^|[^\w'])(I|I'm|I've|I'd|me|my|we|We|our|Our|you|You|your)([^\w']|$)")
 BAD_STARTS = ("He", "She", "It", "They", "This", "These", "That", "His", "Her", "Their", "However", "Also",
-              "In addition", "Additionally", "As a result", "Later", "The scene", "The film", "The series", "The show")
+              "In addition", "Additionally", "As a result", "Later", "The scene", "The film", "The series", "The show",
+              "Both", "The two", "Such", "Instead", "Afterwards", "In contrast", "Furthermore", "Moreover", "Still", "Then",
+              "There", "So", "But", "And", "Or", "Despite this", "Even", "Other", "Another", "Some", "Several", "Many", "Most",
+              "One of the")
 SENTENCE_END = re.compile(r"(?<=[.!?])(?<!\b[A-Z]\.)(?<!\b(?:Mr|Ms|Dr|St|Jr|Sr|vs|Mt|No)\.)(?<!\bMrs\.)\s+(?=[A-Z0-9\"“])")
 
 
@@ -276,30 +319,43 @@ def _complete(s):
     return s[0].isupper() or s[0].isdigit()
 
 
+def fun_score(s):
+    """How much of a fun story this sentence tells (0 = leave it out). See the rules above."""
+    s = (s or "").strip()
+    if not (MIN_LEN <= len(s) <= MAX_LEN) or not _complete(s):
+        return 0
+    if s.startswith(('"', "“")) or any(s.startswith(b + " ") or s.startswith(b + ",") for b in BAD_STARTS):
+        return 0
+    if FIRST_PERSON.search(s) or any(p.search(s) for p in DULL) or any(p.search(s) for p in UNSAFE):
+        return 0
+    return 2 * sum(1 for p in STRONG if p.search(s)) + sum(1 for p in WEAK if p.search(s))
+
+
+def _still_fun(name, fact):
+    """A saved Wikipedia fact still passes today's rules (so old dull ones stop showing straight away)"""
+    if fact.startswith((name or "") + ": "):
+        fact = fact[len(name) + 2:]
+    return fun_score(fact) >= 2
+
+
 def _facts_from(name, text):
-    picked = []
+    found = []
     for m in SECTIONS.finditer(text):
         rest = text[m.end() - 1:]
         end = re.search(r"\n== [^=]+ ==\n", rest)
         section = re.sub(r"\n=+[^=]+=+\n", "\n", rest[: end.start() if end else len(rest)])
         for s in SENTENCE_END.split(section.replace("\n", " ")):
             s = re.sub(r"\s+", " ", s).strip()
-            low = s.lower()
-            if not (MIN_LEN <= len(s) <= MAX_LEN) or not _complete(s):
+            score = fun_score(s)
+            if score < 2:
                 continue
-            if not any(w in low for w in GOOD_WORDS):
-                continue
-            if any(w in low for w in BORING_WORDS) or any(w in low for w in SPOILER_WORDS):
-                continue
-            if any(s.startswith(b + " ") for b in BAD_STARTS):
-                continue
-            if not s.lower().startswith(name.lower()) and name.lower() not in low and len(s) + len(name) + 2 <= MAX_LEN:
+            if name.lower() not in s.lower() and len(s) + len(name) + 2 <= MAX_LEN:
                 s = f"{name}: {s}"
-            if s not in picked:
-                picked.append(s)
-    # Lines that name the title read best on their own, so they go first
-    picked.sort(key=lambda s: 0 if not s.startswith(name + ":") else 1)
-    return picked[:MAX_AUTO]
+            if all(s != f for _, f in found):
+                found.append((score, s))
+    # The best stories first; lines that name the title read best on their own, so they win a tie
+    found.sort(key=lambda sf: (-sf[0], 0 if not sf[1].startswith(name + ":") else 1))
+    return [s for _, s in found[:MAX_AUTO]]
 
 
 def _look_up(item_id, t):
@@ -314,7 +370,7 @@ def _look_up(item_id, t):
         page, text = _guess_page(t["name"], t.get("year"), t.get("type"))
     facts = _facts_from(t["name"], text) if text else []
     with _lock:
-        _auto[item_id] = {"name": t["name"], "year": t.get("year"), "type": t.get("type"), "facts": facts, "at": int(time.time()), "page": page}
+        _auto[item_id] = {"name": t["name"], "year": t.get("year"), "type": t.get("type"), "facts": facts, "at": int(time.time()), "page": page, "rules": RULES_VERSION}
     return facts
 
 
@@ -369,6 +425,9 @@ def gather(why="night"):
             (i, t) for i, t in lib.items()
             if t["name"] and (i not in _auto or (not _auto[i].get("facts") and now - _auto[i].get("at", 0) > RETRY_DAYS * 86400))
         ]
+        # Titles last looked up with older (looser) rules get picked again, after the brand-new ones
+        first = {i for i, _ in todo}
+        todo += [(i, t) for i, t in lib.items() if t["name"] and i not in first and i in _auto and (_auto[i].get("rules") or 1) < RULES_VERSION]
         done = got = 0
         for item_id, t in todo[:PER_NIGHT]:
             try:
@@ -439,6 +498,8 @@ def facts_for(item_id, token):
         return {"facts": [], "ready": True}
     checked = _checked_for(t)
     auto = (_auto.get(item_id) or {}).get("facts")
+    if auto is not None:
+        auto = [f for f in auto if _still_fun(t.get("name"), f)]
     if auto is None and not checked and _dir:
         # A brand-new title: look it up now, in the background, so it's there next time
         threading.Thread(target=lambda: _safe_look_up(item_id, t), daemon=True).start()
@@ -509,7 +570,7 @@ def home_facts(token, user_id, count=2, skip=(), longest=MAX_LEN):
     for item_id in ids[:60]:
         t = _titles[item_id]
         checked = _checked_for(t)
-        auto = (_auto.get(item_id) or {}).get("facts") or []
+        auto = [f for f in ((_auto.get(item_id) or {}).get("facts") or []) if _still_fun(t.get("name"), f)]
         pool = list(checked) + [f for f in auto if _norm(f) not in {_norm(c) for c in checked}]
         # Home's rows are small: only the shorter facts
         pool = [f for f in pool if len(f) <= longest]

@@ -2,8 +2,6 @@ package com.github.damontecres.wholphin.ui.main
 
 import android.content.Context
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +85,7 @@ import com.github.damontecres.wholphin.ui.theme.HolidayArtBox
 import com.github.damontecres.wholphin.ui.theme.HolidayNav
 import com.github.damontecres.wholphin.ui.theme.HolidayNavKit
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.rememberAmbientClock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -426,16 +426,18 @@ class HomePicksViewModel
             viewModelScope.launchIO {
                 val next =
                     try {
-                        api.tvShowsApi
-                            .getNextUp(
-                                GetNextUpRequest(
-                                    seriesId = pick.id,
-                                    userId = serverRepository.currentUser?.id,
-                                    limit = 1,
-                                    enableResumable = true,
-                                ),
-                            ).content.items
-                            .firstOrNull()
+                        com.github.damontecres.wholphin.services.NextEpisode
+                            .find(api, pick.id)
+                            ?: api.tvShowsApi
+                                .getNextUp(
+                                    GetNextUpRequest(
+                                        seriesId = pick.id,
+                                        userId = serverRepository.currentUser?.id,
+                                        limit = 1,
+                                        enableResumable = true,
+                                    ),
+                                ).content.items
+                                .firstOrNull()
                             ?: api.tvShowsApi
                                 .getEpisodes(
                                     GetEpisodesRequest(
@@ -741,16 +743,19 @@ private val TRIM_BOTTOM = 36.dp
 private fun SpotPicture(pick: HomePick?) {
     Crossfade(targetState = pick, animationSpec = tween(FADE_MS), label = "spotPicture") { p ->
         // Each picture zooms in one way at a steady speed from when it shows (it used to turn round and bounce).
-        // Read only while drawing, so the zoom never rebuilds the screen.
-        val zoom = remember { Animatable(1f) }
-        LaunchedEffect(Unit) { zoom.animateTo(ZOOM, tween(ZOOM_MS, easing = LinearEasing)) }
+        // Speed check (Ben 2026-11-17): the zoom runs from the shared slow clock (about 20 steps a second, holding
+        // still while you press the remote) instead of 60 a second, so the TV isn't redrawing the whole of Home
+        // all the time. It's so slow that it looks just the same. Read only while drawing, so it never rebuilds the screen.
+        val clock = rememberAmbientClock()
+        val shownAt = remember { Snapshot.withoutReadObservation { clock.floatValue } }
         Box(
             Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(0.dp))
                 .graphicsLayer {
-                    scaleX = zoom.value
-                    scaleY = zoom.value
+                    val z = 1f + (ZOOM - 1f) * ((clock.floatValue - shownAt) * 1000f / ZOOM_MS).coerceIn(0f, 1f)
+                    scaleX = z
+                    scaleY = z
                 },
         ) {
             if (p == null) {
@@ -761,16 +766,22 @@ private fun SpotPicture(pick: HomePick?) {
                     ),
                 )
             } else {
-                AsyncImage(
-                    model = p.thumb,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // The tiny copy only until the sharp one is in: two full-screen pictures on top of each other
+                // were drawn every frame before
+                var sharp by remember { mutableStateOf(false) }
+                if (!sharp) {
+                    AsyncImage(
+                        model = p.thumb,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
                 AsyncImage(
                     model = p.backdrop,
                     contentDescription = p.name,
                     contentScale = ContentScale.Crop,
+                    onSuccess = { sharp = true },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -923,16 +934,22 @@ private fun FloatingCard(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(7.dp * scale),
-        ) {
-            Box(
+            modifier =
                 Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(if (card.square) 1f else 2f / 3f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(BenflixColors.Raised),
-            ) {
-                if (card.image != null) {
+                    .fillMaxSize()
+                    .padding(7.dp * scale)
+                    .padding(start = if (card.image == null) 9.dp * scale else 0.dp),
+        ) {
+            // Cards with no picture (holiday countdown, Tower needs the setup command, update) leave out the
+            // picture box instead of showing an empty grey square, so their words get the whole card
+            if (card.image != null) {
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(if (card.square) 1f else 2f / 3f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(BenflixColors.Raised),
+                ) {
                     AsyncImage(
                         model = card.image,
                         contentDescription = null,

@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.preferences.subtitle
 
+import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Typeface
 import android.os.Build
@@ -11,6 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.res.ResourcesCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.SubtitleView
@@ -83,7 +85,8 @@ object SubtitleSettings {
     val FontBold =
         AppSwitchPreference<SubtitlePreferences>(
             title = R.string.bold_font,
-            defaultValue = false,
+            // Benflix standard look: Atkinson Hyperlegible Bold
+            defaultValue = true,
             getter = { it.fontBold },
             setter = { prefs, value ->
                 prefs.update { fontBold = value }
@@ -121,7 +124,8 @@ object SubtitleSettings {
             title =
                 R.string.edge_style,
             // Redesign 2 players (pl-p-subs): white words with a soft shadow, the same in every player
-            defaultValue = EdgeStyle.EDGE_SHADOW,
+            // Benflix standard look: white words with a black outline
+            defaultValue = EdgeStyle.EDGE_SOLID,
             getter = { it.edgeStyle },
             setter = { prefs, value ->
                 prefs.update { edgeStyle = value }
@@ -150,7 +154,8 @@ object SubtitleSettings {
     val EdgeThickness =
         AppSliderPreference<SubtitlePreferences>(
             title = R.string.edge_size,
-            defaultValue = 4,
+            // A little thicker than Wholphin's 4 so the outline holds up on a TV across the room
+            defaultValue = 6,
             min = 1,
             max = 32,
             interval = 1,
@@ -334,8 +339,37 @@ object SubtitleSettings {
         opacity: Int,
     ) = ((opacity / 100.0 * 255).toInt().shl(24)).or(color.and(0x00FFFFFF))
 
+    @Volatile private var subtitleFamily: Typeface? = null
+
+    /**
+     * Benflix standard subtitle font: Atkinson Hyperlegible (made by the Braille Institute for easy reading).
+     * The family holds regular, bold and both italics, so <i> lines in subtitle files still come out in real italics.
+     * Only plain subtitles use this; ASS/SSA (mostly anime) keep their own fonts, and picture subtitles can't change.
+     */
+    fun subtitleTypeface(
+        context: Context,
+        bold: Boolean,
+        italic: Boolean,
+    ): Typeface {
+        val family =
+            subtitleFamily ?: try {
+                ResourcesCompat.getFont(context.applicationContext, R.font.subtitle_atkinson)
+            } catch (ex: Exception) {
+                Timber.w(ex, "Subtitle font didn't load, using the normal one")
+                null
+            }?.also { subtitleFamily = it }
+        val style =
+            when {
+                bold && italic -> Typeface.BOLD_ITALIC
+                bold -> Typeface.BOLD
+                italic -> Typeface.ITALIC
+                else -> Typeface.NORMAL
+            }
+        return if (family != null) Typeface.create(family, style) else Typeface.defaultFromStyle(style)
+    }
+
     @OptIn(UnstableApi::class)
-    fun SubtitlePreferences.toSubtitleStyle(): CaptionStyleCompat {
+    fun SubtitlePreferences.toSubtitleStyle(context: Context): CaptionStyleCompat {
         val bg = combine(backgroundColor, backgroundOpacity)
         return CaptionStyleCompat(
             combine(fontColor, fontOpacity),
@@ -347,18 +381,13 @@ object SubtitleSettings {
                 EdgeStyle.EDGE_SHADOW -> CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW
             },
             combine(edgeColor, fontOpacity),
-            when {
-                fontBold && fontItalic -> Typeface.defaultFromStyle(Typeface.BOLD_ITALIC)
-                fontBold -> Typeface.defaultFromStyle(Typeface.BOLD)
-                fontItalic -> Typeface.defaultFromStyle(Typeface.ITALIC)
-                else -> Typeface.DEFAULT
-            },
+            subtitleTypeface(context, fontBold, fontItalic),
         )
     }
 
     @OptIn(UnstableApi::class)
     fun SubtitlePreferences.applyTo(view: SubtitleView) {
-        view.setStyle(toSubtitleStyle())
+        view.setStyle(toSubtitleStyle(view.context))
         view.setFixedTextSize(Dimension.SP, fontSize.toFloat())
         view.setBottomPaddingFraction(margin.toFloat() / 100f)
     }

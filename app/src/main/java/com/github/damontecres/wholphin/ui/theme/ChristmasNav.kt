@@ -225,7 +225,8 @@ object ChristmasNav {
         val swag = 150f * d
         val n = (size.width / swag).toInt().coerceAtLeast(1)
         val step = size.width / n
-        val top = 3f * d
+        // Just under the greeting and clock line (it sits at the very top since the calmer Home)
+        val top = (if (size.width < 600f * d) 52f else 64f) * d
         val sag = 10f * d
         val wire = Color(0xFF16251B)
 

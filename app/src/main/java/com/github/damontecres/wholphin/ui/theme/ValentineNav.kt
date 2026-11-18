@@ -120,7 +120,7 @@ object ValentineNav {
 
     private val live: HolidayIconArt = { _, t ->
         box32 {
-            // the balloon bobs gently on its string
+            // the balloon would bob on its string, but rail icons stay still (iconsMove is off) so the rail never redraws
             val bob = sin(t * 1.6f) * .7f
             withTransform({ translate(0f, bob) }) {
                 heart(
