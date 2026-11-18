@@ -2199,3 +2199,9 @@ svg.gi path.gd { stroke-width: 3.6; }
 .me-out:hover, .me-out:focus-visible { background: var(--pg4); color: var(--ink); outline: none; }
 .me-out svg { width: 16px; height: 16px; }
 @media (max-width: 900px) { .me-tiles { grid-template-columns: 1fr; gap: 10px; } .me-tile { min-height: 0; padding: 12px 14px; } .me-hero { gap: 16px; margin-bottom: 16px; } .me-hero .pic { width: 68px; height: 68px; font-size: 28px; } .me-hero h1 { font-size: 24px; } }
+
+/* Ben 2026-11-18: after picking your picture with the mouse the menu stays tucked until the pointer leaves it */
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) { width: var(--nrail); background: linear-gradient(90deg, var(--tray) 70%, rgba(var(--trayrgb), 0)); box-shadow: none; border-right: 0; }
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within)::after { opacity: 0; }
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-t { opacity: 0; }
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-logo .logo { color: transparent; }

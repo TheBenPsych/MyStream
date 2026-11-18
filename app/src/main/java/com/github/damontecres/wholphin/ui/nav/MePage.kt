@@ -18,11 +18,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +60,14 @@ class MeModel(
 val LocalMeModel = compositionLocalOf<MeModel?> { null }
 
 /**
+ * Ben 2026-11-18: picking your picture on the menu always lands on the first tile (My watching), even when the
+ * Me page is already open. Each pick bumps this, and the page puts the focus back on My watching.
+ */
+object MeFocus {
+    var picks by mutableIntStateOf(0)
+}
+
+/**
  * Ben 2026-11-18 (approved profile-page-1): your picture opens a full page, like every other menu spot.
  * Your picture, name, this month's hours and Switch profile at the top, then big tiles (3 across on TVs and wide
  * screens, one column on phones), and Sign out quietly at the bottom.
@@ -67,10 +80,16 @@ fun MePage(modifier: Modifier = Modifier) {
     val tiles = model.items.filter { !it.apart }
     val apart = model.items.filter { it.apart }
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        if (tv) {
-            delay(150)
+    var firstFocused by remember { mutableStateOf(false) }
+    // Ben 2026-11-18: land on My watching (the menu tucks away as the focus leaves it). Weak TVs can take a moment
+    // to draw the page, and the focus can fall back onto the menu while it does, so keep trying for a couple of seconds.
+    LaunchedEffect(MeFocus.picks) {
+        if (!tv) return@LaunchedEffect
+        delay(60)
+        repeat(FOCUS_TRIES) {
+            if (firstFocused) return@LaunchedEffect
             first.tryRequestFocus()
+            delay(FOCUS_RETRY_MS)
         }
     }
     Column(
@@ -124,7 +143,15 @@ fun MePage(modifier: Modifier = Modifier) {
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .then(if (r == 0 && c == 0) Modifier.focusRequester(first) else Modifier),
+                                .then(
+                                    if (r == 0 && c == 0) {
+                                        Modifier
+                                            .focusRequester(first)
+                                            .onFocusChanged { firstFocused = it.isFocused || it.hasFocus }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                     )
                 }
                 repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
@@ -237,3 +264,6 @@ private fun MePill(
         }
     }
 }
+
+private const val FOCUS_TRIES = 15
+private const val FOCUS_RETRY_MS = 150L
