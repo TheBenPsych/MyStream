@@ -207,7 +207,9 @@ B.call = async (method, path, body, opts) => {
   return data;
 };
 B.jf = (method, path, body, opts) => B.call(method, "api/web/jf" + path, body, opts);
-B.get = (path) => B.jf("GET", path);
+// Jellyfin's "Group movies into collections" swaps movies for their box sets in library lists, so every
+// list asks for plain movies (box sets only show on the Collections tab, which asks for them by name).
+B.get = (path) => B.jf("GET", /\/Items\?/.test(path) && !/CollapseBoxSetItems=/.test(path) ? path + "&CollapseBoxSetItems=false" : path);
 B.uid = () => enc(B.me.id);
 // Which episode a show's Play / Resume opens, by episode order (Jellyfin's next up goes by date, so an old
 // episode with leftover progress could win): one part way through after the last watched, else the next unwatched.
