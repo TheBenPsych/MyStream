@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.PlayerFactory
 import com.github.damontecres.wholphin.services.PlaylistCreationResult
 import com.github.damontecres.wholphin.services.PlaylistCreator
+import com.github.damontecres.wholphin.services.PreviewPlayers
 import com.github.damontecres.wholphin.services.RefreshRateService
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.SmartResume
@@ -282,6 +283,9 @@ class PlaybackViewModel
 
         /** Benflix: which fallback step (see onPlayerError) was last used, and for which video */
         private var fallbackStepFor: UUID? = null
+
+        /** Benflix: the video whose direct play was already tried a second time (see onPlayerError) */
+        private var directRetryFor: UUID? = null
         private var fallbackStep = 0
 
         // Benflix Live TV: when a channel won't play, the next copies of it are tried (Tower's ?skip=1, 2),
@@ -2102,6 +2106,26 @@ class PlaybackViewModel
                         }
                         return@launch
                     }
+                    // Benflix: the first time the TV can't play the file as is, just try again the same way
+                    // (what restarting the video by hand does). Usually the TV's video chip was still busy
+                    // (a trailer letting go of it), and trying again plays it straight. Going to the server
+                    // instead meant Tower converted it, and the converted copy can skip a frame every few
+                    // seconds for the whole episode (Ben, BBT S7E3, 2026-11-18).
+                    if (it.playMethod == PlayMethod.DIRECT_PLAY && directRetryFor != itemNow) {
+                        directRetryFor = itemNow
+                        Timber.w(error, "Direct play failed, trying direct play once more")
+                        PreviewPlayers.freeAll()
+                        delay(DIRECT_RETRY_DELAY_MS)
+                        if (player.isReleased || state.value.currentPlayback
+                                ?.item
+                                ?.id != itemNow
+                        ) {
+                            return@launch
+                        }
+                        player.prepare()
+                        player.play()
+                        return@launch
+                    }
                     // Benflix fallback steps when the TV can't play something:
                     //  1. play the file as is (direct play)
                     //  2. server repackages it: picture kept as is, sound turned into AAC. Light for
@@ -2501,6 +2525,9 @@ private val DAMAGED_FILE_ERRORS =
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_DECODING_FAILED,
     )
+
+/** Wait before trying direct play again, so the TV's video chip has let go of the trailer */
+private const val DIRECT_RETRY_DELAY_MS = 800L
 
 /** How it shows on Ben's Server page problem list */
 private const val DAMAGED_FILE_PROBLEM = "Possibly damaged file (found automatically)"
