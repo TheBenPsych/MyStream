@@ -146,6 +146,13 @@
     };
     setTimeout(tryIt, 60);
   };
+  // Picking a spot with the mouse: the pointer is still over the menu, so keep it tucked until the pointer leaves
+  const tuck = () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (!rail || rail.classList.contains("always")) return;
+    rail.classList.add("tucked");
+    rail.addEventListener("mouseleave", () => rail && rail.classList.remove("tucked"), { once: true });
+  };
   const onRail = (e) => {
     const d = e.target.closest("[data-door]");
     // Glowfin (ui-7) + Ben 2026-11-18: every page has its places as tabs along its top, so it opens straight away
@@ -154,9 +161,12 @@
     const k = e.target.closest("[data-k]");
     if (!k) return;
     if (k.dataset.k === "me") {
+      // Ben 2026-11-18: your picture tucks the menu away and lands on the Me page's first tile (My watching),
+      // with the mouse too. The menu stays tucked until the pointer leaves it.
       e.preventDefault();
       closePanel();
-      B.openMenu(e.detail === 0);
+      tuck();
+      B.openMenu(true);
       return;
     }
     closePanel();

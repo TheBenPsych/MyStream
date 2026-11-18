@@ -362,7 +362,12 @@ B.openMenu = async (byKeys) => {
   if (!B.me) return;
   if (B.me.kids) return B.go("#/who");
   B.meByKeys = !!byKeys;
-  if (location.hash === "#/me") return;
+  if (location.hash === "#/me") {
+    // Already here: go back to the first tile (My watching)
+    const first = byKeys && $(".mepage .me-tile");
+    if (first) { B.meByKeys = false; first.focus({ preventScroll: true }); }
+    return;
+  }
   B.go("#/me");
 };
 B.route(/^\/me$/, async (m, nav) => {
@@ -381,7 +386,7 @@ B.route(/^\/me$/, async (m, nav) => {
     const b = e.target.closest("[data-go]"); if (!b) return;
     B.profileGo(b.dataset.go);
   });
-  if (B.meByKeys) { B.meByKeys = false; const first = $(".me-tile", page); if (first) first.focus(); }
+  if (B.meByKeys) { B.meByKeys = false; const first = $(".me-tile", page); if (first) first.focus({ preventScroll: true }); }
   B.watchTime().then((w) => { const el = $("#meWt"); if (el && B.alive(nav)) el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
 });
 

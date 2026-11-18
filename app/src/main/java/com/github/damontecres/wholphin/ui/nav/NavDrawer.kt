@@ -723,6 +723,7 @@ fun NavDrawer(
         }
     val openMe = {
         menuViewModel.load()
+        MeFocus.picks++
         if (destination !is Destination.Me) viewModel.navigationManager.navigateTo(Destination.Me)
     }
     val config = androidx.compose.ui.platform.LocalConfiguration.current
