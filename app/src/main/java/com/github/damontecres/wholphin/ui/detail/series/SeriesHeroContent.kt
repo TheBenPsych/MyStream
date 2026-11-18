@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
 
@@ -179,6 +180,7 @@ fun SeriesHeroContent(
                             side = scope.side,
                             big = easy,
                             wide = scope.wide,
+                            fitHeight = scope.height,
                             onPickSeason = actions.pickSeason,
                             onPlay = { actions.playEpisode(it, false) },
                             onHold = if (easy) null else ({ held = it }),
@@ -356,7 +358,7 @@ fun SeriesHeroContent(
 
 /** Season chips, the focused episode's story, then one row of wide episode pictures */
 @Composable
-private fun EpisodesSection(
+internal fun EpisodesSection(
     seasons: List<BaseItem?>,
     seasonIndex: Int,
     episodes: List<BaseItem>,
@@ -367,6 +369,8 @@ private fun EpisodesSection(
     onPickSeason: (Int) -> Unit,
     onPlay: (BaseItem) -> Unit,
     onHold: ((BaseItem) -> Unit)?,
+    /** TV: the height of the tab area, so the season chips, the episode line and the pictures all fit */
+    fitHeight: Dp = Dp.Unspecified,
 ) {
     var focused by remember(seasonIndex) { mutableStateOf<BaseItem?>(null) }
     val all = remember(episodes) { episodes.distinctBy { it.id } }
@@ -383,34 +387,58 @@ private fun EpisodesSection(
     val shown = focused ?: shownEpisodes.firstOrNull { !it.played } ?: shownEpisodes.firstOrNull()
     val startIndex = remember(shownEpisodes) { shownEpisodes.indexOfFirst { !it.played }.coerceAtLeast(0) }
     val rowState = androidx.compose.runtime.key(seasonIndex, group) { rememberLazyListState(initialFirstVisibleItemIndex = startIndex) }
+    // TV: the group chips (1-25, 26-50) share the season chips' line, so the tab area has room for the pictures
+    val oneChipLine = wide && fitHeight != Dp.Unspecified
+    val anyUpcoming = remember(shownEpisodes) { shownEpisodes.any { it.data.premiereDay?.isAfter(java.time.LocalDate.now()) == true } }
     val cardWidth =
         if (big) {
             300.dp
+        } else if (oneChipLine) {
+            // Fits the title page's tab area (the bottom 40% of the screen) with the chips and the episode line
+            // above the pictures, so landing on a picture never slides them off the top (Ben's TV, 2026-11-18)
+            val above = (if (seasons.size > 1 || groups.isNotEmpty()) 46.dp else 34.dp) + 36.dp
+            val below = 30.dp + if (anyUpcoming) 18.dp else 0.dp
+            ((fitHeight - above - below) * 16f / 9f).coerceIn(150.dp, 210.dp)
         } else if (wide) {
-            // Fits the title page's tab area (the bottom 40% of the screen)
             210.dp
         } else {
             200.dp
         }
-    Column(Modifier.fillMaxWidth()) {
-        if (seasons.size > 1) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(if (oneChipLine) Modifier.scrollAsOneBlock(fitHeight) else Modifier),
+    ) {
+        if (seasons.size > 1 || (oneChipLine && groups.isNotEmpty())) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = side),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 12.dp),
             ) {
-                itemsIndexed(seasons) { index, season ->
-                    SeasonChip(
-                        text = season?.name ?: "Season ${index + 1}",
-                        selected = index == seasonIndex,
-                        onClick = { onPickSeason(index) },
-                    )
+                if (seasons.size > 1) {
+                    itemsIndexed(seasons) { index, season ->
+                        SeasonChip(
+                            text = season?.name ?: "Season ${index + 1}",
+                            selected = index == seasonIndex,
+                            onClick = { onPickSeason(index) },
+                        )
+                    }
+                }
+                if (oneChipLine) {
+                    itemsIndexed(groups) { index, range ->
+                        val numbers = range.mapNotNull { i -> all[i].takeIf { !it.isSpecial() }?.data?.indexNumber }
+                        GroupChip(
+                            text = "${numbers.minOrNull() ?: (range.first() + 1)}–${numbers.maxOrNull() ?: (range.last() + 1)}",
+                            selected = index == group,
+                            onClick = { group = index },
+                        )
+                    }
                 }
             }
         } else {
             SectionTitle(seasons.firstOrNull()?.name ?: "Episodes", side)
         }
-        if (groups.isNotEmpty()) {
+        if (groups.isNotEmpty() && !oneChipLine) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = side),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

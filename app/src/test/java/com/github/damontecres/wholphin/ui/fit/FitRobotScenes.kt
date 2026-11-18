@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
@@ -25,6 +26,7 @@ import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.detail.AskForSimilarTab
+import com.github.damontecres.wholphin.ui.detail.series.EpisodesSection
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleFacts
@@ -32,6 +34,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitleParentsGuide
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
+import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.NamedBack
@@ -40,6 +43,9 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.touch.PhoneFit
 import io.mockk.mockk
+import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.api.BaseItemKind
+import java.util.UUID
 
 /** Long, awkward names that have cut text before */
 object FitWords {
@@ -79,6 +85,27 @@ object FitWords {
             "kingdom. Armed with nothing but a production magic everyone laughs at, he slowly turns the muddy " +
             "village into a fortress city, one wall, one well and one stubborn neighbour at a time. " +
             "Along the way he gathers a band of misfits who would rather nap than fight."
+}
+
+/** Pretend shows, seasons and episodes */
+object FitItems {
+    fun item(
+        kind: BaseItemKind,
+        name: String,
+        number: Int? = null,
+    ) = BaseItem(
+        BaseItemDto(id = UUID.nameUUIDFromBytes("$kind-$name-$number".toByteArray()), type = kind, name = name, indexNumber = number),
+    )
+
+    val seasons = (1..4).map { item(BaseItemKind.SEASON, "Season $it", it) }
+    val episodes =
+        (1..12).map {
+            item(BaseItemKind.EPISODE, if (it % 3 == 0) "The Lord Builds a Very Long Wall Around the Whole Village" else "A New Well", it)
+        }
+    val longSeason = (1..120).map { item(BaseItemKind.EPISODE, "Episode $it", it) }
+    val movies =
+        listOf("Revenger", "Heidi, Girl of the Alps", "Desert Punk", "Major", "Hero Tales", "Zoids", "Akira", "Paprika", "Perfect Blue")
+            .map { item(BaseItemKind.MOVIE, it) }
 }
 
 /** One page to draw: its name, and the page itself */
@@ -151,9 +178,23 @@ object FitScenes {
             TitleButton("More", BenflixIcon.MORE, {}),
         )
 
-    private fun animeTabs(): List<TitleTab> =
+    private fun animeTabs(longSeason: Boolean = false): List<TitleTab> =
         listOf(
-            TitleTab("Episodes") { scope -> TitleFacts(scope, listOf("Episode list goes here"), BenflixColors.Shows) },
+            TitleTab("Episodes") { scope ->
+                EpisodesSection(
+                    seasons = FitItems.seasons,
+                    seasonIndex = 0,
+                    episodes = if (longSeason) FitItems.longSeason else FitItems.episodes,
+                    numberOffset = null,
+                    side = scope.side,
+                    big = false,
+                    wide = scope.wide,
+                    fitHeight = scope.height,
+                    onPickSeason = {},
+                    onPlay = {},
+                    onHold = null,
+                )
+            },
             TitleTab("Overview") { scope ->
                 TitleOverview(
                     scope = scope,
@@ -169,7 +210,7 @@ object FitScenes {
                 )
             },
             TitleTab("Characters and voices") { scope -> TitleFacts(scope, listOf("Characters go here"), BenflixColors.Shows) },
-            TitleTab("More like this") { scope -> TitleFacts(scope, listOf("Posters go here"), BenflixColors.Shows) },
+            TitleTab("More like this") { scope -> TitlePosterRow(scope, FitItems.movies, {}, name = "Because it's anime") },
             TitleTab("Ask for similar") { scope ->
                 AskForSimilarTab(
                     kind = AskKind.ANIME,
@@ -203,20 +244,22 @@ object FitScenes {
             },
         )
 
-    private fun animePage(openTab: String) =
-        @Composable {
-            TitlePage(
-                title = FitWords.LONG_ANIME,
-                originalTitle = FitWords.JAPANESE,
-                accent = BenflixColors.Shows,
-                picture = TitlePicture.Wide(null),
-                info = "2026 · 1 season · Fantasy · SUB · Ended",
-                rating = "TV-14",
-                buttons = buttons(),
-                tabs = animeTabs(),
-                openTab = openTab,
-            )
-        }
+    private fun animePage(
+        openTab: String,
+        longSeason: Boolean = false,
+    ) = @Composable {
+        TitlePage(
+            title = FitWords.LONG_ANIME,
+            originalTitle = FitWords.JAPANESE,
+            accent = BenflixColors.Shows,
+            picture = TitlePicture.Wide(null),
+            info = "2026 · 1 season · Fantasy · SUB · Ended",
+            rating = "TV-14",
+            buttons = buttons(),
+            tabs = animeTabs(longSeason),
+            openTab = openTab,
+        )
+    }
 
     fun all(): List<FitScene> =
         buildList {
@@ -224,7 +267,10 @@ object FitScenes {
             add(FitScene("anime-ask-focused", animePage("Ask for similar"), focusText = "Revenger"))
             add(FitScene("anime-ask", animePage("Ask for similar")))
             add(FitScene("anime-ask-second-row", animePage("Ask for similar"), focusText = "Zoids"))
-            listOf("Episodes", "Overview", "Did you know", "Parents' guide").forEach { tab ->
+            add(FitScene("anime-episodes-focused", animePage("Episodes"), focusText = "E1 · A New Well"))
+            add(FitScene("anime-long-season-focused", animePage("Episodes", longSeason = true), focusText = "Episode 1"))
+            add(FitScene("anime-more-like-this-focused", animePage("More like this"), focusText = "Desert Punk"))
+            listOf("Episodes", "Overview", "More like this", "Did you know", "Parents' guide").forEach { tab ->
                 add(FitScene("anime-${tab.lowercase().replace(Regex("[^a-z]+"), "-").trim('-')}", animePage(tab)))
             }
             add(

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -90,8 +91,12 @@ private fun runScene(
         after =
             scene.focusText?.let { words ->
                 {
+                    val inside = hasClickAction().and(hasAnyDescendant(hasText(words, substring = true)))
+                    // Episode pictures have their name under the picture, not on it
+                    val beside = hasClickAction().and(hasParent(hasAnyDescendant(hasText(words, substring = true))))
+                    val direct = rule.onAllNodes(inside, useUnmergedTree = true).fetchSemanticsNodes()
                     rule
-                        .onAllNodes(hasClickAction().and(hasAnyDescendant(hasText(words))), useUnmergedTree = true)
+                        .onAllNodes(if (direct.isNotEmpty()) inside else beside, useUnmergedTree = true)
                         .onFirst()
                         .requestFocus()
                 }
