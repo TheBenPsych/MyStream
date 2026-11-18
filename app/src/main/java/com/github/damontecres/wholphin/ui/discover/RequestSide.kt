@@ -63,9 +63,13 @@ internal data class SideList(
 )
 
 /**
- * The frame every Requests tab uses. [wall] draws whatever the pick is (a list's posters, Your requests,
- * Waiting for you or Genres). [waitingCount] null = this person doesn't approve (only Ben does).
+ * The frame the Music and Books request tabs use. Glowfin R1 (Ben 2026-11-18): the lists are chips across
+ * the top (TV, phone and browser alike), and [wall] below draws the one you picked. OK or a tap picks;
+ * moving along the chips only moves, so nothing loads as you pass. Your requests and Waiting for you live on
+ * the page's top line and the Your requests tab now, so [yoursCount], [waitingCount], [searchLabel] and
+ * [extraSide] are only kept for the callers. Search on the top line runs [onSearch].
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 internal fun RequestSideFrame(
     isTv: Boolean,
@@ -84,81 +88,24 @@ internal fun RequestSideFrame(
     phoneWall: Boolean = true,
     phoneAlt: @Composable (Modifier) -> Unit = {},
 ) {
-    if (isTv) {
-        Row(Modifier.fillMaxSize()) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 32.dp),
-                modifier = Modifier.width(240.dp).fillMaxHeight(),
-            ) {
-                item(key = "search") { SideEntry(searchLabel, selected = false, onClick = onSearch) }
-                item(key = "side-yours-h") { SideHeading("Yours") }
-                item(key = "side-yours") {
-                    SideEntry("Your requests", selected = picked == PICK_YOURS, count = yoursCount, onPick = { onPick(PICK_YOURS) })
-                }
-                if (waitingCount != null) {
-                    item(key = "side-waiting") {
-                        SideEntry(
-                            "Waiting for you",
-                            selected = picked == PICK_WAITING,
-                            count = waitingCount,
-                            countColor = if (waitingCount > 0) WaitingAmber else null,
-                            onPick = { onPick(PICK_WAITING) },
-                        )
-                    }
-                }
-                item(key = "side-lists-h") { SideHeading("Lists") }
-                if (loading && lists.isEmpty()) {
-                    item(key = "side-loading") { SideEntry("Loading…", selected = false, onPick = {}) }
-                }
-                lists.forEachIndexed { i, l ->
-                    if (l.heading != null && lists.getOrNull(i - 1)?.heading != l.heading) {
-                        item(key = "side-h-${l.key}") { SideHeading(l.heading) }
-                    }
-                    item(key = "side-${l.key}") {
-                        SideEntry(
-                            if (l.heading !=
-                                null
-                            ) {
-                                l.short ?: l.title
-                            } else {
-                                l.title
-                            },
-                            selected = picked == l.key,
-                            onPick = { onPick(l.key) },
-                        )
-                    }
-                }
-                extraSide()
-            }
-            wall(Modifier.weight(1f).fillMaxHeight())
-        }
-    } else {
-        Column(Modifier.fillMaxSize()) {
+    OnRequestsSearch(onSearch)
+    Column(Modifier.fillMaxSize()) {
+        if (!isTv) {
             phoneTop()
             if (!phoneWall) {
                 phoneAlt(Modifier.fillMaxWidth().weight(1f))
                 return@Column
             }
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                item(key = "chip-mine") { RequestsChip("Your requests $yoursCount", picked == PICK_YOURS, { onPick(PICK_YOURS) }) }
-                if (waitingCount != null) {
-                    item(key = "chip-waiting") {
-                        RequestsChip(
-                            if (waitingCount > 0) "Waiting for you $waitingCount  ●" else "Waiting for you 0",
-                            picked == PICK_WAITING,
-                            { onPick(PICK_WAITING) },
-                        )
-                    }
-                }
-                items(lists, key = { "chip-${it.key}" }) { l -> RequestsChip(l.title, picked == l.key, { onPick(l.key) }) }
-                extraChips()
-            }
-            wall(Modifier.fillMaxWidth().weight(1f))
         }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        ) {
+            if (loading && lists.isEmpty()) item(key = "chip-loading") { RequestsChip("Loading…", false, {}) }
+            items(lists, key = { "chip-${it.key}" }) { l -> RequestsChip(l.title, picked == l.key, { onPick(l.key) }) }
+            extraChips()
+        }
+        wall(Modifier.fillMaxWidth().weight(1f))
     }
 }
 
@@ -286,6 +233,8 @@ internal data class AskLine(
     val onRemove: (() -> Unit)? = null,
     /** Why it couldn't be found, in plain words (music asks), shown under the pill */
     val why: String = "",
+    /** Who asked (Ben's lists): their sea friend shows beside the Yes / No */
+    val who: String? = null,
 )
 
 /** Your requests (grouped by the five pills, Ready first) or Waiting for you (flat, with Approve / Decline) */
@@ -349,6 +298,20 @@ internal fun AskLineRow(line: AskLine) {
             AsyncImage(model = line.cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+            if (line.onYes != null && !line.who.isNullOrBlank()) {
+                // Glowfin R1 Waiting for you: who asked, with their sea friend
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WhoAskedFace(line.who, 26.dp)
+                    Text(
+                        text = "${line.who} asked",
+                        fontSize = BenflixType.small,
+                        fontWeight = FontWeight.SemiBold,
+                        color = com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Text(
                 text = line.title,
                 fontSize = BenflixType.body,
@@ -366,8 +329,8 @@ internal fun AskLineRow(line: AskLine) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            line.onYes?.let { MusicButton("Approve", BenflixIcon.CHECK, onClick = it, primary = true) }
-            line.onNo?.let { MusicButton("Decline", BenflixIcon.CLOSE, onClick = it) }
+            line.onYes?.let { MusicButton("Yes", BenflixIcon.CHECK, onClick = it, primary = true) }
+            line.onNo?.let { MusicButton("No", BenflixIcon.CLOSE, onClick = it) }
             line.onRetry?.let { MusicButton("Try again", BenflixIcon.REFRESH, onClick = it) }
             if (line.onYes == null) line.onOpen?.let { MusicButton("Open", null, onClick = it) }
             line.onRemove?.let { MusicButton(null, BenflixIcon.TRASH, onClick = it) }
@@ -400,6 +363,7 @@ internal fun RequestEntry.toAskLine(
         onOpen = onOpen,
         onYes = if (pending) ({ onAnswer?.invoke(true) }) else null,
         onNo = if (pending) ({ onAnswer?.invoke(false) }) else null,
+        who = who.takeIf { showWho },
     )
 }
 
@@ -427,6 +391,7 @@ internal fun com.github.damontecres.wholphin.services.MusicRequest.toAskLine(
         onRetry = if (canRetry) onRetry else null,
         onRemove = onRemove,
         why = why,
+        who = who.takeIf { showWho && it.isNotBlank() },
     )
 
 /** A book request as a line. [onAnswer] set = it's waiting for Ben's yes. */
@@ -453,5 +418,6 @@ internal fun com.github.damontecres.wholphin.services.BookRequest.toAskLine(
         onYes = onAnswer?.let { { it(true) } },
         onNo = onAnswer?.let { { it(false) } },
         onRetry = if (canRetry) onRetry else null,
+        who = who.takeIf { showWho && it.isNotBlank() },
     )
 }

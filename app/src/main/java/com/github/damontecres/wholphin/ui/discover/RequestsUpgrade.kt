@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -57,6 +58,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
+import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import java.time.LocalDate
 import java.time.Year
@@ -160,22 +162,67 @@ fun RequestsChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** A small aqua number after the words (Waiting for you) */
+    count: Int? = null,
 ) {
-    Button(
+    // Glowfin (R1): the chip you're on is filled with the glow, the others sit on the raised colour.
+    // The remote gets the glow ring (no grow), like every other Glowfin button.
+    val shape = RoundedCornerShape(20.dp)
+    androidx.tv.material3.Surface(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        shape =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .shape(shape),
         colors =
-            ButtonDefaults.colors(
-                containerColor = if (selected) Color.White else CHIP,
-                contentColor = if (selected) Color.Black else Color.White,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
+            androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = if (selected) Color.White else com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = com.github.damontecres.wholphin.ui.theme.Glowfin.Text,
+                pressedContainerColor = Color.Transparent,
             ),
-        modifier = modifier.benflixOuterFocusRing(RoundedCornerShape(20.dp)).height(40.dp),
-        scale = ButtonDefaults.scale(focusedScale = 1f),
+        border =
+            com.github.damontecres.wholphin.ui.nav
+                .focusRing(shape),
+        scale =
+            androidx.tv.material3.ClickableSurfaceDefaults
+                .scale(focusedScale = 1f),
+        modifier =
+            modifier
+                .glowFocus(shape, spread = 8.dp)
+                .height(40.dp),
     ) {
-        Text(text = label, fontSize = BenflixType.body, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        androidx.compose.foundation.layout.Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+            modifier =
+                Modifier
+                    .then(
+                        if (selected) {
+                            Modifier.background(com.github.damontecres.wholphin.ui.theme.Glowfin.GlowAcross, shape)
+                        } else {
+                            Modifier.background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise, shape)
+                        },
+                    ).fillMaxHeight()
+                    .padding(horizontal = 16.dp),
+        ) {
+            Text(
+                text = label,
+                fontSize = BenflixType.body,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            if (count != null) {
+                Text(
+                    text = "  $count",
+                    fontSize = BenflixType.body,
+                    fontWeight = FontWeight.Bold,
+                    color = if (selected) Color.White else com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -408,8 +455,10 @@ fun QuickMenuDialog(
     }
 }
 
-/** Asked, Approved, Downloading, Ready, with the current step lit up */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Glowfin R1 (Ben 2026-11-18): Your requests says where an ask is in plain words (the pill above), with one
+ * thin violet > aqua bar under it that fills as it goes: asked, said yes, downloading (with its %), ready.
+ */
 @Composable
 fun RequestSteps(
     approved: Boolean,
@@ -419,50 +468,29 @@ fun RequestSteps(
     declined: Boolean,
 ) {
     if (declined) return
-    val steps =
-        listOf(
-            "Asked" to true,
-            "Approved" to (approved || downloading || ready),
-            (if (percent != null && !ready) "Downloading $percent%" else "Downloading") to (downloading || ready),
-            "Ready" to ready,
-        )
-    // Benflix: wraps onto a second line on narrow phone screens instead of squeezing the words
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        steps.forEachIndexed { i, (label, done) ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (i > 0) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(width = 14.dp, height = 2.dp)
-                                .background(if (done) Color(0xFF3DD68C) else Color(0xFF3F3F46)),
-                    )
-                }
-                Box(
-                    modifier =
-                        Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (done) Color(0xFF3DD68C) else Color(0xFF3F3F46)),
-                )
-                Text(
-                    text = label,
-                    fontSize = BenflixType.tag,
-                    fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
-                    color = if (done) Color.White else MUTED,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    softWrap = false,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
-            }
+    val fill =
+        when {
+            ready -> 1f
+            downloading -> 0.45f + 0.5f * ((percent ?: 0).coerceIn(0, 100) / 100f)
+            approved -> 0.35f
+            else -> 0.12f
         }
+    val shape = RoundedCornerShape(2.dp)
+    Box(
+        Modifier
+            .padding(top = 2.dp)
+            .widthIn(max = 320.dp)
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(shape)
+            .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Line),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(fill)
+                .height(4.dp)
+                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.GlowAcross, shape),
+        )
     }
 }
 
@@ -496,14 +524,14 @@ fun ApproveAllDialog(
                     .widthIn(max = 460.dp)
                     .padding(24.dp),
         ) {
-            Text("Approve all $count?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Say yes to all $count?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Color.White)
             Text(
                 "Everything waiting for you gets a yes and starts downloading.",
                 fontSize = BenflixType.body,
                 color = MUTED,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onConfirm, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Approve all") }
+                Button(onClick = onConfirm, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Yes to all") }
                 Button(onClick = onDismiss, scale = ButtonDefaults.scale(focusedScale = 1f)) { Text("Cancel") }
             }
         }

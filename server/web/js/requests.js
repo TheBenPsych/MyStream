@@ -165,7 +165,7 @@ B.bookPill = (r) => {
 };
 // One request line for any kind: { key, title, sub, cover, square, pill, acts }
 B.rqLine = (o) => `<div class="item"><div class="rqthumb ${o.square ? "sq" : ""}" style="${o.cover ? `background-image:url('${esc(o.cover)}')` : ""}"></div>
-  <div class="grow"><div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div>${o.why ? `<div class="s dim" style="margin-top:4px">${esc(o.why)}</div>` : ""}</div>
+  <div class="grow">${o.who ? `<div class="rqwho">${B.picHtml({ name: o.who }, "rqface")}<span>${esc(o.who)} asked</span></div>` : ""}<div class="t">${esc(o.title)}</div>${o.sub ? `<div class="s">${esc(o.sub)}</div>` : ""}<div style="margin-top:6px">${B.rqPillHtml(o.pill)}</div>${o.why ? `<div class="s dim" style="margin-top:4px">${esc(o.why)}</div>` : ""}</div>
   <div class="acts">${o.acts || ""}</div></div>`;
 // Your requests: grouped by the five pills, Ready first. Waiting for you: a flat list with Approve / Decline.
 B.rqLines = (lines, grouped, empty) => {
@@ -176,15 +176,27 @@ B.rqLines = (lines, grouped, empty) => {
     return g.length ? `<h3 class="section-title">${esc(title)} <span class="dim">${g.length}</span></h3><div class="list">${g.map(B.rqLine).join("")}</div>` : "";
   }).join("");
 };
-// The side list every tab uses: Yours first (Your requests, Waiting for you in amber for Ben), then the lists
-B.rqSide = (lists, picked, mine, waiting) => `<h4>Yours</h4><button class="${picked === "yours" ? "on" : ""}" data-rqpick="yours">Your requests<span class="n">${mine}</span></button>`
-  + (waiting == null ? "" : `<button class="${picked === "waiting" ? "on" : ""}" data-rqpick="waiting">Waiting for you<span class="n ${waiting ? "amber" : ""}">${waiting}</span></button>`)
-  + `<h4>Lists</h4>` + lists.map((l, i) => (l.heading && (lists[i - 1] || {}).heading !== l.heading ? `<h4>${esc(l.heading)}</h4>` : "")
-    + `<button class="${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}" title="${esc(l.title)}">${l.heading ? `<span class="rqshort">${esc(l.short || l.title)}</span><span class="rqlong">${esc(l.title)}</span>` : esc(l.title)}</button>`).join("");
+// Glowfin R1 (Ben 2026-11-18): a tab's lists are chips across the top; the wall below shows the one picked.
+// Your requests and Waiting for you sit on the page's top line and the Your requests tab.
+B.rqSide = (lists, picked) => lists.map((l) => `<button class="chip ${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}" title="${esc(l.title)}">${esc(l.title)}</button>`).join("");
+// Glowfin Top 10 rule on a wall: the first ten sit in one row, each number fully beside its poster; the rest below
+B.rqGrid = (cards, ranked, cls) => (ranked && cards.length
+  ? `<div class="strip rqt10">${cards.slice(0, 10).map((c, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${c}</div>`).join("")}</div>`
+  : "") + `<div class="grid ${cls || ""}">${(ranked ? cards.slice(10) : cards).join("")}</div>`;
 // The end of a list: titles already on Benflix never show in the lists, but can be opened here
 B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Glowfin" : `${n} more ${n === 1 ? "is" : "are"} already on Glowfin ›`}</button></p>` : "");
 B.yearsOf = (r) => (r.releaseDate || r.firstAirDate || "").slice(0, 4);
 
+// Glowfin R1: how many asks wait for Ben's Yes or No (movies, shows, anime, music and books together)
+B.rqWaitingCount = async () => {
+  const me = await B.seerrMe();
+  const [sw, mus, bks] = await Promise.all([
+    me && me.active ? seerr(`/request?take=40&skip=0&sort=added&filter=pending`).catch(() => null) : null,
+    B.call("GET", "api/music/status").catch(() => null),
+    B.call("GET", "api/books/requests").catch(() => null),
+  ]);
+  return ((sw && sw.results) || []).length + ((mus && mus.requests) || []).filter((r) => r.waiting).length + ((bks && bks.waiting) || []).length;
+};
 const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["yours", "Your requests"]];
 const detailsAnime = (d) => ((d.genres || []).some((g) => g.id === 16) || (d.genreIds || []).includes(16)) && d.originalLanguage === "ja";
 B.route(/^\/requests/, async (m, nav) => {
@@ -197,11 +209,12 @@ B.route(/^\/requests/, async (m, nav) => {
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
     <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => k !== "books" || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
-      ${tab !== "yours" ? B.reqForHtml() : ""}
+      <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
 </div></div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   B.reqForFill(B.page());
+  if (B.me.admin) B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
   if (tab === "music") return B.musicTab(nav);
   if (tab === "books") return B.booksTab(nav);
   if (tab === "yours") return B.yoursTab(nav);
@@ -235,9 +248,8 @@ B.route(/^\/requests/, async (m, nav) => {
   const GENRES = tab === "movies"
     ? [["Action", 28], ["Adventure", 12], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Fantasy", 14], ["History", 36], ["Horror", 27], ["Mystery", 9648], ["Romance", 10749], ["Sci-Fi", 878], ["Thriller", 53], ["War", 10752], ["Western", 37]]
     : [["Action and adventure", 10759], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Kids", 10762], ["Mystery", 9648], ["Reality", 10764], ["Sci-Fi and fantasy", 10765], ["War and politics", 10768], ["Western", 37]];
-  let walls = [], picked = null, genre = null, ownedOpen = null;
+  let walls = [], genre = null, ownedOpen = null;
   // Top 10: a number badge on the picture's bottom corner (the name and year stay under the poster)
-  const ranked = (r, i) => B.askCard(r).replace(/<\/div>\s*<div class="cap">/, `<span class="rqrank">${i + 1}</span></div><div class="cap">`);
   let animeUi = null;
   // Anime's own side list opens Your requests / Waiting for you in a side panel (the new status lines)
   const openList = (which) => {
@@ -257,72 +269,48 @@ B.route(/^\/requests/, async (m, nav) => {
     });
   };
   const drawWall = () => {
-    // Anime has its own side list and walls (B.animeRequests, below)
+    // Anime has its own chips and walls (B.animeRequests, below)
     if (tab === "anime") { if (animeUi) animeUi.drawSide(); return; }
-    const side = $("#rqside"), wall = $("#rqwall");
-    if (!side || !wall) return;
-    const special = picked === "genres" || picked === "yours" || picked === "waiting";
-    const cur = special ? null : walls.find((w) => w.id === picked) || walls[0];
-    const sideLists = walls.map((w) => ({ id: w.id, title: w.title })).concat(tab === "anime" ? [] : [{ id: "genres", title: genre ? "Genre: " + genre[0] : "Genres" }]);
-    side.innerHTML = B.rqSide(sideLists, special ? picked : cur && cur.id, lists.mine.length, B.me.admin ? lists.waiting.length : null);
-    if (picked === "yours" || picked === "waiting") {
-      const admin = picked === "waiting";
-      const items = lists[admin ? "waiting" : "mine"];
-      wall.innerHTML = `<div class="rqhead"><b>${admin ? "Waiting for you" : "Your requests"}</b><span>${items.length}</span></div>`
-        + B.rqLines(items.map((r) => B.seerrLine(r, admin)), !admin, admin ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a poster and press Ask for it.");
-      return;
-    }
-    if (picked === "genres") {
-      wall.innerHTML = `<div class="rqhead"><b>Genres</b><span>Pick one and every list shows only that genre</span></div><div class="rqgenres">${[["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("")}</div>`;
-      return;
-    }
-    if (!cur) { wall.innerHTML = `<div class="empty">Nothing to show right now. Try again in a minute.</div>`; return; }
-    const open = ownedOpen === cur.id;
-    const shown = open ? cur.items.concat(cur.owned) : cur.items;
-    wall.innerHTML = `<div class="rqline" id="rqline">${esc(B.rqAbout(shown[0]))}</div><div class="grid">${shown.map((r, i) => cur.ranked && i < 10 ? ranked(r, i) : B.askCard(r)).join("")}</div>${B.rqOwned(cur.owned.length, open)}`;
+    const box = $("#rqrows");
+    if (!box) return;
+    // Glowfin R1 (Ben 2026-11-18): rows like the TV, Top 10 to ask for (numbers fully beside the posters),
+    // Coming soon, Trending, then Genres. Titles already on Glowfin stay hidden; "N more" at a row's end opens them.
+    const rowsHtml = walls.map((w) => {
+      const open = ownedOpen === w.id;
+      const shown = open ? w.items.concat(w.owned) : w.items;
+      const cards = w.ranked
+        ? shown.slice(0, 10).map((r, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.askCard(r)}</div>`)
+        : shown.map(B.askCard);
+      if (w.owned.length) cards.push(`<button class="poster see rqownedcard" data-rqowned="${esc(w.id)}">${open ? "Hide the ones already on Glowfin" : `${w.owned.length} more ${w.owned.length === 1 ? "is" : "are"} already on Glowfin ›`}</button>`);
+      return B.row(w.title, cards);
+    }).join("");
+    const chips = [["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("");
+    box.innerHTML = (rowsHtml || `<div class="wrap empty">Nothing to show right now. Try again in a minute.</div>`)
+      + `<section class="rowx"><h3>Genres</h3><div class="rqgenres rqchips">${chips}</div></section>`;
   };
   const drawRows = async () => {
     if (tab === "anime") { animeUi = B.animeRequests(nav, () => lists, openList); return; }
-    $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
-    $("#rqside").onclick = (e) => {
-      const b = e.target.closest("[data-rqpick]");
-      if (b) { picked = b.dataset.rqpick; drawWall(); }
-    };
-    const wallEl = $("#rqwall");
-    wallEl.onclick = (e) => {
-      if (e.target.closest("[data-rqowned]")) {
-        const cur = walls.find((w) => w.id === picked) || walls[0];
-        ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
-        return drawWall();
-      }
-      const y = e.target.closest("[data-yes]"), n = e.target.closest("[data-no]");
-      if (y || n) {
-        const id = (y || n).dataset.yes || (y || n).dataset.no;
-        return B.busy(y || n, async () => {
-          await B.jf("POST", `/JellyfinEnhanced/arr/requests/${id}/${y ? "approve" : "decline"}`).catch(() => {});
-          await loadLists();
-          if (B.alive(nav)) drawWall();
-          return y ? "Said yes. Tower starts looking now." : "Said no.";
-        });
-      }
+    $("#rows").innerHTML = `<div class="wrap rqline" id="rqline"> </div><div id="rqrows">${B.spinner()}</div>`;
+    const box = $("#rqrows");
+    box.onclick = (e) => {
+      const o = e.target.closest("[data-rqowned]");
+      if (o) { ownedOpen = ownedOpen === o.dataset.rqowned ? null : o.dataset.rqowned; return drawWall(); }
       const g = e.target.closest("[data-rqgenre]");
       if (!g) return;
       const id = +g.dataset.rqgenre;
       genre = id ? GENRES.find((x) => x[1] === id) : null;
-      picked = null;
       loadWalls();
     };
-    // The line above the wall: what the poster under the mouse is
-    wallEl.onmouseover = (e) => {
+    // The line on top: what the poster under the mouse is
+    box.onmouseover = (e) => {
       const c = e.target.closest("[data-id]"), line = $("#rqline");
       if (c && line && B.items[c.dataset.id]) line.textContent = B.rqAbout(B.items[c.dataset.id]);
     };
-    drawWall();
     await loadWalls();
   };
   const loadWalls = async () => {
-    const wall = $("#rqwall");
-    if (wall && picked !== "yours" && picked !== "waiting") wall.innerHTML = B.spinner();
+    const wall = $("#rqrows");
+    if (wall && tab !== "anime") wall.innerHTML = B.spinner();
     const kindPath = tab === "movies" ? "movies" : "tv";
     const pg = (path, list) => list.map((n) => seerr(`${path}?page=${n}`).catch(() => null));
     // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
@@ -350,8 +338,8 @@ B.route(/^\/requests/, async (m, nav) => {
     } else {
       const trend = all(0);
       const top = trend.filter((x) => !onBenflix(x)).slice(0, 10);
-      walls = [wallOf("top", "Top 10 this week", top, true), wallOf("trending", "Trending", trend.filter((x) => !top.includes(x))),
-        wallOf("soon", "Coming soon", all(1))];
+      walls = [wallOf("top", "Top 10 to ask for this week", top, true), wallOf("soon", "Coming soon", all(1)),
+        wallOf("trending", "Trending", trend.filter((x) => !top.includes(x)))];
     }
     walls = walls.filter((w) => w.items.length || w.owned.length);
     drawWall();
@@ -378,7 +366,7 @@ B.route(/^\/requests/, async (m, nav) => {
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 350); };
   if (B.q("q")) search(B.q("q")); else drawRows();
-  loadLists().then(() => { if (B.alive(nav)) drawWall(); });
+  loadLists().then(() => { if (B.alive(nav) && tab === "anime" && animeUi) animeUi.drawSide(); });
 });
 // The line above the wall: name · year · Coming date · score
 B.rqAbout = (r) => {
@@ -406,8 +394,8 @@ B.seerrLine = (r, answer) => {
   const kind = r.type === "movie" ? "Movie" : seasons.length === 1 ? "Season " + seasons[0] : seasons.length ? seasons.length + " seasons" : "Show";
   return {
     title: md.title || md.name || "Name not found", sub: [B.me.admin ? who : "", kind, B.when(r.createdAt)].filter(Boolean).join(" · "),
-    cover: md.poster ? tmdbImg(md.poster, "w185") : "", pill: B.seerrPill(r),
-    acts: answer ? `<button class="btn small white" data-yes="${r.id}">Approve</button><button class="btn small" data-no="${r.id}">Decline</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`,
+    cover: md.poster ? tmdbImg(md.poster, "w185") : "", pill: B.seerrPill(r), who: answer && B.me.admin ? who : "",
+    acts: answer ? `<button class="btn small white" data-yes="${r.id}">Yes</button><button class="btn small" data-no="${r.id}">No</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`,
   };
 };
 
@@ -430,7 +418,7 @@ B.yoursTab = async (nav) => {
     const wait = waiting.map((r) => B.seerrLine(r, true));
     ((mus && mus.requests) || []).forEach((r) => {
       const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "" };
-      if (B.me.admin && r.waiting) wait.push(Object.assign(o, { acts: `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>` }));
+      if (B.me.admin && r.waiting) wait.push(Object.assign(o, { who: r.who || "", acts: `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>` }));
       else lines.push(Object.assign(o, { acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
     });
     if (bks) {
@@ -438,7 +426,7 @@ B.yoursTab = async (nav) => {
       const all = (B.me.admin ? [].concat(bks.mine || [], bks.others || [], bks.mangaToAdd || []) : bks.mine || []).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i && !bw.has(r.id));
       const line = (r) => ({ title: r.name, sub: [B.me.admin ? r.who : "", r.author, r.state === "manga" ? "manga" : (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r) });
       all.forEach((r) => lines.push(Object.assign(line(r), { acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
-      if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { acts: `<button class="btn small white" data-byes="${esc(r.id)}">Approve</button><button class="btn small" data-bno="${esc(r.id)}">Decline</button>` })));
+      if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { who: r.who || "", acts: `<button class="btn small white" data-byes="${esc(r.id)}">Yes</button><button class="btn small" data-bno="${esc(r.id)}">No</button>` })));
     }
     rows.innerHTML = `<div class="wrap">${B.me.admin && wait.length ? `<h3 class="section-title">Waiting for you <span class="rqpill p-looking">${wait.length}</span></h3>${B.rqLines(wait, false, "")}` : ""}
       ${B.rqLines(lines, true, "Nothing asked for yet. Pick a poster on any tab and ask for it.")}</div>`;
@@ -500,8 +488,8 @@ B.musicTab = async (nav) => {
     ].filter(Boolean);
   };
   const reqLine = (r, answer) => ({
-    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "",
-    acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Approve</button><button class="btn small" data-mno="${esc(r.id)}">Decline</button>`
+    title: r.title, sub: [admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "", who: answer && admin ? r.who || "" : "",
+    acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>`
       : `${r.can_retry && admin ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button>`,
   });
   const draw = () => {
@@ -524,17 +512,14 @@ B.musicTab = async (nav) => {
     if (!disc) { wall.innerHTML = notes + B.spinner(); return; }
     if (!cur) { wall.innerHTML = notes + `<div class="empty">Nothing to show right now. Try again in a minute.</div>`; return; }
     if (cur.id === "playlist") { wall.innerHTML = notes + `<div id="mstatus">${B.spinner()}</div>`; drawTools(); return; }
-    let cards = "", owned = 0;
+    let cards = [], owned = 0;
     if (cur.songs) {
       owned = cur.songs.filter((x) => x.have).length;
       const shown = ownedOpen === cur.id ? cur.songs : cur.songs.filter((x) => !x.have);
-      cards = shown.map((x, i) => {
-        const c = songCard(x);
-        return cur.ranked ? c.replace(/<\/div>\s*<div class="cap">/, `<span class="rqrank">${i + 1}</span></div><div class="cap">`) : c;
-      }).join("");
-    } else if (cur.albums) cards = cur.albums.map(albumCard).join("");
-    else if (cur.genres) cards = cur.genres.map(genreCard).join("");
-    wall.innerHTML = notes + `<div class="rqline" id="mline"> </div><div class="grid sq">${cards}</div>${B.rqOwned(owned, ownedOpen === cur.id)}`;
+      cards = shown.map((x) => songCard(x));
+    } else if (cur.albums) cards = cur.albums.map(albumCard);
+    else if (cur.genres) cards = cur.genres.map(genreCard);
+    wall.innerHTML = notes + `<div class="rqline" id="mline"> </div>${B.rqGrid(cards, !!(cur.ranked && cur.songs), "sq")}${B.rqOwned(owned, ownedOpen === cur.id)}`;
   };
   const drawDiscover = async (again) => {
     if (!disc || again) {
@@ -858,9 +843,9 @@ B.animeRequests = (nav, getLists, openList) => {
   const wall = () => $("#rqwall"), side = () => $("#rqside");
   const drawSide = () => {
     const l = getLists();
-    side().innerHTML = `<h4>Anime</h4><button data-an-search>Search anime</button>` + SIDE.map(([k, t]) => `<button class="${k === pick ? "on" : ""}" data-an-pick="${k}">${esc(t)}</button>`).join("")
-      + `<h4>Yours</h4><button data-rqlist="mine">Your requests<span class="n">${l.mine.length}</span></button>`
-      + (B.me.admin ? `<button data-rqlist="waiting">Waiting for you${l.waiting.length ? `<span class="n">${l.waiting.length} <span class="dot"></span></span>` : '<span class="n">0</span>'}</button>` : "");
+    // Glowfin R1: the anime ways in as chips across the top (Your requests and Waiting for you are on the top line)
+    side().innerHTML = SIDE.map(([k, t]) => `<button class="chip ${k === pick ? "on" : ""}" data-an-pick="${k}">${esc(t)}</button>`).join("");
+    void l;
   };
   const badge = (c) => {
     const bits = [];
@@ -894,7 +879,7 @@ B.animeRequests = (nav, getLists, openList) => {
     if (opts.keep) items = items.filter(opts.keep);
     const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
     w.innerHTML = head(title, [note, here ? `${here} already on Glowfin` : ""].filter(Boolean).join(" · "), opts.top)
-      + (shown.length ? `<div class="grid">${shown.map((c, i) => poster(c, opts.ranked && i < 10 ? i + 1 : 0)).join("")}</div>` : `<div class="empty">${here ? "You already have all of these on Glowfin." : "Nothing here right now."}</div>`);
+      + (shown.length ? B.rqGrid(shown.map((c) => poster(c, 0)), !!opts.ranked) : `<div class="empty">${here ? "You already have all of these on Glowfin." : "Nothing here right now."}</div>`);
     if (here && !opts.ranked) {
       let grid = $(".grid", w);
       if (!grid) { grid = document.createElement("div"); grid.className = "grid"; }

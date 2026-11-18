@@ -67,6 +67,7 @@ import com.github.damontecres.wholphin.services.AnimeFeel
 import com.github.damontecres.wholphin.services.AnimeSeasonPick
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.components.GlowRanked
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.detail.discover.findAnimeInRequests
 import com.github.damontecres.wholphin.ui.detail.discover.searchNameFor
@@ -404,11 +405,6 @@ class AnimeRequestsViewModel
 @Composable
 internal fun AnimeShelf(
     isTv: Boolean,
-    isAdmin: Boolean,
-    mineCount: Int,
-    waitingCount: Int,
-    onSearch: () -> Unit,
-    onList: (waiting: Boolean) -> Unit,
     onAsk: (DiscoverItem) -> Unit,
     onMenu: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -436,9 +432,7 @@ internal fun AnimeShelf(
             AnimePick.FEEL -> feel?.let { viewModel.feelAsk(it) }
             AnimePick.WEEK, AnimePick.TAGS -> null
         }
-    // Moving down the TV list picks as you go, so wait a moment before asking AniList
     LaunchedEffect(ask?.key, pick) {
-        delay(if (isTv) 300 else 0)
         if (ask != null) viewModel.load(ask)
         if (pick == AnimePick.WEEK) viewModel.loadWeek()
     }
@@ -537,65 +531,22 @@ internal fun AnimeShelf(
             }
         }
     }
-    if (isTv) {
-        Row(modifier.fillMaxSize()) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 32.dp),
-                modifier = Modifier.width(240.dp).fillMaxHeight(),
-            ) {
-                item(key = "an-search") { SideEntry("Search anime", selected = false, onClick = onSearch) }
-                items(AnimePick.entries, key = { "an-${it.name}" }) { p ->
-                    SideEntry(
-                        p.label,
-                        selected = p == pick,
-                        onPick = {
-                            if (p != pick && p == AnimePick.FEEL) feelName = null
-                            pick = p
-                        },
-                    )
-                }
-                item(key = "an-yours") { SideHeading("Yours") }
-                item(key = "an-mine") { SideEntry("Your requests $mineCount", selected = false, onClick = { onList(false) }) }
-                if (isAdmin) {
-                    item(key = "an-waiting") {
-                        SideEntry("Waiting for you $waitingCount", selected = false, dot = waitingCount > 0, onClick = { onList(true) })
-                    }
-                }
+    // Glowfin R1 (Ben 2026-11-18): the anime ways in are chips across the top on TV, phone and browser
+    // (This season, Top 10, This week, Find by feel, Mix and match tags, Hidden gems, Finished and dubbed,
+    // Movies, Coming next season). OK or a tap picks one; moving along them only moves.
+    Column(modifier.fillMaxSize()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        ) {
+            items(AnimePick.entries, key = { "anc-${it.name}" }) { p ->
+                RequestsChip(if (isTv) p.label else p.chip, p == pick, {
+                    if (p == AnimePick.FEEL) feelName = null
+                    pick = p
+                })
             }
-            wall(Modifier.weight(1f).fillMaxHeight())
         }
-    } else {
-        Column(modifier.fillMaxSize()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                items(AnimePick.entries, key = { "anc-${it.name}" }) { p ->
-                    RequestsChip(p.chip, p == pick, {
-                        if (p == AnimePick.FEEL) feelName = null
-                        pick = p
-                    })
-                }
-                item(key = "anc-mine") { RequestsChip("Your requests $mineCount", false, { onList(false) }) }
-                if (isAdmin) {
-                    item(key = "anc-waiting") {
-                        RequestsChip(
-                            if (waitingCount ==
-                                0
-                            ) {
-                                "Waiting for you 0"
-                            } else {
-                                "Waiting for you $waitingCount  ●"
-                            },
-                            false,
-                            { onList(true) },
-                        )
-                    }
-                }
-            }
-            wall(Modifier.fillMaxWidth().weight(1f))
-        }
+        wall(Modifier.fillMaxWidth().weight(1f))
     }
 }
 
@@ -678,11 +629,33 @@ private fun AnimeWall(
                 }
 
                 else -> {
-                    itemsIndexed(shown, key = { _, c -> "an-${c.id}" }) { index, card ->
+                    // Glowfin Top 10 rule: the first ten sit in one row, each number fully beside its poster
+                    val top = if (ranked) shown.take(10) else emptyList()
+                    if (top.isNotEmpty()) {
+                        item(key = "top10", span = { GridItemSpan(maxLineSpan) }) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                items(count = top.size, key = { "an-top-${top[it].id}" }) { index ->
+                                    val card = top[index]
+                                    GlowRanked(rank = index + 1, posterHeight = posterWidth * 1.5f) {
+                                        AnimeCardPoster(
+                                            card = card,
+                                            width = posterWidth,
+                                            rank = null,
+                                            dub = dubWord(card, dubs),
+                                            busy = opening == card.id,
+                                            onClick = { viewModel.open(card) },
+                                            onLongClick = { viewModel.open(card, onMenu) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    itemsIndexed(shown.drop(top.size), key = { _, c -> "an-${c.id}" }) { index, card ->
                         AnimeCardPoster(
                             card = card,
                             width = posterWidth,
-                            rank = if (ranked && index < 10) index + 1 else null,
+                            rank = null,
                             dub = dubWord(card, dubs),
                             busy = opening == card.id,
                             onClick = { viewModel.open(card) },
