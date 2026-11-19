@@ -702,7 +702,53 @@ class SearchViewModel
             items: List<BaseItem>,
         ): List<BaseItem> {
             val wanted = types.filter { it in FUZZY_TYPES }
-            if (wanted.isEmpty() || items.count { it.type in wanted } >= 3) return items
+            if (wanted.isEmpty()) return items
+            // Ben 2026-11-19: typing the whole name "Mulan" showed only Mulan II, while "Mula" found both. The
+            // server's word search can drop the title that is exactly what was typed, so the titles whose name
+            // starts with the words are always asked for too and added when missing.
+            val withStarts = withNameStarts(query, wanted, items)
+            if (withStarts.count { it.type in wanted } >= 3) return withStarts
+            return withFuzzy(query, wanted, withStarts)
+        }
+
+        /** Adds movies and shows whose name starts with what was typed, if the word search missed them */
+        private suspend fun withNameStarts(
+            query: String,
+            wanted: List<BaseItemKind>,
+            items: List<BaseItem>,
+        ): List<BaseItem> {
+            val q = query.trim()
+            if (q.length < 2 || q.startsWith("/")) return items
+            return try {
+                val have = items.map { it.id }.toSet()
+                val extra =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                nameStartsWith = q,
+                                recursive = true,
+                                includeItemTypes = wanted,
+                                fields = SearchRowFields,
+                                limit = NAME_STARTS_LIMIT,
+                                enableTotalRecordCount = false,
+                            ),
+                        ).toBaseItems(api, false)
+                        .filter { it.id !in have }
+                if (extra.isEmpty()) items else extra + items
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                if (!ex.isCancellation()) Timber.w(ex, "Search: name starts with")
+                items
+            }
+        }
+
+        private suspend fun withFuzzy(
+            query: String,
+            wanted: List<BaseItemKind>,
+            items: List<BaseItem>,
+        ): List<BaseItem> {
             return try {
                 val have = items.map { it.id }.toSet()
                 val ids =
@@ -1039,6 +1085,9 @@ private val allSearchableTypes =
     )
 
 private const val SEARCH_LIMIT = 50
+
+/** How many "name starts with" titles each search also asks for */
+private const val NAME_STARTS_LIMIT = 20
 
 /** Search rows also need where a title lives and its genres, to put anime in its own row */
 private val SearchRowFields = SlimItemFields + org.jellyfin.sdk.model.api.ItemFields.PATH + org.jellyfin.sdk.model.api.ItemFields.GENRES

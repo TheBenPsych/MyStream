@@ -37,7 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,7 +94,6 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
 
 /** The door each rail icon draws */
@@ -203,6 +201,9 @@ class RailControl {
     var profileRequests by mutableIntStateOf(0)
         private set
 
+    /** The page next to the rail has the focus (set by the page's box) */
+    var contentFocused by mutableStateOf(false)
+
     fun open() {
         openRequests++
     }
@@ -244,7 +245,15 @@ class RailModel(
     /** Ben 2026-11-18 (approved update-button-1): a glowing Update button above your picture, only when one is ready */
     val updateReady: Boolean = false,
     val onUpdate: () -> Unit = {},
+    /** False once another page was opened on top of this one (this rail's page is going away) */
+    val isTop: () -> Boolean = { true },
 )
+
+/** When a page was last picked in the side menu (shared by every page's own menu) */
+internal object RailPick {
+    @Volatile
+    var at: Long = 0L
+}
 
 private enum class Spot { HOME, SEARCH, ANIME, REQUESTS, PROFILE, SETTINGS }
 
@@ -268,20 +277,18 @@ fun BenflixRail(
     var panelDoor by remember { mutableStateOf<BenflixDoor?>(null) }
     var profileOpen by remember { mutableStateOf(false) }
     val panelOpen = panelDoor != null || profileOpen
-    // Ben 2026-11-18: picking a page tucks the menu away and it stays tucked while the new page loads. If the
-    // focus falls back onto the menu by itself meanwhile (the old page's cards went away), the menu stays
-    // closed and hands the focus to the new page, which puts it on the first card of its first row.
-    // [quiet] = the menu has the focus but nobody asked for it to open (no Left/Up/Down or ☰ Menu press).
-    var quiet by remember { mutableStateOf(false) }
-    var invitedAt by remember { mutableLongStateOf(0L) }
-    var leftAt by remember { mutableLongStateOf(0L) }
+    // Ben 2026-11-19, the Wholphin way: the menu is open only because you opened it, never because the focus
+    // happened to land on it. [opened] is switched on by exactly two things, Left from a page's first item (the
+    // focus entering the menu moving Left) and ☰ Menu, and switched off by Right, Back, picking a page or the page
+    // taking the focus. Every other way the focus gets here (a new page still loading, the old page's cards going
+    // away, Down pressed while nothing had the focus) leaves the menu tucked ([quiet]) and hands the focus to the
+    // page. The old guesswork (timers for when Left/Up/Down were last pressed) lived inside each page's own menu,
+    // so a brand-new page's menu forgot a page had just been picked and could open by itself.
+    var opened by remember { mutableStateOf(false) }
+    val quiet = railFocused && !opened && !panelOpen && !model.alwaysOpen
     var handoffs by remember { mutableIntStateOf(0) }
-
-    // Ben 2026-11-19: while you moved Up/Down in the open menu, the focus can blink off it for a moment and
-    // come straight back. That used to count as "fell here", so the menu shut and sent you to the page a few
-    // seconds after you opened it. These remember when the open menu last let go of the focus.
-    var lostOpenAt by remember { mutableLongStateOf(0L) }
-    val open = model.alwaysOpen || (railFocused && !quiet) || panelOpen
+    // (it stays drawn open through a short focus blink, see below)
+    val open = model.alwaysOpen || opened || panelOpen
     // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
     // rebuilds every icon and name on each step of it
     val width =
@@ -305,13 +312,12 @@ fun BenflixRail(
 
     // Ben 2026-11-19: opening the menu from a page always starts on Home
     fun focusCurrent() {
-        quiet = false
-        invitedAt = android.os.SystemClock.uptimeMillis()
+        opened = true
         spotFocus[Spot.HOME]?.tryRequestFocus()
     }
 
     fun closePanel() {
-        invitedAt = android.os.SystemClock.uptimeMillis()
+        opened = true
         val door = panelDoor
         panelDoor = null
         profileOpen = false
@@ -327,8 +333,8 @@ fun BenflixRail(
         panelDoor = null
         profileOpen = false
         if (!model.alwaysOpen) {
-            quiet = true
-            leftAt = android.os.SystemClock.uptimeMillis()
+            opened = false
+            RailPick.at = android.os.SystemClock.uptimeMillis()
         }
         go()
         if (!model.alwaysOpen) handoffs++
@@ -352,19 +358,45 @@ fun BenflixRail(
     }
     // Back closes the panel first, then tucks the rail away
     BackHandler(enabled = panelOpen) { closePanel() }
-    BackHandler(enabled = railFocused && !panelOpen && !model.alwaysOpen) { contentFocus.tryRequestFocus() }
+    BackHandler(enabled = railFocused && !panelOpen && !model.alwaysOpen) {
+        opened = false
+        contentFocus.tryRequestFocus()
+    }
 
     // The one hand-off from the menu to the page (Ben 2026-11-18, the Wholphin way): while the tucked menu holds
     // the focus quietly (a page was just picked, or the focus fell onto it when a page swapped its rows), keep
     // offering the focus to the page until the page takes it. It runs again for each new page, so it never lands
     // on the page that is going away. Left (or ☰ Menu) at any time opens the menu instead and stops it.
-    LaunchedEffect(handoffs, model.destination) {
+    LaunchedEffect(handoffs) {
         if (handoffs == 0) return@LaunchedEffect
         repeat(HANDOFF_TRIES) {
             delay(HANDOFF_STEP_MS)
-            if (!railFocused || !quiet || panelOpen) return@LaunchedEffect
+            if (!railFocused || opened || panelOpen) return@LaunchedEffect
+            // A page was picked: this menu belongs to the page that is fading away, so it never hands the focus
+            // back to that page (the new page's own menu does the hand-off below)
+            if (!model.isTop()) return@LaunchedEffect
             contentFocus.tryRequestFocus()
         }
+    }
+    // Every page has its own menu. Right after a pick, the new page's menu keeps offering the focus to the new
+    // page until the page has it (or you open the menu with Left / ☰ Menu), so the focus can't end up nowhere
+    // and then fall onto the menu.
+    LaunchedEffect(Unit) {
+        if (model.alwaysOpen) return@LaunchedEffect
+        if (android.os.SystemClock.uptimeMillis() - RailPick.at > PICK_FRESH_MS) return@LaunchedEffect
+        repeat(HANDOFF_TRIES) {
+            delay(HANDOFF_STEP_MS)
+            if (control.contentFocused || opened || panelOpen) return@LaunchedEffect
+            if (!model.isTop()) return@LaunchedEffect
+            contentFocus.tryRequestFocus()
+        }
+    }
+    // The open menu let go of the focus without Right, Back or a pick (it can blink off for a moment while you
+    // move Up/Down in it): it stays open unless the focus doesn't come back to it soon
+    LaunchedEffect(railFocused) {
+        if (railFocused || !opened) return@LaunchedEffect
+        delay(BLINK_MS)
+        if (!railFocused) opened = false
     }
 
     Box(modifier.fillMaxSize()) {
@@ -381,6 +413,7 @@ fun BenflixRail(
                     ) {
                         panelDoor = null
                         profileOpen = false
+                        opened = false
                         contentFocus.tryRequestFocus()
                     },
             )
@@ -444,7 +477,7 @@ fun BenflixRail(
                     layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
                 },
         ) {
-            androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides (quiet && !model.alwaysOpen)) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides quiet) {
                 // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
                 Column(
                     // Ben 2026-11-18 (approved music-reach-1): squeezed so your picture fits on a TV screen again
@@ -457,31 +490,16 @@ fun BenflixRail(
                             .onFocusChanged {
                                 val came = it.hasFocus && !railFocused
                                 railFocused = it.hasFocus
-                                if (!it.hasFocus) {
-                                    if (!quiet && !panelOpen) lostOpenAt = android.os.SystemClock.uptimeMillis()
-                                    quiet = false
-                                } else if (came && !model.alwaysOpen) {
-                                    // The menu opens only when you asked for it: Left, or ☰ Menu (after the last
-                                    // pick). Any other way the focus gets here (a page swapping its rows, Down
-                                    // pressed while a page loads) keeps it tucked and hands the focus to the page.
-                                    val now = android.os.SystemClock.uptimeMillis()
-                                    val asked =
-                                        (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
-                                            (invitedAt > leftAt && now - invitedAt < INVITE_MS) ||
-                                            // the open menu only blinked while you moved in it: it stays open
-                                            (
-                                                lostOpenAt > leftAt &&
-                                                    now - lostOpenAt < BLINK_MS &&
-                                                    LastRemoteKey.movedRecently()
-                                            )
-                                    quiet = !asked
-                                    if (!asked) handoffs++
-                                }
+                                // The focus got here without you opening the menu: it stays tucked and the
+                                // page gets the focus back
+                                if (came && !opened && !panelOpen && !model.alwaysOpen) handoffs++
                             }.focusGroup()
                             .focusProperties {
                                 // Ben 2026-11-19: moving into the menu from a page always starts on Home (it
                                 // used to come back to the last icon you were on, like Requests)
                                 onEnter = {
+                                    // Left from the page is the one arrow that opens the menu
+                                    if (requestedFocusDirection == FocusDirection.Left && !model.alwaysOpen) opened = true
                                     if (requestedFocusDirection == FocusDirection.Left ||
                                         requestedFocusDirection == FocusDirection.Right ||
                                         requestedFocusDirection == FocusDirection.Up ||
@@ -497,9 +515,12 @@ fun BenflixRail(
                                 }
                             }.onPreviewKeyEvent { event ->
                                 if (!model.alwaysOpen && !panelOpen && event.key == Key.DirectionRight) {
-                                    if (event.type == KeyEventType.KeyDown) contentFocus.tryRequestFocus()
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        opened = false
+                                        contentFocus.tryRequestFocus()
+                                    }
                                     true
-                                } else if (quiet && !model.alwaysOpen) {
+                                } else if (quiet) {
                                     // The menu is tucked away but holding the focus while a page loads: Left opens
                                     // it on the page you're in; Up, Down and OK go to the page instead (Ben
                                     // 2026-11-18: pressing Down to reach the first row opened the menu)
@@ -1303,8 +1324,8 @@ private const val HANDOFF_TRIES = 150
 /** A focus blink off the open menu shorter than this doesn't close it */
 private const val BLINK_MS = 600L
 
-/** How long after ☰ Menu (or the menu's own focus calls) the focus arriving on the menu counts as wanted */
-private const val INVITE_MS = 900L
+/** A new page's menu helps the focus onto the page only if a page was picked this recently */
+private const val PICK_FRESH_MS = 3000L
 
 private const val TIP_PREFS = "benflix_rail_tip"
 private const val TIP_DELAY_MS = 2500L
