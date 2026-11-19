@@ -469,7 +469,7 @@ fun BenflixRail(
                                         (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
                                             (invitedAt > leftAt && now - invitedAt < INVITE_MS) ||
                                             // the open menu only blinked while you moved in it: it stays open
-                                            (lostOpenAt > leftAt && now - lostOpenAt < BLINK_MS)
+                                            (lostOpenAt > leftAt && now - lostOpenAt < BLINK_MS && LastRemoteKey.movedRecently())
                                     quiet = !asked
                                     if (!asked) handoffs++
                                 }
