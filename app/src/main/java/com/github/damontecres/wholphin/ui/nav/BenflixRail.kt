@@ -94,6 +94,7 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
 
 /** The door each rail icon draws */
@@ -490,6 +491,16 @@ fun BenflixRail(
                             .onFocusChanged {
                                 val came = it.hasFocus && !railFocused
                                 railFocused = it.hasFocus
+                                // Ben 2026-11-19: one Left press from the first card of a row opens the menu (it
+                                // used to need holding Left). The check on the way in below doesn't always see the
+                                // Left, so a Left press that just moved the focus here counts too. It's one global
+                                // key time, never a timer kept by this page's own menu.
+                                if (came && !opened && !panelOpen && !model.alwaysOpen &&
+                                    android.os.SystemClock.uptimeMillis() - LastRemoteKey.leftAt < LEFT_FRESH_MS
+                                ) {
+                                    opened = true
+                                    entryFocus.tryRequestFocus()
+                                }
                                 // The focus got here without you opening the menu: it stays tucked and the
                                 // page gets the focus back
                                 if (came && !opened && !panelOpen && !model.alwaysOpen) handoffs++
@@ -1323,6 +1334,9 @@ private const val HANDOFF_TRIES = 150
 
 /** A focus blink off the open menu shorter than this doesn't close it */
 private const val BLINK_MS = 600L
+
+/** A Left press this recent is the one that moved the focus onto the menu */
+private const val LEFT_FRESH_MS = 400L
 
 /** A new page's menu helps the focus onto the page only if a page was picked this recently */
 private const val PICK_FRESH_MS = 3000L

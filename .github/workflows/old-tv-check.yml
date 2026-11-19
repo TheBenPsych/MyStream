@@ -121,6 +121,7 @@ jobs:
           SDK=$ANDROID_HOME
           export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
           adb kill-server || true
+          mkdir -p ~/.android
           [ -f ~/.android/adbkey ] || adb keygen ~/.android/adbkey
           export ADB_VENDOR_KEYS=~/.android/adbkey
           adb start-server
