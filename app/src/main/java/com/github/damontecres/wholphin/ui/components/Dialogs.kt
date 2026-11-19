@@ -714,12 +714,15 @@ fun chooseStream(
                     filteredStreams
                         .let {
                             if (type == MediaStreamType.SUBTITLE && preferredSubtitleLanguage.isNotNullOrBlank()) {
-                                it.sortedByDescending { it.language != null && it.language == preferredSubtitleLanguage }
+                                it.sortedByDescending {
+                                    (it.language != null && it.language == preferredSubtitleLanguage) ||
+                                        BenflixSubtitleFilter.isEnglishLabelledJapanese(it, streams)
+                                }
                             } else {
                                 it
                             }
                         }.mapIndexed { index, stream ->
-                            val simpleStream = SimpleMediaStream.from(resources, stream, true)
+                            val simpleStream = SimpleMediaStream.from(resources, stream, true, streams)
                             DialogItem(
                                 selected = currentIndex == stream.index,
                                 leadingContent = {

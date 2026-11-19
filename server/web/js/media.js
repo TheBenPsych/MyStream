@@ -599,7 +599,7 @@ B.trackPicker = (it, done) => {
   let a = ms.DefaultAudioStreamIndex ?? (audio[0] && audio[0].Index), s = B.autoSub(streams, ms.DefaultSubtitleStreamIndex ?? -1, a);
   const draw = () => `<h3>Audio and subtitles</h3>
     <h4 class="dim" style="margin:16px 0 8px">Audio</h4>${audio.map((x) => `<button class="opt ${x.Index === a ? "on" : ""}" data-a="${x.Index}">${esc(x.DisplayTitle || x.Language || "Track " + x.Index)}</button>`).join("") || '<p class="dim">Only one sound track.</p>'}
-    <h4 class="dim" style="margin:16px 0 8px">Subtitles</h4><button class="opt ${s === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((x) => `<button class="opt ${x.Index === s ? "on" : ""}" data-s="${x.Index}">${esc(x.DisplayTitle || x.Language || "Subtitle " + x.Index)}</button>`).join("")}
+    <h4 class="dim" style="margin:16px 0 8px">Subtitles</h4><button class="opt ${s === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((x) => `<button class="opt ${x.Index === s ? "on" : ""}" data-s="${x.Index}">${esc(B.subLabel(x, streams))}</button>`).join("")}
     <div class="acts" style="margin-top:18px"><button class="btn white" data-go>${I("play")} Play</button></div>`;
   const p = B.side(draw());
   p.onclick = (e) => {

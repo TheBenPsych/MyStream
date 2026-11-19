@@ -102,8 +102,40 @@ B.englishSubs = async () => {
 // Jellyfin turns on any subtitle track marked "default" or "forced" inside the file, in any language.
 // That showed German words for a few seconds after the intro on The Big Bang Theory. A track that
 // turned on by itself must be in your subtitle language (English unless you picked another) or not marked.
-B.autoSub = (streams, subIndex) => {
+// Anime groups often label their full English subtitles "Japanese" because they go with the Japanese voices
+// (Gantz: "Japanese - Default - ASS" is all the dialogue, "English - ASS" is only signs and songs).
+// Same rules as the TV and phone app (BenflixSubtitleFilter.kt).
+{ // own block, so these short names don't clash with other files
+const JA = ["jpn", "ja", "jap", "japanese"], SIGNS = ["sign", "song", "s&s", "forced", "karaoke", "lyrics", "op/ed"], FULL = ["full", "dialog", "complete"];
+const subName = (s) => ((s.Title || "") + " " + (s.DisplayTitle || "")).toLowerCase();
+const isSigns = (s) => !!s.IsForced || SIGNS.some((w) => subName(s).includes(w));
+const isEngSub = (s) => /^(en|eng|english)(-.*)?$/i.test(s.Language || "");
+B.mislabelledSub = (s, streams) => {
+  if (!s || s.Type !== "Subtitle" || s.IsExternal || !JA.includes((s.Language || "").toLowerCase())) return false;
+  if (!["ass", "ssa", "subrip", "srt", "webvtt", "vtt", "mov_text", "text"].includes((s.Codec || "").toLowerCase())) return false;
+  if (!(streams || []).some((a) => a.Type === "Audio" && JA.includes((a.Language || "").toLowerCase()))) return false;
+  const title = (s.Title || "").toLowerCase();
+  if (["japanese", "日本", "kanji", "jpn only", "jp only"].some((w) => title.includes(w)) || isSigns(s)) return false;
+  return !!s.IsDefault || FULL.some((w) => subName(s).includes(w)) || subName(s).includes("english") || /\beng\b/.test(title);
+};
+// The name shown in the subtitle lists: a clear name for confusing tracks, else Jellyfin's own
+B.subLabel = (s, streams) => {
+  const own = s.DisplayTitle || s.Language || "Subtitles";
+  if (B.mislabelledSub(s, streams)) return "Full English subtitles · " + own;
+  const lang = (s.Language || "").toLowerCase();
+  if (!(isEngSub(s) || !lang || lang === "und")) return own;
+  if (isSigns(s) || (!FULL.some((w) => subName(s).includes(w)) && (streams || []).some((o) => o.Index !== s.Index && B.mislabelledSub(o, streams)))) return "Signs & songs · " + own;
+  return own;
+};
+B.autoSub = (streams, subIndex, audioIndex) => {
   if (subIndex == null || subIndex < 0) return -1;
+  // Japanese voices + full English subtitles labelled "Japanese": pick those, not the signs and songs
+  const audio = (streams || []).find((s) => s.Type === "Audio" && s.Index === audioIndex);
+  const full = (streams || []).find((s) => B.mislabelledSub(s, streams));
+  if (full && audio && JA.includes((audio.Language || "").toLowerCase())) {
+    const cur = (streams || []).find((s) => s.Type === "Subtitle" && s.Index === subIndex);
+    if (!cur || !(isEngSub(cur) && FULL.some((w) => subName(cur).includes(w)))) return full.Index;
+  }
   const sub = (streams || []).find((s) => s.Type === "Subtitle" && s.Index === subIndex);
   if (!sub) return subIndex;
   const lang = (sub.Language || "").toLowerCase();
@@ -111,6 +143,7 @@ B.autoSub = (streams, subIndex) => {
   const want = (B.subPref || "eng").toLowerCase();
   return lang === want || (want === "eng" && lang === "en") ? subIndex : -1;
 };
+}
 B.addProfile = (s) => {
   const list = B.profiles().filter((p) => p.id !== s.id);
   list.push(s);

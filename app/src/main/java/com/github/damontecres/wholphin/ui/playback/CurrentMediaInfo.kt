@@ -44,13 +44,17 @@ internal fun PlaybackViewModel.getSubtitleStreams(mediaSource: MediaSourceInfo):
         .filter { it.type == MediaStreamType.SUBTITLE }
         .let {
             if (subtitleLanguagePreference.isNotNullOrBlank()) {
-                it.sortedByDescending { it.language != null && subtitleLanguagePreference == it.language }
+                val all = mediaSource.mediaStreams.orEmpty()
+                it.sortedByDescending {
+                    (it.language != null && subtitleLanguagePreference == it.language) ||
+                        BenflixSubtitleFilter.isEnglishLabelledJapanese(it, all)
+                }
             } else {
                 it
             }
         }.map {
             // TODO should use a string provider instead
-            SimpleMediaStream.from(context.resources, it, true)
+            SimpleMediaStream.from(context.resources, it, true, mediaSource.mediaStreams)
         }
 }
 

@@ -95,13 +95,19 @@ object BenflixDubChoice {
             .firstOrNull()
 
     /** With English voices, only the subtitles for signs and songs (if the file has them) */
-    fun signsSubtitles(candidates: List<MediaStream>): MediaStream? {
+    fun signsSubtitles(
+        candidates: List<MediaStream>,
+        allStreams: List<MediaStream> = candidates,
+    ): MediaStream? {
         fun name(track: MediaStream) = listOfNotNull(track.title, track.displayTitle).joinToString(" ").lowercase()
-        return candidates
-            .filter { it.language.isNullOrBlank() || isEnglish(it.language) }
-            .firstOrNull { track ->
-                track.isForced || listOf("sign", "song", "s&s").any { name(track).contains(it) }
-            }
+        val english = candidates.filter { it.language.isNullOrBlank() || isEnglish(it.language) }
+        return english.firstOrNull { track ->
+            track.isForced || listOf("sign", "song", "s&s").any { name(track).contains(it) }
+        } ?: english.firstOrNull { track ->
+            // Next to full subtitles labelled "Japanese", the plain English track is the signs and songs one
+            com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter
+                .friendlyName(track, allStreams) == "Signs & songs"
+        }
     }
 }
 

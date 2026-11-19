@@ -22,10 +22,14 @@ data class SimpleMediaStream(
             resources: Resources,
             mediaStream: MediaStream,
             includeFlags: Boolean = true,
+            /** Benflix: every track in the video, so a mislabelled subtitle track can get a clear name */
+            allStreams: List<MediaStream>? = null,
         ): SimpleMediaStream =
             SimpleMediaStream(
                 index = mediaStream.index,
-                streamTitle = mediaStream.title?.takeIf { it.isNotNullOrBlank() },
+                streamTitle =
+                    allStreams?.let { BenflixSubtitleFilter.friendlyName(mediaStream, it) }
+                        ?: mediaStream.title?.takeIf { it.isNotNullOrBlank() },
                 displayTitle = mediaStreamDisplayTitle(resources, mediaStream, includeFlags),
                 codec = mediaStream.codec?.lowercase(),
             )
