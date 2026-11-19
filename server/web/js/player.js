@@ -534,7 +534,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <p class="dim" style="font-size:13px;margin:2px 0 0">${esc(B.lastPlayed.title || "")}</p>`;
     const volOn = !v.muted && v.volume > 0, volPct = Math.round((v.muted ? 0 : v.volume) * 100);
     if (kind === "subs") p.innerHTML = head("Subtitles") + `
-      <h4 id="psSubs">Pick subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(s.DisplayTitle || s.Language || "Subtitles")}${s.IsTextSubtitleStream === false ? "<small>pictures, can't be moved</small>" : ""}</button>`).join("")}
+      <h4 id="psSubs">Pick subtitles</h4><button class="opt ${subIndex === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((s) => `<button class="opt ${s.Index === subIndex ? "on" : ""}" data-s="${s.Index}">${esc(B.subLabel(s, streams))}${s.IsTextSubtitleStream === false ? "<small>pictures, can't be moved</small>" : ""}</button>`).join("")}
       <h4>Something off?</h4>
       <button class="opt" data-subwrong>${I("sub")} Subtitle timing<small>${!subOn ? "Turn subtitles on above first" : B.me.kids ? "Move them yourself below" : "Let Tower line them up, or move them yourself below"}</small></button>
       <div class="timing hidden">${!B.me.kids && subOn ? `<button class="opt" data-towerfix>Let Tower line them up<small>Tower matches the words to the voices</small></button>` : ""}
@@ -699,7 +699,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (subIndex !== -1) { lastSub = subIndex; subIndex = -1; showSubs(); return B.toast("Subtitles off"); }
     const pick = subs.find((x) => x.Index === lastSub) || subs.find((x) => /^(en|eng)$/i.test(x.Language || "")) || subs[0];
     subIndex = pick.Index;
-    B.toast("Subtitles: " + (pick.DisplayTitle || pick.Language || "on"));
+    B.toast("Subtitles: " + B.subLabel(pick, (source && source.MediaStreams) || []));
     if (pick.DeliveryMethod === "External") showSubs();
     else load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
   };

@@ -19,6 +19,7 @@ import com.github.damontecres.wholphin.preferences.UserProfileSettings
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.letNotEmpty
+import com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter
 import com.github.damontecres.wholphin.ui.util.ResProviderStringProvider
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
@@ -248,7 +249,7 @@ class StreamChoiceService
                     BenflixDubChoice.modeFor(item) == BenflixDubChoice.Mode.DUB &&
                     BenflixDubChoice.isEnglish(audioStream?.language)
                 ) {
-                    return@letNotEmpty BenflixDubChoice.signsSubtitles(candidates) with StreamChoiceReason.UserPreferences
+                    return@letNotEmpty BenflixDubChoice.signsSubtitles(candidates, streams) with StreamChoiceReason.UserPreferences
                 }
                 // Benflix: opened from the Subbed tab, the full English subtitles even if a track was saved for the show
                 if (noSubtitlePicked &&
@@ -256,17 +257,21 @@ class StreamChoiceService
                     BenflixDubChoice.modeFor(item) == BenflixDubChoice.Mode.SUB &&
                     BenflixAnimeTracks.isJapanese(audioStream?.language)
                 ) {
-                    BenflixAnimeTracks.fullEnglishSubtitles(candidates)?.let {
+                    BenflixAnimeTracks.fullEnglishSubtitles(candidates, streams)?.let {
                         return@letNotEmpty it with StreamChoiceReason.UserPreferences
                     }
                 }
-                // Benflix: Japanese anime gets the full English subtitles (not just Signs & Songs)
+                // Benflix: Japanese anime gets the full English subtitles (not just Signs & Songs).
+                // Also any Japanese-voiced video whose full English subtitles are labelled "Japanese".
                 if (noSubtitlePicked &&
                     stc.isEmpty() &&
                     BenflixAnimeTracks.isJapanese(audioStream?.language) &&
-                    BenflixAnimeTracks.isAnime(item)
+                    (
+                        BenflixAnimeTracks.isAnime(item) ||
+                            candidates.any { BenflixSubtitleFilter.isEnglishLabelledJapanese(it, streams) }
+                    )
                 ) {
-                    BenflixAnimeTracks.fullEnglishSubtitles(candidates)?.let {
+                    BenflixAnimeTracks.fullEnglishSubtitles(candidates, streams)?.let {
                         return@letNotEmpty it with StreamChoiceReason.UserPreferences
                     }
                 }
@@ -795,13 +800,26 @@ object BenflixAnimeTracks {
             .sortedWith(compareByDescending<MediaStream> { it.isDefault }.thenByDescending { it.channels })
             .firstOrNull()
 
-    fun fullEnglishSubtitles(candidates: List<MediaStream>): MediaStream? {
+    /**
+     * The full English subtitles. [allStreams] (every track in the video) lets a track labelled "Japanese"
+     * that is really the English translation count too, and win over a plain English track,
+     * which in those files is only the signs and songs.
+     */
+    fun fullEnglishSubtitles(
+        candidates: List<MediaStream>,
+        allStreams: List<MediaStream> = candidates,
+    ): MediaStream? {
         fun name(track: MediaStream) = listOfNotNull(track.title, track.displayTitle).joinToString(" ").lowercase()
+
+        fun mislabelled(track: MediaStream) = BenflixSubtitleFilter.isEnglishLabelledJapanese(track, allStreams)
         return candidates
-            .filter { isEnglishOrUnknown(it.language) && !it.isForced && NOT_FULL.none { word -> name(it).contains(word) } }
-            .sortedWith(
-                compareByDescending<MediaStream> { it.language?.lowercase() in ENGLISH }
-                    .thenByDescending { track -> FULL.any { name(track).contains(it) } }
+            .filter {
+                mislabelled(it) ||
+                    (isEnglishOrUnknown(it.language) && !it.isForced && NOT_FULL.none { word -> name(it).contains(word) })
+            }.sortedWith(
+                compareByDescending<MediaStream> { track -> FULL.any { name(track).contains(it) } }
+                    .thenByDescending { mislabelled(it) }
+                    .thenByDescending { it.language?.lowercase() in ENGLISH }
                     .thenByDescending { it.isDefault }
                     .thenBy { it.isExternal },
             ).firstOrNull()
