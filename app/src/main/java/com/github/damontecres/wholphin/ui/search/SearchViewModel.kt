@@ -1057,7 +1057,10 @@ internal fun searchPlain(text: String?): String =
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
 
-/** Up to 6 whole names for what was typed: names starting with it first, then names that have it */
+/**
+ * Up to 6 whole names for what was typed: the exact name first, then names starting with it, then names that have it.
+ * Ben 2026-11-19: typing "Mulan" only offered "Mulan II", because the name that matched exactly was left out.
+ */
 internal fun suggestionsFor(
     query: String,
     names: List<String>,
@@ -1069,11 +1072,20 @@ internal fun suggestionsFor(
         .map { it.trim() }
         .filter { it.isNotEmpty() && searchPlain(it).contains(q) && seen.add(searchPlain(it)) }
         .withIndex()
-        .sortedBy { (i, n) -> (if (searchPlain(n).startsWith(q)) 0 else 1) * 10_000 + i }
+        .sortedBy { (i, n) -> suggestionRank(searchPlain(n), q) * 10_000 + i }
         .map { it.value }
-        .filterNot { searchPlain(it) == q }
         .take(6)
 }
+
+private fun suggestionRank(
+    name: String,
+    q: String,
+): Int =
+    when {
+        name == q -> 0
+        name.startsWith(q) -> 1
+        else -> 2
+    }
 
 /** How many titles the Popular row shows before you type */
 private const val POPULAR_COUNT = 12

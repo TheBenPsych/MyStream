@@ -74,11 +74,12 @@ B.route(/^\/search/, async (m, nav) => {
     const pt = plain(t);
     const books = shelf.filter((b) => [b.name, b.author, b.series].some((x) => plain(x).includes(pt)))
       .sort((a, b) => (plain(a.name).startsWith(pt) ? 0 : 1) - (plain(b.name).startsWith(pt) ? 0 : 1) || a.name.length - b.name.length).slice(0, 40);
-    // Whole-name suggestions as chips under the box: names that start with the words first
+    // Whole-name suggestions as chips under the box: the exact name first (Ben 2026-11-19: "Mulan" only offered
+    // "Mulan II"), then names that start with the words
     const seen = new Set();
     const sugg = [...movies, ...shows, ...mine, ...books.map((b) => ({ Name: b.name })), ...gl.map((g) => ({ Name: g.name })), ...chans]
-      .map((x) => (x.Name || "").trim()).filter((n) => { const k = plain(n); if (!k.includes(pt) || k === pt || seen.has(k)) return false; seen.add(k); return true; })
-      .map((n, i) => ({ n, i, s: plain(n).startsWith(pt) ? 0 : 1 })).sort((a, b) => a.s - b.s || a.i - b.i).slice(0, 6).map((x) => x.n);
+      .map((x) => (x.Name || "").trim()).filter((n) => { const k = plain(n); if (!k.includes(pt) || seen.has(k)) return false; seen.add(k); return true; })
+      .map((n, i) => ({ n, i, s: plain(n) === pt ? 0 : plain(n).startsWith(pt) ? 1 : 2 })).sort((a, b) => a.s - b.s || a.i - b.i).slice(0, 6).map((x) => x.n);
     const bold = (n) => { const at = n.toLowerCase().indexOf(t.toLowerCase()); return at < 0 ? esc(n) : `${esc(n.slice(0, at))}<b>${esc(n.slice(at, at + t.length))}</b>${esc(n.slice(at + t.length))}`; };
     $("#schips").innerHTML = sugg.map((n) => `<button class="pill sg" data-sugg="${esc(n)}"><span>${bold(n)}</span></button>`).join("");
     // Ben 2026-11-18: rows like Home. Each thing is a poster card in its row (squares for music and channels, circles
