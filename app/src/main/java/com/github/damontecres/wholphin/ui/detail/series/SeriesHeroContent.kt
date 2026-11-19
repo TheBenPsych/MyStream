@@ -59,7 +59,6 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleMoreItem
 import com.github.damontecres.wholphin.ui.detail.title.TitleMorePanel
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
-import com.github.damontecres.wholphin.ui.detail.title.TitleParentsGuide
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
@@ -217,7 +216,7 @@ fun SeriesHeroContent(
                 add(TitleTab("Characters and voices") { scope -> AnimeRows(series, Modifier.padding(start = scope.side)) })
             }
             add(
-                TitleTab("About") { scope ->
+                TitleTab("About", info = true) { scope ->
                     TitleOverview(
                         scope = scope,
                         title = series.title.orEmpty(),
@@ -225,12 +224,10 @@ fun SeriesHeroContent(
                         strip = strip,
                         extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
                         details = remember(series, state.isAdmin) { titleDetails(series, state.isAdmin, show = true) },
+                        guide = if (!easy && !anime) state.parentsGuide else emptyList(),
                     )
                 },
             )
-            if (!easy && !anime && state.parentsGuide.isNotEmpty()) {
-                add(TitleTab("Parents' guide") { scope -> TitleParentsGuide(scope, state.parentsGuide) })
-            }
         }
     TitlePage(
         title = series.title.orEmpty(),

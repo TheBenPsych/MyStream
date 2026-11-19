@@ -23,6 +23,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import coil3.asDrawable
 import coil3.imageLoader
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
@@ -53,6 +55,8 @@ private val glowCache = LruCache<String, LongArray>(96)
 fun rememberCoverGlow(
     url: String?,
     fallback: Color,
+    /** Game box art from Tower needs the games token */
+    token: String? = null,
 ): CoverGlowColors {
     val context = LocalContext.current
     val plain = remember(fallback) { CoverGlowColors(fallback.copy(alpha = .30f), fallback.copy(alpha = .16f)) }
@@ -73,6 +77,7 @@ fun rememberCoverGlow(
                         ImageRequest
                             .Builder(context)
                             .data(url)
+                            .apply { token?.let { httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", it).build()) } }
                             .size(64)
                             .allowHardware(false)
                             .bitmapConfig(Bitmap.Config.ARGB_8888)

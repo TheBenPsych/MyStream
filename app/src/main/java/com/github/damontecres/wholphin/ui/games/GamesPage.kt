@@ -266,7 +266,7 @@ fun GamesPage(
     // Ben: box art comes in different shapes per console (SNES and N64 boxes are wide, NES and Genesis tall),
     // so each card takes its cover's real shape at one shared height and the whole cover always shows
     // Ben 2026-11-18: on TV the same height as Movies and Shows posters (180), so a whole row fits under the top area
-    val cardHeight = if (isTv) 180.dp else 154.dp
+    val cardHeight = if (isTv) 160.dp else 154.dp
     // TV For you: the top area already says the game's name and console, so the cards have none under them
     // (like Movies and Shows), which keeps each row short enough to show whole
     val namesUnder = !(isTv && forYou)
@@ -387,12 +387,12 @@ fun GamesPage(
                 if (wide && forYou) {
                     val first =
                         recent.firstOrNull()?.let { refPreview(it.first, it.second) }
-                    // Ben 2026-11-18: sized like the Movies and Shows top area (Wholphin's 48 gap + 180 tall + 32 gap,
-                    // never more than about half the screen), so the first row shows whole under it
-                    val topTotal = (maxOf(top, 48.dp) + 212.dp).coerceAtMost(config.screenHeightDp.dp * 0.52f)
+                    // Ben 2026-11-18 (approved games-books-top-1): just the words, so the first row shows whole
+                    // under it and the next one peeks in
                     GamesTopArea(
                         preview = shown ?: first,
-                        height = (topTotal - top).coerceAtLeast(120.dp),
+                        height = GAMES_TOP_WORDS.coerceAtMost(config.screenHeightDp.dp * 0.5f - top).coerceAtLeast(110.dp),
+                        glowAbove = top,
                         modifier = Modifier.padding(start = if (isTv) 48.dp else 16.dp, end = if (isTv) 48.dp else 8.dp),
                     )
                 }
@@ -1242,3 +1242,6 @@ internal fun PlayersTag(
                 ).padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
+
+/** The words in the TV top area (kicker, name, chips, one line about it) and a little air */
+private val GAMES_TOP_WORDS = 150.dp

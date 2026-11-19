@@ -80,8 +80,11 @@ import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixMark
+import com.github.damontecres.wholphin.ui.components.GlowfinBlue
+import com.github.damontecres.wholphin.ui.components.GlowfinCyan
 import com.github.damontecres.wholphin.ui.components.GlowfinIcon
 import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
+import com.github.damontecres.wholphin.ui.components.GlowfinPurple
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorPlaces
 import com.github.damontecres.wholphin.ui.door.DoorSection
@@ -273,7 +276,7 @@ fun BenflixRail(
     var quiet by remember { mutableStateOf(false) }
     var invitedAt by remember { mutableLongStateOf(0L) }
     var leftAt by remember { mutableLongStateOf(0L) }
-    var strays by remember { mutableIntStateOf(0) }
+    var handoffs by remember { mutableIntStateOf(0) }
     val open = model.alwaysOpen || (railFocused && !quiet) || panelOpen
     // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
     // rebuilds every icon and name on each step of it
@@ -314,17 +317,20 @@ fun BenflixRail(
         if (door != null) doorFocus[door]?.tryRequestFocus() else spotFocus[Spot.PROFILE]?.tryRequestFocus()
     }
 
-    /** A page was picked: tuck the menu away now and give the focus to the page (TV) */
+    /**
+     * A page was picked: tuck the menu away now. Like Wholphin, the focus stays on the picked icon (the menu
+     * looks closed) until the new page has something to land on, then the page takes it (see [handoffs]).
+     * Pushing the focus at a page that wasn't drawn yet is what made the menu close and pop open again.
+     */
     fun leaveFor(go: () -> Unit) {
         panelDoor = null
         profileOpen = false
         if (!model.alwaysOpen) {
             quiet = true
             leftAt = android.os.SystemClock.uptimeMillis()
-            contentFocus.tryRequestFocus()
         }
         go()
-        if (!model.alwaysOpen && railFocused) strays++
+        if (!model.alwaysOpen) handoffs++
     }
 
     fun openProfilePanel() {
@@ -347,14 +353,16 @@ fun BenflixRail(
     BackHandler(enabled = panelOpen) { closePanel() }
     BackHandler(enabled = railFocused && !panelOpen && !model.alwaysOpen) { contentFocus.tryRequestFocus() }
 
-    // Like the door menus before it: when a page swaps its rows in, the focus can fall onto the rail by itself.
-    // The rail only keeps the focus when the remote moved onto it; otherwise it goes straight back to the page.
-    LaunchedEffect(strays) {
-        if (strays == 0) return@LaunchedEffect
-        repeat(STRAY_TRIES) {
+    // The one hand-off from the menu to the page (Ben 2026-11-18, the Wholphin way): while the tucked menu holds
+    // the focus quietly (a page was just picked, or the focus fell onto it when a page swapped its rows), keep
+    // offering the focus to the page until the page takes it. It runs again for each new page, so it never lands
+    // on the page that is going away. Left (or ☰ Menu) at any time opens the menu instead and stops it.
+    LaunchedEffect(handoffs, model.destination) {
+        if (handoffs == 0) return@LaunchedEffect
+        repeat(HANDOFF_TRIES) {
+            delay(HANDOFF_STEP_MS)
             if (!railFocused || !quiet || panelOpen) return@LaunchedEffect
             contentFocus.tryRequestFocus()
-            delay(STRAY_RETRY_MS)
         }
     }
 
@@ -454,23 +462,15 @@ fun BenflixRail(
                                 if (!it.hasFocus) {
                                     quiet = false
                                 } else if (came && !model.alwaysOpen) {
-                                    // (an arrow pressed just before picking the page doesn't count: only one after it)
+                                    // The menu opens only when you asked for it: Left, or ☰ Menu (after the last
+                                    // pick). Any other way the focus gets here (a page swapping its rows, Down
+                                    // pressed while a page loads) keeps it tucked and hands the focus to the page.
                                     val now = android.os.SystemClock.uptimeMillis()
                                     val asked =
-                                        if (now - leftAt < SETTLE_MS) {
-                                            // Ben 2026-11-18: the menu sometimes stayed open after picking a page. While
-                                            // the new page is still loading, the focus has nowhere to go, so pressing
-                                            // Down (to reach the first row) or a ☰ Menu press from just before the pick
-                                            // landed it on the menu, which then opened. Now only Left, or ☰ Menu pressed
-                                            // after the pick, opens it while the page loads.
-                                            (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
-                                                (invitedAt > leftAt && now - invitedAt < INVITE_MS)
-                                        } else {
-                                            (LastRemoteKey.movedRecently() && LastRemoteKey.moveAt > leftAt) ||
-                                                now - invitedAt < INVITE_MS
-                                        }
+                                        (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
+                                            (invitedAt > leftAt && now - invitedAt < INVITE_MS)
                                     quiet = !asked
-                                    if (!asked) strays++
+                                    if (!asked) handoffs++
                                 }
                             }.focusRestorer(entryFocus)
                             .focusProperties {
@@ -801,13 +801,11 @@ private fun RailButton(
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
                     GlowfinIconImage(
                         icon,
-                        color =
-                            when {
-                                focused -> Color.White
-                                on -> BenflixColors.Shows
-                                else -> Glowfin.Dim
-                            },
+                        color = if (focused) Color.White else Glowfin.Dim,
                         size = ICON * scale,
+                        // Ben 2026-11-18: the page you're on is painted in the logo's purple-to-aqua gradient, so it
+                        // stands out from the grey icons (the plain blue looked too close to them)
+                        brush = if (on && !focused) RailOnBrush else null,
                     )
                     if (count > 0 && !open) {
                         CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
@@ -1273,14 +1271,22 @@ private const val PANEL_MS = 200
 private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
 private const val DIM = .66f
-private const val STRAY_RETRY_MS = 150L
-private const val STRAY_TRIES = 54
+
+/** The logo's gradient, corner to corner across one icon */
+private val RailOnBrush =
+    Brush.linearGradient(
+        0f to GlowfinPurple,
+        0.55f to GlowfinBlue,
+        1f to GlowfinCyan,
+    )
+
+/** The page gets the focus offered every 100 ms for up to 15 s (a slow server on a weak TV) */
+private const val HANDOFF_STEP_MS = 100L
+private const val HANDOFF_TRIES = 150
 
 /** How long after ☰ Menu (or the menu's own focus calls) the focus arriving on the menu counts as wanted */
 private const val INVITE_MS = 900L
 
-/** After picking a page, how long the menu treats focus landing on it as "fell here" unless Left was pressed */
-private const val SETTLE_MS = 8_000L
 private const val TIP_PREFS = "benflix_rail_tip"
 private const val TIP_DELAY_MS = 2500L
 private const val TIP_SHOW_MS = 7000L

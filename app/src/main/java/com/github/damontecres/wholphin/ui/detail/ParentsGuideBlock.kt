@@ -30,31 +30,35 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 fun ParentsGuideBlock(
     lines: List<ParentsGuideLine>,
     modifier: Modifier = Modifier,
+    /** Inside About, next to Details: the same small heading as Details and tighter lines */
+    compact: Boolean = false,
 ) {
     if (lines.isEmpty()) return
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Parents' guide",
+            text = if (compact) "Parents' guide (IMDb)" else "Parents' guide",
             color = BenflixColors.Text,
-            fontSize = BenflixType.lead,
-            fontWeight = FontWeight.Bold,
+            fontSize = if (compact) BenflixType.body else BenflixType.lead,
+            fontWeight = if (compact) FontWeight.ExtraBold else FontWeight.Bold,
         )
-        Text(
-            text = "From IMDb's parents guide",
-            color = BenflixColors.Muted,
-            fontSize = BenflixType.tag,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
+        if (!compact) {
+            Text(
+                text = "From IMDb's parents guide",
+                color = BenflixColors.Muted,
+                fontSize = BenflixType.tag,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         lines.forEach { line ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 3.dp),
+                modifier = Modifier.padding(vertical = if (compact) 1.dp else 3.dp),
             ) {
                 Text(
                     text = line.label,
                     color = BenflixColors.Muted,
                     fontSize = BenflixType.small,
-                    modifier = Modifier.width(170.dp),
+                    modifier = Modifier.width(if (compact) 120.dp else 170.dp),
                 )
                 repeat(3) { i ->
                     Box(
@@ -68,7 +72,7 @@ fun ParentsGuideBlock(
                 Text(text = line.level, color = BenflixColors.Soft, fontSize = BenflixType.small)
             }
         }
-        Spacer(Modifier.height(4.dp))
+        if (!compact) Spacer(Modifier.height(4.dp))
     }
 }
 

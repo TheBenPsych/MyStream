@@ -1,8 +1,6 @@
 package com.github.damontecres.wholphin.ui.books
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -262,8 +259,8 @@ private fun BooksForYou(
 ) {
     val edge = side(wide)
     val isTv = rememberIsTv()
-    // Ben 2026-11-18: on TV the same size as Movies and Shows posters (120 wide), so a whole row fits under the top
-    val w = if (isTv) 120.dp else cardWidth(wide)
+    // Ben 2026-11-18 (approved games-books-top-1): 160 tall on TV, so the first row shows whole under the top area
+    val w = if (isTv) 106.dp else cardWidth(wide)
     val shownRows = remember(rows) { forYouRows(rows) }
     val listState = rememberLazyListState()
     val first = remember { FocusRequester() }
@@ -399,9 +396,9 @@ private fun BooksTopArea(
     val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     Box(Modifier.fillMaxWidth()) {
-        // Ben 2026-11-18: sized like the Movies and Shows top area (Wholphin's 48 gap + 180 tall + 32 gap, never more
-        // than about half the screen), so the first row of books shows whole under it
-        val height = (maxOf(overlap, 48.dp) + 212.dp).coerceAtMost(screenHeight * 0.52f).coerceAtLeast(overlap + 120.dp)
+        // Ben 2026-11-18 (approved games-books-top-1): words only, no big cover on the right (the books in the
+        // rows are the pictures). Shorter, so the first row shows whole and the next one peeks in.
+        val height = (overlap + TOP_WORDS_TV).coerceAtMost(screenHeight * 0.5f)
         Box(Modifier.fillMaxWidth().height(height)) {
             // The glow reaches up under the tabs and a little way down behind the first row
             CoverGlow(
@@ -411,19 +408,6 @@ private fun BooksTopArea(
                     .wrapContentHeight(Alignment.Top, unbounded = true)
                     .height(height * 1.6f),
             )
-            // The cover on the right, whole and sharp, standing like a book
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = overlap + 6.dp, end = edge, bottom = 8.dp)
-                    .fillMaxHeight()
-                    .aspectRatio(BOOK_RATIO)
-                    .shadow(18.dp, BenflixShapes.Card),
-            ) {
-                Crossfade(targetState = tile, animationSpec = tween(250), label = "booksTopCover") { t ->
-                    BookCoverImage(t.cover, t.name, Modifier.fillMaxSize(), audio = t.isAudio)
-                }
-            }
             Column(
                 modifier =
                     Modifier
@@ -508,6 +492,9 @@ private fun BooksTopWords(
 }
 
 private const val TOP_AREA_WAIT_MS = 500L
+
+/** The words in the TV top area (kicker, name, one or two lines) and a little air */
+private val TOP_WORDS_TV = 140.dp
 
 /** "Keep reading · 64%" over the name */
 private fun topKicker(t: BookTile): String =

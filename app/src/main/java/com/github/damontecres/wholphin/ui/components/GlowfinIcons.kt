@@ -5,11 +5,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.Dp
@@ -180,12 +185,28 @@ fun GlowfinIconImage(
     size: Dp,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    /** Paints the icon with this instead of [color] (the side menu's page you're on uses the logo's gradient) */
+    brush: Brush? = null,
 ) {
-    val filter = remember(color) { ColorFilter.tint(color) }
+    val filter = remember(color, brush) { ColorFilter.tint(if (brush != null) Color.White else color) }
     Image(
         imageVector = icon.vector,
         contentDescription = contentDescription,
         colorFilter = filter,
-        modifier = modifier.size(size),
+        modifier =
+            modifier
+                .size(size)
+                .then(
+                    if (brush != null) {
+                        Modifier
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(brush, blendMode = BlendMode.SrcIn)
+                            }
+                    } else {
+                        Modifier
+                    },
+                ),
     )
 }
