@@ -5,7 +5,8 @@
 //    anime falls back to Japanese), and never removes the last sound track,
 //  - keeps English subtitles (and untagged ones), removes the rest,
 //  - drops cover pictures and data tracks, keeps fonts and chapters,
-//  - re-encodes the video to HEVC on the Intel Arc card with Quick Sync (10-bit stays 10-bit).
+//  - re-encodes the video to HEVC on the Intel Arc card with Quick Sync (10-bit stays 10-bit), at about half
+//    the old bitrate but never below a floor (1080p 2.6 Mbps, about 450 MB for a 24 minute episode).
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.plugin = exports.details = void 0;
 var fs = require("fs");
@@ -23,8 +24,10 @@ var details = function () { return ({
   sidebarPosition: -1,
   icon: "faArrowRight",
   inputs: [
-    { label: "Quality (lower = better and bigger)", name: "quality", type: "number", defaultValue: "24",
-      inputUI: { type: "text" }, tooltip: "Quick Sync global_quality. 22-26 is sensible." },
+    { label: "Keep this share of the video data", name: "keepPercent", type: "number", defaultValue: "50",
+      inputUI: { type: "text" }, tooltip: "The new video gets this % of the old video's bitrate (never below the minimum below)." },
+    { label: "Lowest 1080p bitrate (kbps)", name: "minKbps1080", type: "number", defaultValue: "2600",
+      inputUI: { type: "text" }, tooltip: "About 450 MB for a 24 minute episode. 720p gets 60% of this, SD 40%, 4K 3x." },
     { label: "Encoder", name: "encoder", type: "string", defaultValue: "qsv",
       inputUI: { type: "dropdown", options: ["qsv", "cpu"] }, tooltip: "qsv = Intel GPU (normal). cpu = libx265 (slow, testing only)." },
     { label: "GPU device", name: "device", type: "string", defaultValue: "/dev/dri/renderD128",
@@ -120,6 +123,30 @@ var originalLanguage = async function (args, inputs) {
   return "";
 };
 
+// The old video's bitrate in kbps: the track's own number, else the MKV tag, else the whole file minus sound
+var videoKbps = function (args, v, streams) {
+  var tagBps = function (s) {
+    var t = s.tags || {};
+    var keys = Object.keys(t).filter(function (k) { return /^BPS(-eng)?$/i.test(k); });
+    return keys.length ? Number(t[keys[0]]) : 0;
+  };
+  var bps = Number(v.bit_rate) || tagBps(v);
+  if (bps > 0) return bps / 1000;
+  var probe = (args.inputFileObj && args.inputFileObj.ffProbeData) || {};
+  var fmt = probe.format || {};
+  var dur = Number(fmt.duration) || 0;
+  var total = Number(fmt.bit_rate) || 0;
+  if (!total && dur > 0) {
+    try { total = fs.statSync(args.inputFileObj._id).size * 8 / dur; } catch (e) { total = 0; }
+  }
+  if (!total) return 0;
+  var other = 0;
+  streams.forEach(function (s) {
+    if (s.codec_type === "audio") other += Number(s.bit_rate) || tagBps(s) || 192000;
+  });
+  return Math.max(total - other, total * 0.5) / 1000;
+};
+
 var plugin = async function (args) {
   var inputs = args.inputs || {};
   var cmd = args.variables && args.variables.ffmpegCommand;
@@ -163,27 +190,38 @@ var plugin = async function (args) {
     });
   }
 
-  // The video
-  var quality = String(Number(inputs.quality) > 0 ? Number(inputs.quality) : 24);
+  // The video: aim for a bitrate (not just a quality level) so nothing ends up tiny.
+  // Ben 2026-11-19: quality 24 made 1.4 GB episodes ~0.15 GB; he wants ~400 MB+ per episode.
   var device = String(inputs.device || "/dev/dri/renderD128");
   var useCpu = String(inputs.encoder) === "cpu";
   var video = streams.filter(function (s) { return s.codec_type === "video" && !s.removed; });
   if (video.length !== 1) throw new Error("Expected one video track, found " + video.length);
   var v = video[0];
   var tenBit = /10|12/.test(String(v.pix_fmt || "")) || Number(v.bits_per_raw_sample) >= 10;
+  var srcKbps = videoKbps(args, v, streams);
+  var keep = Number(inputs.keepPercent) > 0 ? Number(inputs.keepPercent) : 50;
+  var min1080 = Number(inputs.minKbps1080) > 0 ? Number(inputs.minKbps1080) : 2600;
+  var h = Number(v.height) || 1080, w = Number(v.width) || 1920;
+  var floor = (h > 1200 || w > 2600) ? min1080 * 3 : (h > 800 || w > 1400) ? min1080 : (h > 500 || w > 1000) ? min1080 * 0.6 : min1080 * 0.4;
+  var target = Math.max(floor, srcKbps * keep / 100);
+  // Never above 80% of the old file's video (the size check after needs a real saving)
+  if (srcKbps > 0) target = Math.min(target, srcKbps * 0.8);
+  target = Math.round(target);
+  var maxrate = Math.round(target * 1.5) + "k", bufsize = Math.round(target * 3) + "k";
   if (useCpu) {
-    v.outputArgs.push("-c:{outputIndex}", "libx265", "-crf", quality, "-preset", "fast",
-      "-pix_fmt:{outputIndex}", tenBit ? "yuv420p10le" : "yuv420p");
+    v.outputArgs.push("-c:{outputIndex}", "libx265", "-b:{outputIndex}", target + "k", "-maxrate:{outputIndex}", maxrate,
+      "-bufsize:{outputIndex}", bufsize, "-preset", "fast", "-pix_fmt:{outputIndex}", tenBit ? "yuv420p10le" : "yuv420p");
   } else {
     cmd.overallInputArguments.push("-init_hw_device", "vaapi=va:" + device, "-init_hw_device", "qsv=qs@va",
       "-filter_hw_device", "qs");
     v.outputArgs.push("-filter:{outputIndex}", (tenBit ? "format=p010le" : "format=nv12") + ",hwupload=extra_hw_frames=64",
-      "-c:{outputIndex}", "hevc_qsv", "-global_quality:{outputIndex}", quality, "-preset:{outputIndex}", "slow",
+      "-c:{outputIndex}", "hevc_qsv", "-b:{outputIndex}", target + "k", "-maxrate:{outputIndex}", maxrate,
+      "-bufsize:{outputIndex}", bufsize, "-preset:{outputIndex}", "slow",
       "-profile:{outputIndex}", tenBit ? "main10" : "main");
   }
   if (cmd.container === "mp4" || cmd.container === "m4v") v.outputArgs.push("-tag:{outputIndex}", "hvc1");
   args.jobLog("Video: " + String(v.codec_name).toUpperCase() + (tenBit ? " 10-bit" : "") + " -> HEVC on "
-    + (useCpu ? "the CPU" : "the GPU") + ", quality " + quality);
+    + (useCpu ? "the CPU" : "the GPU") + ", " + Math.round(srcKbps) + " kbps -> " + target + " kbps (lowest " + Math.round(floor) + ")");
   cmd.overallOuputArguments.push("-max_muxing_queue_size", "9999");
   cmd.shouldProcess = true;
   return { outputFileObj: args.inputFileObj, outputNumber: 1, variables: args.variables };

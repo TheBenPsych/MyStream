@@ -16,7 +16,8 @@ set -u
 # ---- Ben's settings (change here, Tower picks it up within the hour) ----
 EPISODE_GB=${TDARR_EPISODE_GB:-1}
 MOVIE_GB=${TDARR_MOVIE_GB:-2}
-QUALITY=24          # Quick Sync quality: lower = better looking and bigger
+KEEP_PERCENT=50     # new video gets about this % of the old video bitrate
+MIN_KBPS_1080=2600  # never below this for 1080p (about 450 MB per 24 min episode; 720p 60%, SD 40%)
 BACKUP_DAYS=3
 NIGHT_START=1       # 1 AM
 NIGHT_END=8         # 8 AM
@@ -154,7 +155,7 @@ post sync-plugins '{"data":{}}' >/dev/null
 echo "  ok  5 Benflix steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
-sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__QUALITY__|$QUALITY|" \
+sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" \
   -e "s|__ENCODER__|$ENCODER|" -e "s|__DEVICE__|${GPU:-/dev/dri/renderD128}|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
   -e "s|__RADARR_URL__|$(esc "$radarr_url")|" -e "s|__RADARR_KEY__|$(esc "$radarr_key")|" \
   -e "s|__SONARR_URL__|$(esc "$sonarr_url")|" -e "s|__SONARR_KEY__|$(esc "$sonarr_key")|" \
