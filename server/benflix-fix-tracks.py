@@ -214,6 +214,7 @@ def read_tracks(path):
             "forced": bool(p.get("forced_track")),
             "channels": p.get("audio_channels"),
             "frames": int(frames) if str(frames or "").isdigit() and int(frames) > 0 else None,
+            "text": str(p.get("codec_id") or "").upper().startswith("S_TEXT"),
         })
     return tracks
 
@@ -241,6 +242,18 @@ def plan_file(path, tracks, is_anime):
             if guess:
                 want[id(t)]["lang"] = guess
     lang = lambda t: want[id(t)]["lang"]
+
+    # 1b. Anime groups often label their full English subtitles "Japanese" because they go with the
+    # Japanese voices, next to a short "English" signs-and-songs track (Gantz). A "Japanese" words-based
+    # track with at least twice the lines of every English one is really the English translation.
+    if is_anime and any(lang(t) == ANIME_AUDIO for t in tracks if t["type"] == "audio"):
+        english_subs = [t for t in tracks if t["type"] == "subtitles" and lang(t) == PREFERRED_SUBS]
+        most_english = max([t["frames"] or 0 for t in english_subs] or [0])
+        for t in tracks:
+            if (t["type"] == "subtitles" and lang(t) == ANIME_AUDIO and t.get("text") and english_subs
+                    and t["frames"] and t["frames"] >= 40 and most_english and t["frames"] >= 2 * most_english
+                    and not re.search(r"kanji|日本|jpn only|jp only|japanese only", t["name"], re.I)):
+                want[id(t)]["lang"] = PREFERRED_SUBS
 
     # 2. Work out what kind each subtitle is: signs, sdh or full
     kind = {}

@@ -71,6 +71,8 @@ object BenflixSubtitleFilter {
         allStreams: List<MediaStream>,
     ): Boolean {
         if (stream.type != MediaStreamType.SUBTITLE || stream.isExternal) return false
+        // Looked inside it already (BenflixSubtitlePeek): it is written in English with all the lines
+        if (layoutKey(allStreams) + "#" + stream.index in fullEnglishFound) return true
         if (lang(stream) !in JAPANESE) return false
         if (stream.codec?.lowercase() !in TEXT_CODECS) return false
         if (allStreams.none { it.type == MediaStreamType.AUDIO && lang(it) in JAPANESE }) return false
@@ -78,6 +80,26 @@ object BenflixSubtitleFilter {
         val title = stream.title?.lowercase().orEmpty()
         if (REALLY_JAPANESE.any { title.contains(it) } || isSignsAndSongs(stream)) return false
         return stream.isDefault || saysFull(stream) || n.contains("english") || Regex("\\beng\\b").containsMatchIn(title)
+    }
+
+    /** Tracks that [BenflixSubtitlePeek] found to be full English subtitles, as "layout#index" */
+    private val fullEnglishFound: MutableSet<String> =
+        java.util.Collections.synchronizedSet(mutableSetOf())
+
+    /**
+     * What a file's tracks look like (numbers, kinds, languages, formats, names). Episodes from the same
+     * release share it, so an answer found for one episode also counts for the next ones.
+     */
+    fun layoutKey(allStreams: List<MediaStream>): String =
+        allStreams
+            .filter { !it.isExternal && (it.type == MediaStreamType.AUDIO || it.type == MediaStreamType.SUBTITLE) }
+            .joinToString("|") { "${it.index}:${it.type}:${lang(it)}:${it.codec?.lowercase()}:${it.title.orEmpty()}" }
+
+    fun rememberFullEnglish(
+        allStreams: List<MediaStream>,
+        index: Int,
+    ) {
+        fullEnglishFound.add(layoutKey(allStreams) + "#" + index)
     }
 
     /**

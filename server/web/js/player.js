@@ -161,6 +161,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
     if (subIndex == null) {
       subIndex = B.autoSub(source.MediaStreams, source.DefaultSubtitleStreamIndex ?? -1, audioIndex);
+      // Japanese voices: the full English subtitles may be the track labelled "Japanese" (looks inside once)
+      if (subIndex !== -1) {
+        const full = await B.peekSubs(it.Id, source, audioIndex);
+        if (!here()) return;
+        if (full != null) subIndex = full;
+      }
       // Plain subtitles before ones that also describe sounds ("[door slams]"), when both are there
       const subs = (source.MediaStreams || []).filter((s) => s.Type === "Subtitle");
       const pick = subs.find((s) => s.Index === subIndex);
@@ -168,9 +174,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         const plain = subs.find((s) => !s.IsHearingImpaired && !s.IsForced && (s.Language || "") === (pick.Language || ""));
         if (plain) subIndex = plain.Index;
       }
-      // A turned-down track that Jellyfin was going to draw into the picture: ask again with it off
+      // Jellyfin was going to draw a different track into the picture than the one picked: ask again with ours
       const dflt = source.DefaultSubtitleStreamIndex ?? -1;
-      if (dflt >= 0 && subIndex === -1 && /SubtitleMethod=Encode/i.test(source.TranscodingUrl || "")) return load(atSeconds);
+      if (dflt >= 0 && subIndex !== dflt && /SubtitleMethod=Encode/i.test(source.TranscodingUrl || "")) return load(atSeconds);
     }
     if (source.SupportsDirectPlay && !forceStream && !source.TranscodingUrl) {
       method = "DirectPlay";
