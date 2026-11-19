@@ -152,6 +152,8 @@
     const until = Date.now() + 4000;
     const tryIt = () => {
       if (n !== landing) return;
+      // Ben 2026-11-19: you went back into the menu while the page loaded, so it stays with you
+      if (rail && rail.contains(document.activeElement)) return;
       const page = $("#page");
       const first = page && ($(".rowx .strip > a, .rowx .strip > button, .rowx .strip .poster", page) || $(".poster, .card", page));
       if (first && first.offsetParent !== null) { first.focus({ preventScroll: true }); return; }

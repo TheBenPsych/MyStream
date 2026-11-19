@@ -50,7 +50,6 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -277,6 +276,11 @@ fun BenflixRail(
     var invitedAt by remember { mutableLongStateOf(0L) }
     var leftAt by remember { mutableLongStateOf(0L) }
     var handoffs by remember { mutableIntStateOf(0) }
+
+    // Ben 2026-11-19: while you moved Up/Down in the open menu, the focus can blink off it for a moment and
+    // come straight back. That used to count as "fell here", so the menu shut and sent you to the page a few
+    // seconds after you opened it. These remember when the open menu last let go of the focus.
+    var lostOpenAt by remember { mutableLongStateOf(0L) }
     val open = model.alwaysOpen || (railFocused && !quiet) || panelOpen
     // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
     // rebuilds every icon and name on each step of it
@@ -299,14 +303,11 @@ fun BenflixRail(
         }
     val panelFocus = LocalFocusManager.current
 
+    // Ben 2026-11-19: opening the menu from a page always starts on Home
     fun focusCurrent() {
         quiet = false
         invitedAt = android.os.SystemClock.uptimeMillis()
-        val target =
-            current?.let { doorFocus[it] }
-                ?: currentSpot?.let { spotFocus[it] }
-                ?: spotFocus[Spot.HOME]
-        target?.tryRequestFocus()
+        spotFocus[Spot.HOME]?.tryRequestFocus()
     }
 
     fun closePanel() {
@@ -398,10 +399,7 @@ fun BenflixRail(
                     },
             )
         }
-        val entryFocus =
-            current?.let { doorFocus[it] }
-                ?: currentSpot?.let { spotFocus[it] }
-                ?: spotFocus.getValue(Spot.HOME)
+        val entryFocus = spotFocus.getValue(Spot.HOME)
         androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxHeight()
@@ -460,6 +458,7 @@ fun BenflixRail(
                                 val came = it.hasFocus && !railFocused
                                 railFocused = it.hasFocus
                                 if (!it.hasFocus) {
+                                    if (!quiet && !panelOpen) lostOpenAt = android.os.SystemClock.uptimeMillis()
                                     quiet = false
                                 } else if (came && !model.alwaysOpen) {
                                     // The menu opens only when you asked for it: Left, or ☰ Menu (after the last
@@ -468,12 +467,29 @@ fun BenflixRail(
                                     val now = android.os.SystemClock.uptimeMillis()
                                     val asked =
                                         (now - LastRemoteKey.leftAt < INVITE_MS && LastRemoteKey.leftAt > leftAt) ||
-                                            (invitedAt > leftAt && now - invitedAt < INVITE_MS)
+                                            (invitedAt > leftAt && now - invitedAt < INVITE_MS) ||
+                                            // the open menu only blinked while you moved in it: it stays open
+                                            (
+                                                lostOpenAt > leftAt &&
+                                                    now - lostOpenAt < BLINK_MS &&
+                                                    LastRemoteKey.movedRecently()
+                                            )
                                     quiet = !asked
                                     if (!asked) handoffs++
                                 }
-                            }.focusRestorer(entryFocus)
+                            }.focusGroup()
                             .focusProperties {
+                                // Ben 2026-11-19: moving into the menu from a page always starts on Home (it
+                                // used to come back to the last icon you were on, like Requests)
+                                onEnter = {
+                                    if (requestedFocusDirection == FocusDirection.Left ||
+                                        requestedFocusDirection == FocusDirection.Right ||
+                                        requestedFocusDirection == FocusDirection.Up ||
+                                        requestedFocusDirection == FocusDirection.Down
+                                    ) {
+                                        entryFocus.tryRequestFocus()
+                                    }
+                                }
                                 onExit = {
                                     if (requestedFocusDirection == FocusDirection.Up || requestedFocusDirection == FocusDirection.Down) {
                                         cancelFocusChange()
@@ -1283,6 +1299,9 @@ private val RailOnBrush =
 /** The page gets the focus offered every 100 ms for up to 15 s (a slow server on a weak TV) */
 private const val HANDOFF_STEP_MS = 100L
 private const val HANDOFF_TRIES = 150
+
+/** A focus blink off the open menu shorter than this doesn't close it */
+private const val BLINK_MS = 600L
 
 /** How long after ☰ Menu (or the menu's own focus calls) the focus arriving on the menu counts as wanted */
 private const val INVITE_MS = 900L
