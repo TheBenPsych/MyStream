@@ -942,7 +942,6 @@ fun PlaybackPageContent(
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
                 analyticsState = state.analyticsState,
             )
-
         }
 
         // Benflix: the age rating in the top corner for a few seconds when something starts
