@@ -78,6 +78,7 @@ jobs:
           export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
           # adb keys first, so the emulator trusts this computer (otherwise "device unauthorized")
           adb kill-server || true
+          mkdir -p ~/.android
           [ -f ~/.android/adbkey ] || adb keygen ~/.android/adbkey
           export ADB_VENDOR_KEYS=~/.android/adbkey
           adb start-server
