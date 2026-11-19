@@ -767,9 +767,8 @@ fun PlaybackPageContent(
             // Benflix: subtitles slide up out of the way of the player bar, the Skip button and the
             // Up next card, and slide back down when they go. Moved (not shrunk), so the words stay the same size.
             // Clean-up (Ben 2026-11-18): while the bar shows they sit just above it (its real height, not a guess).
-            // Styled ASS/SSA subtitles (anime) place their own words and signs, so they only move while the
-            // bar shows (Ben 2026-11-18: they sat on the play button and seek bar), not for Skip or Up next.
-            // The controls are also drawn in front of every kind of subtitle, so nothing can cover a button.
+            // Styled ASS/SSA subtitles (anime) place their own words and signs (some at the top), so they never move.
+            // Instead the controls are drawn in front of all subtitles, so nothing covers a button.
             val styledSubtitles =
                 remember(state.currentPlayback?.subtitleIndex, state.currentMediaInfo.subtitleStreams) {
                     state.currentMediaInfo.subtitleStreams
@@ -783,13 +782,17 @@ fun PlaybackPageContent(
                 }
             val subtitleLiftPx by animateFloatAsState(
                 when {
+                    styledSubtitles -> {
+                        0f
+                    }
+
                     controllerViewState.controlsVisible -> {
                         controllerViewState.controlsHeightPx
                             .takeIf { it > 0 }
                             ?.toFloat() ?: (screenHeightPx * SUBTITLE_LIFT_CONTROLS)
                     }
 
-                    !styledSubtitles && (showSegment || state.nextUp != null || state.movieNext != null) -> {
+                    showSegment || state.nextUp != null || state.movieNext != null -> {
                         screenHeightPx * SUBTITLE_LIFT_BUTTON
                     }
 

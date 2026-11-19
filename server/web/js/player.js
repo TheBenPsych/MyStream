@@ -231,16 +231,14 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     });
   }
   // Ben (clean-up): while the controls show, subtitles slide up to sit just above them, then back down.
-  // Lines that place themselves (styled anime subtitles) keep their spot, unless it is down where the
-  // controls are: then they go just above the bar too, and back to their own spot when the bar goes (Ben 2026-11-18).
+  // Only plain lines that don't place themselves (styled ones with their own spot stay where they are).
   let cueLift = 0;
   const liftCue = (c) => {
     if (!("snapToLines" in c)) return;
-    if (c.bfLine === undefined) { c.bfLine = c.line; c.bfSnap = c.snapToLines; c.bfAlign = c.lineAlign; }
-    const top = 100 - cueLift;
-    const low = c.bfLine === "auto" || (typeof c.bfLine === "number" && (c.bfSnap ? c.bfLine < 0 : c.bfLine > top));
-    if (cueLift > 0 && low) { c.snapToLines = false; c.lineAlign = "end"; c.line = Math.max(10, top); }
-    else { c.snapToLines = c.bfSnap; c.lineAlign = c.bfAlign; c.line = c.bfLine; }
+    if (c.bfLine === undefined) { if (c.line !== "auto") { c.bfLine = null; return; } c.bfLine = "auto"; }
+    if (c.bfLine === null) return;
+    if (cueLift > 0) { c.snapToLines = false; c.lineAlign = "end"; c.line = Math.max(10, 100 - cueLift); }
+    else { c.snapToLines = true; c.lineAlign = "start"; c.line = "auto"; }
   };
   const liftCues = () => {
     const vh = v.getBoundingClientRect().height || 1;
