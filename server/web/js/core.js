@@ -110,13 +110,48 @@ const JA = ["jpn", "ja", "jap", "japanese"], SIGNS = ["sign", "song", "s&s", "fo
 const subName = (s) => ((s.Title || "") + " " + (s.DisplayTitle || "")).toLowerCase();
 const isSigns = (s) => !!s.IsForced || SIGNS.some((w) => subName(s).includes(w));
 const isEngSub = (s) => /^(en|eng|english)(-.*)?$/i.test(s.Language || "");
+// What a file's tracks look like; episodes of the same release share it, so a peek answer carries over
+const layout = (streams) => (streams || []).filter((s) => !s.IsExternal && (s.Type === "Audio" || s.Type === "Subtitle"))
+  .map((s) => `${s.Index}:${s.Type}:${(s.Language || "").toLowerCase()}:${(s.Codec || "").toLowerCase()}:${s.Title || ""}`).join("|");
+const peeked = {}; // layout -> index of the full English track, or -1 when it isn't there
+const TEXT = ["ass", "ssa", "subrip", "srt", "webvtt", "vtt", "mov_text", "text"];
 B.mislabelledSub = (s, streams) => {
   if (!s || s.Type !== "Subtitle" || s.IsExternal || !JA.includes((s.Language || "").toLowerCase())) return false;
-  if (!["ass", "ssa", "subrip", "srt", "webvtt", "vtt", "mov_text", "text"].includes((s.Codec || "").toLowerCase())) return false;
+  if (peeked[layout(streams)] === s.Index) return true;
+  if (!TEXT.includes((s.Codec || "").toLowerCase())) return false;
   if (!(streams || []).some((a) => a.Type === "Audio" && JA.includes((a.Language || "").toLowerCase()))) return false;
   const title = (s.Title || "").toLowerCase();
   if (["japanese", "日本", "kanji", "jpn only", "jp only"].some((w) => title.includes(w)) || isSigns(s)) return false;
   return !!s.IsDefault || FULL.some((w) => subName(s).includes(w)) || subName(s).includes("english") || /\beng\b/.test(title);
+};
+// Names and marks can't always tell which track has the dialogue (Gantz: English marked default but only signs
+// and songs, the full English labelled "Japanese"). With Japanese voices, look inside the tracks once: a
+// "Japanese" track written in English letters with far more lines is the full English one. Same as the app.
+B.peekSubs = async (itemId, source, audioIndex) => {
+  const streams = (source && source.MediaStreams) || [];
+  const audio = streams.find((s) => s.Type === "Audio" && s.Index === audioIndex);
+  if (!audio || !JA.includes((audio.Language || "").toLowerCase())) return null;
+  const text = streams.filter((s) => s.Type === "Subtitle" && !s.IsExternal && TEXT.includes((s.Codec || "").toLowerCase()));
+  const ja = text.filter((s) => JA.includes((s.Language || "").toLowerCase()));
+  if (!ja.length) return null;
+  const known = ja.find((s) => B.mislabelledSub(s, streams));
+  if (known) return known.Index;
+  const key = layout(streams);
+  if (key in peeked) return peeked[key] >= 0 ? peeked[key] : null;
+  const en = text.filter((s) => isEngSub(s) || !s.Language || s.Language === "und");
+  const lines = (s) => B.jf("GET", `/Videos/${encodeURIComponent(itemId)}/${encodeURIComponent(source.Id)}/Subtitles/${s.Index}/0/Stream.js`)
+    .then((r) => new Set(((r && r.TrackEvents) || []).map((e) => String(e.Text || "").replace(/\{[^}]*\}/g, "").replace(/\\[Nn]/g, " ").trim()).filter((t) => t.length >= 2)))
+    .catch(() => null);
+  const work = Promise.all([Promise.all(ja.map(lines)), Promise.all(en.map(lines))]);
+  const res = await Promise.race([work, new Promise((r) => setTimeout(() => r(null), 8000))]);
+  if (!res) return null; // too slow: try again next time
+  const [jaLines, enLines] = res;
+  const enCount = Math.max(0, ...enLines.map((l) => (l ? l.size : 0)));
+  const english = (set) => { let lat = 0, jp = 0; set.forEach((t) => { for (const c of t) { if (/[A-Za-z]/.test(c)) lat++; else if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(c)) jp++; } }); return lat > 0 && jp * 10 < lat; };
+  let best = null;
+  ja.forEach((s, i) => { const l = jaLines[i]; if (l && l.size >= 40 && l.size >= 2 * enCount && english(l) && (!best || l.size > best.n)) best = { i: s.Index, n: l.size }; });
+  peeked[key] = best ? best.i : -1;
+  return best ? best.i : null;
 };
 // The name shown in the subtitle lists: a clear name for confusing tracks, else Jellyfin's own
 B.subLabel = (s, streams) => {

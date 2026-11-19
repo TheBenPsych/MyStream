@@ -20,6 +20,7 @@ import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.playback.BenflixSubtitleFilter
+import com.github.damontecres.wholphin.ui.playback.BenflixSubtitlePeek
 import com.github.damontecres.wholphin.ui.util.ResProviderStringProvider
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
@@ -260,6 +261,25 @@ class StreamChoiceService
                     BenflixAnimeTracks.fullEnglishSubtitles(candidates, streams)?.let {
                         return@letNotEmpty it with StreamChoiceReason.UserPreferences
                     }
+                }
+                // Benflix: names and marks can't tell which track has the dialogue (English marked default but only
+                // signs and songs, full English labelled "Japanese"): look inside the tracks once (TV + phone)
+                if (noSubtitlePicked &&
+                    BenflixAnimeTracks.isJapanese(audioStream?.language) &&
+                    BenflixSubtitlePeek.worthChecking(streams)
+                ) {
+                    BenflixSubtitlePeek
+                        .findFullEnglish(
+                            baseUrl = serverRepository.apiClient.baseUrl,
+                            token = serverRepository.apiClient.accessToken,
+                            itemId = item.id.toString(),
+                            sourceId = source.id,
+                            allStreams = streams,
+                        )?.let { found ->
+                            if (stc.isEmpty() || BenflixDubChoice.modeFor(item) == BenflixDubChoice.Mode.SUB) {
+                                return@letNotEmpty found with StreamChoiceReason.UserPreferences
+                            }
+                        }
                 }
                 // Benflix: Japanese anime gets the full English subtitles (not just Signs & Songs).
                 // Also any Japanese-voiced video whose full English subtitles are labelled "Japanese".
