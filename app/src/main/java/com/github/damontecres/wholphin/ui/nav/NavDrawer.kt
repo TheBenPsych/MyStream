@@ -932,6 +932,7 @@ fun NavDrawer(
             onMe = openMe,
             updateReady = updateAlert && !kids,
             onUpdate = { nav.navigateTo(Destination.UpdateApp) },
+            isTop = { nav.backStack.lastOrNull() == destination },
         )
     val header: @Composable () -> Unit = {
         BenflixPageHeader(
@@ -984,6 +985,7 @@ fun NavDrawer(
             Modifier
                 .fillMaxSize()
                 .padding(start = railWidth)
+                .onFocusChanged { railControl.contentFocused = it.hasFocus }
                 .focusRequester(contentFocus)
                 .focusRestorer(),
         ) {
