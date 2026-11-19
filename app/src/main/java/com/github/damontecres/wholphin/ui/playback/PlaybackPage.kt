@@ -748,62 +748,6 @@ fun PlaybackPageContent(
                 )
             }
 
-            // The playback controls
-
-            // Live TV (approved pl-family): the same bar, with a LIVE pill and the programme's times
-            val liveChannelId =
-                state.currentPlayback
-                    ?.item
-                    ?.takeIf { it.type == BaseItemKind.TV_CHANNEL }
-                    ?.id
-            val liveBar by produceState<LiveBarInfo?>(null, liveChannelId) {
-                if (liveChannelId == null) {
-                    value = null
-                    return@produceState
-                }
-                while (true) {
-                    val now =
-                        com.github.damontecres.wholphin.services.ChannelSession
-                            .liveNow(liveChannelId)
-                    value = LiveBarInfo(programme = now?.now, startMs = now?.startMs ?: 0L, endMs = now?.endMs ?: 0L, next = now?.next)
-                    delay(30_000L)
-                }
-            }
-            PlaybackOverlay(
-                live = liveBar,
-                modifier =
-                    Modifier
-                        .padding(WindowInsets.systemBars.asPaddingValues())
-                        .fillMaxSize()
-                        .background(Color.Transparent),
-                item = state.currentPlayback?.item,
-                player = player,
-                controllerViewState = controllerViewState,
-                showPlay = playPauseState.showPlay,
-                previousEnabled = state.previousEpisodeId != null || state.hasPrevious,
-                nextEnabled = state.hasNext,
-                episodesEnabled =
-                    state.currentPlayback
-                        ?.item
-                        ?.data
-                        ?.seriesId != null,
-                seekEnabled = true,
-                seekForward = preferences.appPreferences.playbackPreferences.skipForwardMs.milliseconds,
-                seekBack = preferences.appPreferences.playbackPreferences.skipBackMs.milliseconds,
-                skipBackOnResume = preferences.appPreferences.playbackPreferences.skipBackOnResume,
-                onPlaybackActionClick = onPlaybackActionClick,
-                onClickPlaybackDialogType = { playbackDialog = it },
-                onSeekBarChange = seekBarState::onValueChange,
-                showDebugInfo = showDebugInfo,
-                currentPlayback = state.currentPlayback,
-                trickplayInfo = state.currentMediaInfo.trickPlayInfo,
-                trickplayUrlFor = viewModel::getTrickplayUrl,
-                chapters = state.currentMediaInfo.chapters,
-                currentSegment = state.currentSegment?.segment,
-                showClock = preferences.appPreferences.interfacePreferences.showClock,
-                analyticsState = state.analyticsState,
-            )
-
             var subtitleStyleAppliedForHdr by remember { mutableStateOf(state.currentMediaInfo.videoStream?.hdr == true) }
             val subtitleSettings =
                 remember(state.currentMediaInfo) {
@@ -823,7 +767,8 @@ fun PlaybackPageContent(
             // Benflix: subtitles slide up out of the way of the player bar, the Skip button and the
             // Up next card, and slide back down when they go. Moved (not shrunk), so the words stay the same size.
             // Clean-up (Ben 2026-11-18): while the bar shows they sit just above it (its real height, not a guess).
-            // Styled ASS/SSA subtitles (anime) place their own words and signs, so they never move.
+            // Styled ASS/SSA subtitles (anime) place their own words and signs (some at the top), so they never move.
+            // Instead the controls are drawn in front of all subtitles, so nothing covers a button.
             val styledSubtitles =
                 remember(state.currentPlayback?.subtitleIndex, state.currentMediaInfo.subtitleStreams) {
                     state.currentMediaInfo.subtitleStreams
@@ -940,6 +885,62 @@ fun PlaybackPageContent(
                                     1f
                                 }
                         },
+            )
+
+            // The playback controls
+
+            // Live TV (approved pl-family): the same bar, with a LIVE pill and the programme's times
+            val liveChannelId =
+                state.currentPlayback
+                    ?.item
+                    ?.takeIf { it.type == BaseItemKind.TV_CHANNEL }
+                    ?.id
+            val liveBar by produceState<LiveBarInfo?>(null, liveChannelId) {
+                if (liveChannelId == null) {
+                    value = null
+                    return@produceState
+                }
+                while (true) {
+                    val now =
+                        com.github.damontecres.wholphin.services.ChannelSession
+                            .liveNow(liveChannelId)
+                    value = LiveBarInfo(programme = now?.now, startMs = now?.startMs ?: 0L, endMs = now?.endMs ?: 0L, next = now?.next)
+                    delay(30_000L)
+                }
+            }
+            PlaybackOverlay(
+                live = liveBar,
+                modifier =
+                    Modifier
+                        .padding(WindowInsets.systemBars.asPaddingValues())
+                        .fillMaxSize()
+                        .background(Color.Transparent),
+                item = state.currentPlayback?.item,
+                player = player,
+                controllerViewState = controllerViewState,
+                showPlay = playPauseState.showPlay,
+                previousEnabled = state.previousEpisodeId != null || state.hasPrevious,
+                nextEnabled = state.hasNext,
+                episodesEnabled =
+                    state.currentPlayback
+                        ?.item
+                        ?.data
+                        ?.seriesId != null,
+                seekEnabled = true,
+                seekForward = preferences.appPreferences.playbackPreferences.skipForwardMs.milliseconds,
+                seekBack = preferences.appPreferences.playbackPreferences.skipBackMs.milliseconds,
+                skipBackOnResume = preferences.appPreferences.playbackPreferences.skipBackOnResume,
+                onPlaybackActionClick = onPlaybackActionClick,
+                onClickPlaybackDialogType = { playbackDialog = it },
+                onSeekBarChange = seekBarState::onValueChange,
+                showDebugInfo = showDebugInfo,
+                currentPlayback = state.currentPlayback,
+                trickplayInfo = state.currentMediaInfo.trickPlayInfo,
+                trickplayUrlFor = viewModel::getTrickplayUrl,
+                chapters = state.currentMediaInfo.chapters,
+                currentSegment = state.currentSegment?.segment,
+                showClock = preferences.appPreferences.interfacePreferences.showClock,
+                analyticsState = state.analyticsState,
             )
         }
 
