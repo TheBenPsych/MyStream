@@ -810,6 +810,7 @@ object BenflixAnimeTracks {
         allStreams: List<MediaStream> = candidates,
     ): MediaStream? {
         fun name(track: MediaStream) = listOfNotNull(track.title, track.displayTitle).joinToString(" ").lowercase()
+
         fun mislabelled(track: MediaStream) = BenflixSubtitleFilter.isEnglishLabelledJapanese(track, allStreams)
         return candidates
             .filter {

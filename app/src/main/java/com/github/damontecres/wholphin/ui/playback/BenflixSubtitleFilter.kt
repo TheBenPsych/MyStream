@@ -33,7 +33,12 @@ object BenflixSubtitleFilter {
     /** Words in a track name that mean it really is in Japanese */
     private val REALLY_JAPANESE = listOf("japanese", "日本", "kanji", "jpn only", "jp only")
 
-    private fun lang(stream: MediaStream?): String = stream?.language?.trim()?.lowercase().orEmpty()
+    private fun lang(stream: MediaStream?): String =
+        stream
+            ?.language
+            ?.trim()
+            ?.lowercase()
+            .orEmpty()
 
     private fun name(stream: MediaStream) = listOfNotNull(stream.title, stream.displayTitle).joinToString(" ").lowercase()
 
