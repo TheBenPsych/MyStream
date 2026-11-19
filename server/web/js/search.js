@@ -29,17 +29,6 @@ B.route(/^\/search/, async (m, nav) => {
   };
   let games = null, seq = 0, lastAsk = [], lastDoors = [];
   const plain = (x) => (x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[(\[].*?[)\]]/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
-  // Ben 2026-11-19: typing the whole name "Mulan" showed only Mulan II while "Mula" found both. The server's word
-  // search can drop the exact title, so titles whose name starts with what was typed are asked for too.
-  const withStarts = async (t, kind, found) => {
-    const u = B.uid(), F = B.FIELDS;
-    const [list, starts] = await Promise.all([
-      found,
-      t.length < 2 ? [] : B.get(`/Items?userId=${u}&NameStartsWith=${enc(t)}&IncludeItemTypes=${kind}&Recursive=true&Limit=20&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
-    ]);
-    const have = new Set(list.map((x) => x.Id));
-    return [...starts.filter((x) => !have.has(x.Id)), ...list];
-  };
   const run = async (text) => {
     const my = ++seq;
     const t = text.trim();
@@ -47,8 +36,8 @@ B.route(/^\/search/, async (m, nav) => {
     $("#best").innerHTML = `<span class="dim">Looking…</span>`;
     const u = B.uid(), F = B.FIELDS;
     const [movies, shows, people, chans, ask, mine, cat, shelf] = await Promise.all([
-      withStarts(t, "Movie", B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Movie&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => [])),
-      withStarts(t, "Series", B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Series&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => [])),
+      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Movie&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
+      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Series&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
       kids ? [] : B.get(`/Persons?userId=${u}&searchTerm=${enc(t)}&Limit=16&EnableImages=true`).then((r) => r.Items || []).catch(() => []),
       // Kids search only finds kids titles: live programmes have no kids rating
       kids ? [] : B.channels().then((l) => l.filter((c) => {
