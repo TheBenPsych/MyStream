@@ -1,7 +1,5 @@
 package com.github.damontecres.wholphin.ui.games
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,26 +7,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,15 +33,13 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
-import coil3.network.NetworkHeaders
-import coil3.network.httpHeaders
-import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.music.CoverGlow
+import com.github.damontecres.wholphin.ui.music.CoverGlowColors
+import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.glowFocus
@@ -92,89 +84,40 @@ internal fun topThree(
             .mapIndexed { i, e -> "${i + 1}. ${e.name.uppercase()} ${"%,d".format(e.score)}" }
     }
 
-/** The top part of the Games page on TVs (and wide screens): words on the left, the picture fading in from the right */
+/**
+ * The top part of the Games page on TVs (and wide screens). Ben 2026-11-18 (approved games-books-top-1): words only
+ * on a soft glow in the lit game's colours. No big box art on the right any more: every console's boxes have their
+ * own shape, and the covers in the rows already show each one whole at its real shape.
+ */
 @Composable
 internal fun GamesTopArea(
     preview: GamePreview?,
     height: Dp,
     modifier: Modifier = Modifier,
+    /** How far the glow reaches up behind the tabs above */
+    glowAbove: Dp = 0.dp,
 ) {
-    val context = LocalContext.current
+    // Glowfin games have their own two colours; box art gives its colours like the Music and Books tops
+    val fromArt = rememberCoverGlow(preview?.picture?.takeIf { preview.colors.isEmpty() }, BenflixColors.Games, preview?.pictureToken)
+    val glow =
+        preview
+            ?.colors
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { CoverGlowColors(it.first().copy(alpha = .55f), it.last().copy(alpha = .40f)) }
+            ?: fromArt
     Box(
         modifier
             .fillMaxWidth()
             .height(height),
     ) {
-        Box(
+        CoverGlow(
+            glow,
             Modifier
-                .align(Alignment.TopEnd)
-                .fillMaxWidth(0.6f)
-                .fillMaxHeight(),
-        ) {
-            Crossfade(targetState = preview, animationSpec = tween(400), label = "gamesTopPicture") { p ->
-                Box(Modifier.fillMaxSize()) {
-                    when {
-                        p == null -> {}
-
-                        p.picture != null -> {
-                            AsyncImage(
-                                model =
-                                    remember(p.picture, p.pictureToken) {
-                                        ImageRequest
-                                            .Builder(context)
-                                            .data(p.picture)
-                                            .apply {
-                                                p.pictureToken?.let {
-                                                    httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", it).build())
-                                                }
-                                            }.build()
-                                    },
-                                contentDescription = null,
-                                contentScale = if (p.fitPicture) ContentScale.Fit else ContentScale.Crop,
-                                alignment = Alignment.Center,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .then(if (p.fitPicture) Modifier.padding(32.dp) else Modifier),
-                            )
-                        }
-
-                        p.colors.isNotEmpty() -> {
-                            // Benflix games have no pictures: their colours, softly, with a big icon
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(Brush.linearGradient(p.colors.map { it.copy(alpha = .55f) })),
-                            )
-                            p.icon?.let {
-                                Text(
-                                    text = stringResource(it),
-                                    fontFamily = FontAwesome,
-                                    fontSize = 96.sp,
-                                    color = Color.Black.copy(alpha = .45f),
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.CenterEnd)
-                                            .padding(end = 72.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        BenflixShade.topAreaSide,
-                    ),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(BenflixShade.bottom(0.5f)),
-            )
-        }
+                .fillMaxWidth()
+                .offset(y = -glowAbove)
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .height((height + glowAbove) * 1.6f),
+        )
         if (preview != null) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -182,7 +125,7 @@ internal fun GamesTopArea(
                     Modifier
                         .align(Alignment.CenterStart)
                         .padding(horizontal = 8.dp)
-                        .widthIn(max = 560.dp),
+                        .widthIn(max = 620.dp),
             ) {
                 Text(
                     text = preview.kicker,
@@ -226,7 +169,7 @@ internal fun GamesTopArea(
                         color = BenflixColors.Soft,
                         fontSize = BenflixType.small,
                         lineHeight = BenflixType.small * 1.35f,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
                     )

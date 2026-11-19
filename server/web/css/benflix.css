@@ -2153,6 +2153,13 @@ svg.gi path.gd { stroke-width: 3.6; }
    every button (Back 15, Pause, Ahead 30, Speed, Sleep, Chapters, volume, Stop) on every screen size. */
 .bktop .art { aspect-ratio: 2 / 3; }
 .bktop .art span { display: block; height: 100%; }
+/* Ben 2026-11-18 (approved games-books-top-1): on wide screens the top is words only on the cover's glow (the books in
+   the rows are the pictures), and shorter, like Games. Phones keep the cover in the middle. */
+@media (min-width: 761px) {
+  .bktop { height: clamp(130px, 17vh, 170px); }
+  .bktop .art { display: none; }
+  .bktop .info { max-width: 620px; }
+}
 .bk-chips { margin: 4px 0 18px; flex-wrap: wrap; gap: 8px; }
 .tp-about { font-size: 20px; line-height: 1.55; color: var(--ink); max-width: 820px; }
 .tp-why.bk-place { color: var(--books); }
