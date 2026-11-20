@@ -45,6 +45,8 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.glowFocus
+import com.github.damontecres.wholphin.ui.util.LocalTvRowFit
+import com.github.damontecres.wholphin.ui.util.fitTo
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
 /** One tile in a Games row: name, a two-line description, and your best (Ben asked to keep descriptions) */
@@ -194,8 +196,11 @@ private fun GameRow(
             // Ben: tall cards like movie and show posters, with room for the whole name (up to three lines)
             // Glowfin covers (2026-11-18): every tile is the game's own 2:3 cover, a little narrower on TV so the
             // whole row still fits under the top area
-            val width: Dp = if (isTv) 120.dp else (maxWidth * 0.3f).coerceIn(100.dp, 140.dp)
-            val tileHeight = maxOf(width / GAME_COVER_RATIO, posterTileHeight(isTv))
+            val fullWidth: Dp = if (isTv) 120.dp else (maxWidth * 0.3f).coerceIn(100.dp, 140.dp)
+            val fullHeight = maxOf(fullWidth / GAME_COVER_RATIO, posterTileHeight(isTv))
+            // Ben 2026-11-20: smaller TVs get smaller tiles (same shape), so the whole row fits under the top area
+            val tileHeight = fullHeight.fitTo(LocalTvRowFit.current)
+            val width = fullWidth * (tileHeight / fullHeight)
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 contentPadding = PaddingValues(vertical = if (isTv) 4.dp else 8.dp, horizontal = 4.dp),

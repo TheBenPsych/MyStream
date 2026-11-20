@@ -84,7 +84,9 @@ import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.fitTo
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
+import com.github.damontecres.wholphin.ui.util.tvRowCardFit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -260,7 +262,22 @@ private fun BooksForYou(
     val edge = side(wide)
     val isTv = rememberIsTv()
     // Ben 2026-11-18 (approved games-books-top-1): 160 tall on TV, so the first row shows whole under the top area
-    val w = if (isTv) 106.dp else cardWidth(wide)
+    // Ben 2026-11-20: smaller TVs have less room, so there the books get only as big as the room under the top
+    // area allows (the row you're on always shows whole, and the next one peeks in). Big TVs stay at 106 wide.
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val overlap = LocalTopBarOverlap.current
+    val w =
+        if (isTv) {
+            val fit =
+                tvRowCardFit(
+                    rowsHeight = screenHeight - booksTopHeight(overlap, screenHeight) - 4.dp,
+                    rowName = BenflixType.lead,
+                    around = 8.dp,
+                )
+            (106.dp / BOOK_RATIO).fitTo(fit) * BOOK_RATIO
+        } else {
+            cardWidth(wide)
+        }
     val shownRows = remember(rows) { forYouRows(rows) }
     val listState = rememberLazyListState()
     val first = remember { FocusRequester() }
@@ -296,7 +313,7 @@ private fun BooksForYou(
     }
     Column(modifier.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
         if (wide) {
-            BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), LocalTopBarOverlap.current)
+            BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), overlap)
         }
         // Ben 2026-11-18: like Movies and Shows on TV, the row you move to jumps up whole (name and all) right
         // under the top area, and rows sit the same distance apart. The rows inside still slide sideways as before.
@@ -398,7 +415,7 @@ private fun BooksTopArea(
     Box(Modifier.fillMaxWidth()) {
         // Ben 2026-11-18 (approved games-books-top-1): words only, no big cover on the right (the books in the
         // rows are the pictures). Shorter, so the first row shows whole and the next one peeks in.
-        val height = (overlap + TOP_WORDS_TV).coerceAtMost(screenHeight * 0.5f)
+        val height = booksTopHeight(overlap, screenHeight)
         Box(Modifier.fillMaxWidth().height(height)) {
             // The glow reaches up under the tabs and a little way down behind the first row
             CoverGlow(
@@ -495,6 +512,12 @@ private const val TOP_AREA_WAIT_MS = 500L
 
 /** The words in the TV top area (kicker, name, one or two lines) and a little air */
 private val TOP_WORDS_TV = 140.dp
+
+/** How tall the Books top area is on TV and wide screens, counting the header and tabs it sits behind */
+private fun booksTopHeight(
+    overlap: Dp,
+    screenHeight: Dp,
+): Dp = (overlap + TOP_WORDS_TV).coerceAtMost(screenHeight * 0.5f)
 
 /** "Keep reading · 64%" over the name */
 private fun topKicker(t: BookTile): String =

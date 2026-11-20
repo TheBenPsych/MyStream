@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,6 +82,7 @@ import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.door.doorTabsHeight
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -95,9 +97,12 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LocalTvRowFit
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.fitTo
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
+import com.github.damontecres.wholphin.ui.util.tvRowCardFit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -266,7 +271,21 @@ fun GamesPage(
     // Ben: box art comes in different shapes per console (SNES and N64 boxes are wide, NES and Genesis tall),
     // so each card takes its cover's real shape at one shared height and the whole cover always shows
     // Ben 2026-11-18: on TV the same height as Movies and Shows posters (180), so a whole row fits under the top area
-    val cardHeight = if (isTv) 160.dp else 154.dp
+    // Ben 2026-11-20: smaller TVs have less room, so on TV the cards get only as tall as the room under the top
+    // area allows (the row you're on always shows whole, and the next one peeks in). Big TVs stay at 160.
+    val tvTop = LocalTopBarOverlap.current + doorTabsHeight(true)
+    val topAreaHeight = gamesTopHeight(config.screenHeightDp.dp, tvTop)
+    val rowFit =
+        if (isTv) {
+            tvRowCardFit(
+                rowsHeight = config.screenHeightDp.dp - tvTop - (if (forYou) topAreaHeight else 0.dp) - 4.dp,
+                rowName = BenflixType.rowName,
+                around = 16.dp,
+            )
+        } else {
+            Dp.Unspecified
+        }
+    val cardHeight = if (isTv) 160.dp.fitTo(rowFit) else 154.dp
     // TV For you: the top area already says the game's name and console, so the cards have none under them
     // (like Movies and Shows), which keeps each row short enough to show whole
     val namesUnder = !(isTv && forYou)
@@ -391,7 +410,7 @@ fun GamesPage(
                     // under it and the next one peeks in
                     GamesTopArea(
                         preview = shown ?: first,
-                        height = GAMES_TOP_WORDS.coerceAtMost(config.screenHeightDp.dp * 0.5f - top).coerceAtLeast(110.dp),
+                        height = gamesTopHeight(config.screenHeightDp.dp, top),
                         glowAbove = top,
                         modifier = Modifier.padding(start = if (isTv) 48.dp else 16.dp, end = if (isTv) 48.dp else 8.dp),
                     )
@@ -400,7 +419,10 @@ fun GamesPage(
                 // under the top area. The rows inside still slide sideways the normal way.
                 val defaultSpec = LocalBringIntoViewSpec.current
                 val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
-                CompositionLocalProvider(LocalBringIntoViewSpec provides if (rowsJump) toTop else defaultSpec) {
+                CompositionLocalProvider(
+                    LocalBringIntoViewSpec provides if (rowsJump) toTop else defaultSpec,
+                    LocalTvRowFit provides rowFit,
+                ) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(if (isTv && rowsJump) 14.dp else 16.dp),
                         modifier =
@@ -1245,3 +1267,16 @@ internal fun PlayersTag(
 
 /** The words in the TV top area (kicker, name, chips, one line about it) and a little air */
 private val GAMES_TOP_WORDS = 150.dp
+
+/**
+ * How tall the Games top area is: 150 on most TVs, a little shorter on TVs with less room (so the rows under it
+ * keep enough space), never shorter than 96.
+ */
+private fun gamesTopHeight(
+    screenHeight: Dp,
+    top: Dp,
+): Dp =
+    GAMES_TOP_WORDS
+        .coerceAtMost(screenHeight * 0.5f - top)
+        .coerceAtMost((screenHeight - top) * 0.36f)
+        .coerceAtLeast(96.dp)
