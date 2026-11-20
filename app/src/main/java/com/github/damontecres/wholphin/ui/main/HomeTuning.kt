@@ -1,6 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
-// Benflix: the numbers the Glowfin rows use (Because you watched, Trending not on Tower)
+// Benflix: the numbers the Glowfin rows use (Because you watched, Trending not on Glowfin)
 
 internal const val BECAUSE_TRIES = 6
 internal const val BECAUSE_MIN = 4

@@ -35,7 +35,7 @@ enum class DoorRowStyle {
     POSTERS,
     TOP10,
 
-    /** Titles that aren't on the server yet (Trending, not on Tower): request cards */
+    /** Titles that aren't on the server yet (Trending, not on Glowfin): request cards */
     DISCOVER,
 }
 
@@ -346,7 +346,7 @@ class DoorViewModel
 
         /**
          * Glowfin Movies, For you (ui-7): Continue watching, Top 10 this week, Because you watched, Recently added,
-         * Recently released, Top rated you haven't seen, Stand-up. No anime: that has its own page now.
+         * Recently released, Top rated you haven't seen, Stand-up, Trending not on Glowfin. No anime: that has its own page now.
          */
         private suspend fun loadMovies(userId: UUID) {
             val libs = libraries()
@@ -402,6 +402,19 @@ class DoorViewModel
                         val items = data.fromLibrary(userId, standUp, BaseItemKind.MOVIE)
                         putOrRemove(order, DoorRowData(STAND_UP, "Stand-up", items, seeAll = true))
                     }
+                    launch {
+                        val missing = data.trendingMissing(com.github.damontecres.wholphin.data.model.SeerrItemType.MOVIE)
+                        putOrRemove(
+                            order,
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
+                        )
+                    }
                 }
             }
             nextPick = becausePick ?: newPick
@@ -410,7 +423,7 @@ class DoorViewModel
 
         /**
          * Glowfin Shows, For you (ui-7): Continue watching, Next up, New episodes (the Missing episodes tag),
-         * Because you watched, Recently added, Top rated you haven't seen, Trending not on Tower. No anime.
+         * Because you watched, Recently added, Top rated you haven't seen, Trending not on Glowfin. No anime.
          */
         private suspend fun loadShows(userId: UUID) {
             val libs = libraries()
@@ -476,7 +489,13 @@ class DoorViewModel
                         val missing = data.trendingMissing(com.github.damontecres.wholphin.data.model.SeerrItemType.TV)
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Tower", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                 }
@@ -487,7 +506,7 @@ class DoorViewModel
 
         /**
          * Glowfin Anime, For you (ui-7, Ben's pick A): Continue watching, Airing this season, Top 10 anime,
-         * Because you watched, Hidden gem anime, Anime movies, Recently added. Anime shows and movies together.
+         * Because you watched, Hidden gem anime, Anime movies, Recently added, Trending not on Glowfin. Anime shows and movies together.
          */
         private suspend fun loadAnime(userId: UUID) {
             val libs = libraries()
@@ -553,6 +572,21 @@ class DoorViewModel
                     putOrRemove(order, DoorRowData(NEW, "Recently added", items))
                     newPick = pickFrom(items)
                 }
+                if (!KidsMode.isActive) {
+                    launch {
+                        val missing = data.trendingAnimeMissing()
+                        putOrRemove(
+                            order,
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
+                        )
+                    }
+                }
             }
             nextPick = becausePick ?: newPick
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
@@ -560,7 +594,7 @@ class DoorViewModel
 
         /**
          * Glowfin Home (ui-6): Continue watching and Next up, then up to the rows this person picked (Recently
-         * added, Top 10, Because you watched, Trending not on Tower, Anime airing, Watch it again). "What's new"
+         * added, Top 10, Because you watched, Trending not on Glowfin, Anime airing, Watch it again). "What's new"
          * is drawn by the Home page itself, in the spot picked for it.
          */
         private suspend fun loadHome(userId: UUID) {
@@ -628,7 +662,13 @@ class DoorViewModel
                         val missing = data.trendingMissing(null)
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Tower", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                     launch {
