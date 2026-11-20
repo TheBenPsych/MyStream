@@ -31,6 +31,7 @@ import io
 import json
 import os
 import re
+import socket
 import sys
 import threading
 import time
@@ -666,6 +667,83 @@ def sync_jellyfin(token=None):
         print(f"Live TV: couldn't ask Jellyfin to read the channel list ({e})", flush=True)
 
 
+_heal = {"at": 0}
+HEAL_EVERY = 60 * 60  # at most one "read the list again" nudge an hour
+LINK_RE = re.compile(r"^http://([0-9.]+):8097/livetv/")
+
+
+def _own_ip():
+    """Tower's address on the home network right now (the helper shares Tower's network)"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("1.1.1.1", 53))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except OSError:
+        return None
+
+
+def _answers(ip):
+    try:
+        with urllib.request.urlopen(f"http://{ip}:8097/health", timeout=4) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+
+def heal_jellyfin():
+    """Brings Jellyfin's Live TV back by itself after a router change (Ben, 2026-11-19: after a modem reset
+    Tower was on another address for a while, Jellyfin's Live TV links pointed at an address nothing
+    answered on, its guide refresh found no channels and the app said "No live channels yet").
+    1. Jellyfin's tuner/guide links that point at an old Tower address that no longer answers are
+       switched to Tower's address now.
+    2. When Jellyfin has no live channels at all but Tower's list has some, Jellyfin is asked to read
+       the list again (at most once an hour)."""
+    skips = sys.modules.get("benflix_skips")
+    token = _admin["token"] or (getattr(skips, "_admin", None) or {}).get("token")
+    st = status()
+    if not token or st.get("running") or not st.get("kept") or not os.path.isfile(M3U_FILE):
+        return
+    nudge = False
+    try:
+        conf = json.loads(_jellyfin("/System/Configuration/livetv", token))
+        me = _own_ip()
+        changed = False
+        if me:
+            for kind, field in (("TunerHosts", "Url"), ("ListingProviders", "Path")):
+                for entry in conf.get(kind) or []:
+                    m = LINK_RE.match(entry.get(field) or "")
+                    if m and m.group(1) != me and not _answers(m.group(1)):
+                        entry[field] = f"http://{me}:8097/livetv/" + entry[field][m.end():]
+                        changed = True
+        if changed:
+            url = os.environ.get("JELLYFIN_URL", "http://127.0.0.1:8096").rstrip("/") + "/System/Configuration/livetv"
+            req = urllib.request.Request(url, method="POST", data=json.dumps(conf).encode(), headers={
+                "Authorization": f'MediaBrowser Token="{token}"', "Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=15).read()
+            print(f"Live TV: Jellyfin's Live TV links now use Tower's address {me}", flush=True)
+            nudge = True
+        found = json.loads(_jellyfin("/LiveTv/Channels?limit=1&enableImages=false&enableUserData=false", token))
+        if not found.get("TotalRecordCount"):
+            nudge = True
+    except Exception as e:
+        print(f"Live TV: couldn't check Jellyfin's Live TV ({e})", flush=True)
+        return
+    if not nudge or time.time() - _heal["at"] < HEAL_EVERY:
+        return
+    _heal["at"] = time.time()
+    try:
+        tasks = json.loads(_jellyfin("/ScheduledTasks?isHidden=false", token))
+        task = next((t for t in tasks if t.get("Key") == "RefreshGuide"), None)
+        if task and task.get("State") != "Running":
+            _jellyfin(f"/ScheduledTasks/Running/{task['Id']}", token, "POST")
+            print("Live TV: Jellyfin had no live channels, asked it to read Tower's list again", flush=True)
+    except Exception as e:
+        print(f"Live TV: couldn't ask Jellyfin to read the channel list ({e})", flush=True)
+
+
 def refresh():
     """Runs build() once in the background (does nothing if it's already running)."""
     with _lock:
@@ -727,6 +805,8 @@ def start():
                 elif now - (st.get("guide_at") or 0) >= GUIDE_EVERY and not st.get("running"):
                     refresh_guide()
                     sync_jellyfin()
+                if not st.get("running"):
+                    heal_jellyfin()
             except Exception as e:
                 print(f"Live TV: {e!r}", flush=True)
             time.sleep(600)
