@@ -127,8 +127,9 @@
       <div class="lb-stage" id="lbStage" tabindex="0" aria-label="The lobby. W A S D to walk, the mouse to look.">
         <canvas id="lbC"></canvas>
         <video id="lbV" playsinline></video>
-        <div class="lb-hud tl"><button class="lb-pill lb-btn" id="lbBack" title="Leave the lobby">${I("left")} Leave</button><div class="lb-pill" id="lbRoom"></div><div class="lb-pill" id="lbNow"></div></div>
-        <div class="lb-hud tr"><button class="lb-pill lb-btn" id="lbTvBtn" title="The TV (T)">${I("tv")} TV</button><button class="lb-pill lb-btn" id="lbGear" title="Lobby settings">${I("gear")}</button><span class="lb-pill" id="lbFps">-- fps</span></div>
+        <div class="lb-hud tl"><button class="lb-pill lb-btn" id="lbBack" title="Leave the lobby">${I("left")} Leave</button><div class="lb-pill" id="lbRoom"></div><div class="lb-pill" id="lbNow"></div><div class="lb-pill" id="lbGame" hidden></div></div>
+        <div class="lb-hud tr"><button class="lb-pill lb-btn" id="lbPlay" title="Games (G)" hidden>Games</button><button class="lb-pill lb-btn" id="lbTvBtn" title="The TV (T)">${I("tv")} TV</button><button class="lb-pill lb-btn" id="lbGear" title="Lobby settings">${I("gear")}</button><span class="lb-pill" id="lbFps">-- fps</span></div>
+        <div class="lb-count" id="lbCount" hidden></div>
         <div class="lb-dot" id="lbDot" hidden></div>
         <div class="lb-sub" id="lbSub" hidden></div>
         <div class="lb-prompt" id="lbPrompt" hidden></div>
@@ -140,7 +141,7 @@
           <div class="lb-big" id="lbStartTitle">${esc(first.host ? "Your lobby" : first.host_name + "'s lobby")} · code ${esc(code)}</div>
           <button class="btn white" id="lbEnter">Walk in</button>
           <div class="lb-keys">${isTouch ? "<span>Left thumb: walk</span><span>Drag the right side: look</span><span>Use: sit or play</span>"
-            : "<span><kbd>W A S D</kbd>walk</span><span><kbd>Mouse</kbd>look</span><span><kbd>Shift</kbd>hurry</span><span><kbd>E</kbd>sit / use</span><span><kbd>T</kbd>the TV</span><span><kbd>F</kbd>movie fills the screen</span><span><kbd>Enter</kbd>chat</span><span><kbd>1 2 3</kbd>wave, clap, laugh</span><span><kbd>Esc</kbd>free the mouse</span>"}</div>
+            : "<span><kbd>W A S D</kbd>walk</span><span><kbd>Mouse</kbd>look</span><span><kbd>Shift</kbd>hurry</span><span><kbd>E</kbd>sit / use</span><span><kbd>T</kbd>the TV</span><span><kbd>F</kbd>movie fills the screen</span><span><kbd>Enter</kbd>chat</span><span><kbd>1 2 3</kbd>wave, clap, laugh</span><span><kbd>Esc</kbd>free the mouse</span><span><kbd>Space</kbd>jump, <kbd>C</kbd>crouch, <kbd>G</kbd>games (in the Cinema)</span>"}</div>
         </div></div>
       </div>
     </div>`;
@@ -509,10 +510,12 @@
       window.GF_CINEMA_HOST = {
         chat: () => { if (cine) cine.letGo(); openChat(); },
         emote: (a) => emote(a),
+        games: () => playPanel(),
+        tag: (id) => { api("POST", code + "/game", { action: "tag", target: id }).then(gotGame).catch(() => {}); },
         ready: () => {
           cine = cineFrame && cineFrame.contentWindow && cineFrame.contentWindow.GF_CINEMA; if (!cine) return;
           const q = look.quality === "auto" ? (weak ? "lite" : "full") : look.quality; if (q === "lite") cine.setFast(true);
-          cine.setPeople(cinePeople()); if (started) cine.begin();
+          cine.setPeople(cinePeople()); gotGame(game); if (started) cine.begin();
         },
       };
       cineFrame = document.createElement("iframe");
@@ -756,6 +759,80 @@
     let full = false;
     const fillScreen = (want) => { full = want == null ? !full : want; $("#lb").classList.toggle("lb-full", full); if (full && locked && document.exitPointerLock) document.exitPointerLock(); };
 
+    // ---------- games in the Cinema: Hide and seek, and Tag. Tower keeps the round; the host starts it and picks the rules ----------
+    const GAME_NAMES = { hide: "Hide and seek", tag: "Tag" };
+    let game = { n: 0, mode: "", state: "idle", it: [], found: [], safe: [], left: 0, set: {}, score: {}, result: "" }, gameAt = performance.now(), squeakK = -1;
+    const gameKey = () => "benflix.lobby.games." + B.me.id;
+    const gameSet = () => { const d = { mode: "hide", it: "", hide: { count: 45, minutes: 5, squeak: 75, join: 0 }, tag: { minutes: 3, noback: 3, infection: 0 } }, g = loadJson(gameKey(), {}); return { mode: g.mode === "tag" ? "tag" : "hide", it: "", hide: Object.assign(d.hide, g.hide), tag: Object.assign(d.tag, g.tag) }; };
+    const gameOn = () => game.state === "count" || game.state === "play";
+    const gameLeft = () => Math.max(0, game.left - (performance.now() - gameAt) / 1000);
+    const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
+    const nameOf = (id) => (id === B.me.id ? B.me.name : others[id] ? others[id].name : "Someone");
+    function gotGame(g) {
+      if (!g || !g.it) return; // an older Tower that doesn't know games yet
+      const fresh = g.state !== game.state || g.n !== game.n;
+      game = g; gameAt = performance.now();
+      const iAmIt = g.it.includes(B.me.id), iAmFound = g.found.includes(B.me.id);
+      if (cine) cine.setGame({ mode: g.mode, state: g.state, it: g.it, found: g.found, safe: g.safe, iAmIt, iAmFound, frozen: g.state === "count" && iAmIt });
+      if (fresh && g.state === "over" && g.result) toast(g.result);
+      // Hide and seek: a squeak every so often gives the seekers a hint
+      if (g.mode === "hide" && g.state === "play" && g.set.squeak) { const k = Math.floor((g.set.minutes * 60 - g.left) / g.set.squeak); if (squeakK >= 0 && k > squeakK && cine) cine.hint(); squeakK = k; } else squeakK = -1;
+      if (fresh && $(".lb-games")) playPanel();
+      drawGame();
+    }
+    function drawGame() {
+      const pill = $("#lbGame"), cnt = $("#lbCount"); if (!pill) return;
+      const on = roomKey === "cinema" && gameOn(), iAmIt = game.it.includes(B.me.id), left = gameLeft();
+      $("#lbPlay").hidden = roomKey !== "cinema";
+      pill.hidden = !on; pill.classList.toggle("it", on && iAmIt);
+      if (on) {
+        const hiding = Object.keys(others).concat(B.me.id).filter((id) => !game.it.includes(id) && !game.found.includes(id)).length;
+        let role;
+        if (game.mode === "hide") role = iAmIt ? (game.state === "count" ? "You're counting" : `You're seeking · ${hiding} still hiding`) : game.found.includes(B.me.id) ? "You were found" : game.state === "count" ? "Go and hide!" : "Stay hidden";
+        else role = game.state === "count" ? (iAmIt ? "You're It · get ready" : `${nameOf(game.it[0])} is It · run!`) : iAmIt ? "You're It! Catch someone" : `${game.it.map(nameOf).join(", ")} ${game.it.length > 1 ? "are" : "is"} It`;
+        pill.innerHTML = `<b>${GAME_NAMES[game.mode] || "Game"}</b> · ${esc(role)} · ${clock(left)}`;
+      }
+      const blind = on && game.mode === "hide" && game.state === "count" && iAmIt;
+      cnt.hidden = !blind;
+      if (blind) cnt.innerHTML = `<div><div class="lb-big">You're the seeker</div><div class="lb-num">${Math.ceil(left)}</div><p class="dim">No peeking. Everyone else is hiding.</p></div>`;
+    }
+    function playPanel() {
+      if (roomKey !== "cinema") return;
+      if (cine) cine.letGo();
+      const st = gameSet();
+      const pick = (k, cur, list) => `<div class="lb-opts">${list.map(([v, l]) => `<button class="opt ${String(cur) === String(v) ? "on" : ""}" data-gk="${k}" data-gv="${esc(String(v))}">${esc(l)}</button>`).join("")}</div>`;
+      const draw = () => {
+        if (gameOn()) return `<h3>${GAME_NAMES[game.mode]} is on</h3><p class="dim">${esc(game.it.map(nameOf).join(", "))} ${game.mode === "hide" ? (game.it.length > 1 ? "are seeking" : "is seeking") : (game.it.length > 1 ? "are It" : "is It")}. ${clock(gameLeft())} left.</p>
+          ${hostNow ? `<div class="acts"><button class="btn white" data-gstop>Stop the game</button></div>` : ""}`;
+        const rules = `<h4 class="dim">How they work</h4><p class="dim" style="font-size:14px"><b>Hide and seek:</b> the seeker waits at the front doors with a dark screen while everyone hides, then walks up to people to find them. A squeak now and then gives a hint. Anyone still hidden when the time runs out wins.</p>
+          <p class="dim" style="font-size:14px"><b>Tag:</b> whoever is It (pink marker) runs into someone to make them It. The person who was It for the shortest time wins.</p>`;
+        if (!hostNow) return `<h3>Games</h3><p>${esc(first.host_name)} starts the games and picks the rules.</p>${rules}`;
+        const m = st.mode, people = [["", "Surprise us"], [B.me.id, B.me.name]].concat(Object.entries(others).map(([id, o]) => [id, o.name]));
+        return `<h3>Games</h3>${pick("mode", m, [["hide", "Hide and seek"], ["tag", "Tag"]])}
+          ${m === "hide" ? `<h4 class="dim">Who seeks first</h4>${pick("it", st.it, people)}
+            <h4 class="dim">Counting time (seeker can't see or move)</h4>${pick("count", st.hide.count, [[20, "20 s"], [30, "30 s"], [45, "45 s"], [60, "1 min"], [90, "1½ min"]])}
+            <h4 class="dim">Round length</h4>${pick("minutes", st.hide.minutes, [[3, "3 min"], [5, "5 min"], [8, "8 min"], [10, "10 min"], [15, "15 min"]])}
+            <h4 class="dim">When you're found</h4>${pick("join", st.hide.join, [[0, "You're out and can wander"], [1, "You become a seeker too"]])}
+            <h4 class="dim">Squeak hint for the seeker</h4>${pick("squeak", st.hide.squeak, [[0, "Off"], [45, "Every 45 s"], [75, "Every 75 s"], [120, "Every 2 min"]])}`
+          : `<h4 class="dim">Who is It first</h4>${pick("it", st.it, people)}
+            <h4 class="dim">Round length</h4>${pick("minutes", st.tag.minutes, [[2, "2 min"], [3, "3 min"], [5, "5 min"], [8, "8 min"], [10, "10 min"]])}
+            <h4 class="dim">Kind of tag</h4>${pick("infection", st.tag.infection, [[0, "Classic: least time as It wins"], [1, "Infection: everyone tagged is It too"]])}
+            ${st.tag.infection ? "" : `<h4 class="dim">No tag-backs</h4>${pick("noback", st.tag.noback, [[0, "Off"], [3, "3 s"], [5, "5 s"], [10, "10 s"]])}`}`}
+          <div class="acts"><button class="btn white" data-gstart>${I("play")} Start ${GAME_NAMES[m]}</button></div>
+          ${Object.keys(others).length ? "" : `<p class="dim" style="font-size:14px">You need at least two people in the lobby to play.</p>`}${rules}`;
+      };
+      const p = B.side(`<div class="lb-games">${draw()}</div>`, () => { if (cine && started) cine.begin(); });
+      p.addEventListener("click", (e) => {
+        if (e.target.closest("[data-gstop]")) { B.closeAll(); api("POST", code + "/game", { action: "stop" }).then(gotGame).catch((er) => toast(er.message)); if (cine) cine.begin(); return; }
+        if (e.target.closest("[data-gstart]")) { B.closeAll(); api("POST", code + "/game", { action: "start", mode: st.mode, set: st[st.mode], it: st.it }).then(gotGame).catch((er) => toast(er.message)); if (cine) cine.begin(); return; }
+        const b = e.target.closest("[data-gk]"); if (!b) return;
+        const k = b.dataset.gk, v = b.dataset.gv;
+        if (k === "mode") st.mode = v; else if (k === "it") st.it = v; else st[st.mode][k] = +v;
+        store(gameKey(), JSON.stringify({ mode: st.mode, hide: st.hide, tag: st.tag }));
+        $(".lb-games", p).innerHTML = draw();
+      });
+    }
+
     // ---------- settings (gear): your character, room (host), who can pause, quality ----------
     function gearPanel() {
       if (locked && document.exitPointerLock) document.exitPointerLock();
@@ -829,6 +906,7 @@
     $("#lbBack").onclick = () => B.go("#/lobby");
     $("#lbTvBtn").onclick = () => tvPanel();
     $("#lbGear").onclick = () => gearPanel();
+    $("#lbPlay").onclick = () => playPanel();
     $("#lbTUse").onclick = () => useNearest();
     $("#lbTChat").onclick = () => openChat();
     on(chatIn, "blur", () => { if (isTouch && chatIn.value.trim()) { say(chatIn.value); chatIn.value = ""; chatIn.hidden = true; } });
@@ -919,6 +997,7 @@
         Object.keys(others).forEach((id) => { if (!seen.has(id)) { scene.remove(others[id].av); delete others[id]; } });
         if (cine) cine.setPeople(cinePeople());
         // The TV
+        if (d.game) gotGame(d.game);
         if (d.tv.n !== tv.n || d.tv.item !== tv.item) gotTv(d.tv, rtt);
         else if (Math.abs((d.tv.pos + (d.tv.playing ? rtt / 2000 : 0)) - wantPos()) > 0.25) tvRef = { pos: d.tv.pos + (d.tv.playing ? rtt / 2000 : 0), t: performance.now() };
         // Pool: somebody else's shot plays the same here
@@ -950,6 +1029,7 @@
       if (!visible || document.hidden || closed && !scene) { last = now; return; }
       const elapsed = now - last; if (elapsed < 1000 / fpsCap - 2) return;
       const dt = Math.min(0.05, elapsed / 1000); last = now; const t = (now - t0) / 1000;
+      if (Math.floor(t * 4) !== Math.floor((t - dt) * 4)) drawGame();
       if (roomKey === "cinema") return; // the cinema page draws itself
       frames++; fpsT += elapsed; if (fpsT > 500) { $("#lbFps").textContent = Math.round((frames * 1000) / fpsT) + " fps"; frames = 0; fpsT = 0; }
       if (started && !typing() && !full) {

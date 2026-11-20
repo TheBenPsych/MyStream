@@ -843,6 +843,7 @@
     if (!armed || e.ctrlKey || e.metaKey) return;
     if (e.code === "KeyF") { e.preventDefault(); isFull() ? exitFull() : enterFull(); }
     if (e.code === "Enter") { e.preventDefault(); { const h = host(); h.chat && h.chat(); } }
+    if (e.code === "KeyG") { const h = host(); h.games && h.games(); }
     if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") { const h = host(); h.emote && h.emote(["wave", "clap", "laugh"][+e.code.slice(5) - 1]); }
   });
   stage.addEventListener("click", grabMouse);
@@ -1079,6 +1080,39 @@
       o.body.position.y = o.act === "clap" ? Math.abs(Math.sin(t * 14)) * 0.06 : moving ? Math.abs(Math.sin(t * 7)) * 0.05 : 0;
       o.body.rotation.z = o.act === "wave" ? Math.sin(t * 9) * 0.18 : o.act === "laugh" ? Math.sin(t * 22) * 0.06 : 0;
     });
+    gameFrame(now);
+  }
+  // ---------- games (Hide and seek, Tag): Tower keeps the round, this page shows who is It and catches people ----------
+  let GAME = { mode: "", state: "idle", it: [], found: [], safe: [], iAmIt: false, iAmFound: false, frozen: false }, tagCool = 0, wasFrozen = false;
+  const itGeo = new T.ConeGeometry(0.16, 0.3, 4), itMat = new T.MeshBasicMaterial({ color: 0xff5c8a, toneMapped: false });
+  function clearLine(ax, ay, az, bx2, by, bz) { for (const o of OCC) if (seg(ax, ay, az, bx2, by, bz, o)) return false; return true; }
+  function setGame(g) {
+    GAME = Object.assign({ mode: "", state: "idle", it: [], found: [], safe: [], iAmIt: false, iAmFound: false, frozen: false }, g || {});
+    if (GAME.frozen && !wasFrozen && GAME.mode === "hide") { P.x = 45; P.y = 57.5; P.f = 0; P.vy = 0; P.air = false; yaw = Math.PI; pitch = 0; SAFE.x = P.x; SAFE.y = P.y; SAFE.f = 0; }
+    wasFrozen = GAME.frozen; kick();
+  }
+  function gameFrame(now) {
+    const on = GAME.state === "play" || GAME.state === "count", t = now / 1000;
+    PEOPLE.forEach((o, id) => {
+      const isIt = on && GAME.it.includes(id), found = GAME.found.includes(id);
+      if (isIt && !o.mark) { o.mark = new T.Mesh(itGeo, itMat); o.mark.rotation.x = Math.PI; o.av.add(o.mark); }
+      if (o.mark) { o.mark.visible = isIt; o.mark.position.y = (o.cr ? 1.3 : 1.7) + Math.sin(t * 4) * 0.05; o.mark.rotation.y = t * 2; }
+      // a seeker never gets a name floating over somebody who is still hidden
+      o.tag.visible = !(on && GAME.mode === "hide" && GAME.iAmIt && !isIt && !found);
+      if (GAME.state !== "play" || !GAME.iAmIt || isIt || found || now < tagCool || GAME.safe.includes(id)) return;
+      const ox = o.x + 45, oy = o.z + 30, d = Math.hypot(ox - P.x, oy - P.y);
+      if (d < (GAME.mode === "hide" ? 1.6 : 1.3) && Math.abs(o.h - P.f) < 1.5 && clearLine(P.x, P.y, P.eye, ox, oy, o.h + (o.cr ? 0.3 : 0.5))) {
+        tagCool = now + 700; const h = host(); h.tag && h.tag(id);
+        if (SND.ctx && SND.on && SND.ctx.state === "running") { blip(660, SND.ctx.currentTime, 0.12, 0.08, "triangle"); blip(990, SND.ctx.currentTime + 0.1, 0.2, 0.08, "triangle"); }
+      }
+    });
+  }
+  // the squeak hint in Hide and seek: hiders hear their own, seekers hear the nearest one (quieter the further away)
+  function hint() {
+    if (!(SND.ctx && SND.on && SND.ctx.state === "running") || GAME.mode !== "hide") return;
+    if (!GAME.iAmIt) { if (!GAME.iAmFound) squeak(0.8); return; }
+    let best = 1e9; PEOPLE.forEach((o, id) => { if (!GAME.it.includes(id) && !GAME.found.includes(id)) best = Math.min(best, Math.hypot(o.x + 45 - P.x, o.z + 30 - P.y) + Math.abs(o.h - P.f) * 2); });
+    if (best < 1e8) squeak(Math.max(0.25, 2.2 / (1 + (best / 7) ** 2)));
   }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -1086,14 +1120,14 @@
     if (mode === "walk") {
       const turn = (keys.tl ? 1 : 0) - (keys.tr ? 1 : 0); yaw += turn * dt * 1.9;
       const fwd = (keys.f ? 1 : 0) - (keys.b ? 1 : 0), side = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-      if (fwd || side) {
+      if ((fwd || side) && !GAME.frozen) {
         const sp = (keys.run ? 7 : 3.6) * (P.H < 1 ? 0.55 : 1) * dt;
         const fx = -Math.sin(yaw), fy = -Math.cos(yaw), rx = Math.cos(yaw), ry = -Math.sin(yaw);
         let mx = (fx * fwd + rx * side), my = (fy * fwd + ry * side); const l = Math.hypot(mx, my); mx = mx / l * sp; my = my / l * sp;
         const n = Math.ceil(sp / 0.12);
         for (let k = 0; k < n; k++) { if (!tryMove(P.x + mx / n, P.y + my / n)) { if (!tryMove(P.x + mx / n, P.y)) tryMove(P.x, P.y + my / n); } }
       }
-      if (keys.jump) { jump(); keys.jump = 0; }
+      if (keys.jump) { if (!GAME.frozen) jump(); keys.jump = 0; }
       physics(dt); keepSafe();
       camera.position.set(WX(P.x), P.eye, WZ(P.y)); camera.rotation.set(pitch, yaw, 0);
     } else if (mode === "tour") {
@@ -1282,7 +1316,7 @@
   // what the Lobby page (the page that holds this one) can ask for
   window.GF_CINEMA = {
     me: () => ({ x: +WX(P.x).toFixed(3), z: +WZ(P.y).toFixed(3), yaw: +yaw.toFixed(3), h: +P.f.toFixed(2), cr: P.H < 1 ? 1 : 0 }),
-    setPeople, onFull,
+    setPeople, onFull, setGame, hint,
     begin() { armed = true; try { window.focus(); } catch (e) {} stage.focus({ preventScroll: true }); sndStart(); grabMouse(); kick(); },
     letGo() { armed = false; Object.keys(keys).forEach((k) => (keys[k] = 0)); ctrlHeld = false; if (document.pointerLockElement === stage) document.exitPointerLock(); },
     setFast(fast) { autoDropped = true; setPretty(!fast); },
