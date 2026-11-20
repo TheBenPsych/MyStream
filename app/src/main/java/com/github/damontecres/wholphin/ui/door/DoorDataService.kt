@@ -483,8 +483,8 @@ class DoorDataService
             )
 
         /**
-         * Glowfin "Trending, not on Tower": what's trending (from Requests) that isn't here yet. [type] picks
-         * movies or shows (null = both); anime is left to the Anime page and Requests.
+         * Glowfin "Trending, not on Glowfin": what's trending (from Requests) that isn't here yet. [type] picks
+         * movies or shows (null = both); anime is left out (the Anime page has its own, [trendingAnimeMissing]).
          */
         suspend fun trendingMissing(type: SeerrItemType?): List<DiscoverItem> =
             safe {
@@ -493,6 +493,57 @@ class DoorDataService
                     .filter { (type == null || it.type == type) && it.jellyfinItemId == null && !it.isAnime }
                     .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
                     .take(ROW)
+            }
+
+        /**
+         * Glowfin "Trending, not on Glowfin" for the Anime page: popular anime shows and anime movies that aren't
+         * here yet (TMDB's Animation genre with its "anime" tag), two shows then one movie so both show up early.
+         * Anything anime on Seerr's trending list goes first.
+         */
+        suspend fun trendingAnimeMissing(): List<DiscoverItem> =
+            safe {
+                if (!seerrService.active.first()) return@safe emptyList()
+                val missing = { d: DiscoverItem -> d.jellyfinItemId == null && d.posterUrl != null }
+                coroutineScope {
+                    val hot = async { trending().filter { it.isAnime } }
+                    val shows =
+                        async {
+                            (1..2).flatMap { page ->
+                                safe {
+                                    seerrService.api.searchApi
+                                        .discoverTvGet(page = page, genre = ANIMATION_GENRE, keywords = ANIME_KEYWORD, sortBy = "popularity.desc")
+                                        .results
+                                        ?.map { seerrService.createDiscoverItem(it) }
+                                        .orEmpty()
+                                }
+                            }
+                        }
+                    val films =
+                        async {
+                            safe {
+                                seerrService.api.searchApi
+                                    .discoverMoviesGet(page = 1, genre = ANIMATION_GENRE, keywords = ANIME_KEYWORD, sortBy = "popularity.desc")
+                                    .results
+                                    ?.map { seerrService.createDiscoverItem(it) }
+                                    .orEmpty()
+                            }
+                        }
+                    val s = shows.await().filter(missing)
+                    val m = films.await().filter(missing)
+                    val mixed =
+                        buildList {
+                            var i = 0
+                            var j = 0
+                            while (i < s.size || j < m.size) {
+                                repeat(2) { if (i < s.size) add(s[i++]) }
+                                if (j < m.size) add(m[j++])
+                            }
+                        }
+                    (hot.await().filter(missing) + mixed)
+                        .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                        .distinctBy { it.type to it.id }
+                        .take(ROW)
+                }
             }
 
         /** A row from one library (Anime, Stand-up): unwatched first, best rated */
@@ -710,6 +761,10 @@ class DoorDataService
             private const val BECAUSE_TRIES = 4
             private const val BECAUSE_MIN = 5
             private const val TRENDING_PAGES = 3
+
+            /** TMDB's Animation genre and its "anime" tag, which together mean anime */
+            private const val ANIMATION_GENRE = "16"
+            private const val ANIME_KEYWORD = "210024"
             private const val TRENDING_CACHE_MS = 30L * 60 * 1000
             private const val DISLIKE_CACHE_MS = 10L * 60 * 1000
             private const val ID_CACHE_MS = 60L * 60 * 1000

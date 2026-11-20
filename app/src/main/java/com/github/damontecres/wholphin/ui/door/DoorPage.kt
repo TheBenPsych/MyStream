@@ -537,7 +537,7 @@ private fun DoorRow(
     side: Dp = SIDE,
     /** Changes when Back sends you to the top: the row scrolls back to the card focus goes to */
     scrollKey: Int = 0,
-    /** Request cards (Trending, not on Tower) open their own page */
+    /** Request cards (Trending, not on Glowfin) open their own page */
     onOpen: (Destination) -> Unit = {},
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))

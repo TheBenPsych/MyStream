@@ -142,18 +142,32 @@ const becauseRow = async (type, keep) => {
   }
   return null;
 };
-// "Trending, not on Tower": what's trending in Requests that isn't here yet (no anime)
+// "Trending, not on Glowfin": what's trending in Requests that isn't here yet. Movies and Shows leave anime out;
+// kind "anime" is anime shows and anime movies together (Japanese titles in TMDB's Animation genre)
 B.trendingMissing = async (kind) => {
   try {
-    const kinds = kind ? [kind] : ["movies", "tv"];
-    const pages = await Promise.all(kinds.map((k) => B.cached("trendmiss-" + k, 1800000, () => B.get(`/JellyfinEnhanced/jellyseerr/discover/${k}?page=1&sortBy=popularity.desc`).catch(() => null))));
+    const anime = kind === "anime";
+    const kinds = anime ? ["tv", "movies"] : kind ? [kind] : ["movies", "tv"];
+    const path = (k) => (anime ? `/discover/${k}/genre/16?page=1` : `/discover/${k}?page=1&sortBy=popularity.desc`);
+    const lists = await Promise.all(kinds.map((k) => B.cached("trendmiss-" + (anime ? "anime-" : "") + k, 1800000, async () => {
+      const pages = anime ? [path(k), path(k).replace("page=1", "page=2")] : [path(k)];
+      const got = await Promise.all(pages.map((u) => B.get("/JellyfinEnhanced/jellyseerr" + u).catch(() => null)));
+      return { results: got.flatMap((p) => (p && p.results) || []) };
+    })));
+    const per = lists.map((p, i) => ((p && p.results) || []).filter((r) => {
+      if (r.mediaInfo && (r.mediaInfo.jellyfinMediaId || r.mediaInfo.status === 5)) return false;
+      const isAnime = (r.genreIds || []).includes(16) && r.originalLanguage === "ja";
+      return anime ? isAnime : !isAnime;
+    }).map((r) => ({ r, kind: kinds[i] })));
+    // Anime: two shows then one movie, so both show up near the front
     const out = [];
-    pages.forEach((p, i) => ((p && p.results) || []).forEach((r) => {
-      if (r.mediaInfo && (r.mediaInfo.jellyfinMediaId || r.mediaInfo.status === 5)) return;
-      if ((r.genreIds || []).includes(16) && (r.originalLanguage === "ja")) return;
-      out.push({ r, kind: kinds[i] });
-    }));
-    return out.slice(0, 20);
+    if (anime) {
+      const [a, b] = per;
+      let i = 0, j = 0;
+      while (i < a.length || j < b.length) { if (i < a.length) out.push(a[i++]); if (i < a.length) out.push(a[i++]); if (j < b.length) out.push(b[j++]); }
+    } else per.forEach((l) => out.push(...l));
+    const seen = new Set();
+    return out.filter((x) => !seen.has(x.kind + x.r.id) && seen.add(x.kind + x.r.id)).slice(0, 20);
   } catch (e) { return []; }
 };
 // Request cards (the same as Requests): pressing one opens its Ask for it page
@@ -169,7 +183,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   const anime = await B.animeIds("Movie");
   const notAnime = (x) => !anime.has(x.Id);
   const fewer = B.me.kids;
-  const [resume, fresh, top, because, released, best, stand] = await Promise.all([
+  const [resume, fresh, top, because, released, best, stand, missing] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     fromLibs(main.concat(standLibs), "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
     fewer ? [] : B.trending("Movie").catch(() => []),
@@ -177,6 +191,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     fewer ? [] : fromLibs(main.concat(standLibs), "Movie", "PremiereDate").then((l) => l.sort(newestFirst("PremiereDate"))),
     fewer ? [] : fromLibs(main, "Movie", "CommunityRating", "&IsPlayed=false").then((l) => l.sort((a, b) => (b.CommunityRating || 0) - (a.CommunityRating || 0))),
     fewer ? [] : fromLibs(standLibs, "Movie", "Random", "&IsPlayed=false"),
+    fewer ? [] : B.trendingMissing("movies"),
   ]);
   if (!B.alive(nav)) return;
   const keep = resume.filter(notAnime);
@@ -188,6 +203,7 @@ B.route(/^\/movies$/, async (m, nav) => {
     B.row("Recently released", released.slice(0, 20).map((it) => B.posterCard(it))),
     B.row("Top rated you haven't seen", best.slice(0, 20).map((it) => B.posterCard(it))),
     B.row("Stand-up", stand.map((it) => B.posterCard(it))),
+    B.row("Trending, not on Glowfin", missingCards(missing)),
   ]);
   B.wireDescribe(keep[0] || top[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
@@ -236,7 +252,7 @@ B.route(/^\/shows$/, async (m, nav) => {
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     B.row("Recently added", fresh.slice(0, 20).map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/shows?anime=hide&sort=newshow&title=All%20shows" }),
     B.row("Top rated you haven't seen", best.slice(0, 20).map((it) => B.posterCard(it))),
-    B.row("Trending, not on Tower", missingCards(missing)),
+    B.row("Trending, not on Glowfin", missingCards(missing)),
   ]);
   B.wireDescribe(cont[0] || nextUp[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
@@ -249,7 +265,7 @@ B.route(/^\/anime$/, async (m, nav) => {
   const u = B.uid(), F = B.FIELDS;
   const showLibs = (await B.libs("shows")).filter(B.isAnimeLib), movieLibs = (await B.libs("movies")).filter(B.isAnimeLib);
   const [showIds, movieIds] = await Promise.all([B.animeIds("Series"), B.animeIds("Movie")]);
-  const [resumeM, resumeE, next, airing, top, because, gems, films, freshShows] = await Promise.all([
+  const [resumeM, resumeE, next, airing, top, because, gems, films, freshShows, missing] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
@@ -259,6 +275,7 @@ B.route(/^\/anime$/, async (m, nav) => {
     fromLibs(showLibs, "Series", "Random", "&IsPlayed=false&MinCommunityRating=7.5"),
     fromLibs(movieLibs, "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
     fromLibs(showLibs, "Series", "DateCreated"),
+    B.me.kids ? [] : B.trendingMissing("anime"),
   ]);
   if (!B.alive(nav)) return;
   const seen = new Set();
@@ -276,6 +293,7 @@ B.route(/^\/anime$/, async (m, nav) => {
     B.row("Hidden gem anime", gems.map((it) => B.posterCard(it))),
     B.row("Anime movies", films.slice(0, 20).map((it) => B.posterCard(it)), { seeAll: "#/grid/movies?anime=only&title=Anime%20movies" }),
     B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
+    B.row("Trending, not on Glowfin", missingCards(missing)),
   ]);
   B.wireDescribe(cont[0] || airing[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });

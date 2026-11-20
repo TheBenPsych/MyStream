@@ -39,7 +39,7 @@ object PageRows {
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.TOP_10 to "Top 10 this week",
                     DoorViewModel.BECAUSE to "Because you watched…",
-                    DoorViewModel.TRENDING_MISSING to "Trending, not on Tower",
+                    DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
                     DoorViewModel.AIRING to "Anime airing this season",
                     DoorViewModel.WATCH_AGAIN to "Watch it again",
                 )
@@ -53,6 +53,7 @@ object PageRows {
                     DoorViewModel.RELEASED to "Recently released",
                     DoorViewModel.TOP_RATED to "Top rated you haven't seen",
                     DoorViewModel.STAND_UP to "Stand-up",
+                    DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
                 )
             }
 
@@ -63,7 +64,7 @@ object PageRows {
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.TOP_RATED to "Top rated you haven't seen",
-                    DoorViewModel.TRENDING_MISSING to "Trending, not on Tower",
+                    DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
                 )
             }
 
@@ -75,6 +76,7 @@ object PageRows {
                     DoorViewModel.GEMS to "Hidden gem anime",
                     DoorViewModel.ANIME_MOVIES to "Anime movies",
                     DoorViewModel.NEW to "Recently added",
+                    DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
                 )
             }
         }

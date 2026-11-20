@@ -218,7 +218,7 @@ B.route(/^\/home$/, async (m, nav) => {
 });
 
 // Glowfin Home rows: Continue watching, Next up, then Recently added, Top 10 this week, Because you
-// watched, Trending not on Tower, Anime airing this season and Watch it again
+// watched, Trending not on Glowfin, Anime airing this season and Watch it again
 B.loadHomeRows = async (nav) => {
   const u = B.uid(), F = B.FIELDS;
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
@@ -255,7 +255,7 @@ B.loadHomeRows = async (nav) => {
     B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
     B.row("Top 10 this week", B.top10(top.slice(0, 10))),
     played[0] && because.length >= 5 ? B.row(`Because you watched ${played[0].Name}`, because.map((it) => B.posterCard(it))) : "",
-    B.row("Trending, not on Tower", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
+    B.row("Trending, not on Glowfin", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
     B.row("Anime airing this season", airing.slice(0, 20).map((it) => B.posterCard(it))),
     B.row("Watch it again", again.map((it) => B.posterCard(it))),
   ].join("");

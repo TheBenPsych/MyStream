@@ -25,7 +25,7 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 /**
  * Glowfin Home (ui-6, Ben 2026-11-18): the same calm layout as Movies and Shows. The top area describes the
  * poster you're on (it replaces the sliding spotlight), then Continue watching, Next up and the rows this person
- * picked in Settings > Look > Home rows (Recently added, Top 10, Because you watched, Trending not on Tower, Anime
+ * picked in Settings > Look > Home rows (Recently added, Top 10, Because you watched, Trending not on Glowfin, Anime
  * airing, Watch it again). No news row (Ben 2026-11-18). No greeting or clock line,
  * no zooming pictures, nothing that keeps moving, so it stays smooth on the weaker TCL TVs.
  */
