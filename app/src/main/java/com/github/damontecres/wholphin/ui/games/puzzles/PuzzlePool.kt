@@ -96,6 +96,7 @@ class PuzzlePool
     ) {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
         private val mutex = Mutex()
+
         /** One pool per profile and anime mix, kept 30 minutes */
         private val cache = HashMap<String, Pair<Long, List<PuzzleTitle>>>()
         private var animeCache: Pair<String, Pair<List<UUID>, Set<UUID>>>? = null
@@ -246,7 +247,11 @@ class PuzzlePool
                 when {
                     mode == AnimeMode.ONLY && animeLibs.isNotEmpty() -> {
                         val each = (POOL_SIZE / animeLibs.size).coerceAtLeast(150)
-                        animeLibs.flatMap { lib -> api.itemsApi.getItems(request(lib, each)).content.items }
+                        animeLibs.flatMap { lib ->
+                            api.itemsApi
+                                .getItems(request(lib, each))
+                                .content.items
+                        }
                     }
 
                     mode == AnimeMode.NONE -> {
@@ -259,7 +264,9 @@ class PuzzlePool
                     }
 
                     else -> {
-                        api.itemsApi.getItems(request(null, POOL_SIZE)).content.items
+                        api.itemsApi
+                            .getItems(request(null, POOL_SIZE))
+                            .content.items
                     }
                 }
             return items
