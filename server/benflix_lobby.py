@@ -24,7 +24,7 @@ MAX_LOBBIES = 6
 GONE_AFTER = 12  # seconds without hearing from a browser = that person left
 CLOSE_AFTER = 15 * 60  # an empty lobby closes after this long
 CHAT_KEEP = 60
-ROOMS = ("den", "theater", "roof")
+ROOMS = ("den", "theater", "roof", "cinema")  # cinema = the Glowfin Cinema, a multiplex to hide in
 STYLES = ("pebble", "facet", "glow")
 LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"
 # What Kids can say (the web page shows these as buttons; Tower only lets these through)
@@ -216,6 +216,8 @@ def route(method, path, read_json, user_id, user_name, is_admin, is_kids):
                 "z": round(_num(spot.get("z"), -60, 60), 3),
                 "yaw": round(_num(spot.get("yaw"), -100, 100), 3),
                 "sit": int(_num(spot.get("sit"), -1, 99, -1)),
+                "h": round(_num(spot.get("h"), 0, 20), 2),  # how high up they stand (the cinema has stairs and an upstairs)
+                "cr": 1 if spot.get("cr") else 0,  # crouching
                 "style": spot.get("style") if spot.get("style") in STYLES else "pebble",
                 "color": _colour(spot.get("color")),
                 "act": _text(spot.get("act"), 12),
@@ -231,7 +233,7 @@ def route(method, path, read_json, user_id, user_name, is_admin, is_kids):
                 "anyone_remote": lob["anyone_remote"],
                 "may_control": _may_control(lob, user_id),
                 "people": [
-                    {"id": uid, "name": p["name"], "color": p["color"], "style": p["style"], "x": p["x"], "z": p["z"], "yaw": p["yaw"], "sit": p["sit"], "act": p["act"], "kids": p["kids"]}
+                    {"id": uid, "name": p["name"], "color": p["color"], "style": p["style"], "x": p["x"], "z": p["z"], "yaw": p["yaw"], "sit": p["sit"], "h": p.get("h", 0), "cr": p.get("cr", 0), "act": p["act"], "kids": p["kids"]}
                     for uid, p in lob["people"].items() if uid != user_id and "x" in p
                 ],
                 "chat": [c for c in lob["chat"] if c["n"] > since],
@@ -280,7 +282,7 @@ def route(method, path, read_json, user_id, user_name, is_admin, is_kids):
                 raise LobbyError(403, "Only the host can change the lobby.")
             if body.get("room") in ROOMS and body["room"] != lob["room"]:
                 lob["room"] = body["room"]
-                _say(lob, None, f"{me['name']} moved everyone to the {dict(den='living room', theater='home theater', roof='rooftop')[body['room']]}")
+                _say(lob, None, f"{me['name']} moved everyone to the {dict(den='living room', theater='home theater', roof='rooftop', cinema='Glowfin Cinema')[body['room']]}")
             if "anyone_remote" in body:
                 lob["anyone_remote"] = bool(body["anyone_remote"])
             return 200, {"room": lob["room"], "anyone_remote": lob["anyone_remote"]}

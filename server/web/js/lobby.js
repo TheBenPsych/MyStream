@@ -2,6 +2,8 @@
    A first-person 3D room. Everyone who joins shows up as a character in their profile colour, the big TV
    plays one movie or episode for everybody at the same moment, and you can walk to the pool table, sit on
    the sofa and chat. Three rooms: Living room, Home theater and Rooftop (the host picks).
+   A fourth place, the Glowfin Cinema, is a whole multiplex to walk around and hide in. It is drawn by its own
+   page (web/cinema.html + js/cinema.js) shown in a frame over this one; this file still does who's where and chat.
 
    - Tower's room helper (server/benflix_lobby.py) keeps who's where, the chat, the TV and pool shots.
      Each browser sends its spot about 8 times a second and gets everyone else's back.
@@ -14,7 +16,7 @@
 
 (() => {
   const L = (B.lobby = {});
-  const ROOM_NAMES = { den: "Living room", theater: "Home theater", roof: "Rooftop" };
+  const ROOM_NAMES = { den: "Living room", theater: "Home theater", roof: "Rooftop", cinema: "Glowfin Cinema" };
   const STYLE_NAMES = { pebble: "Pebble", facet: "Usher", glow: "Headphones" };
   const KIDS_RATINGS = ["G", "PG", "TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "TV-PG", "APPROVED"];
   L.kidsOk = (rating) => KIDS_RATINGS.includes(String(rating || "").toUpperCase());
@@ -40,6 +42,7 @@
     if (opts.item) Object.assign(body, { item: opts.item.Id, title: L.titleOf(opts.item), kids_ok: L.kidsOk(opts.item.OfficialRating), pos: opts.pos || 0 });
     const lob = await api("POST", "open", body);
     if (opts.item) sessionStorage.setItem("benflix.lobby.autoplay", lob.code);
+    if (opts.room && lob.room !== opts.room) B.toast(`Tower is still getting the ${ROOM_NAMES[opts.room]} ready (it updates itself within the hour). Opening the living room for now.`);
     B.go("#/lobby/" + lob.code);
   };
   L.titleOf = (it) => (it.Type === "Episode" ? `${it.SeriesName} · S${it.ParentIndexNumber} E${it.IndexNumber} · ${it.Name}` : it.Name);
@@ -61,7 +64,7 @@
   B.route(/^\/lobby$/, async (m, nav) => {
     if (!L.allowed()) return notHere();
     B.page().innerHTML = B.top("Lobby") + `<div class="lb-list"><div class="h1">The Lobby</div>
-      <p class="sub">A 3D room where everyone walks around together, watches the same thing on the big TV, plays pool and chats.</p>
+      <p class="sub">3D places where everyone walks around together: rooms with a big TV, pool and chat, and the Glowfin Cinema, a whole movie theater to explore and hide in.</p>
       <div id="lbOpen">${B.spinner()}</div></div>`;
     B.wireTop();
     const got = await api("GET", "list");
@@ -495,7 +498,30 @@
     const renderer = new T.WebGLRenderer({ canvas, antialias: !weak, powerPreference: "high-performance" });
     renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
     const camera = new T.PerspectiveCamera(70, 16 / 9, 0.05, 300); camera.rotation.order = "YXZ";
+    BUILD.cinema = () => ({ group: new T.Group(), bounds: [-45, 45, -30, 30], obstacles: [], seats: [], use: [], floor: () => 0, spawn: [0, 27.5], bg: 0x0b0c10, tv: { x: 0, y: -50, z: 0, w: 0.1, h: 0.1 } });
     let scene = null, world = null, roomKey = null;
+    // ---------- the Glowfin Cinema: its own page in a frame, this page tells it who else is here ----------
+    let cineFrame = null, cine = null;
+    const closeCinema = () => { if (cineFrame) cineFrame.remove(); cineFrame = null; cine = null; delete window.GF_CINEMA_HOST; canvas.hidden = false; $("#lbFps").hidden = false; };
+    const openCinema = () => {
+      closeCinema();
+      canvas.hidden = true; $("#lbFps").hidden = true; $("#lbDot").hidden = true; $("#lbPrompt").hidden = true;
+      window.GF_CINEMA_HOST = {
+        chat: () => { if (cine) cine.letGo(); openChat(); },
+        emote: (a) => emote(a),
+        ready: () => {
+          cine = cineFrame && cineFrame.contentWindow && cineFrame.contentWindow.GF_CINEMA; if (!cine) return;
+          const q = look.quality === "auto" ? (weak ? "lite" : "full") : look.quality; if (q === "lite") cine.setFast(true);
+          cine.setPeople(cinePeople()); if (started) cine.begin();
+        },
+      };
+      cineFrame = document.createElement("iframe");
+      cineFrame.className = "lb-cine"; cineFrame.title = "Glowfin Cinema"; cineFrame.setAttribute("allow", "fullscreen; autoplay");
+      cineFrame.src = "web/cinema.html";
+      stage.insertBefore(cineFrame, canvas);
+    };
+    const cinePeople = () => Object.entries(others).map(([id, o]) => ({ id, name: o.name, color: o.color, x: o.tx, z: o.tz, h: o.h || 0, yaw: o.tyaw, cr: o.cr, act: o.act }));
+    on(document, "fullscreenchange", () => { if (cine) cine.onFull(); });
     const player = { x: 0, z: 0, y: 1.6, yaw: 0, pitch: -0.05, sit: -1 };
     const others = {}; // account id -> { av, name, color, style, x, z, yaw, tx, tz, tyaw, sit, act, bubble, bubbleUntil }
     let tv = { item: "", title: "", kids_ok: true, playing: false, pos: 0, n: -1, by: "" };
@@ -531,12 +557,17 @@
       showTvPicture();
       applyQuality();
       drawBoard();
+      if (roomKey === "cinema") openCinema(); else { closeCinema(); if (started && !locked) lockMouse(); }
+      $("#lbTvBtn").hidden = roomKey === "cinema" || (!mayControl && !tv.item);
+      $("#lbNow").hidden = roomKey === "cinema";
+      $("#lbDot").hidden = roomKey === "cinema" || !started;
     }
     const showTvPicture = () => {
       if (!world) return;
       const useVideo = tv.item && loadedItem === tv.item && video.readyState >= 2;
       world.tvMesh.material.map = useVideo ? videoTex : idleTex; world.tvMesh.material.needsUpdate = true;
       if (!useVideo) drawIdle(tv.item ? (loadingMsg || "Getting it ready…") : "Nothing on yet", tv.item ? tv.title : (first.host ? "Press T to pick what everyone watches" : `${first.host_name} picks what's on`));
+      if (roomKey === "cinema") { if (!video.paused) video.pause(); return; }
       $("#lbNow").innerHTML = tv.item ? `On the TV: <b>${esc(tv.title)}</b>${tv.playing ? "" : " · paused"}` : "Nothing on the TV yet";
     };
 
@@ -658,6 +689,7 @@
     const wantPos = () => tvRef.pos + (tv.playing ? (performance.now() - tvRef.t) / 1000 : 0);
     function keepInStep() {
       if (!loadedItem || video.readyState < 1) return;
+      if (roomKey === "cinema") { if (!video.paused) video.pause(); return; } // the cinema's screens play their own film
       const want = wantPos(), diff = want - video.currentTime;
       if (Math.abs(diff) > 2 || (!tv.playing && Math.abs(diff) > 0.3)) { try { video.currentTime = want; } catch (e) {} video.playbackRate = 1; }
       else if (tv.playing && Math.abs(diff) > 0.15) video.playbackRate = diff > 0 ? 1.05 : 0.95;
@@ -744,7 +776,7 @@
         if (d.style) look.style = d.style;
         if (d.color) look.color = d.color;
         if (d.sound) look.fullSound = d.sound === "1";
-        if (d.q) { look.quality = d.q; applyQuality(); }
+        if (d.q) { look.quality = d.q; applyQuality(); if (cine) cine.setFast((d.q === "auto" ? (weak ? "lite" : "full") : d.q) === "lite"); }
         saveLook(look); drawBoard();
         if (d.room) { B.closeAll(); return; }
         p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>` + draw();
@@ -756,14 +788,16 @@
     let started = false, locked = false, dragging = false, lastX = 0, lastY = 0;
     const lockMouse = () => { if (isTouch) return; try { const pr = canvas.requestPointerLock && canvas.requestPointerLock(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
     const begin = () => {
-      started = true; $("#lbStart").hidden = true; $("#lbDot").hidden = false;
+      started = true; $("#lbStart").hidden = true;
+      if (roomKey === "cinema") { if (cine) cine.begin(); return; }
+      $("#lbDot").hidden = false;
       stage.focus({ preventScroll: true }); lockMouse();
       if (tv.playing && loadedItem) video.play().catch(() => {});
     };
     $("#lbEnter").onclick = begin;
     on(document, "pointerlockchange", () => {
       locked = document.pointerLockElement === canvas;
-      if (!locked && started && !isTouch && !typing() && !$(".side") && !full) { $("#lbStartTitle").textContent = "Paused · walk back in any time"; $("#lbEnter").textContent = "Keep walking"; $("#lbStart").hidden = false; $("#lbDot").hidden = true; }
+      if (!locked && started && !isTouch && !typing() && !$(".side") && !full && roomKey !== "cinema") { $("#lbStartTitle").textContent = "Paused · walk back in any time"; $("#lbEnter").textContent = "Keep walking"; $("#lbStart").hidden = false; $("#lbDot").hidden = true; }
     });
     on(canvas, "click", () => { if (started && !locked) lockMouse(); });
     on(document, "mousemove", (e) => { if (locked) look2(e.movementX, e.movementY); });
@@ -775,8 +809,8 @@
     on(window, "keydown", (e) => {
       if (!started || $(".side")) return;
       if (typing()) {
-        if (e.key === "Enter") { say(chatIn.value); chatIn.value = ""; chatIn.hidden = true; stage.focus({ preventScroll: true }); lockMouse(); }
-        else if (e.key === "Escape") { chatIn.hidden = true; stage.focus({ preventScroll: true }); }
+        if (e.key === "Enter") { say(chatIn.value); chatIn.value = ""; chatIn.hidden = true; if (cine) cine.begin(); else { stage.focus({ preventScroll: true }); lockMouse(); } }
+        else if (e.key === "Escape") { chatIn.hidden = true; if (cine) cine.begin(); else stage.focus({ preventScroll: true }); }
         return;
       }
       if (!(locked || stage.contains(document.activeElement))) return;
@@ -857,13 +891,15 @@
       const sent = performance.now();
       try {
         const a = myActUntil > sent ? myAct : "";
-        const d = await api("POST", code + "/sync", { me: { x: player.sit >= 0 ? world.seats[player.sit].x : player.x, z: player.sit >= 0 ? world.seats[player.sit].z : player.z, yaw: player.yaw, sit: player.sit, style: look.style, color: look.color, act: a }, chat_since: chatN, pool_since: poolN });
+        const me = { x: player.sit >= 0 ? world.seats[player.sit].x : player.x, z: player.sit >= 0 ? world.seats[player.sit].z : player.z, yaw: player.yaw, sit: player.sit, style: look.style, color: look.color, act: a };
+        if (cine) Object.assign(me, cine.me(), { sit: -1 }); // in the cinema: where you are in there, how high up, and if you're crouching
+        const d = await api("POST", code + "/sync", { me, chat_since: chatN, pool_since: poolN });
         if (closed) return;
         fails = 0;
         const rtt = performance.now() - sent;
-        if (d.room !== roomKey) { buildWorld(d.room); if (chatN) toast(`Everyone moved to the ${ROOM_NAMES[d.room].toLowerCase()}.`); }
+        if (d.room !== roomKey) { buildWorld(d.room); if (chatN) toast(`Everyone moved to the ${d.room === "cinema" ? ROOM_NAMES.cinema : (ROOM_NAMES[d.room] || "").toLowerCase()}.`); }
         mayControl = d.may_control; hostNow = d.host; anyoneRemote = d.anyone_remote; first.host_name = d.host_name;
-        $("#lbTvBtn").hidden = !mayControl && !tv.item;
+        $("#lbTvBtn").hidden = roomKey === "cinema" || (!mayControl && !tv.item);
         // Chat (on first arrival only the last few lines)
         const fresh = chatN ? d.chat : d.chat.slice(-3);
         fresh.forEach((c) => {
@@ -878,9 +914,10 @@
           let o = others[p.id];
           if (o && (o.style !== p.style || o.color !== p.color)) { scene.remove(o.av); o = null; }
           if (!o) { o = others[p.id] = Object.assign(others[p.id] || {}, { av: makeAvatar(p.style, p.color, p.name), x: p.x, z: p.z, yaw: p.yaw }); scene.add(o.av); }
-          Object.assign(o, { name: p.name, style: p.style, color: p.color, tx: p.x, tz: p.z, tyaw: p.yaw, sit: p.sit, act: p.act });
+          Object.assign(o, { name: p.name, style: p.style, color: p.color, tx: p.x, tz: p.z, tyaw: p.yaw, sit: p.sit, act: p.act, h: p.h || 0, cr: !!p.cr });
         });
         Object.keys(others).forEach((id) => { if (!seen.has(id)) { scene.remove(others[id].av); delete others[id]; } });
+        if (cine) cine.setPeople(cinePeople());
         // The TV
         if (d.tv.n !== tv.n || d.tv.item !== tv.item) gotTv(d.tv, rtt);
         else if (Math.abs((d.tv.pos + (d.tv.playing ? rtt / 2000 : 0)) - wantPos()) > 0.25) tvRef = { pos: d.tv.pos + (d.tv.playing ? rtt / 2000 : 0), t: performance.now() };
@@ -913,6 +950,7 @@
       if (!visible || document.hidden || closed && !scene) { last = now; return; }
       const elapsed = now - last; if (elapsed < 1000 / fpsCap - 2) return;
       const dt = Math.min(0.05, elapsed / 1000); last = now; const t = (now - t0) / 1000;
+      if (roomKey === "cinema") return; // the cinema page draws itself
       frames++; fpsT += elapsed; if (fpsT > 500) { $("#lbFps").textContent = Math.round((frames * 1000) / fpsT) + " fps"; frames = 0; fpsT = 0; }
       if (started && !typing() && !full) {
         let f = 0, s = 0;
@@ -973,6 +1011,7 @@
       closed = true;
       clearInterval(syncTimer); clearInterval(progressTimer); cancelAnimationFrame(raf); io.disconnect();
       cleanups.forEach((f) => f());
+      closeCinema();
       if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock();
       report("/Stopped");
       if (hls) hls.destroy();
