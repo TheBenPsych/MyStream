@@ -49,7 +49,10 @@ object LiveChannels {
                 emptyList()
             }
         if (dtos.isEmpty()) {
-            remember(userId, emptyList())
+            // Not remembered: when Tower's Live TV comes back (e.g. after a router change), opening
+            // Live TV again shows the channels straight away instead of an empty page for 15 minutes
+            cached = emptyList()
+            cachedAt = 0L
             return emptyList()
         }
         val rows =
