@@ -406,7 +406,13 @@ class DoorViewModel
                         val missing = data.trendingMissing(com.github.damontecres.wholphin.data.model.SeerrItemType.MOVIE)
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Glowfin", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                 }
@@ -483,7 +489,13 @@ class DoorViewModel
                         val missing = data.trendingMissing(com.github.damontecres.wholphin.data.model.SeerrItemType.TV)
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Glowfin", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                 }
@@ -565,7 +577,13 @@ class DoorViewModel
                         val missing = data.trendingAnimeMissing()
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Glowfin", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                 }
@@ -644,7 +662,13 @@ class DoorViewModel
                         val missing = data.trendingMissing(null)
                         putOrRemove(
                             order,
-                            DoorRowData(TRENDING_MISSING, "Trending, not on Glowfin", emptyList(), DoorRowStyle.DISCOVER, discover = missing),
+                            DoorRowData(
+                                TRENDING_MISSING,
+                                "Trending, not on Glowfin",
+                                emptyList(),
+                                DoorRowStyle.DISCOVER,
+                                discover = missing,
+                            ),
                         )
                     }
                     launch {

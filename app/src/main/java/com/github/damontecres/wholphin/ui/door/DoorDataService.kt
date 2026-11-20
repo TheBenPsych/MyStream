@@ -511,8 +511,12 @@ class DoorDataService
                             (1..2).flatMap { page ->
                                 safe {
                                     seerrService.api.searchApi
-                                        .discoverTvGet(page = page, genre = ANIMATION_GENRE, keywords = ANIME_KEYWORD, sortBy = "popularity.desc")
-                                        .results
+                                        .discoverTvGet(
+                                            page = page,
+                                            genre = ANIMATION_GENRE,
+                                            keywords = ANIME_KEYWORD,
+                                            sortBy = "popularity.desc",
+                                        ).results
                                         ?.map { seerrService.createDiscoverItem(it) }
                                         .orEmpty()
                                 }
@@ -522,8 +526,12 @@ class DoorDataService
                         async {
                             safe {
                                 seerrService.api.searchApi
-                                    .discoverMoviesGet(page = 1, genre = ANIMATION_GENRE, keywords = ANIME_KEYWORD, sortBy = "popularity.desc")
-                                    .results
+                                    .discoverMoviesGet(
+                                        page = 1,
+                                        genre = ANIMATION_GENRE,
+                                        keywords = ANIME_KEYWORD,
+                                        sortBy = "popularity.desc",
+                                    ).results
                                     ?.map { seerrService.createDiscoverItem(it) }
                                     .orEmpty()
                             }
