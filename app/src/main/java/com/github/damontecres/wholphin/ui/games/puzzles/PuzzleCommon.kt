@@ -263,3 +263,17 @@ fun PuzzleOver(
         }
     }
 }
+
+/**
+ * The "not enough to play" line. It only points at the anime switch when the switch is narrowing
+ * the titles (on "Anime: mixed in" the switch can't help, so it isn't mentioned).
+ */
+fun notEnough(
+    what: String,
+    mode: AnimeMode,
+): String =
+    when (mode) {
+        AnimeMode.MIXED -> "$what Add more to Tower, then try again."
+        AnimeMode.ONLY -> "$what There isn't enough anime yet. Set the game's page to \"Anime: mixed in\"."
+        AnimeMode.NONE -> "$what Set the game's page to \"Anime: mixed in\"."
+    }

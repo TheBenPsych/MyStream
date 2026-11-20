@@ -96,8 +96,10 @@ class PuzzlePool
     ) {
         private val prefs = context.getSharedPreferences("benflix_games", Context.MODE_PRIVATE)
         private val mutex = Mutex()
-        private var cache: Triple<String, Long, List<PuzzleTitle>>? = null
-        private var animeCache: Pair<String, Set<UUID>>? = null
+
+        /** One pool per profile and anime mix, kept 30 minutes */
+        private val cache = HashMap<String, Pair<Long, List<PuzzleTitle>>>()
+        private var animeCache: Pair<String, Pair<List<UUID>, Set<UUID>>>? = null
 
         private val _anime = MutableStateFlow(readAnime())
         val anime: StateFlow<AnimeMode> = _anime
@@ -130,94 +132,146 @@ class PuzzlePool
             return true
         }
 
-        /** Every title, with the anime switch applied */
-        suspend fun titles(mode: AnimeMode = anime.value): List<PuzzleTitle> = all().filter { mode.keep(it.anime) }
+        /**
+         * The anime mix in use. Kids profiles don't see the switch, so they always get everything
+         * they're allowed (a grown-up's "Anime only" used to leave Kids with nothing to play).
+         */
+        fun mode(): AnimeMode = if (KidsMode.isActive) AnimeMode.MIXED else anime.value
 
-        suspend fun all(): List<PuzzleTitle> =
+        /**
+         * Every title, with the anime switch applied. "Anime only" loads straight from the anime
+         * libraries (it used to pick 500 random titles from everything and then keep only the anime,
+         * which left too few to play), and "No anime" tops up until it has a full pool.
+         */
+        suspend fun titles(mode: AnimeMode = mode()): List<PuzzleTitle> =
             mutex.withLock {
-                val who = profileKey() + KidsMode.level
-                cache?.let { (k, at, list) ->
-                    if (k == who && System.currentTimeMillis() - at < CACHE_MS && list.isNotEmpty()) return@withLock list
+                val who = profileKey() + KidsMode.level + "_" + mode.name
+                cache[who]?.let { (at, list) ->
+                    if (System.currentTimeMillis() - at < CACHE_MS && list.isNotEmpty()) return@withLock list
                 }
-                val list = withContext(WholphinDispatchers.IO) { load() }
-                cache = Triple(who, System.currentTimeMillis(), list)
+                val list = withContext(WholphinDispatchers.IO) { load(mode) }
+                cache[who] = System.currentTimeMillis() to list
                 list
             }
 
+        suspend fun all(): List<PuzzleTitle> = titles(AnimeMode.MIXED)
+
         /** For the older movie games: "Anime only" also lets anime shows in */
         fun animeTypes(): List<BaseItemKind> =
-            if (anime.value == AnimeMode.ONLY) listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES) else listOf(BaseItemKind.MOVIE)
+            if (mode() == AnimeMode.ONLY) listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES) else listOf(BaseItemKind.MOVIE)
+
+        /** For the older movie games: the anime libraries to load from on "Anime only" (null = load from everything) */
+        suspend fun animeParents(): List<UUID>? = if (mode() == AnimeMode.ONLY) animeLibraries().first.ifEmpty { null } else null
 
         /** For the older movie games: says if an item passes the anime switch */
         suspend fun animeKeeper(): (UUID) -> Boolean {
-            val mode = anime.value
+            val mode = mode()
             if (mode == AnimeMode.MIXED) return { true }
             val ids = animeIds()
             return { mode.keep(it in ids) }
         }
 
         /** Ids of everything in the libraries with "anime" in their name. Used by the older games too. */
-        suspend fun animeIds(): Set<UUID> {
-            val userId = serverRepository.currentUser?.id ?: return emptySet()
+        suspend fun animeIds(): Set<UUID> = animeLibraries().second
+
+        /** The anime libraries, and the ids of everything in them */
+        private suspend fun animeLibraries(): Pair<List<UUID>, Set<UUID>> {
+            val userId = serverRepository.currentUser?.id ?: return emptyList<UUID>() to emptySet()
             val who = userId.toString() + KidsMode.level
-            animeCache?.let { (k, ids) -> if (k == who) return ids }
-            val ids =
+            animeCache?.let { (k, found) -> if (k == who) return found }
+            val found =
                 withContext(WholphinDispatchers.IO) {
                     try {
-                        api.userViewsApi
-                            .getUserViews(userId = userId)
-                            .content.items
-                            .filter { it.name.orEmpty().contains("anime", ignoreCase = true) }
-                            .flatMap { lib ->
-                                api.itemsApi
-                                    .getItems(
-                                        GetItemsRequest(
-                                            userId = userId,
-                                            parentId = lib.id,
-                                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                                            recursive = true,
-                                            enableImages = false,
-                                            enableUserData = false,
-                                            limit = 3000,
-                                        ),
-                                    ).content.items
-                                    .map { it.id }
-                            }.toSet()
+                        val libs =
+                            api.userViewsApi
+                                .getUserViews(userId = userId)
+                                .content.items
+                                .filter { it.name.orEmpty().contains("anime", ignoreCase = true) }
+                                .map { it.id }
+                        val ids =
+                            libs
+                                .flatMap { lib ->
+                                    api.itemsApi
+                                        .getItems(
+                                            GetItemsRequest(
+                                                userId = userId,
+                                                parentId = lib,
+                                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                                                recursive = true,
+                                                enableImages = false,
+                                                enableUserData = false,
+                                                limit = 5000,
+                                            ),
+                                        ).content.items
+                                        .map { it.id }
+                                }.toSet()
+                        libs to ids
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
                         Timber.w(ex, "Puzzles: couldn't list anime libraries")
-                        emptySet()
+                        null
                     }
                 }
-            animeCache = who to ids
-            return ids
+            // A failed look-up isn't kept, so the next game tries again
+            if (found == null) return emptyList<UUID>() to emptySet()
+            animeCache = who to found
+            return found
         }
 
-        private suspend fun load(): List<PuzzleTitle> {
-            val anime = animeIds()
+        private fun request(
+            parentId: UUID?,
+            limit: Int,
+        ) = GetItemsRequest(
+            userId = serverRepository.currentUser?.id,
+            parentId = parentId,
+            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+            recursive = true,
+            imageTypes = listOf(ImageType.PRIMARY),
+            sortBy = listOf(ItemSortBy.RANDOM),
+            fields =
+                listOf(
+                    ItemFields.OVERVIEW,
+                    ItemFields.PEOPLE,
+                    ItemFields.GENRES,
+                    ItemFields.STUDIOS,
+                    ItemFields.CHAPTERS,
+                ),
+            enableUserData = false,
+            limit = limit,
+        )
+
+        private suspend fun load(mode: AnimeMode): List<PuzzleTitle> {
+            val (animeLibs, anime) = animeLibraries()
             val items =
-                api.itemsApi
-                    .getItems(
-                        GetItemsRequest(
-                            userId = serverRepository.currentUser?.id,
-                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                            recursive = true,
-                            imageTypes = listOf(ImageType.PRIMARY),
-                            sortBy = listOf(ItemSortBy.RANDOM),
-                            fields =
-                                listOf(
-                                    ItemFields.OVERVIEW,
-                                    ItemFields.PEOPLE,
-                                    ItemFields.GENRES,
-                                    ItemFields.STUDIOS,
-                                    ItemFields.CHAPTERS,
-                                ),
-                            limit = POOL_SIZE,
-                        ),
-                    ).content.items
+                when {
+                    mode == AnimeMode.ONLY && animeLibs.isNotEmpty() -> {
+                        val each = (POOL_SIZE / animeLibs.size).coerceAtLeast(150)
+                        animeLibs.flatMap { lib ->
+                            api.itemsApi
+                                .getItems(request(lib, each))
+                                .content.items
+                        }
+                    }
+
+                    mode == AnimeMode.NONE -> {
+                        // Ask for extra, so a full pool is left once the anime is taken out
+                        api.itemsApi
+                            .getItems(request(null, POOL_SIZE + anime.size.coerceAtMost(POOL_SIZE)))
+                            .content.items
+                            .filter { it.id !in anime }
+                            .take(POOL_SIZE)
+                    }
+
+                    else -> {
+                        api.itemsApi
+                            .getItems(request(null, POOL_SIZE))
+                            .content.items
+                    }
+                }
             return items
                 .mapNotNull { toTitle(it, it.id in anime) }
+                .filter { mode.keep(it.anime) }
                 .distinctBy { it.name.lowercase() }
         }
 

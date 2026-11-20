@@ -93,10 +93,9 @@ class SceneBySceneViewModel
             viewModelScope.launch {
                 try {
                     titles = pool.titles()
-                    val playable = titles.filter { it.stills.size >= 2 }
+                    val playable = playable()
                     if (playable.size < 8) {
-                        _state.value =
-                            SceneState.NotEnough("Not enough movies with pictures to play. Try the anime switch on the game's page.")
+                        _state.value = SceneState.NotEnough(notEnough("Not enough movies with pictures to play.", pool.mode()))
                         return@launch
                     }
                     deck = ArrayDeque(playable.shuffled())
@@ -110,11 +109,22 @@ class SceneBySceneViewModel
             }
         }
 
+        /**
+         * Titles with at least two pictures (so a wrong guess shows another one). Many libraries only
+         * keep one background per title and no scene pictures, so titles with one picture are used too
+         * when there aren't enough with two.
+         */
+        private fun playable(): List<PuzzleTitle> =
+            titles
+                .filter { it.stills.size >= 2 }
+                .takeIf { it.size >= 8 }
+                ?: titles.filter { it.stills.isNotEmpty() }
+
         private fun next(
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(titles.filter { it.stills.size >= 2 }.shuffled())
+            if (deck.isEmpty()) deck = ArrayDeque(playable().shuffled())
             val answer = deck.removeFirst()
             val others =
                 titles
@@ -126,7 +136,8 @@ class SceneBySceneViewModel
             _state.value =
                 SceneState.Playing(
                     answer = answer,
-                    scenes = answer.stills.take(POINTS.size),
+                    // One picture only: show it twice, so a wrong guess still gets a second try
+                    scenes = answer.stills.take(POINTS.size).let { if (it.size == 1) it + it else it },
                     shown = 0,
                     choices = (others + answer.name).shuffled(),
                     crossed = emptySet(),

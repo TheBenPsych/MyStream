@@ -94,9 +94,7 @@ class TimelineViewModel
                     val titles = pool.titles().filter { it.year != null && it.poster != null }
                     if (titles.size < 8) {
                         _state.value =
-                            TimelineState.NotEnough(
-                                "Not enough movies with release years to play. Try the anime switch on the game's page.",
-                            )
+                            TimelineState.NotEnough(notEnough("Not enough movies with release years to play.", pool.mode()))
                         return@launch
                     }
                     deck = ArrayDeque(titles.shuffled())

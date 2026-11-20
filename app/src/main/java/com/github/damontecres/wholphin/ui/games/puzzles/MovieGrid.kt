@@ -115,7 +115,7 @@ class MovieGridViewModel
                     val board = makeBoard(titles)
                     if (board == null) {
                         _state.value =
-                            GridState.NotEnough("Couldn't make a grid from your library. Try the anime switch on the game's page.")
+                            GridState.NotEnough(notEnough("Couldn't make a grid from your library.", pool.mode()))
                         return@launch
                     }
                     _state.value =

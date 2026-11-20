@@ -32,19 +32,31 @@
       rating: it.CommunityRating ? Math.round(it.CommunityRating * 10) : 0,
     };
   };
-  const all = () => B.cached("bgpool", 1800000, async () => {
-    const [res, anime, stand] = await Promise.all([
-      B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Movie,Series&Recursive=true&ImageTypes=Primary&SortBy=Random&Fields=Overview,People,Genres,Studios,Chapters,Taglines&EnableUserData=false&Limit=500`),
-      idsIn(/anime/i).catch(() => new Set()),
-      idsIn(/stand/i).catch(() => new Set()),
-    ]);
+  // One pool per anime mix. "Anime only" loads straight from the anime libraries (it used to pick 500
+  // random titles from everything and keep only the anime, which left too few to play).
+  const FIELDS = "ImageTypes=Primary&SortBy=Random&Fields=Overview,People,Genres,Studios,Chapters,Taglines&EnableUserData=false";
+  const pool = (mode) => B.cached("bgpool-" + mode, 1800000, async () => {
+    const [anime, stand] = await Promise.all([idsIn(/anime/i).catch(() => new Set()), idsIn(/stand/i).catch(() => new Set())]);
+    let items;
+    if (mode === "ONLY") {
+      const libs = (await B.views()).filter((l) => /anime/i.test(l.Name || ""));
+      const each = Math.max(150, Math.floor(500 / Math.max(1, libs.length)));
+      const lists = await Promise.all(libs.map((l) => B.get(`/Items?userId=${B.uid()}&ParentId=${l.Id}&IncludeItemTypes=Movie,Series&Recursive=true&${FIELDS}&Limit=${each}`)));
+      items = lists.flatMap((r) => r.Items || []);
+    } else {
+      const extra = mode === "NONE" ? Math.min(500, anime.size) : 0;
+      items = ((await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Movie,Series&Recursive=true&${FIELDS}&Limit=${500 + extra}`)).Items || []);
+    }
     const seen = new Set();
-    return (res.Items || []).map((it) => toTitle(it, anime.has(it.Id), stand.has(it.Id))).filter((t) => t && !seen.has(t.name.toLowerCase()) && seen.add(t.name.toLowerCase()));
+    return items.map((it) => toTitle(it, anime.has(it.Id), stand.has(it.Id)))
+      .filter((t) => t && (mode === "ONLY" ? t.anime : mode === "NONE" ? !t.anime : true))
+      .filter((t) => !seen.has(t.name.toLowerCase()) && seen.add(t.name.toLowerCase()))
+      .slice(0, 500);
   });
-  const titles = async () => {
-    const mode = B.me.kids ? "MIXED" : B.bgAnime();
-    return (await all()).filter((t) => (mode === "ONLY" ? t.anime : mode === "NONE" ? !t.anime : true));
-  };
+  const mode = () => (B.me.kids ? "MIXED" : B.bgAnime());
+  const titles = () => pool(mode());
+  // Only points at the anime switch when it is narrowing the titles
+  const tip = () => ({ MIXED: "", ONLY: " There isn't enough anime yet. Set the game's page to \"Mixed in\".", NONE: " Set the game's page to \"Mixed in\"." })[mode()];
 
   // ---------- shared screen pieces ----------
   const screen = (ctx, html) => { ctx.stage.innerHTML = `<div class="bgq">${html}</div>`; return $(".bgq", ctx.stage); };
@@ -84,13 +96,17 @@
 
   // Scene by scene: 400 / 300 / 200 / 100 points for each scene shown; out of scenes ends the run
   PUZ.SCENES = async (ctx) => {
-    const pool = (await titles()).filter((t) => t.stills.length >= 2);
-    if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures from inside them on Tower.");
+    // Two pictures or more when there are enough; many libraries keep only one background per title
+    const all = await titles();
+    let pool = all.filter((t) => t.stills.length >= 2);
+    if (pool.length < 8) pool = all.filter((t) => t.stills.length >= 1);
+    if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures on Tower." + tip());
     let deck = shuffle(pool), points = 0, round = 0;
     const next = () => {
       if (!deck.length) deck = shuffle(pool);
       const a = deck.shift(); round++;
-      const scenes = a.stills.slice(0, 4);
+      // One picture only: show it twice, so a wrong guess still gets a second try
+      const scenes = a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
       let shown = 0;
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
       const q = screen(ctx, `${head("Scene by scene", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic wide"><img id="bgPic" alt=""></div><div class="bgq-say" id="bgSay">Scene 1 of ${scenes.length}: worth 400</div><div class="bgq-choices" id="bgCh"></div>`);
@@ -116,7 +132,7 @@
   // Poster puzzle: 16 tiles flip away; 100 + 25 for each tile still covering it; one wrong guess ends the run
   PUZ.POSTER = async (ctx) => {
     const pool = (await titles()).filter((t) => t.poster);
-    if (pool.length < 8) return notEnough(ctx, "Poster puzzle needs at least 8 titles with posters on Tower.");
+    if (pool.length < 8) return notEnough(ctx, "Poster puzzle needs at least 8 titles with posters on Tower." + tip());
     const every = timers(ctx);
     let deck = shuffle(pool), points = 0, round = 0, tick = null;
     const next = () => {
@@ -154,7 +170,7 @@
   // Timeline: slot each poster into a growing line of years; one wrong spot ends the run (score = line length - 1)
   PUZ.TIMELINE = async (ctx) => {
     const pool = (await titles()).filter((t) => t.year && t.poster);
-    if (pool.length < 8) return notEnough(ctx, "Timeline needs at least 8 titles with a year on Tower.");
+    if (pool.length < 8) return notEnough(ctx, "Timeline needs at least 8 titles with a year on Tower." + tip());
     const deck = shuffle(pool);
     const line = [deck.shift()];
     const card = (t, year) => `<div class="bg-tl"><img src="${t.poster}" alt=""><b>${esc(t.name)}</b>${year ? `<span>${t.year}</span>` : ""}</div>`;
@@ -230,7 +246,7 @@
   // Guess the movie: 10 rounds; a blurry picture sharpens every 2 s (or a plot or cast clue); up to 1,000 for speed
   PUZ.GUESS = async (ctx) => {
     const pool = (await titles()).filter((t) => !t.series && t.backdrop);
-    if (pool.length < 4) return notEnough(ctx, "Guess the movie needs at least 4 movies with pictures on Tower.");
+    if (pool.length < 4) return notEnough(ctx, "Guess the movie needs at least 4 movies with pictures on Tower." + tip());
     const every = timers(ctx);
     const rounds = pickN(pool, 10);
     let i = 0, score = 0, correct = 0;
@@ -268,7 +284,7 @@
   PUZ.RIDDLE = async (ctx) => {
     const BUNDLE = /\b(collection|trilogy|quadrilogy|box ?set|double feature)\b/i;
     const pool = (await titles()).filter((t) => !t.series && !t.stand && !BUNDLE.test(t.name));
-    if (pool.length < 5) return notEnough(ctx, "Movie riddle needs at least 5 movies on Tower.");
+    if (pool.length < 5) return notEnough(ctx, "Movie riddle needs at least 5 movies on Tower." + tip());
     const every = timers(ctx);
     // A title's series ("Harry Potter" in "Harry Potter and the..."), so wrong choices aren't from the same one
     const series = (n) => n.split(/[:\-–]/)[0].trim().toLowerCase().replace(/^(the|a|an) /, "").split(" ").slice(0, 2).join(" ");
@@ -330,7 +346,7 @@
   // Higher or Lower: is the next one rated higher or lower on IMDb? Endless until the first miss (score = streak)
   PUZ.HIGHER_LOWER = async (ctx) => {
     const pool = (await titles()).filter((t) => t.rating > 0 && t.poster);
-    if (pool.length < 4) return notEnough(ctx, "Higher or Lower needs at least 4 titles with an IMDb rating on Tower.");
+    if (pool.length < 4) return notEnough(ctx, "Higher or Lower needs at least 4 titles with an IMDb rating on Tower." + tip());
     let deck = shuffle(pool), streak = 0;
     let a = deck.shift();
     const side = (t, showRating) => `<div class="bg-hl"><img src="${t.poster}" alt=""><b>${esc(label(t))}</b><span class="r">${showRating ? (t.rating / 10).toFixed(1) + " IMDb" : "?"}</span></div>`;
@@ -371,7 +387,7 @@
     rules.push({ k: "score", name: "IMDb under 6.0", f: (t) => t.rating >= 1 && t.rating <= 59 });
     rules.push({ k: "type", name: "A TV show", f: (t) => t.series });
     rules.push({ k: "length", name: "Over 2 hours", f: (t) => !t.series && (t.runtime || 0) > 120 });
-    if (rules.length < 6) return notEnough(ctx, "Movie grid needs more movies and shows on Tower to make a board.");
+    if (rules.length < 6) return notEnough(ctx, "Movie grid needs more movies and shows on Tower to make a board." + tip());
     // Try random rules until every square has an answer (each kind of rule used once per side)
     let board = null, fallback = null;
     for (let i = 0; i < 400 && !board; i++) {
@@ -383,7 +399,7 @@
       else if (!fallback && fits.every((row) => row.every((n) => n >= 1))) fallback = { rows, cols };
     }
     board = board || fallback;
-    if (!board) return notEnough(ctx, "Movie grid couldn't make a board from what's on Tower. Try again later.");
+    if (!board) return notEnough(ctx, "Movie grid couldn't make a board from what's on Tower. Try again later." + tip());
     const filled = {}, used = new Set();
     let lives = 3, points = 0;
     const draw = (msg) => {
