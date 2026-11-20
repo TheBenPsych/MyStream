@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0C10">
+<title>Glowfin Cinema</title>
+<!--
+  The Glowfin Cinema, a place in the Lobby (js/cinema.js draws it). The Lobby page (js/lobby.js) shows this
+  page in a frame when the host picks "Glowfin Cinema", and talks to it through GF_CINEMA (this page) and GF_CINEMA_HOST (the Lobby page).
+  Opened by itself (web/cinema.html) it still works as a walk-around with nobody else in it.
+-->
+<style>
+  @font-face { font-family: "Glowfin Sora"; font-weight: 400; src: url("fonts/glowfin_sora_regular.ttf"); }
+  @font-face { font-family: "Glowfin Sora"; font-weight: 600; src: url("fonts/glowfin_sora_semibold.ttf"); }
+  @font-face { font-family: "Glowfin Sora"; font-weight: 800; src: url("fonts/glowfin_sora_bold.ttf"); }
+  html, body { margin: 0; height: 100%; background: #0B0C10; overflow: hidden; color: #F1F2F5; font: 500 14px "Glowfin Sora", system-ui, sans-serif; }
+  [hidden] { display: none !important; }
+  .stagebox { position: fixed; inset: 0; }
+  #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: crosshair; }
+  #noGL { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 18px; }
+  #map { display: none; }
+  #mini { position: absolute; right: 14px; top: 62px; width: 200px; height: 136px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); pointer-events: none; background: #12152A; }
+  .dot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.8); box-shadow: 0 0 0 2px rgba(0,0,0,.4); pointer-events: none; }
+  .tip { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); max-width: min(520px, 80%); background: rgba(22,24,30,.95); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 14px; text-align: center; pointer-events: none; }
+  .chips { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { font: inherit; color: #F1F2F5; background: rgba(11,12,16,.74); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .chip:hover { background: rgba(38,41,50,.9); }
+  .chip:focus-visible { outline: 3px solid #3FE0E8; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="stagebox">
+  <canvas id="stage" tabindex="0" aria-label="Glowfin Cinema. W A S D to walk, the mouse to look, Space to jump, C to crouch."></canvas>
+  <div id="noGL" hidden>This browser couldn't start the 3D view. Try another browser, or ask the host to pick a different room.</div>
+  <div class="dot"></div>
+  <div class="tip" id="tip" hidden></div>
+  <canvas id="mini" width="220" height="150" aria-label="Mini map showing where you are"></canvas>
+  <canvas id="map" width="1200" height="965"></canvas>
+  <div class="chips" role="group" aria-label="Picture and sound">
+    <button class="chip" id="look" aria-pressed="true">Look: Pretty</button>
+    <button class="chip" id="snd" aria-pressed="true">Sound: On</button>
+    <button class="chip" id="fs" aria-pressed="false">Full screen</button>
+  </div>
+</div>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/three-extras.js"></script>
+<script>
+  // Wait for the lettering font first, so every sign in the building is drawn with it
+  (function () {
+    var go = function () { if (go.done) return; go.done = true; var s = document.createElement("script"); s.src = "js/cinema.js"; document.body.appendChild(s); };
+    try { Promise.all([document.fonts.load('800 20px "Glowfin Sora"'), document.fonts.load('600 20px "Glowfin Sora"')]).then(go, go); } catch (e) { go(); }
+    setTimeout(go, 2500);
+  })();
+</script>
+</body>
+</html>
