@@ -58,17 +58,30 @@ while IFS= read -r d; do FOLDERS+=("$(basename "$d")"); done < <(find "$MEDIA" -
 if [ ${#FOLDERS[@]} -eq 0 ]; then problem "No folder with \"$FOLDER_MATCH\" in its name inside $MEDIA"; exit 1; fi
 for d in "${FOLDERS[@]}"; do echo "  ok  $MEDIA/$d"; done
 
-say "Finding the Arc graphics card"
+# Which card: the Arc normally. TDARR_GPU=igpu switches to the built-in Intel graphics (00:02.0), and
+# TDARR_GPU=arc switches back. The pick is remembered on the USB stick so the hourly self-update keeps it
+# (2026-11-20: crash hunt, to test whether the Arc is behind Tower's crashes).
+PICK_FILE=/boot/config/benflix/tdarr-gpu
+case "${TDARR_GPU:-}" in
+  igpu) mkdir -p /boot/config/benflix && echo igpu >"$PICK_FILE" ;;
+  arc) rm -f "$PICK_FILE" ;;
+esac
+GPU_PICK=$(cat "$PICK_FILE" 2>/dev/null || true)
+if [ "$GPU_PICK" = "igpu" ]; then say "Finding the built-in Intel graphics (picked instead of the Arc)"; else say "Finding the Arc graphics card"; fi
 GPU=""
 for n in /dev/dri/by-path/pci-*-render; do
   [ -e "$n" ] || continue
   pci=$(basename "$n" | sed 's/^pci-\(.*\)-render$/\1/')
   vendor=$(cat "/sys/bus/pci/devices/$pci/vendor" 2>/dev/null)
+  [ "$vendor" = "0x8086" ] || continue
+  if [ "$GPU_PICK" = "igpu" ]; then
+    [ "$pci" = "0000:00:02.0" ] && GPU=$(readlink -f "$n")
   # The Intel card that isn't the built-in one (00:02.0) is the Arc
-  if [ "$vendor" = "0x8086" ] && [ "$pci" != "0000:00:02.0" ]; then GPU=$(readlink -f "$n"); fi
+  elif [ "$pci" != "0000:00:02.0" ]; then GPU=$(readlink -f "$n"); fi
 done
-if [ -z "$GPU" ] && [ -e /dev/dri/renderD129 ]; then GPU=/dev/dri/renderD129; fi
-if [ -z "$GPU" ] && [ "$ENCODER" = "qsv" ]; then problem "Couldn't find the Arc card in /dev/dri"; exit 1; fi
+if [ -z "$GPU" ] && [ "$GPU_PICK" = "igpu" ] && [ -e /dev/dri/renderD128 ]; then GPU=/dev/dri/renderD128; fi
+if [ -z "$GPU" ] && [ "$GPU_PICK" != "igpu" ] && [ -e /dev/dri/renderD129 ]; then GPU=/dev/dri/renderD129; fi
+if [ -z "$GPU" ] && [ "$ENCODER" = "qsv" ]; then problem "Couldn't find the ${GPU_PICK:-Arc} card in /dev/dri"; exit 1; fi
 [ -n "$GPU" ] && echo "  ok  $GPU"
 
 say "Finding Sonarr and Radarr (to know each title's original language)"
