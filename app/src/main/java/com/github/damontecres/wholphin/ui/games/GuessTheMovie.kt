@@ -212,19 +212,23 @@ class GuessTheMovieViewModel
         }
 
         private suspend fun loadMovies(): List<BaseItemDto> =
-            api.itemsApi
-                .getItems(
-                    GetItemsRequest(
-                        userId = serverRepository.currentUser?.id,
-                        includeItemTypes = puzzlePool.animeTypes(),
-                        recursive = true,
-                        imageTypes = listOf(ImageType.BACKDROP),
-                        sortBy = listOf(ItemSortBy.RANDOM),
-                        fields = listOf(ItemFields.OVERVIEW, ItemFields.PEOPLE),
-                        limit = POOL_SIZE,
-                    ),
-                ).content.items
-                .let { items ->
+            // "Anime only" loads straight from the anime libraries, so there's always enough to play
+            (puzzlePool.animeParents() ?: listOf(null))
+                .flatMap { parent ->
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                parentId = parent,
+                                includeItemTypes = puzzlePool.animeTypes(),
+                                recursive = true,
+                                imageTypes = listOf(ImageType.BACKDROP),
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                fields = listOf(ItemFields.OVERVIEW, ItemFields.PEOPLE),
+                                limit = POOL_SIZE,
+                            ),
+                        ).content.items
+                }.let { items ->
                     val keep = puzzlePool.animeKeeper()
                     items.filter { keep(it.id) }
                 }.filter { !it.name.isNullOrBlank() }

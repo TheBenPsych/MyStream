@@ -97,7 +97,7 @@ class PosterPuzzleViewModel
                 try {
                     titles = pool.titles().filter { it.poster != null }
                     if (titles.size < 8) {
-                        _state.value = PosterState.NotEnough("Not enough posters to play. Try the anime switch on the game's page.")
+                        _state.value = PosterState.NotEnough(notEnough("Not enough posters to play.", pool.mode()))
                         return@launch
                     }
                     deck = ArrayDeque(titles.shuffled())

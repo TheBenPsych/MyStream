@@ -200,19 +200,23 @@ class HigherLowerViewModel
         }
 
         private suspend fun loadMovies(): List<ScoredMovie> =
-            api.itemsApi
-                .getItems(
-                    GetItemsRequest(
-                        userId = serverRepository.currentUser?.id,
-                        includeItemTypes = puzzlePool.animeTypes(),
-                        recursive = true,
-                        imageTypes = listOf(ImageType.PRIMARY),
-                        sortBy = listOf(ItemSortBy.RANDOM),
-                        limit = POOL_SIZE,
-                    ),
-                ).content
-                .items
-                .let { items ->
+            // "Anime only" loads straight from the anime libraries, so there's always enough to play
+            (puzzlePool.animeParents() ?: listOf(null))
+                .flatMap { parent ->
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = serverRepository.currentUser?.id,
+                                parentId = parent,
+                                includeItemTypes = puzzlePool.animeTypes(),
+                                recursive = true,
+                                imageTypes = listOf(ImageType.PRIMARY),
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                limit = POOL_SIZE,
+                            ),
+                        ).content
+                        .items
+                }.let { items ->
                     val keep = puzzlePool.animeKeeper()
                     items.filter { keep(it.id) }
                 }.mapNotNull { dto ->
