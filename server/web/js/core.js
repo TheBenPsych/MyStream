@@ -957,7 +957,7 @@ B.PAGE_TABS = {
   // Glowfin Music (M1)
   music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
   // Glowfin Books (B1)
-  books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
+  books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Manga", "#/books?p=manga"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
   // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
   live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
@@ -984,7 +984,7 @@ B.pageTabs = (hash) => {
   const t = B.tabsFor(hash);
   if (!t) return "";
   const kids = B.me && B.me.kids;
-  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && label === "Collections"));
+  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && (label === "Collections" || label === "Manga")));
   const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l === "Recently watched" ? "Recent" : l);
   return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
 };

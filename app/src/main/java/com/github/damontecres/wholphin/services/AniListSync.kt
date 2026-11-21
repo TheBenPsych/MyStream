@@ -302,6 +302,80 @@ class AniListSync
             }
         }
 
+        /**
+         * Manga (Ben 2026-11-21): chapters you finish in Books move your AniList and MyAnimeList reading lists
+         * forward (never back). Called when a manga's page opens, with the highest whole chapter read so far, so
+         * chapters read on another TV, the phone or the browser are caught up too. Each chapter is only sent once.
+         */
+        fun mangaRead(
+            name: String,
+            anilistId: Int?,
+            malId: Int?,
+            chapter: Int,
+        ) {
+            if (chapter <= 0 || (anilistId == null && malId == null)) return
+            if (KidsMode.active.value || GuestMode.isActive) return
+            val userId = serverRepository.currentUser?.id ?: return
+            val key = "manga-$userId-${anilistId ?: 0}-${malId ?: 0}"
+            if (prefs.getInt(key, 0) >= chapter) return
+            scope.launch {
+                try {
+                    val token = currentToken(userId)
+                    val withMal = malId != null && mal.isSignedIn(userId)
+                    if (token == null && !withMal) return@launch
+                    val sites = mutableListOf<String>()
+                    if (token != null && anilistId != null && saveManga(token, anilistId, chapter)) sites += "AniList"
+                    if (withMal && malId != null && mal.saveManga(userId, malId, chapter)) sites += "MyAnimeList"
+                    prefs.edit { putInt(key, chapter) }
+                    if (sites.isNotEmpty()) {
+                        showToast(context, "Ticked off on ${sites.joinToString(" and ")}: $name chapter $chapter")
+                    }
+                } catch (ex: AniListSignedOutException) {
+                    signOutLocal(userId)
+                    showToast(context, "AniList signed you out. Sign in again on My Glowfin to keep ticking off chapters.")
+                } catch (ex: MalSignedOutException) {
+                    mal.signedOut(userId)
+                    showToast(context, "MyAnimeList signed you out. Sign in again on My Glowfin to keep ticking off chapters.")
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    // Tried again the next time the manga's page opens
+                    Timber.w(ex, "Manga list update failed, will try again later")
+                }
+            }
+        }
+
+        private suspend fun saveManga(
+            token: String,
+            mediaId: Int,
+            chapter: Int,
+        ): Boolean {
+            val media =
+                aniList
+                    .signedInQuery(
+                        "query (\$id: Int) { Media(id: \$id, type: MANGA) { chapters mediaListEntry { progress status } } }",
+                        buildJsonObject { put("id", mediaId) },
+                        token,
+                    )?.let { it["Media"] as? JsonObject } ?: return false
+            val chapters = (media["chapters"] as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 }
+            val current = media["mediaListEntry"] as? JsonObject
+            val had = (current?.get("progress") as? JsonPrimitive)?.intOrNull ?: 0
+            val hadStatus = (current?.get("status") as? JsonPrimitive)?.contentOrNull
+            if (had >= chapter && hadStatus != null && hadStatus != "PLANNING") return false
+            val status = if (chapters != null && chapter >= chapters) "COMPLETED" else "CURRENT"
+            aniList.signedInQuery(
+                "mutation (\$id: Int, \$p: Int, \$s: MediaListStatus) { SaveMediaListEntry(mediaId: \$id, progress: \$p, status: \$s) { id } }",
+                buildJsonObject {
+                    put("id", mediaId)
+                    put("p", chapter)
+                    put("s", status)
+                },
+                token,
+            )
+            Timber.i("AniList: manga %s chapter %s (%s)", mediaId, chapter, status)
+            return true
+        }
+
         private suspend fun save(
             token: String,
             mediaId: Int,

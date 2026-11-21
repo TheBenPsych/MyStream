@@ -96,7 +96,9 @@ import kotlinx.coroutines.flow.collectLatest
  * Audiobooks, Series, Want to read. For you: on TV and wide screens a top area about the book you're on ("Keep
  * reading · 64%", its name big, the author and series), its cover fading in on the right; then Keep going (books
  * and audiobooks together), New for you, the top book lists and a few more rows. The other tabs are grids with
- * Not started / In progress / Finished chips and a sort. Phones: the same tabs and rows. Manga is gone (Ben).
+ * Not started / In progress / Finished chips and a sort. Phones: the same tabs and rows. Manga is back (Ben
+ * 2026-11-21): its own tab between Audiobooks and Series, with Keep reading and New chapters rows over the grid.
+ * Kids profiles never get the Manga tab.
  */
 @Composable
 fun BooksDoorPage(
@@ -158,8 +160,8 @@ fun BooksDoorPage(
     }
     val onTile: (BookTile) -> Unit = { viewModel.open(it) }
     val sections =
-        remember(home.counts) {
-            BooksPlace.entries.map { p ->
+        remember(home.counts, viewModel.isKids) {
+            BooksPlace.entries.filter { it != BooksPlace.MANGA || !viewModel.isKids }.map { p ->
                 DoorSection(
                     key = placeKey(p),
                     label = p.label,
@@ -203,6 +205,7 @@ private fun placeIcon(place: BooksPlace): BenflixIcon =
         BooksPlace.HOME -> BenflixIcon.HOME
         BooksPlace.BOOKS -> BenflixIcon.BOOK
         BooksPlace.AUDIOBOOKS -> BenflixIcon.HEADPHONES
+        BooksPlace.MANGA -> BenflixIcon.BOOK
         BooksPlace.SERIES -> BenflixIcon.LIST
         BooksPlace.WANT -> BenflixIcon.STAR
     }
@@ -504,10 +507,12 @@ private fun booksTopHeight(
 /** "Keep reading · 64%" over the name */
 private fun topKicker(t: BookTile): String =
     when {
+        t.isManga && t.status == "reading" -> "Keep reading"
         t.status == "reading" -> (if (t.isAudio) "Keep listening" else "Keep reading") + " · ${(t.progress * 100).toInt()}%"
         t.status == "done" -> "Finished"
         t.isNew -> "New for you"
         t.isAudio -> "Audiobook"
+        t.isManga -> "Manga"
         else -> "Book"
     }
 
@@ -519,6 +524,7 @@ private fun topLine(t: BookTile): String =
             t.seriesIndex?.let { "Book " + it.toString().removeSuffix(".0") + " of " + s } ?: s
         },
         when {
+            t.isManga -> t.line.takeIf { it.isNotBlank() }?.let { "$it · manga" } ?: "manga"
             t.linked != null -> "ebook and audiobook"
             t.isAudio -> "audiobook"
             else -> "ebook"
@@ -559,6 +565,26 @@ private fun SectionGrid(
                 }
             }
         }
+        // Manga: Keep reading and New chapters sit above the grid of every series
+        if (place == BooksPlace.MANGA && filter == BookFilter.ALL && lib != null) {
+            val keep = tiles.filter { it.status == "reading" || (it.status != "done" && it.lastAt > 0) }.sortedByDescending { it.lastAt }
+            val fresh = tiles.filter { it.newCount > 0 }.sortedByDescending { it.added }
+            listOf("Keep reading" to keep, "New chapters" to fresh).filter { it.second.isNotEmpty() }.forEach { (name, row) ->
+                item(key = "row-$name", span = { GridItemSpan(maxLineSpan) }) {
+                    Column {
+                        MusicRowName(name, Modifier.padding(bottom = 8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            items(row.take(30), key = { name + it.id }) { tile ->
+                                BookCard(tile, w, onClick = { onTile(tile) })
+                            }
+                        }
+                    }
+                }
+            }
+            if (keep.isNotEmpty() || fresh.isNotEmpty()) {
+                item(key = "all-name", span = { GridItemSpan(maxLineSpan) }) { MusicRowName("All manga") }
+            }
+        }
         if (lib == null) {
             item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
                 Text("Loading…", color = BenflixColors.Muted, fontSize = BenflixType.body)
@@ -567,7 +593,9 @@ private fun SectionGrid(
             item(key = "none", span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     text =
-                        if (place == BooksPlace.WANT && filter == BookFilter.ALL) {
+                        if (place == BooksPlace.MANGA && filter == BookFilter.ALL) {
+                            "No manga on Glowfin yet. Manga that Harbor downloads shows up here within 10 minutes."
+                        } else if (place == BooksPlace.WANT && filter == BookFilter.ALL) {
                             "Nothing in Want to read yet. Press Want to read on any book's page."
                         } else {
                             "Nothing here with this chip."

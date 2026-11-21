@@ -77,8 +77,8 @@
     // Glowfin B1: the same places as the Books tabs
     const books = [
       ["home", "For you", "home"], ["book", "Books", "book"], ["audiobook", "Audiobooks", "ears"],
-      ["series", "Series", "list"], ["want", "Want to read", "star"],
-    ].map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
+      ["manga", "Manga", "book"], ["series", "Series", "list"], ["want", "Want to read", "star"],
+    ].filter(([k]) => !(kids && k === "manga")).map(([k, l, i]) => [l, i, k === "home" ? "#/books" : `#/books?p=${k}`, () => place() === k, c[k]]);
     return { movies, shows, live, games, music: kids ? null : music, books, server: null };
   };
 

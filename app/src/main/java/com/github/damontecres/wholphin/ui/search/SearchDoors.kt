@@ -700,6 +700,7 @@ private fun subLine(line: ResultLine): String =
             listOf(
                 when (b.kind) {
                     "audiobook" -> "Audiobook"
+                    "manga" -> "Manga"
                     else -> "Book"
                 },
                 b.author,

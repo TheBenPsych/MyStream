@@ -1,6 +1,7 @@
-/* Glowfin web: Books (ebooks and audiobooks, from Tower's own folders; manga removed by Ben 2026-11-18).
-   The same tabs as the TV (For you, Books, Audiobooks, Series, Want to read), book pages, the ebook reader
-   (js/reader.js, keys: arrows / Page Up / Page Down / Space), audiobooks in a bar along the bottom (every button:
+/* Glowfin web: Books (ebooks, audiobooks and manga, from Tower's own folders; manga back 2026-11-21, never on Kids).
+   The same tabs as the TV (For you, Books, Audiobooks, Manga, Series, Want to read), book pages, the ebook reader
+   (js/reader.js, keys: arrows / Page Up / Page Down / Space), the manga page reader (one page, two pages or long
+   scroll; arrows or the page edges turn pages), audiobooks in a bar along the bottom (every button:
    Back 15, Pause, Ahead 30, Speed, Sleep, Chapters, volume, Stop), and Requests > Books.
    Everything comes from the helper's /api/books. Your place is saved per profile, so it follows you to the TV and phone. */
 
@@ -27,7 +28,8 @@
   const pic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
   const hm = (s) => { const m = Math.round((s || 0) / 60); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}`; };
   const clock = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
-  const kindWord = (k) => (k === "audiobook" ? "Audiobook" : "Book");
+  const kindWord = (k) => (k === "audiobook" ? "Audiobook" : k === "manga" ? "Manga" : "Book");
+  const isManga = (t) => t.kind === "manga" || t.kind === "comic";
 
   // ---------- cards ----------
   const card = (t, href) => {
@@ -43,7 +45,7 @@
   // ---------- the Books page (Glowfin B1): tabs For you | Books | Audiobooks | Series | Want to read ----------
   // For you: a top area about the book you're on (its cover fades in on the right), then Keep going (books and
   // audiobooks together), New for you, the top book lists and the rest. The other tabs are grids with chips.
-  const PLACES = [["home", "For you"], ["book", "Books"], ["audiobook", "Audiobooks"], ["series", "Series"], ["want", "Want to read"]];
+  const PLACES = [["home", "For you"], ["book", "Books"], ["audiobook", "Audiobooks"], ["manga", "Manga"], ["series", "Series"], ["want", "Want to read"]];
   const CHIPS = [["all", "All"], ["not", "Not started"], ["reading", "In progress"], ["done", "Finished"]];
   const SORTS = [["added", "Recently added"], ["name", "A to Z"], ["author", "Author"], ["read", "Last read"]];
   const sortName = (s) => String(s || "").toLowerCase().replace(/^(the|a|an) /, "");
@@ -56,14 +58,15 @@
   };
   // "Keep reading · 64%" over the name in the top area
   const kickOf = (t) => {
+    if (isManga(t) && t.status === "reading") return "Keep reading";
     if (t.status === "reading") return (t.kind === "audiobook" ? "Keep listening" : "Keep reading") + " · " + Math.round((t.progress || 0) * 100) + "%";
     if (t.status === "done") return "Finished";
     return t.new ? "New for you" : kindWord(t.kind);
   };
-  const topLine = (t) => [t.author, t.series ? (t.seriesIndex ? "Book " + String(t.seriesIndex).replace(/\.0$/, "") + " of " : "") + t.series : "", t.linked ? "ebook and audiobook" : t.kind === "audiobook" ? "audiobook" : "ebook"].filter(Boolean).join(" · ");
+  const topLine = (t) => isManga(t) ? [t.author, t.line, "manga"].filter(Boolean).join(" · ") : [t.author, t.series ? (t.seriesIndex ? "Book " + String(t.seriesIndex).replace(/\.0$/, "") + " of " : "") + t.series : "", t.linked ? "ebook and audiobook" : t.kind === "audiobook" ? "audiobook" : "ebook"].filter(Boolean).join(" · ");
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
-    const place = PLACES.some(([k]) => k === B.q("p")) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
+    const place = PLACES.some(([k]) => k === B.q("p")) && !(B.q("p") === "manga" && B.me.kids) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
     B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
     B.wireTop();
     let home;
@@ -111,6 +114,15 @@
     if (!B.alive(nav)) return;
     let tiles = (lib.titles || []).filter((t) => (place === "want" ? t.want : t.kind === place));
     if (place === "want") tiles = tiles.concat(lib.asked || []);
+    // Manga: Keep reading and New chapters sit above the grid
+    const mangaRows = place === "manga" && chip === "all"
+      ? [["Keep reading", tiles.filter((t) => t.status === "reading" || (t.status !== "done" && t.lastAt)).sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0))],
+        ["New chapters", tiles.filter((t) => t.newCount > 0).sort((a, b) => b.added - a.added)]].filter(([, l]) => l.length).map(([n, l]) => B.row(n, l.slice(0, 30).map((t) => card(t)))).join("")
+      : "";
+    if (place === "manga" && !tiles.length) {
+      main.innerHTML = B.emptyPage("book", "No manga on Glowfin yet", "Manga that Harbor downloads shows up here within 10 minutes. It lands in Tower's Media/Manga folder, one folder per series.", "");
+      return;
+    }
     if (chip !== "all") tiles = tiles.filter((t) => t.status === chip);
     const by = {
       added: (a, b) => b.added - a.added,
@@ -121,7 +133,7 @@
     tiles.sort(by);
     main.innerHTML = `<div class="row bk-chips">${CHIPS.map(([k, l]) => `<a class="chip ${k === chip ? "on" : ""}" style="--accent:${LIME}" href="${link({ c: k })}">${l}</a>`).join("")}
         <select class="field" id="bkSort" style="max-width:200px;padding:7px 12px;border-radius:99px">${SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      ${grid(tiles) || `<p class="sub">${place === "want" ? "Nothing in Want to read yet. Press Want to read on any book's page." : "Nothing here with this chip."}</p>`}`;
+      ${mangaRows}${mangaRows ? '<h3 class="bk-all">All manga</h3>' : ""}${grid(tiles) || `<p class="sub">${place === "want" ? "Nothing in Want to read yet. Press Want to read on any book's page." : "Nothing here with this chip."}</p>`}`;
     $("#bkSort").onchange = (e) => B.go(link({ s: e.target.value }));
   });
 
@@ -165,6 +177,7 @@
     const t = await api("GET", "title/" + enc(id));
     if (!B.alive(nav)) return;
     const audio = t.kind === "audiobook";
+    if (isManga(t)) return mangaPage(t);
     const place = t.place || {};
     // Glowfin B1: the D1 title page. Cover on the right; Read / Listen (the other way you have it gets its own
     // button), Want to read, More. Under the buttons: About this book in big words, then In this series, More by
@@ -218,6 +231,187 @@
       if (ch) BK.play(t, +ch.dataset.ch);
     });
     api("POST", "opened/" + enc(t.id)).catch(() => {});
+  });
+
+  // ---------- a manga series' page ----------
+  // The same D1 title page: Read (or Keep reading Chapter 12), Want to read, More. Under the buttons: About this
+  // manga, then every chapter in reading order (a tick on the ones you've read), then More like this.
+  function mangaPage(t) {
+    const vols = t.volumes || [];
+    const nv = vols.find((v) => v.id === t.next);
+    const unit = t.unit === "ch" ? "chapter" : "volume";
+    const main = nv
+      ? { label: `${vols.some((v) => v.done || v.progress > 0) ? "Keep reading" : "Read"} ${nv.name === "Read" ? "" : nv.name}`.trim(), icon: "book", href: `#/books/pages/${enc(nv.id)}` }
+      : { label: "Read", icon: "book", off: "Nothing to open yet" };
+    const strip = B.tpStrip((t.scores || []).map((s) => [s.site, (+s.score).toFixed(1)]));
+    const grid = (list) => (list.length ? `<div class="grid tp-grid">${list.map((x) => card(x)).join("")}</div>` : "");
+    const many = vols.length > 60;
+    const chapter = (v) => `<a class="bk-ch ${v.done ? "done" : ""} ${v.id === t.next ? "next" : ""}" href="#/books/pages/${enc(v.id)}" data-vol="${esc(v.id)}" title="${esc([v.name, v.title, v.source ? (v.official ? "Official · " : "") + v.source : ""].filter(Boolean).join(" · "))}">
+      <b>${esc(v.name === "Read" ? "Read" : v.name.replace(/^(Chapter|Volume) /, many ? "" : "$1 "))}</b>${!many && v.title ? `<small>${esc(v.title)}</small>` : ""}${v.new ? '<span class="tag">NEW</span>' : ""}${v.done ? B.I("check") : ""}${!v.done && v.progress > 0.01 ? `<span class="bk-bar"><i style="width:${Math.max(4, v.progress * 100)}%"></i></span>` : ""}</a>`;
+    const left = vols.filter((v) => !v.done).length;
+    const chaptersHtml = `<p class="dim wrap0" style="margin-bottom:10px">${vols.length} ${unit}${vols.length === 1 ? "" : "s"}${t.totalChapters > vols.length && t.unit === "ch" ? " of " + t.totalChapters : ""}${left && left < vols.length ? " · " + left + " left" : ""} · right-click one to mark it read</p>
+      <div class="bk-chs ${many ? "many" : ""}">${vols.map(chapter).join("")}</div>`;
+    const markAll = async (done) => { await api("POST", "mark", { id: t.id, done }); B.cache = {}; B.render(); };
+    const tp = B.titlePage({
+      title: t.name,
+      color: LIME,
+      rows: true,
+      aboutFirst: true,
+      aboutName: "About this manga",
+      aboutStory: t.desc || "",
+      cover: { url: t.cover ? pic(t.cover.replace("w=320", "w=640")) : "", ratio: 2 / 3 },
+      info: ["Manga", t.author, t.year || "", t.pubStatus || "", t.line || ""],
+      buttons: [
+        main,
+        { label: t.want ? "On Want to read" : "Want to read", icon: t.want ? "check" : "plus", onClick: async () => { await api("POST", "want", { id: t.id, want: !t.want }); B.cache = {}; B.render(); } },
+        { label: "More", icon: "more", onClick: () => B.tpMore(t.name, [
+          { label: "Mark every " + unit + " read", icon: "check", onClick: () => markAll(true) },
+          { label: "Mark every " + unit + " not read", icon: "x", onClick: () => markAll(false) },
+        ]) },
+      ].filter(Boolean),
+      strip,
+      tabs: [
+        { name: t.unit === "ch" ? "Chapters" : "Volumes", id: "tpSeries", html: chaptersHtml },
+        { name: "More like this", id: "tpLike", html: grid((t.moreLike || []).concat(t.moreBy || [])) },
+      ],
+    });
+    tp.root.addEventListener("contextmenu", async (e) => {
+      const v = e.target.closest("[data-vol]");
+      if (!v) return;
+      e.preventDefault();
+      const was = vols.find((x) => x.id === v.dataset.vol);
+      if (was && was.done) await api("POST", "mark", { id: v.dataset.vol, done: false });
+      else await api("POST", "mark", { id: v.dataset.vol, done: true, before: confirm("Mark as read.\n\nOK = this one and every one before it\nCancel = just this one") });
+      B.cache = {};
+      B.render();
+    });
+    const cur = tp.root.querySelector(".bk-ch.next");
+    if (cur && many) { const box = cur.parentElement; box.scrollTop = Math.max(0, cur.offsetTop - box.offsetTop - 80); }
+    api("POST", "opened/" + enc(t.id)).catch(() => {});
+  }
+
+  // ---------- the manga page reader ----------
+  // One page (the default), two pages side by side, or one long scroll, remembered for each series. Right to left
+  // for manga unless you switch it. Tower shrinks every page to this screen's size and gets the next three ready,
+  // and the browser loads those three ahead too, so a page turn never waits.
+  const PAGE_MODES = [["page", "One page"], ["spread", "Two pages"], ["scroll", "Long scroll"]];
+  B.route(/^\/books\/pages\/([^?]+)/, async (m, nav) => {
+    const id = decodeURIComponent(m[1]);
+    if (B.me.kids) return B.go("#/books");
+    B.page().innerHTML = `<div class="bk-pages" id="bkp" tabindex="0">${B.spinner()}</div>`;
+    let v;
+    try {
+      v = await api("GET", "vol/" + enc(id));
+    } catch (e) {
+      if (!B.alive(nav)) return;
+      $("#bkp").innerHTML = `<div class="center"><div><div class="h1">Couldn't open it</div><p class="sub">${esc(e.message)}</p><button class="btn" onclick="B.back()">Back</button></div></div>`;
+      return;
+    }
+    if (!B.alive(nav)) return;
+    const box = $("#bkp");
+    const home = () => B.go("#/book/" + enc(v.title));
+    if (v.pdf) {
+      box.innerHTML = `<div class="center"><div><div class="h1">${esc(v.name)}</div><p class="sub">This one is a PDF.</p><a class="btn white" target="_blank" rel="noopener" href="api/books/file/${enc(id)}?api_key=${enc(B.me.token)}">Open the PDF</a> <button class="btn" onclick="B.back()">Back</button></div></div>`;
+      return;
+    }
+    if (!v.pages) {
+      box.innerHTML = `<div class="center"><div><div class="h1">Couldn't open it</div><p class="sub">It has no pages Glowfin can read.</p><button class="btn" onclick="B.back()">Back</button></div></div>`;
+      return;
+    }
+    let mode = (v.mode && v.mode.mode) || "page";
+    let rtl = ((v.mode && v.mode.dir) || (v.rtl ? "rtl" : "ltr")) === "rtl";
+    let page = Math.min(Math.max(0, (v.place && v.place.page) || 0), v.pages - 1), since = Date.now(), ended = false;
+    if (v.place && (v.place.pct || 0) >= 0.98) page = 0; // reading it again starts at the front
+    // The page width Tower shrinks to: this screen's real pixels (half of it for two pages), no more than 1600
+    const width = () => Math.round(Math.min(1600, Math.max(480, window.innerWidth * (window.devicePixelRatio || 1) * (mode === "spread" ? 0.5 : mode === "scroll" ? Math.min(1, 900 / window.innerWidth) : 1))));
+    const src = (n) => `api/books/vol/${enc(id)}/p/${n}?w=${width()}&v=${v.stamp || 0}&api_key=${enc(B.me.token)}`;
+    const ahead = [];
+    const preload = (from) => { ahead.length = 0; for (let n = from; n < Math.min(v.pages, from + 3); n++) { const im = new Image(); im.decoding = "async"; im.src = src(n); ahead.push(im); } };
+    const save = (finished) => {
+      const secs = Math.round((Date.now() - since) / 1000); since = Date.now();
+      return api("POST", "place/" + enc(id), { page: Math.min(page, v.pages - 1), pages: v.pages, pct: finished ? 1 : page / v.pages, seconds: Math.min(secs, 3000), finished: !!finished }).catch(() => {});
+    };
+    const saveMode = () => api("POST", "place/" + enc(id), { readerMode: { mode, dir: rtl ? "rtl" : "ltr" } }).catch(() => {});
+    let saveT, countT;
+    const bar = () => `<div class="bk-pbar"><button class="btn small" data-back>${B.I("left")} Back</button><span>${esc([v.series, v.name === "Read" ? "" : v.name, v.chapterName].filter(Boolean).join(" · "))}${mode === "scroll" ? "" : ` · page ${Math.min(page + 1, v.pages)} of ${v.pages}`}</span>
+        ${PAGE_MODES.map(([k, l]) => `<button class="chip ${k === mode ? "on" : ""}" style="--accent:${LIME}" data-mode="${k}">${l}</button>`).join("")}
+        ${mode === "scroll" ? "" : `<button class="chip" data-dir>${rtl ? "Right to left" : "Left to right"}</button>`}</div>`;
+    const endCard = () => {
+      ended = true;
+      save(true);
+      clearInterval(countT);
+      let left = 5;
+      const word = v.unit === "vol" ? "VOLUME" : "CHAPTER";
+      box.innerHTML = `<div class="center"><div>${v.next ? `<div class="kick" style="color:${LIME}">NEXT ${word}</div><div class="h1">${esc(v.next.name)}</div><a class="btn white" id="bkNext" href="#/books/pages/${enc(v.next.id)}">Read it (<span id="bkLeft">${left}</span>)</a> <button class="btn" data-stay>Not now</button>` : `<div class="h1">You're all caught up</div><p class="sub">That was the last ${word.toLowerCase()} of ${esc(v.series)} on Glowfin.</p>`} <button class="btn" data-back>Back to the series</button></div></div>`;
+      if (v.next) {
+        const a = $("#bkNext"); if (a) a.focus();
+        countT = setInterval(() => {
+          left--;
+          const el = $("#bkLeft");
+          if (!el) return clearInterval(countT);
+          el.textContent = left;
+          if (left <= 0) { clearInterval(countT); B.go("#/books/pages/" + enc(v.next.id), { replace: true }); }
+        }, 1000);
+      }
+    };
+    const draw = () => {
+      clearInterval(countT);
+      if (page >= v.pages) return endCard();
+      ended = false;
+      if (mode === "scroll") {
+        box.innerHTML = bar() + `<div class="bk-strip">${Array.from({ length: v.pages }, (_, n) => `<img ${n > page + 2 ? 'loading="lazy"' : ""} decoding="async" src="${src(n)}" alt="Page ${n + 1}" data-n="${n}">`).join("")}<button class="btn white" style="margin:30px auto;display:block" data-end>${v.next ? "Next " + (v.unit === "vol" ? "volume" : "chapter") : "Done"}</button></div>`;
+        const img = box.querySelector(`[data-n="${page}"]`);
+        if (img && page > 0) img.scrollIntoView();
+        return;
+      }
+      const two = mode === "spread" && page > 0 && page + 1 < v.pages;
+      const shown = two ? [page, page + 1] : [page];
+      box.innerHTML = `<div class="bk-spread ${rtl ? "rtl" : ""}">${shown.map((n) => `<img src="${src(n)}" alt="Page ${n + 1}" decoding="async">`).join("")}</div>` + bar();
+      preload(page + shown.length);
+      clearTimeout(saveT); saveT = setTimeout(() => save(false), 1500);
+    };
+    const step = (d) => {
+      if (ended) { if (d < 0) { page = v.pages - 1; draw(); } return; }
+      const two = mode === "spread" && page > 0;
+      page = Math.max(0, Math.min(v.pages, page + d * (two ? 2 : 1)));
+      if (mode === "spread" && page > 0 && page < v.pages && page % 2 === 0) page--; // pairs stay 1-2, 3-4 after the cover
+      draw();
+    };
+    box.onclick = (e) => {
+      if (e.target.closest("[data-back]")) return home();
+      if (e.target.closest("[data-stay]")) { clearInterval(countT); const a = $("#bkNext"); if (a) a.textContent = "Read it"; e.target.closest("[data-stay]").remove(); return; }
+      if (e.target.closest("[data-end]")) { page = v.pages; return draw(); }
+      const mb = e.target.closest("[data-mode]");
+      if (mb) { mode = mb.dataset.mode; if (mode === "scroll") rtl = false; saveMode(); return draw(); }
+      if (e.target.closest("[data-dir]")) { rtl = !rtl; saveMode(); return draw(); }
+      if (mode === "scroll" || ended || e.target.closest("a,button")) return;
+      const left = e.clientX < window.innerWidth / 2;
+      step(left === rtl ? 1 : -1);
+    };
+    const keys = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); return home(); }
+      if (mode === "scroll" && !ended) return;
+      if (e.key === "ArrowRight") step(rtl ? -1 : 1);
+      else if (e.key === "ArrowLeft") step(rtl ? 1 : -1);
+      else if (e.key === " " || e.key === "PageDown") { if (ended && v.next) return; step(1); }
+      else if (e.key === "PageUp") step(-1);
+      else return;
+      e.preventDefault();
+    };
+    document.addEventListener("keydown", keys);
+    // Long scroll: the page you're on is the first one still showing; the bottom of the strip is the end
+    const watch = setInterval(() => {
+      if (mode !== "scroll" || ended) return;
+      const imgs = $$("img[data-n]", box);
+      const top = imgs.find((im) => im.getBoundingClientRect().bottom > 80);
+      if (top && +top.dataset.n !== page) { page = +top.dataset.n; save(false); }
+      const last = imgs[imgs.length - 1];
+      if (last && last.complete && last.getBoundingClientRect().bottom < window.innerHeight * 0.6) save(true);
+    }, 2000);
+    B.onLeave(() => { clearInterval(watch); clearInterval(countT); clearTimeout(saveT); document.removeEventListener("keydown", keys); if (!ended && page < v.pages) save(false); B.cache = {}; });
+    draw();
+    box.focus({ preventScroll: true });
+    api("POST", "opened/" + enc(v.title)).catch(() => {});
   });
 
   // ---------- the ebook reader (full page) ----------

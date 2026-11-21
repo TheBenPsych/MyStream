@@ -1,5 +1,5 @@
 """
-Benflix Books: ebooks and audiobooks, all from Tower's own folders (manga removed by Ben 2026-11-18).
+Glowfin Books: ebooks, audiobooks and manga, all from Tower's own folders (manga back 2026-11-21, filled by Harbor).
 
 How it works, in plain words:
 - Tower looks through Homelab/Media/Books and Audiobooks every few minutes and makes a list
@@ -10,7 +10,14 @@ How it works, in plain words:
     * Audiobooks: each folder of sound files is one audiobook (Audiobooks/Author/Author - Title), or one
       .m4b file. The FOLDER names win over the song info inside the files, because downloaded audiobooks
       often say the narrator is the "artist". Each file is a chapter (or the chapters inside one .m4b).
-- Descriptions, genres, years and scores come from Open Library, looked up once and saved.
+    * Manga: Manga/Series/ with one .cbz per chapter ("Series - Chapter 010.cbz", halves like 004.5), a cover.jpg
+      and a series.json that Harbor writes (title, author, story, status, AniList number, where each chapter
+      came from). Older layouts (one file or picture folder per volume) still work. Manga/engine-trial and
+      anything starting with "." or "_" is skipped. Manga never shows on Kids profiles.
+- Descriptions, genres, years and scores come from Open Library (books) and AniList / MyAnimeList (manga),
+  looked up once and saved.
+- Manga pages are shrunk on Tower to the size the TV or phone asks for, and the next three are made ready
+  ahead, so page turns stay quick on slow TVs.
 - Your place in every book, what you want to read and what you've finished are saved here for each
   profile, so they follow you from the TV to the phone to the browser.
 - Asking for a book: Benflix searches Open Library, and the request goes to Chaptarr (which finds an
@@ -50,7 +57,9 @@ MEDIA = "/media"
 SECTIONS = (
     ("book", ("Books", "Ebooks", "eBooks")),
     ("audiobook", ("Audiobooks", "AudioBooks", "Audio Books")),
+    ("manga", ("Manga",)),
 )
+MANGA_SKIP = {"engine-trial"}  # the trial engine's raw downloads; Harbor's tidy copies are what Glowfin reads
 DATA_DIRS = ("/booksdata", "/musicdata/books", "/skips/books")
 CH_URL = os.environ.get("CHAPTARR_URL", "").rstrip("/")
 CH_KEY = os.environ.get("CHAPTARR_KEY", "")
@@ -76,6 +85,8 @@ TYPES = {
     ".woff": "font/woff", ".woff2": "font/woff2", ".xml": "application/xml", ".ncx": "application/xml",
 }
 THUMB_WIDTHS = (160, 320, 640, 1200)
+PAGE_WIDTHS = (160, 480, 800, 1100, 1600)  # manga pages: small strip, phone, TV, big tablet, browser
+PAGES_AHEAD = 3  # how many pages after the one asked for Tower shrinks ahead of time
 NEW_DAYS = 14  # "New for you" keeps a title this long unless it's opened
 GIVE_UP_AFTER = 7 * 86400  # A request still not found after a week says "Couldn't find it"
 KIDS_WORDS = ("juvenile", "children", "picture book", "kids", "middle grade", "for young readers")
@@ -224,6 +235,7 @@ def _loop():
     last_scan = 0
     last_meta = 0
     last_ll = 0
+    last_tidy = time.time() - 86400 + 900  # first tidy a quarter of an hour after starting, then daily
     while True:
         now = time.time()
         try:
@@ -236,6 +248,9 @@ def _loop():
             if now - last_ll > 300:
                 check_requests()
                 last_ll = time.time()
+            if now - last_tidy > 86400:
+                last_tidy = time.time()
+                tidy_page_copies()
         except Exception as e:  # Keep going whatever happens
             log(f"Problem: {e!r}")
         _kick.wait(30)
@@ -555,17 +570,88 @@ def _scan_audio(root, titles):
             }
 
 
-def _vol_number(name):
+def _vol_number(name, series=""):
     n = name.lower()
+    # "One Piece - Chapter 010": the series name itself may hold numbers ("20th Century Boys"), so it's cut off first
+    sn = series.lower().strip()
+    if sn and n.startswith(sn):
+        n = n[len(sn):]
+    m = re.search(r"(?:\bch\.?|\bchapter|\bchap\.?|\bepisode|\bep\.?)\s*0*(\d+(?:\.\d+)?)", n)
+    if m:
+        return float(m.group(1)), "ch"
     m = re.search(r"(?:\bv|\bvol\.?|\bvolume|\btome|\bbook)\s*0*(\d+(?:\.\d+)?)", n)
     if m:
         return float(m.group(1)), "vol"
-    m = re.search(r"(?:\bc|\bch\.?|\bchapter|#)\s*0*(\d+(?:\.\d+)?)", n)
+    m = re.search(r"(?:\bc|#)\s*0*(\d+(?:\.\d+)?)", n)
     if m:
         return float(m.group(1)), "ch"
     nums = re.findall(r"(?<![\d.])(\d{1,4}(?:\.\d+)?)(?![\d.])", re.sub(r"\(.*?\)|\[.*?\]", "", n))
     nums = [x for x in nums if not (len(x) == 4 and 1900 < float(x) < 2100)]
     return (float(nums[-1]), "vol") if nums else (None, "vol")
+
+
+def _series_json(sdir):
+    """What Harbor wrote about a manga series (series.json in its folder). Every part is optional."""
+    j = _read(os.path.join(sdir, "series.json"), None)
+    if not isinstance(j, dict):
+        return {}, {"file": {}, "num": {}}
+
+    def num(*keys):
+        for k in keys:
+            try:
+                v = int(float(j.get(k)))
+                if v > 0:
+                    return v
+            except (TypeError, ValueError):
+                pass
+        return None
+
+    def text(*keys):
+        for k in keys:
+            v = j.get(k)
+            if isinstance(v, list):
+                v = ", ".join(str(x) for x in v[:3] if isinstance(x, (str, int, float)))
+            if isinstance(v, (str, int, float)) and str(v).strip():
+                return str(v).strip()
+        return ""
+
+    info = {
+        "name": text("title", "name")[:200],
+        "author": text("author", "authors")[:120],
+        "desc": clean_html(text("story", "description", "summary"))[:6000],
+        "status": text("status")[:40],
+        "anilist": num("anilist", "anilist_id", "anilistId"),
+        "mal": num("mal", "mal_id", "malId"),
+        "year": num("year"),
+        "genres": [str(g)[:40] for g in (j.get("genres") or []) if isinstance(g, str)][:8] if isinstance(j.get("genres"), list) else [],
+        "adult": bool(j.get("adult")),
+        "webtoon": bool(j.get("webtoon")),
+        "total": num("total_chapters", "totalChapters"),
+    }
+    by_file, by_num = {}, {}
+    chapters = j.get("chapters")
+    for c in chapters if isinstance(chapters, list) else []:
+        if not isinstance(c, dict):
+            continue
+        entry = {
+            "title": str(c.get("title") or "").strip()[:160],
+            "source": str(c.get("source") or "").strip()[:60],
+            "official": bool(c.get("official")),
+        }
+        f = c.get("file") or c.get("name")
+        if isinstance(f, str) and f:
+            by_file[os.path.basename(f).lower()] = entry
+        try:
+            by_num[float(c.get("number", c.get("num")))] = entry
+        except (TypeError, ValueError):
+            pass
+    return info, {"file": by_file, "num": by_num}
+
+
+def _vol_label(num, unit, i):
+    if num is None:
+        return ("Volume " if unit == "vol" else "Chapter ") + str(i + 1)
+    return ("Volume " if unit == "vol" else "Chapter ") + f"{num:g}"
 
 
 def _scan_pages(root, kind, titles, vols):
@@ -575,65 +661,87 @@ def _scan_pages(root, kind, titles, vols):
         return
     for series_name in entries:
         sdir = os.path.join(root, series_name)
-        if series_name.startswith("."):
+        if series_name.startswith((".", "_")) or series_name.lower() in MANGA_SKIP:
             continue
         items = []
+        info, about = {}, {"file": {}, "num": {}}
         if os.path.isfile(sdir) and os.path.splitext(series_name)[1].lower() in PAGES:
             # A single file straight in Manga/ is a one-shot
             items = [(series_name, sdir)]
             series_title = tidy_name(os.path.splitext(series_name)[0])
         elif os.path.isdir(sdir):
             series_title = tidy_name(series_name)
+            info, about = _series_json(sdir)
             for folder, dirs, files in os.walk(sdir):
-                dirs.sort(key=natural)
+                # Half-downloaded and hidden things (names starting with "." or "_") are left alone
+                dirs[:] = sorted((d for d in dirs if not d.startswith((".", "_"))), key=natural)
+                files = [f for f in files if not f.startswith((".", "_"))]
                 pics = [f for f in files if os.path.splitext(f)[1].lower() in PICS]
                 docs = [f for f in files if os.path.splitext(f)[1].lower() in PAGES]
                 for f in sorted(docs, key=natural):
                     items.append((f, os.path.join(folder, f)))
-                if pics and not docs and folder != sdir:
+                # A folder of pictures is one volume or chapter (cover.jpg beside the chapter files isn't)
+                pages = [f for f in pics if os.path.splitext(f)[0].lower() not in ("cover", "folder", "poster")]
+                if pages and not docs and folder != sdir:
                     items.append((os.path.basename(folder), folder))
-                elif pics and not docs and folder == sdir and not dirs:
+                elif pages and not docs and folder == sdir and not dirs:
                     items.append((series_name, folder))
         else:
             continue
         if not items:
             continue
-        series_title = _strip_year(series_title) or series_title
+        series_title = info.get("name") or _strip_year(series_title) or series_title
         sid = ("m" if kind == "manga" else "c") + _hid(kind, os.path.relpath(sdir, MEDIA))
         vol_list = []
+        folder_title = tidy_name(os.path.splitext(series_name)[0]) if os.path.isfile(sdir) else tidy_name(series_name)
         for i, (name, path) in enumerate(items):
-            num, unit = _vol_number(os.path.splitext(name)[0] if os.path.isfile(path) else name)
+            is_file = os.path.isfile(path)
+            stem = os.path.splitext(name)[0] if is_file else name
+            num, unit = _vol_number(stem, folder_title)
+            if num is None and len(items) == 1:
+                unit = "one"
+            extra = about["file"].get(name.lower()) or (about["num"].get(num) if num is not None and unit == "ch" else None) or {}
             vid = "v" + _hid("vol", os.path.relpath(path, MEDIA))
-            label = ("Vol " if unit == "vol" else "Ch ") + (f"{num:g}" if num is not None else str(i + 1))
             vols[vid] = {
                 "id": vid,
                 "title": sid,
                 "path": path,
-                "name": label,
+                "name": "Read" if unit == "one" else _vol_label(num, unit, i),
+                "chapterName": extra.get("title", ""),
+                "source": extra.get("source", ""),
+                "official": bool(extra.get("official")),
                 "num": num if num is not None else float(i + 1),
                 "unit": unit,
-                "ext": os.path.splitext(path)[1].lower() if os.path.isfile(path) else "",
+                "ext": os.path.splitext(path)[1].lower() if is_file else "",
                 "added": _mtime(path),
-                "size": os.path.getsize(path) if os.path.isfile(path) else 0,
+                "size": os.path.getsize(path) if is_file else 0,
             }
             vol_list.append(vid)
-        vol_list.sort(key=lambda v: (vols[v]["unit"] != "vol", vols[v]["num"]))
+        vol_list.sort(key=lambda v: (vols[v]["unit"] != "vol", vols[v]["num"], natural(os.path.basename(vols[v]["path"]))))
+        chapters = sum(1 for v in vol_list if vols[v]["unit"] == "ch")
         titles[sid] = {
             "id": sid,
             "kind": kind,
             "name": series_title,
-            "author": "",
+            "author": info.get("author", ""),
             "series": series_title,
             "seriesIndex": None,
-            "year": year_of(series_name),
+            "year": info.get("year") or year_of(series_name),
             "folder": sdir,
             "vols": vol_list,
+            "unit": "ch" if chapters * 2 >= len(vol_list) else "vol",
             "readable": True,
             "size": sum(vols[v]["size"] for v in vol_list),
             "added": max(vols[v]["added"] for v in vol_list),
-            "desc": "",
-            "subjects": [],
-            "rtl": kind == "manga",
+            "desc": info.get("desc", ""),
+            "subjects": info.get("genres") or [],
+            "rtl": kind == "manga" and not info.get("webtoon"),
+            "webtoon": bool(info.get("webtoon")),
+            "pubStatus": info.get("status", ""),
+            "anilist": info.get("anilist"),
+            "mal": info.get("mal"),
+            "adult": bool(info.get("adult")),
+            "total": info.get("total"),
         }
 
 
@@ -1055,7 +1163,7 @@ def audio_book(t):
 
 def meta_key(t):
     if t["kind"] in ("manga", "comic"):
-        return t["kind"] + ":" + norm(t["name"])
+        return t["kind"] + ":" + norm(t["name"]) + (f"#{t['anilist']}" if t.get("anilist") else "")
     return "book:" + norm(t["name"]) + "|" + norm(t["author"])
 
 
@@ -1069,7 +1177,7 @@ def look_up_some(limit=6):
             break
         key = meta_key(t)
         try:
-            info = look_up_book(t["name"], t["author"], t.get("isbn"))
+            info = look_up_manga(t["name"], t.get("anilist")) if t["kind"] in ("manga", "comic") else look_up_book(t["name"], t["author"], t.get("isbn"))
         except Exception as e:
             log(f"Couldn't look up {t['name']}: {e!r}")
             info = {"failed": int(time.time())}
@@ -1150,6 +1258,62 @@ def _book_genres(subjects):
     return out[:4]
 
 
+ANILIST_FIELDS = """id idMal title { romaji english } description(asHtml: false) genres tags { name rank isAdult } averageScore
+  volumes chapters status startDate { year } isAdult format countryOfOrigin
+  coverImage { extraLarge large } staff(perPage: 3) { edges { role node { name { full } } } }"""
+ANILIST_Q = "query ($q: String) { Page(perPage: 5) { media(search: $q, type: MANGA, sort: SEARCH_MATCH) { " + ANILIST_FIELDS + " } } }"
+ANILIST_ID_Q = "query ($id: Int) { Media(id: $id, type: MANGA) { " + ANILIST_FIELDS + " } }"
+ANILIST_STATUS = {"FINISHED": "Finished", "RELEASING": "Still coming out", "NOT_YET_RELEASED": "Not out yet", "CANCELLED": "Cancelled", "HIATUS": "On a break"}
+
+
+def look_up_manga(name, anilist_id=None):
+    """A manga series on AniList (by Harbor's AniList number when series.json has one, else by name), plus its MyAnimeList score"""
+    best = None
+    if anilist_id:
+        body = json.dumps({"query": ANILIST_ID_Q, "variables": {"id": int(anilist_id)}}).encode()
+        j = _json("https://graphql.anilist.co", data=body, headers={"Content-Type": "application/json"})
+        best = ((j or {}).get("data") or {}).get("Media")
+    if not best:
+        body = json.dumps({"query": ANILIST_Q, "variables": {"q": name}}).encode()
+        j = _json("https://graphql.anilist.co", data=body, headers={"Content-Type": "application/json"})
+        media = ((j or {}).get("data") or {}).get("Page", {}).get("media") or []
+        media = [m for m in media if m.get("format") != "NOVEL"] or media
+        if not media:
+            return {"none": True}
+        n = norm(name)
+        best = sorted(media, key=lambda m: (norm((m.get("title") or {}).get("english")) != n and norm((m.get("title") or {}).get("romaji")) != n))[0]
+    author = ""
+    for e in ((best.get("staff") or {}).get("edges") or []):
+        if "story" in (e.get("role") or "").lower() or not author:
+            author = ((e.get("node") or {}).get("name") or {}).get("full") or author
+    info = {
+        "anilist": best.get("id"),
+        "mal": best.get("idMal"),
+        "desc": clean_html(best.get("description")),
+        "genres": (best.get("genres") or [])[:4],
+        "subjects": (best.get("genres") or []) + [t["name"] for t in best.get("tags") or [] if (t.get("rank") or 0) >= 60][:12],
+        "anilistScore": round(best["averageScore"] / 10, 1) if best.get("averageScore") else None,
+        "year": (best.get("startDate") or {}).get("year"),
+        "cover": (best.get("coverImage") or {}).get("extraLarge") or (best.get("coverImage") or {}).get("large"),
+        "totalVols": best.get("volumes"),
+        "totalChapters": best.get("chapters"),
+        "status": ANILIST_STATUS.get(best.get("status") or "", ""),
+        "author": author,
+        "adult": bool(best.get("isAdult")),
+        "origin": best.get("countryOfOrigin"),
+        "english": (best.get("title") or {}).get("english"),
+    }
+    info["kids"] = False  # manga never shows on Kids (Ben 2026-11-21)
+    if info["mal"]:
+        try:
+            time.sleep(0.5)
+            m = _json(f"https://api.jikan.moe/v4/manga/{info['mal']}")
+            info["malScore"] = (m.get("data") or {}).get("score")
+        except Exception:
+            pass
+    return info
+
+
 def meta_of(t):
     with _lock:
         return _meta.get(meta_key(t)) or {}
@@ -1158,7 +1322,15 @@ def meta_of(t):
 # ---------- What each title looks like to the apps ----------
 
 
+def _is_webtoon(t):
+    """Read top to bottom in one long strip (Korean and Chinese series), not right to left page by page"""
+    return bool(t.get("webtoon")) or (t.get("kind") == "manga" and meta_of(t).get("origin") in ("KR", "CN"))
+
+
 def kids_ok(t):
+    # Ben 2026-11-21: no manga in Kids at all (not even through the Kids allow list)
+    if t["kind"] in ("manga", "comic"):
+        return False
     m = meta_of(t)
     if t["id"] in _state.get("kids_allow", []):
         return True
@@ -1207,8 +1379,15 @@ def _vol_line(t, u):
     else:
         nxt = next((i for i, v in enumerate(vols) if v not in u["done"]), None)
         at = nxt if nxt is not None else len(vols) - 1
-    unit = "Vol" if _lib["vols"][vols[0]]["unit"] == "vol" else "Ch"
-    return f"{_lib['vols'][vols[at]]['name']} of {len(vols)}" if unit == "Vol" else f"{_lib['vols'][vols[at]]['name']} of {len(vols)} chapters"
+    left = sum(1 for v in vols[at:] if v not in u["done"])
+    return f"{_lib['vols'][vols[at]]['name']} · {left} left" if left > 1 else _lib["vols"][vols[at]]["name"]
+
+
+def _count_words(t):
+    """'164 chapters' / '12 volumes'"""
+    n = len(t.get("vols") or [])
+    word = "chapter" if t.get("unit") == "ch" else "volume"
+    return f"{n} {word}" + ("" if n == 1 else "s")
 
 
 def tile(t, u, now=None):
@@ -1223,7 +1402,7 @@ def tile(t, u, now=None):
     is_new = (now - t["added"] < NEW_DAYS * 86400) and t["added"] > opened
     line = ""
     if t["kind"] in ("manga", "comic"):
-        line = _vol_line(t, u) if status != "not" else f"{len(t['vols'])} " + ("volumes" if len(t["vols"]) != 1 else "volume")
+        line = "Finished" if status == "done" else _vol_line(t, u) if status != "not" else _count_words(t)
     elif status == "reading":
         line = f"{round(frac * 100)}%"
     elif status == "done":
@@ -1234,8 +1413,8 @@ def tile(t, u, now=None):
         "id": tid,
         "kind": t["kind"],
         "name": t["name"],
-        "author": t["author"] or clean_author(m.get("author")),
-        "series": t.get("series") or clean_series(m.get("series"), t["name"]),
+        "author": t["author"] or (m.get("author") or "" if t["kind"] in ("manga", "comic") else clean_author(m.get("author"))),
+        "series": "" if t["kind"] in ("manga", "comic") else t.get("series") or clean_series(m.get("series"), t["name"]),
         "seriesIndex": t.get("seriesIndex"),
         "year": t.get("year") or m.get("year"),
         "cover": cover_url(tid),
@@ -1251,6 +1430,7 @@ def tile(t, u, now=None):
         "genres": m.get("genres") or [],
         "lastAt": (u["place"].get(tid) or {}).get("at", 0),
         "vols": len(t.get("vols") or []),
+        "unit": t.get("unit") or "",
         "kids": kids_ok(t),
     }
 
@@ -1374,7 +1554,7 @@ def home(user_id, is_kids):
     for tid, _ in sorted(u["sent"].items(), key=lambda kv: -kv[1]):
         if tid in tiles and tiles[tid]["status"] != "done":
             deck.append(dict(tiles[tid], sent=True))
-    started = [t for t in tiles.values() if t["status"] == "reading"]
+    started = [t for t in tiles.values() if t["status"] == "reading" or (t["kind"] in ("manga", "comic") and t["status"] != "done" and t["lastAt"])]
     for t in sorted(started, key=lambda t: -t["lastAt"]):
         if t["id"] not in {d["id"] for d in deck}:
             deck.append(t)
@@ -1384,6 +1564,7 @@ def home(user_id, is_kids):
     rows = [
         {"key": "deck", "title": "Keep going", "tiles": out[:30]},
         {"key": "new", "title": "New for you", "tiles": newf},
+        {"key": "chapters", "title": "New chapters", "tiles": sorted([t for t in tiles.values() if t["kind"] == "manga" and t["newCount"]], key=lambda t: -t["added"])[:30]},
     ]
     # The top lists (NYT, Hardcover, Apple Books, Open Library, award winners), only books on Benflix
     if booklists is not None:
@@ -1443,7 +1624,20 @@ def title_page(tid, user_id, is_kids, is_admin):
             out["scores"].append({"site": "MyAnimeList", "score": m["malScore"]})
         if m.get("totalVols"):
             out["totalVols"] = m["totalVols"]
+        out["canPickCover"] = False  # the cover is Harbor's cover.jpg (or AniList's)
+        if not out["subjects"]:
+            out["subjects"] = t.get("subjects") or []
+        chapters_unit = t.get("unit") == "ch"
+        out["unit"] = t.get("unit") or "vol"
+        out["webtoon"] = _is_webtoon(t)
+        if out["webtoon"]:
+            out["rtl"] = False
+        out["pubStatus"] = t.get("pubStatus") or m.get("status") or ""
+        out["anilist"] = t.get("anilist") or m.get("anilist")
+        out["mal"] = t.get("mal") or m.get("mal")
+        out["totalChapters"] = t.get("total") or m.get("totalChapters") or 0
         place = u["place"].get(tid) or {}
+        opened_at = u["opened"].get(tid)
         for v in t["vols"]:
             vol = _lib["vols"][v]
             vp = (u["place"].get(v) or {})
@@ -1451,18 +1645,34 @@ def title_page(tid, user_id, is_kids, is_admin):
                 {
                     "id": v,
                     "name": vol["name"],
+                    "title": vol.get("chapterName") or "",
+                    "num": vol["num"],
+                    "unit": vol["unit"],
+                    "source": vol.get("source") or "",
+                    "official": bool(vol.get("official")),
                     "done": v in u["done"],
                     "progress": 1.0 if v in u["done"] else (vp.get("pct") or 0),
                     "current": v == place.get("vol"),
                     "cover": cover_url(v),
-                    "new": vol["added"] > max(u["opened"].get(tid, 0), time.time() - NEW_DAYS * 86400) and u["opened"].get(tid) is not None,
+                    "new": opened_at is not None and vol["added"] > max(opened_at, time.time() - NEW_DAYS * 86400),
                     "pdf": vol["ext"] == ".pdf",
+                    "size": vol.get("size") or 0,
                 }
             )
         nxt = next((x for x in out["volumes"] if x["current"] and not x["done"]), None) or next((x for x in out["volumes"] if not x["done"]), None)
         out["next"] = nxt["id"] if nxt else (out["volumes"][0]["id"] if out["volumes"] else None)
+        # For AniList and MyAnimeList: the highest whole chapter (or volume) read with nothing unread before it
+        read_to = 0
+        for x in out["volumes"]:
+            if x["unit"] != ("ch" if chapters_unit else "vol"):
+                continue
+            if not x["done"]:
+                break
+            read_to = max(read_to, int(x["num"]))
+        out["readTo"] = read_to
+        out["readAll"] = bool(out["volumes"]) and all(x["done"] for x in out["volumes"])
         if out["volumes"]:
-            out["line"] = f"{len(out['volumes'])} " + ("volumes" if _lib["vols"][t["vols"][0]]["unit"] == "vol" else "chapters")
+            out["line"] = _count_words(t)
     elif t["kind"] == "book":
         if m.get("score"):
             out["scores"].append({"site": "Open Library", "score": m["score"], "outOf": 5})
@@ -1551,8 +1761,8 @@ def series_list(user_id, is_kids):
     groups = {}
     for t in lib["titles"]:
         if t["kind"] in ("manga", "comic"):
-            groups.setdefault(("m", t["id"]), {"name": t["name"], "kind": t["kind"], "titles": [t], "cover": t["cover"]})
-        elif t["series"] and not (t["kind"] == "audiobook" and t.get("linked")):
+            continue  # manga has its own tab
+        if t["series"] and not (t["kind"] == "audiobook" and t.get("linked")):
             g = groups.setdefault(("s", norm(t["series"])), {"name": t["series"], "kind": "series", "titles": [], "cover": t["cover"]})
             g["titles"].append(t)
     out = []
@@ -2120,7 +2330,7 @@ def kids_list():
     out = []
     for t in sorted(_lib["titles"].values(), key=lambda t: natural(t["name"])):
         m = meta_of(t)
-        if m.get("adult"):
+        if m.get("adult") or t["kind"] in ("manga", "comic"):
             continue
         out.append({"id": t["id"], "name": t["name"], "author": t["author"] or m.get("author") or "", "kind": t["kind"], "rated": bool(m.get("kids")), "allowed": t["id"] in _state.get("kids_allow", []), "cover": cover_url(t["id"], 160)})
     return {"titles": [x for x in out if not x["rated"]], "rated": [x for x in out if x["rated"]]}
@@ -2965,19 +3175,123 @@ def vol_info(vol_id, user_id):
     i = vols.index(vol_id) if vol_id in vols else 0
     u = _user(user_id)
     nxt = vols[i + 1] if i + 1 < len(vols) else None
+    webtoon = bool(t) and _is_webtoon(t)
+    # Long strips open in Long scroll unless you picked another way for this series
+    mode = u["modes"].get(vol["title"]) or ({"mode": "scroll", "dir": "ltr"} if webtoon else None)
     return {
         "id": vol_id,
         "title": vol["title"],
         "series": t.get("name", ""),
         "name": vol["name"],
+        "chapterName": vol.get("chapterName") or "",
+        "unit": vol.get("unit") or "vol",
+        "num": vol.get("num"),
         "pages": len(names),
         "pdf": how == "pdf",
-        "rtl": t.get("rtl", False),
-        "mode": u["modes"].get(vol["title"]),
+        "rtl": t.get("rtl", False) and not webtoon,
+        "webtoon": webtoon,
+        "mode": mode,
         "place": u["place"].get(vol_id),
         "next": {"id": nxt, "name": _lib["vols"][nxt]["name"], "cover": cover_url(nxt)} if nxt else None,
         "prev": vols[i - 1] if i > 0 else None,
+        "stamp": vol["added"],
     }
+
+
+# ---------- Manga pages, shrunk for the screen ----------
+
+_warm_lock = threading.Lock()
+_warm_todo = []  # (vol id, page, width) waiting to be shrunk ahead of time
+_warm_busy = [False]
+
+
+def page_small(vol_id, n, w):
+    """Page n of a chapter, shrunk to about w wide (made once with ffmpeg and kept)"""
+    w = min(PAGE_WIDTHS, key=lambda x: abs(x - w))
+    vol = _lib["vols"].get(vol_id)
+    if not vol:
+        raise BooksError(404, "That chapter isn't on Tower any more.")
+    key = f"{vol_id}-{vol['added']}-p{n}"
+    if _dir:
+        out = os.path.join(_dir, "thumbs", f"{key}-{w}.jpg")
+        if os.path.isfile(out):
+            try:
+                os.utime(out)  # still in use, so the monthly tidy keeps it
+            except OSError:
+                pass
+            with open(out, "rb") as f:
+                return f.read(), "image/jpeg"
+    data, ctype = page_bytes(vol_id, n)
+    small = _thumb(data, key, w)
+    return small, ("image/jpeg" if small is not data else ctype)
+
+
+def warm_pages(vol_id, n, w):
+    """Gets the next few pages ready while you read this one, so the page turn doesn't wait on Tower"""
+    if not _dir or not have_tool("ffmpeg"):
+        return
+    with _warm_lock:
+        # Only the newest ask matters (someone flipping fast shouldn't queue a hundred pages)
+        del _warm_todo[:]
+        _warm_todo.extend((vol_id, n + i, w) for i in range(1, PAGES_AHEAD + 1))
+        if _warm_busy[0]:
+            return
+        _warm_busy[0] = True
+    threading.Thread(target=_warm_run, name="books-pages", daemon=True).start()
+
+
+def _warm_run():
+    try:
+        while True:
+            with _warm_lock:
+                if not _warm_todo:
+                    return
+                vol_id, n, w = _warm_todo.pop(0)
+            try:
+                _, (_, _, names) = pages_of(vol_id)
+                if 0 <= n < len(names):
+                    page_small(vol_id, n, w)
+            except Exception:
+                pass
+    finally:
+        with _warm_lock:
+            _warm_busy[0] = False
+
+
+def tidy_page_copies(days=30):
+    """Shrunk manga pages nobody has opened for a month are deleted (they're made again when needed)"""
+    if not _dir:
+        return
+    folder = os.path.join(_dir, "thumbs")
+    cut = time.time() - days * 86400
+    gone = 0
+    try:
+        for name in os.listdir(folder):
+            if not re.search(r"-p\d+-\d+\.jpg$", name):
+                continue
+            p = os.path.join(folder, name)
+            try:
+                if os.path.getmtime(p) < cut:
+                    os.remove(p)
+                    gone += 1
+            except OSError:
+                pass
+    except OSError:
+        return
+    if gone:
+        log(f"Tidied {gone} shrunk manga pages nobody opened for {days} days")
+
+
+def _kids_blocked(path):
+    """Ben 2026-11-21: no manga on Kids profiles at all, so a Kids profile can't open manga by its link either"""
+    m = re.match(r"/api/books/(?:title|next|cover|vol|file|place|opened|marks|send)/(\w+)", path)
+    if not m:
+        return False
+    key = m.group(1)
+    if key in _lib["vols"]:
+        return True
+    t = _lib["titles"].get(key)
+    return bool(t) and t["kind"] in ("manga", "comic")
 
 
 def status():
@@ -2999,6 +3313,8 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
     # A link to a second copy that was folded into another one opens the one that shows
     path = re.sub(r"(?<=/)(\w{13})(?=/|$)", lambda mm: _doubles.get(mm.group(1), mm.group(1)), path)
     try:
+        if is_kids and _kids_blocked(path):
+            return 404, {"error": "That isn't on Glowfin."}
         if method == "GET" and path == "/api/books/home":
             return 200, home(user_id, is_kids)
         if method == "GET" and path == "/api/books/library":
@@ -3029,10 +3345,13 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
             return 200, vol_info(m.group(1), user_id)
         m = re.fullmatch(r"/api/books/vol/(\w+)/p/(\d+)", path)
         if method in ("GET", "HEAD") and m:
-            data, ctype = page_bytes(m.group(1), int(m.group(2)))
             w = int(q("w") or 0)
-            if w:
-                data, ctype = _thumb(data, f"{m.group(1)}-p{m.group(2)}", min(THUMB_WIDTHS, key=lambda x: abs(x - w))), "image/jpeg"
+            if not w:
+                data, ctype = page_bytes(m.group(1), int(m.group(2)))
+                return 200, data, ctype
+            data, ctype = page_small(m.group(1), int(m.group(2)), w)
+            if w > 200 and q("ahead") != "0":
+                warm_pages(m.group(1), int(m.group(2)), w)
             return 200, data, ctype
         m = re.fullmatch(r"/api/books/file/(\w+)(?:/(\d+))?", path)
         if method in ("GET", "HEAD") and m:

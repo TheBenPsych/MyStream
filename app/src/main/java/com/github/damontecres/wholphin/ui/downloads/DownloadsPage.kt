@@ -71,7 +71,20 @@ class DownloadsViewModel
     constructor(
         val service: DownloadService,
         val musicService: MusicService,
+        val manga: com.github.damontecres.wholphin.services.MangaOffline,
+        private val serverRepository: com.github.damontecres.wholphin.data.ServerRepository,
     ) : ViewModel() {
+        /** The manga chapters saved on this phone that this profile may see (never Kids) */
+        fun mangaFor(
+            all: List<com.github.damontecres.wholphin.services.MangaSaved>,
+            profile: OfflineProfile?,
+        ): List<com.github.damontecres.wholphin.services.MangaSaved> {
+            val kids = profile?.kids ?: com.github.damontecres.wholphin.services.KidsMode.isActive
+            if (kids) return emptyList()
+            val userId = (profile?.userId ?: serverRepository.currentUser?.id)?.toString() ?: return emptyList()
+            return all.filter { it.userId == userId }
+        }
+
         fun playMusic(
             songs: List<DownloadedItem>,
             index: Int,
@@ -240,6 +253,10 @@ fun DownloadsPage(
     val songs = remember(visible) { visible.filter { it.music }.sortedBy { it.addedAt } }
     var playing by remember { mutableStateOf<DownloadedItem?>(null) }
     var confirmDelete by remember { mutableStateOf<DownloadedItem?>(null) }
+    // Manga chapters saved on this phone (Ben 2026-11-21): tap a series to read it, even with no internet
+    val mangaAll by viewModel.manga.items.collectAsState()
+    val manga = remember(mangaAll, offlineProfile) { viewModel.mangaFor(mangaAll, offlineProfile) }
+    var readingManga by remember { mutableStateOf<String?>(null) }
     // Refresh progress once a second while anything is still downloading
     var tick by remember { mutableStateOf(0) }
     LaunchedEffect(items) {
@@ -261,7 +278,7 @@ fun DownloadsPage(
             color = Color.White,
             modifier = Modifier.padding(16.dp),
         )
-        if (items.isEmpty() && songs.isEmpty()) {
+        if (items.isEmpty() && songs.isEmpty() && manga.isEmpty()) {
             Text(
                 text = stringResource(R.string.downloads_none),
                 fontSize = BenflixType.body,
@@ -271,7 +288,7 @@ fun DownloadsPage(
             return@Column
         }
         // Free up space (Ben 2026-11-21): how much room the downloads take, and one press to delete what's been watched
-        val used = remember(visible, tick / 5) { service.bytesUsed(visible) }
+        val used = remember(visible, manga, tick / 5) { service.bytesUsed(visible) + viewModel.manga.bytesUsed(manga) }
         val watched = remember(items, tick / 5) { items.filter { service.isWatched(it.itemId) } }
         var smaller by remember { mutableStateOf(service.smallerDownloads == true) }
         var confirmWatched by remember { mutableStateOf(false) }
@@ -335,6 +352,16 @@ fun DownloadsPage(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
+            if (manga.isNotEmpty()) {
+                item(key = "manga") {
+                    MangaDownloads(
+                        saved = manga,
+                        coverOf = { viewModel.manga.coverFile(it) },
+                        onRead = { readingManga = it },
+                        onDelete = { viewModel.manga.deleteSeries(it) },
+                    )
+                }
+            }
             if (songs.isNotEmpty()) {
                 item(key = "music-title") {
                     Row(
@@ -544,6 +571,128 @@ fun DownloadsPage(
         )
     }
     playing?.let { LocalPlayer(it, service) { playing = null } }
+    readingManga?.let { volId ->
+        // The reader on top of Downloads: Back comes back here, and the next saved chapter opens in place
+        Dialog(
+            onDismissRequest = { readingManga = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            androidx.compose.runtime.key(volId) {
+                com.github.damontecres.wholphin.ui.books.PageReaderPage(
+                    id = volId,
+                    book = false,
+                    onClose = { readingManga = null },
+                    onOpen = { readingManga = it },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Manga saved on this phone: one row per series (cover, "12 saved" or how far the download is), tap it to read
+ * the chapter you're on, the saved chapters as chips, and a bin to remove them from the phone.
+ */
+@Composable
+private fun MangaDownloads(
+    saved: List<com.github.damontecres.wholphin.services.MangaSaved>,
+    coverOf: (String) -> java.io.File,
+    onRead: (String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    val series = remember(saved) { saved.groupBy { it.titleId }.values.map { list -> list.sortedBy { it.num } } }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "Manga",
+            fontSize = BenflixType.body,
+            fontWeight = FontWeight.Bold,
+            color = BenflixColors.Books,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        series.forEach { chapters ->
+            val first = chapters.first()
+            val ready = chapters.filter { it.done }
+            val coming = chapters.count { !it.done && !it.failed }
+            val failed = chapters.count { it.failed }
+            // Tapping the series opens the first saved chapter you haven't finished (or the first one)
+            val next = ready.firstOrNull { it.page < it.pages - 1 } ?: ready.firstOrNull()
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = next != null) { next?.let { onRead(it.volId) } }
+                            .padding(horizontal = 16.dp),
+                ) {
+                    AsyncImage(
+                        model = coverOf(first.titleId),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .size(width = 48.dp, height = 72.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF2B2B2B)),
+                    )
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                        Text(
+                            first.series,
+                            fontSize = BenflixType.body,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            listOfNotNull(
+                                "${ready.size} saved".takeIf { ready.isNotEmpty() },
+                                "$coming still coming".takeIf { coming > 0 },
+                                "$failed couldn't be saved (open the manga and press Download again)".takeIf { failed > 0 },
+                            ).joinToString(" · "),
+                            fontSize = BenflixType.small,
+                            color = if (failed > 0) Color(0xFFFF8A8A) else Color(0xFFB3B3B3),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.fa_trash_can),
+                        fontFamily = FontAwesome,
+                        fontSize = 18.sp,
+                        color = Color(0xFFB3B3B3),
+                        modifier =
+                            Modifier
+                                .clickable { onDelete(first.titleId) }
+                                .padding(12.dp),
+                    )
+                }
+                if (ready.isNotEmpty()) {
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding =
+                            androidx.compose.foundation.layout
+                                .PaddingValues(horizontal = 16.dp),
+                    ) {
+                        items(ready, key = { "manga-${it.volId}" }) { c ->
+                            Text(
+                                text = c.name,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.Bold,
+                                color = if (c == next) BenflixColors.OnBooks else Color.White,
+                                modifier =
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(if (c == next) BenflixColors.Books else Color(0xFF2B2B2B))
+                                        .clickable { onRead(c.volId) }
+                                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** Plays a downloaded file full screen, sideways, picking up where you left off */

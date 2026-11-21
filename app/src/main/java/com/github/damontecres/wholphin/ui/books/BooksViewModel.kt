@@ -26,6 +26,9 @@ enum class BooksPlace(
     HOME("For you"),
     BOOKS("Books"),
     AUDIOBOOKS("Audiobooks"),
+
+    /** Manga is back (Ben 2026-11-21), between Audiobooks and Series; never on Kids */
+    MANGA("Manga"),
     SERIES("Series"),
     WANT("Want to read"),
     ;
@@ -36,6 +39,7 @@ enum class BooksPlace(
             when (this) {
                 BOOKS -> "book"
                 AUDIOBOOKS -> "audiobook"
+                MANGA -> "manga"
                 else -> null
             }
 }
