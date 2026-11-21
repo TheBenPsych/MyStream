@@ -79,6 +79,8 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.requestedArrived
 import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixChoice
+import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
@@ -1299,6 +1301,23 @@ class BenflixRequestsViewModel
             }
         }
 
+        /** Admin, Manage: the same answer for several at once. A no asks for one reason for all of them. */
+        fun answerMany(
+            entries: List<RequestEntry>,
+            approve: Boolean,
+        ) {
+            if (entries.isEmpty()) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                entries.forEach { answerNow(it, approve, refresh = false) }
+                showToast(context, if (approve) "Said yes to ${entries.size}" else "Said no to ${entries.size}")
+                fetchRequests(lastMineOnly)
+                if (!approve) {
+                    val ids = entries.mapNotNull { it.request.id }
+                    ids.firstOrNull()?.let { DeclineWhy.ask(it, ids.drop(1)) }
+                }
+            }
+        }
+
         private suspend fun answerNow(
             entry: RequestEntry,
             approve: Boolean,
@@ -1386,7 +1405,8 @@ fun BenflixRequestsPage(
     // Grown-up family profiles see Music too; their song and album asks wait for Ben's Approve.
     val tabs =
         remember {
-            REQUEST_TABS.map { TabDetails(StringStringProvider(it)) }
+            // Ben's last tab is his Manage board (2026-11-21); everyone else keeps Your requests
+            REQUEST_TABS.map { TabDetails(StringStringProvider(if (admin && it == "Your requests") "Manage" else it)) }
         }
     val waitingCount = rememberWaitingCount(viewModel, admin)
     val tabsId = "benflix-requests"
@@ -2169,6 +2189,7 @@ private fun RequestList(
                         showWho = !mineOnly,
                         onAnswer = if (!mineOnly && r.waiting) ({ yes -> musicVm.answer(r, yes) }) else null,
                         onRetry = if (!mineOnly) ({ musicVm.retry(r) }) else null,
+                        onRemove = if (!mineOnly && viewModel.isAdmin && !r.waiting) ({ musicVm.remove(r) }) else null,
                     )
                 }
             val b = bookRequests
@@ -2193,6 +2214,38 @@ private fun RequestList(
     var confirmAll by remember { mutableStateOf(false) }
     var autoYes by remember { mutableStateOf(false) }
     if (autoYes) AutoYesDialog(onDismiss = { autoYes = false })
+    // Manage (Ben 2026-11-21): Ben's list is a board. One box picked, filters by person and kind, several at once.
+    val manage = !mineOnly && viewModel.isAdmin
+    val manageVm: ManageViewModel = hiltViewModel()
+    val holds by manageVm.holds.collectAsState()
+    var lane by rememberSaveable { mutableStateOf(ManageLane.NEEDS) }
+    var who by rememberSaveable { mutableStateOf<String?>(null) }
+    var kind by rememberSaveable { mutableStateOf<String?>(null) }
+    var picking by remember { mutableStateOf(false) }
+    var ticks by remember { mutableStateOf(setOf<String>()) }
+    var stopFor by remember { mutableStateOf<RequestEntry?>(null) }
+    stopFor?.let { entry ->
+        val id = entry.request.id
+        val name = entry.item?.title ?: "this one"
+        BenflixChoiceDialog(
+            title = "Stop $name?",
+            subtitle = "Tower stops looking and ${entry.who} sees it as a no. You can give a reason next.",
+            choices =
+                listOf(
+                    BenflixChoice(
+                        label = "Stop it",
+                        note = "Anything that already arrived stays on Glowfin",
+                        onClick = { if (id != null) manageVm.stop(id, false) { viewModel.loadRequests(mineOnly) } },
+                    ),
+                    BenflixChoice(
+                        label = "Stop it and delete what arrived",
+                        onClick = { if (id != null) manageVm.stop(id, true) { viewModel.loadRequests(mineOnly) } },
+                    ),
+                    BenflixChoice(label = "Keep looking", onClick = {}),
+                ),
+            onDismissRequest = { stopFor = null },
+        )
+    }
     var cantFindFor by remember { mutableStateOf<RequestEntry?>(null) }
     cantFindFor?.let { entry ->
         CantFindDialog(
@@ -2324,13 +2377,46 @@ private fun RequestList(
                     entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
                 }
             }
-        if (!mineOnly && viewModel.isAdmin && list != null) {
-            item(key = "auto-yes") {
-                Button(
-                    onClick = { autoYes = true },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                ) { Text("Auto-yes for people you trust") }
+        fun RequestEntry.isNotFound() = !available && cantFindKey()?.let { it in cantFind } == true
+        val boardEntries = if (manage) list.orEmpty().filter { (who == null || it.who == who) && (kind == null || it.manageKind() == kind) } else emptyList()
+        val boardLines = if (manage) otherLines.filter { (who == null || (it.who ?: "Ben") == who) && (kind == null || it.manageKind() == kind) } else emptyList()
+        if (manage && list != null) {
+            item(key = "manage-tiles") {
+                val counts =
+                    ManageLane.entries.associateWith { l ->
+                        boardEntries.count { it.manageLane(it.isNotFound()) == l } + boardLines.count { it.manageLane() == l } +
+                            if (l == ManageLane.STUCK && who == null && kind == null) extras.size else 0
+                    }
+                ManageTiles(
+                    counts = counts,
+                    lane = lane,
+                    onLane = {
+                        lane = it
+                        picking = false
+                        ticks = emptySet()
+                    },
+                )
+            }
+            item(key = "manage-filters") {
+                val open = setOf(ManageLane.NEEDS, ManageLane.WAY, ManageLane.STUCK)
+                val names = (list.map { it.who } + otherLines.map { it.who ?: "Ben" }).distinct().sorted()
+                val people =
+                    names.map { n ->
+                        n to (
+                            list.count { it.who == n && it.manageLane(it.isNotFound()) in open } +
+                                otherLines.count { (it.who ?: "Ben") == n && it.manageLane() in open }
+                        )
+                    }
+                val kindsHere = MANAGE_KINDS.filter { k -> list.any { it.manageKind() == k } || otherLines.any { it.manageKind() == k } }
+                ManageFilters(
+                    people = people,
+                    who = who,
+                    onWho = { who = it },
+                    kinds = kindsHere,
+                    kind = kind,
+                    onKind = { kind = it },
+                    onAutoYes = { autoYes = true },
+                )
             }
         }
         when {
@@ -2345,6 +2431,140 @@ private fun RequestList(
 
             list == null -> {
                 item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
+            }
+
+            manage -> {
+                val rows = boardEntries.filter { it.manageLane(it.isNotFound()) == lane }
+                val lines = boardLines.filter { it.manageLane() == lane }
+                val needsEntries = rows.filter { it.status == RequestStatus.PENDING }
+                if (lane == ManageLane.NEEDS && rows.size + lines.size > 1) {
+                    item(key = "manage-bulk") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        ) {
+                            if (picking) {
+                                val n = ticks.size
+                                val picked = { needsEntries.filter { "seerr-${it.request.id}" in ticks } }
+                                val pickedLines = { lines.filter { it.key in ticks } }
+                                ManageButton(
+                                    label = if (n > 0) "Yes to $n" else "Yes",
+                                    enabled = n > 0,
+                                    onClick = {
+                                        pickedLines().forEach { it.onYes?.invoke() }
+                                        viewModel.answerMany(picked(), true)
+                                        ticks = emptySet()
+                                        picking = false
+                                    },
+                                )
+                                ManageButton(
+                                    label = if (n > 0) "No to $n" else "No",
+                                    enabled = n > 0,
+                                    onClick = {
+                                        pickedLines().forEach { it.onNo?.invoke() }
+                                        viewModel.answerMany(picked(), false)
+                                        ticks = emptySet()
+                                        picking = false
+                                    },
+                                )
+                                ManageButton(
+                                    label = "Done picking",
+                                    onClick = {
+                                        ticks = emptySet()
+                                        picking = false
+                                    },
+                                )
+                            } else {
+                                ManageButton(
+                                    label = "Yes to all ${rows.size + lines.size}",
+                                    onClick = {
+                                        lines.forEach { it.onYes?.invoke() }
+                                        viewModel.answerMany(needsEntries, true)
+                                    },
+                                )
+                                ManageButton(label = "Pick several", onClick = { picking = true })
+                            }
+                        }
+                    }
+                }
+                // "Couldn't find it" cards whose request Seerr has dropped stay here for good
+                val oldCards = if (lane == ManageLane.STUCK && who == null && kind == null) extras else emptyList()
+                if (rows.isEmpty() && lines.isEmpty() && oldCards.isEmpty()) {
+                    item(key = "manage-empty") {
+                        Text(
+                            text = if (who != null || kind != null) "Nothing here with these filters." else lane.empty,
+                            fontSize = BenflixType.body,
+                            color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                        )
+                    }
+                }
+                items(rows, key = { "manage-${it.request.id ?: it.hashCode()}" }) { entry ->
+                    val tickKey = "seerr-${entry.request.id}"
+                    val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
+                    val approved = !entry.available && entry.status == RequestStatus.APPROVED
+                    val tmdb = entry.request.media?.tmdbId
+                    val holdKind = if (entry.item?.type == SeerrItemType.MOVIE) "movie" else "tv"
+                    val requestId = entry.request.id
+                    val changedMind: (() -> Unit)? =
+                        if (entry.status == RequestStatus.DECLINED && requestId != null) {
+                            ({ manageVm.undo(requestId) { viewModel.loadRequests(mineOnly) } })
+                        } else {
+                            null
+                        }
+                    if (lane == ManageLane.STUCK && approved && tmdb != null) {
+                        LaunchedEffect(tmdb) { manageVm.loadHold(holdKind, tmdb) }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    ) {
+                        if (picking && entry.status == RequestStatus.PENDING) {
+                            ManageTick(on = tickKey in ticks, onClick = { ticks = if (tickKey in ticks) ticks - tickKey else ticks + tickKey })
+                        }
+                        Box(Modifier.weight(1f)) {
+                            RequestRow(
+                                entry = entry,
+                                lookYourself = false,
+                                showWho = true,
+                                canAnswer = entry.status == RequestStatus.PENDING && !entry.available,
+                                onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
+                                onAnswer = { viewModel.answer(entry, it) },
+                                cantFind = notFound,
+                                isAdminList = true,
+                                onCantFind = if (lane == ManageLane.STUCK && approved && notFound == null) ({ cantFindFor = entry }) else null,
+                                onUndoCantFind = if (!entry.available && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
+                                holdLine = if (lane == ManageLane.STUCK && tmdb != null) holds["$holdKind:$tmdb"]?.takeIf { it.isNotBlank() } else null,
+                                onLookAgain = if (lane == ManageLane.STUCK && approved && tmdb != null) ({ manageVm.again(holdKind, tmdb) }) else null,
+                                onStop = if (approved) ({ stopFor = entry }) else null,
+                                onChangedMind = changedMind,
+                            )
+                        }
+                    }
+                }
+                items(oldCards, key = { "manage-cant-find-${it.key}" }) { entry ->
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        CantFindOnlyRow(
+                            entry = entry,
+                            onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
+                            onTryAgain = { viewModel.undoCantFind(entry.key) },
+                        )
+                    }
+                }
+                items(lines, key = { "manage-other-${it.key}" }) { line ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    ) {
+                        if (picking && line.onYes != null) {
+                            ManageTick(on = line.key in ticks, onClick = { ticks = if (line.key in ticks) ticks - line.key else ticks + line.key })
+                        }
+                        Box(Modifier.weight(1f)) { AskLineRow(line) }
+                    }
+                }
             }
 
             list.isEmpty() && extras.isEmpty() && otherLines.isEmpty() -> {
@@ -2456,6 +2676,11 @@ private fun RequestRow(
     isAdminList: Boolean = false,
     onCantFind: (() -> Unit)? = null,
     onUndoCantFind: (() -> Unit)? = null,
+    // Manage (Ben 2026-11-21): why a stuck one is stuck, and Look again / Stop / Changed my mind
+    holdLine: String? = null,
+    onLookAgain: (() -> Unit)? = null,
+    onStop: (() -> Unit)? = null,
+    onChangedMind: (() -> Unit)? = null,
 ) {
     // Benflix: on phones the buttons go on their own line under the text, so the title and steps get the full width
     val isTv = rememberIsTv()
@@ -2483,6 +2708,21 @@ private fun RequestRow(
         onUndoCantFind?.let {
             Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
                 Text("Try again", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
+        }
+        onLookAgain?.let {
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Look again", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
+        }
+        onStop?.let {
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Stop", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
+            }
+        }
+        onChangedMind?.let {
+            Button(onClick = it, scale = ButtonDefaults.scale(focusedScale = 1f)) {
+                Text("Changed my mind", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
             }
         }
     }
@@ -2570,6 +2810,15 @@ private fun RequestRow(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                }
+                if (holdLine != null) {
+                    Text(
+                        text = holdLine,
+                        fontSize = BenflixType.small,
+                        color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 if (cantFind != null) CantFindNoteLine(cantFind)
                 if (cantFind == null) {
