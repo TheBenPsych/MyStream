@@ -25,13 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.handleDPadKeyEvents
-import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlin.math.roundToLong
 
@@ -221,72 +218,10 @@ data class SliderColors(
  * Determines the active color for the slider. This is the "filled" left side of the slider
  */
 @Composable
-fun sliderActiveColor(focused: Boolean): Color {
-    val theme = LocalTheme.current
-    return when (theme) {
-        AppThemeColors.UNRECOGNIZED,
-        AppThemeColors.PURPLE,
-        AppThemeColors.BLUE,
-        AppThemeColors.GREEN,
-        AppThemeColors.ORANGE,
-        AppThemeColors.RED,
-        AppThemeColors.BROWN,
-        AppThemeColors.MYSTREAM,
-        -> {
-            MaterialTheme.colorScheme.border
-        }
-
-        AppThemeColors.BOLD_BLUE -> {
-            if (focused) {
-                MaterialTheme.colorScheme.border
-            } else {
-                MaterialTheme.colorScheme.border
-            }
-        }
-
-        AppThemeColors.OLED_BLACK -> {
-            if (focused) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.border
-            }
-        }
-    }
-}
+fun sliderActiveColor(focused: Boolean): Color = MaterialTheme.colorScheme.border
 
 /**
  * Determines the inactive color for the slider. This is background of "unfilled" right side of the slider.
  */
 @Composable
-fun sliderInactiveColor(focused: Boolean): Color {
-    val theme = LocalTheme.current
-    return when (theme) {
-        AppThemeColors.UNRECOGNIZED,
-        AppThemeColors.PURPLE,
-        -> {
-            MaterialTheme.colorScheme.border
-                .copy(alpha = .25f)
-                .compositeOver(MaterialTheme.colorScheme.surfaceVariant)
-                .copy(alpha = .66f)
-        }
-
-        AppThemeColors.BLUE,
-        AppThemeColors.GREEN,
-        AppThemeColors.ORANGE,
-        AppThemeColors.BOLD_BLUE,
-        AppThemeColors.RED,
-        AppThemeColors.BROWN,
-        AppThemeColors.MYSTREAM,
-        -> {
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .66f)
-        }
-
-        AppThemeColors.OLED_BLACK -> {
-            if (focused) {
-                MaterialTheme.colorScheme.tertiaryContainer
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
-            }
-        }
-    }
-}
+fun sliderInactiveColor(focused: Boolean): Color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .66f)

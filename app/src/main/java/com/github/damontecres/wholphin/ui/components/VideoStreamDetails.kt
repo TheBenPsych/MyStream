@@ -29,7 +29,6 @@ import androidx.tv.material3.ProvideTextStyle
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ChosenStreams
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.playback.audioStreamCount
@@ -219,7 +218,7 @@ fun StreamLabel(
 @PreviewTvSpec
 @Composable
 private fun StreamLabelPreview() {
-    WholphinTheme(appThemeColors = AppThemeColors.PURPLE) {
+    WholphinTheme {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
