@@ -51,6 +51,11 @@ fun headerStart(
     stack: List<Destination>,
 ): HeaderStart {
     if (destination is Destination.Home) return HeaderStart.None
+    // A movie, show, album or playlist page already shows its own name in big letters. Opened straight from
+    // Home or Search it used to get that name again up here (Ben 2026-11-21: the name showed twice), so it
+    // gets the named Back button like any deeper page.
+    val showsOwnName = destination is Destination.MediaItem || destination is Destination.SeriesOverview
+    if (showsOwnName && stack.size >= 2) return HeaderStart.Back(backName(stack) ?: "Back")
     if (stack.size <= 2 || destination.isDoorRoot()) {
         val door = destination.door()
         return when {
