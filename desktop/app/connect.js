@@ -17,6 +17,7 @@ function say(big, small, dots) {
 function showForm(focusId) {
   $("form").classList.remove("hidden");
   $("again").classList.toggle("hidden", !saved);
+  $("dl").classList.toggle("hidden", !q.get("downloads"));
   const el = $(focusId || "addr");
   if (el) el.focus();
 }
@@ -53,6 +54,7 @@ async function look(first) {
 $("go").addEventListener("click", () => { const v = $("addr").value.trim(); if (v) connect(v); else $("addr").focus(); });
 $("find").addEventListener("click", () => look(false));
 $("again").addEventListener("click", () => connect(saved));
+$("dl").addEventListener("click", () => G.downloads.open());
 $("addr").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
 
 G.info().then((i) => { $("foot").textContent = "Glowfin for computers " + i.version + (i.gameMode ? " · Steam + X opens the keyboard" : " · F11 for full screen"); }).catch(() => {});
@@ -70,7 +72,7 @@ else {
 // A controller: stick or D-pad moves between the box and the buttons, A presses, like on the TV
 (function pad() {
   let last = 0, held = "";
-  const order = () => ["addr", "go", "find", "again"].map($).filter((el) => el && !el.disabled && !el.classList.contains("hidden") && !$("form").classList.contains("hidden"));
+  const order = () => ["addr", "go", "find", "again", "dl"].map($).filter((el) => el && !el.disabled && !el.classList.contains("hidden") && !$("form").classList.contains("hidden"));
   const move = (d) => { const l = order(); if (!l.length) return; const i = l.indexOf(document.activeElement); l[Math.max(0, Math.min(l.length - 1, (i < 0 ? 0 : i + d)))].focus(); };
   const tick = () => {
     const p = Array.from((navigator.getGamepads && navigator.getGamepads()) || []).find(Boolean);

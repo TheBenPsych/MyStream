@@ -15,6 +15,15 @@ const api = {
   changeServer: () => call("change-server"),
   onUpdateReady: (fn) => ipcRenderer.on("glowfin:update-ready", (e, version) => { try { fn(version); } catch (err) { /* the page's problem */ } }),
 };
+// Movies and episodes kept on this computer for watching with no connection
+api.downloads = {
+  list: () => call("dl-list"),
+  start: (job) => call("dl-start", job),
+  remove: (id) => call("dl-remove", id),
+  position: (id, seconds, done) => call("dl-position", id, seconds, done),
+  open: (id) => call("dl-open", id),
+  onChange: (fn) => ipcRenderer.on("glowfin:dl-changed", (e, item) => { try { fn(item); } catch (err) { /* the page's problem */ } }),
+};
 // Only the built-in "Find Tower" screen can look around the network or change the address
 if (location.protocol === "file:") {
   api.findTower = () => call("find-tower");

@@ -12,6 +12,10 @@ const os = require("os");
 const http = require("http");
 const https = require("https");
 const A = require("./address");
+const D = require("./downloads");
+
+// The offline library gets its own kind of address (must be set up before the app starts)
+D.registerScheme();
 
 const CONFIG = path.join(app.getPath("userData"), "config.json");
 const readConfig = () => {
@@ -38,7 +42,8 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 let win = null;
 const serverOrigin = () => (config.server ? A.origin(config.server) : "");
 const isOurs = (url) => { const o = serverOrigin(); return !!o && A.origin(url) === o; };
-const isLocalPage = (url) => String(url || "").startsWith("file://");
+// The shell's own pages: the "Find Tower" screen and the offline library
+const isLocalPage = (url) => { const u = String(url || ""); return u.startsWith("file://") || u.startsWith("glowfin-offline://app/"); };
 
 // ---------- talking to Tower ----------
 // Asks an address "are you Glowfin?" (Tower's helper answers /health with ok: true)
@@ -76,7 +81,7 @@ async function findTower() {
 // ---------- the window ----------
 function showConnect(why) {
   if (!win || win.isDestroyed()) return;
-  win.loadFile(path.join(__dirname, "connect.html"), { query: { why: why || "first", server: config.server || "" } });
+  win.loadFile(path.join(__dirname, "connect.html"), { query: { why: why || "first", server: config.server || "", downloads: D.hasAny() ? "1" : "" } });
 }
 
 async function openGlowfin() {
@@ -154,6 +159,13 @@ handle("glowfin:hardware", trusted, async () => {
     ramGb: Math.round(os.totalmem() / 1073741824 * 10) / 10, gpu,
   };
 });
+// Downloads to watch with no connection (downloads.js). Only Tower's own pages can start one.
+const fromTower = (e) => isOurs(e.senderFrame && e.senderFrame.url);
+handle("glowfin:dl-list", trusted, () => D.list());
+handle("glowfin:dl-start", fromTower, (e, job) => D.start(job));
+handle("glowfin:dl-remove", trusted, (e, id) => D.remove(id));
+handle("glowfin:dl-position", trusted, (e, id, seconds, done) => D.setPosition(id, seconds, done));
+handle("glowfin:dl-open", trusted, (e, id) => { if (win) win.loadURL(D.PAGE + (/^[0-9a-f]{32}$/.test(String(id || "")) ? "#/play/" + id : "#/")); });
 handle("glowfin:find-tower", localOnly, () => findTower());
 handle("glowfin:connect", localOnly, async (e, typed) => {
   const base = A.normalize(typed);
@@ -182,6 +194,7 @@ else {
     ses.setDisplayMediaRequestHandler((request, cb) => {
       desktopCapturer.getSources({ types: ["screen", "window"] }).then((sources) => (sources.length ? cb({ video: sources[0] }) : cb({}))).catch(() => cb({}));
     }, { useSystemPicker: true });
+    D.init({ allowed: isOurs, notify: (m) => BrowserWindow.getAllWindows().forEach((w) => { if (!w.isDestroyed()) w.webContents.send("glowfin:dl-changed", m); }) });
     createWindow();
     require("./update").start(() => win);
   });

@@ -11,10 +11,16 @@ on:
     paths:
       - desktop/**
       - .github/workflows/desktop.yml
+      # The offline player inside the app borrows these two from the browser version
+      - server/web/js/pad.js
+      - server/web/vendor/hls.min.js
   pull_request:
     paths:
       - desktop/**
       - .github/workflows/desktop.yml
+      # The offline player inside the app borrows these two from the browser version
+      - server/web/js/pad.js
+      - server/web/vendor/hls.min.js
   workflow_dispatch:
 
 defaults:
