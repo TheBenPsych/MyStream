@@ -26,7 +26,6 @@ class MusicArrivals
         @param:DefaultCoroutineScope private val scope: CoroutineScope,
         private val music: BenflixMusic,
         private val library: MusicLibrary,
-        private val musicService: MusicService,
         private val serverRepository: ServerRepository,
     ) {
         private var lastAt = 0L
@@ -76,19 +75,9 @@ class MusicArrivals
                 BenflixNotices.Card(
                     id = "music-arrived-${asked.id}",
                     title = "\"${asked.title}\" is here",
-                    line = "Press OK to play it next",
+                    line = "You asked for it",
                     image = asked.cover,
                     whilePlaying = true,
-                    onOpen = {
-                        scope.launch {
-                            if (musicService.state.value.queueSize == 0) {
-                                musicService.playList(listOf(song), 0, false, song.id, "Songs you asked for")
-                            } else {
-                                musicService.playNextSong(song)
-                            }
-                            BenflixNotices.pill("\"${asked.title}\" plays next")
-                        }
-                    },
                 ),
             )
         }

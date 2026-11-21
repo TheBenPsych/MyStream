@@ -396,13 +396,14 @@ class RequestArrivedViewModel
     }
 
 /**
- * Starts the watching, and turns each new arrival into a 7-second corner card ("Mickey 17 is ready", OK to watch).
+ * Starts the watching, and turns each new arrival into a 7-second corner card ("Mickey 17 is ready").
+ * It only tells you (Ben 2026-11-21): nothing to press, OK and taps keep going to the page under it.
  * Cards wait while something plays (the notice layer holds them), and each one shows once per device.
  */
 @Composable
 fun RequestArrivedLayer(
     @Suppress("UNUSED_PARAMETER") currentDestination: Destination?,
-    viewModel: RequestArrivedViewModel = hiltViewModel(),
+    @Suppress("UNUSED_PARAMETER") viewModel: RequestArrivedViewModel = hiltViewModel(),
 ) {
     val tips by RequestReadyNotice.tips.collectAsState()
     LaunchedEffect(tips) {
@@ -413,10 +414,6 @@ fun RequestArrivedLayer(
                     title = "${tip.title} is ready",
                     line = "You asked for it",
                     image = tip.posterUrl,
-                    onOpen = {
-                        RequestReadyNotice.tipDone(tip)
-                        viewModel.navigationManager.navigateTo(tip.destination ?: Destination.Requests)
-                    },
                     onTimeout = { RequestReadyNotice.tipDone(tip) },
                 ),
             )

@@ -323,7 +323,7 @@ const homeNotices = async (c, ready) => {
   try { carded = JSON.parse(localStorage.getItem("benflix.carded") || "[]"); } catch (e) {}
   const fresh = ready.filter((r) => !carded.includes(r.id));
   // The very first time, only remember what's already here (no pile of old cards)
-  if (localStorage.getItem("benflix.carded") !== null) fresh.slice().reverse().forEach((r) => B.corner({ id: r.id, title: `${r.name} is ready`, line: "You asked for it", img: r.img, href: r.href }));
+  if (localStorage.getItem("benflix.carded") !== null) fresh.slice().reverse().forEach((r) => B.corner({ id: r.id, title: `${r.name} is ready`, line: "You asked for it", img: r.img }));
   try { localStorage.setItem("benflix.carded", JSON.stringify(carded.concat(fresh.map((r) => r.id)).slice(-60))); } catch (e) {}
   const saved = String(c["benflix.messages"] || "").split("\u001E").map((r) => r.split("\u001F")).filter((f) => f.length >= 3 && f[1] !== "Message from " + B.me.name);
   if (!saved.length) return;
