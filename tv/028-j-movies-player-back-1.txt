@@ -1,0 +1,34 @@
+  [204,61][242,99] Back
+  [250,62][363,98] Movies
+  [413,32][509,128] Home
+  [514,63][526,97] ›
+  [538,32][640,128] Movies
+  [652,63][664,97] ›
+  [676,63][1025,97] Night of the Living Dead
+  [1654,50][1771,110] 8:59
+  [1779,73][1824,104] AM
+  [164,212][436,384] Night of the Living Dead
+  [164,396][513,432] They Won't Stay Dead!
+  [176,488][217,522] NR
+  [249,485][756,524] 1968 · 1h 35m · Horror · Thriller
+  [784,486][1286,522] IMDb 7.6   Rotten Tomatoes 95%
+  [1326,487][1366,521] SD
+  [1402,486][1493,522] Stereo
+  [164,548][1058,677] A group of strangers trapped in a farmhouse find themselves fending off a horde of recently dead, flesh-eating ghouls.
+  [516,733][624,772] Trailer
+  [760,733][882,772] My List
+  [1018,733][1093,772] Rate
+  [1229,733][1315,772] More
+* [164,705][412,801] 
+  [248,733][380,772] Resume
+  [164,808][286,844] 55m left
+  [164,888][440,933] Cast and crew
+  [164,953][364,1080] Judith O'Dea
+  [392,953][592,1080] Duane Jones
+  [620,953][820,1080] Marilyn Eastman
+  [848,953][1048,1080] Karl Hardman
+  [1092,986][1260,1080] 
+  [1320,986][1488,1080] 
+  [1548,986][1716,1080] 
+  [1776,986][1920,1080] 
+  [34,1002][90,1058] demo

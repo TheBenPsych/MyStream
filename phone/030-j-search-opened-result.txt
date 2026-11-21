@@ -1,0 +1,29 @@
+  [59,175][103,217] Back
+  [113,176][242,219] Search
+  [37,217][154,310] Home
+  [157,256][172,295] ›
+  [184,217][301,310] Search
+  [39,870][368,1027] The Boy in the Plastic Bubble
+  [39,1042][727,1081] A lifetime of loneliness...Or one day of love
+  [54,1146][99,1182] PG
+  [139,1141][749,1186] 1976 · 1h 33m · TV Movie · Drama
+  [39,1211][184,1250] IMDb 5.7
+  [54,1277][98,1313] SD
+  [143,1277][245,1313] Stereo
+  [531,1365][613,1410] Play
+  [67,1539][168,1575] Trailer
+  [344,1539][455,1575] My List
+  [646,1539][715,1575] Rate
+  [923,1539][1003,1575] More
+  [39,1615][1041,1868] Tod Lubitch is born with a deficient immune system. As such, he must spend the rest of his life in a completely sterile environment. His room is completely hermetically sealed against bacteria and virus, his food is specially prepared, and his only human contact comes in the form of gloved hands. The movie follows his life into a teenager.
+  [39,1917][340,1966] Cast and crew
+  [39,1991][255,2175] John Travolta
+  [300,2017][476,2175] 
+  [541,2017][717,2175] 
+  [782,2017][958,2175] 
+  [1023,2017][1080,2175] 
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

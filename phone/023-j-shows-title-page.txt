@@ -1,0 +1,9 @@
+  [39,153][191,207] Shows
+  [208,1156][872,1230] Nothing in Shows yet
+  [118,1255][963,1300] Once the server has some, they show up here.
+  [486,1382][664,1427] Try again
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][587,2312] Shows
+  [713,2279][799,2312] Anime
+  [937,2279][1008,2312] More

@@ -1,0 +1,40 @@
+  [204,61][242,99] Back
+  [250,62][363,98] Movies
+  [413,32][509,128] Home
+  [514,63][526,97] ›
+  [538,32][640,128] Movies
+  [652,63][664,97] ›
+  [676,63][1025,97] Night of the Living Dead
+  [1657,50][1771,110] 8:57
+  [1779,73][1824,104] AM
+  [164,136][364,181] Judith O'Dea
+  [216,181][312,215] Barbra
+  [392,136][592,181] Duane Jones
+  [465,181][519,215] Ben
+  [620,136][820,181] Marilyn Eastman
+  [623,181][818,215] Helen Cooper
+  [848,136][1048,181] Karl Hardman
+  [851,181][1045,215] Harry Cooper
+  [1076,136][1276,181] Judith Ridley
+  [1141,181][1212,215] Judy
+  [1306,136][1502,181] Keith Wayne
+  [1374,181][1435,215] Tom
+  [1543,136][1722,181] Kyra Schon
+  [1532,181][1732,215] Karen Cooper / Corpse in House
+  [1760,136][1920,181] Charles Craig
+  [1760,181][1920,215] TV Newscaster / Zombie
+  [164,259][430,304] More like this
+* [164,324][356,612] 
+  [164,324][356,612] The Great St. Louis Bank Robbery
+  [164,688][286,733] About
+  [164,753][917,789] Director George A. Romero, Vincent D. Survinski
+  [1148,753][1265,792] Details
+  [1148,800][1340,836] Studio
+  [1340,800][1495,836] Image Ten
+  [1148,844][1340,880] Released
+  [1340,844][1581,880] October 4, 1968
+  [1148,888][1340,924] Genres
+  [1340,888][1560,924] Horror, Thriller
+  [1148,932][1340,968] Country
+  [1340,932][1715,968] United States of America
+  [34,1002][90,1058] demo

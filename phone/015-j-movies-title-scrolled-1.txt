@@ -1,0 +1,39 @@
+  [59,175][103,217] Back
+  [113,176][246,219] Movies
+  [47,217][165,310] Movies
+  [178,256][193,295] ›
+  [208,256][597,295] Night of the Living Dead
+  [54,328][98,364] SD
+  [143,328][245,364] Stereo
+  [498,416][647,461] Resume
+  [67,590][168,626] Trailer
+  [344,590][455,626] My List
+  [646,590][715,626] Rate
+  [923,590][1003,626] More
+  [39,666][1041,815] A group of strangers trapped in a farmhouse find themselves fending off a horde of recently dead, flesh-eating ghouls.
+  [39,864][340,913] Cast and crew
+  [39,938][255,1154] Judith O'Dea
+  [42,1179][253,1257] Judith O'Dea
+  [97,1257][197,1293] Barbra
+  [280,938][496,1154] Duane Jones
+  [284,1179][493,1257] Duane Jones
+  [359,1257][417,1293] Ben
+  [521,938][737,1154] Marilyn Eastman
+  [521,1179][737,1257] Marilyn Eastman
+  [527,1257][732,1293] Helen Cooper
+  [762,938][978,1154] Karl Hardman
+  [762,1179][978,1257] Karl Hardman
+  [769,1257][971,1293] Harry Cooper
+  [1023,964][1080,1128] 
+  [1005,1179][1080,1257] Judith Ridley
+  [1074,1257][1080,1293] Judy
+  [39,1342][329,1391] More like this
+  [39,1416][357,1892] The Great St. Louis Bank Robbery
+  [54,1912][342,1990] The Great St. Louis Bank Robbery
+  [54,1990][125,2026] 1959
+  [39,2134][174,2175] About
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

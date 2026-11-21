@@ -1,0 +1,7 @@
+  [39,153][209,207] Live TV
+  [78,300][1002,2097] No live channels yet. Tower adds them when Live TV is set up.
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

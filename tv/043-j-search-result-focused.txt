@@ -1,0 +1,34 @@
+  [188,51][360,109] Search
+  [1662,50][1771,110] 9:01
+  [1779,73][1824,104] AM
+  [237,187][268,229] 
+* [308,160][664,248] the
+  [332,184][380,232] Search
+  [704,191][737,225] 
+  [232,282][705,321] The Boy in the Plastic Bubble
+  [232,357][740,436] The Great St. Louis Bank Robbery
+  [232,472][630,511] The Great Train Robbery
+  [232,547][555,586] The Man From Mars
+  [232,622][627,661] Night of the Living Dead
+  [232,697][740,776] Thraximundar (He Who Paints The Earth Red)
+  [788,184][1367,220] Nothing in Live TV · Books · Ask for it
+  [812,256][933,295] Movies
+  [949,258][970,294] 4
+  [788,319][996,631] The Boy in the Plastic Bubble
+  [788,639][996,675] The Boy in the Plastic Bubble
+  [788,683][965,717] Movie · 1976
+  [1024,319][1232,631] The Great St. Louis Bank Robbery
+  [1024,639][1232,675] The Great St. Louis Bank Robbery
+  [1024,683][1203,717] Movie · 1959
+  [1260,319][1468,631] The Great Train Robbery
+  [1260,639][1468,675] The Great Train Robbery
+  [1260,683][1440,717] Movie · 1903
+  [1496,319][1704,631] Night of the Living Dead
+  [1496,639][1704,675] Night of the Living Dead
+  [1496,683][1675,717] Movie · 1968
+  [812,761][923,800] Shows
+  [939,763][959,799] 3
+  [788,824][996,1080] The Man From Mars
+  [1024,824][1232,1080] Alone in the Night
+  [1260,824][1468,1080] War of the World
+  [34,1002][90,1058] demo

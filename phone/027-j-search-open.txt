@@ -1,0 +1,26 @@
+  [39,153][199,207] Search
+  [108,285][147,336] 
+* [196,251][903,369] 
+  [226,281][285,340] Search
+  [952,290][993,331] 
+  [78,399][1021,482] Tip  Search can find any movie, show or actor. Not on Glowfin yet? You can ask for it.
+  [98,532][253,571] BROWSE
+  [137,661][282,708] Genres
+  [583,661][875,708] Channel types
+  [137,872][327,919] Consoles
+  [142,1064][907,1109] Watch in order: Marvel, Star Wars and more
+  [98,1184][371,1240] Pick a mood
+  [232,1361][454,1406] Binge Mode
+  [654,1361][1021,1406] Something Thoughtful
+  [98,1555][467,1611] Browse by genre
+  [127,1723][250,1768] Action
+  [593,1723][750,1768] Comedy
+  [127,1909][319,1954] Animation
+  [593,1909][717,1954] Horror
+  [127,2095][232,2140] Sci-fi
+  [593,2095][716,2140] Drama
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

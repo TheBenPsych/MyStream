@@ -1,0 +1,43 @@
+  [39,153][199,207] Search
+  [108,285][147,336] 
+* [196,251][903,369] the
+  [226,281][285,340] Search
+  [952,290][993,331] 
+  [112,396][577,435] The Boy in the Plastic Bubble
+  [665,396][1060,435] The Great St. Louis Bank Robbery
+  [78,492][681,531] Nothing in Live TV · Books · Ask for it
+  [108,570][245,615] Movies
+  [265,573][289,612] 4
+  [78,645][323,1013] The Boy in the Plastic Bubble
+  [78,1023][323,1062] The Boy in the Plastic Bubble
+  [78,1072][263,1108] Movie · 1976
+  [348,645][593,1013] The Great St. Louis Bank Robbery
+  [348,1023][593,1062] The Great St. Louis Bank Robbery
+  [348,1072][535,1108] Movie · 1959
+  [618,645][863,1013] The Great Train Robbery
+  [618,1023][863,1062] The Great Train Robbery
+  [618,1072][806,1108] Movie · 1903
+  [888,645][1060,1013] Night of the Living Dead
+  [888,1023][1060,1062] Night of the Living Dead
+  [888,1072][1060,1108] Movie · 1968
+  [108,1157][234,1202] Shows
+  [254,1160][277,1199] 3
+  [78,1232][323,1600] The Man From Mars
+  [78,1610][323,1649] The Man From Mars
+  [78,1659][305,1695] Episode · S1 E2
+  [348,1232][593,1600] Alone in the Night
+  [348,1610][593,1649] Alone in the Night
+  [348,1659][575,1695] Episode · S1 E3
+  [618,1232][863,1600] War of the World
+  [618,1610][863,1649] War of the World
+  [618,1659][845,1695] Episode · S1 E6
+  [108,1744][222,1789] Music
+  [242,1747][258,1786] 1
+  [78,1819][353,2094] Thraximundar (He Who Paints The Earth Red)
+  [78,2104][353,2143] Thraximundar (He Who Paints The Earth Red)
+  [78,2153][353,2175] Song · Joshua Boniface
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

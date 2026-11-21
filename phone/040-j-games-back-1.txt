@@ -1,0 +1,4 @@
+  [106,1192][965,1249] Type for sdk_google_atv64_x86_64
+  [106,1281][974,1372] The TV is on Search. What you type shows up there.
+* [106,1398][974,1524] c
+  [148,1581][237,1622] Done

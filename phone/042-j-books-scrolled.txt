@@ -1,0 +1,11 @@
+  [39,153][181,207] Books
+  [69,1026][1011,1146] Couldn't reach the Books helper on Tower
+  [69,1171][1011,1320] If Books is new, Tower's Glowfin helper needs its setup run once more (the same one-line paste as before).
+  [69,1345][1011,1429] Tower answered, but not with Books (the helper may be old or not running).
+* [368,1474][713,1592] 
+  [486,1511][664,1556] Try again
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More
