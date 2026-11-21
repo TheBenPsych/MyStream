@@ -176,8 +176,26 @@ fun SearchPage(
             }
         }
     }
+    // Ben: Search opens (and comes back) on the search box, not the microphone beside it.
+    // Asking the whole row for focus could still land on the microphone (its first button),
+    // so TVs ask the box itself, with a couple of tries while the page settles in.
+    val searchFieldFocus = remember { FocusRequester() }
+    val focusSearchRow: suspend () -> Unit = {
+        var landed = false
+        var tries = 0
+        while (isTv && !landed && tries < 3) {
+            landed = searchFieldFocus.tryRequestFocus()
+            if (!landed) delay(80)
+            tries++
+        }
+        if (!landed) focusRequesters[SEARCH_ROW].tryRequestFocus()
+    }
     LaunchedEffect(Unit) {
-        focusRequesters.getOrNull(position.row)?.tryRequestFocus()
+        if (position.row == SEARCH_ROW) {
+            focusSearchRow()
+        } else {
+            focusRequesters.getOrNull(position.row)?.tryRequestFocus()
+        }
     }
     val searchContext = LocalContext.current
     val onClickItem = { _: Int, item: BaseItem ->
@@ -284,7 +302,7 @@ fun SearchPage(
     }
     BackHandler(keyboardHasFocus) {
         keyboardOpen = false
-        focusRequesters[SEARCH_ROW].tryRequestFocus()
+        if (!(isTv && searchFieldFocus.tryRequestFocus())) focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
     val suggestions by viewModel.suggestions.collectAsState()
     val foundBooks by viewModel.books.collectAsState()
@@ -303,7 +321,7 @@ fun SearchPage(
         var isSearchActive by remember { mutableStateOf(false) }
         // Phones type as soon as you tap the box; TVs wait for the OK button
         var isTextFieldFocused by remember { mutableStateOf(false) }
-        val textFieldFocusRequester = remember { FocusRequester() }
+        val textFieldFocusRequester = searchFieldFocus
 
         BackHandler(isTv && isTextFieldFocused) {
             when {
