@@ -2355,3 +2355,18 @@ a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offs
 @media (max-width: 600px) {
   .door-top .info { text-shadow: 0 1px 3px rgba(0,0,0,.8), 0 0 14px rgba(0,0,0,.6); }
 }
+
+/* "What happens next" on a title that isn't on Glowfin yet (Ben 2026-11-20): three steps, lit up to where the ask is */
+.ask-steps{background:#12152A;border:1px solid #262A45;border-radius:14px;padding:14px 18px;margin-bottom:12px}
+.ask-steps h4{margin:0 0 12px;font-size:17px;font-weight:700}
+.ask-steps ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.ask-steps li{display:flex;gap:10px;min-width:0}
+.ask-steps li i{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid #9AA0C3;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:15px;color:#C6CBE8}
+.ask-steps li.now i,.ask-steps li.done i{border:0;background:linear-gradient(135deg,#A55BE0,#1FA8E6 60%,#3FE0E8);color:#0B0D1A}
+.ask-steps li b{display:block;font-size:15px;color:#C6CBE8}
+.ask-steps li.now b{color:#ECEEFB}
+.ask-steps li span{display:block;font-size:14px;line-height:1.35;color:#9AA0C3;margin-top:2px}
+.ask-steps li.now span{color:#C6CBE8}
+.ask-steps .bar{height:5px;border-radius:3px;background:#262A45;margin-top:14px;overflow:hidden}
+.ask-steps .bar u{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#A55BE0,#1FA8E6 60%,#3FE0E8)}
+@media (max-width:600px){.ask-steps ol{grid-template-columns:1fr;gap:12px}}

@@ -57,6 +57,14 @@
     const who = (r) => (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone";
     const asked = asks.length ? `<div class="tp-asked">${asks.slice(0, 4).map((r) => `<div class="item"><div class="grow"><div class="s">Asked by <b>${esc(who(r))}</b> · ${esc(B.when ? B.when(r.createdAt) : "")}${r.status === 1 ? " · waiting for a yes" : r.status === 3 ? " · said no" : ""}</div></div>
       ${admin && r.status === 1 ? `<div class="acts"><button class="btn small white" data-ayes="${r.id}">Yes</button><button class="btn small" data-ano="${r.id}">No</button></div>` : ""}</div>`).join("")}</div>` : "";
+    // What happens next: three plain steps, lit up to where the ask is now (same as the TV and phone app)
+    const at = status === 2 ? 1 : status === 3 ? 2 : 0;
+    const stepList = [
+      [admin ? "It gets a yes" : "Ben says yes", admin ? "Your own asks start right away." : at === 1 ? "Waiting now. Usually within a day." : "Usually within a day."],
+      ["Glowfin fetches it", at === 2 ? "Getting it now. Most take an hour or two." : "It finds a good copy. Most take an hour or two."],
+      ["Ready to watch", "It lands in Recently added on Home."],
+    ];
+    const steps = here || kids || status > 3 ? "" : `<div class="ask-steps"><h4>What happens next</h4><ol>${stepList.map((s, i) => `<li class="${at === i + 1 ? "now" : at > i + 1 ? "done" : ""}"><i>${i + 1}</i><div><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div></li>`).join("")}</ol><div class="bar"><u style="width:${at === 1 ? 17 : at === 2 ? 50 : 0}%"></u></div></div>`;
     const genres = (d.genres || []).slice(0, 4).map((g) => `<span class="chip">${esc(g.name)}</span>`).join("");
     const cast = ((d.credits && d.credits.cast) || []).slice(0, 20);
     const tp = B.titlePage({
@@ -69,7 +77,7 @@
       status: pending.length && admin ? "Someone asked for this. Say yes or no in Overview." : "",
       story: d.overview || "",
       strip,
-      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
+      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${steps}${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
       tabs: [
         { name: "More to ask for", id: "tpAskMore", load: async (pane) => {
           const [rec, sim] = await Promise.all([
