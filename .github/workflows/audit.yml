@@ -181,7 +181,7 @@ jobs:
             echo "$url" > results/speed/wholphin-url.txt
             curl -fsSL -o wholphin.apk "$url" && timeout 300 adb install -r -g wholphin.apk || echo "could not install Wholphin"
             cd tools/audit
-            timeout 900 python3 speed.py "$PKG" benflix ../../results/speed || echo "benflix speed run failed"
+            timeout 1500 python3 speed.py "$PKG" benflix ../../results/speed || echo "benflix speed run failed"
             timeout 900 python3 speed.py com.github.damontecres.wholphin wholphin ../../results/speed || echo "wholphin speed run failed"
             cd ../..
             mv tools/audit/*.png results/speed/ 2>/dev/null || true
