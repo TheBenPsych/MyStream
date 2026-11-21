@@ -2,6 +2,7 @@
    buttons) and the whole of Glowfin works from it, like a remote on the TV:
      stick or D-pad  move the highlight          A  pick            B  back
      Y  search       Start  the menu             LB / RB  tab left and right
+     X  more choices for the highlighted thing (like a right-click)
      LT / RT (or the right stick)  scroll the page
    Typing boxes open an on-screen keyboard. In the video player A is play and pause, left and right skip
    10 seconds, and up, down or X moves onto the buttons (Live TV: up and down change the channel). Console games and the Lobby read the controller
@@ -375,6 +376,12 @@
     }
     if (a === "ok") return press();
     if (a === "back") return back();
+    // X is "more choices" for the thing under the highlight, like a right-click (Mark as watched, Download...)
+    if (a === "x") {
+      const el = current();
+      if (el) { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })); }
+      return;
+    }
     if (a === "y") { if (window.B && window.B.me && !/^#\/(who|signin|search)/.test(hash())) window.B.go("#/search"); return; }
     if (a === "start") { const m = $(".brail .rl-i.on") || $(".brail .rl-i"); if (m && visible(m)) focusEl(m); return; }
     if (a === "lb") return tab(-1);
@@ -438,7 +445,7 @@
       if (!down[a]) { delete held[a]; return; }
       const h = held[a];
       if (!h) { held[a] = { since: now, last: now }; act(a); return; }
-      if (REPEATS[a] && now - h.since > 420 && now - h.last > 110) { h.last = now; act(a); }
+      if (REPEATS[a] && (a !== "x" || osk.el) && now - h.since > 420 && now - h.last > 110) { h.last = now; act(a); }
       else if (PLAYER.test(hash()) && (a === "lt" || a === "rt") && now - h.last > 250) { h.last = now; act(a); }
     });
   }

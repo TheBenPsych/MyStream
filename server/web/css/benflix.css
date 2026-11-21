@@ -2413,3 +2413,7 @@ html.pad-on .osk-row button.pad-focus { outline-offset: 2px; box-shadow: none; }
 /* With a controller the mouse pointer may be resting over the side menu: it only opens when the highlight is on it */
 html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .osk-last .wide { text-align: center; }
+/* Me > Downloads (only in the Glowfin app for computers) */
+.dlrow { gap: 10px; }
+.dlbar { height: 5px; border-radius: 3px; background: var(--pg4); margin-top: 8px; max-width: 420px; overflow: hidden; }
+.dlbar i { display: block; height: 100%; background: #3FE0E8; transition: width .4s; }

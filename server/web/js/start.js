@@ -344,6 +344,7 @@ const homeNotices = async (c, ready) => {
 B.profileItems = () => [
   ["#/mine", "chart", "My watching", "Your hours, top shows and streaks"],
   ["#/settings", "gear", "Settings", "Picture, sound, subtitles, Home rows"],
+  B.offline && B.offline.can() ? ["#/downloads", "dl", "Downloads", "Watch on this computer with no connection"] : null,
   B.me && B.me.admin ? ["#/server", "server", "Server", "Who's watching and how the server is doing"] : null,
   B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together", "Start or join a room"] : null,
   ["#/help", "help", "Help and updates", "Guides and what's new"],

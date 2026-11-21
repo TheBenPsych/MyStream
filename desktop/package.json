@@ -10,7 +10,7 @@
   "main": "app/main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check app/main.js && node --check app/preload.js && node app/selftest.js",
+    "check": "node --check app/main.js && node --check app/preload.js && node --check app/downloads.js && node --check app/offline.js && node --check app/connect.js && node app/selftest.js",
     "dist:linux": "electron-builder --linux AppImage deb --x64 --publish never",
     "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
@@ -27,7 +27,22 @@
     "artifactName": "Glowfin-${os}.${ext}",
     "files": [
       "app/**/*",
-      "package.json"
+      "package.json",
+      {
+        "from": "../server/web/vendor",
+        "to": "app/vendor",
+        "filter": [
+          "hls.min.js",
+          "hls.LICENSE.txt"
+        ]
+      },
+      {
+        "from": "../server/web/js",
+        "to": "app/vendor",
+        "filter": [
+          "pad.js"
+        ]
+      }
     ],
     "directories": {
       "buildResources": "build",
