@@ -32,6 +32,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.door.DoorViewModel
 import com.github.damontecres.wholphin.ui.main.BenflixGenre
 import com.github.damontecres.wholphin.ui.main.GenreTile
@@ -231,7 +232,7 @@ fun SearchStart(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // same heading look as "Pick a mood" above it (it used a different letter style)
-                com.github.damontecres.wholphin.ui.cards.ItemRowTitle("Browse by genre")
+                ItemRowTitle("Browse by genre")
                 // Phones: two tiles side by side, sharing the width (a fixed tile width left only one per line)
                 val isTv = rememberIsTv()
                 // Kids: no Horror, Thriller or Crime tiles (their pages would be nearly empty for Kids anyway)
