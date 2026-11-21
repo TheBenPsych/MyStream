@@ -139,6 +139,21 @@ fun RequestTitlePage(
                                             fallbackAudience = rating?.audienceRating?.let { (it * 10).roundToInt() },
                                             modifier = Modifier.padding(bottom = 6.dp),
                                         )
+                                        // What happens next: three plain steps, lit up to where the ask is now
+                                        val step =
+                                            when (availability) {
+                                                SeerrAvailability.UNKNOWN -> 0
+                                                SeerrAvailability.PENDING -> 1
+                                                SeerrAvailability.PROCESSING -> 2
+                                                else -> null
+                                            }
+                                        if (step != null && !kids && !blocked && (step > 0 || canRequest)) {
+                                            AskStepsBlock(
+                                                at = step,
+                                                isAdmin = isAdmin,
+                                                modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+                                            )
+                                        }
                                         // Who asked (one line), with Approve / Decline for Ben
                                         WhoAskedBlock(
                                             isMovie = isMovie,
