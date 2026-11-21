@@ -167,7 +167,8 @@ B.RQ_GROUPS = [["ready", "Ready"], ["getting", "Getting it"], ["looking", "Still
 B.rqPillHtml = (p) => `<span class="rqpill p-${esc(p.k)}">${esc(p.w)}</span>`;
 B.seerrPill = (r) => {
   const ms = r.media ? r.media.status : 0;
-  if (r.status === 3 || r.status === 4) return { k: "cant", w: "Couldn't find it" };
+  if (r.status === 3) return { k: "cant", w: "Ben said no" };
+  if (r.status === 4) return { k: "cant", w: "Couldn't find it" };
   if (ms === 5) return { k: "ready", w: "Ready to watch" };
   if (ms === 4) return { k: "getting", w: "Getting it · partly here" };
   if (r.status === 1) return { k: "asked", w: "Asked · waiting for Ben" };
@@ -272,6 +273,7 @@ B.route(/^\/requests/, async (m, nav) => {
       seerr(`/request?take=40&skip=0&sort=added&requestedBy=${me.jellyseerrUserId}`).catch(() => null),
       B.me.admin ? seerr(`/request?take=40&skip=0&sort=added&filter=pending`).catch(() => null) : null,
     ]);
+    await B.loadReasons();
     lists = { mine: await B.seerrNamed(mine, tab), waiting: await B.seerrNamed(waiting, tab) };
   };
   // Layout C on every tab: the list on the left picks what the poster wall on the right shows
@@ -292,6 +294,7 @@ B.route(/^\/requests/, async (m, nav) => {
       const id = (y || n).dataset.yes || (y || n).dataset.no;
       B.busy(y || n, async () => {
         await B.jf("POST", `/JellyfinEnhanced/arr/requests/${id}/${y ? "approve" : "decline"}`).catch(() => {});
+        if (!y) await B.whyNo("seerr:" + id);
         await loadLists();
         if (B.alive(nav)) { if (animeUi) animeUi.drawSide(); B.closeAll(); openList(which); }
         return y ? "Said yes. Tower starts looking now." : "Said no.";
@@ -425,6 +428,56 @@ B.seerrNamed = async (l, tab) => {
   if (!tab) return items;
   return items.filter((r) => (tab === "movies" ? !r.media.anime : tab === "shows" ? !r.media.anime : r.media.anime));
 };
+// Why Ben said no (2026-11-21): Ben can pick a ready-made reason or type his own after saying no; whoever asked
+// sees it on their list. Kept on Tower, keyed "seerr:<request number>".
+B.reasons = {};
+B.loadReasons = () => B.call("GET", "api/asks/reasons").then((d) => { B.reasons = (d && d.reasons) || {}; }).catch(() => {});
+B.NO_REASONS = ["We already have it", "Not a good fit for Glowfin", "Too big for Tower right now", "It isn't out yet", "Ask me about this one"];
+B.whyNo = (key) => new Promise((done) => {
+  B.closeAll();
+  B.shade(() => done(""));
+  const m = document.createElement("form");
+  m.className = "modal";
+  m.innerHTML = `<h3>Tell them why?</h3><p>They'll see this next to their request. You can skip it.</p>
+    <div class="acts" style="margin-top:0">${B.NO_REASONS.map((x, i) => `<button class="btn small" type="button" data-r="${i}">${esc(x)}</button>`).join("")}</div>
+    <input class="field" name="v" type="text" maxlength="140" autocomplete="off" placeholder="Or type your own reason" style="margin-top:14px">
+    <div class="acts"><button class="btn white" type="submit">Send my reason</button><button class="btn" type="button" data-skip>Skip</button></div>`;
+  const send = async (reason) => {
+    B.closeAll();
+    if (reason) { await B.call("POST", "api/asks/reason", { key, reason }).catch(() => {}); B.reasons[key] = reason; }
+    done(reason || "");
+  };
+  m.onclick = (e) => {
+    const r = e.target.closest("[data-r]");
+    if (r) return send(B.NO_REASONS[+r.dataset.r]);
+    if (e.target.closest("[data-skip]")) send("");
+  };
+  m.onsubmit = (e) => { e.preventDefault(); send(m.elements.v.value.trim()); };
+  document.body.appendChild(m);
+  $("button", m).focus();
+});
+// Auto-yes (2026-11-21, Ben only): people Ben trusts get an automatic yes for movies and shows, up to a number a week
+B.autoYes = async () => {
+  const d = await B.call("GET", "api/asks/trust").catch((e) => ({ err: e.message }));
+  const people = (d && d.people) || [];
+  const p = B.side(`<h3>Auto-yes</h3><p class="dim">Tower says yes for you to movie and show requests from the people you switch on, up to their number each week. After that their requests wait for you as normal. Kids never get this.</p>`
+    + (d.err ? `<p class="dim">${esc(d.err)}</p>` : people.length ? `<div class="list">${people.map((x) => `<div class="item" data-p="${esc(x.id)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.on ? `${x.used} of ${x.weekly} used this week` : "Off: every request waits for you"}</div></div>
+      <div class="acts"><button class="btn small" data-less title="Fewer">-</button><b data-n style="min-width:22px;text-align:center">${x.weekly}</b><button class="btn small" data-more title="More">+</button><button class="btn small ${x.on ? "white" : ""}" data-on>${x.on ? "On" : "Off"}</button></div></div>`).join("")}</div>` : `<p class="dim">Nobody else has a profile yet.</p>`));
+  p.addEventListener("click", (e) => {
+    const row = e.target.closest("[data-p]");
+    if (!row || !e.target.closest("button")) return;
+    const x = people.find((q) => q.id === row.dataset.p);
+    if (e.target.closest("[data-on]")) x.on = !x.on;
+    else if (e.target.closest("[data-more]")) x.weekly = Math.min(20, x.weekly + 1);
+    else if (e.target.closest("[data-less]")) x.weekly = Math.max(1, x.weekly - 1);
+    else return;
+    const on = row.querySelector("[data-on]");
+    on.textContent = x.on ? "On" : "Off"; on.classList.toggle("white", x.on);
+    row.querySelector("[data-n]").textContent = x.weekly;
+    row.querySelector(".s").textContent = x.on ? `${x.used} of ${x.weekly} used this week` : "Off: every request waits for you";
+    B.call("POST", "api/asks/trust", { id: x.id, on: x.on, weekly: x.weekly }).catch((err) => B.toast(err.message));
+  });
+};
 B.seerrLine = (r, answer) => {
   const md = r.media || {};
   const who = (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone";
@@ -433,6 +486,7 @@ B.seerrLine = (r, answer) => {
   return {
     title: md.title || md.name || "Name not found", sub: [B.me.admin ? who : "", kind, B.when(r.createdAt)].filter(Boolean).join(" · "),
     cover: md.poster ? tmdbImg(md.poster, "w185") : "", pill: B.seerrPill(r), who: answer && B.me.admin ? who : "",
+    why: r.status === 3 && B.reasons["seerr:" + r.id] ? `Why: ${B.reasons["seerr:" + r.id]}` : "",
     acts: answer ? `<button class="btn small white" data-yes="${r.id}">Yes</button><button class="btn small" data-no="${r.id}">No</button>` : `<button class="btn small" data-ask="${esc(r.type)}:${esc(md.tmdbId)}">Open</button>`,
   };
 };
@@ -449,7 +503,7 @@ B.yoursTab = async (nav) => {
       B.call("GET", "api/music/status").catch(() => null),
       B.call("GET", "api/books/requests").catch(() => null),
     ]);
-    const [mine, waiting] = await Promise.all([B.seerrNamed(seerrMine), B.seerrNamed(seerrWaiting)]);
+    const [mine, waiting] = await Promise.all([B.seerrNamed(seerrMine), B.seerrNamed(seerrWaiting), B.loadReasons()]);
     if (!B.alive(nav)) return;
     const waitIds = new Set(waiting.map((r) => r.id));
     const lines = mine.filter((r) => !waitIds.has(r.id)).map((r) => B.seerrLine(r, false));
@@ -466,15 +520,17 @@ B.yoursTab = async (nav) => {
       all.forEach((r) => lines.push(Object.assign(line(r), { acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
       if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { who: r.who || "", acts: `<button class="btn small white" data-byes="${esc(r.id)}">Yes</button><button class="btn small" data-bno="${esc(r.id)}">No</button>` })));
     }
-    rows.innerHTML = `<div class="wrap">${B.me.admin && wait.length ? `<h3 class="section-title">Waiting for you <span class="rqpill p-looking">${wait.length}</span></h3>${B.rqLines(wait, false, "")}` : ""}
+    rows.innerHTML = `<div class="wrap">${B.me.admin ? `<p style="margin:0 0 12px"><button class="btn small" data-autoyes>Auto-yes for people you trust</button></p>` : ""}${B.me.admin && wait.length ? `<h3 class="section-title">Waiting for you <span class="rqpill p-looking">${wait.length}</span></h3>${B.rqLines(wait, false, "")}` : ""}
       ${B.rqLines(lines, true, "Nothing asked for yet. Pick a poster on any tab and ask for it.")}</div>`;
   };
   rows.onclick = (e) => {
+    if (e.target.closest("[data-autoyes]")) return B.autoYes();
     const b = e.target.closest("[data-yes],[data-no],[data-myes],[data-mno],[data-byes],[data-bno],[data-mretry]");
     if (!b) return;
     const d = b.dataset;
     B.busy(b, async () => {
       if (d.yes || d.no) await B.jf("POST", `/JellyfinEnhanced/arr/requests/${d.yes || d.no}/${d.yes ? "approve" : "decline"}`).catch(() => {});
+      if (d.no) await B.whyNo("seerr:" + d.no);
       if (d.myes || d.mno) await B.call("POST", `api/music/request/${d.myes || d.mno}/${d.myes ? "approve" : "decline"}`);
       if (d.byes || d.bno) await B.call("POST", "api/books/answer", { id: d.byes || d.bno, yes: !!d.byes });
       if (d.mretry) await B.call("POST", `api/music/request/${d.mretry}/retry`);

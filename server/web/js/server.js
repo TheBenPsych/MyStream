@@ -208,6 +208,7 @@ PAGES.overview = (el) => {
       const yes = !!r.dataset.yes;
       B.busy(r, async () => {
         await jf("POST", `/JellyfinEnhanced/arr/requests/${r.dataset.rq}/${yes ? "approve" : "decline"}`);
+        if (!yes) await B.whyNo("seerr:" + r.dataset.rq);
         draw(false);
         return yes ? "Said yes. It's on its way." : "Said no.";
       });

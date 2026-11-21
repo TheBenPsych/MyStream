@@ -1480,6 +1480,9 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
+            if path.startswith("/api/asks/"):
+                # Why Ben said no (everyone reads, Ben writes) and who gets an automatic yes (Ben only)
+                return self.send(200, asks_route(method, path, token, user_id, is_admin, is_kids, self.read_json))
             if method == "GET" and path == "/api/family":
                 # Ben's "Request for" picker: who he can ask for (grown-ups only, never Kids)
                 if not is_admin:
@@ -1914,6 +1917,203 @@ def _doctor_retry_failed(link, state):
     state["retried"] = {k: v for k, v in tried.items() if now - v < 30 * 86400}
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Asks (Ben 2026-11-21):
+#  - Why not: when Ben says no to a request he can say why (a ready-made reason or his own words); the person
+#    who asked sees it on their list instead of a bare "no".
+#  - Auto-yes: people Ben trusts get their movie and show requests said yes to by Tower, up to a number each
+#    week that Ben picks. Never Kids (Kids isn't in the family list). Everything past the number waits for Ben.
+ASKS_FILE = os.path.join(SAVES, ".benflix", "asks.json")
+ASKS_WEEK_S = 7 * 86400
+_asks_lock = threading.Lock()
+
+
+def _asks_load():
+    try:
+        with open(ASKS_FILE) as f:
+            got = json.load(f)
+    except (OSError, ValueError):
+        got = {}
+    got.setdefault("reasons", {})
+    got.setdefault("trust", {})
+    got.setdefault("auto", [])
+    got.setdefault("wish", {})
+    return got
+
+
+def _asks_save(state):
+    try:
+        os.makedirs(os.path.dirname(ASKS_FILE), exist_ok=True)
+        with open(ASKS_FILE + ".tmp", "w") as f:
+            json.dump(state, f)
+        os.replace(ASKS_FILE + ".tmp", ASKS_FILE)
+    except OSError:
+        pass
+
+
+def _asks_plain(uid):
+    return re.sub(r"[^0-9a-f]", "", str(uid or "").lower())
+
+
+def _asks_used(state, uid, now=None):
+    now = now or time.time()
+    return sum(1 for a in state["auto"] if a.get("user") == uid and now - a.get("at", 0) < ASKS_WEEK_S)
+
+
+def asks_route(method, path, token, user_id, is_admin, is_kids, read_json):
+    """/api/asks/reasons (everyone signed in reads; Ben writes), /api/asks/wish (your own My List of things that
+    aren't on Glowfin yet; not Kids) and /api/asks/trust (Ben only)"""
+    if path == "/api/asks/wish":
+        uid = _asks_plain(user_id)
+        if method == "GET":
+            with _asks_lock:
+                mine = _asks_load()["wish"].get(uid) or {}
+            return {"items": sorted(mine.values(), key=lambda w: -w.get("at", 0))}
+        if method == "POST":
+            if is_kids:
+                raise HelperError(403, "Ask a grown-up to add this one.")
+            body = read_json() or {}
+            kind = "movie" if str(body.get("type")) == "movie" else "tv"
+            try:
+                tmdb = int(body.get("tmdb"))
+            except (TypeError, ValueError):
+                raise HelperError(400, "Which title is this?")
+            key = f"{kind}:{tmdb}"
+            with _asks_lock:
+                state = _asks_load()
+                mine = state["wish"].setdefault(uid, {})
+                if body.get("on", True):
+                    mine[key] = {"type": kind, "tmdb": tmdb, "title": str(body.get("title") or "")[:200], "poster": str(body.get("poster") or "")[:200], "at": time.time()}
+                    for old in sorted(mine, key=lambda k: -mine[k].get("at", 0))[200:]:
+                        mine.pop(old, None)
+                else:
+                    mine.pop(key, None)
+                _asks_save(state)
+            return {"ok": True}
+    if path == "/api/asks/reasons" and method == "GET":
+        with _asks_lock:
+            return {"reasons": {k: v.get("reason", "") for k, v in _asks_load()["reasons"].items()}}
+    if not is_admin:
+        raise HelperError(403, "Only Ben can change this.")
+    if path == "/api/asks/reason" and method == "POST":
+        body = read_json() or {}
+        key = re.sub(r"[^\w:-]", "", str(body.get("key") or ""))[:80]
+        reason = " ".join(str(body.get("reason") or "").split())[:140]
+        if not key:
+            raise HelperError(400, "Which request is this about?")
+        with _asks_lock:
+            state = _asks_load()
+            if reason:
+                state["reasons"][key] = {"reason": reason, "at": time.time()}
+            else:
+                state["reasons"].pop(key, None)
+            # a year is plenty
+            state["reasons"] = {k: v for k, v in state["reasons"].items() if time.time() - v.get("at", 0) < 365 * 86400}
+            _asks_save(state)
+        return {"ok": True}
+    if path == "/api/asks/trust" and method == "GET":
+        people = [p for p in family_people(token) if not p.get("admin")]
+        with _asks_lock:
+            state = _asks_load()
+        out = []
+        for p in people:
+            uid = _asks_plain(p["id"])
+            t = state["trust"].get(uid) or {}
+            out.append({"id": p["id"], "name": p["name"], "on": bool(t.get("on")), "weekly": int(t.get("weekly") or 3), "used": _asks_used(state, uid)})
+        return {"people": out}
+    if path == "/api/asks/trust" and method == "POST":
+        body = read_json() or {}
+        uid = _asks_plain(body.get("id"))
+        if not uid:
+            raise HelperError(400, "Who is this for?")
+        try:
+            weekly = max(1, min(20, int(body.get("weekly") or 3)))
+        except (TypeError, ValueError):
+            weekly = 3
+        with _asks_lock:
+            state = _asks_load()
+            state["trust"][uid] = {"on": bool(body.get("on")), "weekly": weekly}
+            _asks_save(state)
+        return {"ok": True}
+    raise HelperError(404, "Not found")
+
+
+def _asks_auto_yes(link, token):
+    """Says yes to waiting movie and show requests from trusted people who still have some left this week"""
+    with _asks_lock:
+        state = _asks_load()
+    trusted = {uid: t for uid, t in state["trust"].items() if t.get("on")}
+    if not trusted:
+        return
+    by_seerr = {p.get("seerr"): _asks_plain(p["id"]) for p in family_people(token) if p.get("seerr") and not p.get("admin")}
+    answer = _seerr(link, "GET", "/request?take=50&skip=0&filter=pending&sort=added") or {}
+    waiting = sorted(answer.get("results") or [], key=lambda r: str(r.get("createdAt") or ""))
+    now, added = time.time(), []
+    for req in waiting:
+        uid = by_seerr.get((req.get("requestedBy") or {}).get("id"))
+        t = trusted.get(uid) if uid else None
+        if not t or _asks_used(state, uid, now) >= int(t.get("weekly") or 3):
+            continue
+        try:
+            _seerr(link, "POST", f"/request/{req.get('id')}/approve")
+        except Exception as e:
+            _doctor_log(f"auto-yes for request {req.get('id')} didn't work ({e})")
+            continue
+        entry = {"user": uid, "at": now, "id": req.get("id")}
+        state["auto"].append(entry)
+        added.append(entry)
+        _doctor_log(f"auto-yes for request {req.get('id')}")
+    if added:
+        with _asks_lock:
+            fresh = _asks_load()
+            fresh["auto"] = [a for a in fresh["auto"] + added if now - a.get("at", 0) < 5 * ASKS_WEEK_S]
+            _asks_save(fresh)
+
+
+def _asks_wish_arrivals(link, token):
+    """My List for things not on Glowfin yet: once one arrives it goes on that person's real My List"""
+    with _asks_lock:
+        wish = _asks_load()["wish"]
+    landed = []
+    for uid, mine in wish.items():
+        for key, w in mine.items():
+            try:
+                info = (_seerr(link, "GET", f"/{w.get('type')}/{w.get('tmdb')}") or {}).get("mediaInfo") or {}
+            except Exception:
+                continue
+            item = re.sub(r"[^0-9a-fA-F]", "", str(info.get("jellyfinMediaId") or ""))
+            if info.get("status") != 5 or not item:
+                continue
+            status, _, _ = jellyfin_call("POST", f"/UserFavoriteItems/{item}?userId={uid}", token=token, body=b"", device_id="benflix-helper")
+            if status in (200, 204):
+                landed.append((uid, key))
+                _doctor_log(f"{w.get('title')} arrived and went on a My List")
+    if landed:
+        with _asks_lock:
+            state = _asks_load()
+            for uid, key in landed:
+                (state["wish"].get(uid) or {}).pop(key, None)
+            _asks_save(state)
+
+
+def asks_auto_yes(admin):
+    """Every 3 minutes, so a trusted person's request starts almost right away"""
+    time.sleep(150)
+    passes = 0
+    while True:
+        try:
+            token = (admin() or (None, None))[0]
+            link = _seerr_link(token) if token else None
+            if link:
+                _asks_auto_yes(link, token)
+                if passes % 5 == 0:
+                    _asks_wish_arrivals(link, token)
+            passes += 1
+        except Exception as e:
+            _doctor_log(f"auto-yes problem ({e})")
+        time.sleep(180)
+
+
 def request_doctor(admin):
     """Hourly. admin() gives (token, user id) of Ben's sign-in (needed to read Seerr's address and key)."""
     time.sleep(120)
@@ -2002,6 +2202,12 @@ if __name__ == "__main__":
         target=request_doctor,
         args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),
         name="request-doctor",
+        daemon=True,
+    ).start()
+    threading.Thread(
+        target=asks_auto_yes,
+        args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),
+        name="asks-auto-yes",
         daemon=True,
     ).start()
     threading.Thread(target=wifi_finder, daemon=True).start()

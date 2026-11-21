@@ -55,10 +55,13 @@ class IntroPace(
  * Runs [durationMs] of animation one real frame at a time. [onFrame] gets the time so far (0 to
  * [durationMs]) and draws from it, so sounds started inside it land on the same frame as the picture.
  * A slow frame only moves time on by [IntroPace.maxStepMs], so the whole animation is always shown.
+ * [byTheClock] is for parts where nothing moves (a still logo): real time counts, so slow frames while the
+ * app is still loading don't make the wait longer.
  */
 suspend fun runIntroTimeline(
     durationMs: Float,
     pace: IntroPace,
+    byTheClock: Boolean = false,
     onFrame: (elapsedMs: Float) -> Unit,
 ) {
     var last = -1L
@@ -66,7 +69,10 @@ suspend fun runIntroTimeline(
     onFrame(0f)
     while (elapsed < durationMs) {
         withFrameNanos { now ->
-            if (last >= 0) elapsed += ((now - last) / 1_000_000f).coerceAtMost(pace.maxStepMs)
+            if (last >= 0) {
+                val step = (now - last) / 1_000_000f
+                elapsed += if (byTheClock) step else step.coerceAtMost(pace.maxStepMs)
+            }
             last = now
             onFrame(elapsed.coerceAtMost(durationMs))
         }

@@ -19,12 +19,15 @@ import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
+import com.github.damontecres.wholphin.ui.discover.WishList
+import com.github.damontecres.wholphin.ui.discover.WishListViewModel
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlin.math.roundToInt
 
@@ -59,8 +62,17 @@ fun RequestTitlePage(
     onClickItem: (DiscoverItem) -> Unit,
     onClickPerson: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    /** Streaming services that have it right now ("Netflix", "Hulu"), so nobody waits for a download they don't need */
+    streamingOn: List<String> = emptyList(),
+    /** TMDB's poster for it, kept with the My List entry */
+    posterPath: String? = null,
+    wishViewModel: WishListViewModel = hiltViewModel(),
 ) {
     val kids by KidsMode.active.collectAsState()
+    // My List for a title that isn't here yet: Tower keeps it and moves it to the real My List when it arrives
+    val wishes by WishList.keys.collectAsState()
+    LaunchedEffect(Unit) { wishViewModel.load() }
+    val wished = tmdbId != null && WishList.key(isMovie, tmdbId) in wishes
     val here = availability == SeerrAvailability.AVAILABLE || availability == SeerrAvailability.PARTIALLY_AVAILABLE
     val blocked = cantFind && !here
     val first =
@@ -107,6 +119,25 @@ fun RequestTitlePage(
     val buttons =
         buildList {
             add(first)
+            if (!here && !kids && tmdbId != null) {
+                add(
+                    TitleButton(
+                        "My List",
+                        if (wished) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                        {
+                            wishViewModel.set(isMovie, tmdbId, title, posterPath, !wished)
+                            // Not asked for yet: adding it to My List asks for it too
+                            if (!wished && !blocked && canRequest && availability == SeerrAvailability.UNKNOWN) requestOnClick()
+                        },
+                        note =
+                            if (wished) {
+                                "On your list. It moves into My List the moment it arrives"
+                            } else {
+                                "Keeps it on your list and asks for it"
+                            },
+                    ),
+                )
+            }
             if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
                 add(TitleButton("Ask for the rest", BenflixIcon.REQUESTS, requestOnClick, note = "Some of it isn't on Glowfin yet"))
             }
@@ -136,7 +167,12 @@ fun RequestTitlePage(
                         scope = scope,
                         title = title,
                         story = story,
-                        strip = emptyList(),
+                        strip =
+                            if (streamingOn.isEmpty() || kids) {
+                                emptyList()
+                            } else {
+                                listOf(StripPart("Streaming now on", streamingOn.joinToString(", ")))
+                            },
                         extra =
                             tmdbId?.let { id ->
                                 {

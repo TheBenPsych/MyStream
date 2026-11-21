@@ -202,6 +202,8 @@
     const [, type, id] = m;
     B.page().innerHTML = B.top("") + B.spinner();
     B.wireTop();
+    // My List for titles that aren't here yet: kept on Tower, which moves it to the real My List when it arrives
+    const wishes = B.call("GET", "api/asks/wish").then((w) => (w && w.items) || []).catch(() => []);
     let d;
     try { d = await B.seerr(`/${type}/${id}`); } catch (e) {
       B.page().innerHTML = B.top("") + `<div class="wrap"><div class="note">Couldn't open that one. ${esc(e.message || "")}</div></div>`;
@@ -229,8 +231,20 @@
     else first = { label: "Ask for it", icon: "plus", onClick: ask };
     const videos = (d.relatedVideos || []).filter((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"));
     const trailer = videos.find((v) => v.type === "Trailer") || videos[0];
+    let wished = (await wishes).some((w) => w.type === type && String(w.tmdb) === String(id));
+    if (!B.alive(nav)) return;
+    const wish = async (e, el) => {
+      wished = !wished;
+      await B.call("POST", "api/asks/wish", { type, tmdb: +id, title: t, poster: d.posterPath || "", on: wished }).catch((err) => { wished = !wished; B.toast(err.message); });
+      if (el) el.innerHTML = `${I(wished ? "check" : "plus")} <span>My List</span>`;
+      if (wished) {
+        B.toast(status > 1 ? "On your list. It shows up in My List the moment it arrives." : "On your list. Asking for it now.");
+        if (status <= 1) ask();
+      } else B.toast("Taken off your list.");
+    };
     const buttons = [
       first,
+      !here && !kids ? { id: "bWish", label: "My List", icon: wished ? "check" : "plus", onClick: wish } : null,
       status === 4 && !kids && type === "tv" ? { label: "Ask for the rest", icon: "plus", note: "Some of it isn't on Glowfin yet", onClick: ask } : null,
       { label: "Trailer", icon: "trailer", off: trailer ? "" : "No trailer for this one yet", onClick: () => B.trailer({ RemoteTrailers: [{ Url: `https://www.youtube.com/watch?v=${trailer.key}` }] }) },
       { label: "More", icon: "more", onClick: () => B.tpMore(t, [
@@ -240,10 +254,14 @@
     ].filter(Boolean);
     // Overview strip: TMDB score, spoken language, who made it
     const makers = isMovie ? ((d.credits && d.credits.crew) || []).filter((c) => c.job === "Director").map((c) => c.name).slice(0, 2) : (d.createdBy || []).map((c) => c.name).slice(0, 2);
+    // Where it's streaming right now (subscription services in the US, from TMDB through Seerr)
+    const usNow = (d.watchProviders || []).find((w) => w.iso_3166_1 === "US");
+    const streamingOn = [...new Set(((usNow && usNow.flatrate) || []).slice().sort((x, y) => (x.displayPriority || 99) - (y.displayPriority || 99)).map((x) => x.name).filter(Boolean))].slice(0, 4);
     const strip = B.tpStrip([
       d.voteAverage ? ["TMDB", d.voteAverage.toFixed(1)] : null,
       d.originalLanguage && d.originalLanguage !== "en" && B.langName ? ["Spoken in", B.langName(d.originalLanguage), true] : null,
       makers.length ? [isMovie ? "Director" : "Made by", makers.join(", "), true] : null,
+      streamingOn.length && !kids ? ["Streaming now on", streamingOn.join(", "), true] : null,
     ]);
     // Who asked (one line each), with Yes / No for Ben on waiting asks
     const who = (r) => (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone";
@@ -296,6 +314,7 @@
       const b = y || n;
       B.busy(b, async () => {
         await B.jf("POST", `/JellyfinEnhanced/arr/requests/${(y ? y.dataset.ayes : n.dataset.ano)}/${y ? "approve" : "decline"}`);
+        if (!y) await B.whyNo("seerr:" + n.dataset.ano);
         B.cache["seerr-mine"] = null;
         b.closest(".acts").innerHTML = `<span class="dim">${y ? "Said yes" : "Said no"}</span>`;
         return y ? `Said yes to ${t}.` : `Said no to ${t}.`;
