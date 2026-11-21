@@ -43,6 +43,7 @@
       const inner = `${I(b.icon || "play")} <span>${esc(b.label)}</span>`;
       return b.href && !b.off ? `<a class="${cls}" ${attrs} href="${b.href}">${inner}</a>` : `<button class="${cls}" ${attrs}>${inner}</button>`;
     };
+    const chips = kids ? [] : (opts.chips || []).filter(Boolean);
     const meta = [opts.rating && !kids ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
     // Covers (games, books, albums, people): the cover blurred big behind everything (no more tinted box), and
     // the cover itself on the right at its own real shape (never cropped). Title and words stay on the left.
@@ -56,8 +57,9 @@
     B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
         <div class="main">
-          <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : ""}<i class="tp-line"></i></div>
+          <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}${opts.logo ? `<img class="tp-logo" id="tpLogo" src="${esc(opts.logo)}" alt="${esc(opts.title || "")}" hidden>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : opts.tagline && !kids ? `<div class="t2 tp-tag">${esc(opts.tagline)}</div>` : ""}<i class="tp-line"></i></div>
           <div class="meta">${meta}${rows && opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}${opts.infoExtra || ""}</div>
+          ${chips.length ? `<div class="tp-chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
           ${rows && opts.story ? `<div class="tp-story">${esc(opts.story)}</div>` : ""}
           <div class="btns">${buttons.map(btn).join("")}</div>
           <div class="tp-why" id="tpWhy">${esc(opts.status || "")}</div>
@@ -69,6 +71,18 @@
     </div>`;
     B.wireTop();
     const root = $(".details.tp");
+    // Logo art instead of the typed name, only when it loads and has a sensible shape (very long or very tall
+    // logos, common with anime, keep the typed name)
+    const logo = $("#tpLogo");
+    if (logo) {
+      const fit = () => {
+        const r = logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 0;
+        if (r < 1.3 || r > 5.5) return logo.remove();
+        logo.hidden = false;
+        const h1 = root.querySelector(".tp-name .t"); if (h1) h1.classList.add("tp-hid");
+      };
+      if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
+    }
     // Buttons: greyed-out ones say why; the rest run their action
     const why = $("#tpWhy");
     const say = (b) => { why.textContent = b ? b.off || b.note || opts.status || "" : opts.status || ""; why.classList.toggle("off", !!(b && b.off)); };

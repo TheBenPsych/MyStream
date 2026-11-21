@@ -232,6 +232,9 @@ fun MovieHeroContent(
         rows = true,
         story = dto.overview,
         scores = if (easy) emptyList() else scores,
+        logoUrl = com.github.damontecres.wholphin.ui.components.rememberLogoUrl(movie),
+        tagline = if (easy) null else dto.taglines?.firstOrNull()?.takeIf { it.isNotBlank() },
+        chips = if (easy) emptyList() else remember(movie) { com.github.damontecres.wholphin.ui.detail.title.qualityChips(movie) },
         modifier = modifier,
     )
 

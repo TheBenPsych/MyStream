@@ -120,3 +120,52 @@ fun titleDetails(
         }
     }
 }
+
+/**
+ * The small tags after a title's info line (Ben 2026-11-21): picture size, HDR kind, sound and whether
+ * English subtitles are there. Empty when the file's details aren't known (a show, or a title still loading).
+ */
+fun qualityChips(item: BaseItem): List<String> {
+    val streams =
+        item.data.mediaSources
+            ?.firstOrNull()
+            ?.mediaStreams
+            ?: item.data.mediaStreams
+            ?: return emptyList()
+    val video = streams.firstOrNull { it.type == org.jellyfin.sdk.model.api.MediaStreamType.VIDEO } ?: return emptyList()
+    val audio =
+        streams.filter { it.type == org.jellyfin.sdk.model.api.MediaStreamType.AUDIO }.let { all ->
+            all.firstOrNull { it.isDefault } ?: all.firstOrNull()
+        }
+    return buildList {
+        val w = video.width ?: 0
+        val h = video.height ?: 0
+        when {
+            w > 2560 || h > 1440 -> add("4K")
+            w > 1280 || h > 962 -> add("1080p")
+            w > 1024 || h > 576 -> add("720p")
+            w > 0 -> add("SD")
+        }
+        val range = video.videoRangeType?.serialName.orEmpty()
+        when {
+            range.startsWith("DOVI", ignoreCase = true) -> add("Dolby Vision")
+            range.startsWith("HDR", ignoreCase = true) || range.equals("HLG", ignoreCase = true) -> add("HDR")
+        }
+        if (audio != null) {
+            val channels = audio.channels ?: 0
+            when {
+                audio.profile?.contains("Atmos", ignoreCase = true) == true ||
+                    audio.displayTitle?.contains("Atmos", ignoreCase = true) == true -> add("Atmos")
+                channels >= 8 -> add("7.1")
+                channels >= 6 -> add("5.1")
+                channels == 2 -> add("Stereo")
+            }
+        }
+        val englishSubs =
+            streams.any {
+                it.type == org.jellyfin.sdk.model.api.MediaStreamType.SUBTITLE &&
+                    it.language?.lowercase() in setOf("eng", "en", "english")
+            }
+        if (englishSubs) add("CC")
+    }
+}

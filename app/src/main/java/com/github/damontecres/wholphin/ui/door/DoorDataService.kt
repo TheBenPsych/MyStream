@@ -277,6 +277,57 @@ class DoorDataService
             }
 
         /**
+         * "Because you loved X" (Ben 2026-11-21): titles like one this person pressed "Love it" on
+         * (liked and in My List). A different loved title each time the page loads. Returns its name and the row.
+         */
+        suspend fun loved(
+            userId: UUID,
+            type: BaseItemKind,
+            exclude: Set<UUID>,
+            within: ((UUID) -> Boolean)? = null,
+        ): Pair<String, List<BaseItem>>? {
+            val favourites =
+                safe {
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(type),
+                                recursive = true,
+                                isFavorite = true,
+                                sortBy = listOf(ItemSortBy.RANDOM),
+                                enableImages = false,
+                                enableUserData = true,
+                                limit = 40,
+                            ),
+                        ).content.items
+                }
+            val sources =
+                favourites
+                    .filter { it.userData?.likes == true && (within == null || within(it.id)) }
+                    .mapNotNull { dto -> dto.name?.let { dto.id to it } }
+                    .take(BECAUSE_TRIES)
+            for ((id, name) in sources) {
+                val similar =
+                    safe {
+                        api.libraryApi
+                            .getSimilarItems(
+                                GetSimilarItemsRequest(
+                                    userId = userId,
+                                    itemId = id,
+                                    fields = SlimItemFields,
+                                    limit = ROW,
+                                ),
+                            ).content.items
+                            .filter { it.type == type && it.id !in exclude && (within == null || within(it.id)) }
+                            .map { BaseItem(it) }
+                    }
+                if (similar.size >= BECAUSE_MIN) return name to similar
+            }
+            return null
+        }
+
+        /**
          * "Because you watched X": titles like the last one of this kind watched. Returns the name of
          * that title and the row.
          */
