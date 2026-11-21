@@ -262,8 +262,14 @@ def search_trip():
         if tv_keys or keyboard_showing():
             d.key("BACK", wait=1)  # hide the keyboard like a person would
         step("search-keyboard-closed")
-        d.key("DPAD_DOWN", 2, wait=0.7)
-        picked = label(d.focused_node(d.dump()))
+        # on TV the results sit to the right of the box and its suggestions
+        picked = None
+        for _ in range(8):
+            d.key("DPAD_RIGHT", wait=0.7)
+            f = d.focused_node(d.dump())
+            picked = label(f)
+            if f is not None and not f.get("class", "").endswith("EditText") and picked and len(picked) > 3:
+                break
         step("search-result-focused", picked=picked)
         d.key("DPAD_CENTER", wait=1)
     else:
@@ -276,6 +282,8 @@ def search_trip():
     step("search-opened-result", picked=picked)
     d.key("BACK", wait=2)
     root, s = step("search-back")
+    if MODE == "tv" and picked and s.get("focused") == "the":
+        problem("stuck on the search box", "Right from the box with letters in it never reached the results")
     if d.find(root, r"^the$") is None:
         problem("Back from a search result forgets what you typed", str(s.get("texts", [])[:8]))
 
@@ -399,7 +407,9 @@ def main():
         step("never-got-to-home")
         problem("robot", "never got to Home")
         return
-    for trip in (home_walk, lambda: movie_trip("Movies"), lambda: movie_trip("Shows"), search_trip, other_doors, profile_and_settings, back_from_home):
+    # Search goes last: on TV the remote can get held on the search box once it has letters in
+    # it (Left and Right move the cursor), which used to cost every trip after it.
+    for trip in (home_walk, lambda: movie_trip("Movies"), lambda: movie_trip("Shows"), other_doors, profile_and_settings, back_from_home, search_trip):
         if d.out_of_time():
             break
         try:
