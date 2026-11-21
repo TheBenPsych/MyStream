@@ -2333,3 +2333,20 @@ body.scrolled #page:has(#doorTop) > .top, body.scrolled #page:has(.tp-hero) > .t
   /* tabs that run off the edge fade out, so it's clear there are more */
   .ptabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); padding-right: 36px; }
 }
+
+/* Overhaul 2026-11-20 (part B: the same everywhere) */
+/* Home's top area says "Resume", like the TV */
+.kwbar svg.i { width: 16px; height: 16px; flex: none; margin-right: -4px; color: var(--ink); }
+.kwbar b { color: var(--ink); font-weight: 700; }
+/* the player's main buttons carry their names again (Settings, Episodes, Subtitles, Audio), like the TV */
+.player .p1row { align-items: flex-start; }
+.player .p1row .extra { align-self: flex-start; margin-top: 4px; }
+@media (max-width: 600px) {
+  .player .pbtn.lab { margin-bottom: 0; }
+  .player .pbtn.lab em { display: none; }
+}
+/* moving with the keyboard: the same aqua ring as the TV, on every card */
+.poster:focus-visible .im, .mcard:focus-visible .im, .wide:focus-visible .im { box-shadow: 0 0 0 3px #3FE0E8, 0 0 0 7px rgba(165, 91, 224, .35); }
+a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offset: 2px; }
+.poster:focus-visible, .mcard:focus-visible, .player .pbtn:focus-visible { outline: none; }
+.player .pbtn.lab + .pbtn.lab { margin-left: 12px; }
