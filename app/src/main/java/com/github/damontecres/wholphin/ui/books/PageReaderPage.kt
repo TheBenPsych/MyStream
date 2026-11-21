@@ -7,19 +7,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -44,18 +53,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.tv.material3.Text
@@ -73,16 +88,26 @@ import kotlinx.coroutines.launch
  * The manga and comic reader (approved design), also used for PDF books ("fit the page"). One page (the
  * default), two pages side by side, or one long scroll, picked per series. Right to left for manga unless you
  * change it. OK (or a tap in the middle) shows the bar with the modes and a strip of small pages to slide
- * through. At the end of a volume: a "Next volume" card that opens it after 5 seconds.
+ * through. At the end of a chapter or volume: a "Next chapter" card that opens it after 5 seconds.
+ *
+ * Phones (Ben 2026-11-21): pinch to zoom, and double tap the middle to zoom in on a panel (double tap again to
+ * zoom back out). While zoomed, dragging moves the page instead of turning it.
+ *
+ * [onClose] and [onOpen] are for showing the reader on top of another page (Downloads, with no internet): Back and
+ * the next chapter then go through them instead of the app's own navigation.
  */
 @Composable
 fun PageReaderPage(
     id: String,
     book: Boolean,
     modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
+    onOpen: ((String) -> Unit)? = null,
     viewModel: PageReaderViewModel = hiltViewModel(key = "pages-$id"),
 ) {
     LaunchedEffect(id) { viewModel.load(id, book) }
+    val close: () -> Unit = onClose ?: { viewModel.navigationManager.goBack() }
+    val openNext: (String) -> Unit = onOpen ?: { viewModel.openNext(it) }
     DisposableEffect(Unit) {
         viewModel.screensaver.keepScreenOn(true)
         onDispose { viewModel.screensaver.keepScreenOn(false) }
@@ -102,7 +127,7 @@ fun PageReaderPage(
         ) {
             Text("Couldn't open it", color = BenflixColors.Text, fontSize = BenflixType.pageTitle, fontWeight = FontWeight.ExtraBold)
             Text(state.problem ?: "It has no pages Glowfin can read.", color = BenflixColors.Soft, fontSize = BenflixType.body)
-            MusicButton("Back", BenflixIcon.BACK_ARROW, onClick = { viewModel.navigationManager.goBack() })
+            MusicButton("Back", BenflixIcon.BACK_ARROW, onClick = close)
         }
         return
     }
@@ -127,8 +152,23 @@ fun PageReaderPage(
     val density = LocalDensity.current
     val config = LocalConfiguration.current
     val screenPx = with(density) { config.screenWidthDp.dp.roundToPx() }
-    val pageWidth = (if (state.mode == PageMode.TWO) screenPx / 2 else screenPx).coerceIn(480, 1600)
+    val screenHeightPx = with(density) { config.screenHeightDp.dp.roundToPx() }
+    val stripPx = with(density) { STRIP_MAX.roundToPx() }
+    // How wide Tower makes each page: no bigger than it will show here. One upright page on a TV is only about
+    // three quarters of the screen's height wide, so the TV gets a far smaller picture than the full screen width.
+    val pageWidth =
+        when (state.mode) {
+            PageMode.TWO -> screenPx / 2
+            PageMode.SCROLL -> minOf(screenPx, stripPx)
+            PageMode.ONE -> if (screenPx > screenHeightPx) minOf(screenPx, screenHeightPx * 3 / 4) else screenPx
+        }.coerceIn(480, 1600)
     val scope = rememberCoroutineScope()
+    val zoom = remember(id) { ZoomState() }
+    // A new page starts un-zoomed; the next three pages are fetched ahead
+    LaunchedEffect(page, pageWidth) {
+        if (state.mode != PageMode.SCROLL) zoom.reset()
+        viewModel.preload(page + (if (state.mode == PageMode.TWO) 1 else 0), pageWidth)
+    }
 
     Box(
         modifier
@@ -148,10 +188,16 @@ fun PageReaderPage(
                 }
                 LazyColumn(
                     state = list,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .onPreviewKeyEvent { e ->
+                            .pinchZoom(zoom, enabled = !isTv, onPanY = { dy -> list.dispatchRawDelta(-dy) })
+                            .graphicsLayer {
+                                scaleX = zoom.scale
+                                scaleY = zoom.scale
+                                translationX = zoom.offset.x
+                            }.onPreviewKeyEvent { e ->
                                 if (bar || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 when (e.key) {
                                     Key.DirectionDown, Key.PageDown -> {
@@ -173,13 +219,27 @@ fun PageReaderPage(
                                         false
                                     }
                                 }
-                            }.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { bar = !bar },
+                            }.pointerInput(isTv) {
+                                detectTapGestures(
+                                    onTap = { bar = !bar },
+                                    onDoubleTap = if (isTv) null else ({ at: Offset -> zoom.toggle(at, size) }),
+                                )
+                            },
                 ) {
                     items(state.pages, key = { it }) { n ->
-                        PageImage(viewModel, n, state.pdf, pageWidth, Modifier.fillMaxWidth(), scroll = true)
+                        // On a TV or tablet the strip stays a comfortable reading width in the middle
+                        PageImage(viewModel, n, state.pdf, pageWidth, Modifier.widthIn(max = STRIP_MAX).fillMaxWidth(), scroll = true)
                     }
                     item(key = "end") {
-                        EndCard(state, viewModel, active = list.layoutInfo.visibleItemsInfo.any { it.key == "end" }, isTv = isTv)
+                        EndCard(
+                            state,
+                            viewModel,
+                            active = list.layoutInfo.visibleItemsInfo.any { it.key == "end" },
+                            isTv = isTv,
+                            onClose = close,
+                            onOpen = openNext,
+                            modifier = Modifier.fillParentMaxSize(),
+                        )
                     }
                 }
             } else {
@@ -198,11 +258,19 @@ fun PageReaderPage(
                     state = pager,
                     reverseLayout = state.rtl,
                     beyondViewportPageCount = 1,
+                    // Zoomed in: a drag moves the page; it doesn't turn it
+                    userScrollEnabled = zoom.scale <= 1.01f,
                     key = { it },
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .onPreviewKeyEvent { e ->
+                            .pinchZoom(zoom, enabled = !isTv)
+                            .graphicsLayer {
+                                scaleX = zoom.scale
+                                scaleY = zoom.scale
+                                translationX = zoom.offset.x
+                                translationY = zoom.offset.y
+                            }.onPreviewKeyEvent { e ->
                                 if (bar || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 when (e.key) {
                                     Key.DirectionRight -> {
@@ -237,7 +305,15 @@ fun PageReaderPage(
                             },
                 ) { u ->
                     if (u >= units.size) {
-                        EndCard(state, viewModel, active = pager.currentPage == units.size, isTv = isTv)
+                        EndCard(
+                            state,
+                            viewModel,
+                            active = pager.currentPage == units.size,
+                            isTv = isTv,
+                            onClose = close,
+                            onOpen = openNext,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     } else {
                         Box(Modifier.fillMaxSize()) {
                             val unit = units[u]
@@ -258,21 +334,36 @@ fun PageReaderPage(
                                     )
                                 }
                             }
-                            // Phones: tap the edges to turn, the middle for the bar
+                            // Phones: tap the edges to turn, the middle for the bar, double tap the middle to zoom
                             if (!isTv) {
-                                Row(Modifier.fillMaxSize()) {
-                                    val tap = remember { MutableInteractionSource() }
-                                    Box(
-                                        Modifier.fillMaxHeight().weight(1f).clickable(tap, null) {
-                                            if (state.rtl) goNext() else goPrev()
-                                        },
-                                    )
-                                    Box(Modifier.fillMaxHeight().weight(1f).clickable(tap, null) { bar = !bar })
-                                    Box(
-                                        Modifier.fillMaxHeight().weight(1f).clickable(tap, null) {
-                                            if (state.rtl) goPrev() else goNext()
-                                        },
-                                    )
+                                BoxWithConstraints(Modifier.fillMaxSize()) {
+                                    val third = constraints.maxWidth / 3f
+                                    Row(Modifier.fillMaxSize()) {
+                                        val tap = remember { MutableInteractionSource() }
+                                        Box(
+                                            Modifier.fillMaxHeight().weight(1f).clickable(tap, null) {
+                                                if (state.rtl) goNext() else goPrev()
+                                            },
+                                        )
+                                        Box(
+                                            Modifier.fillMaxHeight().weight(1f).pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onTap = { bar = !bar },
+                                                    onDoubleTap = { at ->
+                                                        zoom.toggle(
+                                                            Offset(at.x + third, at.y),
+                                                            IntSize(constraints.maxWidth, constraints.maxHeight),
+                                                        )
+                                                    },
+                                                )
+                                            },
+                                        )
+                                        Box(
+                                            Modifier.fillMaxHeight().weight(1f).clickable(tap, null) {
+                                                if (state.rtl) goPrev() else goNext()
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -293,6 +384,7 @@ fun PageReaderPage(
                 isTv = isTv,
                 onPage = { page = it },
                 onClose = { bar = false },
+                onLeave = close,
             )
         }
     }
@@ -339,10 +431,11 @@ private fun PageImage(
         }
     } else {
         AsyncImage(
-            model = viewModel.pageUrl(n, widthPx),
+            model = viewModel.pageModel(n, widthPx),
             contentDescription = "Page ${n + 1}",
             contentScale = scale,
-            modifier = modifier,
+            // Long scroll: a page that hasn't arrived yet still takes up room, so the whole chapter isn't asked for at once
+            modifier = if (scroll) modifier.defaultMinSize(minHeight = 260.dp) else modifier,
         )
     }
 }
@@ -356,6 +449,7 @@ private fun ReaderBar(
     isTv: Boolean,
     onPage: (Int) -> Unit,
     onClose: () -> Unit,
+    onLeave: () -> Unit,
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { first.tryRequestFocus() }
@@ -370,7 +464,7 @@ private fun ReaderBar(
                     .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = 14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MusicButton(label = null, icon = BenflixIcon.BACK_ARROW, onClick = { viewModel.navigationManager.goBack() })
+                MusicButton(label = null, icon = BenflixIcon.BACK_ARROW, onClick = onLeave)
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = listOf(state.series, state.name).filter { it.isNotBlank() }.joinToString(" · "),
@@ -380,7 +474,11 @@ private fun ReaderBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text("Page ${page + 1} of ${state.pages}", color = BenflixColors.Muted, fontSize = BenflixType.small)
+                    Text(
+                        "Page ${page + 1} of ${state.pages}" + if (state.saved) " · saved on this phone" else "",
+                        color = BenflixColors.Muted,
+                        fontSize = BenflixType.small,
+                    )
                 }
                 MusicButton("Done", null, onClick = onClose, modifier = Modifier.focusRequester(first))
             }
@@ -439,64 +537,80 @@ private fun ReaderBar(
     }
 }
 
-/** The end of a volume: "Next volume" with a 5 second countdown, or "You finished it" */
+/** The end of a chapter or volume: "Next chapter" with a 5 second countdown, or "You're all caught up" */
 @Composable
 private fun EndCard(
     state: PageReaderState,
     viewModel: PageReaderViewModel,
     active: Boolean,
     isTv: Boolean,
+    onClose: () -> Unit,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val vol = state.vol
-    val next = vol?.nextId
+    val next = state.nextId
     var left by remember { mutableIntStateOf(COUNTDOWN) }
     var stopped by remember { mutableStateOf(false) }
     LaunchedEffect(active, stopped) {
+        if (active) viewModel.save(state.pages - 1, finished = true)
         if (!active || next == null || stopped) {
             left = COUNTDOWN
             return@LaunchedEffect
         }
-        viewModel.save(state.pages - 1, finished = true)
         while (left > 0) {
             delay(1_000)
             left--
         }
-        viewModel.openNext(next)
+        onOpen(next)
     }
     val focus = remember { FocusRequester() }
     LaunchedEffect(active) { if (active && isTv) focus.tryRequestFocus() }
-    Box(Modifier.fillMaxSize().background(BenflixColors.Tray), contentAlignment = Alignment.Center) {
+    val word = if (state.unit == "vol") "volume" else "chapter"
+    Box(modifier.background(BenflixColors.Tray), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(24.dp),
         ) {
-            if (next != null && vol != null) {
-                Text("NEXT VOLUME", color = BenflixColors.Books, fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
-                BookCoverImage(vol.nextCover, vol.nextName ?: "", Modifier.width(150.dp).aspectRatio(BOOK_RATIO))
-                Text(vol.nextName ?: "", color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
+            if (next != null) {
+                Text("NEXT ${word.uppercase()}", color = BenflixColors.Books, fontSize = BenflixType.tag, fontWeight = FontWeight.ExtraBold)
+                if (state.nextCover != null) {
+                    BookCoverImage(state.nextCover, state.nextName ?: "", Modifier.width(150.dp).aspectRatio(BOOK_RATIO))
+                }
+                Text(state.nextName ?: "", color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MusicButton(
                         label = if (stopped) "Read it" else "Read it ($left)",
                         icon = BenflixIcon.BOOK,
                         primary = true,
-                        onClick = { viewModel.openNext(next) },
+                        onClick = { onOpen(next) },
                         modifier = Modifier.focusRequester(focus),
                     )
                     if (!stopped) MusicButton("Not now", null, onClick = { stopped = true })
                 }
             } else {
                 Text(
-                    "You finished ${state.name}",
+                    if (state.pdf || state.series.isBlank()) "You finished ${state.name}" else "You're all caught up",
                     color = BenflixColors.Text,
                     fontSize = BenflixType.pageTitle,
                     fontWeight = FontWeight.ExtraBold,
                 )
+                if (!state.pdf && state.series.isNotBlank()) {
+                    Text(
+                        if (state.saved) {
+                            "That was the last $word of ${state.series} saved on this phone."
+                        } else {
+                            "That was the last $word of ${state.series} on Glowfin."
+                        },
+                        color = BenflixColors.Soft,
+                        fontSize = BenflixType.body,
+                    )
+                }
                 MusicButton(
-                    "Back to the book",
+                    "Back",
                     BenflixIcon.BACK_ARROW,
                     primary = true,
-                    onClick = { viewModel.navigationManager.goBack() },
+                    onClick = onClose,
                     modifier = Modifier.focusRequester(focus),
                 )
             }
@@ -504,7 +618,82 @@ private fun EndCard(
     }
 }
 
+/** How far a page is pinched in on a phone, and where it has been dragged to */
+private class ZoomState {
+    var scale by mutableFloatStateOf(1f)
+    var offset by mutableStateOf(Offset.Zero)
+
+    fun reset() {
+        scale = 1f
+        offset = Offset.Zero
+    }
+
+    /** Double tap: zoom in on the spot that was tapped, or back out */
+    fun toggle(
+        at: Offset,
+        size: IntSize,
+    ) {
+        if (scale > 1.01f) {
+            reset()
+        } else {
+            scale = DOUBLE_TAP_ZOOM
+            val centre = Offset(size.width / 2f, size.height / 2f)
+            offset = clamp((centre - at) * (DOUBLE_TAP_ZOOM - 1f), size)
+        }
+    }
+
+    fun clamp(
+        o: Offset,
+        size: IntSize,
+    ): Offset {
+        val maxX = size.width * (scale - 1f) / 2f
+        val maxY = size.height * (scale - 1f) / 2f
+        return Offset(o.x.coerceIn(-maxX, maxX), o.y.coerceIn(-maxY, maxY))
+    }
+}
+
+/**
+ * Phones: two fingers pinch the page bigger (up to 4 times); while it's bigger, one finger drags it around. The
+ * touches are taken before the page turner sees them, so a pinch never turns the page. [onPanY] is for the long
+ * scroll, where dragging up and down keeps scrolling the strip.
+ */
+private fun Modifier.pinchZoom(
+    zoom: ZoomState,
+    enabled: Boolean,
+    onPanY: ((Float) -> Unit)? = null,
+): Modifier =
+    if (!enabled) {
+        this
+    } else {
+        pointerInput(zoom) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                do {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val fingers = event.changes.count { it.pressed }
+                    if (fingers > 1 || zoom.scale > 1.01f) {
+                        zoom.scale = (zoom.scale * event.calculateZoom()).coerceIn(1f, MAX_ZOOM)
+                        val pan = event.calculatePan()
+                        if (onPanY != null) {
+                            onPanY(pan.y / zoom.scale)
+                            zoom.offset = zoom.clamp(Offset(zoom.offset.x + pan.x, 0f), size)
+                        } else {
+                            zoom.offset = zoom.clamp(zoom.offset + pan, size)
+                        }
+                        if (zoom.scale <= 1.01f) zoom.reset()
+                        event.changes.forEach { if (it.positionChanged()) it.consume() }
+                    }
+                } while (event.changes.any { it.pressed })
+            }
+        }
+    }
+
 private const val IDLE_MS = 15 * 60_000L
 private const val SAVE_DELAY_MS = 1_500L
 private const val COUNTDOWN = 5
 private const val THUMB_PX = 160
+private const val MAX_ZOOM = 4f
+private const val DOUBLE_TAP_ZOOM = 2.5f
+
+/** Long scroll: the widest the strip gets (TVs and tablets keep it a comfortable reading width) */
+private val STRIP_MAX = 720.dp

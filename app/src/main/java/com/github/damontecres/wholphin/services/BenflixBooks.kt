@@ -7,12 +7,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * One book on the Books page: an ebook or an audiobook. Comes from the Glowfin helper on Tower
- * (benflix_books.py), which looks through Tower's Books and Audiobooks folders.
+ * One book on the Books page: an ebook, an audiobook or a manga series. Comes from the Glowfin helper on Tower
+ * (benflix_books.py), which looks through Tower's Books, Audiobooks and Manga folders (manga back 2026-11-21,
+ * filled by Harbor; never on Kids profiles).
  */
 data class BookTile(
     val id: String,
-    /** book or audiobook */
+    /** book, audiobook or manga */
     val kind: String,
     val name: String,
     val author: String,
@@ -39,8 +40,32 @@ data class BookTile(
     val notHere: Boolean = false,
     /** Sent from the TV to read on the phone */
     val sent: Boolean = false,
+    /** Manga: "ch" when the series comes as chapters, "vol" as volumes */
+    val unit: String = "",
 ) {
     val isAudio: Boolean get() = kind == "audiobook"
+    val isManga: Boolean get() = kind == "manga" || kind == "comic"
+}
+
+/** One chapter (or volume) of a manga series */
+data class BookVolume(
+    val id: String,
+    /** "Chapter 12", "Chapter 4.5", "Volume 3" */
+    val name: String,
+    /** The chapter's own name, when Harbor knows it */
+    val title: String,
+    val num: Double,
+    val done: Boolean,
+    val progress: Float,
+    val current: Boolean,
+    val isNew: Boolean,
+    val pdf: Boolean,
+    /** Where Harbor got it, and whether that's the publisher's own release */
+    val source: String,
+    val official: Boolean,
+) {
+    /** "12", "4.5" */
+    val short: String get() = name.removePrefix("Chapter ").removePrefix("Volume ")
 }
 
 data class BookRow(
@@ -110,6 +135,17 @@ data class BookPage(
     /** Audiobooks: how long each file is, in seconds */
     val fileSeconds: List<Double> = emptyList(),
     val placeCpos: Double = 0.0,
+    /** Manga: every chapter (or volume) in reading order */
+    val volumes: List<BookVolume> = emptyList(),
+    val unit: String = "",
+    val webtoon: Boolean = false,
+    /** Manga: "Still coming out", "Finished" ... */
+    val pubStatus: String = "",
+    val anilist: Int? = null,
+    val mal: Int? = null,
+    /** Manga: the highest whole chapter read with nothing unread before it (for AniList and MyAnimeList) */
+    val readTo: Int = 0,
+    val readAll: Boolean = false,
 )
 
 /** A series or an author, with its books */
@@ -136,6 +172,11 @@ data class BookVolInfo(
     val nextId: String?,
     val nextName: String?,
     val nextCover: String?,
+    /** "ch", "vol" or "one" (a one-shot) */
+    val unit: String = "vol",
+    val chapterName: String = "",
+    /** Changes when the file on Tower is swapped for a better copy, so old page pictures aren't shown */
+    val stamp: Long = 0,
 )
 
 data class BookFound(
@@ -438,6 +479,29 @@ class BenflixBooks
                         }
                     },
                 placeCpos = place?.optDouble("cpos", 0.0) ?: 0.0,
+                volumes =
+                    j.optJSONArray("volumes").objects().map {
+                        BookVolume(
+                            id = it.optString("id"),
+                            name = it.optString("name"),
+                            title = it.optString("title"),
+                            num = it.optDouble("num", 0.0),
+                            done = it.optBoolean("done"),
+                            progress = it.optDouble("progress", 0.0).toFloat(),
+                            current = it.optBoolean("current"),
+                            isNew = it.optBoolean("new"),
+                            pdf = it.optBoolean("pdf"),
+                            source = it.optString("source"),
+                            official = it.optBoolean("official"),
+                        )
+                    },
+                unit = j.optString("unit"),
+                webtoon = j.optBoolean("webtoon"),
+                pubStatus = j.optString("pubStatus"),
+                anilist = j.optInt("anilist").takeIf { it > 0 },
+                mal = j.optInt("mal").takeIf { it > 0 },
+                readTo = j.optInt("readTo"),
+                readAll = j.optBoolean("readAll"),
             )
         }
 
@@ -459,15 +523,22 @@ class BenflixBooks
                 nextId = next?.text("id"),
                 nextName = next?.text("name"),
                 nextCover = url(next?.text("cover")),
+                unit = j.optString("unit", "vol"),
+                chapterName = j.optString("chapterName"),
+                stamp = j.optLong("stamp"),
             )
         }
 
-        /** A page picture of a manga volume ([width] 0 = full size) */
+        /**
+         * A page picture of a manga chapter ([width] 0 = full size). Tower shrinks it to about [width] and gets the
+         * next three ready. [stamp] changes when the file on Tower does, so a swapped chapter isn't shown from memory.
+         */
         fun pageUrl(
             volId: String,
             page: Int,
             width: Int = 0,
-        ): String = url("/api/books/vol/$volId/p/$page" + (if (width > 0) "?w=$width" else ""))!!
+            stamp: Long = 0,
+        ): String = url("/api/books/vol/$volId/p/$page?v=$stamp" + (if (width > 0) "&w=$width" else ""))!!
 
         /** The file itself: an ebook, a PDF volume, or chapter [index] of an audiobook */
         fun fileUrl(
@@ -801,6 +872,7 @@ class BenflixBooks
                 lastAt = j.optLong("lastAt"),
                 notHere = j.optBoolean("notHere"),
                 sent = j.optBoolean("sent"),
+                unit = j.optString("unit"),
             )
 
         private fun group(j: JSONObject) =

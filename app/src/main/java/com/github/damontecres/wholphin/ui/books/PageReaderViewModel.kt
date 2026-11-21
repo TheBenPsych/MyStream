@@ -7,8 +7,11 @@ import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.services.BenflixBooks
 import com.github.damontecres.wholphin.services.BookVolInfo
+import com.github.damontecres.wholphin.services.MangaOffline
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.ui.launchIO
@@ -18,11 +21,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -58,11 +63,21 @@ data class PageReaderState(
     val startPage: Int = 0,
     val vol: BookVolInfo? = null,
     val problem: String? = null,
+    /** "ch" for a chapter, "vol" for a volume, "one" for a one-shot */
+    val unit: String = "vol",
+    /** The next chapter to offer at the end: Tower's, or the next one saved on this phone when there's no internet */
+    val nextId: String? = null,
+    val nextName: String? = null,
+    val nextCover: String? = null,
+    /** Reading the copy saved on this phone (Tower couldn't be reached) */
+    val saved: Boolean = false,
 )
 
 /**
  * The manga, comic and PDF reader: works out the pages, remembers the mode and direction for the series,
- * saves your page, and draws PDF pages (PdfRenderer) after fetching the file once.
+ * saves your page, and draws PDF pages (PdfRenderer) after fetching the file once. Manga pages come from Tower
+ * already shrunk to this screen, the next three are fetched ahead of you, and chapters saved on the phone are
+ * read from the phone (with or without internet).
  */
 @HiltViewModel
 class PageReaderViewModel
@@ -72,6 +87,7 @@ class PageReaderViewModel
         val books: BenflixBooks,
         val navigationManager: NavigationManager,
         val screensaver: ScreensaverService,
+        private val offline: MangaOffline,
     ) : ViewModel() {
         private val _state = MutableStateFlow(PageReaderState())
         val state: StateFlow<PageReaderState> = _state
@@ -83,6 +99,7 @@ class PageReaderViewModel
         private val bitmaps = LruCache<String, Bitmap>(PDF_CACHE)
         private var readSince = System.currentTimeMillis()
         private var lastSaved = -1
+        private var stamp = 0L
 
         fun load(
             id: String,
@@ -105,22 +122,68 @@ class PageReaderViewModel
                                 startPage = (page.placePct * n).toInt().coerceIn(0, (n - 1).coerceAtLeast(0)),
                             )
                     } else {
-                        val v = books.vol(id)
-                        val n = if (v.pdf) openPdf(id) else v.pages
-                        _state.value =
-                            PageReaderState(
-                                loaded = true,
-                                name = v.name,
-                                series = v.series,
-                                pages = n,
-                                pdf = v.pdf,
-                                rtl = (v.dir ?: if (v.rtl) "rtl" else "ltr") == "rtl",
-                                mode = PageMode.of(v.mode),
-                                startPage = v.placePage.coerceIn(0, (n - 1).coerceAtLeast(0)),
-                                vol = v,
-                            )
+                        // A chapter saved on this phone doesn't wait long for Tower: no answer in a moment = read the saved copy
+                        val saved = offline.entry(id)?.takeIf { it.done }
+                        val v =
+                            if (saved == null) {
+                                books.vol(id)
+                            } else {
+                                // Asked on the side, so a phone with no internet isn't held up by the wait for Tower
+                                val asked = viewModelScope.async(Dispatchers.IO) { runCatching { books.vol(id) }.getOrNull() }
+                                withTimeoutOrNull(SAVED_WAIT_MS) { asked.await() }
+                            }
+                        if (v != null) {
+                            val n = if (v.pdf) openPdf(id) else v.pages
+                            stamp = v.stamp
+                            // Finished before: reading it again starts at the front
+                            val start = if (v.placePage >= n - 1) 0 else v.placePage
+                            _state.value =
+                                PageReaderState(
+                                    loaded = true,
+                                    name =
+                                        listOf(
+                                            v.name.takeIf { it != "Read" },
+                                            v.chapterName,
+                                        ).filter { !it.isNullOrBlank() }.joinToString(" · "),
+                                    series = v.series,
+                                    pages = n,
+                                    pdf = v.pdf,
+                                    rtl = (v.dir ?: if (v.rtl) "rtl" else "ltr") == "rtl",
+                                    mode = PageMode.of(v.mode),
+                                    startPage = start.coerceIn(0, (n - 1).coerceAtLeast(0)),
+                                    vol = v,
+                                    unit = v.unit,
+                                    nextId = v.nextId,
+                                    nextName = v.nextName,
+                                    nextCover = v.nextCover,
+                                )
+                        } else if (saved != null) {
+                            val next = offline.nextSaved(id)
+                            _state.value =
+                                PageReaderState(
+                                    loaded = true,
+                                    name = saved.name,
+                                    series = saved.series,
+                                    pages = saved.pages,
+                                    rtl = saved.rtl,
+                                    mode = if (saved.webtoon) PageMode.SCROLL else PageMode.ONE,
+                                    startPage = (if (saved.page >= saved.pages - 1) 0 else saved.page).coerceIn(0, saved.pages - 1),
+                                    unit = saved.unit,
+                                    nextId = next?.volId,
+                                    nextName = next?.name,
+                                    saved = true,
+                                )
+                        }
                     }
-                    books.opened(_state.value.vol?.titleId ?: id)
+                    if (!_state.value.saved) {
+                        try {
+                            books.opened(_state.value.vol?.titleId ?: id)
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.d(ex, "Couldn't tell Tower it was opened")
+                        }
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -185,10 +248,28 @@ class PageReaderViewModel
                 }
             }
 
-        fun pageUrl(
+        /** Where page [n] comes from: the copy on this phone when there is one, else Tower (shrunk to about [width]) */
+        fun pageModel(
             n: Int,
             width: Int,
-        ): String = books.pageUrl(id, n, width)
+        ): Any = offline.pageFile(id, n) ?: books.pageUrl(id, n, width, stamp)
+
+        /**
+         * Ben 2026-11-21 (weak TVs): the next three pages are fetched while you read this one, so a page turn
+         * shows at once. Tower gets the three after those ready at the same time.
+         */
+        fun preload(
+            from: Int,
+            width: Int,
+        ) {
+            val st = _state.value
+            if (st.pdf || st.pages <= 0) return
+            val loader = SingletonImageLoader.get(context)
+            for (n in from + 1..(from + PAGES_AHEAD).coerceAtMost(st.pages - 1)) {
+                if (offline.pageFile(id, n) != null) continue
+                loader.enqueue(ImageRequest.Builder(context).data(books.pageUrl(id, n, width, stamp)).build())
+            }
+        }
 
         fun setMode(
             mode: PageMode,
@@ -215,6 +296,7 @@ class PageReaderViewModel
             val st = _state.value
             if (st.pages <= 0 || (page == lastSaved && !finished)) return
             lastSaved = page
+            if (!book) offline.setPage(id, page)
             val secs = ((System.currentTimeMillis() - readSince) / 1000).toInt()
             readSince = System.currentTimeMillis()
             val pct = if (finished || page >= st.pages - 1) 1.0 else page.toDouble() / st.pages
@@ -255,6 +337,8 @@ class PageReaderViewModel
 
         companion object {
             private const val PDF_CACHE = 24
+            private const val PAGES_AHEAD = 3
+            private const val SAVED_WAIT_MS = 2_500L
             private const val SECONDS_CAP = 3000
         }
     }

@@ -331,6 +331,48 @@ class MalSync
             return true
         }
 
+        /**
+         * Manga: moves the person's MyAnimeList reading entry forward to [chapter] chapters read (never back).
+         * Returns true if something changed. Throws [MalSignedOutException] if they need to sign in again.
+         */
+        suspend fun saveManga(
+            userId: UUID,
+            malId: Int,
+            chapter: Int,
+        ): Boolean {
+            var access = accessToken(userId) ?: return false
+            val url = "$API_URL/manga/$malId?fields=num_chapters,my_list_status"
+            val current =
+                try {
+                    call(access, Request.Builder().url(url))
+                } catch (ex: MalSignedOutException) {
+                    // Maybe just expired early: renew once
+                    access = accessToken(userId, force = true) ?: return false
+                    call(access, Request.Builder().url(url))
+                } ?: return false
+            val chapters = (current["num_chapters"] as? JsonPrimitive)?.intOrNull?.takeIf { it > 0 }
+            val mine = current["my_list_status"] as? JsonObject
+            val had = (mine?.get("num_chapters_read") as? JsonPrimitive)?.intOrNull ?: 0
+            val hadStatus = (mine?.get("status") as? JsonPrimitive)?.contentOrNull
+            if (had >= chapter && hadStatus != null && hadStatus != "plan_to_read") return false
+            val status = if (chapters != null && chapter >= chapters) "completed" else "reading"
+            call(
+                access,
+                Request
+                    .Builder()
+                    .url("$API_URL/manga/$malId/my_list_status")
+                    .patch(
+                        FormBody
+                            .Builder()
+                            .add("status", status)
+                            .add("num_chapters_read", chapter.toString())
+                            .build(),
+                    ),
+            )
+            Timber.i("MyAnimeList: manga %s chapter %s (%s)", malId, chapter, status)
+            return true
+        }
+
         /** Called when MyAnimeList refused the sign-in for good */
         fun signedOut(userId: UUID) = signOutLocal(userId)
 

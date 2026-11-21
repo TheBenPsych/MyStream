@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.books
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,11 +10,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,12 +39,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.BookPage
 import com.github.damontecres.wholphin.services.BookTile
+import com.github.damontecres.wholphin.services.BookVolume
 import com.github.damontecres.wholphin.services.CoverChoice
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleGrid
@@ -53,6 +65,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -63,6 +76,10 @@ import kotlinx.coroutines.delay
  * reading 64%), Listen when you have it both ways (the line under the buttons says whether your places match),
  * Want to read and More. Under the buttons: About this book in big words, then In this series, More by the
  * author and More like this, one row after another, so Down walks the whole page.
+ *
+ * Manga (back 2026-11-21): the same page. Read Chapter 1 (or Keep reading Chapter 12), Want to read and More;
+ * About this manga, then every chapter in reading order (a tick on the ones you've read, the one you're on lit),
+ * then More like this. Phones can save chapters for reading with no internet from More.
  */
 @Composable
 fun BookTitlePage(
@@ -134,8 +151,18 @@ private fun BookOnTitleFrame(
                     }.distinctBy { it.id }
             }
         }
+    val nextVol = remember(p) { p.volumes.firstOrNull { it.id == p.next } }
+    val saved by viewModel.mangaOffline.items.collectAsState()
+    val savedHere = remember(saved, t.id) { saved.filter { it.titleId == t.id } }
     val main =
         when {
+            t.isManga -> {
+                nextVol?.let { v ->
+                    val started = p.volumes.any { it.done || it.progress > 0f }
+                    listOf(if (started) "Keep reading" else "Read", v.name.takeIf { it != "Read" }).filterNotNull().joinToString(" ")
+                }
+            }
+
             t.isAudio -> {
                 if (p.placePos > 0) "Keep listening" else "Listen"
             }
@@ -197,7 +224,7 @@ private fun BookOnTitleFrame(
     val tabs =
         buildList {
             add(
-                TitleTab("About this book") { scope ->
+                TitleTab(if (t.isManga) "About this manga" else "About this book") { scope ->
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (p.desc.isNotBlank()) {
                             Text(
@@ -257,6 +284,17 @@ private fun BookOnTitleFrame(
                     }
                 },
             )
+            if (t.isManga && p.volumes.isNotEmpty()) {
+                val left = p.volumes.count { !it.done }
+                add(
+                    TitleTab(
+                        if (p.unit == "ch") "Chapters" else "Volumes",
+                        note = "${p.volumes.size}" + if (left in 1 until p.volumes.size) " · $left left" else "",
+                    ) { scope ->
+                        MangaChapters(scope, p, savedHere.filter { it.done }.map { it.volId }.toSet(), viewModel::openVolume)
+                    },
+                )
+            }
             if (seriesBooks.isNotEmpty()) {
                 add(TitleTab("In this series", note = t.series) { scope -> BookTiles(scope, seriesBooks, onTile) })
             }
@@ -273,9 +311,19 @@ private fun BookOnTitleFrame(
         }
     val info =
         buildList {
-            add(if (t.isAudio) "Audiobook" else "Book")
+            add(
+                if (t.isAudio) {
+                    "Audiobook"
+                } else if (t.isManga) {
+                    "Manga"
+                } else {
+                    "Book"
+                },
+            )
             if (t.author.isNotBlank()) add(t.author)
             t.year?.let { add("$it") }
+            if (t.isManga && p.pubStatus.isNotBlank()) add(p.pubStatus)
+            if (t.isManga && t.line.isNotBlank()) add(t.line)
             if (t.isAudio && p.seconds > 0) add(hoursMinutes(p.seconds))
             if (t.series.isNotBlank()) add(t.series + (t.seriesIndex?.let { " #" + it.toString().removeSuffix(".0") } ?: ""))
         }.joinToString("  ·  ")
@@ -312,11 +360,29 @@ private fun BookOnTitleFrame(
             onDismiss = { showMore = false },
             items =
                 buildList {
-                    add(
-                        TitleMoreItem(if (t.status == "done") "Mark not finished" else "Mark finished", BenflixIcon.CHECK, {
-                            viewModel.mark(t.id, t.status != "done", false)
-                        }),
-                    )
+                    if (t.isManga) {
+                        val word = if (p.unit == "ch") "chapter" else "volume"
+                        add(TitleMoreItem("Mark every $word read", BenflixIcon.CHECK, { viewModel.mark(t.id, true, false) }))
+                        add(TitleMoreItem("Mark every $word not read", BenflixIcon.CLOSE, { viewModel.mark(t.id, false, false) }))
+                        // Phones (Ben 2026-11-21): save chapters for reading with no internet
+                        if (!isTv) {
+                            add(TitleMoreItem("Download the next 20 ${word}s", BenflixIcon.DOWNLOAD, { viewModel.saveForOffline(p, 20) }))
+                            add(TitleMoreItem("Download every $word", BenflixIcon.DOWNLOAD, { viewModel.saveForOffline(p, null) }))
+                            if (savedHere.isNotEmpty()) {
+                                add(
+                                    TitleMoreItem("Remove downloads from this phone (${savedHere.size})", BenflixIcon.TRASH, {
+                                        viewModel.deleteOffline(p)
+                                    }),
+                                )
+                            }
+                        }
+                    } else {
+                        add(
+                            TitleMoreItem(if (t.status == "done") "Mark not finished" else "Mark finished", BenflixIcon.CHECK, {
+                                viewModel.mark(t.id, t.status != "done", false)
+                            }),
+                        )
+                    }
                     if (isTv && t.kind == "book" &&
                         t.readable
                     ) {
@@ -330,6 +396,113 @@ private fun BookOnTitleFrame(
                     if (p.canPickCover) add(TitleMoreItem("Change cover", BenflixIcon.IMAGE, { viewModel.loadCovers(p) }, youOnly = true))
                 },
         )
+    }
+}
+
+/**
+ * Every chapter of a manga in reading order: one row to slide along on TV and wide screens, three rows on phones.
+ * A tick on the ones you've read, the one you're on lit, NEW on ones that arrived since you last looked, and a
+ * small arrow on ones saved on this phone. The row opens on the chapter you're on.
+ */
+@Composable
+private fun MangaChapters(
+    scope: TitleTabScope,
+    p: BookPage,
+    saved: Set<String>,
+    onOpen: (BookVolume) -> Unit,
+) {
+    val vols = p.volumes
+    val at = remember(p) { vols.indexOfFirst { it.id == p.next }.coerceAtLeast(0) }
+    // Long lists show just the number ("12"), short ones the whole name and the chapter's own name
+    val many = vols.size > 40
+    val chip: @Composable (BookVolume) -> Unit = { v ->
+        ChapterChip(
+            label = if (many) v.short else listOf(v.name, v.title).filter { it.isNotBlank() }.joinToString(" · "),
+            done = v.done,
+            current = v.id == p.next,
+            isNew = v.isNew,
+            saved = v.id in saved,
+            onClick = { onOpen(v) },
+        )
+    }
+    if (scope.wide) {
+        val state = rememberLazyListState(initialFirstVisibleItemIndex = (at - 2).coerceAtLeast(0))
+        LazyRow(
+            state = state,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = scope.side, vertical = 4.dp),
+        ) {
+            items(vols, key = { it.id }) { v -> chip(v) }
+        }
+    } else {
+        val state = rememberLazyGridState(initialFirstVisibleItemIndex = (at - 3).coerceAtLeast(0))
+        LazyHorizontalGrid(
+            rows = GridCells.Fixed(3),
+            state = state,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = scope.side),
+            modifier = Modifier.fillMaxWidth().height(148.dp),
+        ) {
+            items(vols, key = { it.id }) { v -> chip(v) }
+        }
+    }
+}
+
+/** One chapter: its number or name, a tick when read, lit when it's the one you're on */
+@Composable
+private fun ChapterChip(
+    label: String,
+    done: Boolean,
+    current: Boolean,
+    isNew: Boolean,
+    saved: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = BenflixShapes.Pill
+    val ink =
+        when {
+            current -> BenflixColors.OnBooks
+            done -> BenflixColors.Muted
+            else -> BenflixColors.Text
+        }
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (current) BenflixColors.Books else BenflixColors.Raised,
+                contentColor = ink,
+                focusedContainerColor = if (current) BenflixColors.Books else BenflixColors.FocusRow,
+                focusedContentColor = if (current) BenflixColors.OnBooks else BenflixColors.Text,
+            ),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp).widthIn(min = 22.dp, max = 260.dp),
+        ) {
+            Text(
+                text = label,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (isNew && !done) {
+                Text(
+                    "NEW",
+                    fontSize = BenflixType.tag,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (current) ink else BenflixColors.Books,
+                )
+            }
+            if (saved) BenflixIconImage(BenflixIcon.DOWNLOAD, color = ink, size = 13.dp)
+            if (done) BenflixIconImage(BenflixIcon.CHECK, color = if (current) ink else BenflixColors.Books, size = 13.dp)
+        }
     }
 }
 

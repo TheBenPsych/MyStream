@@ -24,6 +24,8 @@ class BookTitleViewModel
         val books: BenflixBooks,
         val audiobooks: AudiobookService,
         val navigationManager: NavigationManager,
+        private val aniListSync: com.github.damontecres.wholphin.services.AniListSync,
+        val mangaOffline: com.github.damontecres.wholphin.services.MangaOffline,
     ) : ViewModel() {
         private val _page = MutableStateFlow<BookPage?>(null)
         val page: StateFlow<BookPage?> = _page
@@ -39,8 +41,13 @@ class BookTitleViewModel
             this.id = id
             viewModelScope.launchIO {
                 try {
-                    _page.value = books.title(id)
+                    val p = books.title(id)
+                    _page.value = p
                     problem.value = null
+                    // Manga: chapters finished (here or on another device) tick off on AniList and MyAnimeList
+                    if (p.tile.isManga && p.unit == "ch" && p.readTo > 0) {
+                        aniListSync.mangaRead(p.tile.name, p.anilist, p.mal, p.readTo)
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -58,6 +65,10 @@ class BookTitleViewModel
         fun start(p: BookPage) {
             val t = p.tile
             when {
+                t.isManga -> {
+                    p.next?.let { navigationManager.navigateTo(Destination.PageReader(it)) }
+                }
+
                 t.isAudio -> {
                     listen(p, null)
                 }
@@ -87,6 +98,27 @@ class BookTitleViewModel
                     note.value = "Couldn't start the audiobook."
                 }
             }
+        }
+
+        fun openVolume(v: com.github.damontecres.wholphin.services.BookVolume) {
+            navigationManager.navigateTo(Destination.PageReader(v.id))
+        }
+
+        /** Phones: saves the next [count] unread chapters (or every chapter) for reading with no internet */
+        fun saveForOffline(
+            p: BookPage,
+            count: Int?,
+        ) {
+            val from = p.volumes.indexOfFirst { it.id == p.next }.coerceAtLeast(0)
+            val picked = if (count == null) p.volumes else p.volumes.drop(from).take(count)
+            mangaOffline.save(p, picked)
+            note.value =
+                "Saving ${picked.size} " + (if (picked.size == 1) "chapter" else "chapters") + " to this phone. See them in Downloads."
+        }
+
+        fun deleteOffline(p: BookPage) {
+            mangaOffline.deleteSeries(p.tile.id)
+            note.value = "Removed from this phone. It's still on Glowfin."
         }
 
         /** The same book the other way: the audiobook of this ebook, or the other way round */
