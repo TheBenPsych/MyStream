@@ -16,8 +16,11 @@ class IntroPace(
     /** 1.0 = as designed; bigger = slower */
     val stretch: Float,
 ) {
-    /** The longest step time takes in one frame: a hiccup pauses the animation instead of skipping part of it */
-    val maxStepMs: Float get() = maxOf(34f, frameMs * 1.5f)
+    /**
+     * The longest step time takes in one frame. Overhaul 2026-11-20: generous (three frames), so a slow TV
+     * keeps to the clock instead of playing the logo screen at half speed (it took 4.5 s on the test TV).
+     */
+    val maxStepMs: Float get() = maxOf(100f, frameMs * 3f)
 
     companion object {
         /** Watches [frames] frames and works out the pace (the median, so one hiccup doesn't count) */
@@ -40,7 +43,8 @@ class IntroPace(
             if (LiteMode.isOn(context)) stretch = maxOf(stretch, 1.15f)
             // A busy first frame or two is common; more than that is a slow TV
             if (gaps.count { it > 40f } >= frames / 3) stretch = maxOf(stretch, 1.3f)
-            stretch = stretch.coerceIn(1f, 1.5f)
+            // Overhaul 2026-11-20: a still logo needs little extra time, so slow TVs wait at most 15% longer
+            stretch = stretch.coerceIn(1f, 1.15f)
             Timber.i("Intro pace: frame %.1f ms, stretch %.2f", frameMs, stretch)
             return IntroPace(frameMs, stretch)
         }
