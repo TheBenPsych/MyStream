@@ -202,7 +202,7 @@ fun AppScreensaverContent(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = BenflixSpace.tvEdge, bottom = 40.dp)
+                                .padding(start = BenflixSpace.tvOuterEdge, bottom = 40.dp)
                                 .fillMaxWidth(.55f),
                     ) {
                         Text(
@@ -274,7 +274,7 @@ fun AppScreensaverContent(
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = BenflixSpace.tvEdge, top = 32.dp),
+                    .padding(start = BenflixSpace.tvOuterEdge, top = 32.dp),
         )
     }
 }

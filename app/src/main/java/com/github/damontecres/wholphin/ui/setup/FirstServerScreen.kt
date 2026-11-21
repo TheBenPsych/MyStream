@@ -88,7 +88,7 @@ fun FirstServerScreen(
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
+                    .padding(start = if (isTv) BenflixSpace.tvOuterEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

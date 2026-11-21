@@ -1,7 +1,9 @@
 package com.github.damontecres.wholphin.ui.discover
 
 import android.content.Context
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -103,7 +106,9 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
+import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -1459,6 +1464,7 @@ fun BenflixRequestsPage(
                 waitingCount = if (admin) waitingCount else null,
                 onWaiting = { tabViewModel.updateSelectedTabIndex(tabs.lastIndex) },
                 up = tabs[index].tabFocusRequester,
+                atStart = isTv,
             )
             Box(modifier = Modifier.weight(1f)) {
                 RequestTab(index, viewModel, admin)
@@ -1635,6 +1641,7 @@ private fun NotConnected(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FindShelf(
     section: FindSection,
@@ -1904,111 +1911,128 @@ private fun FindShelf(
             FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
         }
     val onGenre: (FindGenre?) -> Unit = { g -> filters = filters.copy(genre = g) }
-    Column(Modifier.fillMaxSize()) {
-        if (!isTv) RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
-        if (isTv) {
-            DelayedRequestPreview(
-                focused = focusedItem,
-                fallback = shownRows.firstOrNull()?.items?.firstOrNull(),
-                scores = scores,
-                height = TOP_AREA_HEIGHT,
-            )
-        }
-        if (filters.narrowed || filters.genre != null) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                filters.genre?.let { g -> item { ActiveFilterChip(g.label) { filters = filters.copy(genre = null) } } }
-                filters.decade?.let { d -> item { ActiveFilterChip(d.label) { filters = filters.copy(decade = null) } } }
-                filters.minScore?.let { m -> item { ActiveFilterChip("Score $m+") { filters = filters.copy(minScore = null) } } }
-                filters.sort?.let { o -> item { ActiveFilterChip(o.label) { filters = filters.copy(sort = null) } } }
-                filters.language?.let { l -> item { ActiveFilterChip(l.label) { filters = filters.copy(language = null) } } }
-            }
-        }
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(if (isTv) 18.dp else 14.dp),
-            contentPadding = PaddingValues(top = 6.dp, bottom = 48.dp),
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        ) {
-            if (!isTv && searching) {
-                searchShelves(
-                    results = searchResults,
-                    anime = searchAnime,
-                    visible = visible,
-                    scoreLine = scoreLine,
-                    onOpen = openItem,
-                    onMenu = { menuItem = it },
-                    onFocusItem = onFocusPoster,
-                    isTv = false,
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Ben 2026-11-21 (TV photo): the top area took a fixed 170 however little room was left, so the first row
+        // (Top 10) was cut off at the bottom and moving onto it had nowhere to scroll. The top area now only takes
+        // what is left once one whole row fits under it.
+        val topHeight = (maxHeight - TV_ROW_ROOM).coerceIn(TOP_AREA_MIN, TOP_AREA_HEIGHT)
+        Column(Modifier.fillMaxSize()) {
+            if (!isTv) RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+            if (isTv) {
+                DelayedRequestPreview(
+                    focused = focusedItem,
+                    fallback = shownRows.firstOrNull()?.items?.firstOrNull(),
+                    scores = scores,
+                    height = topHeight,
                 )
-                return@LazyColumn
             }
-            when {
-                rows == null -> {
-                    item(key = "loading") { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
+            if (filters.narrowed || filters.genre != null) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    filters.genre?.let { g -> item { ActiveFilterChip(g.label) { filters = filters.copy(genre = null) } } }
+                    filters.decade?.let { d -> item { ActiveFilterChip(d.label) { filters = filters.copy(decade = null) } } }
+                    filters.minScore?.let { m -> item { ActiveFilterChip("Score $m+") { filters = filters.copy(minScore = null) } } }
+                    filters.sort?.let { o -> item { ActiveFilterChip(o.label) { filters = filters.copy(sort = null) } } }
+                    filters.language?.let { l -> item { ActiveFilterChip(l.label) { filters = filters.copy(language = null) } } }
                 }
+            }
+            // Like Movies and Shows: the row you move to jumps up whole (name and all) right under the top area
+            val defaultSpec = LocalBringIntoViewSpec.current
+            val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
+            CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(if (isTv) 18.dp else 14.dp),
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 48.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                ) {
+                    if (!isTv && searching) {
+                        searchShelves(
+                            results = searchResults,
+                            anime = searchAnime,
+                            visible = visible,
+                            scoreLine = scoreLine,
+                            onOpen = openItem,
+                            onMenu = { menuItem = it },
+                            onFocusItem = onFocusPoster,
+                            isTv = false,
+                        )
+                        return@LazyColumn
+                    }
+                    when {
+                        rows == null -> {
+                            item(key = "loading") { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
+                        }
 
-                shownRows.isEmpty() -> {
-                    item(key = "empty") {
-                        if (key in failedRows) {
-                            LoadFailed(text = "These didn't load.", onRetry = { viewModel.loadSection(section, filters) })
-                        } else {
-                            Text(
-                                text = "Nothing matches. Try fewer filters.",
-                                fontSize = BenflixType.lead,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
-                            )
+                        shownRows.isEmpty() -> {
+                            item(key = "empty") {
+                                if (key in failedRows) {
+                                    LoadFailed(text = "These didn't load.", onRetry = { viewModel.loadSection(section, filters) })
+                                } else {
+                                    Text(
+                                        text = "Nothing matches. Try fewer filters.",
+                                        fontSize = BenflixType.lead,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            items(shownRows, key = { "row-${it.title}" }) { row ->
+                                CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                                    RequestDoorRow(
+                                        title = row.title,
+                                        items = row.items,
+                                        isTv = isTv,
+                                        onClick = openItem,
+                                        onLongClick = { item ->
+                                            // Hold OK asks straight away: movies need no choice, shows pick seasons
+                                            if (item.type == SeerrItemType.PERSON) openItem(item) else viewModel.ask(item)
+                                        },
+                                        onFocus = onFocusPoster,
+                                        cornerNoteFor = { if (row.comingSoon) comingSoonNote(it) else null },
+                                        subtitleFor = scoreLine,
+                                        ranked = row.ranked,
+                                        trailing =
+                                            if (row.ownedCount > 0) {
+                                                {
+                                                    item(key = "owned") {
+                                                        OwnedMoreButton(row.ownedCount, ownedOpen == row.title, onClick = {
+                                                            ownedOpen = if (ownedOpen == row.title) null else row.title
+                                                        })
+                                                    }
+                                                }
+                                            } else {
+                                                null
+                                            },
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-
-                else -> {
-                    items(shownRows, key = { "row-${it.title}" }) { row ->
-                        RequestDoorRow(
-                            title = row.title,
-                            items = row.items,
-                            isTv = isTv,
-                            onClick = openItem,
-                            onLongClick = { item ->
-                                // Hold OK asks straight away: movies need no choice, shows pick seasons
-                                if (item.type == SeerrItemType.PERSON) openItem(item) else viewModel.ask(item)
-                            },
-                            onFocus = onFocusPoster,
-                            cornerNoteFor = { if (row.comingSoon) comingSoonNote(it) else null },
-                            subtitleFor = scoreLine,
-                            ranked = row.ranked,
-                            trailing =
-                                if (row.ownedCount > 0) {
-                                    {
-                                        item(key = "owned") {
-                                            OwnedMoreButton(row.ownedCount, ownedOpen == row.title, onClick = {
-                                                ownedOpen = if (ownedOpen == row.title) null else row.title
-                                            })
-                                        }
-                                    }
-                                } else {
-                                    null
-                                },
-                        )
+                    // Genres: every row shows only the genre you pick ("All" goes back)
+                    item(key = "genres") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                            RequestChipRow(title = "Genres") {
+                                item(key = "g-all") { RequestsChip("All", filters.genre == null, { onGenre(null) }) }
+                                items(genreChips, key = { "g-${it.label}" }) { g ->
+                                    RequestsChip(g.label, filters.genre == g, { onGenre(g) })
+                                }
+                            }
+                        }
                     }
-                }
-            }
-            // Genres: every row shows only the genre you pick ("All" goes back)
-            item(key = "genres") {
-                RequestChipRow(title = "Genres") {
-                    item(key = "g-all") { RequestsChip("All", filters.genre == null, { onGenre(null) }) }
-                    items(genreChips, key = { "g-${it.label}" }) { g ->
-                        RequestsChip(g.label, filters.genre == g, { onGenre(g) })
+                    item(key = "show") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                            RequestChipRow(title = "Show") {
+                                item(key = "s-filters") { RequestsChip("Filters", filters.narrowed, { showFilters = true }) }
+                                item(key = "s-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
+                                item(key = "s-family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
+                            }
+                        }
                     }
-                }
-            }
-            item(key = "show") {
-                RequestChipRow(title = "Show") {
-                    item(key = "s-filters") { RequestsChip("Filters", filters.narrowed, { showFilters = true }) }
-                    item(key = "s-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
-                    item(key = "s-family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
                 }
             }
         }
@@ -2021,7 +2045,8 @@ internal fun RequestChipRow(
     title: String,
     content: LazyListScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth()) {
+    // (TV: the name scrolls into view with its chips)
+    Column(Modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
             text = title,
             color = MaterialTheme.colorScheme.onSurface,
@@ -2039,8 +2064,14 @@ internal fun RequestChipRow(
     }
 }
 
-/** The TV top area's height on the Requests tabs */
+/** The TV top area's height on the Requests tabs (when the screen has the room) */
 private val TOP_AREA_HEIGHT = 170.dp
+
+/** The least the top area needs for its name, info line and two lines of story */
+private val TOP_AREA_MIN = 116.dp
+
+/** One whole TV row under the top area: its name, a 180 tall poster with its glow ring, and the gap above */
+private val TV_ROW_ROOM = 236.dp
 
 private class ShownRow(
     val title: String,

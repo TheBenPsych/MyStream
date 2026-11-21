@@ -125,8 +125,18 @@ internal fun WideRowsTitlePage(
         LaunchedEffect(toEnd) {
             if (toEnd) listState.animateScrollToItem(sections.size)
         }
-        val onButtons = rememberUpdatedState(focusedButton != null || toEnd)
-        val holdOnButtons = remember(defaultSpec) { HoldStillSpec(defaultSpec) { onButtons.value } }
+        // Ben 2026-11-21 (TV photo): Down from the buttons onto Cast and crew left the row half off the screen.
+        // The "hold still" answer was only refreshed when the page next redrew, so the row's own "show me"
+        // request was often still answered with "stay put". It reads what has the focus right now instead.
+        val lastRow = rememberUpdatedState(sections.lastIndex)
+        val lastPress = rememberUpdatedState(lastPressable)
+        val holdOnButtons =
+            remember(defaultSpec) {
+                HoldStillSpec(defaultSpec) {
+                    val row = focusedRow
+                    focusedButton != null || (row != null && row == lastPress.value && row < lastRow.value)
+                }
+            }
         CompositionLocalProvider(LocalBringIntoViewSpec provides holdOnButtons) {
             LazyColumn(
                 state = listState,

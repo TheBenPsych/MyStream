@@ -1010,7 +1010,7 @@ fun NavDrawer(
                                         .fillMaxWidth()
                                         .weight(1f)
                                         .padding(
-                                            start = if (destination.fullBleed()) 0.dp else PAGE_START,
+                                            start = pageStart(destination),
                                             end = if (destination.fullBleed()) 0.dp else 16.dp,
                                         ),
                             )
@@ -1031,7 +1031,7 @@ fun NavDrawer(
                                 .fillMaxWidth()
                                 .weight(1f)
                                 .padding(
-                                    start = if (destination.fullBleed()) 0.dp else PAGE_START,
+                                    start = pageStart(destination),
                                     end = if (destination.fullBleed()) 0.dp else 16.dp,
                                 ),
                     )
@@ -1067,3 +1067,9 @@ private const val LEAVE_AGAIN_MS = 3_000L
 
 /** Pages that don't draw edge to edge start this far right of the rail */
 private val PAGE_START = 24.dp
+
+/**
+ * Ben 2026-11-21: Requests has its own 16 side margin on every tab, so with [PAGE_START] on top it sat well
+ * right of Movies and Shows. It starts right at the rail now and lines up with them.
+ */
+private fun pageStart(destination: Destination) = if (destination.fullBleed() || destination is Destination.Requests) 0.dp else PAGE_START
