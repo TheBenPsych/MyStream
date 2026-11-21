@@ -193,6 +193,10 @@ class WhoAskedViewModel
                 } else if (!worked) {
                     _asked.update { list -> list.map { if (it.requestId == asked.requestId) it.copy(status = asked.status) else it } }
                 }
+                if (worked && !approve) {
+                    com.github.damontecres.wholphin.ui.discover.DeclineWhy
+                        .ask(asked.requestId)
+                }
                 if (worked) {
                     // The title page refreshes its buttons and status
                     forTitle?.let { (isMovie, tmdbId) -> RequestAnswered.events.tryEmit(RequestAnswered.key(isMovie, tmdbId)) }
@@ -237,6 +241,10 @@ fun WhoAskedBlock(
     var askCantFind by remember { mutableStateOf(false) }
     val isTv = rememberIsTv()
     if (asked.isEmpty()) return
+    if (viewModel.isAdmin) {
+        com.github.damontecres.wholphin.ui.discover
+            .DeclineWhyHost()
+    }
     val key = cantFindKey(isMovie, tmdbId)
     // Benflix: approved but nothing turned up, so Ben can tell whoever asked
     val canMarkCantFind =

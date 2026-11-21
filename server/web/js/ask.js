@@ -99,6 +99,7 @@
       const b = y || n;
       B.busy(b, async () => {
         await B.jf("POST", `/JellyfinEnhanced/arr/requests/${(y ? y.dataset.ayes : n.dataset.ano)}/${y ? "approve" : "decline"}`);
+        if (!y) await B.whyNo("seerr:" + n.dataset.ano);
         B.cache["seerr-mine"] = null;
         b.closest(".acts").innerHTML = `<span class="dim">${y ? "Said yes" : "Said no"}</span>`;
         return y ? `Said yes to ${t}.` : `Said no to ${t}.`;

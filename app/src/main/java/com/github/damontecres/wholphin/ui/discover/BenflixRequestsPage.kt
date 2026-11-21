@@ -1333,6 +1333,8 @@ class BenflixRequestsViewModel
                 val still = _requests.value?.firstOrNull { it.request.id == id }
                 if (still?.status == RequestStatus.PENDING) {
                     showToast(context, "Couldn't ${if (approve) "approve" else "decline"} that one. Try again.")
+                } else if (!approve) {
+                    DeclineWhy.ask(id)
                 }
             }
         }
@@ -1373,6 +1375,8 @@ fun BenflixRequestsPage(
     viewModel: BenflixRequestsViewModel = hiltViewModel(),
 ) {
     val active by viewModel.active.collectAsState(false)
+    // Loads why Ben said no (shown on declined requests), and asks Ben "Tell them why?" after a decline
+    DeclineWhyHost()
     if (!active) {
         NotConnected(viewModel, modifier)
         return
@@ -2187,6 +2191,8 @@ private fun RequestList(
             music + books
         }
     var confirmAll by remember { mutableStateOf(false) }
+    var autoYes by remember { mutableStateOf(false) }
+    if (autoYes) AutoYesDialog(onDismiss = { autoYes = false })
     var cantFindFor by remember { mutableStateOf<RequestEntry?>(null) }
     cantFindFor?.let { entry ->
         CantFindDialog(
@@ -2318,6 +2324,15 @@ private fun RequestList(
                     entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
                 }
             }
+        if (!mineOnly && viewModel.isAdmin && list != null) {
+            item(key = "auto-yes") {
+                Button(
+                    onClick = { autoYes = true },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) { Text("Auto-yes for people you trust") }
+            }
+        }
         when {
             list == null && requestsFailed -> {
                 item {
@@ -2444,6 +2459,7 @@ private fun RequestRow(
 ) {
     // Benflix: on phones the buttons go on their own line under the text, so the title and steps get the full width
     val isTv = rememberIsTv()
+    val declineReasons by DeclineWhy.reasons.collectAsState()
     val buttons: @Composable () -> Unit = {
         if (canAnswer) {
             Button(
@@ -2543,6 +2559,18 @@ private fun RequestRow(
                     )
                 }
                 StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, lookYourself = lookYourself)
+                if (entry.status == RequestStatus.DECLINED) {
+                    val why = entry.request.id?.let { declineReasons[DeclineWhy.key(it)] }
+                    if (why != null) {
+                        Text(
+                            text = "Why: $why",
+                            fontSize = BenflixType.small,
+                            color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
                 if (cantFind != null) CantFindNoteLine(cantFind)
                 if (cantFind == null) {
                     RequestSteps(
