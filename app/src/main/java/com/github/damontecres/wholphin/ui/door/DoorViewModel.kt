@@ -782,6 +782,10 @@ class DoorViewModel
                     data.myList(userId, type, limit = FULL)
                 }
 
+                HISTORY -> {
+                    data.history(userId)
+                }
+
                 NEW, NEW_SHOWS -> {
                     data.newest(userId, main + (if (movies) standUp else emptyList()), type, limit = FULL)
                 }
@@ -833,6 +837,9 @@ class DoorViewModel
             const val TOP_10_ANIME = "top10anime"
             const val BECAUSE = "because"
             const val LOVED = "loved"
+
+            /** Watch history: not a row, only the full page opened from My Glowfin */
+            const val HISTORY = "history"
             const val MORE_GENRE = "moregenre"
             const val ANIME = "anime"
             const val STAND_UP = "standup"

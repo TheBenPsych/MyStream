@@ -108,11 +108,48 @@ fun DownloadButton(
     }
     var starting by remember { mutableStateOf(false) }
     var playing by remember { mutableStateOf<DownloadedItem?>(null) }
+    // Download size: asked the first time, then remembered (change it on the Downloads page)
+    var askSize by remember { mutableStateOf(false) }
     LaunchedEffect(starting) {
         if (starting) {
-            service.start(item)
+            service.start(item, smaller = service.smallerDownloads == true)
             starting = false
         }
+    }
+    if (askSize) {
+        val runtimeMs = (item.data.runTimeTicks ?: 0L) / 10_000L
+        val full =
+            item.data.mediaSources
+                ?.firstOrNull()
+                ?.size
+        com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog(
+            title = "Download size",
+            subtitle = "Glowfin remembers this. You can change it on the Downloads page.",
+            choices =
+                listOf(
+                    com.github.damontecres.wholphin.ui.components.BenflixChoice(
+                        label = "Best picture",
+                        note = listOfNotNull("The file as it is", full?.let { "about ${sizeWords(it)}" }).joinToString(", "),
+                        onClick = {
+                            service.smallerDownloads = false
+                            starting = true
+                        },
+                    ),
+                    com.github.damontecres.wholphin.ui.components.BenflixChoice(
+                        label = "Smaller",
+                        note =
+                            listOfNotNull(
+                                "Fits more on the phone",
+                                runtimeMs.takeIf { it > 0 }?.let { "about ${sizeWords(service.smallerBytes(it))}" },
+                            ).joinToString(", "),
+                        onClick = {
+                            service.smallerDownloads = true
+                            starting = true
+                        },
+                    ),
+                ),
+            onDismissRequest = { askSize = false },
+        )
     }
     val (icon, label) =
         when (val s = status) {
@@ -149,7 +186,7 @@ fun DownloadButton(
                 .clickable {
                     when (status) {
                         DownloadStatus.None -> {
-                            starting = true
+                            if (service.smallerDownloads == null) askSize = true else starting = true
                         }
 
                         DownloadStatus.Done -> {
@@ -232,6 +269,67 @@ fun DownloadsPage(
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             return@Column
+        }
+        // Free up space (Ben 2026-11-21): how much room the downloads take, and one press to delete what's been watched
+        val used = remember(visible, tick / 5) { service.bytesUsed(visible) }
+        val watched = remember(items, tick / 5) { items.filter { service.isWatched(it.itemId) } }
+        var smaller by remember { mutableStateOf(service.smallerDownloads == true) }
+        var confirmWatched by remember { mutableStateOf(false) }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+        ) {
+            Text(
+                text = "Using ${sizeWords(used)} on this phone",
+                fontSize = BenflixType.small,
+                color = Color(0xFFB3B3B3),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (watched.isNotEmpty()) {
+                    Text(
+                        text = "Delete watched (${watched.size})",
+                        fontSize = BenflixType.small,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFF2B2B2B))
+                                .clickable { confirmWatched = true }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+                Text(
+                    text = if (smaller) "New downloads: Smaller" else "New downloads: Best picture",
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xFF2B2B2B))
+                            .clickable {
+                                smaller = !smaller
+                                service.smallerDownloads = smaller
+                            }.padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+        }
+        if (confirmWatched) {
+            com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog(
+                title = "Delete ${watched.size} watched download${if (watched.size == 1) "" else "s"}?",
+                subtitle = "They stay on Glowfin. Only the copies on this phone go.",
+                choices =
+                    listOf(
+                        com.github.damontecres.wholphin.ui.components.BenflixChoice(
+                            label = "Delete them",
+                            onClick = { watched.forEach { service.delete(it.itemId) } },
+                        ),
+                        com.github.damontecres.wholphin.ui.components
+                            .BenflixChoice(label = "Keep them", onClick = {}),
+                    ),
+                onDismissRequest = { confirmWatched = false },
+            )
         }
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -478,7 +576,9 @@ fun LocalPlayer(
             val pos = player.currentPosition
             val duration = player.duration
             // Finished (or nearly)? Start from the beginning next time
-            service.savePosition(item.itemId, if (duration > 0 && pos > duration - 60_000) 0L else pos)
+            val finished = duration > 0 && pos > duration - 60_000
+            if (finished) service.markWatched(item.itemId)
+            service.savePosition(item.itemId, if (finished) 0L else pos)
             player.release()
             if (before != null) activity.requestedOrientation = before
         }
@@ -568,3 +668,11 @@ private fun DownloadsMusicBar(viewModel: DownloadsViewModel) {
         MusicButton(null, BenflixIcon.NEXT, onClick = { viewModel.musicService.player.seekToNextMediaItem() })
     }
 }
+
+/** "1.4 GB" / "320 MB" */
+internal fun sizeWords(bytes: Long): String =
+    if (bytes >= 1_000_000_000L) {
+        String.format(java.util.Locale.US, "%.1f GB", bytes / 1_000_000_000.0)
+    } else {
+        "${bytes / 1_000_000L} MB"
+    }

@@ -47,6 +47,96 @@ def to_home(tag):
     return round(t, 1)
 
 
+WALK = ["DPAD_DOWN"] * 4 + ["DPAD_RIGHT"] * 6 + ["DPAD_LEFT"] * 3 + ["DPAD_DOWN"] * 2 + ["DPAD_UP"] * 6
+PAGES = ["Home", "Movies", "Shows", "Live TV", "Music", "Games", "Books", "Requests"]
+LAST_RUN = "https://raw.githubusercontent.com/TheBenPsych/MyStream/audit-results/speed/speed-benflix.json"
+
+
+def walk(name):
+    """Move around the page that is open with the remote and note how smoothly it drew"""
+    time.sleep(6)
+    d.sh(f"dumpsys gfxinfo {PKG} reset")
+    for k in WALK:
+        d.sh(f"input keyevent {k}")
+        time.sleep(0.25)
+    time.sleep(1)
+    res["pages"][name] = gfx()
+    d.shot(f"{LABEL}-page-{name.replace(' ', '')}")
+
+
+def pages():
+    """Speed report with every update (Ben 2026-11-21): the same short walk on every main page, so a page
+    that got slower is caught here before it reaches a real TV"""
+    res["pages"] = {}
+    for name in PAGES:
+        try:
+            if d.open_place(name):
+                walk(name)
+            else:
+                res["notes"].append(f"could not open {name}")
+        except Exception as e:  # one page failing must not lose the rest of the report
+            res["notes"].append(f"{name}: {e}")
+    # Settings is behind the profile picture, not in the menu
+    try:
+        d.back_to_home()
+        d.key("DPAD_UP", 4, wait=0.5)
+        d.key("DPAD_RIGHT", 2, wait=0.4)
+        d.key("DPAD_CENTER", wait=1.5)
+        if d.press(r"^Settings$", timeout=6):
+            walk("Settings")
+            d.key("BACK", wait=2)
+        else:
+            res["notes"].append("could not open Settings")
+        d.back_to_home()
+    except Exception as e:
+        res["notes"].append(f"Settings: {e}")
+
+
+def report():
+    """REPORT.md in plain words: each page against the run before this one. The test TV is a slow cloud
+    emulator, so the numbers only mean something next to last time's, never on their own."""
+    import urllib.request
+
+    before = {}
+    try:
+        with urllib.request.urlopen(LAST_RUN, timeout=20) as r:
+            before = json.load(r).get("pages") or {}
+    except Exception as e:
+        res["notes"].append(f"no earlier run to compare with: {e}")
+    lines = ["# Glowfin speed report", "", "| Page | This build | Last build | Verdict |", "|---|---|---|---|"]
+    slower = []
+    for name, now in (res.get("pages") or {}).items():
+        a, b = now.get("p90_ms"), (before.get(name) or {}).get("p90_ms")
+        if a is None:
+            verdict = "Could not measure"
+        elif b is None:
+            verdict = "First measurement"
+        elif a > b * 1.3 and a - b >= 100:
+            verdict = "SLOWER than last build"
+            slower.append(name)
+        elif a < b * 0.75 and b - a >= 100:
+            verdict = "Faster"
+        else:
+            verdict = "Same as before"
+        lines.append(f"| {name} | {a if a is not None else '-'} ms | {b if b is not None else '-'} ms | {verdict} |")
+    times = [t["steps_ms"] for t in res.get("app_timings", []) if t.get("steps_ms")]
+    who = sorted(t["Who's watching"] for t in times if "Who's watching" in t)
+    intro = sorted(t["intro done"] for t in times if "intro done" in t)
+    lines += ["", "Each number is how long the slowest tenth of frames took while moving around the page (lower is better)."]
+    if who:
+        lines.append(f"Opening the app: Who's watching was ready after {who[len(who) // 2] / 1000:.1f} s.")
+    if intro:
+        lines.append(f"The start-up logo was gone after {intro[len(intro) // 2] / 1000:.1f} s.")
+    lines.append("Slower pages: " + (", ".join(slower) if slower else "none") + ".")
+    if res["notes"]:
+        lines += ["", "Notes: " + "; ".join(res["notes"])]
+    with open(f"{OUT}/REPORT.md", "w") as f:
+        f.write("\n".join(lines) + "\n")
+    res["slower_pages"] = slower
+    with open(f"{OUT}/speed-{LABEL}.json", "w") as f:
+        json.dump(res, f, indent=1)
+
+
 def main():
     d.sh(f"pm grant {PKG} android.permission.POST_NOTIFICATIONS")
     # first start includes typing the server and signing in
@@ -87,6 +177,10 @@ def main():
     res["memory_kb"] = int(m.group(1)) if m else None
     with open(f"{OUT}/speed-{LABEL}.json", "w") as f:
         json.dump(res, f, indent=1)
+    if LABEL == "benflix":
+        # after the first save, so a page walk that runs out of time can't lose the numbers above
+        pages()
+        report()
     print(json.dumps(res, indent=1))
 
 
