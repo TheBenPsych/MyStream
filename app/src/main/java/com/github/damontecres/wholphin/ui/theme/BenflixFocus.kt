@@ -11,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
@@ -74,6 +77,37 @@ fun Modifier.benflixOuterFocusRing(
                     ring(g + w / 2f, w, color)
                 }
             }
+    }
+
+/** Room kept clear under a poster for [focusStripes] */
+val FocusStripesRoom = 14.dp
+
+/**
+ * Three short stripes under the thing the remote is on (Ben 2026-11-20): the water under the fin in the Glowfin
+ * logo. They are drawn just below the thing, in room the row keeps clear ([FocusStripesRoom]), so nothing
+ * moves and nothing is covered. Plain lines, no blur, so they cost a slow TV next to nothing.
+ */
+fun Modifier.focusStripes(on: Boolean): Modifier =
+    if (!on) {
+        this
+    } else {
+        drawWithContent {
+            drawContent()
+            val brush = if (KidsLook.on) SolidColor(BenflixColors.Focus) else Glowfin.GlowAcross
+            var y = size.height + 3.5.dp.toPx()
+            listOf(Triple(0.86f, 2.5f, 1f), Triple(0.62f, 2f, 0.6f), Triple(0.38f, 1.5f, 0.3f)).forEach { (wide, tall, alpha) ->
+                val w = size.width * wide
+                val h = tall.dp.toPx()
+                drawRoundRect(
+                    brush = brush,
+                    topLeft = Offset((size.width - w) / 2f, y),
+                    size = Size(w, h),
+                    cornerRadius = CornerRadius(h / 2f),
+                    alpha = alpha,
+                )
+                y += h + 2.dp.toPx()
+            }
+        }
     }
 
 /** The dark band between a thing and its outer focus ring */

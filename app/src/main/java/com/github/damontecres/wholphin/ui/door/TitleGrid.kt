@@ -303,6 +303,7 @@ fun TitleGrid(
                                         width = width,
                                         showName = !isTv,
                                         onClick = { onClick(entry.item) },
+                                        stripes = isTv,
                                         modifier = if (isFirst) Modifier.focusRequester(first) else Modifier,
                                     )
                                 }
