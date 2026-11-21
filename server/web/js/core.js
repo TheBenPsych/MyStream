@@ -271,7 +271,7 @@ B.call = async (method, path, body, opts) => {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    const err = new Error("Couldn't reach Glowfin on the server. Is it on?"); err.status = 0; throw err;
+    const err = new Error("Couldn't reach Tower. Is it on?"); err.status = 0; throw err;
   }
   const text = await r.text();
   let data = null;
@@ -692,7 +692,17 @@ B.busy = async (btn, fn) => {
   try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }
   if (btn) btn.disabled = false;
 };
-B.spinner = () => `<div class="spin"></div>`;
+// Loading (feel check 3, Ben 2026-11-21): B.spinner() is the small circle for pop-ups and little boxes.
+// B.spinner("rows" | "wall" | "title" | "list" | "guide") gives grey blocks in the shape of the page that is
+// coming, so nothing jumps when the pictures arrive. They stay hidden for the first quarter second.
+const SK = {
+  rows: () => [0, 1, 2].map(() => `<div class="sk-row"><i class="sk-h"></i><div class="sk-line">${"<i class=\"sk-p\"></i>".repeat(12)}</div></div>`).join(""),
+  wall: () => `<div class="sk-wall">${"<i class=\"sk-p\"></i>".repeat(24)}</div>`,
+  title: () => `<div class="sk-title"><i class="sk-b" style="width:min(60%,420px);height:44px"></i><i class="sk-b" style="width:min(40%,280px);height:18px"></i><div class="sk-btns"><i class="sk-b" style="width:150px;height:46px"></i><i class="sk-b" style="width:46px;height:46px"></i><i class="sk-b" style="width:46px;height:46px"></i></div><i class="sk-b" style="width:min(100%,620px);height:14px"></i><i class="sk-b" style="width:min(92%,570px);height:14px"></i><i class="sk-b" style="width:min(60%,370px);height:14px"></i></div>`,
+  list: () => `<div class="sk-list">${[60, 45, 60, 45, 60, 45, 60, 45].map((w) => `<div class="sk-item"><i class="sk-b sk-sq"></i><div><i class="sk-b" style="width:${w}%;height:16px"></i><i class="sk-b" style="width:30%;height:12px"></i></div></div>`).join("")}</div>`,
+  guide: () => `<div class="sk-guide">${[50, 30, 65, 50, 30, 65, 50, 30].map((w) => `<div class="sk-ch"><i class="sk-b sk-name"></i><i class="sk-b" style="flex:${w}"></i><i class="sk-b" style="flex:${100 - w}"></i></div>`).join("")}</div>`,
+};
+B.spinner = (shape) => (SK[shape] ? `<div class="sk sk-${shape}-box" aria-busy="true" aria-label="Loading">${SK[shape]()}</div>` : `<div class="spin"></div>`);
 // One look for every page with nothing to show (Ben 2026-11-20): the page's icon in a soft tile, a plain heading,
 // a line saying why, and buttons for what to do next. `buttons` is ready-made html (or "").
 B.emptyPage = (icon, title, line, buttons) => `<div class="empty-page"><span class="tile">${I(icon)}</span><div><h2>${esc(title)}</h2><p>${esc(line)}</p>${buttons ? `<div class="acts">${buttons}</div>` : ""}</div></div>`;

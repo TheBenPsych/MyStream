@@ -124,7 +124,7 @@ class MovieGridViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Movie grid couldn't load")
-                    _state.value = GridState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = GridState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

@@ -120,7 +120,7 @@
   }
   B.route(/^\/downloads/, async (m, nav) => {
     if (!can()) return B.go("#/me");
-    B.page().innerHTML = B.top("Downloads", null) + `<div class="wrap" style="max-width:900px"><div class="h1">Downloads</div><p class="dim" style="margin:4px 0 20px">Kept on this computer. When Tower can't be reached, Glowfin offers "Watch your downloads".</p><div id="dlList">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Downloads", null) + `<div class="wrap" style="max-width:900px"><div class="h1">Downloads</div><p class="dim" style="margin:4px 0 20px">Kept on this computer. When Tower can't be reached, Glowfin offers "Watch your downloads".</p><div id="dlList">${B.spinner("list")}</div></div>`;
     B.wireTop();
     await refresh();
     if (!B.alive(nav)) return;

@@ -104,7 +104,7 @@ class TimelineViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Timeline couldn't load")
-                    _state.value = TimelineState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = TimelineState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

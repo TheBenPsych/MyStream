@@ -665,7 +665,7 @@
         });
         if (closed || tv.item !== itemId) return;
         const source = (info.MediaSources || [])[0];
-        if (!source) throw new Error("Jellyfin couldn't find a way to play this.");
+        if (!source) throw new Error("Tower couldn't find a way to play this.");
         playSession = info.PlaySessionId; sourceId = source.Id;
         if (source.SupportsDirectPlay && !source.TranscodingUrl) {
           method = "DirectPlay";

@@ -19,6 +19,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
 import com.github.damontecres.wholphin.ui.components.LibraryShelfTab
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.RecommendedMovie
 import com.github.damontecres.wholphin.ui.components.SHELVES_DECADES
 import com.github.damontecres.wholphin.ui.components.TabDetails
@@ -55,7 +56,7 @@ fun CollectionFolderMovie(
     // Benflix: each kind of movie library gets its own tabs; wait the moment it takes to tell
     val kind = rememberLibraryKind(destination.itemId)
     if (kind == null) {
-        LoadingPage(modifier)
+        LoadingPage(modifier, shape = LoadingShape.WALL)
         return
     }
     val tabIds =

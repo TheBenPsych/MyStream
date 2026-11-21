@@ -106,7 +106,7 @@ class PosterPuzzleViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Poster puzzle couldn't load")
-                    _state.value = PosterState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = PosterState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

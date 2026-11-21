@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.ui.components.ContextMenuActions
 import com.github.damontecres.wholphin.ui.components.ContextMenuDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.Optional
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
@@ -115,7 +116,7 @@ fun SeriesDetails(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.TITLE)
         }
 
         is DataLoadingState.Success<BaseItem> -> {

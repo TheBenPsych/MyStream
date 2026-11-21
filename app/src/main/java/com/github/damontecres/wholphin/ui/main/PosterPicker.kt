@@ -315,7 +315,7 @@ fun PosterPickerPage(
     }
     if (item == null) {
         com.github.damontecres.wholphin.ui.components
-            .LoadingPage(modifier.fillMaxSize())
+            .LoadingPage(modifier.fillMaxSize(), shape = com.github.damontecres.wholphin.ui.components.LoadingShape.WALL)
         return
     }
     androidx.compose.runtime.LaunchedEffect(Unit) { firstChip.tryRequestFocus() }

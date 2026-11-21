@@ -1190,7 +1190,7 @@ private fun SpeedMeter(ping: Long?) {
             )
         }
         Text(
-            text = "Under 100 ms server reply is great at home. Over 500 ms means the server or Wi-Fi is slow.",
+            text = "Under 100 ms reply from Tower is great at home. Over 500 ms means Tower or the Wi-Fi is slow.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

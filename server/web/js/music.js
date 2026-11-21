@@ -1050,7 +1050,7 @@
   const importTile = () => `<a class="mcard" href="#/requests?tab=music&mlist=playlist"><div class="im ask">${I("dl")}<i>Import</i></div><div class="cap"><span class="nm">Import</span><small>A playlist from a link</small></div></a>`;
   B.route(/^\/music$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
-    B.page().innerHTML = B.top("Music", MUSIC) + B.coverGlowHtml() + `<div class="mpage mhome"><section class="mtop" id="mTop"><div class="art"></div><div class="info"></div></section><div id="mrows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + B.coverGlowHtml() + `<div class="mpage mhome"><section class="mtop" id="mTop"><div class="art"></div><div class="info"></div></section><div id="mrows">${B.spinner("rows")}</div></div>`;
     B.wireTop();
     const ls = await libs().catch(() => []);
     if (!B.alive(nav)) return;
@@ -1091,7 +1091,7 @@
   B.route(/^\/mthemes\/(\w+)/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
     const title = B.q("name") || THEME_ROWS[m[1]] || "Browse";
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(title)}</h1><div class="mgrid" id="mg">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(title)}</h1><div class="mgrid" id="mg">${B.spinner("wall")}</div></div>`;
     B.wireTop();
     const th = await B.musicThemes().catch(() => ({ themes: [] }));
     if (!B.alive(nav)) return;
@@ -1111,7 +1111,7 @@
     try { grid = localStorage.getItem("benflix-mlib-grid") === "1"; } catch (e) { /* private window */ }
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><div class="mlib-head">${tab === "all" ? `<h1 class="mtitle">Your library</h1>` : `<span class="mlib-fill"></span>`}
       ${listsTab ? `<button class="btn" data-l="new">${I("plus")} New playlist</button><a class="btn" href="#/requests?tab=music&mlist=playlist">${I("dl")} Import</a>` : ""}<button class="btn" data-l="view" title="Grid or list"></button></div>
-      <div class="mchips" id="lchips"></div><div class="mlib-sort"><button class="btn small" data-l="sort"></button><span class="dim">Right-click (or hold) to pin up to ${PIN_MAX}</span></div><div id="lbody">${B.spinner()}</div></div>`;
+      <div class="mchips" id="lchips"></div><div class="mlib-sort"><button class="btn small" data-l="sort"></button><span class="dim">Right-click (or hold) to pin up to ${PIN_MAX}</span></div><div id="lbody">${B.spinner("list")}</div></div>`;
     B.wireTop();
     const [pls, mixes, liked, likedAlbums, likedArtists, mine, status] = await Promise.all([
       items(`IncludeItemTypes=Playlist&MediaTypes=Audio&SortBy=DateCreated&SortOrder=Descending&Fields=ChildCount,DateCreated`).catch(() => []),
@@ -1289,7 +1289,7 @@
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)
     const kind = m[1], id = m[2];
     const titles = { recent: "Recently added", albums: "Albums", artists: "Artists", genres: "Genres", playlists: "Playlists", genre: B.q("name") || "Genre" };
-    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(titles[kind] || "Music")}</h1><div class="mgrid" id="mg">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage"><h1 class="mtitle">${esc(titles[kind] || "Music")}</h1><div class="mgrid" id="mg">${B.spinner("wall")}</div></div>`;
     B.wireTop();
     let html = "";
     if (kind === "artists") html = ((await B.get(`/Artists/AlbumArtists?UserId=${B.uid()}&SortBy=SortName&Limit=3000`)).Items || []).map(artistCard).join("");
@@ -1618,7 +1618,7 @@
     B.page().innerHTML = B.top("Music", MUSIC) + `<div class="mpage" id="mpg"><div class="mhero"><div class="mhero-words"><div class="mkick">MADE FOR YOU</div><h1>${esc(mix.name)}</h1><div class="dim">${esc(mix.line)}</div>
       <div class="mhero-btns"><button class="btn white" data-h="pv">${I("play")} Play previews</button><button class="btn" data-h="stop">${I("x")} Stop</button></div></div></div>
       <p class="dim">Not on Glowfin yet. Hear 30 seconds of each, one after another, and press Ask for it on the ones you like.${B.me.admin ? "" : " Ben okays asks first."}</p>
-      <div class="msongs" id="mcat">${B.spinner()}</div></div>`;
+      <div class="msongs" id="mcat">${B.spinner("list")}</div></div>`;
     B.wireTop();
     $("#mpg").style.backgroundImage = "linear-gradient(rgba(108,74,190,.45), transparent 460px)";
     const got = await B.call("GET", `api/music/theme?key=${enc(mix.key)}`).catch(() => null);

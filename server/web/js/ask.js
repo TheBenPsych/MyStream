@@ -165,7 +165,7 @@
   B.route(/^\/studio\/(movie|tv)\/(\d+)/, async (m, nav) => {
     const [, type, id] = m, name = B.q("name") || "This studio", own = B.studioOwner(name);
     const path = type === "movie" ? `/discover/movies/studio/${id}` : `/discover/tv/network/${id}`;
-    B.page().innerHTML = B.top("") + `<div class="wrap studio"><button class="chip" id="stBack">‹ Back</button><h2>${esc(name)}</h2><p class="dim" id="stNote">${esc([own && own.part ? "Part of " + own.owner : "", own ? own.kind : ""].filter(Boolean).join(" · "))}</p><div class="studio-grid" id="stGrid">${B.spinner()}</div><div class="acts" style="justify-content:center;margin:18px 0 40px"><button class="btn" id="stMore" hidden>Show more</button></div></div>`;
+    B.page().innerHTML = B.top("") + `<div class="wrap studio"><button class="chip" id="stBack">‹ Back</button><h2>${esc(name)}</h2><p class="dim" id="stNote">${esc([own && own.part ? "Part of " + own.owner : "", own ? own.kind : ""].filter(Boolean).join(" · "))}</p><div class="studio-grid" id="stGrid">${B.spinner("wall")}</div><div class="acts" style="justify-content:center;margin:18px 0 40px"><button class="btn" id="stMore" hidden>Show more</button></div></div>`;
     B.wireTop();
     const lib = await B.libTmdb().catch(() => new Map());
     let page = 0, pages = 1, shown = 0, owned = 0, first = true;
@@ -200,7 +200,7 @@
 
   B.route(/^\/ask\/(movie|tv)\/(\d+)/, async (m, nav) => {
     const [, type, id] = m;
-    B.page().innerHTML = B.top("") + B.spinner();
+    B.page().innerHTML = B.top("") + B.spinner("title");
     B.wireTop();
     // My List for titles that aren't here yet: kept on Tower, which moves it to the real My List when it arrives
     const wishes = B.call("GET", "api/asks/wish").then((w) => (w && w.items) || []).catch(() => []);

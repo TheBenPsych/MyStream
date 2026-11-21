@@ -77,7 +77,7 @@ def log(msg):
 
 
 # text that only shows once you are on the home screen (Benflix rows, or plain Wholphin's rows)
-HOME_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |^Live TV$|Continue watching|^Home$"
+HOME_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |^Live TV$|Continue watching|Keep watching|^Home$"
 PKG_LABEL = re.compile(r"Glowfin|Benflix|MyStream", re.I)
 SYSTEM_POPUPS = re.compile(r"isn't responding|keeps stopping|has stopped")
 
@@ -758,7 +758,7 @@ def welcome_setup():
 # Benflix redesign: Home shows a greeting and the four doors
 HOME_GREETING_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |Día de"
 # Glowfin redesign: Home has no greeting and the menu shows icons only, so also know Home by its rows
-DOORS_RE = HOME_GREETING_RE + r"|^Live TV$|^Continue watching$|^Recently added$|^Next up$|^Home$"
+DOORS_RE = HOME_GREETING_RE + r"|^Live TV$|^(Continue|Keep) watching$|^Recently added$|^(Next up|Up next)$|^Home$"
 
 
 def main():

@@ -22,6 +22,7 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.components.CollectionFolderView
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.ViewOptionsPoster
 import com.github.damontecres.wholphin.ui.data.BoxSetSortOptions
@@ -78,7 +79,7 @@ fun DoorBrowsePage(
         if (looked) {
             Text("Nothing here yet", color = BenflixColors.Muted, fontSize = BenflixType.body, modifier = modifier.padding(24.dp))
         } else {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.WALL)
         }
         return
     }
@@ -139,7 +140,7 @@ private fun AllTitlesPage(
 ) {
     var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
     LaunchedEffect(door, movies) { loaded = viewModel.everything(door, movies) }
-    val items = loaded ?: return LoadingPage(modifier.fillMaxSize())
+    val items = loaded ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     val anime = door == BenflixDoor.ANIME
     TitleGrid(
         title =
@@ -175,7 +176,7 @@ private fun BoxSetsPage(
 ) {
     var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
     LaunchedEffect(door) { loaded = viewModel.boxSets() }
-    val items = loaded ?: return LoadingPage(modifier.fillMaxSize())
+    val items = loaded ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     TitleGrid(
         title = "Collections",
         items = items,
@@ -200,7 +201,7 @@ fun DoorRowGridPage(
     val movies = door == BenflixDoor.MOVIES || destination.key == DoorViewModel.ANIME_MOVIES
     var items by remember { mutableStateOf<List<BaseItem>?>(null) }
     LaunchedEffect(destination) { items = viewModel.fullRow(door, destination.key).distinctBy { it.id } }
-    val list = items ?: return LoadingPage(modifier.fillMaxSize())
+    val list = items ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     // Top 10 and "Because you watched" keep their own order first; the rest open on the person's last sort
     val history = destination.key == DoorViewModel.HISTORY
     val sorts =

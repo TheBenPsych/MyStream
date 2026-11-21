@@ -68,7 +68,7 @@ fun PageRowsDialog(
         ) {
             Text("Home rows", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = Glowfin.Text)
             Text(
-                "Switch rows on or off and move them up or down. Continue watching always stays at the top.",
+                "Switch rows on or off and move them up or down. Keep watching always stays at the top.",
                 color = Glowfin.Dim,
                 fontSize = BenflixType.small,
             )

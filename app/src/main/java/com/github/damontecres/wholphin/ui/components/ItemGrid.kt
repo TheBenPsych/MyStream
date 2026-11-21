@@ -205,7 +205,7 @@ fun ItemGrid(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.WALL)
         }
 
         is DataLoadingState.Success<List<BaseItem?>> -> {

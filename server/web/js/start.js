@@ -199,7 +199,7 @@ B.route(/^\/home$/, async (m, nav) => {
   if (B.lobby) B.lobby.homeNudge(nav);
   const grow = B.doorsGrow; B.doorsGrow = false;
   if (!B.me.kids) {
-    B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner("rows")}</div></div>`;
     B.wireTop();
     B.loadHomeRows(nav);
     return;
@@ -250,8 +250,8 @@ B.loadHomeRows = async (nav) => {
   for (let i = 0; i < 10 && top.length < 10; i++) { if (topM[i]) top.push(topM[i]); if (topS[i]) top.push(topS[i]); }
   const fresh = freshM.concat(freshS).sort((a, b) => String(b.DateCreated || "").localeCompare(String(a.DateCreated || ""))).slice(0, 20);
   $("#rows").innerHTML = [
-    B.row("Continue watching", cont.slice(0, 20).map(card)),
-    B.row("Next up", next.map(card)),
+    B.row("Keep watching", cont.slice(0, 20).map(card)),
+    B.row("Up next", next.map(card)),
     B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
     B.row("Top 10 this week", B.top10(top.slice(0, 10))),
     played[0] && because.length >= 5 ? B.row(`Because you watched ${played[0].Name}`, because.map((it) => B.posterCard(it))) : "",
@@ -345,7 +345,7 @@ B.profileItems = () => [
   ["#/mine", "chart", "My watching", "Your hours, top shows and streaks"],
   ["#/settings", "gear", "Settings", "Picture, sound, subtitles, Home rows"],
   B.offline && B.offline.can() ? ["#/downloads", "dl", "Downloads", "Watch on this computer with no connection"] : null,
-  B.me && B.me.admin ? ["#/server", "server", "Server", "Who's watching and how the server is doing"] : null,
+  B.me && B.me.admin ? ["#/server", "server", "Server", "Who's watching and how Tower is doing"] : null,
   B.lobby && B.lobby.allowed() ? ["#/lobby", "tv", "Lobby: watch together", "Start or join a room"] : null,
   ["#/help", "help", "Help and updates", "Guides and what's new"],
   ["report", "flag", "Report a problem", "Send a note about what went wrong"],
@@ -394,7 +394,7 @@ B.route(/^\/me$/, async (m, nav) => {
 });
 
 B.signOut = async () => {
-  if (!(await B.ask(`Sign ${B.me.name} out of Glowfin in this browser?`, "Your lists and settings stay safe on the server. Sign back in any time.", "Sign out"))) return;
+  if (!(await B.ask(`Sign ${B.me.name} out of Glowfin in this browser?`, "Your lists and settings stay safe on Tower. Sign back in any time.", "Sign out"))) return;
   const me = B.me;
   try { await B.jf("POST", "/Sessions/Logout", undefined, { quiet401: true }); } catch (e) {}
   B.forget(me.id);

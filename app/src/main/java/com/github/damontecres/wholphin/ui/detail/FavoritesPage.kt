@@ -28,6 +28,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GridClickActions
 import com.github.damontecres.wholphin.ui.components.KeyedTabbedPage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.defaultViewOptions
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
 import com.github.damontecres.wholphin.ui.data.rememberSortOptions
@@ -52,7 +53,7 @@ fun FavoritesPage(
         FavoritesLoadingState.Loading,
         FavoritesLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.WALL)
         }
 
         FavoritesLoadingState.NoFavorites -> {

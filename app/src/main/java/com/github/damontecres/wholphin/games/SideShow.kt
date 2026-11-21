@@ -43,8 +43,8 @@ data class SideShowItem(
 enum class ShowTab(
     val label: String,
 ) {
-    RESUME("Continue watching"),
-    NEXT("Next up"),
+    RESUME("Keep watching"),
+    NEXT("Up next"),
     MY_LIST("My List"),
     MOVIES("Movies"),
     SHOWS("Shows"),

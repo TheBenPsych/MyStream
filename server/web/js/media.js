@@ -213,7 +213,7 @@ const missingCards = (list) => list.map(({ r, kind }) => B.askCard(Object.assign
 const pageRows = (html) => { $("#rows").innerHTML = html.join(""); };
 
 B.route(/^\/movies$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Movies", DOORS.movies.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Movies", DOORS.movies.color) + doorTop() + `<div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   const u = B.uid(), F = B.FIELDS;
   const libs = await B.libs("movies");
@@ -235,7 +235,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   if (!B.alive(nav)) return;
   const keep = resume.filter(notAnime);
   pageRows([
-    B.row("Continue watching", keep.map((it) => B.posterCard(it, { progress: true }))),
+    B.row("Keep watching", keep.map((it) => B.posterCard(it, { progress: true }))),
     B.row("Top 10 movies this week", B.top10(top)),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
@@ -250,7 +250,7 @@ B.route(/^\/movies$/, async (m, nav) => {
 });
 
 B.route(/^\/shows$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Shows", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Shows", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   const u = B.uid(), F = B.FIELDS;
   const libs = await B.libs("shows");
@@ -286,9 +286,9 @@ B.route(/^\/shows$/, async (m, nav) => {
     return card.replace(`data-id="${esc((sh || ep).Id)}"`, `data-id="${esc(ep.Id)}"`);
   };
   pageRows([
-    B.row("Continue watching", cont.map(epCard)),
+    B.row("Keep watching", cont.map(epCard)),
     B.row("Top 10 shows this week", B.top10(top)),
-    B.row("Next up", nextUp.map(epCard)),
+    B.row("Up next", nextUp.map(epCard)),
     fewer ? "" : B.row("New episodes", Object.keys(newCount).map((id) => sById[id]).filter(Boolean).map((sh) => B.posterCard(sh, { newCount: newCount[sh.Id] }))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
@@ -302,7 +302,7 @@ B.route(/^\/shows$/, async (m, nav) => {
 
 // Glowfin (ui-7, Ben's pick A): Anime's own page. Anime shows and movies together, no requests tab
 B.route(/^\/anime$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + doorTop() + `<div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   const u = B.uid(), F = B.FIELDS;
   const showLibs = (await B.libs("shows")).filter(B.isAnimeLib), movieLibs = (await B.libs("movies")).filter(B.isAnimeLib);
@@ -328,7 +328,7 @@ B.route(/^\/anime$/, async (m, nav) => {
     : B.posterCard(it, { progress: true }));
   const fresh = freshShows.concat(films).sort(newestFirst("DateCreated")).slice(0, 20);
   pageRows([
-    B.row("Continue watching", cont.map(card)),
+    B.row("Keep watching", cont.map(card)),
     top.length >= 3 ? B.row("Top 10 anime", B.top10(top)) : "",
     B.row("Airing this season", airing.map((it) => B.posterCard(it))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
@@ -343,7 +343,7 @@ B.route(/^\/anime$/, async (m, nav) => {
 
 // The Anime page's Genres and tags tab: genres found in the anime libraries
 B.route(/^\/browse\/anime\/genres$/, async (m, nav) => {
-  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + `<div class="wrap"><div class="h1">Genres and tags</div><div id="t">${B.spinner()}</div></div>`;
+  B.page().innerHTML = B.top("Anime", DOORS.shows.color) + `<div class="wrap"><div class="h1">Genres and tags</div><div id="t">${B.spinner("wall")}</div></div>`;
   B.wireTop();
   const libs = (await B.libs("shows")).filter(B.isAnimeLib);
   const names = new Set();
@@ -359,7 +359,7 @@ B.route(/^\/browse\/anime\/genres$/, async (m, nav) => {
 B.route(/^\/browse\/(movies|shows)\/(genres|studios)$/, async (m, nav) => {
   const door = DOORS[m[1]], type = m[1] === "movies" ? "Movie" : "Series";
   const label = m[2] === "genres" ? "Genres" : m[1] === "shows" ? "Networks" : "Studios";
-  B.page().innerHTML = B.top(door.name, door.color) + `<div class="wrap"><div class="h1">${label}</div><div id="t">${B.spinner()}</div></div>`;
+  B.page().innerHTML = B.top(door.name, door.color) + `<div class="wrap"><div class="h1">${label}</div><div id="t">${B.spinner("wall")}</div></div>`;
   B.wireTop();
   const r = await B.get(`/${m[2] === "genres" ? "Genres" : "Studios"}?userId=${B.uid()}&IncludeItemTypes=${type}&Recursive=true&SortBy=SortName`);
   if (!B.alive(nav)) return;
@@ -392,7 +392,7 @@ B.route(/^\/grid\/(movies|shows)/, async (m, nav) => {
       <input class="search-in" id="gText" placeholder="Search ${esc(door.name.toLowerCase())}" value="${esc(st.text)}">
     </div>
     <div class="slim" id="slim">&nbsp;</div>
-    <div class="grid-wrap${st.anime === "only" ? " big-cards" : ""}"><div class="grid-body" id="gBody">${B.spinner()}</div><div class="letters hidden" id="letters"></div></div>`;
+    <div class="grid-wrap${st.anime === "only" ? " big-cards" : ""}"><div class="grid-body" id="gBody">${B.spinner("wall")}</div><div class="letters hidden" id="letters"></div></div>`;
   B.wireTop();
   const labels = { all: "Anime: All", only: "Anime only", hide: "Hide anime" };
   const wlabels = { all: "All shows", notstarted: "Not started", watching: "Watching", finished: "Finished" };
@@ -782,7 +782,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     strip: B.tpStrip([maker]),
     tabs: [
       { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
-        <div class="seasons" id="groups"></div><div id="eps">${B.spinner()}</div>` },
+        <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div>` },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "tv", nav) },
       { name: "More like this", id: "below2", load: async (pane) => {
@@ -822,7 +822,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     if (t) { t.scrollIntoView({ inline: "start", block: "nearest" }); $("#epRow .strip").scrollLeft -= 48; }
   };
   const loadSeason = async (sid) => {
-    $("#eps").innerHTML = B.spinner();
+    $("#eps").innerHTML = B.spinner("list");
     episodes = await q(`/Shows/${it.Id}/Episodes?userId=${u}&SeasonId=${sid}&Fields=Overview,PremiereDate,RunTimeTicks,DateCreated,UserData&EnableImages=true`);
     group = 0;
     if (focus) { const i = episodes.findIndex((e) => e.Id === focus.Id); if (i >= 0 && episodes.length > 50) group = Math.floor(i / 25); }

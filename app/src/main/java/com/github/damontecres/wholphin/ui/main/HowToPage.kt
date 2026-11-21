@@ -50,7 +50,7 @@ private val phoneTips =
 
 private val generalTips =
     listOf(
-        HowToTip("Pick up where you left off", "Anything you stopped part way through is in Continue watching on Home."),
+        HowToTip("Pick up where you left off", "Anything you stopped part way through is in Keep watching on Home."),
         HowToTip("Skip intro", "A Skip intro button pops up at the start of most episodes. Credits can be skipped too."),
         HowToTip("My List", "Open a movie or show and press + My List to save it for later."),
         HowToTip("Can't find something?", "Search for it. If it isn't on Glowfin yet, you can ask Ben to add it."),

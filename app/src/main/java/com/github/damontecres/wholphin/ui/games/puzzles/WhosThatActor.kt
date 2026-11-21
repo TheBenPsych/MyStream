@@ -122,7 +122,7 @@ class WhosThatActorViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Who's that actor couldn't load")
-                    _state.value = ActorState.NotEnough("Couldn't load from the server. Try again in a moment.")
+                    _state.value = ActorState.NotEnough("Couldn't load from Tower. Try again in a moment.")
                 }
             }
         }
