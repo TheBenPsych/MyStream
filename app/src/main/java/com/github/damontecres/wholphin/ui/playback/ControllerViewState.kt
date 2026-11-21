@@ -29,6 +29,10 @@ class ControllerViewState internal constructor(
 
     fun showControls(milliseconds: Long = hideMilliseconds) {
         if (controlsEnabled) {
+            if (!_controlsVisible) {
+                com.github.damontecres.wholphin.util.PlayerTimer
+                    .barAsked()
+            }
             _controlsVisible = true
         }
         pulseControls(milliseconds)

@@ -208,6 +208,8 @@ internal fun PlaybackViewModel.benflixStartChecks(
     // Benflix (Ben, 2026-11-18): the picture checker only runs when "Picture stutters" is pressed
     pictureWatchdog.cancel()
     firstReadyAt = 0L
+    com.github.damontecres.wholphin.util.PlayerTimer
+        .loadStarted()
     startPositionMs = positionMs.coerceAtLeast(0L)
     bufferTimes.clear()
     val pending = BenflixPlayerPrefs.pendingNotice
@@ -463,8 +465,15 @@ internal suspend fun PlaybackViewModel.loadAlwaysSkipIntro() {
 /** Benflix: the video keeps stopping to load? Offer a lower quality, just for today */
 internal fun PlaybackViewModel.trackBuffering(playbackState: Int) {
     val now = android.os.SystemClock.elapsedRealtime()
+    com.github.damontecres.wholphin.util.PlayerTimer.playerState(
+        context,
+        ready = playbackState == Player.STATE_READY,
+        loading = playbackState == Player.STATE_BUFFERING,
+    )
     if (playbackState == Player.STATE_READY && firstReadyAt == 0L) {
         firstReadyAt = now
+        com.github.damontecres.wholphin.util.PlayerTimer
+            .pictureReady(context)
         busyJob?.cancel()
         if (state.value.notice?.busy == true) showNotice(null)
     }

@@ -1581,6 +1581,8 @@ class PlaybackViewModel
         ) {
             if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
                 lastSeekAt = android.os.SystemClock.elapsedRealtime()
+                com.github.damontecres.wholphin.util.PlayerTimer
+                    .seekStarted()
             }
         }
 

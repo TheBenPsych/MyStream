@@ -736,10 +736,18 @@ fun LazyListScope.startupSpeedItem(sectionTitle: @Composable (String) -> Unit) {
     item {
         val context = LocalContext.current
         val last = remember { StartupTimer.last(context) }
-        if (last != null) {
+        val player =
+            remember {
+                com.github.damontecres.wholphin.util.PlayerTimer
+                    .summary(context)
+            }
+        if (last != null || player != null) {
             Column {
                 sectionTitle("This device")
-                ServerActionRow(headline = "Start-up speed on this device", supporting = last)
+                if (last != null) ServerActionRow(headline = "Start-up speed on this device", supporting = last)
+                if (player != null) {
+                    ServerActionRow(headline = "Player speed on this device", supporting = player.joinToString("\n"))
+                }
             }
         }
     }

@@ -283,6 +283,10 @@ fun PlaybackPageContent(
     val controllerViewState = remember { viewModel.controllerViewState }
 
     var skipIndicatorDuration by remember { mutableLongStateOf(0L) }
+    com.github.damontecres.wholphin.util.PlayerBarTiming(
+        androidx.compose.ui.platform.LocalContext.current.applicationContext,
+        controllerViewState.controlsVisible,
+    )
     LaunchedEffect(controllerViewState.controlsVisible) {
         // If controller shows/hides, immediately cancel the skip indicator
         skipIndicatorDuration = 0L
