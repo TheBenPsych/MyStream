@@ -2435,3 +2435,15 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .dlrow { gap: 10px; }
 .dlbar { height: 5px; border-radius: 3px; background: var(--pg4); margin-top: 8px; max-width: 420px; overflow: hidden; }
 .dlbar i { display: block; height: 100%; background: #3FE0E8; transition: width .4s; }
+/* Hold for 2x: a small tag at the top while the picture is being held */
+.hold2x { position: absolute; z-index: 6; top: 22px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.66); color: #fff; font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px; pointer-events: none; }
+.hold2x.hidden { display: none; }
+
+/* Poster hover buttons (mouse only): one small bar that sits on the bottom of the poster being pointed at */
+.hoverbar { position: fixed; z-index: 40; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(8,10,20,.82); box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+.hoverbar.hidden { display: none; }
+.hoverbar button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.hoverbar button:hover { background: #fff; color: #0a0d18; border-color: #fff; }
+.hoverbar button.on { background: rgba(255,255,255,.22); }
+.hoverbar button svg { width: 16px; height: 16px; }
+.hoverbar button[data-hb="play"] { background: #fff; color: #0a0d18; border-color: #fff; }
