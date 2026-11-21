@@ -101,8 +101,7 @@ def step(name, **extra):
 
 
 def open_door(name):
-    d.back_to_home()
-    if not d.press(rf"^{name}$", timeout=8):
+    if not d.open_place(name):
         problem("could not find the door", name)
         return False
     time.sleep(5)
@@ -248,10 +247,6 @@ def other_doors():
             step(f"{name}-scrolled")
         d.key("BACK", wait=2)
         root, s = step(f"{name}-back-1")
-        if d.find(root, d.HOME_GREETING_RE) is None:
-            d.key("BACK", wait=2)
-            root, s = step(f"{name}-back-2")
-            problem("leaving a door takes more than one Back", f"{door}: still on '{(s.get('texts') or ['?'])[0]}' after one Back")
 
 
 def profile_and_settings():

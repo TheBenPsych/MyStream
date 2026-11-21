@@ -156,7 +156,9 @@ private fun MoodTile(
             Text(
                 text = stringResource(mood.title),
                 color = Color.White,
-                fontSize = BenflixType.lead,
+                fontSize = BenflixType.body,
+                lineHeight = 20.sp,
+                maxLines = 2,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 12.dp),

@@ -1576,7 +1576,7 @@
       return true;
     });
     const covers = [...new Set(songs.map((s) => s.AlbumId).filter(Boolean))].sort(() => Math.random() - 0.5).slice(0, 4).map((id) => B.img(id, "Primary", { h: 300 }));
-    await collection(nav, { kick: "EVERY SONG ON BENFLIX", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null, place: { kind: "songs", id: "", name: "All songs" } });
+    await collection(nav, { kick: "EVERY SONG ON GLOWFIN", title: "All songs", line: "", collage: covers.length >= 2 ? covers.concat(covers).slice(0, 4) : null, songs, sourceId: null, place: { kind: "songs", id: "", name: "All songs" } });
   });
   B.route(/^\/liked$/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home"); // no music on Kids (like the TV and phone)

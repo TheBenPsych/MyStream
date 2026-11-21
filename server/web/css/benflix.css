@@ -2318,3 +2318,18 @@ body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) .rl-logo .log
 .rl-now .rl-t small { font-size: 11px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rl-now:hover .rl-t small, .rl-now:focus-visible .rl-t small { color: #fff; }
 @media (prefers-reduced-motion: reduce) { .rl-now.playing .rl-cov i { animation: none; } }
+
+/* Overhaul 2026-11-20 (part A: things that were broken) */
+/* a made-for-you cover with no pictures printed its name twice (big words and the band) */
+.collage.empty b { display: none; }
+/* the left row arrow covered the first poster before the row had moved */
+.rowx.at0 .arrow.l { display: none; }
+/* picture pages: clear top bar at the very top (Ben 2026-11-18), fade back once scrolled so words don't run through the title, trail and clock */
+body.scrolled #page:has(#doorTop) > .top, body.scrolled #page:has(.tp-hero) > .top { background: linear-gradient(var(--tray) 55%, rgba(var(--trayrgb),0)); }
+/* page tabs over a bright picture could not be read */
+#page:has(#doorTop) .ptabs a { color: #D9DCF2; text-shadow: 0 1px 3px rgba(0,0,0,.75), 0 0 12px rgba(0,0,0,.5); }
+#page:has(#doorTop) .ptabs a.on { color: #fff; }
+@media (max-width: 600px) {
+  /* tabs that run off the edge fade out, so it's clear there are more */
+  .ptabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); padding-right: 36px; }
+}

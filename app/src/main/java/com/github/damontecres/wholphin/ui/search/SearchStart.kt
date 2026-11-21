@@ -106,7 +106,7 @@ object RecentSearches {
 
 /**
  * What Search shows before you type (approved se-start): recent searches, Popular, Browse tiles
- * (Genres, Networks, Channel types, Consoles), then moods and genres further down.
+ * (Genres, Channel types, Consoles), then moods and genres further down.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -203,9 +203,6 @@ fun SearchStart(
                         com.github.damontecres.wholphin.ui.door.BrowseTile("Genres", {
                             navigationManager.navigateTo(Destination.DoorBrowse(BenflixDoor.MOVIES.name, DoorViewModel.BROWSE_GENRES))
                         }, tile)
-                        com.github.damontecres.wholphin.ui.door.BrowseTile("Networks", {
-                            navigationManager.navigateTo(Destination.DoorBrowse(BenflixDoor.SHOWS.name, DoorViewModel.BROWSE_STUDIOS))
-                        }, tile)
                         com.github.damontecres.wholphin.ui.door.BrowseTile("Channel types", {
                             navigationManager.navigateTo(Destination.Channels)
                         }, tile)
@@ -233,11 +230,8 @@ fun SearchStart(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Browse by genre",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+                // same heading look as "Pick a mood" above it (it used a different letter style)
+                com.github.damontecres.wholphin.ui.cards.ItemRowTitle("Browse by genre")
                 // Phones: two tiles side by side, sharing the width (a fixed tile width left only one per line)
                 val isTv = rememberIsTv()
                 // Kids: no Horror, Thriller or Crime tiles (their pages would be nearly empty for Kids anyway)
