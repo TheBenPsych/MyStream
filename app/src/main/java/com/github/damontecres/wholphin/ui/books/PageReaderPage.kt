@@ -337,7 +337,9 @@ fun PageReaderPage(
                             // Phones: tap the edges to turn, the middle for the bar, double tap the middle to zoom
                             if (!isTv) {
                                 BoxWithConstraints(Modifier.fillMaxSize()) {
-                                    val third = constraints.maxWidth / 3f
+                                    val boxW = constraints.maxWidth
+                                    val boxH = constraints.maxHeight
+                                    val third = boxW / 3f
                                     Row(Modifier.fillMaxSize()) {
                                         val tap = remember { MutableInteractionSource() }
                                         Box(
@@ -352,7 +354,7 @@ fun PageReaderPage(
                                                     onDoubleTap = { at ->
                                                         zoom.toggle(
                                                             Offset(at.x + third, at.y),
-                                                            IntSize(constraints.maxWidth, constraints.maxHeight),
+                                                            IntSize(boxW, boxH),
                                                         )
                                                     },
                                                 )
