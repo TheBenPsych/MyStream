@@ -144,7 +144,7 @@ class UpdateViewModel
             downloadJob =
                 viewModelScope.launchIO {
                     try {
-                        _state.update { it.copy(downloading = true, retryMessage = null) }
+                        _state.update { it.copy(downloading = true, retryMessage = null, installNote = null) }
                         var attempt = 0
                         while (true) {
                             try {
@@ -195,7 +195,33 @@ class UpdateViewModel
 
         /** Open the installer again for the file that's already downloaded, no need to download it twice */
         fun installDownloaded() {
-            _state.update { it.copy(installRequest = it.installRequest + 1) }
+            _state.update { it.copy(installRequest = it.installRequest + 1, installNote = null) }
+        }
+
+        /** How many times Android's install screen closed and this version was still the one running */
+        private var installerReturns = 0
+
+        /**
+         * Android's install screen closed and the update isn't installed (it failed, or it was cancelled).
+         * Android only ever says "There was a problem parsing the package", so say the likely reason here.
+         */
+        fun installerCameBack() {
+            installerReturns++
+            // Failed twice with the same file: throw it away, so the next Install now downloads a fresh copy
+            val fresh = installerReturns >= 2
+            if (fresh) installerReturns = 0
+            viewModelScope.launchIO {
+                val freeMb = updater.freeBytes().let { if (it >= 0) it / (1024 * 1024) else -1L }
+                Timber.w("Back from the install screen without updating, %d MB free, fresh copy next=%s", freeMb, fresh)
+                if (fresh) updater.discardDownload()
+                _state.update {
+                    it.copy(
+                        installNote = installFailedNote(freeMb, fresh),
+                        downloadedUri = if (fresh) null else it.downloadedUri,
+                        downloadedVersion = if (fresh) null else it.downloadedVersion,
+                    )
+                }
+            }
         }
 
         fun cancelDownload() {
@@ -236,7 +262,27 @@ data class InstallUpdateState(
     val downloadedVersion: Version? = null,
     /** Goes up by one each time the page should open Android's install screen */
     val installRequest: Int = 0,
+    /** Shown under the buttons after Android's install screen closed without updating */
+    val installNote: String? = null,
 )
+
+/** Plain words for "the install screen closed and nothing was installed", with the likely reason */
+fun installFailedNote(
+    freeMb: Long,
+    freshDownloadNext: Boolean,
+): String {
+    val start = "Didn't update? If it said \"There was a problem parsing the package\", "
+    val reason =
+        if (freeMb in 0 until LOW_SPACE_MB) {
+            "this is most likely out of room: only $freeMb MB is free here. Free some space in the TV or phone's " +
+                "own Settings > Apps (remove an app you don't use, or clear an app's cache), then press Install now again."
+        } else {
+            val room = if (freeMb >= 0) "There's $freeMb MB free here, so room looks fine. " else ""
+            "the update didn't copy over properly. ${room}Turn the TV or phone off and on, then press Install now again."
+        }
+    val fresh = if (freshDownloadNext) " Install now will download a fresh copy this time." else ""
+    return start + reason + fresh
+}
 
 @Composable
 fun InstallUpdatePage(
@@ -284,9 +330,9 @@ fun InstallUpdatePage(
         // Android copies the update before installing it. With too little room that copy fails and Android only
         // says "There was a problem parsing the package", so say the real reason here first.
         try {
-            val freeMb = android.os.StatFs(context.filesDir.path).availableBytes / (1024 * 1024)
+            val freeMb = viewModel.updater.freeBytes().let { if (it >= 0) it / (1024 * 1024) else -1L }
             Timber.i("Opening the install screen, %d MB free", freeMb)
-            if (freeMb < LOW_SPACE_MB) {
+            if (freeMb in 0 until LOW_SPACE_MB) {
                 com.github.damontecres.wholphin.ui.components.BenflixNotices
                     .pill("Only $freeMb MB free here. If the update fails, free some space in Settings > Apps and try again.")
             }
@@ -303,6 +349,7 @@ fun InstallUpdatePage(
                 if (event == Lifecycle.Event.ON_RESUME && leftScreen) {
                     lastInstallerOpenAt = 0L
                     lifecycleOwner.lifecycle.removeObserver(observer)
+                    viewModel.installerCameBack()
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -425,6 +472,7 @@ fun InstallUpdatePage(
                     currentVersion = viewModel.currentVersion,
                     release = release,
                     alreadyDownloaded = alreadyDownloaded,
+                    installNote = state.installNote,
                     onInstallRelease = {
                         if (alreadyDownloaded) viewModel.installDownloaded() else startUpdate(release)
                     },
@@ -473,6 +521,7 @@ fun InstallUpdatePageContent(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     alreadyDownloaded: Boolean = false,
+    installNote: String? = null,
 ) {
     // Only offer the download when it's really newer than what's installed
     val newer = release.version.isGreaterThan(currentVersion)
@@ -491,6 +540,7 @@ fun InstallUpdatePageContent(
                 release = release,
                 newer = newer,
                 alreadyDownloaded = alreadyDownloaded,
+                installNote = installNote,
                 onInstallRelease = onInstallRelease,
                 onCancel = onCancel,
                 modifier = Modifier.fillMaxWidth(),
@@ -509,6 +559,7 @@ fun InstallUpdatePageContent(
             release = release,
             newer = newer,
             alreadyDownloaded = alreadyDownloaded,
+            installNote = installNote,
             onInstallRelease = onInstallRelease,
             onCancel = onCancel,
             modifier = Modifier.fillMaxWidth(),
@@ -608,6 +659,7 @@ private fun UpdateActions(
     onInstallRelease: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    installNote: String? = null,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -649,6 +701,14 @@ private fun UpdateActions(
                     modifier = Modifier.focusRequester(firstFocus),
                 )
             }
+        }
+        if (newer && installNote != null) {
+            Text(
+                text = installNote,
+                color = Glowfin.Text,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }
