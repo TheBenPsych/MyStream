@@ -2,8 +2,10 @@ package com.github.damontecres.wholphin.ui.components
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -109,6 +112,52 @@ fun BenflixTip(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
             )
         }
+    }
+}
+
+/**
+ * The same once-only tip as [BenflixTip], but as a quiet line that sits in the page (under the search box)
+ * instead of a bubble over it, so it never covers anything (Ben 2026-11-20). It takes no room when it isn't showing.
+ */
+@Composable
+fun BenflixTipLine(
+    tip: BenflixTipId,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var visible by remember(tip) { mutableStateOf(false) }
+    var pending by remember(tip) { mutableStateOf(!BenflixTips.seen(context, tip)) }
+    val turn = popupTurn("tip-${tip.name}", BenflixPopups.TIP, pending)
+    LaunchedEffect(tip, turn) {
+        visible = false
+        if (pending && turn) {
+            delay(SHOW_AFTER_MS)
+            BenflixTips.markSeen(context, tip)
+            visible = true
+            delay(SHOW_FOR_MS)
+            visible = false
+            pending = false
+        }
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(BenflixMotion.enter()) + expandVertically(BenflixMotion.enter()),
+        exit = fadeOut(BenflixMotion.exit()) + shrinkVertically(BenflixMotion.exit()),
+        modifier = modifier,
+    ) {
+        Text(
+            text =
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = BenflixColors.Focus, fontWeight = FontWeight.Bold)) {
+                        append("Tip  ")
+                    }
+                    append(tip.text)
+                },
+            fontSize = BenflixType.small,
+            lineHeight = BenflixType.small * 1.35f,
+            color = BenflixColors.Muted,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        )
     }
 }
 

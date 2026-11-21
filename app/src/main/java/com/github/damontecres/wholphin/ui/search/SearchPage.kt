@@ -56,8 +56,8 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
-import com.github.damontecres.wholphin.ui.components.BenflixTip
 import com.github.damontecres.wholphin.ui.components.BenflixTipId
+import com.github.damontecres.wholphin.ui.components.BenflixTipLine
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.components.VoiceSearchButton
@@ -482,6 +482,8 @@ fun SearchPage(
                             .padding(start = 16.dp, end = 10.dp),
                 ) {
                     searchBox(Modifier.fillMaxWidth())
+                    // The first-time tip: a quiet line under the box (it used to be a bubble over the tiles)
+                    BenflixTipLine(tip = BenflixTipId.SEARCH)
                     SearchSideColumn(
                         query = query,
                         suggestions = suggestions,
@@ -506,6 +508,7 @@ fun SearchPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 searchBox(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp))
+                BenflixTipLine(tip = BenflixTipId.SEARCH, modifier = Modifier.padding(horizontal = 16.dp))
                 // Redesign 2, phones: the suggestions are chips under the box
                 if (query.isNotBlank() && suggestions.isNotEmpty()) {
                     SuggestionChips(
@@ -518,8 +521,6 @@ fun SearchPage(
             }
         }
         contextMenu.Compose()
-        // Benflix first-time tip
-        BenflixTip(tip = BenflixTipId.SEARCH)
     }
     if (showViewOptions) {
         SearchViewOptionsDialog(
