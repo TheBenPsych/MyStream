@@ -400,6 +400,17 @@ B.route(/^\/grid\/(movies|shows)/, async (m, nav) => {
   paintChips();
   const remember = () => { if (!B.q("title")) B.setWebSetting("grid-" + doorKey, { sort: st.sort, anime: st.anime }); };
 
+  // My List also holds titles that aren't on Glowfin yet (2026-11-21): a row on top with where each ask is.
+  // When one arrives Tower puts it on the real My List by itself.
+  if (st.mine && type !== "BoxSet" && !B.me.kids) {
+    B.call("GET", "api/asks/wish").then((w) => {
+      const mine = ((w && w.items) || []).filter((x) => x.type === (type === "Movie" ? "movie" : "tv"));
+      const bar = $(".gridbar");
+      if (!mine.length || !B.alive(nav) || !bar || $("#wishRow")) return;
+      bar.insertAdjacentHTML("beforebegin", `<div id="wishRow">${B.row("On your list, not on Glowfin yet", mine.map((x) => B.askCard({ mediaType: x.type, id: x.tmdb, title: x.title, posterPath: x.poster })))}</div>`);
+    }).catch(() => {});
+  }
+
   // Everything in the door, once, with which items are anime
   const all = await B.cached(`grid-${doorKey}-${type}-${st.mine}-${st.studio}`, 300000, async () => {
     const libs = await B.libs(doorKey);

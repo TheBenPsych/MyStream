@@ -219,7 +219,21 @@ fun DiscoverSeriesDetailsContent(
                     ?.joinToString(" · "),
             ).joinToString(" · ")
         }
+    // Where it's streaming right now (subscription services in the US, from TMDB through Seerr)
+    val streamingOn =
+        remember(series) {
+            series.watchProviders
+                ?.firstOrNull { it.iso31661 == "US" }
+                ?.flatrate
+                .orEmpty()
+                .sortedBy { it.displayPriority ?: 99 }
+                .mapNotNull { it.name }
+                .distinct()
+                .take(4)
+        }
     RequestTitlePage(
+        streamingOn = streamingOn,
+        posterPath = series.posterPath,
         isMovie = false,
         tmdbId = series.id,
         title = series.name.orEmpty(),
