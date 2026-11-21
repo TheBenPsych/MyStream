@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,7 @@ import com.github.damontecres.wholphin.ui.nav.playButtonPlays
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.focusStripes
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import java.time.LocalDateTime
@@ -111,7 +113,10 @@ fun DoorPoster(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     onFocus: (() -> Unit)? = null,
+    /** The logo stripes under the poster while the remote is on it (only where the row keeps room for them) */
+    stripes: Boolean = false,
 ) {
+    var focused by remember { mutableStateOf(false) }
     val height = width / POSTER_RATIO
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -145,7 +150,11 @@ fun DoorPoster(
             modifier =
                 Modifier
                     .size(width, height)
-                    .onFocusChanged { if (it.isFocused) onFocus?.invoke() },
+                    .focusStripes(stripes && focused)
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        if (it.isFocused) onFocus?.invoke()
+                    },
         ) {
             Box(Modifier.fillMaxSize()) {
                 // Redesign 2 (rc-p-load, rc-p-noart): dark first, the poster fades in; no poster = big white name
@@ -247,6 +256,7 @@ fun DoorTop10Poster(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onFocus: (() -> Unit)? = null,
+    stripes: Boolean = false,
 ) {
     val nameStrip =
         com.github.damontecres.wholphin.ui.cards
@@ -264,6 +274,7 @@ fun DoorTop10Poster(
             showName = showName,
             onClick = onClick,
             onFocus = onFocus,
+            stripes = stripes,
         )
     }
 }

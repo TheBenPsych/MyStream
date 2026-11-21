@@ -46,6 +46,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -78,6 +79,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.FocusStripesRoom
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
@@ -557,9 +559,18 @@ private fun DoorRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = side, end = side, bottom = 8.dp),
         )
+        // TV: the row keeps a little room under its posters for the logo stripes. That room sits in the gap that was
+        // already between rows (the row still reports its old height), so no row moved.
+        val stripes = !showName
+        val room = if (stripes) FocusStripesRoom else 0.dp
         LazyRow(
             state = listState,
-            contentPadding = PaddingValues(horizontal = side),
+            contentPadding = PaddingValues(start = side, end = side, bottom = room),
+            modifier =
+                Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, (placeable.height - room.roundToPx()).coerceAtLeast(0)) { placeable.place(0, 0) }
+                },
             // Glowfin T1: each Top 10 number has its own box beside its poster, so the posters keep a gap too
             horizontalArrangement = Arrangement.spacedBy(if (row.style == DoorRowStyle.TOP10) 14.dp else 12.dp),
         ) {
@@ -595,6 +606,7 @@ private fun DoorRow(
                         onClick = { onClick(item) },
                         onFocus = { onFocus(index, item) },
                         modifier = mod,
+                        stripes = stripes,
                     )
                 } else {
                     DoorPoster(
@@ -604,6 +616,7 @@ private fun DoorRow(
                         onClick = { onClick(item) },
                         onFocus = { onFocus(index, item) },
                         modifier = mod,
+                        stripes = stripes,
                     )
                 }
             }
