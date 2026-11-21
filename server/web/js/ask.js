@@ -48,10 +48,14 @@
     ].filter(Boolean);
     // Overview strip: TMDB score, spoken language, who made it
     const makers = isMovie ? ((d.credits && d.credits.crew) || []).filter((c) => c.job === "Director").map((c) => c.name).slice(0, 2) : (d.createdBy || []).map((c) => c.name).slice(0, 2);
+    // Where it's streaming right now (subscription services in the US, from TMDB through Seerr)
+    const usNow = (d.watchProviders || []).find((w) => w.iso_3166_1 === "US");
+    const streamingOn = [...new Set(((usNow && usNow.flatrate) || []).slice().sort((x, y) => (x.displayPriority || 99) - (y.displayPriority || 99)).map((x) => x.name).filter(Boolean))].slice(0, 4);
     const strip = B.tpStrip([
       d.voteAverage ? ["TMDB", d.voteAverage.toFixed(1)] : null,
       d.originalLanguage && d.originalLanguage !== "en" && B.langName ? ["Spoken in", B.langName(d.originalLanguage), true] : null,
       makers.length ? [isMovie ? "Director" : "Made by", makers.join(", "), true] : null,
+      streamingOn.length && !kids ? ["Streaming now on", streamingOn.join(", "), true] : null,
     ]);
     // Who asked (one line each), with Yes / No for Ben on waiting asks
     const who = (r) => (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone";

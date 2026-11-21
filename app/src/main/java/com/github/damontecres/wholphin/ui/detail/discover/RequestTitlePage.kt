@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.DiscoverPersonRow
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
@@ -56,6 +57,8 @@ fun RequestTitlePage(
     onClickItem: (DiscoverItem) -> Unit,
     onClickPerson: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    /** Streaming services that have it right now ("Netflix", "Hulu"), so nobody waits for a download they don't need */
+    streamingOn: List<String> = emptyList(),
 ) {
     val kids by KidsMode.active.collectAsState()
     val here = availability == SeerrAvailability.AVAILABLE || availability == SeerrAvailability.PARTIALLY_AVAILABLE
@@ -127,7 +130,12 @@ fun RequestTitlePage(
                         scope = scope,
                         title = title,
                         story = story,
-                        strip = emptyList(),
+                        strip =
+                            if (streamingOn.isEmpty() || kids) {
+                                emptyList()
+                            } else {
+                                listOf(StripPart("Streaming now on", streamingOn.joinToString(", ")))
+                            },
                         extra =
                             tmdbId?.let { id ->
                                 {
