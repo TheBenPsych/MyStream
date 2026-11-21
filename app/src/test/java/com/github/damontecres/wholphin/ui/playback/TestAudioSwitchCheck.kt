@@ -45,7 +45,13 @@ class TestAudioSwitchCheck {
     fun `server stream that doesn't name a sound track is left alone`() {
         assertEquals(
             AudioSwitchCheck.FINE,
-            decideAudioSwitch(wanted = 2, directPlay = false, pickedTrackFound = false, pickedTrackOn = false, streamUrl = "http://tower/live.ts"),
+            decideAudioSwitch(
+                wanted = 2,
+                directPlay = false,
+                pickedTrackFound = false,
+                pickedTrackOn = false,
+                streamUrl = "http://tower/live.ts",
+            ),
         )
     }
 }

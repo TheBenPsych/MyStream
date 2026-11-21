@@ -135,7 +135,8 @@ fun decideAudioSwitch(
     } else {
         // A stream from the server has one sound track, named in its address
         val inUrl =
-            streamUrl?.let { Regex("[?&]AudioStreamIndex=(-?\\d+)", RegexOption.IGNORE_CASE).find(it) }
+            streamUrl
+                ?.let { Regex("[?&]AudioStreamIndex=(-?\\d+)", RegexOption.IGNORE_CASE).find(it) }
                 ?.groupValues
                 ?.get(1)
                 ?.toIntOrNull()
