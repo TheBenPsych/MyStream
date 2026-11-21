@@ -912,7 +912,7 @@ window.addEventListener("hashchange", () => { if (PV.id) B.previewStop(); });
 B.row = (title, cards, opts) => {
   opts = opts || {};
   if (!cards || !cards.length) return "";
-  return `<section class="rowx" ${opts.id ? `id="${opts.id}"` : ""}>
+  return `<section class="rowx at0" ${opts.id ? `id="${opts.id}"` : ""}>
     <h3>${esc(title)}${opts.more ? `<a class="more" href="${opts.more}">See all</a>` : ""}</h3>
     <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
     <div class="strip">${cards.join("")}${opts.seeAll ? `<a class="poster see" href="${opts.seeAll}">See all</a>` : ""}</div>
@@ -925,6 +925,13 @@ document.addEventListener("click", (e) => {
   const strip = a.parentElement.querySelector(".strip");
   strip.scrollBy({ left: +a.dataset.scroll * strip.clientWidth * 0.8, behavior: "smooth" });
 });
+// Overhaul 2026-11-20: the left arrow only shows once a row has moved (it used to cover the first poster),
+// and pages with a picture at the top get their top bar's fade back once you scroll (words no longer run through it)
+document.addEventListener("scroll", (e) => {
+  const t = e.target;
+  if (t && t.classList && t.classList.contains("strip") && t.parentElement) t.parentElement.classList.toggle("at0", t.scrollLeft < 8);
+}, true);
+window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 40), { passive: true });
 // Glowfin Top 10 (Ben's T1 pick): tall glowing Anton numbers, each in the same width box fully BESIDE its poster
 B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.posterCard(it)}</div>`);
 

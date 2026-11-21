@@ -337,12 +337,56 @@ def focus_sweep(name, max_moves=60):
     log(f"focus sweep '{name}': {len(clickable)} buttons, {len(missed)} never focused")
 
 
+def open_place(name):
+    """Glowfin menu: open a place (Home, Movies, Live TV...) from wherever the robot is.
+    TV: Left opens the side menu, which then shows the names. Phone: the bottom bar, or More.
+    Presses Back one step at a time only when the menu can't be reached (never mashes Back: on Home that leaves the app)."""
+    rx = rf"^{name}$"
+    for _ in range(4):
+        if MODE == "tv":
+            for _ in range(10):
+                root = dump()
+                # the open menu is the only screen that shows Search and Requests as words together
+                if root is not None and find(root, r"^Search$") is not None and find(root, r"^Requests$") is not None:
+                    n = find(root, rx)
+                    if n is not None:
+                        tap(n)
+                        time.sleep(3)
+                        return True
+                key("DPAD_LEFT", wait=0.5)
+        else:
+            root = dump()
+            # the bottom bar is the lowest thing on screen with that name (a row title higher up is not it)
+            hits = [x for x in nodes(root) if re.search(rx, x.get("text") or "", re.I)] if root is not None else []
+            n = max(hits, key=lambda x: bounds(x)[1]) if hits else None
+            bar = find(root, r"^More$") if root is not None else None
+            if n is not None and bar is not None and abs(bounds(n)[1] - bounds(bar)[1]) < 40:
+                tap(n)
+                time.sleep(3)
+                return True
+            more = find(root, r"^More$") if root is not None else None
+            if more is not None:
+                tap(more)
+                time.sleep(2)
+                n = find(dump(), rx)
+                if n is not None:
+                    tap(n)
+                    time.sleep(3)
+                    return True
+        key("BACK", wait=1.5)
+        top = sh("dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity'")
+        if PKG not in top:
+            sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
+            time.sleep(6)
+    log(f"could not open '{name}' from the menu")
+    return False
+
+
 def back_to_home():
-    """Back until Home's greeting shows (no Home tab any more in the redesign)"""
-    for _ in range(6):
-        if find(dump(), HOME_GREETING_RE) is not None:
-            return
-        key("BACK", wait=1)
+    """Go to Home through the menu (the redesign has no greeting to look for, and Back on Home leaves the app)"""
+    if find(dump(), HOME_GREETING_RE) is not None:
+        return
+    open_place("Home")
 
 
 def tv_stress(presses=1500):
@@ -659,7 +703,8 @@ def welcome_setup():
 
 # Benflix redesign: Home shows a greeting and the four doors
 HOME_GREETING_RE = r"^Good (morning|afternoon|evening)|^Happy |^Merry |Día de"
-DOORS_RE = HOME_GREETING_RE + r"|^Live TV$"
+# Glowfin redesign: Home has no greeting and the menu shows icons only, so also know Home by its rows
+DOORS_RE = HOME_GREETING_RE + r"|^Live TV$|^Continue watching$|^Recently added$|^Next up$|^Home$"
 
 
 def main():

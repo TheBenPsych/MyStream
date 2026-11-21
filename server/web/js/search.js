@@ -21,7 +21,7 @@ B.route(/^\/search/, async (m, nav) => {
       <div id="popular">${B.spinner()}</div>
       <section class="rowx"><h3>Browse</h3><div class="tiles2">
         <a class="tile2" href="#/browse/movies/genres">Movie genres</a><a class="tile2" href="#/browse/shows/genres">Show genres</a>
-        <a class="tile2" href="#/browse/shows/studios">Networks</a><a class="tile2" href="#/live">Channel types</a><a class="tile2" href="#/games">Consoles</a></div></section>`;
+        <a class="tile2" href="#/live">Channel types</a><a class="tile2" href="#/games">Consoles</a></div></section>`;
     const [mv, tv] = await Promise.all([B.trending("Movie").catch(() => []), B.trending("Series").catch(() => [])]);
     if (!B.alive(nav) || !$("#popular")) return;
     const mix = []; for (let i = 0; i < 10; i++) { if (mv[i]) mix.push(mv[i]); if (tv[i]) mix.push(tv[i]); }
