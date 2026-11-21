@@ -281,6 +281,18 @@ fun InstallUpdatePage(
             return
         }
         lastInstallerOpenAt = now
+        // Android copies the update before installing it. With too little room that copy fails and Android only
+        // says "There was a problem parsing the package", so say the real reason here first.
+        try {
+            val freeMb = android.os.StatFs(context.filesDir.path).availableBytes / (1024 * 1024)
+            Timber.i("Opening the install screen, %d MB free", freeMb)
+            if (freeMb < LOW_SPACE_MB) {
+                com.github.damontecres.wholphin.ui.components.BenflixNotices
+                    .pill("Only $freeMb MB free here. If the update fails, free some space in Settings > Apps and try again.")
+            }
+        } catch (ex: Exception) {
+            Timber.w(ex, "Couldn't read the free space")
+        }
         // Notice if the install screen covers Benflix at all, even for a moment or as a small box on top
         var leftScreen = false
         lateinit var observer: LifecycleEventObserver
@@ -446,6 +458,9 @@ private const val INSTALLER_CHECK_MS = 6_000L
 
 /** After opening the install screen, ignore another open for this long, so two never stack up */
 private const val INSTALLER_REOPEN_GAP_MS = 10_000L
+
+/** Under this much free room, warn that the update may not fit (Android needs a second copy to install it) */
+private const val LOW_SPACE_MB = 400L
 
 /** When the install screen was last opened (since the TV or phone started) */
 private var lastInstallerOpenAt = 0L
