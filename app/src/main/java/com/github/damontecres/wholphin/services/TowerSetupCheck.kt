@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 15
+            const val SETUP_NEEDED = 16
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -132,6 +132,10 @@ class TowerSetupCheck
                     15 to
                         listOf(
                             "When Radarr or Sonarr swap in a better copy, the movie or episode keeps its first date and doesn't show as new again",
+                        ),
+                    16 to
+                        listOf(
+                            "What's the hold-up? on request pages: why something you said yes to hasn't arrived yet",
                         ),
                 )
 

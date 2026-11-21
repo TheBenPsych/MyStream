@@ -769,7 +769,7 @@ class BenflixRequestsViewModel
                     }.flatten()
                         .distinctBy { it.id }
                         .take(30)
-                if (missing.isEmpty()) null else FindRow("Finish the collection", missing)
+                if (missing.isEmpty()) null else FindRow("Finish your sets", missing)
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {

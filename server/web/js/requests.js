@@ -67,8 +67,40 @@ B.askCard = (r) => {
   B.items["s" + r.mediaType + r.id] = r;
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
     <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${asked(r) ? '<span class="newp">Asked</span>' : r._missing ? '<span class="newp miss">Missing episodes</span>' : ""}</div>
-    <div class="cap">${esc(t)}<small>${esc(year)}</small></div></button>`;
+    <div class="cap">${esc(t)}<small${r._part ? ' class="rqpart"' : ""}>${esc(r._part || year)}</small></div></button>`;
 };
+// Glowfin (Ben, 2026-11-21) "Finish your sets": movies missing from film series you already own part of.
+// Each one says which part it is and which parts are here ("Part 3 · you have 1 and 2").
+const haveWords = (nums) => {
+  const runs = nums.every((n, i) => i === 0 || n === nums[i - 1] + 1);
+  if (nums.length === 1) return String(nums[0]);
+  if (runs && nums.length > 2) return `${nums[0]} to ${nums[nums.length - 1]}`;
+  return nums.slice(0, -1).join(", ") + " and " + nums[nums.length - 1];
+};
+B.finishSets = () => B.cached("finish-sets", 1800000, async () => {
+  const [sets, lib] = await Promise.all([
+    B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds&EnableImages=false&EnableUserData=false&EnableTotalRecordCount=false&Limit=200`).catch(() => ({})),
+    B.libTmdb().catch(() => new Map()),
+  ]);
+  const ids = [...new Set((sets.Items || []).map((x) => (x.ProviderIds || {}).Tmdb || (x.ProviderIds || {}).TmdbCollection).filter(Boolean))].slice(0, 40);
+  const today = new Date().toISOString().slice(0, 10), out = [];
+  let i = 0;
+  const next = async () => {
+    while (i < ids.length) {
+      const set = await seerr("/collection/" + ids[i++]).catch(() => null);
+      const parts = ((set && set.parts) || []).filter((p) => p && p.id && p.releaseDate && p.releaseDate.slice(0, 10) <= today).sort((a, b) => (a.releaseDate < b.releaseDate ? -1 : 1));
+      const here = (p) => (p.mediaInfo && p.mediaInfo.status >= 4) || lib.has("movie:" + p.id);
+      const have = parts.map((p, n) => (here(p) ? n + 1 : 0)).filter(Boolean);
+      if (!have.length) continue;
+      parts.forEach((p, n) => {
+        if (here(p) || (p.mediaInfo && p.mediaInfo.status >= 2)) return;
+        out.push(Object.assign({}, p, { mediaType: "movie", _part: `Part ${n + 1} · you have ${haveWords(have)}` }));
+      });
+    }
+  };
+  await Promise.all([next(), next(), next(), next()]);
+  return out.slice(0, 40);
+});
 
 // The "Ask for it" side panel (shows always let you pick seasons)
 B.askPanel = async (type, id) => {
@@ -345,6 +377,14 @@ B.route(/^\/requests/, async (m, nav) => {
     walls = walls.filter((w) => w.items.length || w.owned.length);
     drawWall();
     checkMissing(nav);
+    // "Finish your sets" joins after the Top 10 once it's worked out (Movies only, not inside one genre)
+    if (tab === "movies" && !genre) {
+      B.finishSets().then((items) => {
+        if (!items.length || !B.alive(nav) || genre || walls.some((w) => w.id === "sets")) return;
+        walls.splice(Math.min(1, walls.length), 0, { id: "sets", title: "Finish your sets", ranked: false, items, owned: [] });
+        drawWall();
+      }).catch(() => {});
+    }
   };
   // Shows already on Benflix: look each one up, and bring back the ones missing aired episodes
   const checkMissing = async (myNav) => {

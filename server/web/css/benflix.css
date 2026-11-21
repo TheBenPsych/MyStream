@@ -2398,6 +2398,19 @@ a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offs
 .ask-steps .ask-parts .poster{flex:none;width:112px}
 .ask-steps .ask-parts .newp.grey{background:#3A3F55;color:#fff}
 #askSetBox:empty{display:none}
+.facts .fact-link{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;color:#9EC0FF;text-decoration:none}
+.facts .fact-link:hover,.facts .fact-link:focus-visible{text-decoration:underline;color:#fff}
+.poster .cap small.rqpart{color:#35E0C8;white-space:normal}
+.rqsplit .grid .poster .cap small.rqpart{color:#35E0C8}
+.ask-hold{border-color:#6B5A1E}
+.ask-hold .hold-line{margin:0 0 4px;color:#ECEEFB;font-weight:600}
+.ask-hold p.dim + .hold-line{margin-top:12px}
+#askHoldBox:empty{display:none}
+.studio h2{margin:14px 0 2px;font-size:30px}
+.studio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:16px}
+.studio-grid .poster{width:auto}
+.studio-grid .poster .cap{display:block}
+@media (max-width:600px){.studio-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.studio h2{font-size:24px}}
 /* ---------- controller mode (js/pad.js): a game controller drives Glowfin like a TV remote ---------- */
 /* The highlight is bigger and brighter than the keyboard one, so it reads on a Steam Deck or from the sofa */
 html.pad-on .pad-focus { outline: 4px solid #fff !important; outline-offset: 4px; box-shadow: 0 0 0 9px rgba(63, 224, 232, .28); border-radius: 10px; position: relative; z-index: 2; }

@@ -70,7 +70,7 @@
       const shownOn = !isMovie && nets.length > 0, own = B.studioOwner(first.name);
       const others = made.filter((c) => c.name !== first.name).slice(0, 3).map((c) => { const n = c.originCountry && c.originCountry !== "US" ? countryName(c.originCountry) : ""; return n ? `${c.name} (${n})` : c.name; });
       const small = [own ? own.kind : "", others.length ? (shownOn ? "Made by " : "With ") + others.join(", ") : ""].filter(Boolean).join(" · ");
-      boxes.push(`<div class="fact-full"><b>${shownOn ? "Shown on" : "Made by"}</b><span class="fact-big">${esc(first.name)}</span>${own && own.part ? `<span class="fact-tag">Part of ${esc(own.owner)}</span>` : ""}${small ? `<small>${esc(small)}</small>` : ""}</div>`);
+      boxes.push(`<div class="fact-full"><b>${shownOn ? "Shown on" : "Made by"}</b><span class="fact-big">${esc(first.name)}</span>${own && own.part ? `<span class="fact-tag">Part of ${esc(own.owner)}</span>` : ""}${small ? `<small>${esc(small)}</small>` : ""}${first.id ? `<a class="fact-link" href="#/studio/${shownOn ? "tv" : "movie"}/${first.id}?name=${encodeURIComponent(first.name)}">See everything from ${esc(first.name)} ›</a>` : ""}</div>`);
     }
     const box = (k, v, small, full) => boxes.push(`<div${full ? ' class="fact-full"' : ""}><b>${esc(k)}</b>${esc(v)}${small ? `<small>${esc(small)}</small>` : ""}</div>`);
     const today = new Date();
@@ -136,6 +136,67 @@
       return n === 1 ? "Asked for 1 movie." : `Asked for ${n} movies.`;
     });
   };
+
+  // "What's the hold-up?" (Ben only, at home): why something that got a yes hasn't arrived, from Radarr / Sonarr
+  const holdUp = async (type, id, box, nav) => {
+    if (!box) return;
+    const q = `kind=${type}&tmdb=${id}`;
+    const draw = (h, extra) => {
+      box.innerHTML = `<div class="ask-steps ask-hold"><h4>What's the hold-up?</h4><p class="hold-line">${esc(h.line || "")}</p><p class="dim">${esc(h.detail || "")}</p>${extra ? `<p class="hold-line">${esc(extra.line || "")}</p><p class="dim">${esc(extra.detail || "")}</p>` : ""}
+        <div class="acts" style="justify-content:flex-start;flex-wrap:wrap;margin-top:12px">${h.search ? `<button class="btn small white" data-hold="search">Look again now</button>` : ""}${h.replace ? `<button class="btn small white" data-hold="replace">Try another copy</button>` : ""}${h.copies && !extra ? `<button class="btn small" data-hold="copies">See what copies are out there</button>` : ""}</div></div>`;
+      box.onclick = (e) => {
+        const b = e.target.closest("[data-hold]");
+        if (!b) return;
+        const what = b.dataset.hold;
+        B.busy(b, async () => {
+          if (what === "copies") { const c = await B.call("GET", `api/admin/holdup/copies?${q}`); if (B.alive(nav)) draw(h, c); return ""; }
+          const r = what === "replace" ? await B.call("POST", `api/admin/downloads/${h.replace.app}/${h.replace.id}/replace`) : await B.call("POST", `api/admin/holdup/search?${q}`);
+          setTimeout(() => b.remove(), 0);
+          return (r && r.message) || "Done.";
+        });
+      };
+    };
+    // Away from home (or Tower not updated yet) there is no answer: the box just stays away
+    const h = await B.call("GET", `api/admin/holdup?${q}`).catch(() => null);
+    if (h && h.line && B.alive(nav) && box.isConnected) draw(h);
+  };
+
+  // Everything one studio (movies) or network (shows) made that you can ask for
+  B.route(/^\/studio\/(movie|tv)\/(\d+)/, async (m, nav) => {
+    const [, type, id] = m, name = B.q("name") || "This studio", own = B.studioOwner(name);
+    const path = type === "movie" ? `/discover/movies/studio/${id}` : `/discover/tv/network/${id}`;
+    B.page().innerHTML = B.top("") + `<div class="wrap studio"><button class="chip" id="stBack">‹ Back</button><h2>${esc(name)}</h2><p class="dim" id="stNote">${esc([own && own.part ? "Part of " + own.owner : "", own ? own.kind : ""].filter(Boolean).join(" · "))}</p><div class="studio-grid" id="stGrid">${B.spinner()}</div><div class="acts" style="justify-content:center;margin:18px 0 40px"><button class="btn" id="stMore" hidden>Show more</button></div></div>`;
+    B.wireTop();
+    const lib = await B.libTmdb().catch(() => new Map());
+    let page = 0, pages = 1, shown = 0, owned = 0, first = true;
+    const seen = new Set();
+    const more = async () => {
+      const got = await Promise.all([1, 2].map((n) => (page + n <= pages || first ? B.seerr(`${path}?page=${page + n}`).catch(() => null) : null)));
+      if (!B.alive(nav)) return;
+      const grid = $("#stGrid");
+      if (first) { grid.innerHTML = ""; first = false; }
+      page += 2;
+      got.forEach((g) => {
+        if (!g) return;
+        pages = g.totalPages || pages;
+        (g.results || []).forEach((r) => {
+          if (!r || !r.posterPath || seen.has(r.id)) return;
+          seen.add(r.id);
+          Object.assign(r, { mediaType: type });
+          if (B.onBenflix(r)) { owned++; return; }
+          shown++;
+          grid.insertAdjacentHTML("beforeend", B.askCard(r));
+        });
+      });
+      if (!shown && page >= pages) grid.innerHTML = `<div class="empty">${owned ? "You already have everything from here." : "Nothing to show from here right now."}</div>`;
+      const note = [own && own.part ? "Part of " + own.owner : "", own ? own.kind : "", owned ? `${owned} already on Glowfin (hidden)` : ""].filter(Boolean).join(" · ");
+      $("#stNote").textContent = note;
+      $("#stMore").hidden = page >= pages;
+    };
+    $("#stBack").onclick = () => B.back();
+    $("#stMore").onclick = () => B.busy($("#stMore"), async () => { await more(); return ""; });
+    await more();
+  });
 
   B.route(/^\/ask\/(movie|tv)\/(\d+)/, async (m, nav) => {
     const [, type, id] = m;
@@ -226,7 +287,7 @@
       status: pending.length && admin ? "Someone asked for this. Say yes or no in Overview." : "",
       story: d.overview || "",
       strip,
-      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${isMovie ? outYetHtml(d) : showStatusHtml(d)}<div id="askSetBox"></div>${steps}${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
+      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${admin && status === 3 ? '<div id="askHoldBox"></div>' : ""}${isMovie ? outYetHtml(d) : showStatusHtml(d)}<div id="askSetBox"></div>${steps}${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
       tabs: [
         { name: "More to ask for", id: "tpAskMore", load: async (pane) => {
           const [rec, sim] = await Promise.all([
@@ -246,6 +307,7 @@
     const imdbId = d.externalIds && d.externalIds.imdbId;
     if (imdbId) awardsOf(imdbId).then((a) => { if (a && B.alive(nav)) tp.setStoryExtra(factsHtml(d, isMovie, a)); });
     if (isMovie) filmSet(d, id, $("#askSetBox", tp.root), nav, kids).catch(() => {});
+    if (admin && status === 3) holdUp(type, id, $("#askHoldBox", tp.root), nav).catch(() => {});
     tp.root.addEventListener("click", (e) => {
       const y = e.target.closest("[data-ayes]"), n = e.target.closest("[data-ano]");
       if (!y && !n) return;

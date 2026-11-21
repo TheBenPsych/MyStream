@@ -712,6 +712,14 @@ fun DestinationContent(
             }
         }
 
+        is Destination.RequestStudio -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            com.github.damontecres.wholphin.ui.detail.discover.RequestStudioPage(
+                destination = destination,
+                modifier = modifier,
+            )
+        }
+
         is Destination.DiscoverMoreResult -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             DiscoverRequestGrid(
