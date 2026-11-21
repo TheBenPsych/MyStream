@@ -235,7 +235,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   if (!B.alive(nav)) return;
   const keep = resume.filter(notAnime);
   pageRows([
-    B.row("Continue watching", keep.map((it) => B.posterCard(it, { progress: true }))),
+    B.row("Keep watching", keep.map((it) => B.posterCard(it, { progress: true }))),
     B.row("Top 10 movies this week", B.top10(top)),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
@@ -286,9 +286,9 @@ B.route(/^\/shows$/, async (m, nav) => {
     return card.replace(`data-id="${esc((sh || ep).Id)}"`, `data-id="${esc(ep.Id)}"`);
   };
   pageRows([
-    B.row("Continue watching", cont.map(epCard)),
+    B.row("Keep watching", cont.map(epCard)),
     B.row("Top 10 shows this week", B.top10(top)),
-    B.row("Next up", nextUp.map(epCard)),
+    B.row("Up next", nextUp.map(epCard)),
     fewer ? "" : B.row("New episodes", Object.keys(newCount).map((id) => sById[id]).filter(Boolean).map((sh) => B.posterCard(sh, { newCount: newCount[sh.Id] }))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
@@ -328,7 +328,7 @@ B.route(/^\/anime$/, async (m, nav) => {
     : B.posterCard(it, { progress: true }));
   const fresh = freshShows.concat(films).sort(newestFirst("DateCreated")).slice(0, 20);
   pageRows([
-    B.row("Continue watching", cont.map(card)),
+    B.row("Keep watching", cont.map(card)),
     top.length >= 3 ? B.row("Top 10 anime", B.top10(top)) : "",
     B.row("Airing this season", airing.map((it) => B.posterCard(it))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",

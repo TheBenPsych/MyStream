@@ -104,7 +104,7 @@ class SceneBySceneViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Scene by scene couldn't load")
-                    _state.value = SceneState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = SceneState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

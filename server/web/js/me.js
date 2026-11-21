@@ -256,7 +256,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   if (g.id === "behind") {
     sp.innerHTML = `<div class="warnbox">These are for fixing things. Changing them can make Glowfin act oddly in this browser.</div>
       ${setRow("Get the newest web version now", "Normally Tower checks every hour by itself.", `<a class="valbtn" href="#/server/tools/webversion">Open</a>`)}
-      ${setRow("Reset this browser", "Forgets every profile and setting saved in this browser. Nothing on the server changes.", `<button class="valbtn" id="resetAll">Reset</button>`)}`;
+      ${setRow("Reset this browser", "Forgets every profile and setting saved in this browser. Nothing on Tower changes.", `<button class="valbtn" id="resetAll">Reset</button>`)}`;
     $("#resetAll").onclick = async () => {
       if (!(await B.ask("Reset Glowfin in this browser?", "Everyone will need to sign in again here.", "Reset"))) return;
       try { Object.keys(localStorage).filter((k) => k.startsWith("benflix")).forEach((k) => localStorage.removeItem(k)); sessionStorage.clear(); } catch (e) {}
@@ -288,13 +288,13 @@ const HELP = [
   { id: "about", label: "About this app", icon: "info" },
 ];
 const QA = [
-  ["Why won't a video play?", "Some files need the server to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
+  ["Why won't a video play?", "Some files need Tower to convert them for a browser. If one won't start, try lowering Quality in Settings > Picture and sound, or watch it on the TV or phone app."],
   ["Can I use this away from home?", "Yes, once Ben has set it up: open your Glowfin internet address (the yohobox one) with /benflix-games/ at the end and sign in like normal."],
   ["Can I install it like an app?", "Yes. Settings > Install Glowfin. It gets its own window and icon in the dock or Start menu."],
   ["Can I put Glowfin on a Fire TV stick?", "Older Fire TV sticks, Fire TV Cubes and TVs with Fire TV built in work (their About page says Fire OS). The newest sticks run Vega OS, which can't install Glowfin: that's the Fire TV Stick 4K Select (2025), the Fire TV Stick HD (2026) and newer. Check in Settings › My Fire TV › About before you try. Google TV devices always work."],
   ["How do I add someone to Who's watching here?", "Press “Add someone” under the pictures on Who's watching and sign in with their name and password, or with a code from a TV or phone."],
   ["Where are the Glowfin games?", "The Glowfin games (puzzles, party games, Ember Road) are on the TV and phone app. The browser has live channels and console games."],
-  ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on the server, so they're the same on the TV, phone and here."],
+  ["Do my lists and progress follow me?", "Yes. My List, what you've watched, where you stopped, and your favourite channels are saved on Tower, so they're the same on the TV, phone and here."],
   ["How do I skip intros by themselves?", "Settings > Watching > Skip intros and credits by themselves. Or open the player's Audio and subtitles panel and pick Always skip the intro for that show."],
   ["Keyboard keys in the player?", "Space pauses, the left and right arrows jump 10 seconds, up and down change the sound, F is full screen, M mutes, S turns subtitles on and off, Enter skips the intro, N is the next episode, Esc goes back. Press ? in the player to see them all."],
 ];

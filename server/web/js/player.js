@@ -162,7 +162,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     });
     if (!here()) return;
     source = (info.MediaSources || [])[0];
-    if (!source) throw new Error("Jellyfin couldn't find a way to play this.");
+    if (!source) throw new Error("Tower couldn't find a way to play this.");
     playSession = info.PlaySessionId;
     if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
     // Picked sound isn't the file's first one, but Jellyfin offered the plain file (which would play the

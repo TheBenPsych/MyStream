@@ -192,7 +192,7 @@ class DailyRiddleViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Movie riddle couldn't load")
-                    _state.value = RiddleState.Problem("Couldn't reach the server. Try again in a moment.")
+                    _state.value = RiddleState.Problem("Couldn't reach Tower. Try again in a moment.")
                 }
             }
         }

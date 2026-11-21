@@ -82,9 +82,9 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   B.wireTop();
   let list, prefs;
   try { [list, prefs] = await Promise.all([B.channels(), chPrefs.read()]); }
-  catch (e) { $("#liveTop").remove(); $("#rows").innerHTML = B.emptyPage("live", "Live TV isn't set up yet", "Channels show up here once the server has a channel list. Nothing is wrong with your device.", '<button class="btn white" onclick="location.reload()">Try again</button><a class="btn" href="#/home">Go to Home</a>'); return; }
+  catch (e) { $("#liveTop").remove(); $("#rows").innerHTML = B.emptyPage("live", "Live TV isn't set up yet", "Channels show up here once Tower has a channel list. Nothing is wrong with your device.", '<button class="btn white" onclick="location.reload()">Try again</button><a class="btn" href="#/home">Go to Home</a>'); return; }
   if (!B.alive(nav)) return;
-  if (!list.length) { $("#liveTop").remove(); $("#rows").innerHTML = B.emptyPage("live", "No channels yet", "Channels show up here once the server has a channel list. Ben can add them in Jellyfin's Dashboard, under Live TV.", '<a class="btn" href="#/home">Go to Home</a>'); return; }
+  if (!list.length) { $("#liveTop").remove(); $("#rows").innerHTML = B.emptyPage("live", "No channels yet", "Channels show up here once Tower has a channel list. Ben can add them in Jellyfin's Dashboard, under Live TV.", '<a class="btn" href="#/home">Go to Home</a>'); return; }
   const byName = {}; list.forEach((c) => { byName[c.Name] = c; });
   const favs = prefs.favourites.map((n) => byName[n]).filter(Boolean);
   const recent = prefs.recent.map((n) => byName[n]).filter(Boolean);

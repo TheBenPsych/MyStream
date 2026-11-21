@@ -128,7 +128,7 @@ fun TvGuideGrid(
                     EmptyPage(
                         icon = BenflixIcon.LIVE,
                         title = "No channels yet",
-                        line = "Channels show up here once the server has a channel list. Nothing is wrong with this device.",
+                        line = "Channels show up here once Tower has a channel list. Nothing is wrong with this device.",
                     )
                 } else {
                     AnimatedVisibility(

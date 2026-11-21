@@ -111,7 +111,7 @@ sealed interface GuessState {
 /**
  * Benflix "Guess the movie": a picture from your own library starts very blurry and gets sharper,
  * and you pick the right title from four. Other rounds show a line of the plot or the cast.
- * Kids only gets Kids titles (the Kids filter already covers every list from the server).
+ * Kids only gets Kids titles (the Kids filter already covers every list from Tower).
  */
 @HiltViewModel
 class GuessTheMovieViewModel
@@ -157,7 +157,7 @@ class GuessTheMovieViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Guess the movie couldn't load")
-                    _state.value = GuessState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = GuessState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

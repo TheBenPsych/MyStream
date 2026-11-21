@@ -116,7 +116,7 @@ class OmdbScores
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not save the OMDb key")
-                    "Couldn't save it to the server. Try again in a moment."
+                    "Couldn't save it to Tower. Try again in a moment."
                 }
             }
 

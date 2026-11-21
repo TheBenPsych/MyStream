@@ -1036,12 +1036,12 @@ internal fun EmptyDoor(
     LaunchedEffect(offline) { if (offline) retryFocus.tryRequestFocus() }
     EmptyPage(
         icon = if (offline) BenflixIcon.WARNING else BenflixIcon.FILM,
-        title = if (offline) "Can't reach the server right now" else "Nothing in $name yet",
+        title = if (offline) "Can't reach Tower right now" else "Nothing in $name yet",
         line =
             if (offline) {
-                "Check the internet or that the server is on, then try again."
+                "Check the internet or that Tower is on, then try again."
             } else {
-                "Once the server has some, they show up here."
+                "Once Tower has some, they show up here."
             },
         modifier = modifier,
     ) {

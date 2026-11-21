@@ -66,7 +66,7 @@
   };
   const failed = (ctx, e) => {
     console.warn(e);
-    screen(ctx, `<div class="bg-msg"><h2>Couldn't load from the server</h2><p class="dim">Try again in a moment.</p><button class="btn white" id="bgRetry">Try again</button> <button class="btn" id="bgBack">Back</button></div>`);
+    screen(ctx, `<div class="bg-msg"><h2>Couldn't load from Tower</h2><p class="dim">Try again in a moment.</p><button class="btn white" id="bgRetry">Try again</button> <button class="btn" id="bgBack">Back</button></div>`);
     $("#bgRetry").onclick = ctx.again; $("#bgBack").onclick = ctx.quit;
   };
   const head = (title, line) => `<div class="bgq-head"><b>${esc(title)}</b><span id="bgLine">${esc(line)}</span></div>`;

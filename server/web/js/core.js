@@ -271,7 +271,7 @@ B.call = async (method, path, body, opts) => {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    const err = new Error("Couldn't reach Glowfin on the server. Is it on?"); err.status = 0; throw err;
+    const err = new Error("Couldn't reach Tower. Is it on?"); err.status = 0; throw err;
   }
   const text = await r.text();
   let data = null;

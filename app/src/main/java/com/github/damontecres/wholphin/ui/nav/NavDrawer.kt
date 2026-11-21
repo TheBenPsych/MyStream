@@ -582,7 +582,7 @@ fun NavDrawer(
                     ProfileMenuItem(
                         icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.SERVER,
                         title = "Server",
-                        line = "Who's watching and how the server is doing",
+                        line = "Who's watching and how Tower is doing",
                         onClick = { go(Destination.ServerStatus) },
                         note = if (serverAlert) "Check" else null,
                     ),

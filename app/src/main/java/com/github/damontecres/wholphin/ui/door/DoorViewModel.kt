@@ -363,7 +363,7 @@ class DoorViewModel
                 val animeIds = async { data.idsIn(userId, anime, BaseItemKind.MOVIE) }
                 launch {
                     val skip = animeIds.await()
-                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", data.resumeMovies(userId).filter { it.id !in skip }))
+                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", data.resumeMovies(userId).filter { it.id !in skip }))
                 }
                 launch {
                     val dislikes = disliked.await()
@@ -455,11 +455,11 @@ class DoorViewModel
                 }
                 launch {
                     val items = notAnime(data.continueEpisodes(userId))
-                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", items))
                 }
                 launch {
                     val next = notAnime(data.nextUp(userId))
-                    putOrRemove(order, DoorRowData(NEXT_UP, "Next up", next))
+                    putOrRemove(order, DoorRowData(NEXT_UP, "Up next", next))
                     if (!easy) {
                         val fresh = data.newEpisodes(userId, next.mapNotNull { it.data.seriesId }.distinct())
                         putOrRemove(order, DoorRowData(NEW_EPISODES, "New episodes", fresh))
@@ -550,7 +550,7 @@ class DoorViewModel
                             data.resumeMovies(userId).filter { it.id in films } +
                                 episodes.filter { (it.data.seriesId ?: it.id) in series }
                         ).distinctBy { it.data.seriesId ?: it.id }
-                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", items))
                 }
                 launch {
                     val dislikes = disliked.await()
@@ -637,9 +637,9 @@ class DoorViewModel
                         (data.resumeMovies(userId) + data.continueEpisodes(userId))
                             .sortedByDescending { it.data.userData?.lastPlayedDate }
                             .take(DoorDataService.ROW)
-                    putOrRemove(order, DoorRowData(KEEP, "Continue watching", items))
+                    putOrRemove(order, DoorRowData(KEEP, "Keep watching", items))
                 }
-                launch { putOrRemove(order, DoorRowData(NEXT_UP, "Next up", data.nextUp(userId))) }
+                launch { putOrRemove(order, DoorRowData(NEXT_UP, "Up next", data.nextUp(userId))) }
                 launch {
                     val dislikes = disliked.await()
                     val items =

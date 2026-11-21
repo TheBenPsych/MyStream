@@ -967,7 +967,7 @@ class PlaybackViewModel
                             it.copy(
                                 loading =
                                     LoadingState.Error(
-                                        "Unable to get media URL from the server. Do you have permission to view and/or transcode?",
+                                        "Tower couldn't start this video. Try again in a minute.",
                                     ),
                             )
                         }

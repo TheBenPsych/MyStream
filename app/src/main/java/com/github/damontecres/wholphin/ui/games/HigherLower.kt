@@ -157,7 +157,7 @@ class HigherLowerViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Higher or Lower couldn't load")
-                    _state.value = HigherLowerState.NotEnough("Couldn't load movies from the server. Try again in a moment.")
+                    _state.value = HigherLowerState.NotEnough("Couldn't load movies from Tower. Try again in a moment.")
                 }
             }
         }

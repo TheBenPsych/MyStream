@@ -320,7 +320,7 @@ def resume_check():
     # going back in from Home: Continue watching?
     go_home()
     root, s = j.step("resume-home")
-    DEEP["resume"]["Continue watching on Home"] = d.find(root, r"Continue watching|Test Pattern One") is not None
+    DEEP["resume"]["Continue watching on Home"] = d.find(root, r"Continue watching|Keep watching|Test Pattern One") is not None
 
 
 def next_episode():

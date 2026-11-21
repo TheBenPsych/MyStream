@@ -165,7 +165,7 @@ class PartyViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Party couldn't load titles")
-                    _ui.update { it.copy(error = "Couldn't load movies from the server.") }
+                    _ui.update { it.copy(error = "Couldn't load movies from Tower.") }
                 }
             }
         }
