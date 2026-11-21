@@ -111,11 +111,15 @@ private val MUSIC_KINDS = setOf(BaseItemKind.AUDIO, BaseItemKind.MUSIC_ALBUM, Ba
 private fun plain(text: String?): String =
     java.text.Normalizer
         .normalize(text.orEmpty(), java.text.Normalizer.Form.NFKD)
-        .replace(Regex("\\p{M}"), "")
+        .replace(DOOR_MARKS, "")
         .lowercase()
-        .replace(Regex("[(\\[].*?[)\\]]"), " ")
-        .replace(Regex("[^a-z0-9]+"), " ")
+        .replace(DOOR_BRACKETS, " ")
+        .replace(DOOR_NOT_PLAIN, " ")
         .trim()
+
+private val DOOR_MARKS = Regex("\\p{M}")
+private val DOOR_BRACKETS = Regex("[(\\[].*?[)\\]]")
+private val DOOR_NOT_PLAIN = Regex("[^a-z0-9]+")
 
 /** 0 = the name starts with the words typed, 1 = has them, 2 = neither (closer matches go first) */
 private fun closeness(
