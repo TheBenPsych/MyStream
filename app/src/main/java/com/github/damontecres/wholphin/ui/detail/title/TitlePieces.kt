@@ -18,7 +18,7 @@ import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.ui.cards.PersonCard
 
-/** The Cast tab: one row of faces on TV, 3 across on phones */
+/** The Cast tab: one sideways row of faces, on TVs and phones */
 @Composable
 fun TitleCastRow(
     scope: TitleTabScope,
@@ -27,19 +27,13 @@ fun TitleCastRow(
 ) {
     val list = remember(people) { people.distinctBy { it.id } }
     if (list.isEmpty()) return
-    if (scope.wide) {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = scope.side),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            itemsIndexed(list, key = { _, it -> it.id.toString() }) { _, p ->
-                PersonCard(person = p, onClick = { onClick(p) }, onLongClick = {}, modifier = Modifier.width(100.dp))
-            }
-        }
-    } else {
-        TitleGrid(scope, list.size) { index, width ->
-            val p = list[index]
-            PersonCard(person = p, onClick = { onClick(p) }, onLongClick = {}, modifier = Modifier.width(width))
+    // Phones too (overhaul 2026-11-20): one sideways row. The old three-across grid ran for pages on a big cast.
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = scope.side),
+        horizontalArrangement = Arrangement.spacedBy(if (scope.wide) 14.dp else 10.dp),
+    ) {
+        itemsIndexed(list, key = { _, it -> it.id.toString() }) { _, p ->
+            PersonCard(person = p, onClick = { onClick(p) }, onLongClick = {}, modifier = Modifier.width(if (scope.wide) 100.dp else 88.dp))
         }
     }
 }

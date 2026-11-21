@@ -999,6 +999,9 @@ private fun PhoneTop(
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
+            // Same as the TV: "Resume · 40 min left" with the short line, when there is something to pick up
+            val progress = item.progress()
+            if (progress != null) ResumeLine(item, progress, Modifier.padding(top = 8.dp))
         }
     }
 }

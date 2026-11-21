@@ -348,7 +348,9 @@ def open_place(name):
                 root = dump()
                 # the open menu is the only screen that shows Search and Requests as words together
                 if root is not None and find(root, r"^Search$") is not None and find(root, r"^Requests$") is not None:
-                    n = find(root, rx)
+                    # the menu slides open: wait for it to settle, then look again (a tap mid-slide landed one item off)
+                    time.sleep(1)
+                    n = find(dump(), rx)
                     if n is not None:
                         tap(n)
                         time.sleep(3)

@@ -19,7 +19,7 @@ B.describe = (it) => {
   let kw = "";
   if (ud.PlaybackPositionTicks && it.RunTimeTicks) {
     const left = B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks);
-    kw = `<div class="kwbar"><span class="line"><i style="width:${Math.min(100, ud.PlayedPercentage || 0)}%"></i></span>${B.len(left)} left</div>`;
+    kw = `<div class="kwbar">${I("play")}<b>Resume</b><span class="line"><i style="width:${Math.min(100, ud.PlayedPercentage || 0)}%"></i></span>${B.len(left)} left</div>`;
   }
   const title = it.Type === "Episode" ? `${it.SeriesName}` : it.Name;
   return `<div class="t">${esc(title)}</div>${it.Type === "Episode" ? `<div class="meta" style="color:var(--ink)">${esc(it.Name)}</div>` : ""}

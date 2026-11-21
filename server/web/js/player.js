@@ -99,8 +99,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <span id="pLeft"></span></div>
       <div class="row2 p1row">
         <div class="p1l">
-        <button class="pbtn" id="pGear" title="Settings: quality, speed and Fix a problem">${I("gear")}</button>
-        ${isEp ? `<button class="pbtn" id="pList" title="Episodes (E)">${I("eps")}</button>` : ""}
+        <button class="pbtn lab" id="pGear" title="Settings: quality, speed and Fix a problem">${I("gear")}<em>Settings</em></button>
+        ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
         </div>
         <div class="p1c">
         ${isEp ? `<button class="pbtn" id="pPv" title="Previous episode (P)" disabled>${I("prev")}</button>` : ""}
@@ -110,8 +110,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         ${isEp ? `<button class="pbtn" id="pNx" title="Next episode (N)">${I("next")}</button>` : ""}
         </div>
         <div class="p1r">
-        <button class="pbtn" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}</button>
-        <button class="pbtn" id="pAud" title="Audio and volume (M mutes)">${I("audio")}</button>
+        <button class="pbtn lab" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}<em>Subtitles</em></button>
+        <button class="pbtn lab" id="pAud" title="Audio and volume (M mutes)">${I("audio")}<em>Audio</em></button>
         <span class="extra">
           <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
           ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
