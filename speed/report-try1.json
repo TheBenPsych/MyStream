@@ -1,0 +1,33 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Looking for your server\u2026 | Checking your home Wi-Fi",
+  "screen typed-server: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org | https://demo.jellyfin.org/stable | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Ta",
+  "screen login-4: Glowfin | Glow | fin | Sign in with your phone | On your phone, open Glowfin, then My Glowfin \u203a Quick Connect, and type this code: | 3 | 5 | 1 | 7 | 7 | 3 | Waiting for your phone\u2026 | No Glowfin on your phone? Scan this with its camera, sign in, and type the code there. | Or type it in | Name | demo ",
+  "sign-in screen: Sahara | 1943 \u00b7 1h 37m | 7.2 IMDb     92% Rotten Tomatoes | In Libya, an American tank commander, along with a handful of Allied soldiers, tries to defend an isolated well with a limited supply of water from a German Afrika Korps battalion during the Western Desert Campaign of World War II. | Resume",
+  "signed in",
+  "screen benflix-first: Sahara | 1943 \u00b7 1h 37m | 7.2 IMDb     92% Rotten Tomatoes | In Libya, an American tank commander, along with a handful of Allied soldiers, tries to defend an isolated well with a limited supply of water from a German Afrika Korps battalion during the Western Desert Campaign of World War II. | Resume",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start0: Sahara | 1943 \u00b7 1h 37m | 7.2 IMDb     92% Rotten Tomatoes | In Libya, an American tank commander, along with a handful of Allied soldiers, tries to defend an isolated well with a limited supply of water from a German Afrika Korps battalion during the Western Desert Campaign of World War II. | Resume",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start1: Sahara | 1943 \u00b7 1h 37m | 7.2 IMDb     92% Rotten Tomatoes | In Libya, an American tank commander, along with a handful of Allied soldiers, tries to defend an isolated well with a limited supply of water from a German Afrika Korps battalion during the Western Desert Campaign of World War II. | Resume",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start2: Sahara | 1943 \u00b7 1h 37m | 7.2 IMDb     92% Rotten Tomatoes | In Libya, an American tank commander, along with a handful of Allied soldiers, tries to defend an isolated well with a limited supply of water from a German Afrika Korps battalion during the Western Desert Campaign of World War II. | Resume",
+  "screen benflix-after-scroll: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-opened: Search | 3:43 | PM | \uf130 | Search | OK to type | \uf1de | Tip  Search can find any movie, show or actor. Not on Glowfin yet? You can ask for it. | BROWSE | Genres | Channel types | Consoles | Watch in order: Marvel, Star Wars and more | Pick a mood | Binge Mode | Something Thoughtful | Background Noise | B",
+  "screen benflix-page-Home: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-page-Movies: The Great Train Robbery | 1903 \u00b7 12m | 7.0 IMDb     100% Rotten Tomatoes | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Resume | \u00b7 9 min left | Keep watching | The Boy i",
+  "screen benflix-page-Shows: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-page-LiveTV: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-page-Music: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-page-Games: Games | 3:47 | PM | Movie puzzle | Movie grid | Remote | Phone | Fill a 3 by 3 board with titles that fit both rules. | Movie puzzles | Scene by scene | Poster puzzle | Movie grid | Timeline | Who's that actor? | Guess the movie | Movie riddle | Arcade | For you | Consoles | Party | Scores | Movie g",
+  "screen benflix-page-Books: Glow | fin | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo | Search",
+  "screen benflix-page-Requests: Home | \u203a | Books | \u203a | Requests | Back | Books | 3:49 | PM | Requests aren't connected on this device yet | Ask Ben to turn on requests for your account, then you can ask for movies and shows here. | Try again | demo"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}

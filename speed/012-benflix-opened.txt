@@ -1,0 +1,20 @@
+  [188,51][360,109] Search
+  [1654,50][1773,110] 3:43
+  [1781,73][1824,104] PM
+  [237,187][268,229] 
+* [308,160][664,256] 
+  [332,184][380,232] Search
+  [404,189][575,228] OK to type
+  [704,191][737,225] 
+  [212,264][760,382] Tip  Search can find any movie, show or actor. Not on Glowfin yet? You can ask for it.
+  [828,184][974,220] BROWSE
+  [860,290][992,334] Genres
+  [1224,290][1491,334] Channel types
+  [860,462][1032,506] Consoles
+  [864,621][1548,660] Watch in order: Marvel, Star Wars and more
+  [828,720][1101,776] Pick a mood
+  [930,873][1126,912] Binge Mode
+  [1276,853][1628,932] Something Thoughtful
+  [1724,873][1856,912] Background Noise
+  [828,1032][1197,1080] Browse by genre
+  [34,1002][90,1058] demo

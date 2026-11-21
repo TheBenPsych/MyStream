@@ -1,0 +1,18 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Select Server | Server placeholder | Add Server | Add Server",
+  "screen typed-server: Enter Server IP or URL | https://demo.jellyfin.org/stable | Submit",
+  "screen login-4: Select User | Stable Demo | demo | demo | Add User | Add User | \uf0ec | Switch servers",
+  "screen typed-user: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "signed in",
+  "screen wholphin-first: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | The Boy in the Plastic Bubble | 1976  \u2022  1h 33m  \u2022  1h 10m left |   \u2022  PG |   \u2022  5.7\ufffd |   \u2022  Ends at 5:01 PM | Tod Lubitch is born with a deficient immune system. As such, he must spend the ",
+  "signed in",
+  "screen wholphin-start0: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | The Boy in the Plastic Bubble | 1976  \u2022  1h 33m  \u2022  1h 10m left |   \u2022  PG |   \u2022  5.7\ufffd |   \u2022  Ends at 5:02 PM | Tod Lubitch is born with a deficient immune system. As such, he must spend the ",
+  "signed in",
+  "screen wholphin-start1: demo | demo | Search | Home | \uf004 | Favorites | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | \uf26c | Shows | Settings | The Boy in the Plastic Bubble | 1976  \u2022  1h 33m  \u2022  1h 10m left |   \u2022  PG |   \u2022  5.7\ufffd |   \u2022  Ends at 5:02 PM | Tod Lubitch is born with a deficient immune system. As such, he must spend the "
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}

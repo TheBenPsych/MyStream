@@ -1,0 +1,14 @@
+  [395,32][491,128] Home
+  [496,63][508,97] ›
+  [516,32][612,128] Books
+  [619,63][631,97] ›
+  [643,63][777,97] Requests
+* [188,32][373,128] 
+  [204,61][242,99] Back
+  [250,62][345,98] Books
+  [1654,50][1773,110] 3:49
+  [1781,73][1824,104] PM
+  [196,200][1201,254] Requests aren't connected on this device yet
+  [196,286][1666,325] Ask Ben to turn on requests for your account, then you can ask for movies and shows here.
+  [228,379][366,415] Try again
+  [34,1002][90,1058] demo
