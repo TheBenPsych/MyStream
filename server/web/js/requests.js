@@ -238,14 +238,14 @@ B.route(/^\/requests/, async (m, nav) => {
   if (!RQ_TABS.some(([k]) => k === tab) || (tab === "books" && !B.booksTab)) tab = "movies";
   try { localStorage.setItem("bf-rq-tab", tab); } catch (e) { /* private window */ }
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
-    <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => k !== "books" || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${l}</a>`).join("")}
+    <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => k !== "books" || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${k === "yours" && B.me.admin ? "Manage" : l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
-      <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
+      <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin && tab !== "yours" ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
 </div></div>
     <div class="rows" id="rows">${B.spinner()}</div>`;
   B.wireTop();
   B.reqForFill(B.page());
-  if (B.me.admin) B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
+  if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
   if (tab === "music") return B.musicTab(nav);
   if (tab === "books") return B.booksTab(nav);
   if (tab === "yours") return B.yoursTab(nav);
@@ -495,6 +495,7 @@ B.seerrLine = (r, answer) => {
 B.yoursTab = async (nav) => {
   const rows = $("#rows");
   $("#rq").style.display = "none";
+  if (B.me.admin) return B.manageTab(nav);
   const draw = async () => {
     const me = await B.seerrMe();
     const [seerrMine, seerrWaiting, mus, bks] = await Promise.all([
@@ -540,6 +541,226 @@ B.yoursTab = async (nav) => {
   };
   await draw();
   B.every(15000, () => draw().catch(() => {}));
+};
+
+// ---------- Manage (Ben only, 2026-11-21): every request from everyone, sorted by what needs doing ----------
+// Five boxes (Needs you, On its way, Stuck, Ready, Said no) pick the list below. Filters by person and by kind,
+// tick several to answer at once, Stop on anything that already had a yes, Changed my mind on anything Ben said no to.
+const MG_LANES = [["needs", "Needs you", "Say yes or no"], ["way", "On its way", "Tower is getting these"], ["stuck", "Stuck", "Looking for 5 days or more"], ["ready", "Ready", "Arrived"], ["no", "Said no", "You turned these down"]];
+const MG_KINDS = ["Movies", "Shows", "Anime", "Music", "Books"];
+const MG_STUCK_DAYS = 5;
+const mgAgo = (at) => {
+  if (!at) return "";
+  const d = Math.floor((Date.now() - at) / 86400000);
+  return d < 1 ? "asked today" : d === 1 ? "asked yesterday" : `asked ${d} days ago`;
+};
+// One small box for Stop and for No to several: a reason (or none), and for Stop whether to delete what arrived
+const mgAsk = (o) => new Promise((done) => {
+  B.closeAll();
+  B.shade(() => done(null));
+  const m = document.createElement("form");
+  m.className = "modal";
+  m.innerHTML = `<h3>${esc(o.title)}</h3><p>${esc(o.text)}</p>
+    ${o.reasons ? `<div class="acts mg-reasons" style="margin-top:0">${B.NO_REASONS.map((x, i) => `<button class="btn small" type="button" data-r="${i}">${esc(x)}</button>`).join("")}</div>
+    <input class="field" name="v" type="text" maxlength="140" autocomplete="off" placeholder="Or type your own reason" style="margin-top:14px">` : ""}
+    ${o.del ? `<label class="mg-del"><input type="checkbox" name="del"> ${esc(o.del)}</label>` : ""}
+    <div class="acts"><button class="btn white" type="submit">${esc(o.yes)}</button><button class="btn" type="button" data-back>${esc(o.back)}</button></div>`;
+  let picked = "";
+  m.onclick = (e) => {
+    const r = e.target.closest("[data-r]");
+    if (r) {
+      picked = picked === B.NO_REASONS[+r.dataset.r] ? "" : B.NO_REASONS[+r.dataset.r];
+      $$("[data-r]", m).forEach((b) => b.classList.toggle("white", B.NO_REASONS[+b.dataset.r] === picked));
+      if (picked && m.elements.v) m.elements.v.value = "";
+    }
+    if (e.target.closest("[data-back]")) { B.closeAll(); done(null); }
+  };
+  m.onsubmit = (e) => {
+    e.preventDefault();
+    const typed = m.elements.v ? m.elements.v.value.trim() : "";
+    B.closeAll();
+    done({ reason: typed || picked, del: !!(m.elements.del && m.elements.del.checked) });
+  };
+  document.body.appendChild(m);
+  $("button", m).focus();
+});
+B.manageTab = async (nav) => {
+  const rows = $("#rows");
+  let lane = "needs", who = "", kind = "", all = [], picking = false;
+  try { lane = sessionStorage.getItem("bf-mg-lane") || "needs"; } catch (e) { /* private window */ }
+  if (!MG_LANES.some(([k]) => k === lane)) lane = "needs";
+  const ticks = new Set(), holds = {};
+  const saveReason = (key, reason) => (reason ? B.call("POST", "api/asks/reason", { key, reason }).then(() => { B.reasons[key] = reason; }).catch(() => {}) : null);
+  const load = async () => {
+    const me = await B.seerrMe();
+    const [sr, mus, bks] = await Promise.all([
+      me && me.active ? seerr(`/request?take=100&skip=0&sort=added`).catch(() => null) : null,
+      B.call("GET", "api/music/status").catch(() => null),
+      B.call("GET", "api/books/requests").catch(() => null),
+    ]);
+    const [named] = await Promise.all([B.seerrNamed(sr), B.loadReasons()]);
+    const out = [];
+    named.forEach((r) => {
+      const md = r.media || {}, at = Date.parse(r.createdAt || "") || 0;
+      const since = Date.parse(r.updatedAt || r.createdAt || "") || at;
+      const days = Math.floor((Date.now() - since) / 86400000);
+      const seasons = (r.seasons || []).map((x) => x.seasonNumber);
+      const l = r.status === 1 ? "needs" : r.status === 3 ? "no" : md.status === 5 ? "ready" : r.status === 4 || (md.status !== 4 && days >= MG_STUCK_DAYS) ? "stuck" : "way";
+      out.push({
+        key: "seerr:" + r.id, src: "seerr", id: r.id, lane: l, at, title: md.title || md.name || "Name not found",
+        who: (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone",
+        kind: md.anime ? "Anime" : r.type === "movie" ? "Movies" : "Shows",
+        what: r.type === "movie" ? "Movie" : seasons.length === 1 ? "Season " + seasons[0] : seasons.length ? seasons.length + " seasons" : "Show",
+        cover: md.poster ? tmdbImg(md.poster, "w185") : "", type: r.type, tmdb: md.tmdbId,
+        pill: l === "stuck" ? { k: "looking", w: r.status === 4 ? "Stuck · couldn't start" : `Stuck · day ${days + 1}` } : l === "no" ? { k: "cant", w: "You said no" } : l === "needs" ? { k: "asked", w: "Waiting for you" } : B.seerrPill(r),
+        why: l === "no" && B.reasons["seerr:" + r.id] ? `Why: ${B.reasons["seerr:" + r.id]}` : "",
+      });
+    });
+    ((mus && mus.requests) || []).forEach((r) => {
+      const p = B.musicPill(r);
+      const l = r.waiting ? "needs" : p.k === "ready" ? "ready" : p.k === "cant" || (r.days || 0) >= MG_STUCK_DAYS ? "stuck" : "way";
+      out.push({ key: "music:" + r.id, src: "music", id: r.id, lane: l, at: 0, title: r.title, who: r.who || "Ben", kind: "Music", what: [r.kind, r.artist].filter(Boolean).join(" · "),
+        cover: r.cover, square: true, pill: l === "needs" ? { k: "asked", w: "Waiting for you" } : p, why: r.why || "", retry: !!r.can_retry });
+    });
+    if (bks) {
+      const seen = new Set();
+      const add = (r, waiting) => {
+        if (!r || seen.has(r.id)) return;
+        seen.add(r.id);
+        const p = B.bookPill(r) || { k: "asked", w: "Asked" };
+        const l = waiting ? "needs" : r.state === "no" ? "no" : p.k === "ready" ? "ready" : p.k === "cant" ? "stuck" : "way";
+        out.push({ key: "book:" + r.id, src: "book", id: r.id, lane: l, at: 0, title: r.name, who: r.who || "Ben", kind: "Books", what: ["Book", r.author].filter(Boolean).join(" · "),
+          cover: r.cover, pill: l === "needs" ? { k: "asked", w: "Waiting for you" } : l === "no" ? { k: "cant", w: "You said no" } : p, book: r.state === "ready" && r.title ? r.title : "" });
+      };
+      (bks.waiting || []).forEach((r) => add(r, true));
+      [].concat(bks.mine || [], bks.others || []).forEach((r) => add(r, false));
+    }
+    all = out;
+    Array.from(ticks).forEach((k) => { if (!all.some((r) => r.key === k && r.lane === "needs")) ticks.delete(k); });
+  };
+  const shown = () => all.filter((r) => (!who || r.who === who) && (!kind || r.kind === kind));
+  const acts = (r) => {
+    const open = r.src === "seerr" && r.tmdb ? `<button class="btn small" data-ask="${esc(r.type)}:${esc(r.tmdb)}">Open</button>` : r.book ? `<a class="btn small" href="#/book/${enc(r.book)}">Open</a>` : "";
+    if (r.lane === "needs") return `<button class="btn small white" data-mg="yes">Yes</button><button class="btn small mg-no" data-mg="no">No</button>${open}`;
+    if (r.lane === "way") return `<button class="btn small mg-no" data-mg="stop">Stop</button>${open}`;
+    if (r.lane === "stuck") return `${r.src !== "music" || r.retry ? `<button class="btn small white" data-mg="again">Look again</button>` : ""}<button class="btn small mg-no" data-mg="stop">Stop</button>${open}`;
+    if (r.lane === "no") return `${r.src === "seerr" ? `<button class="btn small" data-mg="undo">Changed my mind</button>` : ""}${open}`;
+    return open;
+  };
+  const line = (r) => `<div class="item" data-key="${esc(r.key)}">${picking && r.lane === "needs" ? `<button class="mg-tick ${ticks.has(r.key) ? "on" : ""}" data-mg="tick" role="checkbox" aria-checked="${ticks.has(r.key)}" aria-label="Pick ${esc(r.title)}">${ticks.has(r.key) ? "✓" : ""}</button>` : ""}
+    <div class="rqthumb ${r.square ? "sq" : ""}" style="${r.cover ? `background-image:url('${esc(r.cover)}')` : ""}"></div>
+    <div class="grow"><div class="t">${esc(r.title)}</div><div class="mg-meta">${B.picHtml({ name: r.who })}<b>${esc(r.who)}</b><span>${esc([r.what, mgAgo(r.at)].filter(Boolean).map((x) => "· " + x).join(" "))}</span>${B.rqPillHtml(r.pill)}</div>
+    ${r.why || holds[r.key] ? `<div class="mg-why">${esc(r.why || holds[r.key])}</div>` : ""}</div>
+    <div class="acts">${acts(r)}</div></div>`;
+  const draw = () => {
+    const vis = shown(), list = vis.filter((r) => r.lane === lane);
+    const people = Array.from(new Set(all.map((r) => r.who))).sort((a, b) => a.localeCompare(b));
+    const openOf = (n) => all.filter((r) => r.who === n && (r.lane === "needs" || r.lane === "way" || r.lane === "stuck")).length;
+    const kinds = MG_KINDS.filter((k) => all.some((r) => r.kind === k));
+    const needs = list.filter((r) => r.lane === "needs");
+    const bulk = lane !== "needs" || needs.length < 2 ? ""
+      : picking ? `<div class="mg-bulk"><span>${ticks.size} picked</span><span class="sp"></span><button class="btn small white" data-mg="yesall" ${ticks.size ? "" : "disabled"}>Yes to ${ticks.size || "…"}</button><button class="btn small mg-no" data-mg="noall" ${ticks.size ? "" : "disabled"}>No to ${ticks.size || "…"}</button><button class="btn small" data-mg="pickall">Pick all</button><button class="btn small" data-mg="pickoff">Done picking</button></div>`
+        : `<div class="mg-bar"><button class="btn small" data-mg="everyyes">Yes to all ${needs.length}</button><button class="btn small" data-mg="pickon">Pick several</button></div>`;
+    const empty = { needs: "Nobody is waiting on you right now.", way: "Nothing is on its way right now.", stuck: "Nothing is stuck. Good.", ready: "Nothing has arrived yet.", no: "You haven't said no to anything." }[lane];
+    rows.innerHTML = `<div class="wrap"><div class="mg-tiles">${MG_LANES.map(([k, t, sub]) => `<button class="mg-tile ${k} ${k === lane ? "on" : ""}" data-lane="${k}" aria-pressed="${k === lane}"><b>${vis.filter((r) => r.lane === k).length}</b><span>${t}</span><small>${sub}</small></button>`).join("")}</div>
+      <div class="mg-bar mg-filters"><button class="mg-face all ${who ? "" : "on"}" data-who="">Everyone</button>${people.map((n) => `<button class="mg-face ${who === n ? "on" : ""}" data-who="${esc(n)}">${B.picHtml({ name: n })}${esc(n)} <i>${openOf(n)}</i></button>`).join("")}
+        ${kinds.length > 1 ? `<span class="mg-sep"></span><button class="chip ${kind ? "" : "on"}" data-kind="">All</button>${kinds.map((k) => `<button class="chip ${kind === k ? "on" : ""}" data-kind="${k}">${k}</button>`).join("")}` : ""}
+        <span class="sp"></span><button class="chip" data-autoyes>Auto-yes ›</button></div>
+      ${bulk}<div class="list mg-list">${list.map(line).join("") || `<div class="item"><div class="grow dim">${esc(who || kind ? "Nothing here with these filters." : empty)}</div></div>`}</div></div>`;
+    // Stuck rows say why (Radarr / Sonarr, at home only); the line arrives a moment after the row
+    if (lane === "stuck") list.filter((r) => r.src === "seerr" && r.tmdb && !(r.key in holds)).slice(0, 12).forEach((r) => {
+      holds[r.key] = "";
+      B.call("GET", `api/admin/holdup?kind=${r.type}&tmdb=${r.tmdb}`).then((h) => {
+        if (!h || !h.line || !B.alive(nav)) return;
+        holds[r.key] = h.line;
+        const el = rows.querySelector(`[data-key="${r.key}"] .grow`);
+        if (el && !el.querySelector(".mg-why")) el.insertAdjacentHTML("beforeend", `<div class="mg-why">${esc(h.line)}</div>`);
+      }).catch(() => {});
+    });
+  };
+  const answer = async (r, yes) => {
+    if (r.src === "seerr") await B.jf("POST", `/JellyfinEnhanced/arr/requests/${r.id}/${yes ? "approve" : "decline"}`).catch(() => {});
+    else if (r.src === "music") await B.call("POST", `api/music/request/${r.id}/${yes ? "approve" : "decline"}`);
+    else await B.call("POST", "api/books/answer", { id: r.id, yes });
+  };
+  const stop = async (r) => {
+    if (r.src === "music") return B.call("POST", `api/music/request/${r.id}/remove`).then(() => "Stopped.");
+    if (r.src === "book") return B.call("DELETE", `api/books/request/${r.id}`).then(() => "Stopped.");
+    return null;
+  };
+  const again = async (r) => {
+    if (r.src === "music") return B.call("POST", `api/music/request/${r.id}/retry`).then(() => "Looking again.");
+    if (r.src === "book") return B.call("POST", `api/books/retry/${r.id}`).then(() => "Looking again.");
+    const a = await B.call("POST", `api/admin/holdup/search?kind=${r.type}&tmdb=${r.tmdb}`);
+    return (a && a.message) || "Looking again.";
+  };
+  const reload = async () => { await load(); if (B.alive(nav) && !$(".modal")) draw(); };
+  rows.onclick = (e) => {
+    if (e.target.closest("[data-autoyes]")) return B.autoYes();
+    const t = e.target.closest("[data-lane]");
+    if (t) { lane = t.dataset.lane; picking = false; ticks.clear(); try { sessionStorage.setItem("bf-mg-lane", lane); } catch (err) { /* private window */ } return draw(); }
+    const w = e.target.closest("[data-who]");
+    if (w) { who = w.dataset.who; return draw(); }
+    const k = e.target.closest("[data-kind]");
+    if (k) { kind = k.dataset.kind; return draw(); }
+    const b = e.target.closest("[data-mg]");
+    if (!b) return;
+    const act = b.dataset.mg, item = b.closest("[data-key]"), r = item ? all.find((x) => x.key === item.dataset.key) : null;
+    if (act === "pickon") { picking = true; return draw(); }
+    if (act === "pickoff") { picking = false; ticks.clear(); return draw(); }
+    if (act === "pickall") { shown().filter((x) => x.lane === "needs").forEach((x) => ticks.add(x.key)); return draw(); }
+    if (act === "tick" && r) { if (ticks.has(r.key)) ticks.delete(r.key); else ticks.add(r.key); return draw(); }
+    if (act === "yesall" || act === "noall" || act === "everyyes") {
+      const yes = act !== "noall";
+      const todo = shown().filter((x) => x.lane === "needs" && (act === "everyyes" || ticks.has(x.key)));
+      if (!todo.length) return;
+      return B.busy(b, async () => {
+        let reason = "";
+        if (!yes) {
+          const a = await mgAsk({ title: `Say no to ${todo.length}?`, text: "Pick one reason for all of them, or leave it empty. Each person sees it next to their request.", reasons: true, yes: `No to ${todo.length}`, back: "Go back" });
+          if (!a) return "";
+          reason = a.reason;
+        }
+        let ok = 0;
+        for (const x of todo) {
+          try { await answer(x, yes); if (!yes && x.src === "seerr") await saveReason(x.key, reason); ok++; } catch (err) { /* the count below says so */ }
+        }
+        ticks.clear(); picking = false;
+        await reload();
+        return ok === todo.length ? (yes ? `Said yes to ${ok}. Tower starts looking now.` : `Said no to ${ok}.`) : `${ok} of ${todo.length} done. Try the rest again.`;
+      });
+    }
+    if (!r) return;
+    B.busy(b, async () => {
+      let msg = "";
+      if (act === "yes") { await answer(r, true); msg = "Said yes. Tower starts looking now."; }
+      if (act === "no") { await answer(r, false); if (r.src === "seerr") await B.whyNo(r.key); msg = "Said no."; }
+      if (act === "again") msg = await again(r);
+      if (act === "undo") {
+        const a = await B.call("POST", "api/asks/undo", { id: r.id }).catch(() => null);
+        if (!a) await B.jf("POST", `/JellyfinEnhanced/arr/requests/${r.id}/approve`);
+        msg = (a && a.message) || "Back to a yes. Tower starts looking now.";
+      }
+      if (act === "stop") {
+        const seerrRow = r.src === "seerr";
+        const a = await mgAsk({ title: `Stop ${r.title}?`, text: seerrRow ? `Tower stops looking and ${r.who} sees it as a no. Pick a reason for ${r.who}, or leave it empty.` : `Tower stops looking for it and it leaves the list.`,
+          reasons: seerrRow, del: seerrRow ? "Also delete what already arrived" : "", yes: "Stop it", back: "Keep looking" });
+        if (!a) return "";
+        if (seerrRow) {
+          const done = await B.call("POST", "api/asks/stop", { id: r.id, delete: a.del });
+          await saveReason(r.key, a.reason);
+          msg = (done && done.message) || "Stopped.";
+        } else msg = await stop(r);
+      }
+      await reload();
+      return msg;
+    });
+  };
+  rows.innerHTML = `<div class="wrap">${B.spinner()}</div>`;
+  await load();
+  if (!B.alive(nav)) return;
+  draw();
+  B.every(20000, () => { if (!picking) reload().catch(() => {}); });
 };
 
 // ---------- Music (only Ben): ask for songs and albums, playlists, the Music Drop folder, tidy-up ----------

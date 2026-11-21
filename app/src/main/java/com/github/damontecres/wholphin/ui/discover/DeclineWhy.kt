@@ -53,7 +53,15 @@ object DeclineWhy {
     /** "seerr:123" -> "We already have it" */
     val reasons: StateFlow<Map<String, String>> = _reasons
 
-    fun ask(requestId: Int) {
+    /** Others Ben said no to in the same go (No to several): they get the same reason */
+    internal var also: List<Int> = emptyList()
+        private set
+
+    fun ask(
+        requestId: Int,
+        also: List<Int> = emptyList(),
+    ) {
+        this.also = also
         _asking.value = requestId
     }
 
@@ -131,10 +139,18 @@ fun DeclineWhyHost(viewModel: DeclineWhyViewModel = hiltViewModel()) {
     asking?.let { id ->
         BenflixChoiceDialog(
             title = "Tell them why?",
-            subtitle = "They'll see this next to their request.",
+            subtitle =
+                if (DeclineWhy.also.isEmpty()) {
+                    "They'll see this next to their request."
+                } else {
+                    "One reason for all ${DeclineWhy.also.size + 1}. They'll see it next to their request."
+                },
             choices =
                 DeclineWhy.presets.map { reason ->
-                    BenflixChoice(label = reason, onClick = { viewModel.send(id, reason) })
+                    BenflixChoice(
+                        label = reason,
+                        onClick = { (listOf(id) + DeclineWhy.also).forEach { viewModel.send(it, reason) } },
+                    )
                 } +
                     BenflixChoice(label = "Type my own reason", onClick = { typing = id }) +
                     BenflixChoice(label = "Skip", onClick = {}),
@@ -156,7 +172,7 @@ fun DeclineWhyHost(viewModel: DeclineWhyViewModel = hiltViewModel()) {
                 ),
             onSave = { typed ->
                 typing = null
-                viewModel.send(id, typed)
+                (listOf(id) + DeclineWhy.also).forEach { viewModel.send(it, typed) }
             },
             onDismissRequest = { typing = null },
         )

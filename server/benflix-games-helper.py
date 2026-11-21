@@ -2051,7 +2051,68 @@ def asks_route(method, path, token, user_id, is_admin, is_kids, read_json):
             state["trust"][uid] = {"on": bool(body.get("on")), "weekly": weekly}
             _asks_save(state)
         return {"ok": True}
+    if path in ("/api/asks/stop", "/api/asks/undo") and method == "POST":
+        body = read_json() or {}
+        try:
+            rid = int(body.get("id"))
+        except (TypeError, ValueError):
+            raise HelperError(400, "Which request is this about?")
+        link = _seerr_link(token)
+        if not link:
+            raise HelperError(503, "Requests aren't connected on Tower yet. Check the Jellyfin Enhanced plugin's Seerr settings.")
+        if path == "/api/asks/undo":
+            return _asks_undo(link, rid)
+        return _asks_stop(link, rid, bool(body.get("delete")))
     raise HelperError(404, "Not found")
+
+
+def _asks_request(link, rid):
+    try:
+        req = _seerr(link, "GET", f"/request/{rid}")
+    except Exception:
+        req = None
+    if not isinstance(req, dict) or not req.get("id"):
+        raise HelperError(404, "That request isn't there any more.")
+    return req
+
+
+def _asks_stop(link, rid, delete):
+    """Stop a request that already had a yes (Ben, 2026-11-21): Seerr marks it as said no, and Radarr or Sonarr
+    stop looking for it. With delete, whatever already arrived for THIS request goes too. A show keeps the
+    seasons nobody asked to stop."""
+    req = _asks_request(link, rid)
+    media = req.get("media") or {}
+    kind = "movie" if req.get("type") == "movie" else "tv"
+    try:
+        _seerr(link, "POST", f"/request/{rid}/decline")
+    except Exception:
+        raise HelperError(502, "Seerr didn't take that. Try again in a minute.")
+    words = "Stopped."
+    if tools is None:
+        return {"ok": True, "message": words + " Tower's download tools aren't connected to the helper, so check Radarr or Sonarr yourself."}
+    try:
+        if kind == "movie":
+            words = tools.stop_movie(media.get("tmdbId"), delete)
+        else:
+            seasons = [s.get("seasonNumber") for s in (req.get("seasons") or []) if isinstance(s.get("seasonNumber"), int)]
+            words = tools.stop_show({"tvdb": media.get("tvdbId"), "tmdb": media.get("tmdbId")}, seasons, delete)
+    except tools.ToolError as e:
+        return {"ok": True, "message": f"Said no in Requests, but the download side didn't answer: {e.message}"}
+    return {"ok": True, "message": words}
+
+
+def _asks_undo(link, rid):
+    """Changed my mind: a request Ben said no to goes back to a yes, and Tower starts looking"""
+    _asks_request(link, rid)
+    try:
+        _seerr(link, "POST", f"/request/{rid}/approve")
+    except Exception:
+        raise HelperError(502, "Seerr didn't take that. Try again in a minute.")
+    with _asks_lock:
+        state = _asks_load()
+        if state["reasons"].pop(f"seerr:{rid}", None) is not None:
+            _asks_save(state)
+    return {"ok": True, "message": "Back to a yes. Tower starts looking now."}
 
 
 def _asks_auto_yes(link, token):
