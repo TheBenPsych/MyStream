@@ -208,6 +208,22 @@ and Glowfin **updates itself** quietly in the background.
 Open your server's address on port `8097` (ask whoever runs the server) in any web browser and sign in.
 Nothing to install.
 
+### 💻 On a computer (Linux, Steam Deck, Windows)
+
+Glowfin has its own app for computers: its own window and icon, full screen with **F11**, and it finds your
+server by itself at home.
+
+- **Linux and Steam Deck:** download [Glowfin-linux.AppImage](https://github.com/thebenpsych/mystream/releases/download/desktop-latest/Glowfin-linux.AppImage),
+  right-click it, open **Properties** and tick **Allow running as a program** (or "Is executable"), then double-click it.
+  On a Steam Deck do this once in Desktop Mode, then right-click the file and pick **Add to Steam** so it
+  shows up in Gaming Mode like a game.
+- **Ubuntu, Mint, Debian:** download [Glowfin-linux.deb](https://github.com/thebenpsych/mystream/releases/download/desktop-latest/Glowfin-linux.deb) and double-click it to install.
+- **Windows:** download [Glowfin-win.exe](https://github.com/thebenpsych/mystream/releases/download/desktop-latest/Glowfin-win.exe) and run it.
+  Windows may say it doesn't know the app: pick **More info**, then **Run anyway**.
+
+Everything inside the app comes straight from your server, so new features show up by themselves. The app
+itself also keeps itself up to date.
+
 ### 🔄 Getting updates
 
 You only install Glowfin once. New versions download quietly in the background. When one is ready, a dot
