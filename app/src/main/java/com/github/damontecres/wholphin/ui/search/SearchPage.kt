@@ -176,33 +176,8 @@ fun SearchPage(
             }
         }
     }
-    // Ben: Search opens (and comes back) on the search box, not the microphone beside it.
-    // Asking the whole row for focus could still land on the microphone (its first button),
-    // so TVs ask the box itself, with a couple of tries while the page settles in.
-    val searchFieldFocus = remember { FocusRequester() }
-    val focusSearchRow: suspend () -> Unit = {
-        var landed = false
-        var tries = 0
-        while (isTv && !landed && tries < 3) {
-            landed = searchFieldFocus.tryRequestFocus()
-            if (!landed) delay(80)
-            tries++
-        }
-        if (!landed) focusRequesters[SEARCH_ROW].tryRequestFocus()
-    }
-    // The side menu hands the focus to the page a moment after it opens, which picks the first
-    // button it finds (the microphone). While Search is opening, pass that on to the box.
-    var justOpened by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        delay(1500)
-        justOpened = false
-    }
-    LaunchedEffect(Unit) {
-        if (position.row == SEARCH_ROW) {
-            focusSearchRow()
-        } else {
-            focusRequesters.getOrNull(position.row)?.tryRequestFocus()
-        }
+        focusRequesters.getOrNull(position.row)?.tryRequestFocus()
     }
     val searchContext = LocalContext.current
     val onClickItem = { _: Int, item: BaseItem ->
@@ -328,7 +303,7 @@ fun SearchPage(
         var isSearchActive by remember { mutableStateOf(false) }
         // Phones type as soon as you tap the box; TVs wait for the OK button
         var isTextFieldFocused by remember { mutableStateOf(false) }
-        val textFieldFocusRequester = searchFieldFocus
+        val textFieldFocusRequester = remember { FocusRequester() }
 
         BackHandler(isTv && isTextFieldFocused) {
             when {
@@ -366,15 +341,7 @@ fun SearchPage(
                         triggerImmediateSearch(spokenText)
                     },
                     voiceInputManager = viewModel.voiceInputManager,
-                    modifier =
-                        Modifier
-                            .padding(end = 8.dp)
-                            .onFocusChanged {
-                                if (it.hasFocus && isTv && justOpened && position.row == SEARCH_ROW) {
-                                    justOpened = false
-                                    searchFieldFocus.tryRequestFocus()
-                                }
-                            },
+                    modifier = Modifier.padding(end = 8.dp),
                 )
             }
 

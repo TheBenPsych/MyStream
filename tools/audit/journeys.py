@@ -282,6 +282,8 @@ def search_trip():
     step("search-opened-result", picked=picked)
     d.key("BACK", wait=2)
     root, s = step("search-back")
+    if MODE == "tv" and picked and s.get("focused") == "the":
+        problem("stuck on the search box", "Right from the box with letters in it never reached the results")
     if d.find(root, r"^the$") is None:
         problem("Back from a search result forgets what you typed", str(s.get("texts", [])[:8]))
 
@@ -405,7 +407,9 @@ def main():
         step("never-got-to-home")
         problem("robot", "never got to Home")
         return
-    for trip in (home_walk, lambda: movie_trip("Movies"), lambda: movie_trip("Shows"), search_trip, other_doors, profile_and_settings, back_from_home):
+    # Search goes last: on TV the remote can get held on the search box once it has letters in
+    # it (Left and Right move the cursor), which used to cost every trip after it.
+    for trip in (home_walk, lambda: movie_trip("Movies"), lambda: movie_trip("Shows"), other_doors, profile_and_settings, back_from_home, search_trip):
         if d.out_of_time():
             break
         try:
