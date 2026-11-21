@@ -96,6 +96,10 @@ class UserSwitchListener
                     AppCompatDelegate.setApplicationLocales(localeList)
                 }
 
+                // Glowfin: the last person's My List ticks (titles not here yet) never show for the next person
+                com.github.damontecres.wholphin.ui.discover.WishList
+                    .clear()
+
                 // Benflix: the next person starts every door at the top (not where the last person was)
                 com.github.damontecres.wholphin.ui.door.DoorMemory
                     .clear()

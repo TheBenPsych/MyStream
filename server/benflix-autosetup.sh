@@ -68,7 +68,8 @@ else
   [ -n "$files" ] || exit 0
   for f in $files; do
     curl -fsSL -m 60 "$RAW/$f" -o "$TMP/$f" || exit 0
-    if ! cmp -s "$TMP/$f" "$APP/$f"; then
+    # (a new helper Tower already tried and turned down is left alone until GitHub has a newer one)
+    if ! cmp -s "$TMP/$f" "$APP/$f" && ! cmp -s "$TMP/$f" "$APP/.rejected/$f"; then
       why="$f changed"
       break
     fi

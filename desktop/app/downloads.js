@@ -22,7 +22,7 @@ let allowed = () => false;
 const dirOf = (id) => path.join(ROOT, id);
 const publicMeta = (m) => {
   const o = Object.assign({}, m);
-  delete o.url; delete o.subs; delete o.posterUrl;
+  delete o.url; delete o.subs; delete o.posterUrl; delete o.resume;
   return o;
 };
 async function saveMeta(m) {
@@ -65,8 +65,25 @@ async function get(url, signal, tries) {
 async function saveTo(url, file, signal) {
   const r = await get(url, signal);
   const buf = Buffer.from(await r.arrayBuffer());
-  await fsp.writeFile(file, buf);
+  // Written beside it first, so a piece cut short (the app closed, the disk filled) never looks finished
+  await fsp.writeFile(file + ".part", buf);
+  await fsp.rename(file + ".part", file);
   return buf.length;
+}
+// Room left on the disk the downloads live on, in bytes (null when the computer won't say)
+async function freeSpace() {
+  try { const st = await fsp.statfs(ROOT); return Number(st.bavail) * Number(st.bsize); } catch (e) { return null; }
+}
+const MIN_START = 1024 * 1024 * 1024;  // don't start with less than 1 GB free
+const MIN_LEFT = 300 * 1024 * 1024;    // stop before the disk is really full
+const roomError = () => new Error("Not enough room on this computer. Free up some space, then try again.");
+// What makes two downloads of the same title the same video: which sound, which subtitles, which quality
+function streamKey(url) {
+  try {
+    const q = new URL(url).searchParams;
+    const get = (k) => { for (const [name, v] of q) if (name.toLowerCase() === k) return v; return ""; };
+    return ["mediasourceid", "audiostreamindex", "subtitlestreamindex", "videobitrate", "maxstreamingbitrate", "videocodec", "audiocodec", "segmentcontainer"].map(get).join("|");
+  } catch (e) { return ""; }
 }
 const lines = (text) => String(text).split(/\r?\n/).map((l) => l.trim());
 
@@ -75,7 +92,11 @@ async function run(m) {
   running = { id: m.id, abort };
   const dir = dirOf(m.id);
   try {
-    await fsp.rm(dir, { recursive: true, force: true });
+    const room = await freeSpace();
+    if (room != null && room < MIN_START) throw roomError();
+    // A download that stopped halfway carries on from the pieces already here, when it is the same video
+    const resume = m.resume || null;
+    if (!resume) await fsp.rm(dir, { recursive: true, force: true });
     await fsp.mkdir(dir, { recursive: true });
     m.state = "downloading"; m.progress = 0; m.bytes = 0; m.error = "";
     await saveMeta(m); changed(m);
@@ -95,6 +116,8 @@ async function run(m) {
     const src = lines(text);
     const total = src.filter((l) => l && !l.startsWith("#")).length;
     if (!total) throw new Error("Tower didn't send a video.");
+    const keep = !!resume && resume.total === total;
+    m.total = total;
     const out = [];
     let n = 0;
     for (const l of src) {
@@ -107,7 +130,13 @@ async function run(m) {
       }
       if (l.startsWith("#")) { out.push(l); continue; }
       const name = "p" + String(n).padStart(5, "0") + (/\.(m4s|mp4)(\?|$)/i.test(l) ? ".m4s" : ".ts");
-      m.bytes += await saveTo(new URL(l, listUrl).href, path.join(dir, name), abort.signal);
+      let had = 0;
+      if (keep) { try { had = (await fsp.stat(path.join(dir, name))).size; } catch (e) { had = 0; } }
+      if (had > 0) m.bytes += had;
+      else {
+        if (n % 25 === 0) { const left = await freeSpace(); if (left != null && left < MIN_LEFT) throw roomError(); }
+        m.bytes += await saveTo(new URL(l, listUrl).href, path.join(dir, name), abort.signal);
+      }
       out.push(name);
       n++;
       const p = Math.floor((n / total) * 100);
@@ -155,9 +184,11 @@ function start(job) {
     minutes: Number(job.minutes) || 0, about: text(job.about, 1200), rating: text(job.rating, 12), quality: text(job.quality, 20),
     user: text(job.user, 80), userId: text(job.userId, 40), kids: !!job.kids, burned: !!job.burned,
     state: "queued", progress: 0, bytes: 0, error: "", addedAt: Date.now(), position: 0,
-    url: String(job.url), posterUrl: ours(job.posterUrl),
+    url: String(job.url), posterUrl: ours(job.posterUrl), key: streamKey(String(job.url)),
     subs: (Array.isArray(job.subs) ? job.subs : []).filter((s) => s && allowed(s.url)).map((s) => ({ url: String(s.url), label: s.label, lang: s.lang, on: s.on })),
   };
+  // Asked for again after it stopped halfway: keep the pieces that are already here if it's the same video
+  if (had && had.state === "failed" && had.total && had.key && had.key === m.key) m.resume = { total: had.total };
   jobs.set(m.id, m);
   queue.push(m.id);
   saveMeta(m); changed(m);

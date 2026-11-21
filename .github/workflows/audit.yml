@@ -1,4 +1,4 @@
-name: Benflix audit (emulator robot)
+name: Glowfin audit (emulator robot)
 
 # Runs Benflix on an Android TV emulator and a phone emulator, signs in to the public Jellyfin demo
 # server, visits every screen, checks every button can be reached with the remote, times loading,

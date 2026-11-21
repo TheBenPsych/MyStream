@@ -272,47 +272,6 @@
   }
   const rail = (x1, y1, x2, y2, z, col) => { bx(x1, y1, x2, y2, z + 0.95, z + 1.02, col || "#f2c14e", { ns: 1, see: 1 }); };
 
-  // ---------- pallet racking ----------
-  // runs along whichever side is longer. levels: beams at 2.0 / 4.0 and a solid top deck at 5.85.
-  function rack(x1, y1, x2, y2, o) {
-    o = o || {};
-    const alongY = (y2 - y1) > (x2 - x1);
-    const L0 = alongY ? y1 : x1, L1 = alongY ? y2 : x1 + (x2 - x1), D0 = alongY ? x1 : y1, D1 = alongY ? x2 : y2;
-    const R = (l0, d0, l1, d1, b, t, c, oo) => alongY ? bx(d0, l0, d1, l1, b, t, c, oo) : bx(l0, d0, l1, d1, b, t, c, oo);
-    const top = o.top || 5.85, n = Math.max(1, Math.round((L1 - L0) / 2.7)), bay = (L1 - L0) / n;
-    for (let i = 0; i <= n; i++) {
-      const l = L0 + i * bay, a = Math.max(L0, l - 0.06), b = Math.min(L1, l + 0.06);
-      R(a, D0, b, D0 + 0.1, 0, top, C.blue, { ns: 1 }); R(a, D1 - 0.1, b, D1, 0, top, C.blue, { ns: 1 });
-    }
-    [2.0, 4.0].forEach((z) => { if (z < top) { R(L0, D0 - 0.02, L1, D0 + 0.08, z - 0.15, z, C.beam, { ns: 1 }); R(L0, D1 - 0.08, L1, D1 + 0.02, z - 0.15, z, C.beam, { ns: 1 }); } });
-    R(L0, D0 - 0.02, L1, D0 + 0.08, top - 0.15, top - 0.05, C.beam, { ns: 1 }); R(L0, D1 - 0.08, L1, D1 + 0.02, top - 0.15, top - 0.05, C.beam, { ns: 1 });
-    R(L0, D0, L1, D1, top - 0.08, top, C.deck, { ns: 1 });
-    // stock: ground pallets, level 2 cases, level 3 shrink-wrapped
-    const lv = [[0, 2.0 - 0.15], [2.0, 4.0 - 0.15], [4.0, top - 0.15]].filter((v) => v[0] < top - 0.3);
-    for (let i = 0; i < n; i++) {
-      const l = L0 + i * bay;
-      lv.forEach(([z0, z1], li) => {
-        const half = (bay - 0.16) / 2;
-        for (let k = 0; k < 2; k++) {
-          const s = l + 0.08 + k * half, e = s + half - 0.04;
-          const hh = Math.min(z1 - z0 - 0.12, (li === 0 ? 1.35 : 1.25) + rnd() * 0.4);
-          const col = li === 2 ? pick(C.wrap) : (rnd() < 0.45 ? pick(C.brand) : pick(C.card));
-          R(s, D0 + 0.12, e, D1 - 0.12, z0 + 0.12, z0 + 0.12 + hh, col, { ns: 1 });
-          R(s, D0, e, D1, z0, z0 + 0.12, "#a9855c", { ns: 1, see: 1 });
-        }
-      });
-    }
-    sol(alongY ? D0 : L0, alongY ? L0 : D0, alongY ? D1 : L1, alongY ? L1 : D1, 0, top);
-    // overstock on the top deck (skipped where o.gap says)
-    if (o.over !== false) {
-      for (let i = 0; i < n * 2; i++) {
-        const s = L0 + 0.1 + i * (bay / 2), e = s + bay / 2 - 0.2;
-        if (o.gap && e > o.gap[0] && s < o.gap[1]) continue;
-        if (rnd() < 0.12 && !o.full) continue;
-        R(s, D0 + 0.05, e, D1 - 0.05, top, top + 1.05 + rnd() * 0.4, pick(C.wrap), {});
-      }
-    }
-  }
 
   // ---------- doors (swing open when you walk up; seekers have to open them) ----------
   const DOORS = [];
@@ -960,7 +919,7 @@
       const q = BALLS[0]; PS.aim = Math.atan2(q.y - P.y, q.x - P.x); // start looking the way you walked up
       if (!isFinite(PS.aim)) PS.aim = 0; poolLock();
     },
-    end() { cue.visible = false; aimLine.visible = false; ghost.visible = false; if (document.pointerLockElement === stage && document.fullscreenElement !== box) document.exitPointerLock();
+    end() { cue.visible = false; aimLine.visible = false; ghost.visible = false; if (document.pointerLockElement === stage && !isFull()) document.exitPointerLock();
       // you end up standing where your cue was
       const q = BALLS[0], ax = Math.cos(PS.aim), ay = Math.sin(PS.aim); for (let d = 0.8; d < 2.6; d += 0.1) { const x = q.x - ax * d, y = q.y - ay * d; if (inBounds(x, y) && !hitAt(x, y, 0, 1.7, null, STEP) && supportAt(x, y, 0, STEP) < 0.05) { P.x = x; P.y = y; P.f = 0; SAFE.x = x; SAFE.y = y; SAFE.f = 0; yaw = Math.atan2(-ax, -ay); pitch = -0.35; break; } } },
     update(dt) {

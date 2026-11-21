@@ -137,6 +137,15 @@ function createWindow() {
   openGlowfin();
 }
 
+// Starts the app again. The Linux download (an AppImage) unpacks itself into a temporary folder that goes
+// away when the app closes, so it has to be started again from the downloaded file itself, not from that folder.
+function restartApp() {
+  const args = process.argv.slice(1).filter((a) => a !== "--relaunch");
+  if (process.env.APPIMAGE) app.relaunch({ execPath: process.env.APPIMAGE, args });
+  else app.relaunch({ args });
+  app.exit(0);
+}
+
 // ---------- what the pages may ask the shell ----------
 // Only Glowfin's own pages (Tower's address) and the built-in "Find Tower" screen get an answer
 const trusted = (e) => { const u = e.senderFrame && e.senderFrame.url; return isOurs(u) || isLocalPage(u); };
@@ -175,7 +184,7 @@ handle("glowfin:connect", localOnly, async (e, typed) => {
   config.server = base;
   saveConfig();
   // A new address has to be marked as trusted before the engine starts, so start the app again
-  if (changed && base.startsWith("http://")) { app.relaunch(); app.exit(0); return { ok: true }; }
+  if (changed && base.startsWith("http://")) { restartApp(); return { ok: true }; }
   win.loadURL(base + "/");
   return { ok: true };
 });

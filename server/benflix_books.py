@@ -1322,7 +1322,6 @@ HOME_GENRE_NAMES = {"Kids": "For kids", "Biography": "Biography & memoir", "Sci-
 def _home_extra_rows(tiles, user_id, is_kids):
     """More rows for Books Home from the books themselves: a few genres (a different few each day), the best
     rated, and quick reads. A row needs at least 4 books so it never looks half empty."""
-    rows = []
     with _lock:
         titles = dict(_lib["titles"])
     books = [t for t in tiles.values() if t["kind"] in ("book", "audiobook")]

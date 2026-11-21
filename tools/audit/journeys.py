@@ -194,9 +194,9 @@ def movie_trip(door):
 
 
 def search_trip():
-    d.back_to_home()
-    if not d.press(r"^Search$", timeout=8):
-        problem("could not find Search", "Home")
+    # Search lives in the menu since the redesign (TV: side menu, phone: bottom bar or More)
+    if not d.open_place("Search"):
+        problem("could not find Search", "menu")
         return
     time.sleep(3)
     step("search-open")
@@ -252,11 +252,9 @@ def other_doors():
 def profile_and_settings():
     d.back_to_home()
     if MODE == "tv":
-        d.key("DPAD_UP", 4, wait=0.5)
-        step("home-top-bar")
-        d.key("DPAD_RIGHT", 2, wait=0.4)
-        step("home-top-bar-right")
-        d.key("DPAD_CENTER", wait=1.5)
+        # Your picture is at the bottom of the side menu since the redesign
+        if not d.tv_open_profile():
+            problem("could not find the profile picture", "side menu")
     else:
         root = d.dump()
         # the profile picture: the clickable thing furthest right in the top bar
@@ -346,6 +344,7 @@ def main():
             d.tap(n)
             time.sleep(1)
     if d.wait_for(d.DOORS_RE, 60) is None:
+        step("never-got-to-home")
         problem("robot", "never got to Home")
         return
     for trip in (home_walk, lambda: movie_trip("Movies"), lambda: movie_trip("Shows"), search_trip, other_doors, profile_and_settings, back_from_home):
