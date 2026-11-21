@@ -834,7 +834,7 @@ class SearchViewModel
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Error refreshing item %s", itemId)
-                showToast(context, "Error refreshing")
+                showToast(context, "This page didn't refresh. Go back and open it again.")
             }
         }
 
@@ -891,7 +891,7 @@ class SearchViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error canceling timer %s, series=%s", timerId, series)
-                    showToast(context, "Error: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't cancel that recording. Try again.")
                 }
             }
         }
@@ -909,7 +909,7 @@ class SearchViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error recording %s, series=%s", programId, series)
-                    showToast(context, "Error: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't start that recording. Try again.")
                 }
             }
         }
@@ -949,7 +949,7 @@ class SearchViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Exception toggling %s", type)
-                    showToast(context, "An error occurred: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't search right now. Check your connection and try again.")
                 }
             }
         }
@@ -976,7 +976,7 @@ class SearchViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Exception discover")
-                    showToast(context, "An error occurred: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't search right now. Check your connection and try again.")
                 }
             }
         }

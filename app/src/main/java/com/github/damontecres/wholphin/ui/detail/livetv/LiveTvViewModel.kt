@@ -464,7 +464,7 @@ class LiveTvViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error canceling timer %s, series=%s", timerId, series)
-                    showToast(context, "Error: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't cancel that recording. Try again.")
                 }
             }
         }
@@ -483,7 +483,7 @@ class LiveTvViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error recording %s, series=%s", programId, series)
-                    showToast(context, "Error: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't start that recording. Try again.")
                 }
             }
         }

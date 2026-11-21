@@ -141,7 +141,7 @@ class ItemGridViewModel
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Error refreshing after deleted item %s", deletedItem.id)
-                showToast(context, "Error refreshing after item deleted")
+                showToast(context, "Removed, but this page didn't refresh. Go back and open it again.")
             }
         }
 

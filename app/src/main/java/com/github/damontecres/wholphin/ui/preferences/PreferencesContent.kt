@@ -1027,7 +1027,7 @@ fun PreferencesContent(
             item {
                 when (val r = release) {
                     is DataLoadingState.Error -> {
-                        ErrorMessage(message = "Error", exception = r.exception)
+                        ErrorMessage(message = "This setting didn't load. Go back and try again.", exception = r.exception)
                     }
 
                     DataLoadingState.Pending,

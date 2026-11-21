@@ -707,7 +707,7 @@ class SeriesViewModel
                     }
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error updating series")
-                    showToast(context, "Error updating series")
+                    showToast(context, "Couldn't save that. Try again.")
                 }
             }
         }

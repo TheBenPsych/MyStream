@@ -38,7 +38,7 @@ class QuickConnectViewModel
                 _status.value = LoadingState.Loading
                 try {
                     val ok = serverRepository.authorizeQuickConnect(code)
-                    _status.value = if (ok) LoadingState.Success else LoadingState.Error("failed")
+                    _status.value = if (ok) LoadingState.Success else LoadingState.Error("That code didn't work. Check it and try again.")
                 } catch (e: Exception) {
                     Timber.w(e, "Quick Connect failed")
                     _status.value = LoadingState.Error(e)

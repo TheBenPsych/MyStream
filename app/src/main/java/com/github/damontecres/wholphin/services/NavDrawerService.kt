@@ -81,7 +81,7 @@ class NavDrawerService
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error updating nav drawer")
-                    showToast(context, "Error fetching user's views")
+                    showToast(context, "The menu didn't load. Check Tower is on.")
                 }
             }
 

@@ -243,7 +243,7 @@ class DiscoverMovieViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error requesting %s", request.movieId)
-                    showToast(context, "An error occurred")
+                    showToast(context, "That didn't go through. Try again in a minute.")
                 }
                 fetchAndSetItem().await()
                 updateCanCancel()
@@ -265,7 +265,7 @@ class DiscoverMovieViewModel
                         throw ex
                     } catch (ex: Exception) {
                         Timber.e(ex, "Error requesting %s", id)
-                        showToast(context, "An error occurred")
+                        showToast(context, "That didn't go through. Try again in a minute.")
                     }
                     fetchAndSetItem().await()
                     updateCanCancel()
@@ -285,7 +285,7 @@ class DiscoverMovieViewModel
                     }
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error getting profiles & folders")
-                    showToast(context, "Error getting profiles & folders: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't get the request choices from Tower. Try again in a minute.")
                     _state.update {
                         it.copy(
                             profileLoading = LoadingState.Success,

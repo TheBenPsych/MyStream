@@ -160,7 +160,7 @@ fun AppScreensaverContent(
 
             is ScreensaverItem.Error -> {
                 ScreensaverPlaceholder(
-                    text = "Error connecting to Jellyfin server",
+                    text = "Can't reach Tower right now.",
                     duration = duration,
                     modifier = Modifier.fillMaxSize(),
                 )
