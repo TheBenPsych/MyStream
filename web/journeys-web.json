@@ -1,0 +1,828 @@
+{
+ "started": "2026-11-21T09:02:23.234Z",
+ "steps": [
+  {
+   "size": "computer",
+   "step": "home",
+   "file": "001-computer-home.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-1",
+   "file": "002-computer-home-scroll-1.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Dracula under section.door-top",
+    "Sahara under section.door-top",
+    "Caminandes: Llama Drama under section.door-top",
+    "Caminandes: Llamigos under section.door-top",
+    "Caminandes: Gran Dillama under section.door-top",
+    "Pioneer One under section.door-top",
+    "The Boy in the Plastic Bubble under section.door-top",
+    "Jungle Book under section.door-top"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-2",
+   "file": "003-computer-home-scroll-2.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Dracula under div.info",
+    "Sahara under div.info",
+    "Caminandes: Llama Drama under div.info",
+    "Caminandes: Llamigos under section.door-top",
+    "Caminandes: Gran Dillama under section.door-top",
+    "Pioneer One under section.door-top",
+    "The Boy in the Plastic Bubble under section.door-top",
+    "Jungle Book under section.door-top"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-3",
+   "file": "004-computer-home-scroll-3.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Dracula under div.info",
+    "Sahara under div.info",
+    "Caminandes: Llama Drama under div.info",
+    "Caminandes: Llamigos under section.door-top",
+    "Caminandes: Gran Dillama under section.door-top",
+    "Pioneer One under section.door-top",
+    "The Boy in the Plastic Bubble under section.door-top",
+    "Jungle Book under section.door-top"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-door",
+   "file": "005-computer-movies-door.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-door-scrolled",
+   "file": "006-computer-movies-door-scrolled.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-title-page",
+   "file": "007-computer-movies-title-page.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i",
+    "Night of the Living Dead under button.rl-i",
+    "Dracula under div.rl-gap",
+    "Night of the Living Dead under button.arrow"
+   ],
+   "small": [],
+   "wide": 0,
+   "opened": "Dracula"
+  },
+  {
+   "size": "computer",
+   "step": "movies-title-page-scrolled",
+   "file": "008-computer-movies-title-page-scrolled.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i",
+    "Night of the Living Dead under button.rl-i",
+    "Dracula under div.rl-gap",
+    "Night of the Living Dead under button.arrow"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-back-to-door",
+   "file": "009-computer-movies-back-to-door.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "shows-door",
+   "file": "010-computer-shows-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "shows-door-scrolled",
+   "file": "011-computer-shows-door-scrolled.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "shows-title-page",
+   "file": "012-computer-shows-title-page.jpg",
+   "hash": "#/grid/shows?anime=hide&sort=newshow&title=All%20shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0,
+   "opened": null
+  },
+  {
+   "size": "computer",
+   "step": "shows-title-page-scrolled",
+   "file": "013-computer-shows-title-page-scrolled.jpg",
+   "hash": "#/grid/shows?anime=hide&sort=newshow&title=All%20shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "shows-back-to-door",
+   "file": "014-computer-shows-back-to-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "search-empty",
+   "file": "015-computer-search-empty.jpg",
+   "hash": "#/search",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Movie genres under nav.brail"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "search-typed",
+   "file": "016-computer-search-typed.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "John Mather under button.rl-i",
+    "Katherine Drescher under button.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "search-opened-result",
+   "file": "017-computer-search-opened-result.jpg",
+   "hash": "#/movie/edb39341c5039551a5157e51fe4a3364",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Scroll left under a.poster",
+    "John Mather under a.poster"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "search-back",
+   "file": "018-computer-search-back.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "live-door",
+   "file": "019-computer-live-door.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Guide under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "live-door-scrolled",
+   "file": "020-computer-live-door-scrolled.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Guide under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "music-door",
+   "file": "021-computer-music-door.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "music-door-scrolled",
+   "file": "022-computer-music-door-scrolled.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "games-door",
+   "file": "023-computer-games-door.jpg",
+   "hash": "#/games",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i",
+    "Try again under button.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "games-door-scrolled",
+   "file": "024-computer-games-door-scrolled.jpg",
+   "hash": "#/games",
+   "scrollY": 538,
+   "cut": [],
+   "covered": [
+    "Scene by scene under button.rl-i",
+    "Popcorn Pop under div.rl-gap"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "books-door",
+   "file": "025-computer-books-door.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "books-door-scrolled",
+   "file": "026-computer-books-door-scrolled.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "For you under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "requests-door",
+   "file": "027-computer-requests-door.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Movies under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "requests-door-scrolled",
+   "file": "028-computer-requests-door-scrolled.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Movies under a.rl-i"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "profile-menu",
+   "file": "029-computer-profile-menu.jpg",
+   "hash": "#/me",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "keyboard-tab-6",
+   "file": "030-computer-keyboard-tab-6.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Night of the Living Dead under a.rl-i",
+    "Dracula under a.rl-i",
+    "Jungle Book under button.arrow"
+   ],
+   "small": [],
+   "wide": 0,
+   "focus": {
+    "label": "Dracula\n1931",
+    "ring": false
+   }
+  },
+  {
+   "size": "phone",
+   "step": "home",
+   "file": "031-phone-home.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [
+    "A group of strangers trapped in a farmhouse find themselves "
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-1",
+   "file": "032-phone-home-scroll-1.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [
+    "After the train station clerk is assaulted and left bound an"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-2",
+   "file": "033-phone-home-scroll-2.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [
+    "After the train station clerk is assaulted and left bound an"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-3",
+   "file": "034-phone-home-scroll-3.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [
+    "After the train station clerk is assaulted and left bound an"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "movies-door",
+   "file": "035-phone-movies-door.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "movies-door-scrolled",
+   "file": "036-phone-movies-door-scrolled.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-door",
+   "file": "037-phone-shows-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [
+    "Pioneer One is a 2010 American web series produced by Josh B"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-door-scrolled",
+   "file": "038-phone-shows-door-scrolled.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [
+    "Pioneer One is a 2010 American web series produced by Josh B"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-title-page",
+   "file": "039-phone-shows-title-page.jpg",
+   "hash": "#/grid/shows?anime=hide&sort=newshow&title=All%20shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [
+    "INPUT (190x36)"
+   ],
+   "wide": 0,
+   "opened": null
+  },
+  {
+   "size": "phone",
+   "step": "shows-title-page-scrolled",
+   "file": "040-phone-shows-title-page-scrolled.jpg",
+   "hash": "#/grid/shows?anime=hide&sort=newshow&title=All%20shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [
+    "INPUT (190x36)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-back-to-door",
+   "file": "041-phone-shows-back-to-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-empty",
+   "file": "042-phone-search-empty.jpg",
+   "hash": "#/search",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-typed",
+   "file": "043-phone-search-typed.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [
+    "[poster name] The Great St. Louis Bank Robbery",
+    "[poster name] Thraximundar (He Who Paints The Earth Red)",
+    "[poster name] Song · Joshua Boniface"
+   ],
+   "covered": [
+    "John Mather under a.poster"
+   ],
+   "small": [
+    "The Boy in the Plastic Bubble (241x37)",
+    "The Great St. Louis Bank Robbery (271x37)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-opened-result",
+   "file": "044-phone-search-opened-result.jpg",
+   "hash": "#/movie/edb39341c5039551a5157e51fe4a3364",
+   "scrollY": 0,
+   "cut": [
+    "[poster name] The Great St. Louis Bank Robbery",
+    "[poster name] Thraximundar (He Who Paints The Earth Red)",
+    "[poster name] Song · Joshua Boniface"
+   ],
+   "covered": [
+    "John Mather under a.poster"
+   ],
+   "small": [
+    "The Boy in the Plastic Bubble (241x37)",
+    "The Great St. Louis Bank Robbery (271x37)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-back",
+   "file": "045-phone-search-back.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [
+    "[poster name] The Great St. Louis Bank Robbery",
+    "[poster name] Thraximundar (He Who Paints The Earth Red)",
+    "[poster name] Song · Joshua Boniface"
+   ],
+   "covered": [
+    "John Mather under a.poster"
+   ],
+   "small": [
+    "The Boy in the Plastic Bubble (241x37)",
+    "The Great St. Louis Bank Robbery (271x37)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "live-door",
+   "file": "046-phone-live-door.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "live-door-scrolled",
+   "file": "047-phone-live-door-scrolled.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "music-door",
+   "file": "048-phone-music-door.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "music-door-scrolled",
+   "file": "049-phone-music-door-scrolled.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [
+    "Discover weekly",
+    "[poster name] 20 new songs for you, every Monday",
+    "Release radar",
+    "[poster name] New songs from artists you play, every Friday"
+   ],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "games-door",
+   "file": "050-phone-games-door.jpg",
+   "hash": "#/games",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "games-door-scrolled",
+   "file": "051-phone-games-door-scrolled.jpg",
+   "hash": "#/games",
+   "scrollY": 230,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "books-door",
+   "file": "052-phone-books-door.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "books-door-scrolled",
+   "file": "053-phone-books-door-scrolled.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "requests-door",
+   "file": "054-phone-requests-door.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "requests-door-scrolled",
+   "file": "055-phone-requests-door-scrolled.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  }
+ ],
+ "problems": [
+  {
+   "size": "computer",
+   "type": "no Play button on first screen",
+   "text": "movies: Dracula"
+  },
+  {
+   "size": "computer",
+   "type": "no Play button on first screen",
+   "text": "shows: null"
+  },
+  {
+   "size": "computer",
+   "type": "keyboard focus hard to see",
+   "text": "{\"label\":\"Dracula\\n1931\",\"ring\":false}"
+  },
+  {
+   "size": "phone",
+   "type": "no posters",
+   "text": "movies"
+  },
+  {
+   "size": "phone",
+   "type": "no Play button on first screen",
+   "text": "shows: null"
+  },
+  {
+   "size": "phone",
+   "type": "robot",
+   "text": "could not find the profile picture button"
+  }
+ ],
+ "computer-cut": [],
+ "computer-covered": [
+  "Dracula under section.door-top",
+  "Sahara under section.door-top",
+  "Caminandes: Llama Drama under section.door-top",
+  "Caminandes: Llamigos under section.door-top",
+  "Caminandes: Gran Dillama under section.door-top",
+  "Pioneer One under section.door-top",
+  "The Boy in the Plastic Bubble under section.door-top",
+  "Jungle Book under section.door-top",
+  "Dracula under div.info",
+  "Sahara under div.info",
+  "Caminandes: Llama Drama under div.info",
+  "For you under a.rl-i",
+  "Night of the Living Dead under button.rl-i",
+  "Dracula under div.rl-gap",
+  "Night of the Living Dead under button.arrow",
+  "Movie genres under nav.brail",
+  "John Mather under button.rl-i",
+  "Katherine Drescher under button.rl-i",
+  "Scroll left under a.poster",
+  "John Mather under a.poster",
+  "Guide under a.rl-i",
+  "Try again under button.rl-i",
+  "Scene by scene under button.rl-i",
+  "Popcorn Pop under div.rl-gap",
+  "Movies under a.rl-i",
+  "Night of the Living Dead under a.rl-i",
+  "Dracula under a.rl-i",
+  "Jungle Book under button.arrow"
+ ],
+ "computer-small": [],
+ "phone-cut": [
+  "A group of strangers trapped in a farmhouse find themselves ",
+  "After the train station clerk is assaulted and left bound an",
+  "Pioneer One is a 2010 American web series produced by Josh B",
+  "[poster name] The Great St. Louis Bank Robbery",
+  "[poster name] Thraximundar (He Who Paints The Earth Red)",
+  "[poster name] Song · Joshua Boniface",
+  "Discover weekly",
+  "[poster name] 20 new songs for you, every Monday",
+  "Release radar",
+  "[poster name] New songs from artists you play, every Friday"
+ ],
+ "phone-covered": [
+  "John Mather under a.poster"
+ ],
+ "phone-small": [
+  "INPUT (190x36)",
+  "The Boy in the Plastic Bubble (241x37)",
+  "The Great St. Louis Bank Robbery (271x37)"
+ ]
+}

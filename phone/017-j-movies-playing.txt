@@ -1,0 +1,34 @@
+  [59,175][103,217] Back
+  [113,176][246,219] Movies
+  [47,217][165,310] Movies
+  [178,256][193,295] ›
+  [208,256][597,295] Night of the Living Dead
+  [39,870][287,1027] Night of the Living Dead
+  [39,1042][404,1081] They Won't Stay Dead!
+  [54,1146][99,1182] NR
+  [139,1141][709,1186] 1968 · 1h 35m · Horror · Thriller
+  [39,1211][566,1250] IMDb 7.6   Rotten Tomatoes 95%
+  [54,1277][98,1313] SD
+  [143,1277][245,1313] Stereo
+  [498,1365][647,1410] Resume
+  [67,1539][168,1575] Trailer
+  [344,1539][455,1575] My List
+  [646,1539][715,1575] Rate
+  [923,1539][1003,1575] More
+  [39,1615][1041,1764] A group of strangers trapped in a farmhouse find themselves fending off a horde of recently dead, flesh-eating ghouls.
+  [39,1813][340,1862] Cast and crew
+  [39,1887][255,2103] Judith O'Dea
+  [42,2128][253,2175] Judith O'Dea
+  [280,1887][496,2103] Duane Jones
+  [284,2128][493,2175] Duane Jones
+  [521,1887][737,2103] Marilyn Eastman
+  [521,2128][737,2175] Marilyn Eastman
+  [762,1887][978,2103] Karl Hardman
+  [762,2128][978,2175] Karl Hardman
+  [1023,1913][1080,2077] 
+  [1005,2128][1080,2175] Judith Ridley
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

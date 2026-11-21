@@ -1,0 +1,20 @@
+  [39,153][237,218] Movies
+  [39,263][165,303] For you
+  [239,263][286,303] All
+  [360,263][558,303] Collections
+  [631,263][754,303] Genres
+  [827,263][948,303] My List
+  [39,696][752,767] Night of the Living Dead
+  [39,777][314,813] 1968 · 1h 35m · NR
+  [39,828][1041,910] A group of strangers trapped in a farmhouse find themselves fending off a horde of recently dead, flesh-eating ghouls.
+  [98,930][247,975] Resume
+  [267,930][485,975] · 55 min left
+  [39,1014][420,1061] Continue watching
+  [39,1081][311,1489] Night of the Living Dead
+  [54,1509][296,1587] Night of the Living Dead
+  [54,1587][126,1623] 1968
+  [69,2279][148,2312] Home
+  [274,2279][375,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [937,2279][1008,2312] More

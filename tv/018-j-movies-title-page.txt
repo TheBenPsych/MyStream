@@ -1,0 +1,45 @@
+  [204,61][242,99] Back
+  [250,62][363,98] Movies
+  [413,32][509,128] Home
+  [514,63][526,97] ›
+  [538,32][640,128] Movies
+  [652,63][664,97] ›
+  [676,63][1025,97] Night of the Living Dead
+  [1652,50][1771,110] 9:09
+  [1779,73][1824,104] AM
+  [164,147][1058,276] A group of strangers trapped in a farmhouse find themselves fending off a horde of recently dead, flesh-eating ghouls.
+  [516,332][624,371] Trailer
+  [760,332][882,371] My List
+  [1018,332][1093,371] Rate
+  [1229,332][1315,371] More
+* [164,304][412,400] 
+  [248,332][380,371] Resume
+  [164,407][286,443] 55m left
+  [164,487][440,532] Cast and crew
+  [164,552][364,752] Judith O'Dea
+  [164,772][364,844] Judith O'Dea
+  [216,844][312,878] Barbra
+  [392,552][592,752] Duane Jones
+  [392,772][592,844] Duane Jones
+  [465,844][519,878] Ben
+  [620,552][820,752] Marilyn Eastman
+  [620,772][820,844] Marilyn Eastman
+  [623,844][818,878] Helen Cooper
+  [848,552][1048,752] Karl Hardman
+  [848,772][1048,844] Karl Hardman
+  [851,844][1045,878] Harry Cooper
+  [1092,585][1260,719] 
+  [1076,772][1276,844] Judith Ridley
+  [1141,844][1212,878] Judy
+  [1320,585][1488,719] 
+  [1306,772][1502,844] Keith Wayne
+  [1374,844][1435,878] Tom
+  [1548,585][1716,719] 
+  [1543,772][1722,844] Kyra Schon
+  [1532,844][1732,878] Karen Cooper / Corpse in House
+  [1776,585][1920,719] 
+  [1760,772][1920,844] Charles Craig
+  [1760,844][1920,878] TV Newscaster / Zombie
+  [164,922][430,967] More like this
+  [164,987][356,1080] The Great St. Louis Bank Robbery
+  [34,1002][90,1058] demo

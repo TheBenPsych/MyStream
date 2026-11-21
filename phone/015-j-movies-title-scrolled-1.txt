@@ -1,0 +1,43 @@
+  [59,175][103,217] Back
+  [113,176][246,219] Movies
+  [47,217][165,310] Movies
+  [178,256][193,295] ›
+  [208,256][597,295] Night of the Living Dead
+  [39,324][340,373] Cast and crew
+  [39,398][255,614] Judith O'Dea
+  [42,639][253,717] Judith O'Dea
+  [97,717][197,753] Barbra
+  [280,398][496,614] Duane Jones
+  [284,639][493,717] Duane Jones
+  [359,717][417,753] Ben
+  [521,398][737,614] Marilyn Eastman
+  [521,639][737,717] Marilyn Eastman
+  [527,717][732,753] Helen Cooper
+  [762,398][978,614] Karl Hardman
+  [762,639][978,717] Karl Hardman
+  [769,717][971,753] Harry Cooper
+  [1023,424][1080,588] 
+  [1005,639][1080,717] Judith Ridley
+  [1074,717][1080,753] Judy
+  [39,802][329,851] More like this
+  [39,876][357,1352] The Great St. Louis Bank Robbery
+  [54,1372][342,1450] The Great St. Louis Bank Robbery
+  [54,1450][125,1486] 1959
+  [39,1594][174,1643] About
+  [39,1668][817,1707] Director George A. Romero, Vincent D. Survinski
+  [39,1746][170,1791] Details
+  [39,1806][245,1845] Studio
+  [245,1806][409,1845] Image Ten
+  [39,1860][245,1899] Released
+  [245,1860][500,1899] October 4, 1968
+  [39,1914][245,1953] Genres
+  [245,1914][483,1953] Horror, Thriller
+  [39,1968][245,2007] Country
+  [245,1968][640,2007] United States of America
+  [39,2080][721,2125] Night of the Living Dead
+  [853,2080][1002,2125] Resume
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More
