@@ -156,8 +156,11 @@ fun qualityChips(item: BaseItem): List<String> {
             when {
                 audio.profile?.contains("Atmos", ignoreCase = true) == true ||
                     audio.displayTitle?.contains("Atmos", ignoreCase = true) == true -> add("Atmos")
+
                 channels >= 8 -> add("7.1")
+
                 channels >= 6 -> add("5.1")
+
                 channels == 2 -> add("Stereo")
             }
         }

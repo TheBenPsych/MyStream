@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -27,16 +28,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.foundation.border
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -216,8 +216,22 @@ fun TitlePage(
     val extras = remember(logoUrl, tagline, chips) { TitleExtras(logoUrl, tagline, chips) }
     CompositionLocalProvider(LocalTitleExtras provides extras) {
         TitlePageBody(
-            title, accent, picture, info, buttons, tabs, modifier, originalTitle, rating, infoExtra,
-            statusLine, openTab, big, rows, story, scores,
+            title,
+            accent,
+            picture,
+            info,
+            buttons,
+            tabs,
+            modifier,
+            originalTitle,
+            rating,
+            infoExtra,
+            statusLine,
+            openTab,
+            big,
+            rows,
+            story,
+            scores,
         )
     }
 }
@@ -769,16 +783,16 @@ internal fun TitleWords(
             )
         }
         if (logoUrl == null || !logoReady) {
-        Text(
-            text = title,
-            color = BenflixColors.Text,
-            fontSize = size,
-            lineHeight = size * 1.1f,
-            fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = if (wide) 2 else 3,
-            overflow = TextOverflow.Ellipsis,
-        )
+            Text(
+                text = title,
+                color = BenflixColors.Text,
+                fontSize = size,
+                lineHeight = size * 1.1f,
+                fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = if (wide) 2 else 3,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (original == null && !extras.tagline.isNullOrBlank()) {
             Text(
