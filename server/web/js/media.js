@@ -614,8 +614,9 @@ const movieMore = (it) => {
 B.trackPicker = (it, done) => {
   const ms = (it.MediaSources || [])[0] || {};
   const streams = ms.MediaStreams || [];
-  const audio = streams.filter((s) => s.Type === "Audio"), subs = streams.filter((s) => s.Type === "Subtitle");
+  const audio = streams.filter((s) => s.Type === "Audio");
   let a = ms.DefaultAudioStreamIndex ?? (audio[0] && audio[0].Index), s = B.autoSub(streams, ms.DefaultSubtitleStreamIndex ?? -1, a);
+  let subs = B.menuSubs(streams, s);
   const draw = () => `<h3>Audio and subtitles</h3>
     <h4 class="dim" style="margin:16px 0 8px">Audio</h4>${audio.map((x) => `<button class="opt ${x.Index === a ? "on" : ""}" data-a="${x.Index}">${esc(x.DisplayTitle || x.Language || "Track " + x.Index)}</button>`).join("") || '<p class="dim">Only one sound track.</p>'}
     <h4 class="dim" style="margin:16px 0 8px">Subtitles</h4><button class="opt ${s === -1 ? "on" : ""}" data-s="-1">Off</button>${subs.map((x) => `<button class="opt ${x.Index === s ? "on" : ""}" data-s="${x.Index}">${esc(B.subLabel(x, streams))}</button>`).join("")}

@@ -141,7 +141,8 @@ fun PlaybackDialog(
                             onClick = { pick(TrackIndex.ONLY_FORCED) },
                         ),
                     )
-                    settings.subtitleStreams.forEach { choice ->
+                    // "Signs & songs" / forced tracks stay out of the list (unless one is playing right now)
+                    settings.subtitleStreams.filter { !it.hiddenSigns || it.index == settings.subtitleIndex }.forEach { choice ->
                         add(
                             PanelLine.Row(
                                 label = choice.streamTitle ?: choice.displayTitle,

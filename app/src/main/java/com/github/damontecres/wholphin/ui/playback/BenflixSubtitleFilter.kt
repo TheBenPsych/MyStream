@@ -121,11 +121,49 @@ object BenflixSubtitleFilter {
         return null
     }
 
-    /** Returns [streams] without the hidden subtitle tracks. Audio and video tracks are never touched. */
+    /** A track that only has the signs, songs or foreign-language lines (by its flag or its name) */
+    private fun signsLike(
+        stream: MediaStream,
+        allStreams: List<MediaStream>,
+    ): Boolean =
+        !isEnglishLabelledJapanese(stream, allStreams) &&
+            // "Full subtitles (with songs)" is the full track
+            (stream.isForced || !saysFull(stream)) &&
+            (isSignsAndSongs(stream) || friendlyName(stream, allStreams) == "Signs & songs")
+
+    /**
+     * True for a "Signs & songs" / forced subtitle track that is left out of the subtitle menus
+     * (Ben, 2026-11-21: they confuse people, who pick them and then see almost no subtitles).
+     * Nothing is removed from the file, and Glowfin still turns such a track on by itself where it
+     * always did (English voices in anime, "Only when people speak another language").
+     * Only hidden when the video also has full subtitles to pick, so the list never ends up empty.
+     */
+    fun isHiddenSigns(
+        stream: MediaStream,
+        allStreams: List<MediaStream>,
+    ): Boolean {
+        if (stream.type != MediaStreamType.SUBTITLE || !signsLike(stream, allStreams)) return false
+        return allStreams.any { other ->
+            other.type == MediaStreamType.SUBTITLE &&
+                other.index != stream.index &&
+                !signsLike(other, allStreams) &&
+                (isEnglish(other) || isUnlabelled(other) || other.isExternal || isEnglishLabelledJapanese(other, allStreams))
+        }
+    }
+
+    /**
+     * Returns [streams] without the hidden subtitle tracks. Audio and video tracks are never touched.
+     * With [hideSigns] the "Signs & songs" / forced tracks are left out too (see [isHiddenSigns]);
+     * the track at [keepIndex] (the one playing) always stays.
+     */
     fun visible(
         streams: List<MediaStream>,
         keepIndex: Int? = null,
+        hideSigns: Boolean = false,
     ): List<MediaStream> {
+        if (hideSigns) {
+            return visible(streams, keepIndex).filter { it.index == keepIndex || !isHiddenSigns(it, streams) }
+        }
         if (!englishOnly) return streams
         val subtitles = streams.filter { it.type == MediaStreamType.SUBTITLE }
         if (subtitles.none(::isEnglish)) return streams

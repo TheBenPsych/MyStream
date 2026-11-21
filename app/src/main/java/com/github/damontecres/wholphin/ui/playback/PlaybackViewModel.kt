@@ -1189,11 +1189,16 @@ class PlaybackViewModel
                         positionMs = onMain { player.currentPosition },
                         enableDirectPlay = true,
                     )
+                    // Benflix: make sure the picked sound is really the one playing
+                    audioSwitchJob?.cancel()
+                    audioSwitchJob = viewModelScope.launchIO { confirmAudioSwitch(index) }
                 } else {
                     Timber.w("Trying to change audio, but currentPlayback is null")
                 }
             }
         }
+
+        internal var audioSwitchJob: Job? = null
 
         internal var whatDidTheySayJob: Job? = null
 

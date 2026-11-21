@@ -162,6 +162,15 @@ B.subLabel = (s, streams) => {
   if (isSigns(s) || (!FULL.some((w) => subName(s).includes(w)) && (streams || []).some((o) => o.Index !== s.Index && B.mislabelledSub(o, streams)))) return "Signs & songs · " + own;
   return own;
 };
+// "Signs & songs" / forced tracks are left out of the subtitle lists (Ben 2026-11-21: they confuse people).
+// Only when the video also has full subtitles to pick; the one playing right now always stays. Nothing is
+// removed from the file and Glowfin still turns such a track on by itself where it always did. Same as the app.
+const signsLike = (s, streams) => !B.mislabelledSub(s, streams) && (!!s.IsForced || !FULL.some((w) => subName(s).includes(w)))
+  && (isSigns(s) || B.subLabel(s, streams).startsWith("Signs & songs"));
+const readable = (s, streams) => { const lang = (s.Language || "").toLowerCase(); return isEngSub(s) || !lang || lang === "und" || !!s.IsExternal || B.mislabelledSub(s, streams); };
+B.hiddenSigns = (s, streams) => !!s && s.Type === "Subtitle" && signsLike(s, streams)
+  && (streams || []).some((o) => o.Type === "Subtitle" && o.Index !== s.Index && !signsLike(o, streams) && readable(o, streams));
+B.menuSubs = (streams, keepIndex) => (streams || []).filter((s) => s.Type === "Subtitle" && (s.Index === keepIndex || !B.hiddenSigns(s, streams)));
 B.autoSub = (streams, subIndex, audioIndex) => {
   if (subIndex == null || subIndex < 0) return -1;
   // Japanese voices + full English subtitles labelled "Japanese": pick those, not the signs and songs
