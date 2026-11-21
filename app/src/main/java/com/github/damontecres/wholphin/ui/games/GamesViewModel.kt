@@ -124,6 +124,8 @@ sealed interface LibraryState {
         val message: String,
         val askAddress: Boolean,
         val downloaded: List<DownloadedGame> = emptyList(),
+        /** The heading on the empty page */
+        val title: String = "Your games didn't load",
     ) : LibraryState
 
     data class Ready(
@@ -364,6 +366,7 @@ class GamesViewModel
                             "to update it, and games rated E show up here.",
                         askAddress = false,
                         emptyList(),
+                        title = "No games here yet",
                     )
                 } else {
                     LibraryState.Ready(kidsConsoles)
