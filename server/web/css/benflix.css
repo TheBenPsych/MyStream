@@ -2051,6 +2051,52 @@ svg.gi path.gd { stroke-width: 3.6; }
 .rqwho { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--aqua); font-size: 13px; font-weight: 700; }
 .rqwho .pic.rqface { width: 26px; height: 26px; flex: none; border-radius: 50%; overflow: hidden; }
 .rqwho .pic.rqface svg { display: block; width: 100%; height: 100%; }
+/* Manage (Ben, 2026-11-21): five count boxes, person and kind filters, slim rows with the buttons that fit each row */
+.mg-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 2px 0 14px; }
+.mg-tile { text-align: left; background: var(--pg2); border: 2px solid transparent; border-radius: 14px; padding: 12px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--ink); }
+.mg-tile b { font-size: 30px; line-height: 1.05; font-weight: 800; }
+.mg-tile span { font-weight: 700; font-size: 15px; }
+.mg-tile small { color: var(--ink3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg-tile.on { border-color: var(--ink); background: var(--pg3); }
+.mg-tile:hover { background: var(--pg3); }
+.mg-tile.way b { color: #7AA7FF; } .mg-tile.stuck b { color: #F2B544; } .mg-tile.ready b { color: #5BD18B; } .mg-tile.no b { color: #FF8A8A; }
+.mg-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+.mg-bar .sp, .mg-bulk .sp { flex: 1; }
+.mg-face { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 99px; padding: 4px 13px 4px 4px; font-weight: 600; font-size: 14px; color: var(--ink2); background: none; white-space: nowrap; cursor: pointer; }
+.mg-face .pic { width: 26px; height: 26px; }
+.mg-face .pic svg, .mg-meta .pic svg { width: 100%; height: 100%; display: block; }
+.mg-face i { font-style: normal; color: var(--ink3); font-weight: 700; }
+.mg-face.on { background: var(--ink); border-color: var(--ink); color: var(--dark); }
+.mg-face.on i { color: #444; }
+.mg-face.all { padding: 7px 15px; }
+.mg-face:hover { border-color: var(--ink3); color: var(--ink); }
+.mg-face.on:hover { color: var(--dark); }
+.mg-sep { width: 1px; height: 24px; background: var(--line); margin: 0 6px; }
+.mg-tick { width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--ink3); background: none; flex: none; display: grid; place-items: center; font-weight: 900; font-size: 15px; color: var(--dark); cursor: pointer; padding: 0; }
+.mg-tick.on { background: var(--ink); border-color: var(--ink); }
+.mg-bulk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--pg3); border: 1px solid var(--ink3); border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-weight: 700; }
+.mg-list .item { padding: 10px 16px; }
+.mg-list .item:first-child { border-top: 0; }
+.mg-list .rqthumb { width: 40px; height: 60px; }
+.mg-list .rqthumb.sq { height: 40px; }
+.mg-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; color: var(--ink2); font-size: 14px; margin-top: 2px; }
+.mg-meta .pic { width: 20px; height: 20px; }
+.mg-meta b { color: var(--ink); }
+.mg-why { color: var(--ink2); font-size: 13.5px; margin-top: 4px; }
+.btn.mg-no { border: 1px solid #7a3b3b; color: #FFB0B0; background: rgba(255, 138, 138, .08); }
+.btn.mg-no:hover, .btn.mg-no:focus-visible { background: rgba(255, 138, 138, .2); color: #fff; }
+.mg-del { display: flex; gap: 10px; align-items: center; margin-top: 14px; color: var(--ink2); cursor: pointer; }
+.mg-del input { width: 20px; height: 20px; accent-color: var(--ink); }
+@media (max-width: 700px) {
+  .mg-tiles { display: flex; overflow-x: auto; gap: 8px; scrollbar-width: none; }
+  .mg-tile { flex: none; width: 112px; padding: 10px 12px; }
+  .mg-tile b { font-size: 24px; }
+  .mg-tile small, .mg-sep { display: none; }
+  .mg-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .mg-filters > * { flex: none; }
+  .mg-list .item { flex-wrap: wrap; }
+  .mg-list .item .acts { width: 100%; justify-content: flex-start; padding-left: 54px; }
+}
 @media (max-width: 600px) {
   .rqtopr { margin-left: 0; }
   .rqt10 { --t10w: 52px; }

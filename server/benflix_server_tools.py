@@ -644,6 +644,76 @@ def download_action(app, queue_id, action):
     return {"message": message}
 
 
+def _drop_queue(app, wanted):
+    """Takes waiting or running downloads out of Sonarr's / Radarr's list (and out of the download program)"""
+    try:
+        queue = (_arr(app, "GET", "/api/v3/queue?page=1&pageSize=500&includeUnknownSeriesItems=false&includeUnknownMovieItems=false") or {}).get("records") or []
+    except ToolError:
+        return 0
+    n = 0
+    for item in queue:
+        if not wanted(item):
+            continue
+        try:
+            _arr(app, "DELETE", f"/api/v3/queue/{item['id']}?removeFromClient=true&blocklist=false")
+            n += 1
+        except ToolError:
+            pass
+    return n
+
+
+def stop_movie(tmdb, delete):
+    """Ben pressed Stop on a movie request: Radarr forgets the movie. A copy that already arrived stays unless
+    Ben ticked delete."""
+    movie = _find_movie(tmdb)
+    if not movie:
+        return "Stopped. Radarr wasn't looking for it."
+    _drop_queue("radarr", lambda q: q.get("movieId") == movie["id"])
+    has_file = bool(movie.get("hasFile"))
+    if has_file and not delete:
+        movie["monitored"] = False
+        _arr("radarr", "PUT", f"/api/v3/movie/{movie['id']}", movie)
+        _forget()
+        return f"Stopped. The copy of {movie['title']} that already arrived stays on Glowfin."
+    _arr("radarr", "DELETE", f"/api/v3/movie/{movie['id']}?deleteFiles={'true' if delete else 'false'}&addImportExclusion=false")
+    _forget()
+    return f"Stopped. Tower no longer looks for {movie['title']}" + (", and the copy that arrived is deleted." if has_file else ".")
+
+
+def stop_show(info, seasons, delete):
+    """Ben pressed Stop on a show request: Sonarr stops looking for the seasons that were asked for. Episodes
+    that already arrived stay unless Ben ticked delete. Seasons from other requests are left alone."""
+    series = _find_series(info)
+    if not series:
+        return "Stopped. Sonarr wasn't looking for it."
+    all_seasons = [s.get("seasonNumber") for s in series.get("seasons") or []]
+    stop = set(seasons) if seasons else set(all_seasons)
+    _drop_queue("sonarr", lambda q: q.get("seriesId") == series["id"] and (q.get("seasonNumber") in stop))
+    for s in series.get("seasons") or []:
+        if s.get("seasonNumber") in stop:
+            s["monitored"] = False
+    deleted = 0
+    if delete:
+        files = _arr("sonarr", "GET", f"/api/v3/episodefile?seriesId={series['id']}") or []
+        ids = [f["id"] for f in files if f.get("seasonNumber") in stop]
+        if ids:
+            _arr("sonarr", "DELETE", "/api/v3/episodefile/bulk", {"episodeFileIds": ids})
+            deleted = len(ids)
+    left = [s for s in series.get("seasons") or [] if s.get("monitored")]
+    files_left = (series.get("statistics") or {}).get("episodeFileCount", 0) - deleted
+    if not left and files_left <= 0:
+        _arr("sonarr", "DELETE", f"/api/v3/series/{series['id']}?deleteFiles=false&addImportListExclusion=false")
+        _forget()
+        return f"Stopped. Tower no longer looks for {series['title']}" + (f", and {deleted} episode{'s' if deleted != 1 else ''} that arrived {'are' if deleted != 1 else 'is'} deleted." if deleted else ".")
+    if not left:
+        series["monitored"] = False
+    _arr("sonarr", "PUT", f"/api/v3/series/{series['id']}", series)
+    _forget()
+    if deleted:
+        return f"Stopped. {deleted} episode{'s' if deleted != 1 else ''} of {series['title']} that arrived {'are' if deleted != 1 else 'is'} deleted."
+    return f"Stopped. Episodes of {series['title']} that already arrived stay on Glowfin."
+
+
 def _find_series(info):
     tvdb, name = str(info.get("tvdb") or ""), (info.get("name") or "").strip().lower()
     if tvdb.isdigit():
