@@ -63,6 +63,7 @@ import com.github.damontecres.wholphin.ui.books.BOOK_RATIO
 import com.github.damontecres.wholphin.ui.books.BookChip
 import com.github.damontecres.wholphin.ui.books.BookCoverImage
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.discover.AskStepsLine
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.music.MusicButton
@@ -978,9 +979,17 @@ private fun AboutTop(
                 )
             }
         }
-        if (a.asked != null && !admin && a.asked == "Waiting for Ben") {
-            Text("Ben gets a note and says yes or no.", color = BenflixColors.Muted, fontSize = BenflixType.small)
-        }
+        // What happens next, as one short line so the description stays right under the buttons
+        val asked = a.asked
+        val step =
+            when {
+                a.have != null -> null
+                asked == null -> 0
+                asked.startsWith("Waiting") -> 1
+                asked.contains("Download", ignoreCase = true) || asked.contains("looking", ignoreCase = true) -> 2
+                else -> null
+            }
+        if (step != null) AskStepsLine(isAdmin = admin, last = "Ready to read", at = step)
         // Ben: the description must be clear, so it's right under the buttons, in big text
         Text(
             "About this book",
