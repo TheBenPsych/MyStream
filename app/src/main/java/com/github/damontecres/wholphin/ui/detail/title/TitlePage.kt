@@ -120,6 +120,9 @@ class TitleTab(
     val content: @Composable (TitleTabScope) -> Unit,
 )
 
+/** TV: how far a title page starts from the side menu. The same as Home's rows, so every page lines up. */
+internal val TitleTvSide = 16.dp
+
 /** What a tab's content needs to know about where it is */
 class TitleTabScope(
     /** Space at the left and right edge of the page */
@@ -321,7 +324,7 @@ private fun WideTitlePage(
     modifier: Modifier,
 ) {
     val isTv = rememberIsTv()
-    val side = BenflixSpace.tvEdge
+    val side = if (isTv) TitleTvSide else BenflixSpace.tvEdge
     val firstButton = remember { FocusRequester() }
     val firstTab = remember { FocusRequester() }
     val tabFocus = remember { FocusRequester() }

@@ -119,7 +119,9 @@ fun Destination.fullBleed(): Boolean =
         this is Destination.Games ||
         this is Destination.BooksDoor ||
         underTopBar() ||
-        (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES))
+        (this is Destination.MediaItem && (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES)) ||
+        // A show opened from one of its episodes is the same title page, so it gets the same edges
+        this is Destination.SeriesOverview
 
 /**
  * Ben: when the bar sits over a door's picture, a soft dark shadow behind the clock, search and your

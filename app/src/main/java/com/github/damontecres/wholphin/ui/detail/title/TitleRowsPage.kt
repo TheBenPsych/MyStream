@@ -92,7 +92,8 @@ internal fun WideRowsTitlePage(
     modifier: Modifier,
 ) {
     val isTv = rememberIsTv()
-    val side = BenflixSpace.tvEdge
+    // TV: the same left edge as Home and the Movies/Shows pages (Ben 2026-11-20: it started further right)
+    val side = if (isTv) TitleTvSide else BenflixSpace.tvEdge
     val listState = rememberLazyListState()
     val coroutines = rememberCoroutineScope()
     val firstButton = remember { FocusRequester() }
