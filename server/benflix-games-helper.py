@@ -1473,6 +1473,13 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/asks/"):
                 # Why Ben said no (everyone reads, Ben writes) and who gets an automatic yes (Ben only)
                 return self.send(200, asks_route(method, path, token, user_id, is_admin, is_kids, self.read_json))
+            if path == "/api/reviews" or path == "/api/reviews/key":
+                return self.send(200, reviews_route(method, path, query, is_admin, is_kids, self.read_json))
+            if method == "GET" and path == "/api/activity":
+                # Server, Activity: hours watched by each person, most watched, busiest times (Ben only)
+                if not is_admin:
+                    raise HelperError(403, "Only Ben can see this.")
+                return self.send(200, activity_page((query.get("month") or [""])[0]))
             if method == "GET" and path == "/api/family":
                 # Ben's "Request for" picker: who he can ask for (grown-ups only, never Kids)
                 if not is_admin:
@@ -2104,6 +2111,260 @@ def asks_auto_yes(admin):
         time.sleep(180)
 
 
+# ---------- "What people said" (Ben 2026-11-21): two short reviews on the title page ----------
+# From TMDb, where the posters come from. TMDb wants a free key for this, which Ben pastes in once on the
+# Server page; until then the row simply doesn't show. Kids never get reviews. Kept for a week per title.
+REVIEWS_FILE = os.path.join(SAVES, ".benflix", "reviews.json")
+REVIEWS_KEEP_S = 7 * 86400
+_reviews_lock = threading.Lock()
+
+
+def _reviews_load():
+    try:
+        with open(REVIEWS_FILE) as f:
+            got = json.load(f)
+    except (OSError, ValueError):
+        got = {}
+    got.setdefault("key", "")
+    got.setdefault("cache", {})
+    return got
+
+
+def _reviews_save(state):
+    try:
+        os.makedirs(os.path.dirname(REVIEWS_FILE), exist_ok=True)
+        with open(REVIEWS_FILE + ".tmp", "w") as f:
+            json.dump(state, f)
+        os.replace(REVIEWS_FILE + ".tmp", REVIEWS_FILE)
+    except OSError:
+        pass
+
+
+def _reviews_clean(text):
+    text = re.sub(r"https?://\S+", "", str(text or ""))
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"[*_#>`]+", "", text)
+    text = re.sub(r"[ \t]+", " ", text.replace("\r", ""))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def _reviews_fetch(key, kind, tmdb):
+    url = f"https://api.themoviedb.org/3/{kind}/{tmdb}/reviews?language=en-US&page=1"
+    headers = {"Accept": "application/json"}
+    if key.count(".") == 2:  # the long "API Read Access Token"
+        headers["Authorization"] = "Bearer " + key
+    else:
+        url += "&api_key=" + urllib.parse.quote(key)
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=20) as r:
+        rows = json.loads(r.read()).get("results") or []
+    out = []
+    for row in rows:
+        text = _reviews_clean(row.get("content"))
+        if len(text) < 120:
+            continue
+        score = (row.get("author_details") or {}).get("rating")
+        out.append({"author": str(row.get("author") or "TMDb member")[:40], "score": score if isinstance(score, (int, float)) else None, "text": text[:4000]})
+    # Reviews with a score first, and not walls of text
+    out.sort(key=lambda r: (r["score"] is None, len(r["text"]) > 2500))
+    return out[:2]
+
+
+def reviews_route(method, path, query, is_admin, is_kids, read_json):
+    if path == "/api/reviews/key":
+        if not is_admin:
+            raise HelperError(403, "Only Ben can change this.")
+        with _reviews_lock:
+            state = _reviews_load()
+            if method == "POST":
+                state["key"] = re.sub(r"\s", "", str(read_json().get("key") or ""))[:400]
+                state["cache"] = {}
+                _reviews_save(state)
+            return {"set": bool(state["key"])}
+    if method != "GET" or path != "/api/reviews":
+        raise HelperError(404, "Not found")
+    kind = "tv" if (query.get("type") or [""])[0] == "tv" else "movie"
+    tmdb = re.sub(r"\D", "", (query.get("tmdb") or [""])[0])[:12]
+    with _reviews_lock:
+        state = _reviews_load()
+    if is_kids or not tmdb or not state["key"]:
+        return {"reviews": [], "ready": bool(state["key"])}
+    ck = f"{kind}:{tmdb}"
+    hit = state["cache"].get(ck)
+    if hit and time.time() - hit.get("at", 0) < REVIEWS_KEEP_S:
+        return {"reviews": hit.get("list") or [], "ready": True}
+    try:
+        found = _reviews_fetch(state["key"], kind, tmdb)
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            raise HelperError(502, "TMDb didn't accept the key. Check it on the Server page.")
+        return {"reviews": (hit or {}).get("list") or [], "ready": True}
+    except (urllib.error.URLError, OSError, ValueError):
+        return {"reviews": (hit or {}).get("list") or [], "ready": True}
+    with _reviews_lock:
+        state = _reviews_load()
+        state["cache"][ck] = {"at": int(time.time()), "list": found}
+        if len(state["cache"]) > 3000:
+            for old in sorted(state["cache"], key=lambda k: state["cache"][k].get("at", 0))[:1000]:
+                state["cache"].pop(old, None)
+        _reviews_save(state)
+    return {"reviews": found, "ready": True}
+
+
+# ---------- Activity (Ben 2026-11-21, Ben only): who watches what, and when ----------
+# Once a minute Tower looks at who is playing something and adds that minute to this month's totals: per person,
+# per title, and per hour of the week (kept in UTC; the page turns it into the viewer's own clock). Counting
+# starts the day this runs for the first time, and 13 months are kept.
+ACTIVITY_FILE = os.path.join(SAVES, ".benflix", "activity.json")
+ACTIVITY_STEP = 60
+ACTIVITY_TYPES = {"Movie", "Episode", "Video", "MusicVideo", "TvChannel", "Program", "LiveTvProgram", "Recording"}
+_activity_lock = threading.Lock()
+_activity = None
+
+
+def _activity_load():
+    global _activity
+    if _activity is None:
+        try:
+            with open(ACTIVITY_FILE) as f:
+                _activity = json.load(f)
+        except (OSError, ValueError):
+            _activity = {}
+        _activity.setdefault("months", {})
+        _activity.setdefault("since", int(time.time()))
+    return _activity
+
+
+def _activity_save():
+    try:
+        os.makedirs(os.path.dirname(ACTIVITY_FILE), exist_ok=True)
+        with open(ACTIVITY_FILE + ".tmp", "w") as f:
+            json.dump(_activity, f)
+        os.replace(ACTIVITY_FILE + ".tmp", ACTIVITY_FILE)
+    except OSError:
+        pass
+
+
+def _playing_sessions(token):
+    status, body, _ = jellyfin_call("GET", "/Sessions?activeWithinSeconds=180", token)
+    if status != 200:
+        return None
+    return [x for x in json.loads(body or b"[]") if x.get("NowPlayingItem")]
+
+
+def _activity_tick(token):
+    sessions = _playing_sessions(token)
+    if not sessions:
+        return
+    now = time.gmtime()
+    key = time.strftime("%Y-%m", now)
+    changed = False
+    with _activity_lock:
+        state = _activity_load()
+        month = state["months"].setdefault(key, {"people": {}, "titles": {}, "grid": [[0] * 24 for _ in range(7)]})
+        for x in sessions:
+            item = x.get("NowPlayingItem") or {}
+            if item.get("Type") not in ACTIVITY_TYPES or (x.get("PlayState") or {}).get("IsPaused"):
+                continue
+            who = x.get("UserName") or "Someone"
+            live = item.get("Type") in ("TvChannel", "Program", "LiveTvProgram")
+            tid = "live" if live else str(item.get("SeriesId") or item.get("Id") or "")
+            name = "Live TV" if live else str(item.get("SeriesName") or item.get("Name") or "Something")
+            month["people"][who] = month["people"].get(who, 0) + ACTIVITY_STEP
+            t = month["titles"].setdefault(tid, {"name": name, "s": 0})
+            t["name"] = name
+            t["s"] += ACTIVITY_STEP
+            month["grid"][now.tm_wday][now.tm_hour] += ACTIVITY_STEP
+            changed = True
+        if not changed:
+            return
+        if len(month["titles"]) > 600:  # keep the file small: the long tail of barely-watched titles goes
+            keep = sorted(month["titles"].items(), key=lambda kv: -kv[1]["s"])[:400]
+            month["titles"] = dict(keep)
+        for old in sorted(state["months"])[:-13]:
+            state["months"].pop(old, None)
+        _activity_save()
+
+
+def activity_page(month):
+    with _activity_lock:
+        state = _activity_load()
+        months = sorted(state["months"], reverse=True)
+        key = month if month in state["months"] else (months[0] if months else time.strftime("%Y-%m", time.gmtime()))
+        m = state["months"].get(key) or {"people": {}, "titles": {}, "grid": [[0] * 24 for _ in range(7)]}
+        return {
+            "month": key,
+            "months": months,
+            "since": state.get("since"),
+            "people": sorted(({"name": k, "s": v} for k, v in m["people"].items()), key=lambda r: -r["s"]),
+            "titles": sorted(({"name": v["name"], "s": v["s"]} for v in m["titles"].values()), key=lambda r: -r["s"])[:10],
+            "grid": m["grid"],
+        }
+
+
+# ---------- Missing actor photos (Ben 2026-11-21) ----------
+# Jellyfin often never fetches photos for the cast of older movies, so they show as a letter in a circle. While
+# nobody is watching, Tower asks Jellyfin to look up a few of the actors with no photo (from TMDb, where the
+# posters come from). Each actor is only tried once a month; when there truly is no photo, the letter stays.
+CAST_FILE = os.path.join(SAVES, ".benflix", "cast-photos.json")
+CAST_BATCH = 25
+CAST_RETRY_S = 30 * 86400
+
+
+def _cast_pass(token, user):
+    if _playing_sessions(token):
+        return  # someone is watching: Tower stays out of the way
+    try:
+        with open(CAST_FILE) as f:
+            state = json.load(f)
+    except (OSError, ValueError):
+        state = {}
+    tried = state.setdefault("tried", {})
+    start = int(state.get("start") or 0)
+    now = time.time()
+    done = 0
+    status, body, _ = jellyfin_call("GET", f"/Persons?userId={user}&startIndex={start}&limit=400&enableImages=true&enableUserData=false", token)
+    people = (json.loads(body or b"{}").get("Items") or []) if status == 200 else []
+    for person in people:
+        pid = person.get("Id")
+        if not pid or (person.get("ImageTags") or {}).get("Primary") or now - tried.get(pid, 0) < CAST_RETRY_S:
+            continue
+        jellyfin_call("POST", f"/Items/{pid}/Refresh?metadataRefreshMode=FullRefresh&imageRefreshMode=FullRefresh&replaceAllMetadata=false&replaceAllImages=false", token, body=b"")
+        tried[pid] = int(now)
+        done += 1
+        if done >= CAST_BATCH:
+            break
+        time.sleep(2)
+    # Move on to the next page once this one has nothing left to try (back to the start at the end of the list)
+    if done < CAST_BATCH:
+        state["start"] = start + 400 if len(people) == 400 else 0
+    for pid in [k for k, at in tried.items() if now - at > CAST_RETRY_S * 2]:
+        tried.pop(pid, None)
+    try:
+        os.makedirs(os.path.dirname(CAST_FILE), exist_ok=True)
+        with open(CAST_FILE + ".tmp", "w") as f:
+            json.dump(state, f)
+        os.replace(CAST_FILE + ".tmp", CAST_FILE)
+    except OSError:
+        pass
+
+
+def activity_watch(admin):
+    """Every minute: count who is watching. Every 20 minutes: fetch a few missing actor photos."""
+    time.sleep(90)
+    passes = 0
+    while True:
+        try:
+            token, user = admin() or (None, None)
+            if token:
+                _activity_tick(token)
+                if passes % 20 == 10 and user:
+                    _cast_pass(token, user)
+            passes += 1
+        except Exception as e:
+            _doctor_log(f"activity problem ({e})")
+        time.sleep(ACTIVITY_STEP)
+
+
 def request_doctor(admin):
     """Hourly. admin() gives (token, user id) of Ben's sign-in (needed to read Seerr's address and key)."""
     time.sleep(120)
@@ -2198,6 +2459,12 @@ if __name__ == "__main__":
         target=asks_auto_yes,
         args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),
         name="asks-auto-yes",
+        daemon=True,
+    ).start()
+    threading.Thread(
+        target=activity_watch,
+        args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),
+        name="activity-watch",
         daemon=True,
     ).start()
     threading.Thread(target=wifi_finder, daemon=True).start()

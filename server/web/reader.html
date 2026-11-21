@@ -36,6 +36,9 @@
     window.readerSave = function () { reader.save(); };
     // The app's Back with nothing open: save the place, then BenflixApp.close()
     window.readerClose = function () { reader.close(); };
+    // Read aloud: the app's voice says when a piece is done, or that it can't go on
+    window.readerSpoke = function () { reader.spoke(); };
+    window.readerStopAloud = function () { reader.stopAloud(); };
   })();
 </script>
 </body>

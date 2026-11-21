@@ -637,6 +637,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
     strip: B.tpStrip([audio ? [audio] : null, directors.length ? ["Director", directors.join(", "), true] : null]),
     tabs: [
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
+      { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "movie", nav) },
       { name: "More like this", id: "below", load: async (pane) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${B.uid()}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
@@ -783,6 +784,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
       { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
         <div class="seasons" id="groups"></div><div id="eps">${B.spinner()}</div>` },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
+      { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "tv", nav) },
       { name: "More like this", id: "below2", load: async (pane) => {
         const similar = await q(`/Items/${it.Id}/Similar?userId=${u}&Limit=20&Fields=${B.FIELDS}`).catch(() => []);
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
@@ -905,3 +907,21 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
   // Everything of theirs that isn't on Benflix yet (extras.js)
   if (B.extras && !B.me.kids) B.extras.person(p, nav, tp.pane("tpAsk")).catch(() => {});
 });
+
+// "What people said" (2026-11-21): two short reviews from TMDb on a movie or show's page, cut to three lines;
+// press one to read it all. Tower fetches them (never for Kids), and sends none until Ben adds the free key.
+B.reviewsRow = async (pane, it, kind, nav) => {
+  const tmdb = it.ProviderIds && it.ProviderIds.Tmdb;
+  if (!tmdb || (B.me && B.me.kids)) return;
+  const d = await B.call("GET", `api/reviews?type=${kind}&tmdb=${encodeURIComponent(tmdb)}`).catch(() => null);
+  const list = (d && d.reviews) || [];
+  if (!list.length || !B.alive(nav)) return;
+  const head = (r) => (r.score != null ? `${r.score} / 10 · ` : "") + r.author;
+  pane.insertAdjacentHTML("afterbegin", `<section class="rowx"><h3>What people said</h3><div class="strip rev-strip">${list.map((r, i) => `<button class="rev-card" data-rev="${i}"><b>${esc(head(r))}</b><span>${esc(r.text)}</span><small>Read all</small></button>`).join("")}</div></section>`);
+  pane.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-rev]");
+    if (!b) return;
+    const r = list[+b.dataset.rev];
+    B.side(`<h3>${esc(head(r))}</h3><p class="dim">A TMDb member's review</p><div style="white-space:pre-wrap;line-height:1.55">${esc(r.text)}</div>`);
+  });
+};

@@ -235,6 +235,14 @@ private fun PlayerInfo(
         )
         RoundWordButton("Ahead 30", BenflixIcon.AHEAD30, onClick = svc::ahead, size = 52.dp)
         RoundWordButton("Speed ${speedLabel(n.speed)}", BenflixIcon.SPEED, onClick = onSpeed, size = 52.dp, lit = n.speed != 1f)
+        val skipPauses by svc.skipPauses.collectAsState()
+        RoundWordButton(
+            if (skipPauses) "Pauses skipped" else "Skip pauses",
+            BenflixIcon.AHEAD30,
+            onClick = svc::toggleSkipPauses,
+            size = 52.dp,
+            lit = skipPauses,
+        )
         RoundWordButton(sleepNow(n), BenflixIcon.MOON, onClick = onSleep, size = 52.dp, lit = n.sleepAt != null || n.sleepEndOfChapter)
         if (n.chapters.isNotEmpty()) {
             RoundWordButton("Chapters", BenflixIcon.CHAPTERS, onClick = { chaptersOpen = true }, size = 52.dp)

@@ -189,7 +189,7 @@ def _user(uid):
         u = _users.get(uid)
         if u is None:
             u = _read(os.path.join(_dir, "users", uid + ".json"), {}) if _dir else {}
-            for k in ("place", "done", "want", "finished", "opened", "modes", "sent", "time"):
+            for k in ("place", "done", "want", "finished", "opened", "modes", "sent", "time", "marks"):
                 u.setdefault(k, {})
             u["_id"] = uid
             _users[uid] = u
@@ -1724,6 +1724,136 @@ def send_to_phone(user_id, tid):
     return {"ok": True, "words": "Sent. It's at the front of On deck on your phone."}
 
 
+# ---------- Highlights and notes (Ben 2026-11-21): private to each profile, they follow you between screens ----------
+MARKS_MAX = 500
+
+
+def marks_of(user_id, tid):
+    u = _user(user_id)
+    with _lock:
+        return {"marks": list(u["marks"].get(tid) or [])}
+
+
+def save_mark(user_id, tid, body):
+    """Adds a highlight, changes its note, or (remove) takes it away"""
+    u = _user(user_id)
+    if tid not in _lib["titles"]:
+        raise BooksError(404, "That isn't on Glowfin any more.")
+    mid = re.sub(r"\W", "", str(body.get("id") or ""))[:32]
+    note = " ".join(str(body.get("note") or "").split())[:500]
+    with _lock:
+        marks = u["marks"].setdefault(tid, [])
+        old = next((m for m in marks if m.get("id") == mid), None) if mid else None
+        if body.get("remove"):
+            if old:
+                marks.remove(old)
+        elif old:
+            old["note"] = note
+        else:
+            text = " ".join(str(body.get("text") or "").split())[:600]
+            if len(text) < 2:
+                raise BooksError(400, "There's nothing to highlight there.")
+            if len(marks) >= MARKS_MAX:
+                raise BooksError(400, "That's a lot of highlights for one book. Remove a few first.")
+            try:
+                chapter = max(0, int(body.get("chapter") or 0))
+                cpos = max(0.0, min(1.0, float(body.get("cpos") or 0)))
+            except (TypeError, ValueError):
+                chapter, cpos = 0, 0.0
+            marks.append({"id": uuid.uuid4().hex[:12], "chapter": chapter, "cpos": cpos, "text": text, "note": note, "at": int(time.time())})
+        if not marks:
+            u["marks"].pop(tid, None)
+        out = sorted(u["marks"].get(tid) or [], key=lambda m: (m.get("chapter", 0), m.get("cpos", 0)))
+    _save_user(u)
+    return {"ok": True, "marks": out}
+
+
+# ---------- Send to Kindle (Ben 2026-11-21): Tower emails the EPUB to the person's Kindle address ----------
+KINDLE_MAX_BYTES = 24 * 1024 * 1024  # most mail services stop at 25 MB
+
+
+def kindle_info(user_id, is_admin):
+    u = _user(user_id)
+    mail = _state.get("mail") or {}
+    out = {"address": u.get("kindle") or "", "ready": bool(mail.get("host") and mail.get("user") and mail.get("password"))}
+    if is_admin:
+        out["mail"] = {"host": mail.get("host", ""), "port": mail.get("port", 587), "user": mail.get("user", ""), "set": bool(mail.get("password"))}
+    return out
+
+
+def kindle_address(user_id, body):
+    address = str(body.get("address") or "").strip()[:120]
+    if address and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address):
+        raise BooksError(400, "That doesn't look like an email address. A Kindle address ends in @kindle.com.")
+    u = _user(user_id)
+    with _lock:
+        u["kindle"] = address
+    _save_user(u)
+    return {"ok": True, "address": address}
+
+
+def kindle_mail(body):
+    """Ben only: the email account Tower sends from (kept on Tower)"""
+    host = str(body.get("host") or "").strip()[:120]
+    user = str(body.get("user") or "").strip()[:120]
+    password = str(body.get("password") or "")[:200]
+    try:
+        port = int(body.get("port") or 587)
+    except (TypeError, ValueError):
+        port = 587
+    with _lock:
+        old = _state.get("mail") or {}
+        _state["mail"] = {"host": host, "port": port, "user": user, "password": password or old.get("password", "")}
+    _save_state()
+    return {"ok": True}
+
+
+def send_to_kindle(user_id, tid):
+    import smtplib
+    from email.message import EmailMessage
+
+    t = _lib["titles"].get(tid)
+    if not t:
+        raise BooksError(404, "That isn't on Glowfin any more.")
+    # Ben: only EPUB goes to a Kindle, nothing else is allowed
+    path = t.get("path") or ""
+    if t.get("ext") != ".epub" or not path.lower().endswith(".epub") or not os.path.isfile(path) or not zipfile.is_zipfile(path):
+        raise BooksError(400, "Only EPUB books can go to a Kindle, and this one isn't an EPUB.")
+    u = _user(user_id)
+    to = u.get("kindle") or ""
+    if not to:
+        raise BooksError(400, "Type your Kindle's email address first.")
+    mail = _state.get("mail") or {}
+    if not (mail.get("host") and mail.get("user") and mail.get("password")):
+        raise BooksError(400, "Ben hasn't given Tower an email account to send from yet.")
+    if os.path.getsize(path) > KINDLE_MAX_BYTES:
+        raise BooksError(400, "This book is too big to email (over 24 MB).")
+    msg = EmailMessage()
+    msg["From"] = mail["user"]
+    msg["To"] = to
+    msg["Subject"] = t["name"][:120]
+    msg.set_content("Sent from Glowfin.")
+    name = re.sub(r"[^\w .,'-]", "", t["name"]).strip()[:80] or "book"
+    with open(path, "rb") as f:
+        msg.add_attachment(f.read(), maintype="application", subtype="epub+zip", filename=name + ".epub")
+    try:
+        port = int(mail.get("port") or 587)
+        if port == 465:
+            server = smtplib.SMTP_SSL(mail["host"], port, timeout=60)
+        else:
+            server = smtplib.SMTP(mail["host"], port, timeout=60)
+            server.starttls()
+        with server:
+            server.login(mail["user"], mail["password"])
+            server.send_message(msg)
+    except smtplib.SMTPAuthenticationError:
+        raise BooksError(502, "The email account didn't accept Tower's sign-in. Ben needs to check the password.")
+    except (smtplib.SMTPException, OSError) as e:
+        log(f"Send to Kindle failed: {e!r}")
+        raise BooksError(502, "The email didn't go out. Check Tower's email settings and try again.")
+    return {"ok": True, "words": "Sent. It shows up on the Kindle in a few minutes."}
+
+
 def opened(user_id, tid):
     u = _user(user_id)
     with _lock:
@@ -2929,6 +3059,22 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         m = re.fullmatch(r"/api/books/send/(\w+)", path)
         if method == "POST" and m:
             return 200, send_to_phone(user_id, m.group(1))
+        m = re.fullmatch(r"/api/books/marks/(\w+)", path)
+        if m and method == "GET":
+            return 200, marks_of(user_id, m.group(1))
+        if m and method == "POST":
+            return 200, save_mark(user_id, m.group(1), read_json())
+        if path == "/api/books/kindle" and method == "GET":
+            return 200, kindle_info(user_id, is_admin)
+        if path == "/api/books/kindle" and method == "POST":
+            if is_kids:
+                return 403, {"error": "Ask a grown-up to set this up."}
+            return 200, kindle_address(user_id, read_json())
+        m = re.fullmatch(r"/api/books/kindle/(\w+)", path)
+        if m and method == "POST":
+            if is_kids:
+                return 403, {"error": "Ask a grown-up to send this one."}
+            return 200, send_to_kindle(user_id, m.group(1))
         if booklists is not None and (path.startswith("/api/books/discover") or path.startswith("/api/books/about") or path.startswith("/api/books/lists/")):
             if is_kids:
                 return 403, {"error": "Ask a grown-up to get this book."}
@@ -2952,6 +3098,8 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         # Only Ben from here on
         if not is_admin:
             return 403, {"error": "Only Ben can do that."}
+        if method == "POST" and path == "/api/books/kindle/mail":
+            return 200, kindle_mail(read_json())
         if method == "POST" and path == "/api/books/answer":
             return 200, answer(read_json())
         m = re.fullmatch(r"/api/books/retry/(\w+)", path)

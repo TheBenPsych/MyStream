@@ -43,3 +43,13 @@
   .rd-panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 120px; }
   .rd-end { bottom: auto; }
 }
+/* Highlights and notes */
+.rd-marks { display: flex; flex-direction: column; gap: 10px; }
+.rd-mark { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid #262932; }
+.rd-mark .rd-quote { width: 100%; text-align: left; border-radius: 10px; background: transparent; font-weight: 500; line-height: 1.4; border-left: 3px solid #FFD650; }
+.rd-mark .rd-quote small { display: block; margin-top: 6px; color: #3FE0E8; font-weight: 600; }
+.rd-mark button:not(.rd-quote) { font-size: 13px; padding: 6px 12px; }
+p.rd-quote { color: #C9CBD3; border-left: 3px solid #FFD650; padding-left: 10px; margin: 8px 0 12px; line-height: 1.4; }
+.rd-note { width: 100%; box-sizing: border-box; min-height: 110px; font: inherit; font-size: 16px; color: #F1F2F5; background: #0E0F13; border: 2px solid #262932; border-radius: 12px; padding: 10px; }
+.rd-note:focus { outline: none; border-color: #3FE0E8; }
+.rd-bar button.hidden { display: none; }

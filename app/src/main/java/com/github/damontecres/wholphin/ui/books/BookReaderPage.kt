@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -54,6 +57,42 @@ fun BookReaderPage(
     val url = remember(id, chapter) { viewModel.books.readerUrl(id, isTv, chapter) }
     val holder = remember { arrayOfNulls<WebView>(1) }
     val main = remember { Handler(Looper.getMainLooper()) }
+    // Read aloud (Ben 2026-11-21): the device's own voice. The reader only shows the button when there is one.
+    val context = LocalContext.current
+    val voiceReady = remember { booleanArrayOf(false) }
+    val voice =
+        remember {
+            try {
+                TextToSpeech(context.applicationContext) { status -> voiceReady[0] = status == TextToSpeech.SUCCESS }
+            } catch (ex: Exception) {
+                Timber.w(ex, "No voice on this device")
+                null
+            }
+        }
+    DisposableEffect(voice) {
+        voice?.setOnUtteranceProgressListener(
+            object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) = Unit
+
+                override fun onDone(utteranceId: String?) {
+                    main.post { holder[0]?.evaluateJavascript("window.readerSpoke && readerSpoke()", null) }
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    main.post { holder[0]?.evaluateJavascript("window.readerStopAloud && readerStopAloud()", null) }
+                }
+            },
+        )
+        onDispose {
+            try {
+                voice?.stop()
+                voice?.shutdown()
+            } catch (ex: Exception) {
+                Timber.w(ex, "Voice shutdown")
+            }
+        }
+    }
     // Reading is not "doing nothing": the normal screensaver waits, the reader asks for it after 15 minutes
     DisposableEffect(Unit) {
         viewModel.screensaver.keepScreenOn(true)
@@ -100,6 +139,31 @@ fun BookReaderPage(
                         @JavascriptInterface
                         fun awake() {
                             main.post { viewModel.screensaver.keepScreenOn(true) }
+                        }
+
+                        @JavascriptInterface
+                        fun canSpeak(): Boolean = voice != null && voiceReady[0]
+
+                        @JavascriptInterface
+                        fun speak(text: String) {
+                            val result =
+                                try {
+                                    voice?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "glowfin-reader") ?: TextToSpeech.ERROR
+                                } catch (ex: Exception) {
+                                    TextToSpeech.ERROR
+                                }
+                            if (result != TextToSpeech.SUCCESS) {
+                                main.post { holder[0]?.evaluateJavascript("window.readerStopAloud && readerStopAloud()", null) }
+                            }
+                        }
+
+                        @JavascriptInterface
+                        fun stopSpeaking() {
+                            try {
+                                voice?.stop()
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Voice stop")
+                            }
                         }
 
                         @JavascriptInterface

@@ -524,6 +524,16 @@ class BenflixBooks
 
         suspend fun sendToPhone(id: String): String = helper.postJson("/api/books/send/" + Uri.encode(id)).optString("words", "Sent.")
 
+        /** Send to Kindle: this profile's Kindle address ("" when not typed yet) */
+        suspend fun kindleAddress(): String = helper.getJson("/api/books/kindle").optString("address")
+
+        suspend fun setKindleAddress(address: String) {
+            helper.postJson("/api/books/kindle", JSONObject().put("address", address))
+        }
+
+        /** Tower emails the EPUB to the Kindle. Tower refuses anything that isn't an EPUB. */
+        suspend fun sendToKindle(id: String): String = helper.postJson("/api/books/kindle/" + Uri.encode(id)).optString("words", "Sent.")
+
         suspend fun stats(): BookStats {
             val j = helper.getJson("/api/books/stats")
             val y = j.optJSONObject("year") ?: JSONObject()

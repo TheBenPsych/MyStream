@@ -211,6 +211,7 @@ class AudiobookService
                     }
                 p.setMediaItems(items, file, (cpos * 1000).toLong())
                 p.playbackParameters = PlaybackParameters(now.speed)
+                p.skipSilenceEnabled = _skipPauses.value
                 p.volume = 1f
                 p.prepare()
                 p.play()
@@ -379,6 +380,22 @@ class AudiobookService
                     player?.play()
                 }
             }
+        }
+
+        /** Skip the pauses (Ben 2026-11-21): quiet gaps between sentences are jumped over. Off until switched on. */
+        private val _skipPauses =
+            MutableStateFlow(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("skip-pauses", false))
+        val skipPauses: StateFlow<Boolean> = _skipPauses
+
+        fun toggleSkipPauses() {
+            val on = !_skipPauses.value
+            _skipPauses.value = on
+            context
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("skip-pauses", on)
+                .apply()
+            scope.launch { onMain { player?.skipSilenceEnabled = on } }
         }
 
         fun setSpeed(speed: Float) {
