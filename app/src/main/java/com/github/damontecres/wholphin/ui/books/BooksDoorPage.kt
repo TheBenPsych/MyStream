@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.services.BookGroup
 import com.github.damontecres.wholphin.services.BookRow
 import com.github.damontecres.wholphin.services.BookTile
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.discover.RequestsJump
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
@@ -138,21 +139,13 @@ fun BooksDoorPage(
         // The remote starts on Try again (not up on the top bar)
         val retryFocus = remember { FocusRequester() }
         LaunchedEffect(Unit) { retryFocus.tryRequestFocus() }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = modifier.fillMaxSize().padding(start = edge, end = edge, top = overlap + 32.dp),
+        EmptyPage(
+            icon = BenflixIcon.WARNING,
+            title = "Couldn't reach the Books helper on Tower",
+            line = "If Books is new, Tower's Glowfin helper needs its setup run once more (the same one-line paste as before).",
+            more = plainProblem(state.problem),
+            modifier = modifier.padding(top = overlap),
         ) {
-            Title("Couldn't reach the Books helper on Tower")
-            Text(
-                text = plainProblem(state.problem),
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.body,
-            )
-            Text(
-                text = "If Books is new, Tower's Glowfin helper needs its setup run once more (the same one-line paste as before).",
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-            )
             MusicButton(
                 "Try again",
                 BenflixIcon.REFRESH,
@@ -232,17 +225,6 @@ fun forYouRows(rows: List<BookRow>): List<BookRow> {
             else -> 2
         }
     }
-}
-
-@Composable
-private fun Title(text: String) {
-    Text(
-        text = text,
-        color = BenflixColors.Text,
-        fontFamily = GlowfinDisplayFont,
-        fontSize = BenflixType.pageTitle,
-        fontWeight = FontWeight.Bold,
-    )
 }
 
 /** How wide a card is: TV and tablets fit about 7 across, phones 3 */
@@ -718,35 +700,33 @@ private fun EmptyBooks(
     viewModel: BooksViewModel,
     modifier: Modifier,
 ) {
-    Box(modifier) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Title("No books on Glowfin yet")
-            Text(
-                text =
-                    if (folders.isEmpty()) {
-                        "Put books or audiobooks in Tower's Media folder (Books, Audiobooks), and they show up here within 10 minutes."
-                    } else {
-                        "Put them in these folders on Tower, and they show up here within 10 minutes: " + folders.joinToString(", ")
-                    },
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-            )
+    EmptyPage(
+        icon = BenflixIcon.BOOK,
+        title = "No books on Glowfin yet",
+        line =
+            if (folders.isEmpty()) {
+                "Put books or audiobooks in Tower's Media folder (Books, Audiobooks), and they show up here within 10 minutes."
+            } else {
+                "Put them in these folders on Tower, and they show up here within 10 minutes: " + folders.joinToString(", ")
+            },
+        modifier = modifier,
+        buttons =
             if (canAsk) {
-                MusicButton(
-                    label = "Ask for a book",
-                    icon = BenflixIcon.PLUS,
-                    primary = true,
-                    onClick = {
-                        RequestsJump.books = true
-                        viewModel.navigationManager.navigateTo(Destination.Requests)
-                    },
-                )
-            }
-        }
-    }
+                {
+                    MusicButton(
+                        label = "Ask for a book",
+                        icon = BenflixIcon.PLUS,
+                        primary = true,
+                        onClick = {
+                            RequestsJump.books = true
+                            viewModel.navigationManager.navigateTo(Destination.Requests)
+                        },
+                    )
+                }
+            } else {
+                null
+            },
+    )
 }
 
 /** Ground rule: plain words. Programmer messages (like "Value <!doctype ... JSONObject") become one plain line. */

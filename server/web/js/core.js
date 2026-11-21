@@ -682,6 +682,9 @@ B.busy = async (btn, fn) => {
   if (btn) btn.disabled = false;
 };
 B.spinner = () => `<div class="spin"></div>`;
+// One look for every page with nothing to show (Ben 2026-11-20): the page's icon in a soft tile, a plain heading,
+// a line saying why, and buttons for what to do next. `buttons` is ready-made html (or "").
+B.emptyPage = (icon, title, line, buttons) => `<div class="empty-page"><span class="tile">${I(icon)}</span><div><h2>${esc(title)}</h2><p>${esc(line)}</p>${buttons ? `<div class="acts">${buttons}</div>` : ""}</div></div>`;
 
 // ---------- cards and rows ----------
 B.FIELDS = "Overview,Genres,ProductionYear,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,DateCreated,PremiereDate,ChildCount,RecursiveItemCount,ProviderIds,Path,ParentId,Status,EndDate,AirDays,Taglines,PrimaryImageAspectRatio";
