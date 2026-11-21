@@ -24,6 +24,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlin.math.roundToInt
 
@@ -127,12 +128,9 @@ fun RequestTitlePage(
                 TitleTab("Overview") { scope ->
                     // Glowfin: the Details list (who made it, release, cost, awards, show status) comes from
                     // the same lookup as the scores strip
-                    val extras =
-                        tmdbId?.let { id ->
-                            val facts: SeerrExtrasViewModel = hiltViewModel(key = "seerr-extras-$isMovie-$id")
-                            LaunchedEffect(isMovie, id) { facts.load(isMovie, id) }
-                            facts.extras.collectAsState().value
-                        }
+                    val facts = tmdbId?.let { hiltViewModel<SeerrExtrasViewModel>(key = "seerr-extras-$isMovie-$it") }
+                    LaunchedEffect(isMovie, tmdbId) { tmdbId?.let { facts?.load(isMovie, it) } }
+                    val extras = facts?.extras?.collectAsState()?.value
                     TitleOverview(
                         details = extras?.details.orEmpty(),
                         scope = scope,
@@ -150,6 +148,18 @@ fun RequestTitlePage(
                                             fallbackAudience = rating?.audienceRating?.let { (it * 10).roundToInt() },
                                             modifier = Modifier.padding(bottom = 6.dp),
                                         )
+                                        // Everything else this studio (or network) made that isn't here yet
+                                        extras?.studio?.takeIf { it.id != null }?.let { studio ->
+                                            TitleTextLink(
+                                                text = "See everything from ${studio.name} ›",
+                                                onClick = { facts?.openStudio() },
+                                                modifier = Modifier.padding(bottom = 6.dp),
+                                            )
+                                        }
+                                        // Ben only: why something he said yes to hasn't arrived yet
+                                        if (isAdmin && availability == SeerrAvailability.PROCESSING && !kids) {
+                                            HoldUpBlock(isMovie = isMovie, tmdbId = id, modifier = Modifier.padding(bottom = 10.dp))
+                                        }
                                         // What happens next: three plain steps, lit up to where the ask is now
                                         val step =
                                             when (availability) {

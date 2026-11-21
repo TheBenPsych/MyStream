@@ -2435,3 +2435,16 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .dlrow { gap: 10px; }
 .dlbar { height: 5px; border-radius: 3px; background: var(--pg4); margin-top: 8px; max-width: 420px; overflow: hidden; }
 .dlbar i { display: block; height: 100%; background: #3FE0E8; transition: width .4s; }
+.facts .fact-link{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;color:#9EC0FF;text-decoration:none}
+.facts .fact-link:hover,.facts .fact-link:focus-visible{text-decoration:underline;color:#fff}
+.poster .cap small.rqpart{color:#35E0C8;white-space:normal}
+.rqsplit .grid .poster .cap small.rqpart{color:#35E0C8}
+.ask-hold{border-color:#6B5A1E}
+.ask-hold .hold-line{margin:0 0 4px;color:#ECEEFB;font-weight:600}
+.ask-hold p.dim + .hold-line{margin-top:12px}
+#askHoldBox:empty{display:none}
+.studio h2{margin:14px 0 2px;font-size:30px}
+.studio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:16px}
+.studio-grid .poster{width:auto}
+.studio-grid .poster .cap{display:block}
+@media (max-width:600px){.studio-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.studio h2{font-size:24px}}

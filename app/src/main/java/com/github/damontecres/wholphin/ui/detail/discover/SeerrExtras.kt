@@ -38,8 +38,10 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.services.AniListService
 import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.services.MalScores
+import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -109,7 +111,16 @@ class SeerrExtrasViewModel
         private val omdbScores: OmdbScores,
         private val aniList: AniListService,
         private val malScores: MalScores,
+        private val navigationManager: NavigationManager,
     ) : ViewModel() {
+        /** Opens the wall of everything this title's main studio (or network) made */
+        fun openStudio() {
+            val e = _extras.value ?: return
+            val studio = e.studio ?: return
+            val id = studio.id ?: return
+            navigationManager.navigateTo(Destination.RequestStudio(id, studio.name, e.studioIsNetwork))
+        }
+
         private val _extras = MutableStateFlow<SeerrExtras?>(null)
         val extras: StateFlow<SeerrExtras?> = _extras
         private var loadedFor: String? = null

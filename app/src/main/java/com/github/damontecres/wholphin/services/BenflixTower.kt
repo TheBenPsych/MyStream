@@ -231,6 +231,25 @@ class BenflixTower
         /** Asks Radarr to look for a better copy of a movie */
         suspend fun searchBetter(movie: BaseItemDto): String = message(helper.postJson("/api/admin/search/better", ids(movie)))
 
+        /** What's the hold-up? Why something Ben said yes to hasn't arrived: [kind] is "movie" or "tv" */
+        suspend fun holdUp(
+            kind: String,
+            tmdb: Int,
+        ): JSONObject = atHome { helper.getJson("/api/admin/holdup?kind=$kind&tmdb=$tmdb") }
+
+        /** The copies of a movie that are out there right now, and why none was good enough */
+        suspend fun holdUpCopies(tmdb: Int): JSONObject = atHome { helper.getJson("/api/admin/holdup/copies?kind=movie&tmdb=$tmdb") }
+
+        suspend fun holdUpSearch(
+            kind: String,
+            tmdb: Int,
+        ): String = message(helper.postJson("/api/admin/holdup/search?kind=$kind&tmdb=$tmdb"))
+
+        suspend fun holdUpReplace(
+            app: String,
+            id: String,
+        ): String = message(helper.postJson("/api/admin/downloads/$app/$id/replace"))
+
         suspend fun tracks(): TrackTidy = atHome { tidy(helper.getJson("/api/admin/tracks")) }
 
         /** [mode] is "preview", "apply" or "undo" */

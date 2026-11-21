@@ -202,7 +202,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 15
+SETUP_VERSION = 16
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 
@@ -1297,6 +1297,16 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/admin/downloads/(sonarr|radarr)/(\d+)/(retry|replace)", path)
         if method == "POST" and m:
             return self.send(200, tools.download_action(m.group(1), int(m.group(2)), m.group(3)))
+        if path in ("/api/admin/holdup", "/api/admin/holdup/search", "/api/admin/holdup/copies"):
+            kind, tmdb = (query.get("kind") or [""])[0], (query.get("tmdb") or [""])[0]
+            if kind not in ("movie", "tv") or not tmdb.isdigit():
+                raise HelperError(400, "Which movie or show?")
+            if method == "GET" and path == "/api/admin/holdup":
+                return self.send(200, tools.holdup(kind, tmdb))
+            if method == "GET" and path == "/api/admin/holdup/copies" and kind == "movie":
+                return self.send(200, tools.holdup_copies(tmdb))
+            if method == "POST" and path == "/api/admin/holdup/search":
+                return self.send(200, tools.holdup_search(kind, tmdb))
         if method == "POST" and path == "/api/admin/search/missing":
             return self.send(200, tools.search_missing(self.read_json()))
         if method == "POST" and path == "/api/admin/search/better":
