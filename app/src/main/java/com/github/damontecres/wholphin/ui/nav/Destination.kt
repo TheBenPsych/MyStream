@@ -150,6 +150,14 @@ sealed class Destination(
         val startIndex: Int = 0,
     ) : Destination(false)
 
+    /** Glowfin: everything one studio (movies) or network (shows) made that you can ask for */
+    @Serializable
+    data class RequestStudio(
+        val id: Int,
+        val name: String,
+        val network: Boolean,
+    ) : Destination(false)
+
     @Serializable
     data class DiscoverMoreResult(
         val type: DiscoverRequestType,

@@ -239,7 +239,13 @@ fun PlaybackPageContent(
         )
     }
     var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
-    LaunchedEffect(playbackSpeed) { player.setPlaybackSpeed(playbackSpeed) }
+    // Hold for 2x (Ben 2026-11-21, phones): press and hold the picture and it plays at double speed until you
+    // let go. Not while the sound goes to a soundbar untouched (its speed can't change).
+    var holdFast by remember { mutableStateOf(false) }
+    LaunchedEffect(playbackSpeed, holdFast) { player.setPlaybackSpeed(if (holdFast) 2f else playbackSpeed) }
+    val canHoldFast by androidx.compose.runtime.rememberUpdatedState(
+        playerBackend == PlayerBackend.MPV || state.currentPlayback?.audioDecoder != null,
+    )
 
     LaunchedEffect(state.currentPlayback?.subtitleDelay) {
         val subtitleDelay = state.currentPlayback?.subtitleDelay ?: Duration.ZERO
@@ -608,7 +614,29 @@ fun PlaybackPageContent(
                                         } else if (controllerViewState.controlsVisible) {
                                             controllerViewState.pulseControls()
                                         }
-                                        val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                        var finished = false
+                                        var up =
+                                            withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                                val lifted = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                                finished = true
+                                                lifted
+                                            }
+                                        if (!finished) {
+                                            // Still held: play at double speed until the finger lifts
+                                            val now = currentEvent.changes.firstOrNull { it.id == down.id }
+                                            val moved =
+                                                now == null ||
+                                                    (now.position - down.position).getDistance() > viewConfiguration.touchSlop * 2
+                                            if (!isDouble && !moved && canHoldFast && player.isPlaying) {
+                                                holdFast = true
+                                                val lifted = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                                holdFast = false
+                                                lifted?.consume()
+                                                lastUpTime = 0L
+                                                return@awaitEachGesture
+                                            }
+                                            up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                        }
                                         if (up != null) {
                                             if (isDouble) up.consume()
                                             lastUpTime = up.uptimeMillis
@@ -639,6 +667,22 @@ fun PlaybackPageContent(
                         playerSurfaceSize = it
                     },
             )
+            if (holdFast) {
+                androidx.tv.material3.Text(
+                    text = "2× speed",
+                    color = Color.White,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 24.dp)
+                            .background(
+                                Color(0xAA000000),
+                                androidx.compose.foundation.shape
+                                    .RoundedCornerShape(50),
+                            ).padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+            }
             if (presentationState.coverSurface) {
                 Box(
                     Modifier

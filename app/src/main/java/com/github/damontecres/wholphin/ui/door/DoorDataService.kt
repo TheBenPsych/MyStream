@@ -167,6 +167,55 @@ class DoorDataService
                 ),
             )
 
+        /**
+         * Watch history (Ben 2026-11-21): the movies and shows this person watched, newest first.
+         * A show counts once, at the last time one of its episodes was watched.
+         */
+        suspend fun history(
+            userId: UUID,
+            limit: Int = HISTORY_MAX,
+        ): List<BaseItem> {
+            val played =
+                safe {
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.EPISODE),
+                                recursive = true,
+                                isPlayed = true,
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                enableImages = false,
+                                limit = limit * 4,
+                            ),
+                        ).content.items
+                }
+            val order =
+                played
+                    .mapNotNull { if (it.type == BaseItemKind.EPISODE) it.seriesId else it.id }
+                    .distinct()
+                    .take(limit)
+            if (order.isEmpty()) return emptyList()
+            val found =
+                order
+                    .chunked(40)
+                    .flatMap { ids ->
+                        safe {
+                            api.itemsApi
+                                .getItems(
+                                    GetItemsRequest(
+                                        userId = userId,
+                                        ids = ids,
+                                        fields = SlimItemFields,
+                                        enableUserData = true,
+                                    ),
+                                ).content.items
+                        }
+                    }.associateBy { it.id }
+            return order.mapNotNull { id -> found[id]?.let { BaseItem(it) } }
+        }
+
         /** Newest of this kind in these libraries */
         suspend fun newest(
             userId: UUID,
@@ -818,6 +867,7 @@ class DoorDataService
             private const val EVERYTHING_LIMIT = 5000
             private const val TOP_MIN = 5
             private const val BECAUSE_TRIES = 4
+            private const val HISTORY_MAX = 120
             private const val BECAUSE_MIN = 5
             private const val TRENDING_PAGES = 3
 

@@ -705,6 +705,216 @@ def search_better(info):
 
 
 # ---------------------------------------------------------------------------
+# "What's the hold-up?" on a request page (Ben, 2026-11-21): why something that was asked for and
+# approved hasn't arrived yet, in plain words, straight from Radarr or Sonarr.
+# ---------------------------------------------------------------------------
+
+
+def _find_movie(tmdb):
+    tmdb = str(tmdb or "")
+    if not tmdb.isdigit():
+        raise ToolError(400, "That isn't a movie number.")
+    found = _arr("radarr", "GET", f"/api/v3/movie?tmdbId={tmdb}") or []
+    return found[0] if found else None
+
+
+def _nice_day(text):
+    """"2026-10-28T00:00:00Z" -> "October 28" (with the year when it isn't this year)"""
+    try:
+        day = time.strptime((text or "")[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+    words = time.strftime("%B", day) + " " + str(day.tm_mday)
+    return words if day.tm_year == time.gmtime().tm_year else f"{words}, {day.tm_year}"
+
+
+def _queue_words(app, rows):
+    """One hold-up answer from the downloads Radarr / Sonarr have going for this title, or None"""
+    if not rows:
+        return None
+    stuck = [d for d in rows if d["stuck"]]
+    if stuck:
+        d = stuck[0]
+        return {
+            "state": "stuck",
+            "line": "The download is stuck." if len(rows) == 1 else f"{len(stuck)} of {len(rows)} downloads are stuck.",
+            "detail": d["why"] or "It stopped moving.",
+            "replace": {"app": app, "id": d["id"]},
+            "search": False,
+        }
+    going = [d for d in rows if not d["paused"] and not d["queued"]]
+    if not going:
+        return {
+            "state": "waiting",
+            "line": "It's found, and waiting its turn to download.",
+            "detail": "Other downloads are ahead of it. Nothing is wrong.",
+            "search": False,
+        }
+    d = max(going, key=lambda x: x["pct"])
+    left = f", {d['left']} left" if d.get("left") else ""
+    many = "" if len(rows) == 1 else f" ({len(rows)} downloads going)"
+    return {
+        "state": "downloading",
+        "line": f"Downloading now: {d['pct']}% done{left}{many}.",
+        "detail": "Nothing is wrong. It shows up on Glowfin when it finishes.",
+        "search": False,
+    }
+
+
+def _movie_holdup(tmdb):
+    movie = _find_movie(tmdb)
+    if not movie:
+        return {
+            "state": "notsent",
+            "line": "Radarr doesn't have this movie yet.",
+            "detail": "The ask hasn't been handed over to the downloader. Glowfin tries again by itself every few hours.",
+            "search": False,
+        }
+    if movie.get("hasFile"):
+        return {
+            "state": "here",
+            "line": "It's downloaded.",
+            "detail": "It shows up on Glowfin after the next library scan, usually within a few minutes.",
+            "search": False,
+        }
+    queue = _arr("radarr", "GET", f"/api/v3/queue/details?movieId={movie['id']}&includeMovie=true") or []
+    words = _queue_words("radarr", [_download("radarr", r) for r in queue])
+    if words:
+        return words
+    if not movie.get("monitored", True):
+        return {
+            "state": "off",
+            "line": "Radarr has stopped looking for it.",
+            "detail": "It was switched off in Radarr (not monitored). Look again now turns nothing on; ask for it again instead.",
+            "search": False,
+        }
+    if not movie.get("isAvailable", True):
+        home = _nice_day(movie.get("digitalRelease") or movie.get("physicalRelease"))
+        cinema = _nice_day(movie.get("inCinemas"))
+        when = f"It comes out at home on {home}." if home else "No home release day is known yet."
+        return {
+            "state": "notout",
+            "line": "It isn't out at home yet.",
+            "detail": (f"In cinemas since {cinema}. " if cinema and movie.get("status") != "announced" else "")
+            + when
+            + " Radarr waits for a proper copy and grabs it by itself.",
+            "search": True,
+        }
+    history = _arr("radarr", "GET", f"/api/v3/history/movie?movieId={movie['id']}") or []
+    failed = sum(1 for h in history if (h.get("eventType") or "").lower() == "downloadfailed")
+    looked = _nice_day(movie.get("lastSearchTime"))
+    detail = "It's out, but Radarr hasn't found a copy that passes your quality rules."
+    if failed:
+        detail = f"{failed} download{'s' if failed != 1 else ''} failed and {'were' if failed != 1 else 'was'} thrown away. " + detail
+    if looked:
+        detail += f" It last looked on {looked}, and checks for new copies by itself all day."
+    return {"state": "nothing", "line": "No good copy has turned up yet.", "detail": detail, "search": True, "copies": True}
+
+
+def _show_holdup(tmdb):
+    series = _find_series({"tmdb": tmdb})
+    if not series:
+        return {
+            "state": "notsent",
+            "line": "Sonarr doesn't have this show yet.",
+            "detail": "The ask hasn't been handed over to the downloader. Glowfin tries again by itself every few hours.",
+            "search": False,
+        }
+    queue = _arr("sonarr", "GET", f"/api/v3/queue/details?seriesId={series['id']}&includeSeries=true&includeEpisode=true") or []
+    rows = _group_packs([_download("sonarr", r) for r in queue])
+    episodes = _arr("sonarr", "GET", f"/api/v3/episode?seriesId={series['id']}") or []
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    aired = [e for e in episodes if e.get("seasonNumber", 0) > 0 and e.get("monitored") and e.get("airDateUtc") and e["airDateUtc"] < now]
+    missing = [e for e in aired if not e.get("hasFile")]
+    have = len(aired) - len(missing)
+    count = f"{have} of {len(aired)} aired episodes are here."
+    words = _queue_words("sonarr", rows)
+    if words:
+        words["detail"] = count + " " + words["detail"]
+        return words
+    if not aired:
+        return {
+            "state": "notout",
+            "line": "Nothing you asked for has aired yet.",
+            "detail": "Sonarr grabs each episode by itself once it airs.",
+            "search": False,
+        }
+    if not missing:
+        return {
+            "state": "here",
+            "line": "Every aired episode is downloaded.",
+            "detail": "They show up on Glowfin after the next library scan, usually within a few minutes.",
+            "search": False,
+        }
+    return {
+        "state": "nothing",
+        "line": f"{len(missing)} aired episode{'s are' if len(missing) != 1 else ' is'} still missing.",
+        "detail": count + " Sonarr hasn't found copies that pass your quality rules, and keeps checking by itself all day.",
+        "search": True,
+    }
+
+
+def holdup(kind, tmdb):
+    app = "radarr" if kind == "movie" else "sonarr"
+    if not arr_ready(app):
+        raise ToolError(503, f"{'Radarr' if app == 'radarr' else 'Sonarr'} isn't connected to the helper yet.")
+    return _movie_holdup(tmdb) if kind == "movie" else _show_holdup(tmdb)
+
+
+def holdup_search(kind, tmdb):
+    """Look again now: asks Radarr / Sonarr to search for it this minute"""
+    if kind == "movie":
+        movie = _find_movie(tmdb)
+        if not movie:
+            raise ToolError(404, "Radarr doesn't have this movie yet.")
+        _arr("radarr", "POST", "/api/v3/command", {"name": "MoviesSearch", "movieIds": [movie["id"]]})
+        _forget()
+        return {"message": f"Radarr is looking for {movie['title']} right now. If it finds a good copy, the download starts by itself."}
+    return search_missing({"tmdb": tmdb})
+
+
+_PLAIN_REJECTS = (
+    ("cam", "filmed in a cinema"),
+    ("telesync", "filmed in a cinema"),
+    ("not wanted in profile", "a quality you don't allow"),
+    ("quality profile", "a quality you don't allow"),
+    ("custom format", "blocked by your quality rules"),
+    ("blocklist", "already tried and thrown away"),
+    ("seeder", "too few people sharing it"),
+    ("size", "the wrong size (too big or too small)"),
+    ("language", "the wrong language"),
+    ("unknown movie", "not clearly this movie"),
+    ("release date", "from before the movie was out"),
+)
+
+
+def holdup_copies(tmdb):
+    """What's out there right now for a movie: how many copies, and why none of them were taken. Slow (up to a minute)."""
+    movie = _find_movie(tmdb)
+    if not movie:
+        raise ToolError(404, "Radarr doesn't have this movie yet.")
+    found = _arr("radarr", "GET", f"/api/v3/release?movieId={movie['id']}", timeout=90) or []
+    if not found:
+        return {"line": "No copies are out there at all right now.", "detail": "That usually means it isn't out at home yet."}
+    good = [r for r in found if not r.get("rejected")]
+    if good:
+        return {
+            "line": f"Found {len(found)} cop{'ies' if len(found) != 1 else 'y'}, and {len(good)} look{'s' if len(good) == 1 else ''} good.",
+            "detail": "Press Look again now and Radarr takes the best one.",
+        }
+    reasons = {}
+    for r in found:
+        text = " ".join(r.get("rejections") or []).lower()
+        plain = next((words for key, words in _PLAIN_REJECTS if key in text), None) or "not good enough for your quality rules"
+        reasons[plain] = reasons.get(plain, 0) + 1
+    top = sorted(reasons.items(), key=lambda kv: -kv[1])[:3]
+    return {
+        "line": f"Found {len(found)} cop{'ies' if len(found) != 1 else 'y'}, but none are good enough yet.",
+        "detail": "Why: " + ", ".join(f"{n} {words}" for words, n in top) + ".",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Everything on the Server page in one answer (saved for 20 seconds)
 # ---------------------------------------------------------------------------
 

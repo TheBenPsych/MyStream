@@ -2401,6 +2401,19 @@ a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offs
 .ask-steps .ask-parts .poster{flex:none;width:112px}
 .ask-steps .ask-parts .newp.grey{background:#3A3F55;color:#fff}
 #askSetBox:empty{display:none}
+.facts .fact-link{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;color:#9EC0FF;text-decoration:none}
+.facts .fact-link:hover,.facts .fact-link:focus-visible{text-decoration:underline;color:#fff}
+.poster .cap small.rqpart{color:#35E0C8;white-space:normal}
+.rqsplit .grid .poster .cap small.rqpart{color:#35E0C8}
+.ask-hold{border-color:#6B5A1E}
+.ask-hold .hold-line{margin:0 0 4px;color:#ECEEFB;font-weight:600}
+.ask-hold p.dim + .hold-line{margin-top:12px}
+#askHoldBox:empty{display:none}
+.studio h2{margin:14px 0 2px;font-size:30px}
+.studio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:16px}
+.studio-grid .poster{width:auto}
+.studio-grid .poster .cap{display:block}
+@media (max-width:600px){.studio-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.studio h2{font-size:24px}}
 /* ---------- controller mode (js/pad.js): a game controller drives Glowfin like a TV remote ---------- */
 /* The highlight is bigger and brighter than the keyboard one, so it reads on a Steam Deck or from the sofa */
 html.pad-on .pad-focus { outline: 4px solid #fff !important; outline-offset: 4px; box-shadow: 0 0 0 9px rgba(63, 224, 232, .28); border-radius: 10px; position: relative; z-index: 2; }
@@ -2438,3 +2451,15 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .dlrow { gap: 10px; }
 .dlbar { height: 5px; border-radius: 3px; background: var(--pg4); margin-top: 8px; max-width: 420px; overflow: hidden; }
 .dlbar i { display: block; height: 100%; background: #3FE0E8; transition: width .4s; }
+/* Hold for 2x: a small tag at the top while the picture is being held */
+.hold2x { position: absolute; z-index: 6; top: 22px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.66); color: #fff; font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px; pointer-events: none; }
+.hold2x.hidden { display: none; }
+
+/* Poster hover buttons (mouse only): one small bar that sits on the bottom of the poster being pointed at */
+.hoverbar { position: fixed; z-index: 40; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(8,10,20,.82); box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+.hoverbar.hidden { display: none; }
+.hoverbar button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.hoverbar button:hover { background: #fff; color: #0a0d18; border-color: #fff; }
+.hoverbar button.on { background: rgba(255,255,255,.22); }
+.hoverbar button svg { width: 16px; height: 16px; }
+.hoverbar button[data-hb="play"] { background: #fff; color: #0a0d18; border-color: #fff; }

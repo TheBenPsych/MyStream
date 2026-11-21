@@ -388,8 +388,41 @@ class WholphinRenderersFactory(
             .build()
     }
 
-    @OptIn(ExperimentalApi::class)
+    /**
+     * Sound and lips don't match (see [LipSync]): when this TV or phone has a nudge saved, the video
+     * goes through [DelayedVideoRenderer]. With nothing saved the player is built exactly as before.
+     */
     override fun buildVideoRenderers(
+        context: Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        eventHandler: Handler,
+        eventListener: VideoRendererEventListener,
+        allowedVideoJoiningTimeMs: Long,
+        out: ArrayList<Renderer>,
+    ) {
+        val start = out.size
+        buildPlainVideoRenderers(
+            context,
+            extensionRendererMode,
+            mediaCodecSelector,
+            enableDecoderFallback,
+            eventHandler,
+            eventListener,
+            allowedVideoJoiningTimeMs,
+            out,
+        )
+        val nudgeMs = LipSync.savedMs(context)
+        LipSync.videoDelayUs = nudgeMs * 1000L
+        LipSync.live = nudgeMs != 0
+        if (nudgeMs != 0) {
+            for (i in start until out.size) out[i] = DelayedVideoRenderer(out[i])
+        }
+    }
+
+    @OptIn(ExperimentalApi::class)
+    private fun buildPlainVideoRenderers(
         context: Context,
         extensionRendererMode: Int,
         mediaCodecSelector: MediaCodecSelector,

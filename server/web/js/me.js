@@ -42,8 +42,41 @@ B.route(/^\/mine/, async (m, nav) => {
       <div class="tile"><div class="k">Things watched</div><div class="v" style="font-size:20px">${inRange.length}</div></div>
       <div class="tile"><div class="k">See your year</div><div class="v" style="font-size:20px">${new Date().getMonth() === 11 ? "Wrapped" : "In December"}</div></div>
     </div>
-    <p class="dim" style="font-size:14px">Time counts every TV, phone and browser where you watch Glowfin.</p></div>
+    <p class="dim" style="font-size:14px">Time counts every TV, phone and browser where you watch Glowfin.</p>
+    <p><a class="btn small" href="#/history">Watch history</a></p></div>
     <div class="rows">${B.row("Watched lately", latelyItems.map((x) => B.posterCard(byId[x.SeriesId] || x)))}${B.row("You liked", liked.map((x) => B.posterCard(x)))}</div>`;
+});
+
+// ---------- Watch history (2026-11-21): everything watched, newest first, with Remove (not for Kids) ----------
+B.route(/^\/history/, async (m, nav) => {
+  B.page().innerHTML = B.top("Watch history", null) + `<div class="wrap" id="wh">${B.spinner()}</div>`;
+  B.wireTop();
+  const u = B.uid();
+  const played = await B.get(`/Items?userId=${u}&IncludeItemTypes=Movie,Episode&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=300&Fields=SeriesName,SeriesId,ParentIndexNumber,IndexNumber,ProductionYear&EnableUserData=true`).then((r) => B.keep(r.Items || [])).catch(() => null);
+  if (!B.alive(nav)) return;
+  const box = $("#wh");
+  if (!played) { box.innerHTML = `<div class="note">Couldn't load your history. Check the connection and open this page again.</div>`; return; }
+  if (!played.length) { box.innerHTML = `<p class="dim">Nothing watched yet. Whatever you finish shows up here.</p>`; return; }
+  const kids = !!B.me.kids;
+  const line = (x) => {
+    const ep = x.Type === "Episode";
+    const title = ep ? x.SeriesName || x.Name : x.Name;
+    const sub = [ep ? `S${x.ParentIndexNumber || 0} E${x.IndexNumber || 0} · ${x.Name}` : x.ProductionYear, x.UserData && x.UserData.LastPlayedDate ? "Watched " + B.when(x.UserData.LastPlayedDate) : ""].filter(Boolean).join(" · ");
+    return `<div class="item" data-h="${esc(x.Id)}"><div class="rqthumb" style="background-image:url('${B.poster(x, 200)}')"></div>
+      <div class="grow"><div class="t">${esc(title)}</div><div class="s">${esc(sub)}</div></div>
+      <div class="acts"><a class="btn small" href="#/${ep ? `show/${esc(x.SeriesId)}?ep=${esc(x.Id)}` : `movie/${esc(x.Id)}`}">Open</a>${kids ? "" : `<button class="btn small" data-hx="${esc(x.Id)}">Remove</button>`}</div></div>`;
+  };
+  box.innerHTML = `<p class="dim" style="margin:6px 0 14px">${kids ? "Everything you've watched, newest first." : "Everything you've watched, newest first. Remove takes one off and marks it as not watched."}</p><div class="list">${played.map(line).join("")}</div>`;
+  box.onclick = (e) => {
+    const b = e.target.closest("[data-hx]");
+    if (!b) return;
+    B.busy(b, async () => {
+      const id = b.dataset.hx;
+      await B.jf("DELETE", `/UserPlayedItems/${id}?userId=${u}`).catch(() => B.jf("DELETE", `/Users/${u}/PlayedItems/${id}`));
+      const row = b.closest(".item"); if (row) row.remove();
+      return "Taken off your history.";
+    });
+  };
 });
 
 // ---------- Settings ----------

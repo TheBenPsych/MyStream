@@ -260,6 +260,14 @@ fun MyBenflixPage(
                         guest = GuestMode.isActive,
                         onClickParents = { showParentPin = true },
                     )
+                    if (!GuestMode.isActive) {
+                        Button(
+                            onClick = { viewModel.navigationManager.navigateTo(WatchHistoryPage) },
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                        ) {
+                            Text("Watch history")
+                        }
+                    }
                     if (!GuestMode.isActive && !KidsMode.isActive) {
                         WeekWatchingCard()
                         MonthStatsCard()
@@ -343,6 +351,16 @@ fun MyBenflixPage(
                     Text("Your year so far")
                 }
             }
+            // Watch history (Ben 2026-11-21): everything watched, newest first. Hold a poster to mark it not watched.
+            if (!GuestMode.isActive) {
+                Button(
+                    onClick = { viewModel.navigationManager.navigateTo(WatchHistoryPage) },
+                    modifier = Modifier.padding(start = 8.dp),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                ) {
+                    Text("Watch history")
+                }
+            }
             // Benflix: this month so far
             if (!GuestMode.isActive && !KidsMode.isActive) {
                 // Benflix redesign (My watching): this week's big number and door bar, then this month
@@ -385,5 +403,13 @@ fun MyBenflixPage(
         }
     }
 }
+
+/** Watch history opens in the shared title grid, newest first */
+private val WatchHistoryPage =
+    Destination.DoorRowGrid(
+        com.github.damontecres.wholphin.ui.theme.BenflixDoor.MOVIES.name,
+        com.github.damontecres.wholphin.ui.door.DoorViewModel.HISTORY,
+        "Watch history",
+    )
 
 private const val ROW_MAX = 20

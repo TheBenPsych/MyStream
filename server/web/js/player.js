@@ -341,7 +341,20 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     uiTimer = setTimeout(() => { if (!v.paused && !$("#pEps:not(.hidden)") && !$(".player .panel")) pl.classList.remove("ui"); }, typeof ms === "number" ? ms : 5000);
   };
   pl.addEventListener("mousemove", poke);
-  pl.addEventListener("click", (e) => { if (e.target === v || e.target.classList.contains("center-msg")) { v.paused ? v.play() : v.pause(); } poke(); });
+  // Hold for 2x (2026-11-21): hold the mouse (or a finger) on the picture, or hold Space, and it plays at double
+  // speed until you let go. A short click or tap still pauses.
+  let holdTimer = null, holding = false, holdWas = 1, holdSkipClick = false, spaceDown = false;
+  const holdTag = document.createElement("div");
+  holdTag.className = "hold2x hidden"; holdTag.textContent = "2× speed";
+  pl.appendChild(holdTag);
+  const holdStart = () => { holdTimer = null; if (holding || v.paused) return; holding = true; holdWas = v.playbackRate || 1; v.playbackRate = 2; holdTag.classList.remove("hidden"); };
+  const holdEnd = () => { clearTimeout(holdTimer); holdTimer = null; if (!holding) return false; holding = false; v.playbackRate = holdWas; holdTag.classList.add("hidden"); return true; };
+  v.addEventListener("pointerdown", (e) => { if (e.button === 0 && !v.paused) { clearTimeout(holdTimer); holdTimer = setTimeout(holdStart, 400); } });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((n) => v.addEventListener(n, () => { if (holdEnd()) { holdSkipClick = true; setTimeout(() => { holdSkipClick = false; }, 50); } }));
+  v.addEventListener("contextmenu", (e) => { if (holding || holdTimer) e.preventDefault(); });
+  const keysUp = (e) => { if (e.key !== " " || !spaceDown) return; spaceDown = false; if (!holdEnd()) { v.paused ? v.play() : v.pause(); } };
+  document.addEventListener("keyup", keysUp);
+  pl.addEventListener("click", (e) => { if (holdSkipClick) { holdSkipClick = false; return; } if (e.target === v || e.target.classList.contains("center-msg")) { v.paused ? v.play() : v.pause(); } poke(); });
   v.addEventListener("dblclick", () => full());
   const full = () => (document.fullscreenElement ? document.exitFullscreen() : pl.requestFullscreen().catch(() => {}));
   $("#pFull").onclick = full;
@@ -683,7 +696,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const keys = (e) => {
     if (e.target.tagName === "INPUT" || $(".shade")) return;
     const k = e.key;
-    if (k === " " || k === "k") { e.preventDefault(); v.paused ? v.play() : v.pause(); return; } // play/pause set how long the controls stay
+    // Space pauses when let go quickly, and plays at 2x for as long as it's held
+    if (k === " ") { e.preventDefault(); if (!e.repeat && !spaceDown) { spaceDown = true; clearTimeout(holdTimer); holdTimer = setTimeout(holdStart, 400); } return; }
+    if (k === "k") { e.preventDefault(); v.paused ? v.play() : v.pause(); return; } // play/pause set how long the controls stay
     else if (k === "ArrowLeft") { v.currentTime = Math.max(0, v.currentTime - 10); }
     else if (k === "ArrowRight") { v.currentTime = Math.min(total(), v.currentTime + 10); }
     else if (k === "ArrowUp") { e.preventDefault(); v.volume = Math.min(1, v.volume + 0.1); B.setWebSetting("volume", v.volume); }
@@ -719,7 +734,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
   };
   const KEYS = [
-    ["Space or K", "Play / pause"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
+    ["Space or K", "Play / pause"], ["Hold Space or the mouse", "2× speed while held"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
     ["F", "Full screen"], ["M", "Sound on / off"], ["C or S", "Subtitles on / off"], ["G / H", "Subtitles earlier / later"], ["Enter", "Skip intro or credits"],
     ["N / P", "Next / previous episode"], ["E", "Episodes"], ["0 to 9", "Jump to 0% to 90%"], ["Esc", "Leave the player"], ["?", "Show this list"],
   ];
@@ -767,7 +782,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       body: JSON.stringify({ ItemId: it.Id, MediaSourceId: source && source.Id, PlaySessionId: playSession, PositionTicks: Math.round(v.currentTime * B.TICKS) }) }).catch(() => {});
   };
   window.addEventListener("pagehide", unload);
-  const quiet = () => { document.removeEventListener("keydown", keys); clearTimeout(uiTimer); clearTimeout(pausedTimer); };
+  const quiet = () => { document.removeEventListener("keydown", keys); document.removeEventListener("keyup", keysUp); clearTimeout(holdTimer); clearTimeout(uiTimer); clearTimeout(pausedTimer); };
   const onLeave = () => {
     quiet();
     if (popped()) return keepPlaying();
@@ -791,6 +806,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         B.every(10000, progress);
         B.onLeave(onLeave);
         document.addEventListener("keydown", keys);
+        document.addEventListener("keyup", keysUp);
         poke();
       },
       pause: () => v.pause(),

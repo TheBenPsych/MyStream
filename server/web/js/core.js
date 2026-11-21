@@ -27,6 +27,7 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 5 5 9-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9L12 3Z"/>',
   thumb: '<path d="M7 10v11M7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   more: '<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
   server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
@@ -1219,4 +1220,78 @@ document.addEventListener("keydown", (e) => {
   };
   // Phones can't point at cards, so the top stays on the first one and a tap on it opens it
   B.phoneTop = () => matchMedia("(max-width: 760px)").matches;
+})();
+
+// ---------- Poster hover buttons (2026-11-21): with a mouse, pointing at a poster shows Play, My List, Like and Watched ----------
+(() => {
+  if (!window.matchMedia || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const bar = document.createElement("div");
+  bar.className = "hoverbar hidden";
+  document.body.appendChild(bar);
+  let cur = null, hideT = null;
+  const hide = () => { clearTimeout(hideT); bar.classList.add("hidden"); cur = null; };
+  const later = () => { clearTimeout(hideT); hideT = setTimeout(hide, 220); };
+  const draw = () => {
+    const ud = cur.it.UserData || {};
+    const b = (act, icon, title, on) => `<button class="${on ? "on" : ""}" data-hb="${act}" title="${title}">${I(icon)}</button>`;
+    bar.innerHTML = b("play", "play", "Play", false) + b("list", ud.IsFavorite ? "check" : "plus", ud.IsFavorite ? "On My List" : "Add to My List", !!ud.IsFavorite)
+      + (B.me.kids ? "" : b("like", "thumb", ud.Likes === true ? "You like it" : "I like it", ud.Likes === true))
+      + b("seen", "eye", ud.Played ? "Watched. Press to undo" : "Mark as watched", !!ud.Played);
+  };
+  const place = () => {
+    const im = cur.card.querySelector(".im"); if (!im) return hide();
+    const r = im.getBoundingClientRect();
+    if (r.width < 110) return hide(); // too small a poster to fit the buttons
+    bar.classList.remove("hidden");
+    bar.style.left = Math.round(r.left + r.width / 2 - bar.offsetWidth / 2) + "px";
+    bar.style.top = Math.round(r.bottom - bar.offsetHeight - 8) + "px";
+  };
+  document.addEventListener("mouseover", (e) => {
+    if (bar.contains(e.target)) return clearTimeout(hideT);
+    const card = e.target.closest ? e.target.closest("a.poster[data-id]") : null;
+    if (!card) return cur ? later() : undefined;
+    const it = B.items[card.dataset.id];
+    if (!it || !B.me || !["Movie", "Series", "Episode"].includes(it.Type)) return hide();
+    clearTimeout(hideT);
+    if (cur && cur.card === card) return;
+    cur = { card, it };
+    draw(); place();
+  });
+  window.addEventListener("scroll", hide, true);
+  window.addEventListener("hashchange", hide);
+  bar.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-hb]"); if (!b || !cur) return;
+    e.preventDefault();
+    const { it, card } = cur, act = b.dataset.hb, u = B.uid();
+    if (act === "play") {
+      hide();
+      if (it.Type !== "Series") return B.go(`#/play/${it.Id}?resume=1`);
+      return B.get(`/Shows/NextUp?userId=${u}&seriesId=${it.Id}&Limit=1&enableResumable=true`).then((r) => { const ep = (r.Items || [])[0]; B.go(ep ? `#/play/${ep.Id}?resume=1` : B.hrefOf(it)); }).catch(() => B.go(B.hrefOf(it)));
+    }
+    B.busy(b, async () => {
+      const ud = it.UserData || {};
+      let said = "";
+      if (act === "list") {
+        const on = !ud.IsFavorite;
+        await B.jf(on ? "POST" : "DELETE", `/UserFavoriteItems/${it.Id}?userId=${u}`);
+        it.UserData = Object.assign({}, ud, { IsFavorite: on });
+        said = on ? "Added to My List." : "Taken off My List.";
+      } else if (act === "like") {
+        const on = ud.Likes !== true;
+        await B.jf(on ? "POST" : "DELETE", `/UserItems/${it.Id}/Rating?userId=${u}${on ? "&likes=true" : ""}`);
+        it.UserData = Object.assign({}, ud, { Likes: on ? true : null });
+        said = on ? "Liked." : "Like taken off.";
+      } else if (act === "seen") {
+        const on = !ud.Played;
+        await B.jf(on ? "POST" : "DELETE", `/UserPlayedItems/${it.Id}?userId=${u}`);
+        it.UserData = Object.assign({}, ud, { Played: on });
+        const im = card.querySelector(".im"), tick = card.querySelector(".tick");
+        if (on && !tick && im) im.insertAdjacentHTML("beforeend", `<span class="tick">${I("check")}</span>`);
+        if (!on && tick) tick.remove();
+        said = on ? "Marked as watched." : "Marked as not watched.";
+      }
+      if (cur && cur.it === it) draw();
+      return said;
+    });
+  });
 })();
