@@ -337,6 +337,54 @@ def focus_sweep(name, max_moves=60):
     log(f"focus sweep '{name}': {len(clickable)} buttons, {len(missed)} never focused")
 
 
+def tv_menu_open():
+    """TV: Left until the side menu is open (it is the only screen showing Search and Requests as words)"""
+    for _ in range(10):
+        root = dump()
+        if root is not None and find(root, r"^Search$") is not None and find(root, r"^Requests$") is not None:
+            time.sleep(1)
+            return True
+        key("DPAD_LEFT", wait=0.5)
+    return False
+
+
+def tv_menu_pick(rx):
+    """TV, side menu open: Up/Down until the item whose name matches has the focus, then OK"""
+    for _ in range(24):
+        root = dump()
+        if root is None:
+            time.sleep(0.5)
+            continue
+        f = focused_node(root)
+        target = find(root, rx)
+        if f is not None and target is not None:
+            a, b, c, e = bounds(f)
+            # the focused thing is one menu row (not the whole menu) and the name sits inside it
+            if (e - b) < 260 and contains(f, target):
+                key("DPAD_CENTER", wait=3)
+                return True
+            key("DPAD_UP" if center(target)[1] < (b + e) // 2 else "DPAD_DOWN", wait=0.4)
+        else:
+            key("DPAD_DOWN", wait=0.4)
+    return False
+
+
+def tv_open_profile():
+    """TV: your picture is the last thing in the side menu and opens the Me page (where Settings lives)"""
+    if not tv_menu_open():
+        return False
+    last = None
+    for _ in range(16):
+        key("DPAD_DOWN", wait=0.35)
+        f = focused_node(dump())
+        now = f.get("bounds") if f is not None else None
+        if now is not None and now == last:
+            break
+        last = now
+    key("DPAD_CENTER", wait=2.5)
+    return True
+
+
 def open_place(name):
     """Glowfin menu: open a place (Home, Movies, Live TV...) from wherever the robot is.
     TV: Left opens the side menu, which then shows the names. Phone: the bottom bar, or More.
@@ -348,8 +396,12 @@ def open_place(name):
                 root = dump()
                 # the open menu is the only screen that shows Search and Requests as words together
                 if root is not None and find(root, r"^Search$") is not None and find(root, r"^Requests$") is not None:
-                    # the menu slides open: wait for it to settle, then look again (a tap mid-slide landed one item off)
+                    # the menu slides open: wait for it to settle
                     time.sleep(1)
+                    # Walk to the name with the remote and press OK, like a person. (Tapping the name used to land
+                    # two rows off after the redesign, so "Movies" stayed on Home and "Music" opened Anime.)
+                    if tv_menu_pick(rx):
+                        return True
                     n = find(dump(), rx)
                     if n is not None:
                         tap(n)

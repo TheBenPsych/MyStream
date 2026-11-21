@@ -219,7 +219,13 @@ async function trip(browser, vp, size, isPhone) {
 
   // 4. Profile menu -> Settings -> Back
   await page.goto(BASE + "#/home"); await settle(page);
-  const me = page.locator("#meBtn, .top .me").first();
+  // The profile picture: top bar on old layouts, the bottom of the side rail since the redesign.
+  // On a phone it sits behind More.
+  let me = page.locator('#meBtn:visible, .top .me:visible, [data-k="me"]:visible').first();
+  if (!(await me.count()) && isPhone && (await clickText(page, /^\s*More\s*$/i))) {
+    await page.waitForTimeout(600);
+    me = page.locator('[data-k="me"]:visible, .sheet a[href="#/me"]:visible').first();
+  }
   if (await me.count()) {
     await me.click().catch(() => {}); await page.waitForTimeout(800);
     await step(page, vp, "profile-menu", isPhone);
