@@ -21,7 +21,10 @@ B.deviceProfile = (maxBitrate) => {
       { Container: "aac", Type: "Audio", AudioCodec: "aac", Context: "Streaming", Protocol: "http", MaxAudioChannels: "2" },
     ],
     ContainerProfiles: [],
-    CodecProfiles: [{ Type: "Video", Codec: "h264", Conditions: [{ Condition: "LessThanEqual", Property: "VideoLevel", Value: "52", IsRequired: false }, { Condition: "LessThanEqual", Property: "VideoBitDepth", Value: "8", IsRequired: false }] }],
+    // A browser can't switch sound tracks inside a file it plays as it is: it always plays the file's first one.
+    // This line tells Jellyfin so, and Jellyfin then sends any other sound track as a stream with that track in it.
+    CodecProfiles: [{ Type: "VideoAudio", Conditions: [{ Condition: "Equals", Property: "IsSecondaryAudio", Value: "false", IsRequired: false }] },
+      { Type: "Video", Codec: "h264", Conditions: [{ Condition: "LessThanEqual", Property: "VideoLevel", Value: "52", IsRequired: false }, { Condition: "LessThanEqual", Property: "VideoBitDepth", Value: "8", IsRequired: false }] }],
     SubtitleProfiles: ["vtt", "srt", "subrip", "ass", "ssa"].map((f) => ({ Format: f, Method: "External" })),
   };
 };
@@ -143,11 +146,14 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   }, extra || {})).catch(() => {});
 
   // Ask Jellyfin how to play it, then start
-  const load = async (atSeconds) => {
+  const load = async (atSeconds, noDirect) => {
     msg("Starting…");
     if (hls) { hls.destroy(); hls = null; }
     $$("track", v).forEach((t) => t.remove());
-    const forceStream = audioIndex != null && source && audioIndex !== source.DefaultAudioStreamIndex;
+    // The first sound track in the file is the only one a browser plays when it plays the file as it is
+    const firstSound = (streams) => (streams || []).find((s) => s.Type === "Audio" && !s.IsExternal);
+    const otherSound = (streams) => { const f = firstSound(streams); return audioIndex != null && !!f && f.Index !== audioIndex; };
+    const forceStream = !!noDirect || (source && (source.DefaultAudioStreamIndex === -99 || otherSound(source.MediaStreams)));
     info = await B.jf("POST", `/Items/${it.Id}/PlaybackInfo?userId=${u}`, {
       DeviceProfile: B.deviceProfile(QUALITY[settings.quality || "auto"] || QUALITY.auto),
       StartTimeTicks: Math.round((atSeconds || 0) * B.TICKS), AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex,
@@ -159,6 +165,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (!source) throw new Error("Jellyfin couldn't find a way to play this.");
     playSession = info.PlaySessionId;
     if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
+    // Picked sound isn't the file's first one, but Jellyfin offered the plain file (which would play the
+    // first one while the list shows the picked one): ask again for a stream with the picked sound in it
+    if (!forceStream && otherSound(source.MediaStreams) && source.SupportsDirectPlay && !source.TranscodingUrl) return load(atSeconds, true);
     if (subIndex == null) {
       subIndex = B.autoSub(source.MediaStreams, source.DefaultSubtitleStreamIndex ?? -1, audioIndex);
       // Japanese voices: the full English subtitles may be the track labelled "Japanese" (looks inside once)
@@ -530,7 +539,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const old = $(".player .panel");
     if (old) { old.remove(); if (old.dataset.kind === kind) return; }
     const streams = (source && source.MediaStreams) || [];
-    const audio = streams.filter((s) => s.Type === "Audio"), subs = streams.filter((s) => s.Type === "Subtitle");
+    const audio = streams.filter((s) => s.Type === "Audio"), subs = B.menuSubs(streams, subIndex);
     const subOn = subIndex !== -1, cur = subs.find((x) => x.Index === subIndex) || {};
     const canMove = subOn && cur.IsTextSubtitleStream !== false;
     const p = document.createElement("div");
@@ -700,7 +709,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   // Benflix "Keyboard shortcuts": S turns subtitles on and off (back to the last ones you had on)
   let lastSub = null;
   const toggleSubs = () => {
-    const subs = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle");
+    const subs = B.menuSubs((source && source.MediaStreams) || [], lastSub); // not the signs and songs ones
     if (!subs.length) return B.toast("No subtitles for this one.");
     if (subIndex !== -1) { lastSub = subIndex; subIndex = -1; showSubs(); return B.toast("Subtitles off"); }
     const pick = subs.find((x) => x.Index === lastSub) || subs.find((x) => /^(en|eng)$/i.test(x.Language || "")) || subs[0];

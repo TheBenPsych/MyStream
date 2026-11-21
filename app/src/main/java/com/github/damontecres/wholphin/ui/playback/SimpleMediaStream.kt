@@ -16,6 +16,8 @@ data class SimpleMediaStream(
     val displayTitle: String,
     /** The file format, like "subrip", "pgssub" or "ass" (Benflix: styled ASS/SSA subtitles are never moved) */
     val codec: String? = null,
+    /** Benflix: a "Signs & songs" / forced subtitle track, left out of the subtitle list unless it is playing */
+    val hiddenSigns: Boolean = false,
 ) {
     companion object {
         fun from(
@@ -32,6 +34,7 @@ data class SimpleMediaStream(
                         ?: mediaStream.title?.takeIf { it.isNotNullOrBlank() },
                 displayTitle = mediaStreamDisplayTitle(resources, mediaStream, includeFlags),
                 codec = mediaStream.codec?.lowercase(),
+                hiddenSigns = allStreams?.let { BenflixSubtitleFilter.isHiddenSigns(mediaStream, it) } ?: false,
             )
     }
 }

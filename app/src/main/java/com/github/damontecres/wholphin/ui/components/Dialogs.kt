@@ -661,7 +661,7 @@ fun chooseStream(
     val currentIndex = streamChoice?.stream?.index
     val filteredStreams =
         BenflixSubtitleFilter
-            .visible(streams, keepIndex = currentIndex)
+            .visible(streams, keepIndex = currentIndex, hideSigns = true)
             .filter { it.type == type }
     return DialogParams(
         fromLongClick = false,

@@ -117,6 +117,23 @@ object TrackSelectionUtils {
         return TrackSelectionResult(paramsBuilder.build(), audioSelected, subtitleSelected)
     }
 
+    /**
+     * The player's group for the sound track the server calls [audioIndex], or null when it
+     * can't be told (not loaded yet, or the player doesn't list it)
+     */
+    @OptIn(UnstableApi::class)
+    fun findAudioGroup(
+        tracks: Tracks,
+        audioIndex: Int,
+        source: MediaSourceInfo,
+    ): Tracks.Group? {
+        val playerIndex = getPlayerIndex(audioIndex, source, MediaStreamType.AUDIO) ?: return null
+        return tracks.groups
+            .filter { group -> group.type == C.TRACK_TYPE_AUDIO && group.length >= 1 }
+            .sortedById()
+            .getOrNull(playerIndex)
+    }
+
     private fun getPlayerIndex(
         serverIndex: Int,
         source: MediaSourceInfo,
