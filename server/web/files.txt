@@ -16,6 +16,7 @@ icons/fin-192.png
 icons/fin-512.png
 index.html
 cinema.html
+lounge.html
 js/ask.js
 js/books.js
 js/core.js
@@ -31,6 +32,7 @@ js/bpuzzles.js
 js/livetv.js
 js/lobby.js
 js/cinema.js
+js/lounge.js
 js/me.js
 js/media.js
 js/music.js
