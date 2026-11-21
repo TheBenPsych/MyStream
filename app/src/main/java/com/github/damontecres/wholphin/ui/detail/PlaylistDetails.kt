@@ -258,7 +258,7 @@ class PlaylistViewModel
                         itemId,
                         this@PlaylistViewModel.itemId,
                     )
-                    showToast(context, "Error: ${ex.localizedMessage}")
+                    showToast(context, "Couldn't change the playlist. Try again.")
                 }
             }
         }

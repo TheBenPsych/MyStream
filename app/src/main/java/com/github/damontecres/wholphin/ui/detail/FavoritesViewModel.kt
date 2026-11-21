@@ -228,7 +228,7 @@ class FavoritesViewModel
                             } else {
                                 // This shouldn't happen
                                 it.copy(
-                                    loadingState = FavoritesLoadingState.Error("An unknown error occurred"),
+                                    loadingState = FavoritesLoadingState.Error("My List didn't load. Go back and try again."),
                                 )
                             }
                         }
@@ -455,7 +455,7 @@ class FavoritesViewModel
                 pager?.refreshItem(position, itemId)
             } catch (ex: Exception) {
                 Timber.e(ex, "Error refreshing after mutate %s", itemId)
-                showToast(context, "Error refreshing after item mutate")
+                showToast(context, "Saved, but this page didn't refresh. Go back and open it again.")
             }
         }
 
@@ -482,7 +482,7 @@ class FavoritesViewModel
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Error refreshing after deleted item %s", deletedItem.id)
-                showToast(context, "Error refreshing after item deleted")
+                showToast(context, "Removed, but this page didn't refresh. Go back and open it again.")
             }
         }
 
@@ -726,7 +726,7 @@ class FavoritesViewModel
                         throw ex
                     } catch (ex: Exception) {
                         Timber.e(ex, "Error getting random")
-                        showToast(context, "Error: ${ex.localizedMessage}}")
+                        showToast(context, "Couldn't pick one at random. Try again.")
                     }
                 }
             }

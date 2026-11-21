@@ -33,7 +33,8 @@ class ExceptionHandler(
         if (autoToast) {
             // Benflix: post the message to the main thread instead of waiting for it. Waiting
             // (runBlocking) could freeze the app if this ran on the main thread itself.
-            val text = "Error: ${exception.message}"
+            // Plain words on screen (Ben 2026-11-21); the details are in the log above, which crash reports carry
+            val text = "That didn't work. Try again in a minute."
             Handler(Looper.getMainLooper()).post {
                 Toast.makeText(WholphinApplication.instance, text, Toast.LENGTH_LONG).show()
             }

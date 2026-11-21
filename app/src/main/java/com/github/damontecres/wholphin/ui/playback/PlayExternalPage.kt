@@ -366,7 +366,7 @@ class PlayExternalViewModel
                             result.resultCode,
                             result.data?.action,
                         )
-                        showToast(context, "Unknown result from external player")
+                        showToast(context, "The other player closed without saying where you stopped.")
                     }
                     navigationManager.goBack()
                     state.update { PlayExternalState() }

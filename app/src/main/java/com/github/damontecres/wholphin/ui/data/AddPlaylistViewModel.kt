@@ -60,7 +60,7 @@ class AddPlaylistViewModel
                     showToast(context, context.getString(R.string.success), Toast.LENGTH_SHORT)
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error adding %s to playlist %s", itemId, playlistId)
-                    showToast(context, "Error: ${ex.localizedMessage}", Toast.LENGTH_SHORT)
+                    showToast(context, "Couldn't add it to the playlist. Try again.", Toast.LENGTH_SHORT)
                 }
             }
         }
@@ -72,7 +72,7 @@ class AddPlaylistViewModel
             viewModelScope.launchIO(ExceptionHandler(autoToast = true)) {
                 val playlistId = playlistCreator.createServerPlaylist(playlistName, listOf(itemId))
                 if (playlistId == null) {
-                    showToast(context, "Error creating playlist", Toast.LENGTH_LONG)
+                    showToast(context, "Couldn't make the playlist. Try again.", Toast.LENGTH_LONG)
                 } else {
                     showToast(context, context.getString(R.string.success), Toast.LENGTH_SHORT)
                 }

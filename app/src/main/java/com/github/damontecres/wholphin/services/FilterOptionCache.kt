@@ -85,7 +85,7 @@ class FilterOptionCache
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Error fetching options for %s", filterOption)
-                showToast(context, "Error occurred: ${ex.localizedMessage}")
+                showToast(context, "Couldn't load the filters. Try again.")
                 emptyList()
             }
         }

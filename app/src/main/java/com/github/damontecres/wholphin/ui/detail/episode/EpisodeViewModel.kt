@@ -92,7 +92,7 @@ class EpisodeViewModel
                     throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Error getting episode %s", itemId)
-                    showToast(context, "Error updating episode")
+                    showToast(context, "Couldn't save that. Try again.")
                 }
             }
         }

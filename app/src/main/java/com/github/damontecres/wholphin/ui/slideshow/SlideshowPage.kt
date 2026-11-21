@@ -467,7 +467,7 @@ fun SlideshowPage(
                                         modifier =
                                             Modifier
                                                 .align(Alignment.Center),
-                                        text = "Error loading image",
+                                        text = "This picture didn't load.",
                                         color = MaterialTheme.colorScheme.onBackground,
                                     )
                                 },

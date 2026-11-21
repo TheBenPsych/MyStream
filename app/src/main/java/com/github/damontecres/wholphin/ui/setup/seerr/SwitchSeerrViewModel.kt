@@ -71,7 +71,7 @@ class SwitchSeerrViewModel
                     try {
                         createUrls(url)
                     } catch (ex: IllegalArgumentException) {
-                        showToast(context, "Invalid URL")
+                        showToast(context, "That address doesn't look right. It should start with http://")
                         _state.update {
                             it.copy(
                                 serverConnectionStatus =
@@ -99,8 +99,8 @@ class SwitchSeerrViewModel
                     } catch (ex: ClientException) {
                         Timber.w(ex, "ClientException logging in %s", url)
                         if (ex.statusCode == 401 || ex.statusCode == 403) {
-                            showToast(context, "Invalid credentials")
-                            results[url] = LoadingState.Error("Invalid credentials", ex)
+                            showToast(context, "Seerr didn't accept that name and password.")
+                            results[url] = LoadingState.Error("Seerr didn't accept that name and password.", ex)
                         } else {
                             results[url] = LoadingState.Error("Could not connect with URL")
                         }

@@ -130,7 +130,7 @@ class SwitchServerViewModel
                 if (result is ServerConnectionStatus.Success) {
                     showToast(context, context.getString(R.string.success), Toast.LENGTH_SHORT)
                 } else if (result is ServerConnectionStatus.Error) {
-                    showToast(context, result.message ?: "Error", Toast.LENGTH_SHORT)
+                    showToast(context, "That didn't work. Check the details and try again.", Toast.LENGTH_SHORT)
                 }
             }
         }
@@ -181,7 +181,7 @@ class SwitchServerViewModel
                     serverRepository.addAndChangeServer(updatedServer)
                     navigationManager.navigateTo(SetupDestination.UserList(updatedServer))
                 } else if (result is ServerConnectionStatus.Error) {
-                    showToast(context, "Error connecting: ${result.message}")
+                    showToast(context, "Couldn't reach Tower at that address. Check it and try again.")
                 }
             }
         }
@@ -244,14 +244,15 @@ class SwitchServerViewModel
                                     }
                                 "${it.address} - $issues"
                             }
-                        val message = "Error, tried addresses:\n$errors"
+                        Timber.w("Couldn't add the server, tried addresses:\n%s", errors)
+                        val message = "Couldn't find Tower. Check this device is on your Wi-Fi."
                         _state.update { it.copy(addServerState = LoadingState.Error(message)) }
                         if (showToast) showToast(context, message)
                     }
                 } catch (ex: Exception) {
                     Timber.w(ex, "Error creating API for $inputUrl")
                     _state.update { it.copy(addServerState = LoadingState.Error(exception = ex)) }
-                    if (showToast) showToast(context, "Error: ${ex.localizedMessage}")
+                    if (showToast) showToast(context, "Couldn't find Tower. Check this device is on your Wi-Fi.")
                 }
             }
         }

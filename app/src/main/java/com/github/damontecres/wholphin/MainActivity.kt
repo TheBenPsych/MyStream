@@ -760,7 +760,7 @@ class MainActivityViewModel
                         // This should never happen, but just reset app state if it does
                         setupNavigationManager.navigateTo(SetupDestination.ServerList)
                         Timber.e("Error parsing intent, no user is active")
-                        showToast(context, "An error occurred parsing the intent")
+                        showToast(context, "Glowfin couldn't open that link.")
                     }
                     return true
                 }
