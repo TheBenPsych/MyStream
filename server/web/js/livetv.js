@@ -78,7 +78,7 @@ const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()
 B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   // Kids don't get live channels, like the TV and phone app: live programmes have no age ratings
   if (B.me.kids) return B.go("#/home");
-  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   let list, prefs;
   try { [list, prefs] = await Promise.all([B.channels(), chPrefs.read()]); }

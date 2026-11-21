@@ -242,7 +242,7 @@ B.route(/^\/requests/, async (m, nav) => {
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
       <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin && tab !== "yours" ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
 </div></div>
-    <div class="rows" id="rows">${B.spinner()}</div>`;
+    <div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   B.reqForFill(B.page());
   if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
@@ -257,7 +257,7 @@ B.route(/^\/requests/, async (m, nav) => {
   }
   const search = async (text) => {
     if (!text.trim()) return drawRows();
-    $("#rows").innerHTML = B.spinner();
+    $("#rows").innerHTML = B.spinner("rows");
     const [r] = await Promise.all([seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] })), B.libTmdb().catch(() => null)]);
     if (!B.alive(nav)) return;
     const res = (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !onBenflix(x));
@@ -323,7 +323,7 @@ B.route(/^\/requests/, async (m, nav) => {
   };
   const drawRows = async () => {
     if (tab === "anime") { animeUi = B.animeRequests(nav, () => lists, openList); return; }
-    $("#rows").innerHTML = `<div class="wrap rqline" id="rqline"> </div><div id="rqrows">${B.spinner()}</div>`;
+    $("#rows").innerHTML = `<div class="wrap rqline" id="rqline"> </div><div id="rqrows">${B.spinner("rows")}</div>`;
     const box = $("#rqrows");
     box.onclick = (e) => {
       const o = e.target.closest("[data-rqowned]");
@@ -343,7 +343,7 @@ B.route(/^\/requests/, async (m, nav) => {
   };
   const loadWalls = async () => {
     const wall = $("#rqrows");
-    if (wall && tab !== "anime") wall.innerHTML = B.spinner();
+    if (wall && tab !== "anime") wall.innerHTML = B.spinner("wall");
     const kindPath = tab === "movies" ? "movies" : "tv";
     const pg = (path, list) => list.map((n) => seerr(`${path}?page=${n}`).catch(() => null));
     // Anime: TMDB's Animation genre is mostly kids' cartoons, so only Japanese titles count as anime
@@ -756,7 +756,7 @@ B.manageTab = async (nav) => {
       return msg;
     });
   };
-  rows.innerHTML = `<div class="wrap">${B.spinner()}</div>`;
+  rows.innerHTML = `<div class="wrap">${B.spinner("list")}</div>`;
   await load();
   if (!B.alive(nav)) return;
   draw();
@@ -782,7 +782,7 @@ B.musicTab = async (nav) => {
   const admin = B.me.admin;
   $("#rq").placeholder = "Search any song, album or artist";
   const rows = $("#rows");
-  rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner()}</div></div>`;
+  rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner("wall")}</div></div>`;
   let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, ownedOpen = null;
   // Ben 2026-11-15: Top 100, then Trending (one list per genre), then a few "Because you have <song>" lists that
   // Tower picks again every time the page opens, then More.
@@ -824,7 +824,7 @@ B.musicTab = async (nav) => {
         + B.rqLines((w ? waiting : mine).map((r) => reqLine(r, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a song or album and ask for it.");
       return;
     }
-    if (!disc) { wall.innerHTML = notes + B.spinner(); return; }
+    if (!disc) { wall.innerHTML = notes + B.spinner("wall"); return; }
     if (!cur) { wall.innerHTML = notes + `<div class="empty">Nothing to show right now. Try again in a minute.</div>`; return; }
     if (cur.id === "playlist") { wall.innerHTML = notes + `<div id="mstatus">${B.spinner()}</div>`; drawTools(); return; }
     let cards = [], owned = 0;
@@ -877,7 +877,7 @@ B.musicTab = async (nav) => {
     searching = text.trim().length >= 2;
     $("#msplit").style.display = searching ? "none" : "";
     if (!searching) { box.innerHTML = ""; draw(); return; }
-    box.innerHTML = `<div class="wrap">${B.spinner()}</div>`;
+    box.innerHTML = `<div class="wrap">${B.spinner("list")}</div>`;
     let r;
     try { r = await music("GET", "/search?q=" + enc(text.trim())); } catch (e) { box.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`; return; }
     if (!B.alive(nav) || $("#rq").value.trim() !== text.trim()) return;
@@ -1183,7 +1183,7 @@ B.animeRequests = (nav, getLists, openList) => {
   const showWall = async (a, title, note, opts) => {
     opts = opts || {};
     const w = wall();
-    w.innerHTML = head(title, note, opts.top) + B.spinner();
+    w.innerHTML = head(title, note, opts.top) + B.spinner("wall");
     let items;
     try { items = await load(a); } catch (e) {
       if (!B.alive(nav) || wall() !== w) return;
@@ -1338,7 +1338,7 @@ B.animeRequests = (nav, getLists, openList) => {
     else { const n = c.titles.find(latin) || c.titles[0] || ""; B.go(`#/search?q=${enc(seasonBase(n) || n)}`); }
   };
 
-  $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner()}</div></div>`;
+  $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner("wall")}</div></div>`;
   side().onclick = (e) => {
     const l = e.target.closest("[data-rqlist]");
     if (l) return openList(l.dataset.rqlist);

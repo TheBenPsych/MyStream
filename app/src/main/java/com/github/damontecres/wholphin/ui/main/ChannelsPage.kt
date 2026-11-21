@@ -80,6 +80,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
@@ -198,7 +199,7 @@ fun ChannelsPage(
     // Opening from Home: the door colour waits for the channels, then fades onto the page
     LaunchedEffect(list != null) { if (list != null) DoorWipe.ready() }
     if (list == null) {
-        LoadingPage(modifier.fillMaxSize())
+        LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.GUIDE)
         return
     }
     if (list.isEmpty()) {

@@ -28,6 +28,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -156,7 +157,7 @@ fun RequestStudioPage(
     val wall by viewModel.wall.collectAsState()
     val items = wall.items
     if (items == null) {
-        LoadingPage(modifier.focusable())
+        LoadingPage(modifier.focusable(), shape = LoadingShape.WALL)
         return
     }
     val owner = StudioOwners.of(destination.name)

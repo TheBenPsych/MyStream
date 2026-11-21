@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.OverviewText
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
@@ -248,7 +249,7 @@ fun PersonPage(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.WALL)
         }
 
         is DataLoadingState.Success<BaseItem> -> {

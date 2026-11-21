@@ -5,7 +5,7 @@
 // ---------- My watching ----------
 B.route(/^\/mine/, async (m, nav) => {
   const range = B.q("range") || "month";
-  B.page().innerHTML = B.top("My watching", null) + `<div class="wrap" id="mw">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("My watching", null) + `<div class="wrap" id="mw">${B.spinner("rows")}</div>`;
   B.wireTop();
   const u = B.uid();
   const since = range === "month" ? new Date(new Date().getFullYear(), new Date().getMonth(), 1) : new Date(new Date().getFullYear(), 0, 1);
@@ -49,7 +49,7 @@ B.route(/^\/mine/, async (m, nav) => {
 
 // ---------- Watch history (2026-11-21): everything watched, newest first, with Remove (not for Kids) ----------
 B.route(/^\/history/, async (m, nav) => {
-  B.page().innerHTML = B.top("Watch history", null) + `<div class="wrap" id="wh">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Watch history", null) + `<div class="wrap" id="wh">${B.spinner("list")}</div>`;
   B.wireTop();
   const u = B.uid();
   const played = await B.get(`/Items?userId=${u}&IncludeItemTypes=Movie,Episode&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=300&Fields=SeriesName,SeriesId,ParentIndexNumber,IndexNumber,ProductionYear&EnableUserData=true`).then((r) => B.keep(r.Items || [])).catch(() => null);
@@ -302,7 +302,7 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
   const sec = HELP.find((h) => h.id === m[1]) || HELP[0];
   B.page().innerHTML = B.top("Help and updates", null, { solid: true }) + `<div class="split">
     <nav><div class="splith">Help</div>${HELP.map((h) => `<a href="#/help/${h.id}" class="${h === sec ? "on" : ""}">${esc(h.label)}</a>`).join("")}</nav>
-    <main><h2>${esc(sec.label)}</h2><div id="hp" style="margin-top:14px">${B.spinner()}</div></main></div>`;
+    <main><h2>${esc(sec.label)}</h2><div id="hp" style="margin-top:14px">${B.spinner("list")}</div></main></div>`;
   B.wireTop();
   const hp = $("#hp");
   if (sec.id === "updates") {
@@ -312,7 +312,7 @@ B.route(/^\/help(?:\/(\w+))?/, async (m, nav) => {
       <p class="dim">The TV and phone app update from Settings > Help and updates on each device.</p>`;
   }
   if (sec.id === "new") {
-    hp.innerHTML = B.spinner();
+    hp.innerHTML = B.spinner("list");
     try {
       const r = await fetch("https://api.github.com/repos/TheBenPsych/MyStream/releases/tags/latest-build").then((x) => x.json());
       const lines = String(r.body || "").split("\n").map((l) => l.trim()).filter((l) => /^[-*]\s/.test(l)).slice(0, 25).map((l) => l.replace(/^[-*]\s+/, "").replace(/\(#\d+\)/, "").replace(/<!--.*?-->/g, "").trim()).filter(Boolean);

@@ -119,7 +119,7 @@ const powerLine = (consoles) => {
 B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
   const place = GAME_PLACES.includes(B.q("p")) ? B.q("p") : "home";
   const home = place === "home";
-  B.page().innerHTML = B.top("Games", DOORS.games.color) + (home ? `<section class="door-top gtop" id="gTop"><div class="art"></div><div class="info" id="gInfo"></div></section>` : "") + `<div class="rows gpage" id="rows">${B.spinner()}</div>`;
+  B.page().innerHTML = B.top("Games", DOORS.games.color) + (home ? `<section class="door-top gtop" id="gTop"><div class="art"></div><div class="info" id="gInfo"></div></section>` : "") + `<div class="rows gpage" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   const rows = $("#rows");
   // Glowfin's own games (puzzles, party games, arcade, Ember Road) don't need RomM

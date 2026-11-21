@@ -188,7 +188,7 @@ fun StudioCardGrid(
         DataLoadingState.Pending,
         DataLoadingState.Loading,
         -> {
-            LoadingPage(modifier.focusable())
+            LoadingPage(modifier.focusable(), shape = LoadingShape.WALL)
         }
 
         is DataLoadingState.Error -> {

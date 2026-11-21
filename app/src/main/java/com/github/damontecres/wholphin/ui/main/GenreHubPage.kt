@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -201,7 +202,7 @@ fun GenreHubPage(
         )
         when (val list = rows) {
             null -> {
-                LoadingPage(Modifier.fillMaxSize())
+                LoadingPage(Modifier.fillMaxSize(), shape = LoadingShape.WALL)
             }
 
             else -> {

@@ -39,6 +39,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
 import com.github.damontecres.wholphin.ui.components.GridTitle
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
 import com.github.damontecres.wholphin.ui.launchDefault
@@ -249,7 +250,7 @@ fun HomeRowGrid(
             is HomeRowLoadingState.Loading,
             is HomeRowLoadingState.Pending,
             -> {
-                LoadingPage(Modifier.fillMaxSize())
+                LoadingPage(Modifier.fillMaxSize(), shape = LoadingShape.WALL)
             }
 
             is HomeRowLoadingState.Success -> {

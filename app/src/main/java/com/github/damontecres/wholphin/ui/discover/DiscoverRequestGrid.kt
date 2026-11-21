@@ -36,6 +36,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -285,7 +286,7 @@ fun DiscoverRequestGrid(
             DataLoadingState.Pending,
             DataLoadingState.Loading,
             -> {
-                LoadingPage(Modifier)
+                LoadingPage(Modifier, shape = LoadingShape.WALL)
             }
 
             is DataLoadingState.Error -> {

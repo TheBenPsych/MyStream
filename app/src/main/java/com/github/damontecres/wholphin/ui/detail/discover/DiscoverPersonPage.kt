@@ -28,6 +28,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -89,7 +90,7 @@ fun DiscoverPersonPage(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier.focusable())
+            LoadingPage(modifier.focusable(), shape = LoadingShape.WALL)
         }
 
         is DataLoadingState.Success<List<DiscoverItem>> -> {

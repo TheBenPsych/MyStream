@@ -18,7 +18,7 @@ B.route(/^\/search/, async (m, nav) => {
     $("#best").innerHTML = "";
     $("#schips").innerHTML = "";
     $("#sres").innerHTML = `${recent.length ? `<section class="rowx" id="recent"><h3>Recent searches</h3><div class="wrap row" style="padding-bottom:0">${recent.map((r) => `<span class="rchip"><button class="pill" data-recent="${esc(r)}">${esc(r)}</button><button class="pill rx" data-unrecent="${esc(r)}" title="Remove" aria-label="Remove ${esc(r)}">✕</button></span>`).join("")}<button class="pill ghost" data-clearrecent>Clear all</button></div></section>` : ""}
-      <div id="popular">${B.spinner()}</div>
+      <div id="popular">${B.spinner("rows")}</div>
       <section class="rowx"><h3>Browse</h3><div class="tiles2">
         <a class="tile2" href="#/browse/movies/genres">Movie genres</a><a class="tile2" href="#/browse/shows/genres">Show genres</a>
         <a class="tile2" href="#/live">Channel types</a><a class="tile2" href="#/games">Consoles</a></div></section>`;

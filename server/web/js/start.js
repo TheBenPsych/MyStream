@@ -199,7 +199,7 @@ B.route(/^\/home$/, async (m, nav) => {
   if (B.lobby) B.lobby.homeNudge(nav);
   const grow = B.doorsGrow; B.doorsGrow = false;
   if (!B.me.kids) {
-    B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("") + `<div class="home ghome">${B.doorTop()}<div class="rows" id="rows">${B.spinner("rows")}</div></div>`;
     B.wireTop();
     B.loadHomeRows(nav);
     return;

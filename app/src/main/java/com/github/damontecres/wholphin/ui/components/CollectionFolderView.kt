@@ -994,7 +994,7 @@ fun CollectionFolderViewContent(
             DataLoadingState.Loading,
             DataLoadingState.Pending,
             -> {
-                LoadingPage(Modifier.fillMaxSize())
+                LoadingPage(Modifier.fillMaxSize(), shape = LoadingShape.WALL)
             }
 
             is DataLoadingState.Error -> {
@@ -1061,7 +1061,7 @@ fun CollectionFolderViewContent(
                         DataLoadingState.Loading,
                         DataLoadingState.Pending,
                         -> {
-                            LoadingPage(Modifier.fillMaxSize())
+                            LoadingPage(Modifier.fillMaxSize(), shape = LoadingShape.WALL)
                         }
 
                         is DataLoadingState.Success<List<BaseItem?>> -> {

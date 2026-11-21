@@ -54,6 +54,7 @@ fun CircularProgress(modifier: Modifier = Modifier) {
 fun LoadingPage(
     modifier: Modifier = Modifier,
     focusEnabled: Boolean = true,
+    shape: LoadingShape = LoadingShape.ROWS,
 ) {
     val focusRequester = remember { FocusRequester() }
     if (focusEnabled) {
@@ -67,7 +68,7 @@ fun LoadingPage(
                 .focusRequester(focusRequester)
                 .focusable(focusEnabled),
     ) {
-        StillPosters()
+        LoadingBlocks(shape)
     }
 }
 
@@ -121,6 +122,7 @@ fun DelayedLoadingPage(
     modifier: Modifier = Modifier,
     focusEnabled: Boolean = true,
     delay: Duration = 300.milliseconds,
+    shape: LoadingShape = LoadingShape.ROWS,
 ) {
     val focusRequester = remember { FocusRequester() }
     if (focusEnabled) {
@@ -140,7 +142,7 @@ fun DelayedLoadingPage(
                 .focusable(focusEnabled),
     ) {
         if (show) {
-            StillPosters()
+            LoadingBlocks(shape)
         }
     }
 }

@@ -23,6 +23,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
 import com.github.damontecres.wholphin.ui.components.LibraryShelfTab
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.components.RecommendedTvShow
 import com.github.damontecres.wholphin.ui.components.SHELVES_SEASONS
 import com.github.damontecres.wholphin.ui.components.SHELVES_WEEK
@@ -69,7 +70,7 @@ fun CollectionFolderTv(
     // Benflix: anime gets Dubbed, Subbed and Seasons tabs; wait the moment it takes to tell
     val kind = rememberLibraryKind(destination.itemId)
     if (kind == null) {
-        LoadingPage(modifier)
+        LoadingPage(modifier, shape = LoadingShape.WALL)
         return
     }
     val tabIds =

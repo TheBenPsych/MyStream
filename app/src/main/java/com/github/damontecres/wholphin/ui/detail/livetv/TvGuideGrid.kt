@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.launchIO
@@ -94,7 +95,7 @@ fun TvGuideGrid(
 
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.GUIDE)
         }
 
         LoadingState.Loading,

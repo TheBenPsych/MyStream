@@ -25,6 +25,7 @@ import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
@@ -62,7 +63,7 @@ fun DiscoverSeriesDetails(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            LoadingPage(modifier, shape = LoadingShape.TITLE)
         }
 
         is DataLoadingState.Success<TvDetails> -> {

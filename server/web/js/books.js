@@ -67,7 +67,7 @@
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
     const place = PLACES.some(([k]) => k === B.q("p")) && !(B.q("p") === "manga" && B.me.kids) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
-    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner()}</div></div>`;
+    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner("wall")}</div></div>`;
     B.wireTop();
     let home;
     try {
@@ -172,7 +172,7 @@
   // ---------- a book's page ----------
   B.route(/^\/book\/([^?]+)/, async (m, nav) => {
     const id = decodeURIComponent(m[1]);
-    B.page().innerHTML = B.top("Books", LIME) + `<div id="bk">${B.spinner()}</div>`;
+    B.page().innerHTML = B.top("Books", LIME) + `<div id="bk">${B.spinner("rows")}</div>`;
     B.wireTop();
     const t = await api("GET", "title/" + enc(id));
     if (!B.alive(nav)) return;
@@ -671,7 +671,7 @@
     const input = $("#rq");
     const admin = B.me.admin;
     input.placeholder = "Search any book or author";
-    rows.innerHTML = `<div id="bfound"></div><div class="grid-wrap rqsplit" id="bsplit"><nav class="rqside" id="bside"></nav><div class="grid-body" id="bwall">${B.spinner()}</div></div>`;
+    rows.innerHTML = `<div id="bfound"></div><div class="grid-wrap rqsplit" id="bsplit"><nav class="rqside" id="bside"></nav><div class="grid-body" id="bwall">${B.spinner("wall")}</div></div>`;
     let d = null, req = null, picked = null, ownedOpen = null, results = { books: [] }, t;
     const bookLists = () => {
       if (!d) return [];
@@ -707,7 +707,7 @@
           + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the book and ask for it.");
         return;
       }
-      if (!d) { wall.innerHTML = notes + B.spinner(); return; }
+      if (!d) { wall.innerHTML = notes + B.spinner("wall"); return; }
       if (!cur) { wall.innerHTML = notes + `<p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p>`; return; }
       if (cur.genres) {
         wall.innerHTML = notes + `<div class="rqhead"><b>Genres</b></div><div class="rqgenres">${cur.genres.map((g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`).join("")}<a class="bq-genre all" href="#/bookgenre/all">All genres</a></div>`;
@@ -858,7 +858,7 @@
     if (B.me.kids) return B.go("#/home");
     const slug = m[1];
     B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:6px"><a class="chip" href="#/requests?tab=books">${B.I("left")} Books requests</a>
-      <div class="h1" style="margin-top:12px">${esc(B.q("name") || (slug === "all" ? "All genres" : ""))}</div></div><div class="rows" id="bqg">${B.spinner()}</div>`;
+      <div class="h1" style="margin-top:12px">${esc(B.q("name") || (slug === "all" ? "All genres" : ""))}</div></div><div class="rows" id="bqg">${B.spinner("rows")}</div>`;
     B.wireTop();
     const el = $("#bqg");
     const draw = async () => {
@@ -882,7 +882,7 @@
   B.route(/^\/bookask/, async (m, nav) => {
     if (B.me.kids) return B.go("#/home");
     const key = B.q("key") || "", audioOnly = B.q("audio") === "1";
-    B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:0"><a class="chip" href="#/requests?tab=books">${B.I("left")} Books requests</a></div><div id="bqa">${B.spinner()}</div>`;
+    B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:0"><a class="chip" href="#/requests?tab=books">${B.I("left")} Books requests</a></div><div id="bqa">${B.spinner("list")}</div>`;
     B.wireTop();
     const el = $("#bqa");
     let a, pick = audioOnly ? "audiobook" : "both";

@@ -253,7 +253,7 @@ async function everyPage(page, vp, isPhone, tag) {
     // ready = no spinner left and some words on the page (checked every 0.1 s, up to 15 s)
     let secs = null;
     while (Date.now() - s < 15000) {
-      const ready = await page.evaluate(() => !document.querySelector(".spin") && document.body.innerText.trim().length > 40).catch(() => false);
+      const ready = await page.evaluate(() => !document.querySelector(".spin, .sk") && document.body.innerText.trim().length > 40).catch(() => false);
       if (ready) { secs = Math.round((Date.now() - s) / 100) / 10; break; }
       await page.waitForTimeout(100);
     }
