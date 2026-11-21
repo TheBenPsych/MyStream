@@ -24,6 +24,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.TrackIndex
 import com.github.damontecres.wholphin.preferences.AppPreference
+import com.github.damontecres.wholphin.services.LipSync
 import com.github.damontecres.wholphin.services.SkipFix
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
@@ -66,6 +67,9 @@ enum class PlaybackDialogType {
 
     /** Glowfin player (P1): Louder, Quieter and Sound off, the same as the remote's own buttons */
     VOLUME,
+
+    /** Sound and lips don't match: move the picture a little later or sooner (see LipSync) */
+    LIP_SYNC,
 }
 
 data class PlaybackSettings(
@@ -241,6 +245,15 @@ fun PlaybackDialog(
                     }
                     add(
                         PanelLine.Row(
+                            label = "Sound and lips don't match",
+                            note = "Move the picture a little later or sooner",
+                            icon = BenflixIcon.WARNING,
+                            closes = false,
+                            onClick = { onClickPlaybackDialogType(PlaybackDialogType.LIP_SYNC) },
+                        ),
+                    )
+                    add(
+                        PanelLine.Row(
                             label = "Picture stutters",
                             note = "Restarts the picture, then tries a lighter one",
                             icon = BenflixIcon.WARNING,
@@ -349,6 +362,42 @@ fun PlaybackDialog(
                 title = "Audio",
                 subtitle = if (lines.size <= 1) "This one has one sound track" else null,
                 lines = lines,
+                onDismissRequest = dismissAndPulse,
+            )
+        }
+
+        PlaybackDialogType.LIP_SYNC -> {
+            var ms by remember { mutableStateOf(LipSync.savedMs(context)) }
+            val now =
+                when {
+                    ms > 0 -> "Now: the picture is $ms ms later."
+                    ms < 0 -> "Now: the picture is ${-ms} ms sooner."
+                    else -> "Now: normal."
+                }
+            val waits = if (ms != 0 && !LipSync.live) " It starts the next time you press play." else ""
+            PlayerPanel(
+                title = "Sound and lips don't match",
+                subtitle = "$now$waits Remembered on this device.",
+                lines =
+                    listOf(
+                        PanelLine.Row(
+                            label = "Lips move before the sound",
+                            note = "Each press shows the picture a little later",
+                            closes = false,
+                            onClick = { ms = LipSync.set(context, ms + LipSync.STEP_MS) },
+                        ),
+                        PanelLine.Row(
+                            label = "Sound comes before the lips",
+                            note = "Each press shows the picture a little sooner",
+                            closes = false,
+                            onClick = { ms = LipSync.set(context, ms - LipSync.STEP_MS) },
+                        ),
+                        PanelLine.Row(
+                            label = "Back to normal",
+                            closes = false,
+                            onClick = { ms = LipSync.set(context, 0) },
+                        ),
+                    ),
                 onDismissRequest = dismissAndPulse,
             )
         }

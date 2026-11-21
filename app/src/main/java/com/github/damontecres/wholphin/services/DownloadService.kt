@@ -39,6 +39,8 @@ data class DownloadedItem(
     val music: Boolean = false,
     val albumId: UUID? = null,
     val runtimeMs: Long = 0L,
+    /** The lighter copy Tower makes on the fly ("Smaller" download size) */
+    val smaller: Boolean = false,
 )
 
 sealed interface DownloadStatus {
@@ -114,8 +116,34 @@ class DownloadService
 
         fun find(itemId: UUID): DownloadedItem? = _items.value.firstOrNull { it.itemId == itemId }
 
-        suspend fun start(item: BaseItem) {
+        /**
+         * Download size (Ben 2026-11-21): true = "Smaller", false = "Best picture" (the file as it is),
+         * null = not picked yet. Remembered on this phone.
+         */
+        var smallerDownloads: Boolean?
+            get() = if (prefs.contains(KEY_SMALLER)) prefs.getBoolean(KEY_SMALLER, false) else null
+            set(value) = prefs.edit { if (value == null) remove(KEY_SMALLER) else putBoolean(KEY_SMALLER, value) }
+
+        /** Roughly how big the "Smaller" copy of something this long comes out, in bytes */
+        fun smallerBytes(runtimeMs: Long): Long = runtimeMs / 1000L * (SMALL_VIDEO_BITS + SMALL_AUDIO_BITS) / 8L
+
+        /** How much room the downloads use on this phone, in bytes */
+        fun bytesUsed(list: List<DownloadedItem>): Long = list.sumOf { file(it).length() }
+
+        /** Watched to the end on this phone (see [markWatched]) */
+        fun isWatched(itemId: UUID): Boolean = prefs.getBoolean(watchedKey(itemId), false)
+
+        fun markWatched(itemId: UUID) = prefs.edit { putBoolean(watchedKey(itemId), true) }
+
+        private fun watchedKey(itemId: UUID) = "watched_$itemId"
+
+        suspend fun start(
+            item: BaseItem,
+            smaller: Boolean = false,
+        ) {
             if (find(item.id) != null) return
+            // "Smaller": Tower makes a lighter copy on the fly (720p, plain stereo sound) instead of sending the file as it is
+            val small = smaller && item.type != BaseItemKind.AUDIO
             val container =
                 item.data.mediaSources
                     ?.firstOrNull()
@@ -126,7 +154,16 @@ class DownloadService
                     ?.ifBlank { null }
                     ?: if (item.type == BaseItemKind.AUDIO) "mp3" else "mkv"
             val music = item.type == BaseItemKind.AUDIO
-            val fileName = "${item.id}.$container"
+            val fileName = if (small) "${item.id}.ts" else "${item.id}.$container"
+            val address =
+                if (small) {
+                    val plainId = item.id.toString().replace("-", "")
+                    "${api.baseUrl?.trimEnd('/')}/Videos/$plainId/stream.ts?static=false&mediaSourceId=$plainId" +
+                        "&videoCodec=h264&audioCodec=aac&videoBitRate=$SMALL_VIDEO_BITS&audioBitRate=$SMALL_AUDIO_BITS" +
+                        "&maxAudioChannels=2&maxWidth=1280&maxHeight=720&playSessionId=download-$plainId"
+                } else {
+                    api.libraryApi.getDownloadUrl(item.id)
+                }
             val title = item.title ?: item.name ?: ""
             val subtitle =
                 if (music) {
@@ -147,7 +184,7 @@ class DownloadService
                 }
             val request =
                 DownloadManager
-                    .Request(Uri.parse(api.libraryApi.getDownloadUrl(item.id)))
+                    .Request(Uri.parse(address))
                     .addRequestHeader("Authorization", "MediaBrowser Token=\"${api.accessToken}\"")
                     .setTitle(title)
                     .setDescription(subtitle ?: "Glowfin")
@@ -170,6 +207,7 @@ class DownloadService
                     music = music,
                     albumId = item.data.albumId,
                     runtimeMs = (item.data.runTimeTicks ?: 0L) / 10_000L,
+                    smaller = small,
                 )
             save(listOf(downloaded) + _items.value)
             // Keep a picture to show in the list, even without internet
@@ -211,8 +249,17 @@ class DownloadService
                     }
 
                     else -> {
+                        // A "Smaller" copy is made as it downloads, so its size isn't known: go by how long the video is
+                        val expected =
+                            if (total > 0) {
+                                total
+                            } else if (item.smaller) {
+                                smallerBytes(item.runtimeMs)
+                            } else {
+                                0L
+                            }
                         DownloadStatus.Downloading(
-                            percent = if (total > 0) ((done * 100) / total).toInt() else 0,
+                            percent = if (expected > 0) ((done * 100) / expected).toInt().coerceIn(0, 99) else 0,
                             waitingForWifi =
                                 status == DownloadManager.STATUS_PAUSED &&
                                     reason == DownloadManager.PAUSED_QUEUED_FOR_WIFI,
@@ -233,7 +280,10 @@ class DownloadService
             }
             file(item).delete()
             posterFile(itemId).delete()
-            prefs.edit { remove(positionKey(itemId)) }
+            prefs.edit {
+                remove(positionKey(itemId))
+                remove(watchedKey(itemId))
+            }
             save(_items.value.filterNot { it.itemId == itemId })
         }
 
@@ -267,6 +317,7 @@ class DownloadService
                                     .put("music", it.music)
                                     .put("albumId", it.albumId?.toString() ?: "")
                                     .put("runtimeMs", it.runtimeMs)
+                                    .put("smaller", it.smaller)
                             },
                         ).toString(),
                 )
@@ -290,6 +341,7 @@ class DownloadService
                         music = o.optBoolean("music"),
                         albumId = o.optString("albumId").ifBlank { null }?.let(UUID::fromString),
                         runtimeMs = o.optLong("runtimeMs"),
+                        smaller = o.optBoolean("smaller"),
                     )
                 }
             } catch (ex: Exception) {
@@ -300,5 +352,10 @@ class DownloadService
         companion object {
             private const val FOLDER = "benflix"
             private const val KEY_LIST = "items"
+            private const val KEY_SMALLER = "smaller_downloads"
+
+            /** "Smaller" downloads: 720p at about 2.5 Mbit with stereo sound (roughly 1.2 GB for a two hour movie) */
+            private const val SMALL_VIDEO_BITS = 2_500_000L
+            private const val SMALL_AUDIO_BITS = 160_000L
         }
     }

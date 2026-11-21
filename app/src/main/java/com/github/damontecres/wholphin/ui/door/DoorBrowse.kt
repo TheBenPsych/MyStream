@@ -202,9 +202,12 @@ fun DoorRowGridPage(
     LaunchedEffect(destination) { items = viewModel.fullRow(door, destination.key).distinctBy { it.id } }
     val list = items ?: return LoadingPage(modifier.fillMaxSize())
     // Top 10 and "Because you watched" keep their own order first; the rest open on the person's last sort
+    val history = destination.key == DoorViewModel.HISTORY
     val sorts =
         listOf(TitleSort.AS_LISTED) +
-            if (movies) {
+            if (history) {
+                listOf(TitleSort.A_TO_Z)
+            } else if (movies) {
                 listOf(TitleSort.NEWEST, TitleSort.A_TO_Z, TitleSort.YEAR, TitleSort.SCORE, TitleSort.LENGTH)
             } else {
                 listOf(TitleSort.NEWEST_EPISODE, TitleSort.NEWEST, TitleSort.A_TO_Z, TitleSort.YEAR, TitleSort.SCORE)
@@ -218,6 +221,7 @@ fun DoorRowGridPage(
         sorts = sorts,
         onClick = { viewModel.navigationManager.navigateTo(it.destination()) },
         modifier = modifier,
+        noun = if (history) "title" to "titles" else null,
     )
 }
 

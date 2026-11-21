@@ -146,7 +146,13 @@ const becauseRow = async (type, keep) => {
 const lovedRow = async (type, keep) => {
   const u = B.uid(), F = B.FIELDS;
   const favs = await q(`/Items?userId=${u}&IncludeItemTypes=${type}&Recursive=true&Filters=IsFavorite&SortBy=Random&Limit=40&EnableUserData=true`).catch(() => []);
-  const loved = favs.filter((x) => x.UserData && x.UserData.Likes === true && keep(x.Id)).slice(0, 4);
+  // "Love it" pressed in the browser is kept with the profile's settings; pressed in the app it's liked + My List
+  const ids = Object.keys(loadJsonStr(((await B.prefs().catch(() => ({}))).CustomPrefs || {})["benflix.loved"])).slice(0, 40);
+  const marked = ids.length ? await q(`/Items?userId=${u}&Ids=${ids.join(",")}&IncludeItemTypes=${type}`).catch(() => []) : [];
+  const seenLoved = new Set();
+  const loved = favs.filter((x) => x.UserData && x.UserData.Likes === true).concat(marked)
+    .filter((x) => x.Type === type && keep(x.Id) && !seenLoved.has(x.Id) && seenLoved.add(x.Id))
+    .sort(() => Math.random() - 0.5).slice(0, 4);
   for (const p of loved) {
     const like = (await q(`/Items/${p.Id}/Similar?userId=${u}&Limit=20&Fields=${F}`).catch(() => [])).filter((x) => x.Type === type && keep(x.Id));
     if (like.length >= 5) return { name: p.Name, items: like };
@@ -644,6 +650,27 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   // In this collection, Ask for similar, anime extras and the parents' guide (extras.js)
   if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
 });
+// Play on TV (2026-11-21): send a movie or episode from the browser to a TV that has Glowfin open, at the same spot
+B.playOnTv = async (it) => {
+  const sessions = await B.get(`/Sessions?controllableByUserId=${B.uid()}`).catch(() => []);
+  const mine = String(B.me.device || "");
+  const tvs = (Array.isArray(sessions) ? sessions : []).filter((x) => String(x.DeviceId || "").startsWith("benflix-") && x.DeviceId !== mine && x.SupportsRemoteControl)
+    .filter((x, i, a) => a.findIndex((y) => y.DeviceId === x.DeviceId) === i);
+  const ud = it.UserData || {};
+  const ticks = ud.PlaybackPositionTicks > 0 && !ud.Played ? ud.PlaybackPositionTicks : 0;
+  const p = B.side(`<h3>Play on TV</h3>` + (tvs.length
+    ? `<p class="dim">Pick a TV. ${ticks ? "It picks up where you left off." : "It starts playing there."}</p>${tvs.map((x, i) => `<button class="opt" data-tv="${i}">${I("tv")} ${esc(x.DeviceName || "TV")}<small>${esc(x.UserName || "")}</small></button>`).join("")}`
+    : `<p class="dim">No TV has Glowfin open right now. Open Glowfin on the TV, then try again.</p>`));
+  p.onclick = (e) => {
+    const b = e.target.closest("[data-tv]"); if (!b) return;
+    const tv = tvs[+b.dataset.tv];
+    B.closeAll();
+    B.busy(null, async () => {
+      await B.jf("POST", `/Sessions/${tv.Id}/Playing?playCommand=PlayNow&itemIds=${it.Id}${ticks ? `&startPositionTicks=${ticks}` : ""}`);
+      return `Playing on ${tv.DeviceName || "the TV"}.`;
+    });
+  };
+};
 const movieMore = (it) => {
   const ud = it.UserData || {};
   const ids = it.ProviderIds || {};
@@ -651,6 +678,7 @@ const movieMore = (it) => {
   B.tpMore(it.Name, [
     { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) },
     resume ? { label: "Play from the start", icon: "restart", onClick: () => B.go(`#/play/${it.Id}`) } : null,
+    B.me.kids ? null : { label: "Play on TV", icon: "tv", onClick: () => B.playOnTv(it) },
     !B.lobby || !B.lobby.allowed() ? null : { label: "Watch together in the Lobby", icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: it, pos: resume ? ud.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Audio, subtitles and version", icon: "sub", onClick: () => B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`)) },
     B.offline ? B.offline.menu(it) : null,
@@ -771,6 +799,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
     // Glowfin app for computers: the season showing now, saved to watch with no connection
     B.offline && B.offline.can() ? { label: "Download this season", icon: "dl", onClick: () => { const on = $("#seasons .chip.on"); B.offline.season(it, on ? on.dataset.season : "", on ? on.textContent.trim() : "").catch((err) => B.toast(err.message)); } } : null,
+    B.me.kids || !target ? null : { label: `Play S${target.ParentIndexNumber} E${target.IndexNumber} on TV`, icon: "tv", onClick: () => B.playOnTv(target) },
     !B.lobby || !B.lobby.allowed() || !target ? null : { label: `Watch S${target.ParentIndexNumber} E${target.IndexNumber} together in the Lobby`, icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: Object.assign({ OfficialRating: it.OfficialRating }, target, target.OfficialRating ? {} : { OfficialRating: it.OfficialRating }), pos: target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? target.UserData.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
