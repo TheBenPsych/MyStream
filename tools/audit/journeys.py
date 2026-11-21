@@ -140,7 +140,8 @@ def press_play():
         return d.press(PLAY_RX, timeout=6)
     if d.find(d.dump(), PLAY_RX) is None:
         return False
-    for move in [None, "DPAD_LEFT", "DPAD_LEFT", "DPAD_LEFT", "DPAD_UP", "DPAD_UP"]:
+    # going back up the page ends on the Back button, one above Play
+    for move in [None, "DPAD_DOWN", "DPAD_LEFT", "DPAD_LEFT", "DPAD_LEFT", "DPAD_DOWN"]:
         if move:
             d.key(move, wait=0.6)
         if re.search(PLAY_RX, label(d.focused_node(d.dump())) or "", re.I):
@@ -231,11 +232,25 @@ def search_trip():
     if MODE != "tv" and edit:
         d.touch_tap(edit[0])
         time.sleep(1)
+    tv_keys = False
     if MODE == "tv":
-        # the box says "OK to type": OK opens the keyboard, like on a real remote
-        if not keyboard_showing():
+        # The box says "OK to type": OK on the box opens Glowfin's own letter keys.
+        # OK on the microphone beside it starts listening instead, so get onto the box first.
+        def on_box():
+            f = d.focused_node(d.dump())
+            return f is not None and f.get("class", "").endswith("EditText")
+        if not on_box():
+            problem("Search doesn't open on the search box", "focus: " + str(label(d.focused_node(d.dump()))))
+            for _ in range(2):
+                d.key("DPAD_RIGHT", wait=0.6)
+                if on_box():
+                    break
+        if on_box():
             d.key("DPAD_CENTER", wait=1.5)
-    d.sh("input text 'the'")
+            step("search-keys-open")
+            tv_keys = all(d.press(f"^{c}$", timeout=3) for c in "the")
+    if not tv_keys:
+        d.sh("input text 'the'")
     time.sleep(4)
     root, _ = step("search-typed")
     if d.find(root, r"^the$") is None:
@@ -244,7 +259,7 @@ def search_trip():
             d.key("BACK", wait=1)
         return
     if MODE == "tv":
-        if keyboard_showing():
+        if tv_keys or keyboard_showing():
             d.key("BACK", wait=1)  # hide the keyboard like a person would
         step("search-keyboard-closed")
         d.key("DPAD_DOWN", 2, wait=0.7)
