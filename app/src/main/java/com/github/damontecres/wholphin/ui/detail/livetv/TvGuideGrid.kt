@@ -40,11 +40,13 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.preferences.LiveTvPreferences
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.DialogPopup
+import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
@@ -123,7 +125,11 @@ fun TvGuideGrid(
                 modifier = modifier,
             ) {
                 if (state.channels.isEmpty()) {
-                    ErrorMessage("Live TV is enabled, but no channels were found.", null)
+                    EmptyPage(
+                        icon = BenflixIcon.LIVE,
+                        title = "No channels yet",
+                        line = "Channels show up here once the server has a channel list. Nothing is wrong with this device.",
+                    )
                 } else {
                     AnimatedVisibility(
                         visible = tvPrefs.showHeader,

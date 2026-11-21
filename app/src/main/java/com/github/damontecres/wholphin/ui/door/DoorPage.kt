@@ -68,7 +68,9 @@ import com.github.damontecres.wholphin.services.MalFacts
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.main.DoorWipe
+import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -1019,40 +1021,24 @@ internal fun EmptyDoor(
 ) {
     val retryFocus = remember { FocusRequester() }
     LaunchedEffect(offline) { if (offline) retryFocus.tryRequestFocus() }
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(horizontal = SIDE, vertical = 32.dp),
+    EmptyPage(
+        icon = if (offline) BenflixIcon.WARNING else BenflixIcon.FILM,
+        title = if (offline) "Can't reach the server right now" else "Nothing in $name yet",
+        line =
+            if (offline) {
+                "Check the internet or that the server is on, then try again."
+            } else {
+                "Once the server has some, they show up here."
+            },
+        modifier = modifier,
     ) {
-        Text(
-            text = if (offline) "Can't reach the server right now" else "Nothing in $name yet",
-            color = BenflixColors.Text,
-            fontSize = BenflixType.pageTitle,
-            fontWeight = FontWeight.ExtraBold,
+        MusicButton(
+            label = "Try again",
+            icon = BenflixIcon.REFRESH,
+            onClick = onRetry,
+            primary = true,
+            modifier = Modifier.focusRequester(retryFocus),
         )
-        Text(
-            text =
-                if (offline) {
-                    "Check the internet or that the server is on, then try again."
-                } else {
-                    "Once the server has some, they show up here."
-                },
-            color = BenflixColors.Muted,
-            fontSize = BenflixType.body,
-            modifier = Modifier.padding(top = 6.dp, bottom = 24.dp),
-        )
-        if (offline) {
-            BrowseTile(
-                title = "Try again",
-                onClick = onRetry,
-                modifier =
-                    Modifier
-                        .widthIn(max = 260.dp)
-                        .fillMaxWidth()
-                        .focusRequester(retryFocus),
-            )
-        }
     }
 }
 

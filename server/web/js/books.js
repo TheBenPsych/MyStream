@@ -81,8 +81,9 @@
     const main = $("#bkMain");
     if (home.empty) {
       if ($("#bkTop")) $("#bkTop").remove();
-      main.innerHTML = `<div class="h1">No books on Glowfin yet</div><p class="sub">Put books or audiobooks in Tower's ${esc((home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books and Audiobooks folders")}, and they show up here within 10 minutes.</p>
-        ${home.requests && !B.me.kids ? '<a class="btn white" href="#/requests?tab=books">Ask for a book</a>' : ""}`;
+      main.innerHTML = B.emptyPage("book", "No books on Glowfin yet",
+        `Put books or audiobooks in Tower's ${(home.folders && Object.values(home.folders).flat().join(", ")) || "Media/Books and Audiobooks folders"}, and they show up here within 10 minutes.`,
+        home.requests && !B.me.kids ? '<a class="btn white" href="#/requests?tab=books">Ask for a book</a>' : "");
       return;
     }
     if (place === "home") {
