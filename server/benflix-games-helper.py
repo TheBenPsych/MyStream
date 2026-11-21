@@ -238,6 +238,11 @@ def romm_get(path, raw=False):
         raise HelperError(502, "The server couldn't reach the game library (RomM). Check it's running.")
 
 
+# How long a checked sign-in is trusted before Jellyfin is asked again. Short, so removing someone or
+# switching a profile to Kids takes hold within a couple of minutes.
+TOKEN_MEMORY_S = 120
+
+
 def check_signed_in(token):
     """Only people signed in to Jellyfin get the games. Returns (account id, is admin, is kids account).
     Kids accounts only get games rated for everyone (see kids_safe)."""
@@ -245,7 +250,7 @@ def check_signed_in(token):
         raise HelperError(401, "Sign in to Glowfin first.")
     with _lock:
         known = _tokens.get(token)
-        if known and time.time() - known[0] < 600:
+        if known and time.time() - known[0] < TOKEN_MEMORY_S:
             return known[1], known[2], known[3]
     req = urllib.request.Request(
         JELLYFIN_URL + "/Users/Me", headers={"Authorization": f'MediaBrowser Token="{token}"', "Accept": "application/json"}
@@ -256,7 +261,7 @@ def check_signed_in(token):
     except urllib.error.HTTPError:
         raise HelperError(401, "Your Glowfin sign-in wasn't accepted. Try signing in again.")
     except (urllib.error.URLError, OSError):
-        raise HelperError(502, "The games helper couldn't reach Jellyfin to check your sign-in.")
+        raise HelperError(502, "Tower's helper couldn't reach Jellyfin to check your sign-in.")
     policy = user.get("Policy") or {}
     is_kids = policy.get("MaxParentalRating") is not None or user.get("Name", "").lower() == "kids"
     user_id = re.sub(r"[^0-9a-fA-F-]", "", str(user.get("Id", "")))
@@ -269,6 +274,10 @@ def check_signed_in(token):
     except (TypeError, ValueError):
         big = False
     with _lock:
+        # Forget sign-ins that haven't been used for a while, so the list never grows without end
+        now = time.time()
+        for old in [t for t, k in _tokens.items() if now - k[0] > 10 * TOKEN_MEMORY_S]:
+            del _tokens[old]
         if big:
             _big_users.add(user_id)
         else:
@@ -1645,7 +1654,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(e.status, {"error": e.message})
             self.log_error("Unexpected error: %r", e)
             try:
-                self.send(500, {"error": "Something went wrong in the games helper."})
+                self.send(500, {"error": "Something went wrong in Tower's helper."})
             except OSError:
                 pass
 

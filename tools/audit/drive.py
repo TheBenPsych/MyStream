@@ -717,7 +717,6 @@ def main():
     sh("pm grant %s android.permission.POST_NOTIFICATIONS" % PKG)
     adb("logcat", "-c")
     adb("logcat", "-b", "crash", "-c")
-    t0 = time.time()
     out = sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
     m = re.search(r"TotalTime: (\d+)", out)
     REPORT["timings"]["cold start (ms, first frame)"] = int(m.group(1)) if m else None

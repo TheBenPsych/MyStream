@@ -1,4 +1,4 @@
-name: Benflix older TV check (emulator)
+name: Glowfin older TV check (emulator)
 
 # Runs Benflix on older Android TV versions (Android 9 / 11) to catch crashes that only happen
 # on older or weaker TVs. Also updates the app over itself, like the in-app updater does.

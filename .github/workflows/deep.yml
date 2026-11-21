@@ -1,4 +1,4 @@
-name: Benflix deep check robot
+name: Glowfin deep check robot
 
 # Plays tricky test videos (4K HDR, surround, two languages, subtitles), checks Resume and next episode,
 # freezes and switches off a pretend Tower mid-movie, walks Kids/Guest/Easy mode and times every page, on a

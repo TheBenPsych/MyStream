@@ -1,4 +1,4 @@
-name: Benflix normal-person robot
+name: Glowfin normal-person robot
 
 # Walks the everyday trips a person makes (Home -> a door -> a movie -> Play -> Back, a show, Search, the
 # other doors, profile menu, Settings) on a pretend TV (remote only), a pretend phone (finger only) and the

@@ -41,12 +41,45 @@ HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\
 echo "Tower's home address right now: $HOST_IP"
 
 say "Downloading the helper"
+# Safety net: the new helper is downloaded beside the working one and checked first. A helper with a
+# mistake in it is never switched to, and the working one is kept as a copy to go back to.
+NEW=$APP/.new
+GOOD=$APP/.last-good
+rm -rf "$NEW"; mkdir -p "$NEW"
 for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
-  if curl -fsSL "$RAW/$f" -o "$APP/$f"; then echo "  ok  $f"; else
+  if curl -fsSL "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
+    rm -rf "$NEW"
     exit 1
   fi
 done
+CHECK_IMAGE=benflix-helper:2
+docker image inspect "$CHECK_IMAGE" >/dev/null 2>&1 || CHECK_IMAGE=python:3.12-alpine
+HELPER_KEPT=""
+if docker image inspect "$CHECK_IMAGE" >/dev/null 2>&1 && ! docker run --rm -v "$NEW:/n:ro" "$CHECK_IMAGE" \
+  python -c 'import ast,glob,sys
+for f in sorted(glob.glob("/n/*.py")):
+    try: ast.parse(open(f, encoding="utf-8").read(), f)
+    except SyntaxError as e: sys.exit("%s line %s: %s" % (f, e.lineno, e.msg))'; then
+  if [ -f "$APP/benflix-games-helper.py" ]; then
+    echo "  PROBLEM  The new helper has a mistake in it, so Tower is keeping the one that works. Send this output to Claude."
+    HELPER_KEPT=1
+    # Remembered, so the hourly check doesn't try this same broken one again
+    rm -rf "$APP/.rejected"; mkdir -p "$APP/.rejected"; cp "$NEW"/*.py "$APP/.rejected"/
+  else
+    echo "  PROBLEM  The new helper has a mistake in it. Send this output to Claude."
+    rm -rf "$NEW"
+    exit 1
+  fi
+fi
+if [ -z "$HELPER_KEPT" ]; then
+  if [ -f "$APP/benflix-games-helper.py" ] && curl -fs -m 5 http://127.0.0.1:8097/health 2>/dev/null | grep -q '"ok": true'; then
+    # The helper running right now answers, so its files are a good copy to go back to
+    rm -rf "$GOOD"; mkdir -p "$GOOD"; cp "$APP"/*.py "$GOOD"/ 2>/dev/null
+  fi
+  cp "$NEW"/*.py "$APP"/
+fi
+rm -rf "$NEW"
 
 say "Downloading Benflix for web browsers"
 mkdir -p "$APP/web"
@@ -310,15 +343,25 @@ if ! docker image inspect "$HELPER_IMAGE" >/dev/null 2>&1; then
     && echo "  ok  made the helper's image (only needed once)"
 fi
 docker image inspect "$HELPER_IMAGE" >/dev/null 2>&1 || HELPER_IMAGE=python:3.12-alpine
-docker rm -f benflix-games >/dev/null 2>&1
-docker run -d --name benflix-games --restart unless-stopped --network host \
-  --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
-  -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-  -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" \
-  "$HELPER_IMAGE" sh -c "command -v ffmpeg >/dev/null || apk add --no-cache $HELPER_TOOLS >/dev/null 2>&1 || echo 'Track or skip tools missing (no internet?)'; exec python -u /app/benflix-games-helper.py" \
-  >/dev/null && sleep 5
-# The first start also installs ffmpeg for the skip times, which can take a minute or two
-for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
+start_helper() {
+  docker rm -f benflix-games >/dev/null 2>&1
+  docker run -d --name benflix-games --restart unless-stopped --network host \
+    --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
+    -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
+    -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" \
+    "$HELPER_IMAGE" sh -c "command -v ffmpeg >/dev/null || apk add --no-cache $HELPER_TOOLS >/dev/null 2>&1 || echo 'Track or skip tools missing (no internet?)'; exec python -u /app/benflix-games-helper.py" \
+    >/dev/null && sleep 5
+  # The first start also installs ffmpeg for the skip times, which can take a minute or two
+  for _ in $(seq 1 30); do curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && break; sleep 5; done
+}
+start_helper
+if ! curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && [ -f "$GOOD/benflix-games-helper.py" ]; then
+  echo "  PROBLEM  The new helper didn't start, so Tower went back to the one that worked. Send this output to Claude. Its log:"
+  docker logs --tail 20 benflix-games 2>&1
+  rm -rf "$APP/.rejected"; mkdir -p "$APP/.rejected"; cp "$APP"/*.py "$APP/.rejected"/
+  cp "$GOOD"/*.py "$APP"/
+  start_helper
+fi
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
   if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"web_app": true'; then
     echo "  ok  Benflix in a web browser: open http://$HOST_IP:8097 on any computer at home. Everyone signs in with their own Benflix name."

@@ -1419,6 +1419,9 @@ html.kids .home.fam .greet .kq { display: block; font-size: .5em; font-weight: 6
   .top .homelink { min-height: 44px; }
   .chip, .drail a, .btn, .btn.small, .valbtn { min-height: 44px; }
   .tp .tp-tab { min-height: 44px; display: inline-flex; align-items: flex-end; }
+  /* the page tabs (For you, All, Collections...) and the Back button had slipped to 36-38 in the redesign */
+  .ptabs a { min-height: 44px; display: inline-flex; align-items: center; }
+  .nback { min-height: 44px; }
   /* phones have no keyboard: the shortcuts button only squeezed the other player buttons down to 26 pixels */
   .player #pKeys { display: none; }
   .rowx h3 .more, .tp .tp-more { position: relative; }

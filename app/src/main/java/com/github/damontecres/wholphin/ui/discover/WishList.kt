@@ -30,6 +30,11 @@ object WishList {
         _keys.value = keys
     }
 
+    /** A different profile is on now */
+    fun clear() {
+        _keys.value = emptySet()
+    }
+
     internal fun set(
         key: String,
         on: Boolean,

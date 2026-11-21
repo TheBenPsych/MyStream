@@ -341,11 +341,11 @@ class GameLibraryClient
                     try {
                         downloadHttp.newCall(request).execute()
                     } catch (e: Exception) {
-                        throw GameLibraryException("Couldn't reach the games helper at $address.", askAddress = true, cause = e)
+                        throw GameLibraryException("Couldn't reach Tower's helper at $address.", askAddress = true, cause = e)
                     }
                 response.use {
                     if (it.code == 404) return@withContext false
-                    if (!it.isSuccessful) throw GameLibraryException("The games helper answered with an error (${it.code}).")
+                    if (!it.isSuccessful) throw GameLibraryException("Tower's helper answered with an error (${it.code}).")
                     target.parentFile?.mkdirs()
                     val tmp = java.io.File(target.path + ".part")
                     var done = 0L
@@ -401,7 +401,7 @@ class GameLibraryClient
                     }
                 } catch (e: Exception) {
                     throw GameLibraryException(
-                        "Couldn't reach the games helper at $address. Run the games setup command on the server " +
+                        "Couldn't reach Tower's helper at $address. Run the Glowfin setup command on the server " +
                             "(it starts the helper), or set the address by hand.",
                         askAddress = true,
                         cause = e,
@@ -416,7 +416,7 @@ class GameLibraryClient
                         } catch (_: Exception) {
                             null
                         }
-                    throw GameLibraryException(message ?: "The games helper answered with an error (${it.code}).")
+                    throw GameLibraryException(message ?: "Tower's helper answered with an error (${it.code}).")
                 }
                 return body
             }

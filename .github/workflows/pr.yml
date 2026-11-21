@@ -29,6 +29,12 @@ jobs:
       uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
     - name: Check every browser link opens a real page
       run: node tools/audit/web_links.js
+    # Tower fetches the browser pages and its helper from main by itself every hour, so simple slips
+    # (a file that doesn't parse, a name that was never defined) are caught here first
+    - name: Check the browser version, Tower's helper and the computer app for simple mistakes
+      run: |
+        python3 -m pip install --quiet pyflakes==4.1.0
+        bash tools/audit/web_check.sh
 
   build:
     runs-on: ubuntu-latest
