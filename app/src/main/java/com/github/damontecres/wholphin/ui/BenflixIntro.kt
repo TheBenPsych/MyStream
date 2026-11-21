@@ -84,10 +84,15 @@ fun BenflixIntro(
         try {
             // Get ready first (dark screen, nothing moving): the first frames drawn, and how fast this TV
             // draws. A slow TV plays a little slower. (No sound: Ben wants it clean and plain.)
-            val pace = IntroPace.measure(context)
+            // Faster start-up (Ben 2026-11-21): the logo part runs by the real clock, and the frames spent
+            // measuring count toward it. Frames are slow while the app is still loading, and that used to
+            // keep the logo up for five or six seconds on a slow TV. Only the glide still shows every step.
+            val began = System.nanoTime()
+            val pace = IntroPace.measure(context, frames = 3)
             val f = pace.stretch
+            val spent = (System.nanoTime() - began) / 1_000_000f
             // The logo fades in, then it holds
-            runIntroTimeline((FADE_MS + HOLD_MS) * f, pace) { t ->
+            runIntroTimeline(((FADE_MS + HOLD_MS) * f - spent).coerceAtLeast(FADE_MS * f), pace, byTheClock = true) { t ->
                 // Ben 2026-11-18: no glow around the fin (it looked odd and popped off at the end). Just the
                 // plain logo, exactly as it looks on Who's watching, so the hand-off is seamless.
                 logoAlpha.floatValue = (t / (FADE_MS * f)).coerceIn(0f, 1f)
