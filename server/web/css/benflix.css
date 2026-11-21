@@ -2350,3 +2350,8 @@ body.scrolled #page:has(#doorTop) > .top, body.scrolled #page:has(.tp-hero) > .t
 a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offset: 2px; }
 .poster:focus-visible, .mcard:focus-visible, .player .pbtn:focus-visible { outline: none; }
 .player .pbtn.lab + .pbtn.lab { margin-left: 12px; }
+
+/* Overhaul 2026-11-20 (part C: reading): on phones the top words sit on the picture itself, so they get a shadow */
+@media (max-width: 600px) {
+  .door-top .info { text-shadow: 0 1px 3px rgba(0,0,0,.8), 0 0 14px rgba(0,0,0,.6); }
+}

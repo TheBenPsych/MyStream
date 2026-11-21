@@ -34,8 +34,10 @@ object BenflixShade {
         get() =
             Brush.horizontalGradient(
                 0f to BenflixColors.Tray,
-                0.3f to BenflixColors.Tray.copy(alpha = if (isTvKnown) .9f else .85f),
-                0.7f to Color.Transparent,
+                0.3f to BenflixColors.Tray.copy(alpha = if (isTvKnown) .92f else .88f),
+                // Overhaul 2026-11-20: the shade now reaches the end of the story lines (they ran onto bright pictures)
+                0.5f to BenflixColors.Tray.copy(alpha = .7f),
+                0.8f to Color.Transparent,
             )
 
     /**
