@@ -1244,7 +1244,7 @@
     const r = fresh[0];
     const got = (await items(`searchTerm=${enc(r.title)}&IncludeItemTypes=Audio&Limit=8&${SONG_FIELDS}`).catch(() => [])).find((x) => songKey(x.Name) === songKey(r.title));
     if (!got) return;
-    B.corner({ id: `music-arrived-${r.id}`, title: `"${r.title}" is here`, line: "Click to play it next", img: r.cover || "", run: () => M.playNext(got) });
+    B.corner({ id: `music-arrived-${r.id}`, title: `"${r.title}" is here`, line: "You asked for it", img: r.cover || "" });
   };
   window.addEventListener("hashchange", () => { if (/^#\/(music|msearch|mlibrary)/.test(location.hash)) arrivals(); });
   setTimeout(() => { if (/^#\/(music|msearch|mlibrary)/.test(location.hash)) arrivals(); }, 1500);
