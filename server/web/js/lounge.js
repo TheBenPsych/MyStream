@@ -960,7 +960,7 @@
       const q = BALLS[0]; PS.aim = Math.atan2(q.y - P.y, q.x - P.x); // start looking the way you walked up
       if (!isFinite(PS.aim)) PS.aim = 0; poolLock();
     },
-    end() { cue.visible = false; aimLine.visible = false; ghost.visible = false; if (document.pointerLockElement === stage && document.fullscreenElement !== box) document.exitPointerLock();
+    end() { cue.visible = false; aimLine.visible = false; ghost.visible = false; if (document.pointerLockElement === stage && !isFull()) document.exitPointerLock();
       // you end up standing where your cue was
       const q = BALLS[0], ax = Math.cos(PS.aim), ay = Math.sin(PS.aim); for (let d = 0.8; d < 2.6; d += 0.1) { const x = q.x - ax * d, y = q.y - ay * d; if (inBounds(x, y) && !hitAt(x, y, 0, 1.7, null, STEP) && supportAt(x, y, 0, STEP) < 0.05) { P.x = x; P.y = y; P.f = 0; SAFE.x = x; SAFE.y = y; SAFE.f = 0; yaw = Math.atan2(-ax, -ay); pitch = -0.35; break; } } },
     update(dt) {
