@@ -2377,9 +2377,25 @@ private fun RequestList(
                     entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
                 }
             }
+
         fun RequestEntry.isNotFound() = !available && cantFindKey()?.let { it in cantFind } == true
-        val boardEntries = if (manage) list.orEmpty().filter { (who == null || it.who == who) && (kind == null || it.manageKind() == kind) } else emptyList()
-        val boardLines = if (manage) otherLines.filter { (who == null || (it.who ?: "Ben") == who) && (kind == null || it.manageKind() == kind) } else emptyList()
+        val boardEntries =
+            if (manage) {
+                list.orEmpty().filter {
+                    (who == null || it.who == who) && (kind == null || it.manageKind() == kind)
+                }
+            } else {
+                emptyList()
+            }
+        val boardLines =
+            if (manage) {
+                otherLines.filter {
+                    (who == null || (it.who ?: "Ben") == who) &&
+                        (kind == null || it.manageKind() == kind)
+                }
+            } else {
+                emptyList()
+            }
         if (manage && list != null) {
             item(key = "manage-tiles") {
                 val counts =
@@ -2522,7 +2538,16 @@ private fun RequestList(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     ) {
                         if (picking && entry.status == RequestStatus.PENDING) {
-                            ManageTick(on = tickKey in ticks, onClick = { ticks = if (tickKey in ticks) ticks - tickKey else ticks + tickKey })
+                            ManageTick(on = tickKey in ticks, onClick = {
+                                ticks =
+                                    if (tickKey in
+                                        ticks
+                                    ) {
+                                        ticks - tickKey
+                                    } else {
+                                        ticks + tickKey
+                                    }
+                            })
                         }
                         Box(Modifier.weight(1f)) {
                             RequestRow(
@@ -2534,10 +2559,42 @@ private fun RequestList(
                                 onAnswer = { viewModel.answer(entry, it) },
                                 cantFind = notFound,
                                 isAdminList = true,
-                                onCantFind = if (lane == ManageLane.STUCK && approved && notFound == null) ({ cantFindFor = entry }) else null,
-                                onUndoCantFind = if (!entry.available && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
-                                holdLine = if (lane == ManageLane.STUCK && tmdb != null) holds["$holdKind:$tmdb"]?.takeIf { it.isNotBlank() } else null,
-                                onLookAgain = if (lane == ManageLane.STUCK && approved && tmdb != null) ({ manageVm.again(holdKind, tmdb) }) else null,
+                                onCantFind =
+                                    if (lane == ManageLane.STUCK && approved &&
+                                        notFound == null
+                                    ) {
+                                        ({ cantFindFor = entry })
+                                    } else {
+                                        null
+                                    },
+                                onUndoCantFind =
+                                    if (!entry.available && notFound != null) {
+                                        (
+                                            {
+                                                viewModel.undoCantFind(
+                                                    entry,
+                                                )
+                                            }
+                                        )
+                                    } else {
+                                        null
+                                    },
+                                holdLine =
+                                    if (lane == ManageLane.STUCK &&
+                                        tmdb != null
+                                    ) {
+                                        holds["$holdKind:$tmdb"]?.takeIf { it.isNotBlank() }
+                                    } else {
+                                        null
+                                    },
+                                onLookAgain =
+                                    if (lane == ManageLane.STUCK && approved &&
+                                        tmdb != null
+                                    ) {
+                                        ({ manageVm.again(holdKind, tmdb) })
+                                    } else {
+                                        null
+                                    },
                                 onStop = if (approved) ({ stopFor = entry }) else null,
                                 onChangedMind = changedMind,
                             )
@@ -2560,7 +2617,10 @@ private fun RequestList(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     ) {
                         if (picking && line.onYes != null) {
-                            ManageTick(on = line.key in ticks, onClick = { ticks = if (line.key in ticks) ticks - line.key else ticks + line.key })
+                            ManageTick(on = line.key in ticks, onClick = {
+                                ticks =
+                                    if (line.key in ticks) ticks - line.key else ticks + line.key
+                            })
                         }
                         Box(Modifier.weight(1f)) { AskLineRow(line) }
                     }

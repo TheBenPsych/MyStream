@@ -139,10 +139,18 @@ fun DeclineWhyHost(viewModel: DeclineWhyViewModel = hiltViewModel()) {
     asking?.let { id ->
         BenflixChoiceDialog(
             title = "Tell them why?",
-            subtitle = if (DeclineWhy.also.isEmpty()) "They'll see this next to their request." else "One reason for all ${DeclineWhy.also.size + 1}. They'll see it next to their request.",
+            subtitle =
+                if (DeclineWhy.also.isEmpty()) {
+                    "They'll see this next to their request."
+                } else {
+                    "One reason for all ${DeclineWhy.also.size + 1}. They'll see it next to their request."
+                },
             choices =
                 DeclineWhy.presets.map { reason ->
-                    BenflixChoice(label = reason, onClick = { (listOf(id) + DeclineWhy.also).forEach { viewModel.send(it, reason) } })
+                    BenflixChoice(
+                        label = reason,
+                        onClick = { (listOf(id) + DeclineWhy.also).forEach { viewModel.send(it, reason) } },
+                    )
                 } +
                     BenflixChoice(label = "Type my own reason", onClick = { typing = id }) +
                     BenflixChoice(label = "Skip", onClick = {}),

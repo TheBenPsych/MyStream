@@ -75,12 +75,18 @@ internal fun RequestEntry.manageLane(notFound: Boolean): ManageLane {
     val days = BenflixCantFind.daysSince(request.updatedAt ?: request.createdAt) ?: 0L
     return when {
         available -> ManageLane.READY
+
         status == RequestStatus.PENDING -> ManageLane.NEEDS
+
         status == RequestStatus.DECLINED -> ManageLane.NO
+
         notFound || status == RequestStatus.FAILURE -> ManageLane.STUCK
+
         // some of it is here: a show still airing sits like this for months, so it is never called stuck
         downloading || request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status -> ManageLane.WAY
+
         days >= MANAGE_STUCK_DAYS -> ManageLane.STUCK
+
         else -> ManageLane.WAY
     }
 }
