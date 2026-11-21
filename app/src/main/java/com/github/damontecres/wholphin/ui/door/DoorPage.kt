@@ -917,10 +917,13 @@ internal fun PhoneDoor(
         val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
         // Ben 2026-11-18 (Fade down): the picked title's picture fills the page behind everything,
         // and its words stay locked at the top while the rows scroll under them
-        val topHeight = (maxHeight * 0.36f).coerceIn(200.dp, 320.dp)
-        PageBackdrop(item = state.pick, pageHeight = maxHeight, brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f))
+        // The top used to stay blank when nothing new was there to pick (a small library, or everything watched).
+        // Now it shows the first thing on the page instead, and closes up if the page has nothing at all.
+        val pick = state.pick ?: if (state.loaded) state.rows.firstNotNullOfOrNull { it.items.firstOrNull() } else null
+        val topHeight = if (pick == null && state.loaded) 0.dp else (maxHeight * 0.36f).coerceIn(200.dp, 320.dp)
+        PageBackdrop(item = pick, pageHeight = maxHeight, brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f))
         Column(Modifier.fillMaxSize()) {
-            PhoneTop(state.pick, easy, onClick = { state.pick?.let(onClick) }, Modifier.fillMaxWidth().height(topHeight))
+            PhoneTop(pick, easy, onClick = { pick?.let(onClick) }, Modifier.fillMaxWidth().height(topHeight))
             LazyColumn(
                 state = columnState,
                 contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
