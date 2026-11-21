@@ -29,6 +29,8 @@ data class OmdbScore(
     val imdb: Double? = null,
     /** Rotten Tomatoes critics score (Tomatometer), 0 to 100 */
     val rtCritics: Int? = null,
+    /** OMDb's awards line ("Won 2 Oscars. 11 wins & 34 nominations total"), null when it has none */
+    val awards: String? = null,
 )
 
 /**
@@ -121,7 +123,8 @@ class OmdbScores
         /** IMDb and Rotten Tomatoes scores for an IMDb id like "tt0214341"; null when there is no key or no answer */
         suspend fun scoresFor(imdbId: String): OmdbScore? {
             if (!imdbId.startsWith("tt")) return null
-            val cacheName = "omdb-$imdbId"
+            // ("omdb2": answers saved before awards were kept are asked for again)
+            val cacheName = "omdb2-$imdbId"
             diskCache.read(cacheName, OmdbScore.serializer(), WEEK_MS)?.let { return it }
             val key = loadKey() ?: return null
             return withContext(WholphinDispatchers.IO) {
@@ -210,7 +213,12 @@ class OmdbScores
                         ?.let { (it["Value"] as? JsonPrimitive)?.contentOrNull }
                         ?.removeSuffix("%")
                         ?.toIntOrNull()
-                return OmdbScore(imdb = imdb, rtCritics = rt)
+                val awards =
+                    (obj["Awards"] as? JsonPrimitive)
+                        ?.contentOrNull
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() && !it.equals("N/A", ignoreCase = true) }
+                return OmdbScore(imdb = imdb, rtCritics = rt, awards = awards)
             }
         }
     }

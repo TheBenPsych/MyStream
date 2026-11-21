@@ -6,6 +6,137 @@
 "use strict";
 
 (() => {
+  // ---------- Glowfin (Ben, 2026-11-21): who made it, how big a film it was, is it out, film series ----------
+  // Who a studio belongs to. The film database only lists company names, so this short list of well known
+  // studios is kept here. The TV and phone app has the same list (StudioOwners.kt): change both together.
+  // Each line: owner | kind | name starts separated by ";" (a company matches when its name starts with one).
+  const HOLLYWOOD = "Big Hollywood studio", STREAMING = "Streaming service", INDIE = "Independent studio", JAPAN = "Big Japanese studio", INDIA = "Big Indian studio", KOREA = "Big Korean studio", EUROPE = "Big European studio", CHINA = "Big Chinese studio", BRITISH_TV = "British TV";
+  const OWNERS = [
+    `Sony Pictures|${HOLLYWOOD}|columbia pictures;sony pictures;tristar;tri-star;screen gems;stage 6 films;affirm films;3000 pictures;destination films;left bank pictures`,
+    `Sony|${JAPAN}|aniplex;crunchyroll;funimation;a-1 pictures;cloverworks`,
+    `Disney|${HOLLYWOOD}|walt disney;disney;pixar;marvel studios;marvel entertainment;marvel animation;marvel television;lucasfilm;20th century;twentieth century;searchlight pictures;fox searchlight;touchstone;hollywood pictures;abc studios;abc signature;abc;fx productions;fx networks;fx;hulu;national geographic;blue sky studios`,
+    `Universal|${HOLLYWOOD}|universal pictures;universal television;universal animation;universal 1440;universal content;universal international;focus features;dreamworks animation;illumination;working title;nbc;peacock;syfy;usa network;sky studios;carnival films;telemundo`,
+    `Warner Bros.|${HOLLYWOOD}|warner bros;new line cinema;dc studios;dc films;dc entertainment;hbo;castle rock entertainment;cartoon network;adult swim;williams street;hanna-barbera;turner;tnt;tbs;discovery`,
+    `Paramount|${HOLLYWOOD}|paramount;nickelodeon;mtv;comedy central;cbs;showtime;bet;republic pictures;skydance`,
+    `Amazon|${HOLLYWOOD}|amazon;metro-goldwyn-mayer;mgm;orion pictures;united artists;prime video`,
+    `Apple|${STREAMING}|apple`,
+    `Netflix|${STREAMING}|netflix`,
+    `Lionsgate|${HOLLYWOOD}|lionsgate;lions gate;summit entertainment;starz;entertainment one`,
+    `A24|${INDIE}|a24`, `Neon|${INDIE}|neon`, `Blumhouse|${INDIE}|blumhouse`, `Legendary|${INDIE}|legendary`, `Annapurna|${INDIE}|annapurna`, `Amblin|${INDIE}|amblin`,
+    `Toho|${JAPAN}|toho`, `Toei|${JAPAN}|toei`, `Kadokawa|${JAPAN}|kadokawa`, `Bandai Namco|${JAPAN}|sunrise;bandai namco`, `Nippon TV|${JAPAN}|studio ghibli;madhouse;nippon television;nippon tv`, `Sega Sammy|${JAPAN}|tms entertainment`, `Shueisha|${JAPAN}|shueisha`,
+    `Yash Raj Films|${INDIA}|yash raj`, `Dharma Productions|${INDIA}|dharma productions`, `T-Series|${INDIA}|t-series`, `Red Chillies Entertainment|${INDIA}|red chillies`, `Zee|${INDIA}|zee studios;zee entertainment`, `Reliance|${INDIA}|reliance entertainment;jio studios;viacom18`, `Eros|${INDIA}|eros international`, `Hombale Films|${INDIA}|hombale`, `Lyca Productions|${INDIA}|lyca`, `Sun Pictures|${INDIA}|sun pictures`, `Excel Entertainment|${INDIA}|excel entertainment`,
+    `CJ ENM|${KOREA}|cj entertainment;cj enm;studio dragon`, `Showbox|${KOREA}|showbox`,
+    `Canal+|${EUROPE}|studiocanal;canal+`, `Gaumont|${EUROPE}|gaumont`, `Pathé|${EUROPE}|pathé;pathe`, `Constantin Film|${EUROPE}|constantin film`,
+    `BBC|${BRITISH_TV}|bbc`, `ITV|${BRITISH_TV}|itv`, `Channel 4|${BRITISH_TV}|channel 4;film4`,
+    `China Film Group|${CHINA}|china film`, `Tencent|${CHINA}|tencent`,
+  ].flatMap((line) => { const [owner, kind, starts] = line.split("|"); return starts.split(";").map((st) => [st, { owner, kind }]); }).sort((a, b) => b[0].length - a[0].length);
+  // { owner, kind, part } for a company name; part = true when the owner is a different, bigger company
+  B.studioOwner = (company) => {
+    const name = String(company || "").trim().toLowerCase();
+    const hit = OWNERS.find(([st]) => name === st || name.startsWith(st + " ") || name.startsWith(st + ","));
+    if (!hit) return null;
+    return Object.assign({ part: !name.startsWith(hit[1].owner.toLowerCase().replace(/\.$/, "")) }, hit[1]);
+  };
+  const companies = (list) => { const seen = new Set(); return (list || []).filter((c) => c && c.name && !seen.has(c.name.toLowerCase()) && seen.add(c.name.toLowerCase())); };
+  const mainOf = (list) => list.find((c) => B.studioOwner(c.name)) || list[0] || null;
+  const dayOf = (text) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(text || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const longDay = (d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const nearDay = (d) => (d.getFullYear() === new Date().getFullYear() ? d.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : longDay(d));
+  const roughly = (d) => (d.getDate() <= 10 ? "early " : d.getDate() <= 20 ? "mid " : "late ") + d.toLocaleDateString("en-US", { month: "long" });
+  const trimNum = (n) => (n >= 100 || n % 1 < 0.05 ? n.toFixed(0) : n.toFixed(1));
+  const money = (n) => (n >= 1e9 ? `$${trimNum(n / 1e9)} billion` : n >= 1e6 ? `$${trimNum(n / 1e6)} million` : "$" + Math.round(n).toLocaleString("en-US"));
+  const countryName = (code) => { try { const n = new Intl.DisplayNames(["en"], { type: "region" }).of(code); return n && n !== code ? n : ""; } catch (e) { return ""; } };
+  // Cinema and home release of a movie: { cinema, home, guess } (home is a guess, 90 days after cinemas, when TMDB has none)
+  const releaseOf = (d) => {
+    const cinema = dayOf(d.releaseDate);
+    const homes = (((d.releases || {}).results) || []).flatMap((r) => r.release_dates || []).filter((r) => [4, 5, 6].includes(+r.type)).map((r) => dayOf(r.release_date)).filter(Boolean).sort((a, b) => a - b);
+    if (homes[0]) return { cinema, home: homes[0], guess: false };
+    return { cinema, home: cinema ? new Date(cinema.getTime() + 90 * 86400000) : null, guess: true };
+  };
+  // IMDb's awards line from OMDb, with the key Ben saved once in the app's Settings (no key = no line)
+  const awardsOf = (imdbId) => B.cached("omdb-awards-" + imdbId, 86400000, async () => {
+    const key = await B.cached("omdb-key", 3600000, async () => (((await B.prefs().catch(() => null)) || {}).CustomPrefs || {})["benflix.omdb.key"] || "");
+    if (!key || !/^tt\d+$/.test(imdbId || "")) return "";
+    const r = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${encodeURIComponent(key.trim())}`).then((x) => x.json()).catch(() => null);
+    const a = r && r.Awards;
+    return a && a !== "N/A" ? a : "";
+  }).catch(() => "");
+  // The Details boxes on the right of Overview
+  const factsHtml = (d, isMovie, awards) => {
+    const made = companies(d.productionCompanies), nets = isMovie ? [] : companies(d.networks);
+    const first = isMovie ? mainOf(made) : mainOf(nets) || mainOf(made);
+    const boxes = [];
+    if (first) {
+      const shownOn = !isMovie && nets.length > 0, own = B.studioOwner(first.name);
+      const others = made.filter((c) => c.name !== first.name).slice(0, 3).map((c) => { const n = c.originCountry && c.originCountry !== "US" ? countryName(c.originCountry) : ""; return n ? `${c.name} (${n})` : c.name; });
+      const small = [own ? own.kind : "", others.length ? (shownOn ? "Made by " : "With ") + others.join(", ") : ""].filter(Boolean).join(" · ");
+      boxes.push(`<div class="fact-full"><b>${shownOn ? "Shown on" : "Made by"}</b><span class="fact-big">${esc(first.name)}</span>${own && own.part ? `<span class="fact-tag">Part of ${esc(own.owner)}</span>` : ""}${small ? `<small>${esc(small)}</small>` : ""}</div>`);
+    }
+    const box = (k, v, small, full) => boxes.push(`<div${full ? ' class="fact-full"' : ""}><b>${esc(k)}</b>${esc(v)}${small ? `<small>${esc(small)}</small>` : ""}</div>`);
+    const today = new Date();
+    if (isMovie) {
+      const cinema = dayOf(d.releaseDate);
+      if (cinema) box(cinema > today ? "Comes out" : "Released", longDay(cinema));
+    } else {
+      const first = dayOf(d.firstAirDate);
+      if (first) box(first > today ? "Starts" : "First aired", longDay(first));
+    }
+    const lands = (d.productionCountries || []).map((c) => c.name).filter(Boolean).slice(0, 3);
+    if (lands.length) box("Made in", lands.join(", "));
+    if (isMovie && d.budget > 0) box("Cost to make", money(d.budget), d.budget >= 75e6 ? "Big-budget film" : d.budget <= 5e6 ? "Small film" : "");
+    if (isMovie && d.revenue > 0) box("Made in cinemas", money(d.revenue));
+    if (awards) { const [top, ...rest] = awards.split(/\.\s+/); box("Awards", top.replace(/\.$/, ""), rest.join(". ").replace(/\.$/, "").replace(/&/g, "and"), true); }
+    return boxes.length ? `<section class="rowx"><h3>Details</h3><div class="facts">${boxes.join("")}</div></section>` : "";
+  };
+  // "Is it out yet?" for a movie that isn't out at home yet (nothing for older films)
+  const outYetHtml = (d) => {
+    const { cinema, home, guess } = releaseOf(d), today = new Date();
+    if (!cinema || !home || home <= today) return "";
+    const inCinemas = cinema <= today;
+    return `<div class="ask-steps ask-out"><h4>Is it out yet?</h4><ol>
+      <li class="${inCinemas ? "done" : "now"}"><i>${inCinemas ? "✓" : "1"}</i><div><b>In cinemas</b><span>${inCinemas ? "Since " : "From "}${esc(nearDay(cinema))}</span></div></li>
+      <li class="${inCinemas ? "now" : ""}"><i>2</i><div><b>Out at home</b><span>Not yet. ${guess ? "Around " + esc(roughly(home)) : esc(nearDay(home))}.</span></div></li>
+      <li><i>3</i><div><b>If you ask now</b><span>Glowfin grabs it once a good copy is out.</span></div></li></ol></div>`;
+  };
+  // "Is the show finished?"
+  const showStatusHtml = (d) => {
+    const next = dayOf((d.nextEpisodeToAir || {}).airDate), today = new Date(new Date().toDateString());
+    const word = { "Returning Series": next ? "Still going" : "Still going, between seasons", Ended: "Finished", Canceled: "Cancelled", "In Production": "Not out yet", Planned: "Not out yet", Pilot: "Not out yet" }[d.status];
+    if (!word) return "";
+    const ns = d.numberOfSeasons, ne = d.numberOfEpisodes;
+    const size = [ns ? `${ns} season${ns === 1 ? "" : "s"}${/^Still/.test(word) ? " so far" : ""}` : "", ne ? `${ne} episode${ne === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
+    const line = word === "Finished" ? "The whole show is out, so asking for it gets all of it." : word === "Cancelled" ? "It was cancelled, so the story may stop without an ending." : /^Still going$/.test(word) ? "A season is airing now. Ask for it and new episodes show up by themselves." : /^Still/.test(word) ? "More is coming. Ask for it and new seasons show up by themselves." : "It hasn't started yet. Ask now and episodes show up as they air.";
+    return `<div class="ask-steps ask-show"><h4>Is the show finished?</h4><div class="ask-chips"><span class="chip on">${esc(word)}</span>${size ? `<span class="chip">${esc(size)}</span>` : ""}${next && next >= today ? `<span class="chip">Next episode: ${esc(nearDay(next))}</span>` : ""}</div><p class="dim">${esc(line)}</p></div>`;
+  };
+  // "Part 2 of 4 · The Monsoon Collection", every part and where it stands, and one button for the missing ones
+  const filmSet = async (d, id, box, nav, kids) => {
+    const cid = d.collection && d.collection.id;
+    if (!cid || !box) return;
+    const [set, lib] = await Promise.all([B.seerr(`/collection/${cid}`).catch(() => null), B.libTmdb().catch(() => new Map())]);
+    if (!set || !B.alive(nav) || !box.isConnected) return;
+    const today = new Date();
+    const parts = (set.parts || []).filter((p) => p && p.id && (p.title || p.name)).map((p) => {
+      const date = dayOf(p.releaseDate), st = (p.mediaInfo && p.mediaInfo.status) || 1;
+      return { id: p.id, title: p.title || p.name, date, img: p.posterPath, jf: lib.get("movie:" + p.id) || (p.mediaInfo && p.mediaInfo.jellyfinMediaId), state: st >= 4 || lib.has("movie:" + p.id) ? "here" : st >= 2 ? "asked" : !date || date > today ? "notout" : "missing" };
+    }).sort((a, b) => (a.date || Infinity) - (b.date || Infinity) || a.id - b.id);
+    if (parts.length < 2) return;
+    const at = parts.findIndex((p) => p.id === +id), missing = parts.filter((p) => p.state === "missing");
+    const tag = (p) => (p.id === +id ? "This one" : p.state === "here" ? "On Glowfin" : p.state === "asked" ? "Asked for" : p.state === "notout" ? "Not out yet" : "Not here");
+    box.innerHTML = `<div class="ask-steps ask-set"><h4>${at >= 0 ? `Part ${at + 1} of ${parts.length}` : `${parts.length} movies`} · ${esc(set.name || "")}</h4>
+      <div class="ask-parts">${parts.slice(0, 12).map((p) => `<a class="poster askcard" href="${p.state === "here" && p.jf ? `#/movie/${esc(p.jf)}` : `#/ask/movie/${p.id}`}" title="${esc(p.title)}"><div class="im" ${p.img ? `style="background-image:url('${B.tmdbImg(p.img)}')"` : ""}>${p.img ? "" : `<div class="noart"><span class="nt">${esc(p.title)}</span></div>`}<span class="newp ${p.state === "here" ? "miss" : "grey"}">${tag(p)}</span></div></a>`).join("")}</div>
+      ${missing.length && !kids ? `<button class="btn white small" id="askSet">${I("plus")} Ask for the ${missing.length} you don't have</button>` : ""}</div>`;
+    const go = $("#askSet", box);
+    if (go) go.onclick = () => B.busy(go, async () => {
+      let n = 0;
+      for (const p of missing) { try { await B.seerr("/request", "POST", { mediaType: "movie", mediaId: p.id }); n++; } catch (e) { /* the rest are still asked for */ } }
+      B.cache["seerr-mine"] = null;
+      if (!n) throw new Error("Couldn't ask for those. Try again in a minute.");
+      go.remove();
+      $$(".ask-parts .newp.grey", box).forEach((x) => { if (x.textContent === "Not here") x.textContent = "Asked for"; });
+      return n === 1 ? "Asked for 1 movie." : `Asked for ${n} movies.`;
+    });
+  };
+
   B.route(/^\/ask\/(movie|tv)\/(\d+)/, async (m, nav) => {
     const [, type, id] = m;
     B.page().innerHTML = B.top("") + B.spinner();
@@ -77,7 +208,7 @@
       status: pending.length && admin ? "Someone asked for this. Say yes or no in Overview." : "",
       story: d.overview || "",
       strip,
-      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${steps}${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
+      overviewExtra: `<div class="wrap0" style="max-width:760px;margin-top:12px">${isMovie ? outYetHtml(d) : showStatusHtml(d)}<div id="askSetBox"></div>${steps}${asked}${genres ? `<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${genres}</div>` : ""}</div>`,
       tabs: [
         { name: "More to ask for", id: "tpAskMore", load: async (pane) => {
           const [rec, sim] = await Promise.all([
@@ -92,7 +223,11 @@
         { name: "Cast", id: "tpCast", html: cast.length ? `<section class="rowx people-row"><h3>Cast</h3><div class="strip">${cast.map((p) => `<a class="person-c" href="#/search?q=${encodeURIComponent(p.name)}"><span class="pic" style="${p.profilePath ? `background-image:url('${B.tmdbImg(p.profilePath, "w185")}')` : ""}">${p.profilePath ? "" : esc(B.initials(p.name))}</span>${esc(p.name)}<small>${esc(p.character || "")}</small></a>`).join("")}</div></section>` : "" },
       ],
     });
-    tp.setStoryExtra(`<p class="dim">${esc([d.releaseDate ? "Out " + d.releaseDate : d.firstAirDate ? "First aired " + d.firstAirDate : "", (d.productionCompanies || []).slice(0, 2).map((c) => c.name).join(", ")].filter(Boolean).join(" · "))}</p>`);
+    // Details on the right: who made it, release, cost, cinema takings; the awards line joins when OMDb answers
+    tp.setStoryExtra(factsHtml(d, isMovie, ""));
+    const imdbId = d.externalIds && d.externalIds.imdbId;
+    if (imdbId) awardsOf(imdbId).then((a) => { if (a && B.alive(nav)) tp.setStoryExtra(factsHtml(d, isMovie, a)); });
+    if (isMovie) filmSet(d, id, $("#askSetBox", tp.root), nav, kids).catch(() => {});
     tp.root.addEventListener("click", (e) => {
       const y = e.target.closest("[data-ayes]"), n = e.target.closest("[data-ano]");
       if (!y && !n) return;

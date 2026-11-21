@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.DiscoverRating
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -123,7 +125,16 @@ fun RequestTitlePage(
         buildList {
             add(
                 TitleTab("Overview") { scope ->
+                    // Glowfin: the Details list (who made it, release, cost, awards, show status) comes from
+                    // the same lookup as the scores strip
+                    val extras =
+                        tmdbId?.let { id ->
+                            val facts: SeerrExtrasViewModel = hiltViewModel(key = "seerr-extras-$isMovie-$id")
+                            LaunchedEffect(isMovie, id) { facts.load(isMovie, id) }
+                            facts.extras.collectAsState().value
+                        }
                     TitleOverview(
+                        details = extras?.details.orEmpty(),
                         scope = scope,
                         title = title,
                         story = story,
@@ -152,6 +163,15 @@ fun RequestTitlePage(
                                                 at = step,
                                                 isAdmin = isAdmin,
                                                 modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+                                            )
+                                        }
+                                        // Part 2 of 4, with one button to ask for the rest of the film series
+                                        extras?.collectionId?.let { set ->
+                                            FilmSetBlock(
+                                                collectionId = set,
+                                                thisTmdbId = id,
+                                                canRequest = canRequest,
+                                                modifier = Modifier.padding(bottom = 10.dp),
                                             )
                                         }
                                         // Who asked (one line), with Approve / Decline for Ben
