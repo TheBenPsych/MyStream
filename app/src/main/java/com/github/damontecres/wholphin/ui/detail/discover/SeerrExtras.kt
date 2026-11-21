@@ -91,6 +91,14 @@ data class SeerrExtras(
     val mal: Double? = null,
     /** TMDB's user score, 0 to 100 (used when Rotten Tomatoes has no audience score) */
     val tmdbUsers: Int? = null,
+    // Glowfin: the Details list (who made it, release, cost, awards, show status), see RequestFacts
+    val details: List<Pair<String, String>> = emptyList(),
+    /** The company the Details list shows first, for the studio page */
+    val studio: RequestFacts.Company? = null,
+    /** True when [studio] is a TV network (shows) and not a film studio */
+    val studioIsNetwork: Boolean = false,
+    /** Movies that belong to a film series: its TMDB collection id */
+    val collectionId: Int? = null,
 )
 
 @HiltViewModel
@@ -133,7 +141,23 @@ class SeerrExtrasViewModel
                             maker = details?.let { if (isMovie) directors(it) else creators(it) },
                             anime = details?.let(::isAnime) == true,
                             tmdbUsers = details?.let(::tmdbUserScore),
+                            details = details?.let { RequestFacts.details(it, isMovie, null) }.orEmpty(),
+                            collectionId =
+                                if (isMovie) {
+                                    (
+                                        details?.get(
+                                            "collection",
+                                        ) as? JsonObject
+                                    )?.get("id").str()?.toIntOrNull()
+                                } else {
+                                    null
+                                },
                         )
+                    if (details != null) {
+                        val networks = if (isMovie) emptyList() else RequestFacts.companies(details, "networks")
+                        val studio = RequestFacts.main(networks) ?: RequestFacts.main(RequestFacts.companies(details))
+                        extras = extras.copy(studio = studio, studioIsNetwork = studio != null && networks.any { it.name == studio.name })
+                    }
                     _extras.value = extras
                     // Benflix: anime scores from AniList and MyAnimeList
                     if (extras.anime && details != null) {
@@ -184,18 +208,24 @@ class SeerrExtrasViewModel
                         _extras.value = extras
                     }
                     // Benflix: IMDb and Rotten Tomatoes from OMDb fill in whatever Seerr didn't have
-                    // (Seerr never has IMDb for shows, and often misses older shows on Rotten Tomatoes)
-                    if (!extras.anime && (extras.imdb == null || extras.rtCritics == null)) {
-                        val imdbId = details?.let(::imdbIdOf)
-                        val omdb = imdbId?.let { omdbScores.scoresFor(it) }
-                        if (omdb != null) {
-                            extras =
-                                extras.copy(
-                                    imdb = extras.imdb ?: omdb.imdb,
-                                    rtCritics = extras.rtCritics ?: omdb.rtCritics,
-                                )
-                            _extras.value = extras
-                        }
+                    // (Seerr never has IMDb for shows, and often misses older shows on Rotten Tomatoes).
+                    // Glowfin: the same answer carries the awards line for the Details list.
+                    val omdb = details?.let(::imdbIdOf)?.let { omdbScores.scoresFor(it) }
+                    if (omdb != null) {
+                        extras =
+                            extras.copy(
+                                imdb = if (extras.anime) extras.imdb else extras.imdb ?: omdb.imdb,
+                                rtCritics = if (extras.anime) extras.rtCritics else extras.rtCritics ?: omdb.rtCritics,
+                                details =
+                                    if (omdb.awards != null &&
+                                        details != null
+                                    ) {
+                                        RequestFacts.details(details, isMovie, omdb.awards)
+                                    } else {
+                                        extras.details
+                                    },
+                            )
+                        _extras.value = extras
                     }
                 } catch (ex: CancellationException) {
                     throw ex
