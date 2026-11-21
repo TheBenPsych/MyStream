@@ -88,6 +88,7 @@ import org.jellyfin.sdk.model.serializer.toUUIDOrNull
  * songs first, Ask for music and Import at the end) and a few more rows. Phones: the same tabs and rows.
  * Easy read: just Made for you and Your playlists, bigger. Ask for music opens over the page; Back closes it.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MusicDoorPage(
     preferences: UserPreferences,
