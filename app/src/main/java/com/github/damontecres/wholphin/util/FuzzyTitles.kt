@@ -30,12 +30,31 @@ object FuzzyTitles {
     fun clean(text: String): String =
         Normalizer
             .normalize(text, Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
+            .replace(MARKS, "")
             .lowercase()
             .replace("&", "and")
-            .replace(Regex("[^a-z0-9 ]+"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(NOT_PLAIN, " ")
+            .replace(SPACES, " ")
             .trim()
+
+    // Made once: cleaning every title in the library used to build these three again for each name
+    private val MARKS = Regex("\\p{M}+")
+    private val NOT_PLAIN = Regex("[^a-z0-9 ]+")
+    private val SPACES = Regex("\\s+")
+
+    /** Fetch the list of names ahead of time (quietly), so the first misspelled search is quick */
+    suspend fun warm(
+        api: ApiClient,
+        userId: UUID?,
+    ) {
+        try {
+            load(api, userId)
+        } catch (ex: kotlinx.coroutines.CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            // Tower is away: the search itself will try again
+        }
+    }
 
     /** Ids of titles that look like a misspelling of [query], closest first */
     suspend fun closeMatches(

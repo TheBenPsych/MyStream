@@ -35,9 +35,21 @@ B.route(/^\/search/, async (m, nav) => {
     if (!t) return before();
     $("#best").innerHTML = `<span class="dim">Looking…</span>`;
     const u = B.uid(), F = B.FIELDS;
-    const [movies, shows, people, chans, ask, mine, cat, shelf] = await Promise.all([
-      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Movie&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
-      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Series&Recursive=true&Limit=30&Fields=${F}`).then((r) => B.keep(r.Items)).catch(() => []),
+    // Search speed (Ben 2026-11-21): everything is asked for at once. What Tower itself knows (movies, shows, music,
+    // channels, books, people) is shown the moment it answers; Ask for it, plain-words results and the games list come
+    // from slower places and join the rows when they arrive. Before, nothing showed until the slowest one finished.
+    const NC = "&EnableTotalRecordCount=false";
+    const words = B.extras ? B.extras.parseWords(t) : null;
+    const slow = Promise.all([
+      kids ? [] : Promise.all([B.seerr(`/search?query=${enc(t)}&page=1`), B.libTmdb().catch(() => null)]).then(([r]) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
+      kids || t.length < 2 ? null : B.call("GET", `api/music/search?q=${enc(t)}`).catch(() => null),
+      // "funny 90s movie under 2 hours": the words become filters (extras.js), searched beside the names
+      words ? B.extras.searchWords(words).catch(() => []) : [],
+      games !== null ? games : B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => (B.webPlayable ? B.webPlayable(c.slug) : x.playable)).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []).then((l) => (games = l)),
+    ]);
+    const quick = await Promise.all([
+      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Movie&Recursive=true&Limit=30&Fields=${F}${NC}`).then((r) => B.keep(r.Items)).catch(() => []),
+      B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Series&Recursive=true&Limit=30&Fields=${F}${NC}`).then((r) => B.keep(r.Items)).catch(() => []),
       kids ? [] : B.get(`/Persons?userId=${u}&searchTerm=${enc(t)}&Limit=16&EnableImages=true`).then((r) => r.Items || []).catch(() => []),
       // Kids search only finds kids titles: live programmes have no kids rating
       kids ? [] : B.channels().then((l) => l.filter((c) => {
@@ -45,21 +57,20 @@ B.route(/^\/search/, async (m, nav) => {
         const s = t.toLowerCase();
         return (c.Name || "").toLowerCase().includes(s) || ((now && now.Name) || "").toLowerCase().includes(s);
       })).catch(() => []),
-      kids ? [] : Promise.all([B.seerr(`/search?query=${enc(t)}&page=1`), B.libTmdb().catch(() => null)]).then(([r]) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
-      kids ? [] : B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Audio,MusicAlbum,MusicArtist,Playlist&Recursive=true&Limit=40&Fields=ChildCount,ProductionYear`).then((r) => (r.Items || []).filter((x) => x.Type !== "Playlist" || x.MediaType !== "Video")).catch(() => []),
-      kids || t.length < 2 ? null : B.call("GET", `api/music/search?q=${enc(t)}`).catch(() => null),
+      kids ? [] : B.get(`/Items?userId=${u}&searchTerm=${enc(t)}&IncludeItemTypes=Audio,MusicAlbum,MusicArtist,Playlist&Recursive=true&Limit=40&Fields=ChildCount,ProductionYear${NC}`).then((r) => (r.Items || []).filter((x) => x.Type !== "Playlist" || x.MediaType !== "Video")).catch(() => []),
       kids ? [] : B.cached("books-lib", 15000, () => B.call("GET", "api/books/library")).then((l) => (l.titles || []).filter((b) => !b.notHere)).catch(() => []),
     ]);
+    if (my !== seq || !B.alive(nav)) return;
+    let painted = null;
+    // [more] is what the slower places found, or null while they are still looking
+    const paint = (more) => {
+    const [movies, shows, people, chans, mine, shelf] = quick;
+    const [ask, cat, described] = more || [[], null, []];
     // Songs and albums to ask for: not already in your music
     const have = new Set(mine.map((x) => plain(x.Name) + "|" + plain(x.AlbumArtist || (x.Artists || [])[0] || "")));
     const mAsk = cat ? [...(cat.songs || []).slice(0, 12).map((x) => Object.assign({ kind: "song" }, x)), ...(cat.albums || []).slice(0, 6).map((x) => Object.assign({ kind: "album", album_id: x.id, album: x.title }, x))]
       .filter((x) => !x.have && x.asked !== "In your music" && !have.has(plain(x.title) + "|" + plain(x.artist))) : [];
-    // "funny 90s movie under 2 hours": the words become filters (extras.js), searched beside the names
-    const words = B.extras ? B.extras.parseWords(t) : null;
-    const described = words ? await B.extras.searchWords(words).catch(() => []) : [];
-        if (games === null) games = await B.call("GET", "api/games").then((g) => g.consoles.flatMap((c) => c.games.filter((x) => (B.webPlayable ? B.webPlayable(c.slug) : x.playable)).map((x) => Object.assign({ console: c.name, slug: c.slug }, x)))).catch(() => []);
-    if (my !== seq || !B.alive(nav)) return;
-    const gl = games.filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));
+    const gl = (games || []).filter((g) => g.name.toLowerCase().includes(t.toLowerCase()));
     // Closest name first
     const score = (n) => { n = (n || "").toLowerCase(); const s = t.toLowerCase(); return n === s ? 0 : n.startsWith(s) ? 1 : n.includes(" " + s) ? 2 : 3; };
     [movies, shows].forEach((l) => l.sort((a, b) => score(a.Name) - score(b.Name)));
@@ -68,7 +79,7 @@ B.route(/^\/search/, async (m, nav) => {
     const low = t.toLowerCase();
     const typo = t.length >= 3 && !described.length && ![...movies, ...shows].some((x) => (x.Name || "").toLowerCase().includes(low)) ? best : null;
     // Plain-words searches say so; a typo offers the closest name
-    $("#best").innerHTML = described.length ? `<span class="idea">Searching by idea</span> <b>${esc(words.label)}</b> <span class="dim">· ${described.length} found</span>`
+    if (more) $("#best").innerHTML = described.length ? `<span class="idea">Searching by idea</span> <b>${esc(words.label)}</b> <span class="dim">· ${described.length} found</span>`
       : typo ? `Did you mean <a href="${B.hrefOf(typo)}"><b>${esc(typo.Name)}</b></a>? <span class="dim">· ${esc([typo.Type === "Series" ? "Show" : "Movie", typo.ProductionYear].filter(Boolean).join(" · "))}</span>` : "";
     // Books and audiobooks on Tower: the name, author or series has the words
     const pt = plain(t);
@@ -131,25 +142,47 @@ B.route(/^\/search/, async (m, nav) => {
       [{ name: "Anime", color: DOORS.shows.color, quiet: true }, [...sh, ...mv].filter(anime).map(itemLine)],
       ...(kids ? [] : [[{ name: "Music", color: "#7AA7FF" }, mine.map(itemLine)]]),
       [DOORS.live, chans.map(chLine)],
-      [DOORS.games, gl.map(gameLine)],
+      [games === null ? Object.assign({ wait: true }, DOORS.games) : DOORS.games, gl.map(gameLine)],
       ...(kids ? [] : [
         [{ name: "Books", color: "#7AA7FF" }, books.map(bookLine)],
-        [{ name: "Ask for it: movies and shows", short: "Ask for it", color: "#F1F2F5" }, askTitles],
+        [{ name: "Ask for it: movies and shows", short: "Ask for it", color: "#F1F2F5", wait: !more }, askTitles],
         [{ name: "Ask for it: music", color: "#7AA7FF", quiet: true }, askMusic],
         [{ name: "People", color: "#9AA0AE" }, people.map(personLine)],
       ]),
     ];
-    const full = rows.filter((d) => d[1].length), none = rows.filter((d) => !d[1].length && !d[0].quiet);
+    const full = rows.filter((d) => d[1].length), none = rows.filter((d) => !d[1].length && !d[0].quiet && !d[0].wait);
     const MAX = 10;
-    const row = ([door, list]) => `<section class="rowx srow" style="--c:${door.color}"><h3><i class="bar"></i>${esc(door.name)} <small class="dim">${list.length}</small>${list.length > MAX ? `<button class="more" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h3>
+    const row = ([door, list]) => `<section class="rowx srow" data-n="${esc(door.name)}" style="--c:${door.color}"><h3><i class="bar"></i>${esc(door.name)} <small class="dim">${list.length}</small>${list.length > MAX ? `<button class="more" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h3>
       <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
       <div class="strip">${list.slice(0, MAX).map((x) => x.c).join("")}${list.length > MAX ? `<button class="poster see" data-seeall="${esc(door.name)}">See all</button>` : ""}</div>
       <button class="arrow r" data-scroll="1" aria-label="Scroll right">${I("right")}</button></section>`;
+    // Still waiting and nothing to show yet: what's on screen stays until there is
+    if (!more && !full.length) return;
     lastDoors = rows;
-    $("#sres").innerHTML = `${full.length && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].short || d[0].name)).join(" · ")}</div>` : ""}
+    const html = `${full.length && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].short || d[0].name)).join(" · ")}</div>` : ""}
     ${full.map(row).join("")}
     ${!full.length ? `<div class="wrap empty">Nothing found for “${esc(t)}”. Check the spelling${kids ? "" : ", or ask for it on the Requests page"}.</div>` : ""}`;
     lastAsk = mAsk;
+    if (html === painted) return;
+    // The second look keeps each row where you scrolled it, and the card you were on
+    const res = $("#sres"), at = {}, on = painted !== null && res.contains(document.activeElement) ? document.activeElement.getAttribute("href") : null;
+    if (painted !== null) res.querySelectorAll(".srow").forEach((r) => { const st = r.querySelector(".strip"); if (st) at[r.dataset.n] = st.scrollLeft; });
+    res.innerHTML = html;
+    if (painted !== null) {
+      res.querySelectorAll(".srow").forEach((r) => { const st = r.querySelector(".strip"); if (st && at[r.dataset.n]) st.scrollLeft = at[r.dataset.n]; });
+      const back = on && [...res.querySelectorAll("a")].find((a) => a.getAttribute("href") === on);
+      if (back) back.focus({ preventScroll: true });
+    }
+    painted = html;
+    };
+    // The slower places already answered (usual on a second search): one look, not two
+    const ready = await Promise.race([slow, new Promise((r) => setTimeout(r, 0, null))]);
+    if (my !== seq || !B.alive(nav)) return;
+    paint(ready);
+    if (ready) return;
+    const rest = await slow;
+    if (my !== seq || !B.alive(nav)) return;
+    paint(rest);
   };
   const remember = () => {
     const t = box.value.trim(); if (!t) return;

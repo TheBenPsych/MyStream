@@ -86,6 +86,10 @@ internal const val SEERR_ROW = TAB_ROW + 1
 internal const val COMBINED_ROW = SEERR_ROW
 internal const val RESULTS_START = SEERR_ROW + 1
 
+/** How long after the last letter the search starts */
+private val TYPING_WAIT_TV = 350.milliseconds
+private val TYPING_WAIT_PHONE = 250.milliseconds
+
 @Composable
 fun SearchPage(
     initialQuery: String,
@@ -150,6 +154,8 @@ fun SearchPage(
         }
     }
 
+    val isTv = rememberIsTv()
+
     fun triggerImmediateSearch(searchQuery: String) {
         immediateSearchQuery = searchQuery
         searchClicked = true
@@ -163,8 +169,10 @@ fun SearchPage(
             }
 
             else -> {
-                delay(750.milliseconds)
-                viewModel.search(query, combinedMode)
+                // Search speed (Ben 2026-11-21): this wait was 750. Older searches are stopped when a new letter
+                // comes, so a short wait is safe; TVs wait a touch longer because remote typing is slower
+                delay(if (isTv) TYPING_WAIT_TV else TYPING_WAIT_PHONE)
+                viewModel.search(query, combinedMode, keepShowing = true)
             }
         }
     }
@@ -278,13 +286,12 @@ fun SearchPage(
         keyboardOpen = false
         focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
-    val isTv = rememberIsTv()
     val suggestions by viewModel.suggestions.collectAsState()
     val foundBooks by viewModel.books.collectAsState()
     LaunchedEffect(trying) {
         val t = trying ?: return@LaunchedEffect
         delay(300.milliseconds)
-        viewModel.search(t, combinedMode, preview = true)
+        viewModel.search(t, combinedMode, preview = true, keepShowing = true)
     }
     val pickSuggestion = { name: String ->
         trying = null
