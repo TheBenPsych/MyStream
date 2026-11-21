@@ -25,7 +25,7 @@ MAX_LOBBIES = 6
 GONE_AFTER = 12  # seconds without hearing from a browser = that person left
 CLOSE_AFTER = 15 * 60  # an empty lobby closes after this long
 CHAT_KEEP = 60
-ROOMS = ("den", "theater", "roof", "cinema")  # cinema = the Glowfin Cinema, a multiplex to hide in
+ROOMS = ("den", "theater", "roof", "cinema", "lounge")  # cinema = the Glowfin Cinema, a multiplex to hide in; lounge = the Harbor Lounge, a games boathouse
 STYLES = ("pebble", "facet", "glow")
 LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"
 # What Kids can say (the web page shows these as buttons; Tower only lets these through)
@@ -420,7 +420,7 @@ def route(method, path, read_json, user_id, user_name, is_admin, is_kids):
                 raise LobbyError(403, "Only the host can change the lobby.")
             if body.get("room") in ROOMS and body["room"] != lob["room"]:
                 lob["room"] = body["room"]
-                _say(lob, None, f"{me['name']} moved everyone to the {dict(den='living room', theater='home theater', roof='rooftop', cinema='Glowfin Cinema')[body['room']]}")
+                _say(lob, None, f"{me['name']} moved everyone to the {dict(den='living room', theater='home theater', roof='rooftop', cinema='Glowfin Cinema', lounge='Harbor Lounge')[body['room']]}")
             if "anyone_remote" in body:
                 lob["anyone_remote"] = bool(body["anyone_remote"])
             return 200, {"room": lob["room"], "anyone_remote": lob["anyone_remote"]}
