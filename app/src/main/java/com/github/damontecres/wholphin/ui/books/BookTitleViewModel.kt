@@ -30,6 +30,9 @@ class BookTitleViewModel
         val problem = MutableStateFlow<String?>(null)
         val note = MutableStateFlow<String?>(null)
         val covers = MutableStateFlow<List<CoverChoice>?>(null)
+
+        /** Send to Kindle: non-null while the Kindle address box is open (holds the address so far) */
+        val kindleAsk = MutableStateFlow<String?>(null)
         private var id: String? = null
 
         fun load(id: String) {
@@ -146,6 +149,48 @@ class BookTitleViewModel
                     } catch (ex: Exception) {
                         "Couldn't send it."
                     }
+            }
+        }
+
+        /** Send to Kindle: asks for the Kindle's address the first time, then Tower emails the EPUB */
+        fun sendToKindle(
+            p: BookPage,
+            changeAddress: Boolean = false,
+        ) {
+            viewModelScope.launchIO {
+                try {
+                    val address = books.kindleAddress()
+                    if (address.isBlank() || changeAddress) {
+                        kindleAsk.value = address
+                    } else {
+                        note.value = "Sending to your Kindle…"
+                        note.value = books.sendToKindle(p.tile.id)
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    note.value = ex.message?.takeIf { it.isNotBlank() } ?: "Couldn't send it."
+                }
+            }
+        }
+
+        fun saveKindleAddress(
+            p: BookPage,
+            address: String,
+        ) {
+            kindleAsk.value = null
+            viewModelScope.launchIO {
+                try {
+                    books.setKindleAddress(address.trim())
+                    if (address.isNotBlank()) {
+                        note.value = "Sending to your Kindle…"
+                        note.value = books.sendToKindle(p.tile.id)
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    note.value = ex.message?.takeIf { it.isNotBlank() } ?: "Couldn't send it."
+                }
             }
         }
 

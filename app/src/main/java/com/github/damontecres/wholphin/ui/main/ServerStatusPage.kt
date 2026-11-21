@@ -367,6 +367,7 @@ fun ServerStatusPage(
 
             ServerSection.NOW -> {
                 data.loadHistory()
+                care.loadActivity()
             }
 
             ServerSection.TOOLS -> {
@@ -418,6 +419,8 @@ fun ServerStatusPage(
     var askRestart by remember { mutableStateOf(false) }
     val history by data.history.collectAsState()
     val careReport by care.report.collectAsState()
+    val activity by care.activity.collectAsState()
+    val activityProblem by care.activityProblem.collectAsState()
     val signins by care.signins.collectAsState()
     val careReportProblem by care.reportProblem.collectAsState()
     val carePlaytest by care.playtest.collectAsState()
@@ -748,6 +751,7 @@ fun ServerStatusPage(
                     onMessage = { messaging = it },
                 )
                 historyItems(history)
+                activityItems(activity, activityProblem)
             }
 
             ServerSection.LIBRARY -> {

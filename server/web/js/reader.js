@@ -7,6 +7,11 @@
      including an easy-to-read one), and on TV "Send to my phone".
    - Your place is saved on Tower for your profile, so it follows you to the phone and the browser.
    - At the end of the book a "What next?" card offers 3 picks.
+   - Highlights: press and hold a sentence to mark it, add a note, find them all under Highlights. They are
+     private to your profile and follow you between screens (the TV shows the list).
+   - Read aloud: the device's own voice reads the page and turns it for you. The button only shows when the
+     device really has a voice.
+   - Time left: counted from how fast you really read; for the chapter, the whole book, or off (in Aa).
 
    Each chapter loads in a frame from Tower (api/books/x/<book>/<file inside the book>), and the reader
    lays it out in columns and moves one page at a time. Only plain JavaScript. */
@@ -34,10 +39,13 @@
     const id = opts.id;
     const tv = !!opts.tv;
     const app = window.BenflixApp || null;
-    const settings = Object.assign({ theme: "dark", size: 2, font: "book" }, load("benflix.reader", {}));
+    const settings = Object.assign({ theme: "dark", size: 2, font: "book", left: "chapter" }, load("benflix.reader", {}));
     let book = null, chapter = 0, page = 0, pages = 1, words = 0, sizes = [], total = 1;
     let saveTimer = null, readSince = Date.now(), lastTurn = Date.now(), idleTimer = null, ended = false;
     let pendingFrag = null, pendingCpos = null, gone = false;
+    let wpm = Math.max(80, Math.min(700, +load("benflix.reader.wpm", 230) || 230));
+    let marks = [], aloud = null;
+    const synth = !app && window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
 
     try { document.cookie = "bftoken=" + encodeURIComponent(opts.token) + "; path=/; SameSite=Lax"; } catch (e) {}
 
@@ -51,6 +59,8 @@
         <button data-a="close">‹ Back</button>
         <button data-a="toc">Contents</button>
         <button data-a="aa">Aa</button>
+        <button data-a="marks">Highlights</button>
+        <button data-a="aloud" class="hidden">Read aloud</button>
         ${tv ? '<button data-a="send">Send to my phone</button>' : ""}
         <span class="rd-pct"></span>
       </div>
@@ -124,7 +134,8 @@
         h1, h2, h3 { line-height: 1.25 !important; break-after: avoid; }
         img, svg, video { max-width: 100% !important; max-height: ${g.h - 8}px !important; height: auto; object-fit: contain; break-inside: avoid; }
         a { color: ${LIME} !important; text-decoration: none; }
-        table { break-inside: avoid; }`;
+        table { break-inside: avoid; }
+        ::highlight(bf-mark) { background-color: ${settings.theme === "dark" ? "rgba(255, 214, 80, .32)" : "rgba(255, 196, 0, .45)"}; }`;
     }
 
     function measure() {
@@ -151,8 +162,17 @@
     function foot() {
       const pct = progress();
       $(".rd-line i").style.width = (pct * 100).toFixed(2) + "%";
-      const left = Math.max(0, Math.round((words * (1 - (page + 1) / pages)) / 230));
-      $(".rd-left").textContent = pages <= 1 && !words ? "" : left < 1 ? "Less than a minute left in chapter" : `${left} min left in chapter`;
+      // Time left, from how fast you really read (measured on page turns); for the chapter, the book, or off
+      const inBook = settings.left === "book" && book;
+      let wordsLeft = words * (1 - (page + 1) / pages);
+      if (inBook) {
+        const after = sizes.slice(chapter + 1).reduce((a, b) => a + b, 0);
+        wordsLeft += after * (words / (sizes[chapter] || 1));
+      }
+      const left = Math.max(0, Math.round(wordsLeft / wpm));
+      const what = inBook ? "book" : "chapter";
+      const time = left >= 60 ? `${Math.floor(left / 60)} h ${left % 60} min` : `${left} min`;
+      $(".rd-left").textContent = settings.left === "off" || (pages <= 1 && !words) ? "" : left < 1 ? `Less than a minute left in ${what}` : `${time} left in ${what}`;
       $(".rd-pct").textContent = Math.round(pct * 100) + "%";
       const ch = chapterName();
       $(".rd-name").textContent = book ? book.name + (ch ? " · " + ch : "") : "";
@@ -196,6 +216,7 @@
                 }
               }
               show(p);
+              try { paint(); } catch (e) {}
               wireFrame(doc);
               done();
             };
@@ -243,8 +264,19 @@
       turned();
     }
 
+    /** Learns your reading speed: the words on a page over the time you spent on it */
+    function pace() {
+      const dt = Date.now() - lastTurn;
+      if (aloud || dt < 5000 || dt > 300000 || pages < 1 || words < 50) return;
+      const sample = Math.max(80, Math.min(700, (words / pages) * 60000 / dt));
+      wpm = wpm * 0.85 + sample * 0.15;
+      store("benflix.reader.wpm", Math.round(wpm));
+    }
+
     function next() {
       if (busy || !book) return;
+      stopAloud();
+      pace();
       if (page < pages - 1) { fade(() => show(page + 1)); turned(); return; }
       if (chapter < book.spine.length - 1) return turnTo(chapter + 1, 0);
       end();
@@ -252,6 +284,7 @@
 
     function prev() {
       if (busy || !book) return;
+      stopAloud();
       if (ended) return unend();
       if (page > 0) { fade(() => show(page - 1)); turned(); return; }
       if (chapter > 0) turnTo(chapter - 1, "end");
@@ -283,6 +316,7 @@
     // ---------- the end of the book ----------
     async function end() {
       ended = true;
+      stopAloud();
       save({ pct: 1, finished: true });
       panel.classList.remove("hidden");
       panel.className = "rd-panel rd-end";
@@ -309,7 +343,7 @@
     // ---------- the bar, Contents and Aa ----------
     function showBar(on) {
       bar.classList.toggle("hidden", !on);
-      if (on) { foot(); const b = bar.querySelector("button"); if (b) b.focus(); }
+      if (on) { foot(); aloudButton(); const b = bar.querySelector("button"); if (b) b.focus(); }
       else if (panel.classList.contains("hidden")) host.focus();
     }
 
@@ -327,7 +361,8 @@
       panel.innerHTML = `<h3>Aa</h3>
         <div class="rd-row"><span>Text size</span><button data-size="-1" aria-label="Smaller">A−</button><b>${Math.round(SIZES[settings.size] * 100)}%</b><button data-size="1" aria-label="Bigger">A+</button></div>
         <div class="rd-row"><span>Colour</span>${chips("theme", [["dark", "Dark"], ["sepia", "Sepia"], ["light", "Light"]], settings.theme)}</div>
-        <div class="rd-row"><span>Font</span>${chips("font", Object.entries(FONTS).map(([k, f]) => [k, f.name]), settings.font)}</div>`;
+        <div class="rd-row"><span>Font</span>${chips("font", Object.entries(FONTS).map(([k, f]) => [k, f.name]), settings.font)}</div>
+        <div class="rd-row"><span>Time left (counted from how fast you read)</span>${chips("left", [["chapter", "In this chapter"], ["book", "In the book"], ["off", "Off"]], settings.left)}</div>`;
       const f = panel.querySelector("button.on") || panel.querySelector("button");
       if (f) f.focus();
     }
@@ -335,7 +370,193 @@
     function relayout(keepAt) {
       const at = keepAt == null ? (pages > 1 ? page / (pages - 1) : 0) : keepAt;
       style();
-      setTimeout(() => { measure(); show(Math.round(at * Math.max(0, pages - 1))); }, 60);
+      setTimeout(() => { measure(); show(Math.round(at * Math.max(0, pages - 1))); try { paint(); } catch (e) {} }, 60);
+    }
+
+    // ---------- highlights and notes ----------
+    /** The text under [root] with runs of spaces squeezed to one, and where each letter lives */
+    function charMap(root) {
+      const walk = root.ownerDocument.createTreeWalker(root, 4);
+      const out = [], nodes = [], offs = [];
+      let n, sp = true;
+      while ((n = walk.nextNode())) {
+        const v = n.nodeValue;
+        for (let i = 0; i < v.length; i++) {
+          const ws = /\s/.test(v[i]);
+          if (ws && sp) continue;
+          sp = ws;
+          out.push(ws ? " " : v[i]);
+          nodes.push(n);
+          offs.push(i);
+        }
+      }
+      return { text: out.join(""), nodes, offs };
+    }
+
+    /** Colours this chapter's highlights (newer browsers and web views; older ones still get the list) */
+    function paint() {
+      const doc = frame.contentDocument, win = frame.contentWindow;
+      if (!doc || !doc.body || !win || !win.CSS || !win.CSS.highlights || !win.Highlight) return;
+      win.CSS.highlights.delete("bf-mark");
+      const here = marks.filter((m) => m.chapter === chapter);
+      if (!here.length) return;
+      const map = charMap(doc.body);
+      const ranges = [];
+      for (const m of here) {
+        const i = map.text.indexOf(m.text);
+        if (i < 0) continue;
+        const j = i + m.text.length - 1;
+        const r = doc.createRange();
+        r.setStart(map.nodes[i], map.offs[i]);
+        r.setEnd(map.nodes[j], map.offs[j] + 1);
+        ranges.push(r);
+      }
+      if (ranges.length) win.CSS.highlights.set("bf-mark", new win.Highlight(...ranges));
+    }
+
+    /** Press and hold: highlights the sentence under the finger or mouse */
+    function holdAt(x, y) {
+      const doc = frame.contentDocument;
+      if (!doc || !book || ended) return;
+      const fr = frame.getBoundingClientRect();
+      let node = null, off = 0;
+      if (doc.caretRangeFromPoint) {
+        const r = doc.caretRangeFromPoint(x - fr.left, y - fr.top);
+        if (r) { node = r.startContainer; off = r.startOffset; }
+      } else if (doc.caretPositionFromPoint) {
+        const c = doc.caretPositionFromPoint(x - fr.left, y - fr.top);
+        if (c) { node = c.offsetNode; off = c.offset; }
+      }
+      if (!node || node.nodeType !== 3 || !node.parentElement) return;
+      const block = node.parentElement.closest("p,li,blockquote,h1,h2,h3,h4,h5,h6,td,dd,div") || doc.body;
+      const map = charMap(block);
+      let at = -1;
+      for (let i = 0; i < map.nodes.length; i++) if (map.nodes[i] === node && map.offs[i] >= off) { at = i; break; }
+      if (at < 0) at = map.nodes.lastIndexOf(node);
+      if (at < 0) return;
+      const ends = /[.!?…]+["'”’)\]]*\s/g;
+      let a = 0, b = map.text.length, m;
+      while ((m = ends.exec(map.text))) {
+        const e = m.index + m[0].length;
+        if (e <= at) a = e;
+        else { b = e; break; }
+      }
+      const text = map.text.slice(a, b).trim().slice(0, 600).trim();
+      if (text.length < 2) return;
+      if (marks.some((k) => k.chapter === chapter && k.text === text)) { showBar(true); panel.classList.remove("hidden"); return marksPanel(); }
+      api("POST", "api/books/marks/" + id, { chapter, cpos: pages > 1 ? page / (pages - 1) : 0, text })
+        .then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} toast("Highlighted. Open Highlights to add a note."); })
+        .catch((e) => toast(e.message));
+    }
+
+    function marksPanel(editing) {
+      panel.className = "rd-panel";
+      const edit = editing && marks.find((m) => m.id === editing);
+      if (edit) {
+        panel.innerHTML = `<h3>Your note</h3><p class="rd-quote">${esc(edit.text)}</p>
+          <textarea class="rd-note" maxlength="500" placeholder="Type a note">${esc(edit.note || "")}</textarea>
+          <div class="rd-row"><button data-msave="${esc(edit.id)}" class="on">Save</button><button data-a="marks-list">Cancel</button></div>`;
+        const t = panel.querySelector("textarea");
+        if (t) t.focus();
+        return;
+      }
+      const none = tv ? "Nothing highlighted yet. Highlight a sentence on your phone or in the browser and it shows up here." : "Nothing highlighted yet. Press and hold a sentence to highlight it.";
+      panel.innerHTML = `<h3>Highlights</h3>` + (marks.length
+        ? `<div class="rd-marks">${marks.map((m) => `<div class="rd-mark"><button data-mgo="${esc(m.id)}" class="rd-quote">${esc(m.text.length > 160 ? m.text.slice(0, 160) + "…" : m.text)}${m.note ? `<small>${esc(m.note)}</small>` : ""}</button>
+            <button data-mnote="${esc(m.id)}">${m.note ? "Change note" : "Add note"}</button><button data-mdel="${esc(m.id)}">Remove</button></div>`).join("")}</div>`
+        : `<p class="rd-sub">${none}</p>`);
+      const f = panel.querySelector("button");
+      if (f) f.focus();
+    }
+
+    // ---------- read aloud ----------
+    function canSpeak() {
+      try {
+        if (app) return !!(app.canSpeak && app.canSpeak());
+        return !!(synth && synth.getVoices().length);
+      } catch (e) { return false; }
+    }
+
+    function aloudButton() {
+      const b = bar.querySelector('[data-a="aloud"]');
+      if (!b) return;
+      b.classList.toggle("hidden", !aloud && !canSpeak());
+      b.textContent = aloud ? "Stop reading" : "Read aloud";
+    }
+    if (synth && synth.addEventListener) synth.addEventListener("voiceschanged", aloudButton);
+
+    function blocksOf(doc) {
+      if (!doc || !doc.body) return [];
+      return Array.from(doc.body.querySelectorAll("p,li,h1,h2,h3,h4,h5,h6,blockquote,dd,td,div"))
+        .filter((el) => el.textContent.trim() && !el.querySelector("p,li,blockquote,div,h1,h2,h3,h4,h5,h6,td,dd"));
+    }
+
+    function startAloud() {
+      if (!book || ended || !canSpeak()) return;
+      const blocks = blocksOf(frame.contentDocument);
+      const first = (el) => el.getClientRects()[0];
+      // Start with the first paragraph that begins on this page (or the one still running onto it)
+      let i = blocks.findIndex((el) => { const r = first(el); return r && r.left >= -2; });
+      if (i < 0) i = blocks.findIndex((el) => el.getBoundingClientRect().right > 0);
+      aloud = { blocks, i: Math.max(0, i), q: [], u: null };
+      aloudButton();
+      showBar(false);
+      speakNext();
+    }
+
+    function stopAloud() {
+      if (!aloud) return;
+      aloud = null;
+      try { if (app) { if (app.stopSpeaking) app.stopSpeaking(); } else if (synth) synth.cancel(); } catch (e) {}
+      aloudButton();
+    }
+
+    function speakNext() {
+      if (!aloud || gone) return;
+      if (aloud.i >= aloud.blocks.length) {
+        if (chapter >= book.spine.length - 1) return stopAloud();
+        return turnTo(chapter + 1, 0).then(() => {
+          if (!aloud) return;
+          aloud.blocks = blocksOf(frame.contentDocument);
+          aloud.i = 0;
+          speakNext();
+        });
+      }
+      const el = aloud.blocks[aloud.i];
+      const r = el.getClientRects()[0];
+      if (r) {
+        const g = geometry();
+        const d = Math.floor((r.left + 2) / (g.w + g.gap));
+        if (d !== 0) { show(page + d); turned(); }
+      }
+      // Short pieces, one sentence or so each: some voices stop on long ones
+      const text = el.textContent.replace(/\s+/g, " ").trim();
+      aloud.q = (text.match(/[^.!?…]+[.!?…]*["'”’)\]]*\s*/g) || [text]).reduce((list, part) => {
+        const last = list[list.length - 1];
+        if (last != null && (last + part).length <= 220) list[list.length - 1] = last + part;
+        else list.push(part);
+        return list;
+      }, []);
+      spoke(true);
+    }
+
+    /** One piece is done (the app's voice calls this too): say the next piece, or the next paragraph */
+    function spoke(first) {
+      if (!aloud) return;
+      const part = aloud.q.shift();
+      if (part == null) {
+        if (first !== true) lastTurn = Date.now();
+        aloud.i++;
+        return speakNext();
+      }
+      try {
+        if (app) return app.speak(part);
+        const u = new SpeechSynthesisUtterance(part);
+        aloud.u = u;
+        u.onend = () => { if (aloud && aloud.u === u) spoke(); };
+        u.onerror = () => { if (aloud && aloud.u === u) stopAloud(); };
+        synth.speak(u);
+      } catch (e) { stopAloud(); }
     }
 
     function setting(k, v) {
@@ -352,6 +573,22 @@
       if (a === "close") return close();
       if (a === "toc") return panel.classList.contains("hidden") || !panel.querySelector("[data-go]") ? (panel.classList.remove("hidden"), toc()) : panel.classList.add("hidden");
       if (a === "aa") return panel.classList.contains("hidden") || !panel.querySelector("[data-size]") ? (panel.classList.remove("hidden"), aa()) : panel.classList.add("hidden");
+      if (a === "marks") return panel.classList.contains("hidden") || !panel.querySelector(".rd-marks, .rd-sub, .rd-note") ? (panel.classList.remove("hidden"), marksPanel()) : panel.classList.add("hidden");
+      if (a === "marks-list") return marksPanel();
+      if (a === "aloud") return aloud ? stopAloud() : startAloud();
+      if (b.dataset.mgo) {
+        const m = marks.find((k) => k.id === b.dataset.mgo);
+        panel.classList.add("hidden");
+        showBar(false);
+        if (m) turnTo(m.chapter, m.cpos);
+        return;
+      }
+      if (b.dataset.mnote) return marksPanel(b.dataset.mnote);
+      if (b.dataset.mdel || b.dataset.msave) {
+        const body = b.dataset.mdel ? { id: b.dataset.mdel, remove: true } : { id: b.dataset.msave, note: (panel.querySelector(".rd-note") || {}).value || "" };
+        return api("POST", "api/books/marks/" + id, body).then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} marksPanel(); }).catch((err) => toast(err.message));
+      }
+      if (b.dataset.left) { settings.left = b.dataset.left; store("benflix.reader", settings); foot(); return aa(); }
       if (a === "send") return api("POST", "api/books/send/" + id).then((j) => toast(j.words || "Sent.")).catch((err) => toast(err.message));
       if (b.dataset.go != null) {
         panel.classList.add("hidden");
@@ -368,9 +605,23 @@
         if (app && app.openTitle) return app.openTitle(b.dataset.pick);
       }
     });
-    $(".rd-l").onclick = () => prev();
-    $(".rd-r").onclick = () => next();
-    $(".rd-m").onclick = () => { if (!panel.classList.contains("hidden")) panel.classList.add("hidden"); else showBar(bar.classList.contains("hidden")); };
+    // A press and hold on the page highlights the sentence there; a quick tap turns the page as before
+    let holdT = null, held = false, hx = 0, hy = 0;
+    const tapped = (fn) => () => { if (held) { held = false; return; } fn(); };
+    $(".rd-l").onclick = tapped(() => prev());
+    $(".rd-r").onclick = tapped(() => next());
+    $(".rd-m").onclick = tapped(() => { if (!panel.classList.contains("hidden")) panel.classList.add("hidden"); else showBar(bar.classList.contains("hidden")); });
+    const stage = $(".rd-stage");
+    stage.addEventListener("pointerdown", (e) => {
+      held = false;
+      hx = e.clientX; hy = e.clientY;
+      clearTimeout(holdT);
+      if (!panel.classList.contains("hidden")) return;
+      holdT = setTimeout(() => { held = true; holdAt(hx, hy); }, 550);
+    });
+    stage.addEventListener("pointermove", (e) => { if (Math.abs(e.clientX - hx) + Math.abs(e.clientY - hy) > 14) clearTimeout(holdT); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((n) => stage.addEventListener(n, () => clearTimeout(holdT)));
+    stage.addEventListener("contextmenu", (e) => e.preventDefault());
 
     let toastT;
     function toast(text) {
@@ -387,6 +638,7 @@
       const k = e.key;
       const inPanel = !panel.classList.contains("hidden");
       const barOn = !bar.classList.contains("hidden");
+      if (e.target && e.target.tagName === "TEXTAREA" && k !== "Escape" && k !== "GoBack" && k !== "BrowserBack") return;
       if (k === "Escape" || k === "GoBack" || k === "BrowserBack") { e.preventDefault(); back() || close(); return; }
       if (inPanel || barOn) {
         if (k === "ArrowDown" && barOn && !inPanel) { e.preventDefault(); showBar(false); return; }
@@ -448,6 +700,7 @@
 
     function close() {
       if (gone) return;
+      stopAloud();
       gone = true;
       clearInterval(idleTimer);
       window.removeEventListener("resize", onResize);
@@ -485,10 +738,11 @@
         await loadChapter(Math.min(startAt, b.spine.length - 1), pendingCpos);
         host.focus();
         if (opts.onReady) opts.onReady();
+        api("GET", "api/books/marks/" + id).then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} }).catch(() => {});
       })
       .catch((e) => msg("Couldn't open this book", e.message));
 
-    return { close, back, next, prev, save };
+    return { close, back, next, prev, save, spoke, stopAloud };
   }
 
   window.BookReader = { open };

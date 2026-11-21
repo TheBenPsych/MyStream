@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -47,6 +50,8 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTabScope
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.preferences.StringInput
+import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -287,6 +292,20 @@ private fun BookOnTitleFrame(
         scores = scores,
         modifier = modifier,
     )
+    val kindleAsk by viewModel.kindleAsk.collectAsState()
+    kindleAsk?.let { address ->
+        StringInputDialog(
+            input =
+                StringInput(
+                    title = "Your Kindle's email address (ends in @kindle.com)",
+                    value = address,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                    onSubmit = {},
+                ),
+            onSave = { typed -> viewModel.saveKindleAddress(p, typed) },
+            onDismissRequest = { viewModel.kindleAsk.value = null },
+        )
+    }
     if (showMore) {
         TitleMorePanel(
             title = t.name,
@@ -302,6 +321,11 @@ private fun BookOnTitleFrame(
                         t.readable
                     ) {
                         add(TitleMoreItem("Send to my phone", BenflixIcon.PHONE, { viewModel.sendToPhone(p) }))
+                    }
+                    // Send to Kindle (Ben 2026-11-21): EPUB only, Tower checks the file again before it sends
+                    if (t.kind == "book" && p.file == ".epub") {
+                        add(TitleMoreItem("Send to Kindle", BenflixIcon.PHONE, { viewModel.sendToKindle(p) }))
+                        add(TitleMoreItem("Change Kindle address", BenflixIcon.PHONE, { viewModel.sendToKindle(p, changeAddress = true) }))
                     }
                     if (p.canPickCover) add(TitleMoreItem("Change cover", BenflixIcon.IMAGE, { viewModel.loadCovers(p) }, youOnly = true))
                 },

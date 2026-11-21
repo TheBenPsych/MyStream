@@ -32,11 +32,11 @@ const TOOL_GROUPS = [
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Book lists"], ["webversion", "Web version"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
-  { id: "watching", label: "Watching", subs: [["now", "Right now"]] },
+  { id: "watching", label: "Watching", subs: [["now", "Right now"], ["activity", "Activity"]] },
   { id: "library", label: "Library", subs: [["library", "Library"]] },
   { id: "people", label: "People", subs: [["people", "People"]] },
   { id: "tools", label: "Tools", subs: TOOL_GROUPS.flatMap((t) => t.subs) },
@@ -273,6 +273,10 @@ PAGES.booklists = (el) => {
     $("#bl").innerHTML = `<div class="list">
       ${one("nyt", "NYT Books key", "NYT best sellers (Fiction, Nonfiction, audiobooks) and Book of the week.", "https://developer.nytimes.com/get-started")}
       ${one("hardcover", "Hardcover token", "Top 10 books right now, Next in your series, scores and reader quotes.", "https://hardcover.app/account/api")}
+      <div class="item"><div class="grow"><div class="t">TMDb key <span class="word-${s.reviews ? "ok" : "check"}">${s.reviews ? "Added" : "Not added yet"}</span></div>
+        <div class="s">"What people said": two short reviews on movie and show pages. Either the "API Key" or the long "API Read Access Token" works. <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get one</a></div>
+        <div class="row" style="margin-top:8px;gap:8px"><input class="field" id="rvKey" type="password" autocomplete="off" placeholder="${s.reviews ? "Paste a new one to change it" : "Paste it here"}" style="max-width:420px">
+        <button class="btn small white" id="rvSave">Save</button>${s.reviews ? `<button class="btn small" id="rvClear">Remove</button>` : ""}</div></div></div>
       <div class="item"><div class="grow"><div class="t">Last gathered</div><div class="s">${s.gatheredAt ? esc(B.when(new Date(s.gatheredAt * 1000).toISOString())) + ` · ${c.nytFiction || 0} NYT fiction, ${c.top10 || 0} Hardcover trending, ${c.trending || 0} Open Library trending` : "Not yet"}</div></div>
         <div class="acts"><button class="btn small" id="blGather">Gather now</button></div></div>
     </div>`;
@@ -282,13 +286,22 @@ PAGES.booklists = (el) => {
         const v = b.dataset.save ? el.querySelector(`[data-key="${k}"]`).value.trim() : "";
         if (b.dataset.save && !v) return "Paste it in the box first.";
         const r = await call("POST", "api/books/lists/keys", { [k]: v });
-        draw(r);
+        draw(Object.assign(r, { reviews: s.reviews }));
         return r.message;
       });
     });
+    const saveReviews = (b, clear) => B.busy(b, async () => {
+      const v = clear ? "" : $("#rvKey").value.trim();
+      if (!clear && !v) return "Paste it in the box first.";
+      const r = await call("POST", "api/reviews/key", { key: v });
+      draw(Object.assign({}, s, { reviews: r.set }));
+      return r.set ? "Saved. Reviews show on title pages now." : "Removed.";
+    });
+    $("#rvSave").onclick = (e) => saveReviews(e.target, false);
+    if ($("#rvClear")) $("#rvClear").onclick = (e) => saveReviews(e.target, true);
     $("#blGather").onclick = (e) => B.busy(e.target, async () => (await call("POST", "api/books/lists/gather")).message);
   };
-  call("GET", "api/books/lists/keys").then(draw).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
+  Promise.all([call("GET", "api/books/lists/keys"), call("GET", "api/reviews/key").catch(() => ({}))]).then(([k, r]) => draw(Object.assign(k, { reviews: !!r.set }))).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
 };
 
 // ---------- Kids ratings: kids-looking titles with no rating (Redesign 2, section 11) ----------
@@ -622,6 +635,48 @@ const busy = async (b, fn) => {
   b.disabled = true;
   try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }
   b.disabled = false;
+};
+
+// Activity (2026-11-21): hours watched by each person this month, the most watched, and the busiest times.
+// Tower counts a minute for everyone who is playing something; the counting started the day this was added.
+PAGES.activity = (el) => {
+  el.innerHTML = `<h2>Activity</h2><p class="sub">Who watches what, and when. Tower counts this itself, one minute at a time.</p><div id="act">${loading()}</div>`;
+  const hrs = (sec) => { const h = sec / 3600; return h >= 10 ? Math.round(h) + " h" : h >= 1 ? h.toFixed(1).replace(/\.0$/, "") + " h" : Math.max(1, Math.round(sec / 60)) + " min"; };
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const PARTS = [["Night", 0], ["Morning", 6], ["Afternoon", 12], ["Evening", 18]];
+  const monthName = (k) => new Date(k + "-15T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const draw = async (month) => {
+    let d;
+    try { d = await call("GET", "api/activity" + (month ? "?month=" + encodeURIComponent(month) : "")); }
+    catch (err) { if (current === "activity") $("#act").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    if (current !== "activity") return;
+    // Tower keeps the week in world time (UTC); move every hour onto this screen's own clock
+    const shift = Math.round(-new Date().getTimezoneOffset() / 60);
+    const local = DAYS.map(() => new Array(24).fill(0));
+    (d.grid || []).forEach((row, day) => row.forEach((sec, hour) => {
+      const at = (((day * 24 + hour + shift) % 168) + 168) % 168;
+      local[Math.floor(at / 24)][at % 24] += sec;
+    }));
+    const blocks = DAYS.map((_, day) => PARTS.map(([, from]) => local[day].slice(from, from + 6).reduce((a, b) => a + b, 0)));
+    const top = Math.max(1, ...blocks.flat());
+    const total = (d.people || []).reduce((a, p) => a + p.s, 0);
+    let quiet = null;
+    blocks.forEach((row, day) => row.forEach((sec, part) => { if (part > 0 && (!quiet || sec < quiet.sec)) quiet = { sec, day, part }; }));
+    const most = Math.max(1, ...(d.people || []).map((p) => p.s));
+    const since = d.since ? new Date(d.since * 1000).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : "";
+    $("#act").innerHTML = (d.months && d.months.length > 1 ? `<div class="tabs">${d.months.slice(0, 6).map((k) => `<button class="chip ${k === d.month ? "on" : ""}" data-month="${esc(k)}">${esc(monthName(k))}</button>`).join("")}</div>` : `<p class="dim">${esc(monthName(d.month))}</p>`)
+      + (!total ? `<div class="empty">Nothing counted yet${since ? `. Tower started counting on ${esc(since)}` : ""}. Come back after a movie night.</div>` : `<div class="act-grid">
+        <section class="srv-card"><h3>Hours watched</h3>${d.people.map((p) => `<div class="act-row"><span class="act-name">${esc(p.name)}</span><span class="act-bar"><i style="width:${Math.max(3, Math.round(100 * p.s / most))}%"></i></span><b>${hrs(p.s)}</b></div>`).join("")}</section>
+        <section class="srv-card"><h3>Most watched</h3>${d.titles.map((t, i) => `<div class="act-row"><span class="act-n">${i + 1}</span><span class="act-name wide">${esc(t.name)}</span><b>${hrs(t.s)}</b></div>`).join("")}</section>
+        <section class="srv-card act-wide"><h3>Busiest times</h3>
+          <p class="dim">${quiet && total ? `Quietest: ${DAYS[quiet.day]} ${PARTS[quiet.part][0].toLowerCase()}. A good time to restart Tower.` : ""}</p>
+          <div class="act-week"><span></span>${DAYS.map((x) => `<span class="act-h">${x}</span>`).join("")}
+            ${PARTS.map(([name], part) => `<span class="act-h left">${name}</span>` + DAYS.map((_, day) => `<span class="act-cell" title="${DAYS[day]} ${name.toLowerCase()}: ${blocks[day][part] ? hrs(blocks[day][part]) : "nothing"}" style="opacity:${blocks[day][part] ? (0.18 + 0.82 * blocks[day][part] / top).toFixed(2) : 0.06}"></span>`).join("")).join("")}
+          </div></section></div>`)
+      + (since ? `<p class="dim" style="margin-top:14px">Counting since ${esc(since)}. Paused time isn't counted.</p>` : "");
+  };
+  el.onclick = (e) => { const b = e.target.closest("[data-month]"); if (b) draw(b.dataset.month); };
+  draw();
 };
 
 PAGES.now = (el) => {

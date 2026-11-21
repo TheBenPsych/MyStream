@@ -166,6 +166,9 @@ fun SeriesHeroContent(
     val scores = rememberScoreParts(series)
     val strip = remember(series) { listOfNotNull(showMakers(series)) }
     // Glowfin D1: the rows under the buttons, top to bottom (seasons and episodes first)
+    val reviews =
+        com.github.damontecres.wholphin.ui.detail.title
+            .rememberTitleReviews(series, "tv")
     val tabs =
         buildList {
             if (state.inlineEpisodes.isNotEmpty()) {
@@ -195,6 +198,16 @@ fun SeriesHeroContent(
             }
             if (!easy && state.people.isNotEmpty()) {
                 add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            }
+            if (!easy && !guest && reviews.isNotEmpty()) {
+                add(
+                    TitleTab(
+                        "What people said",
+                    ) { scope ->
+                        com.github.damontecres.wholphin.ui.detail.title
+                            .TitleReviewsRow(scope, reviews)
+                    },
+                )
             }
             if (state.similar.isNotEmpty()) {
                 add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })

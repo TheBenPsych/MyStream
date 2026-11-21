@@ -2460,3 +2460,23 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .hoverbar button.on { background: rgba(255,255,255,.22); }
 .hoverbar button svg { width: 16px; height: 16px; }
 .hoverbar button[data-hb="play"] { background: #fff; color: #0a0d18; border-color: #fff; }
+/* Server, Activity (2026-11-21) */
+.act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.act-grid .act-wide { grid-column: 1 / -1; }
+.act-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+.act-row b { margin-left: auto; white-space: nowrap; }
+.act-name { width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-name.wide { width: auto; flex: 1; }
+.act-n { width: 22px; flex: none; color: #9ea3ba; font-weight: 700; }
+.act-bar { flex: 1; height: 10px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; }
+.act-bar i { display: block; height: 100%; border-radius: 6px; background: #3fe0e8; }
+.act-week { display: grid; grid-template-columns: 90px repeat(7, 1fr); gap: 6px; align-items: center; max-width: 720px; }
+.act-h { font-size: 13px; color: #9ea3ba; text-align: center; }
+.act-h.left { text-align: left; }
+.act-cell { height: 30px; border-radius: 7px; background: #3fe0e8; }
+@media (max-width: 760px) { .act-grid { grid-template-columns: 1fr; } .act-week { grid-template-columns: 70px repeat(7, 1fr); gap: 4px; } }
+/* "What people said" reviews row (2026-11-21) */
+.rev-card { flex: none; width: 380px; max-width: 82vw; text-align: left; font: inherit; color: inherit; cursor: pointer; background: rgba(255,255,255,.06); border: 2px solid transparent; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.rev-card:hover, .rev-card:focus-visible { border-color: #fff; outline: none; }
+.rev-card span { color: #b9bdd2; font-size: 14px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.rev-card small { color: #3fe0e8; font-weight: 700; }

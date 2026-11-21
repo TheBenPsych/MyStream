@@ -11,7 +11,7 @@
 (() => {
   const MAX_BUTTONS = 5;
   // The rows Kids doesn't see on a title page
-  const KIDS_HIDE = ["tpCast", "tpParents", "tpChars", "tpAsk"];
+  const KIDS_HIDE = ["tpCast", "tpParents", "tpChars", "tpAsk", "tpReviews"];
 
   // opts: { title, original, color, picture, cover: { url, ratio }, info: [..], rating, infoExtra,
   //         buttons: [{ id, label, icon, href, off, note, onClick }], status,

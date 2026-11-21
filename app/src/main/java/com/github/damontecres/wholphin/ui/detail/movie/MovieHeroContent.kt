@@ -164,11 +164,24 @@ fun MovieHeroContent(
                 directors(movie)?.let { add(StripPart("Director", it)) }
             }
         }
+    val reviews =
+        com.github.damontecres.wholphin.ui.detail.title
+            .rememberTitleReviews(movie, "movie")
     // Glowfin D1: the rows under the buttons, top to bottom
     val tabs =
         buildList {
             if (!easy && state.people.isNotEmpty()) {
                 add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
+            }
+            if (!easy && !guest && reviews.isNotEmpty()) {
+                add(
+                    TitleTab(
+                        "What people said",
+                    ) { scope ->
+                        com.github.damontecres.wholphin.ui.detail.title
+                            .TitleReviewsRow(scope, reviews)
+                    },
+                )
             }
             if (state.similar.isNotEmpty()) {
                 add(TitleTab("More like this") { scope -> TitlePosterRow(scope, state.similar, actions.openItem) })

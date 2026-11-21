@@ -201,6 +201,7 @@
         { label: "More", icon: "more", onClick: () => B.tpMore(t.name, [
           { label: t.status === "done" ? "Mark not finished" : "Mark finished", icon: "check", onClick: async () => { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; B.render(); } },
           t.kind === "book" && t.readable && t.file === ".epub" ? { label: "Download", icon: "dl", href: `api/books/file/${enc(t.id)}?api_key=${enc(B.me.token)}` } : null,
+          t.kind === "book" && t.file === ".epub" && !B.me.kids ? { label: "Send to Kindle", icon: "phone", onClick: () => kindle(t) } : null,
         ]) },
       ].filter(Boolean),
       strip,
@@ -232,8 +233,55 @@
     });
     const keys = (e) => { if (e.key === "Escape" && !r.back()) r.close(); };
     document.addEventListener("keydown", keys);
-    B.onLeave(() => { document.removeEventListener("keydown", keys); document.body.classList.remove("reading"); r.save(); B.cache = {}; });
+    B.onLeave(() => { document.removeEventListener("keydown", keys); document.body.classList.remove("reading"); r.stopAloud(); r.save(); B.cache = {}; });
   });
+
+  // ---------- Send to Kindle (2026-11-21): Tower emails the EPUB to your Kindle's address. EPUB only. ----------
+  async function kindle(t) {
+    const d = await api("GET", "kindle").catch((e) => ({ err: e.message }));
+    B.closeAll();
+    B.shade(() => B.closeAll());
+    const m = document.createElement("form");
+    m.className = "modal";
+    const mail = d.mail;
+    m.innerHTML = `<h3>Send to Kindle</h3>
+      <p>Tower emails "${esc(t.name)}" to your Kindle. It shows up there in a few minutes.</p>
+      ${d.err ? `<p class="dim">${esc(d.err)}</p>` : ""}
+      <input class="field" name="address" type="email" maxlength="120" autocomplete="off" placeholder="Your Kindle's address, like name@kindle.com" value="${esc(d.address || "")}">
+      <p class="dim" style="font-size:13px">Find it on Amazon under Manage Your Content and Devices, Preferences, Personal Document Settings.${d.ready ? "" : " Ben still has to give Tower an email account to send from."}</p>
+      ${mail ? `<details style="margin:10px 0"${d.ready ? "" : " open"}><summary>Tower's email account (only you see this)</summary>
+        <p class="dim" style="font-size:13px">For Gmail: server smtp.gmail.com, port 587, your Gmail address, and an "app password" (not your normal password). Then add that Gmail address to Amazon's "Approved Personal Document E-mail List" on the same Amazon page.</p>
+        <input class="field" name="host" type="text" placeholder="Mail server, like smtp.gmail.com" value="${esc(mail.host)}" style="margin-top:6px">
+        <input class="field" name="port" type="number" placeholder="Port (587)" value="${esc(mail.port || 587)}" style="margin-top:6px">
+        <input class="field" name="user" type="email" placeholder="The email address Tower sends from" value="${esc(mail.user)}" style="margin-top:6px">
+        <input class="field" name="password" type="password" autocomplete="new-password" placeholder="${mail.set ? "Password saved. Type a new one to change it" : "App password"}" style="margin-top:6px">
+        <div class="acts"><button class="btn small" type="button" data-mail>Save email account</button></div></details>` : ""}
+      <div class="acts"><button class="btn white" type="submit">Send</button><button class="btn" type="button" data-x>Cancel</button></div>`;
+    m.onclick = async (e) => {
+      if (e.target.closest("[data-x]")) return B.closeAll();
+      if (e.target.closest("[data-mail]")) {
+        const f = m.elements;
+        try {
+          await api("POST", "kindle/mail", { host: f.host.value.trim(), port: +f.port.value || 587, user: f.user.value.trim(), password: f.password.value });
+          B.toast("Saved Tower's email account.");
+        } catch (err) { B.toast(err.message); }
+      }
+    };
+    m.onsubmit = async (e) => {
+      e.preventDefault();
+      const address = m.elements.address.value.trim();
+      if (!address) return B.toast("Type your Kindle's address first.");
+      try {
+        await api("POST", "kindle", { address });
+        B.closeAll();
+        B.toast("Sending to your Kindle…");
+        const j = await api("POST", "kindle/" + enc(t.id));
+        B.toast(j.words || "Sent.");
+      } catch (err) { B.toast(err.message); }
+    };
+    document.body.appendChild(m);
+    m.elements.address.focus();
+  }
 
   // ---------- audiobooks: a bar along the bottom of every page ----------
   const audio = new Audio();
@@ -250,10 +298,46 @@
     if (chapter != null && BK.now.chapters[chapter]) { file = BK.now.chapters[chapter].file || 0; at = BK.now.chapters[chapter].start || 0; }
     else if (p.pos) { file = Math.min(p.file || 0, files.length - 1); at = Math.max(0, (p.cpos != null ? p.cpos : p.pos - starts[file]) - 3); }
     BK.load(file, at);
-    audio.playbackRate = +(load("benflix.bk.speed." + t.id) || 1);
+    rate = +(load("benflix.bk.speed." + t.id) || 1);
+    audio.playbackRate = rate;
     draw();
   };
   const load = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  // Skip the pauses (2026-11-21): while the book is quiet for over half a second it runs fast, then drops back
+  // to your speed the moment the voice returns. Off until switched on; the listening part starts on that click.
+  let rate = 1, skipOn = load("benflix.bk.skip") === "1", ear = null, quietSince = 0, skipT = null;
+  function skipPauses(on) {
+    skipOn = on;
+    try { localStorage.setItem("benflix.bk.skip", on ? "1" : "0"); } catch (e) {}
+    clearInterval(skipT);
+    skipT = null;
+    audio.playbackRate = rate;
+    if (!on) return true;
+    try {
+      if (!ear) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new Ctx();
+        const src = ctx.createMediaElementSource(audio);
+        const an = ctx.createAnalyser();
+        an.fftSize = 1024;
+        src.connect(an);
+        src.connect(ctx.destination);
+        ear = { ctx, an, buf: new Uint8Array(an.fftSize) };
+      }
+      if (ear.ctx.state === "suspended") ear.ctx.resume();
+    } catch (e) { skipOn = false; return false; }
+    skipT = setInterval(() => {
+      if (audio.paused || !BK.now) { quietSince = 0; return; }
+      ear.an.getByteTimeDomainData(ear.buf);
+      let peak = 0;
+      for (let i = 0; i < ear.buf.length; i += 4) peak = Math.max(peak, Math.abs(ear.buf[i] - 128));
+      const now = Date.now();
+      if (peak > 3) { quietSince = 0; if (audio.playbackRate !== rate) audio.playbackRate = rate; }
+      else if (!quietSince) quietSince = now;
+      else if (now - quietSince > 500 && audio.playbackRate === rate) audio.playbackRate = Math.min(4, Math.max(3, rate * 2));
+    }, 60);
+    return true;
+  }
   BK.load = (file, at) => {
     BK.file = file;
     audio.src = `api/books/file/${enc(BK.now.t.id)}/${file}?api_key=${enc(B.me.token)}`;
@@ -285,7 +369,13 @@
     if (BK.file + 1 < BK.now.starts.length) BK.load(BK.file + 1, 0);
     else { BK.save(true); BK.now = null; draw(); }
   });
-  audio.addEventListener("play", () => { if (B.music && B.music.audio && !B.music.audio.paused) B.music.audio.pause(); draw(); });
+  audio.addEventListener("play", () => {
+    if (B.music && B.music.audio && !B.music.audio.paused) B.music.audio.pause();
+    // Skip the pauses stays on between visits; its listening part can only start once something plays
+    if (skipOn && !skipT) skipPauses(true);
+    if (ear && ear.ctx.state === "suspended") ear.ctx.resume().catch(() => {});
+    draw();
+  });
   audio.addEventListener("pause", () => { BK.save(); draw(); });
   setInterval(() => {
     if (!BK.now) return;
@@ -309,7 +399,7 @@
       bar.innerHTML = `<button class="mbar-open" data-open title="Open the book"><span class="mbar-cover"></span><span class="mbar-words"><b></b><small></small></span></button>
         <div class="mbar-ctl"><button class="circle" data-a="b15" title="Back 15 seconds">${I("b15")}</button><button class="circle white" data-a="toggle" title="Play or pause"></button><button class="circle" data-a="f30" title="Ahead 30 seconds">${I("f30")}</button>
         <select class="field bk-speed" title="Speed">${[0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3].map((s) => `<option value="${s}">${s}x</option>`).join("")}</select>
-        <button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button><button class="circle" data-a="chapters" title="Chapters">${I("chapters")}</button>${B.volume("", "circle")}<button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
+        <button class="circle" data-a="skip" title="Skip the pauses">${I("f30")}</button><button class="circle" data-a="sleep" title="Sleep timer">${I("moon")}</button><button class="circle" data-a="chapters" title="Chapters">${I("chapters")}</button>${B.volume("", "circle")}<button class="circle" data-a="stop" title="Stop">${B.I("x")}</button></div>
         <div class="mbar-line"><i></i></div>`;
       bar.addEventListener("click", (e) => {
         const a = e.target.closest("[data-a]");
@@ -320,6 +410,11 @@
           else if (k === "b15") BK.seek(-15);
           else if (k === "f30") BK.seek(30);
           else if (k === "stop") BK.stop();
+          else if (k === "skip") {
+            const ok = skipPauses(!skipOn);
+            a.classList.toggle("on", skipOn);
+            B.toast(!ok ? "This browser can't skip pauses." : skipOn ? "Skipping the pauses" : "Pauses back to normal");
+          }
           else if (k === "sleep") {
             // Each press moves to the next choice: 15, 30, 45, 60 minutes, then off
             const left = sleepAt ? Math.ceil((sleepAt - Date.now()) / 60000) : 0;
@@ -332,7 +427,7 @@
         }
         if (e.target.closest("[data-open]") && BK.now) B.go("#/book/" + enc(BK.now.t.id));
       });
-      $(".bk-speed", bar).onchange = (e) => { audio.playbackRate = +e.target.value; try { localStorage.setItem("benflix.bk.speed." + BK.now.t.id, e.target.value); } catch (x) {} };
+      $(".bk-speed", bar).onchange = (e) => { rate = +e.target.value; audio.playbackRate = rate; try { localStorage.setItem("benflix.bk.speed." + BK.now.t.id, e.target.value); } catch (x) {} };
       document.body.appendChild(bar);
       B.wireVolume($(".volw", bar), audio, "bookVolume");
     }
@@ -343,7 +438,8 @@
     const t = BK.now.t, p = pos();
     if (!tick) {
       $(".mbar-cover", bar).style.backgroundImage = t.cover ? `url('${pic(t.cover)}')` : "";
-      $(".bk-speed", bar).value = String(audio.playbackRate || 1);
+      $(".bk-speed", bar).value = String(rate || 1);
+      $('[data-a="skip"]', bar).classList.toggle("on", skipOn);
     }
     $(".mbar-words b", bar).textContent = t.name;
     const c = BK.now.chapters[chapterAt(p)];

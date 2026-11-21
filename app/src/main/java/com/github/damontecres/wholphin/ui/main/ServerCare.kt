@@ -85,6 +85,135 @@ data class PlaytestState(
     val last: Long?,
 )
 
+/** Server, Activity (Ben 2026-11-21): one line of a list, like "Ben" and "41 h" */
+data class ActivityLine(
+    val name: String,
+    val time: String,
+)
+
+data class ActivityMonth(
+    val month: String,
+    val people: List<ActivityLine>,
+    val titles: List<ActivityLine>,
+    /** "Sat evening", busiest first */
+    val busiest: List<ActivityLine>,
+    val quietest: String?,
+    val since: String?,
+)
+
+private val ACTIVITY_DAYS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+private val ACTIVITY_PARTS = listOf("night", "morning", "afternoon", "evening")
+
+private fun activityTime(seconds: Long): String =
+    when {
+        seconds >= 36_000 -> "${(seconds + 1800) / 3600} h"
+        seconds >= 3600 -> String.format(Locale.US, "%.1f h", seconds / 3600.0).replace(".0 h", " h")
+        else -> "${maxOf(1, (seconds + 30) / 60)} min"
+    }
+
+private fun parseActivity(j: JSONObject): ActivityMonth {
+    val lines = { key: String -> j.optJSONArray(key).objects().map { ActivityLine(it.optString("name"), activityTime(it.optLong("s"))) } }
+    // Tower keeps the week in world time (UTC); move every hour onto this device's own clock
+    val shift =
+        Math.floorDiv(
+            java.util.TimeZone
+                .getDefault()
+                .getOffset(System.currentTimeMillis()),
+            3_600_000,
+        )
+    val blocks = LongArray(28)
+    val grid = j.optJSONArray("grid")
+    for (day in 0 until 7) {
+        val row = grid?.optJSONArray(day) ?: continue
+        for (hour in 0 until 24) {
+            val at = Math.floorMod(day * 24 + hour + shift, 168)
+            blocks[(at / 24) * 4 + (at % 24) / 6] += row.optLong(hour)
+        }
+    }
+    val named = { i: Int -> "${ACTIVITY_DAYS[i / 4]} ${ACTIVITY_PARTS[i % 4]}" }
+    val any = blocks.any { it > 0 }
+    val month =
+        try {
+            SimpleDateFormat(
+                "MMMM yyyy",
+                Locale.getDefault(),
+            ).format(SimpleDateFormat("yyyy-MM", Locale.US).parse(j.optString("month")) ?: Date())
+        } catch (ex: Exception) {
+            j.optString("month")
+        }
+    return ActivityMonth(
+        month = month,
+        people = lines("people"),
+        titles = lines("titles"),
+        busiest =
+            blocks.indices
+                .filter { blocks[it] > 0 }
+                .sortedByDescending { blocks[it] }
+                .take(3)
+                .map { ActivityLine(named(it), activityTime(blocks[it])) },
+        // Nobody restarts Tower in the middle of the night, so the quietest time is picked from the daytime
+        quietest =
+            if (any) {
+                blocks.indices
+                    .filter { it % 4 != 0 }
+                    .minByOrNull { blocks[it] }
+                    ?.let(named)
+            } else {
+                null
+            },
+        since = j.optLong("since").takeIf { it > 0 }?.let { SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date(it * 1000)) },
+    )
+}
+
+internal fun LazyListScope.activityItems(
+    activity: ActivityMonth?,
+    problem: String?,
+) {
+    item(key = "activity-title") { SectionTitle("Activity" + (activity?.let { " in ${it.month}" } ?: "")) }
+    if (activity == null) {
+        item(key = "activity-loading") {
+            if (problem != null) {
+                ServerActionRow(headline = "Activity isn't ready", supporting = problem, leading = { Dot(Light.UNKNOWN) })
+            } else {
+                LoadingBox("Adding up the hours…")
+            }
+        }
+        return
+    }
+    if (activity.people.isEmpty()) {
+        item(key = "activity-empty") {
+            ServerActionRow(
+                headline = "Nothing counted yet",
+                supporting = activity.since?.let { "Tower started counting on $it. Come back after a movie night." },
+            )
+        }
+        return
+    }
+    item(key = "activity-people") {
+        ServerActionRow(
+            headline = "Hours watched",
+            supporting = activity.people.joinToString("\n") { "${it.name}: ${it.time}" },
+        )
+    }
+    item(key = "activity-titles") {
+        ServerActionRow(
+            headline = "Most watched",
+            supporting = activity.titles.mapIndexed { i, t -> "${i + 1}. ${t.name} (${t.time})" }.joinToString("\n"),
+        )
+    }
+    item(key = "activity-times") {
+        ServerActionRow(
+            headline = "Busiest times",
+            supporting =
+                activity.busiest.joinToString("\n") { "${it.name}: ${it.time}" } +
+                    (activity.quietest?.let { "\nQuietest: $it. A good time to restart Tower." } ?: ""),
+        )
+    }
+    activity.since?.let {
+        item(key = "activity-since") { ServerActionRow(headline = "Counting since $it", supporting = "Paused time isn't counted.") }
+    }
+}
+
 /**
  * Benflix Server page: the weekly report card (Overview), and the tidy-up helper and night-time play
  * test (Library). All of it comes from the Benflix helper on Tower (benflix_care.py).
@@ -118,6 +247,25 @@ class ServerCareViewModel
         val notice: StateFlow<String?> = _notice
 
         private var tidyJob: Job? = null
+
+        private val _activity = MutableStateFlow<ActivityMonth?>(null)
+        val activity: StateFlow<ActivityMonth?> = _activity
+        private val _activityProblem = MutableStateFlow<String?>(null)
+        val activityProblem: StateFlow<String?> = _activityProblem
+
+        fun loadActivity() {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    _activity.value = parseActivity(tower.activity())
+                    _activityProblem.value = null
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Server page: activity")
+                    _activityProblem.value = ex.message ?: "Couldn't reach Tower."
+                }
+            }
+        }
 
         fun loadReport(fresh: Boolean = false) {
             viewModelScope.launch(WholphinDispatchers.IO) {
