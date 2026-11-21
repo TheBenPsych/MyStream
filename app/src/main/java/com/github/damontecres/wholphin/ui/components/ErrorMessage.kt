@@ -52,6 +52,20 @@ private data class FriendlyError(
 
 private fun friendlyError(exception: Throwable?): FriendlyError {
     var e = exception
+    var cause = exception
+    while (cause != null) {
+        if (cause is com.github.damontecres.wholphin.services.NotEnoughRoomException) {
+            val mb = 1024 * 1024
+            val free = if (cause.freeBytes >= 0) "only ${cause.freeBytes / mb} MB free" else "very little room left"
+            return FriendlyError(
+                "Not enough room for the update",
+                "There's $free here and the update needs about ${cause.neededBytes / mb} MB. " +
+                    "Free some space in the TV or phone's own Settings > Apps (remove an app you don't use, " +
+                    "or clear an app's cache), then come back and press Install now.",
+            )
+        }
+        cause = cause.cause
+    }
     var status: Int? = null
     while (e != null && status == null) {
         status = (e as? org.jellyfin.sdk.api.client.exception.InvalidStatusException)?.status

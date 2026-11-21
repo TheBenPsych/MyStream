@@ -277,6 +277,13 @@ class UpdateChecker
                     downloading = true
                     try {
                         downloadReleaseFile(release, callback).also { saveReady(release.version, it) }
+                    } catch (ex: IOException) {
+                        // The storage filled up part way through: say so, instead of trying again and again
+                        if (isOutOfSpace(ex)) {
+                            cleanup()
+                            throw NotEnoughRoomException(freeBytes(), updateRoomNeeded(-1L), ex)
+                        }
+                        throw ex
                     } finally {
                         downloading = false
                     }
@@ -446,6 +453,37 @@ class UpdateChecker
             return ((now - since).coerceAtLeast(0L) / 1.days.inWholeMilliseconds).toInt()
         }
 
+        /**
+         * How much room is left for an update, in bytes (-1 if Android doesn't say). The smaller of the app's own
+         * storage (where Android copies and unpacks the update) and the Downloads folder (where the file is saved).
+         */
+        fun freeBytes(): Long {
+            val dirs =
+                listOfNotNull(
+                    context.filesDir,
+                    try {
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    } catch (ex: Exception) {
+                        null
+                    },
+                )
+            return dirs
+                .mapNotNull { dir ->
+                    try {
+                        android.os.StatFs(dir.path).availableBytes
+                    } catch (ex: Exception) {
+                        null
+                    }
+                }.minOrNull() ?: -1L
+        }
+
+        /** Throw away the downloaded update, so the next Install now downloads a fresh copy */
+        fun discardDownload() {
+            if (downloading) return
+            clearReady()
+            cleanup()
+        }
+
         /** True while an update is downloading, so the leftover-file cleanup doesn't delete it */
         @Volatile
         private var downloading = false
@@ -480,6 +518,13 @@ class UpdateChecker
                     }
                     Timber.v("Request successful for ${release.downloadUrl}")
                     callback.contentLength(it.body.contentLength())
+                    // Stop before filling the last of the storage with a file that then can't be installed
+                    val free = freeBytes()
+                    val needed = updateRoomNeeded(it.body.contentLength())
+                    if (free in 0 until needed) {
+                        Timber.w("Not enough room for the update: %d bytes free, about %d needed", free, needed)
+                        throw NotEnoughRoomException(free, needed)
+                    }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val resolver = context.contentResolver
                         val contentValues =
@@ -644,16 +689,20 @@ class UpdateChecker
                             arrayOf("$ASSET_NAME%", APK_MIME_TYPE),
                         )
                     Timber.i("Deleted $deletedRows rows")
-                } else {
-                    val downloadDir =
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    val targetFile = File(downloadDir, APK_NAME)
-                    if (targetFile.exists()) {
-                        targetFile.delete()
-                    }
                 }
             } catch (ex: Exception) {
                 Timber.e(ex, "Exception during cleanup")
+            }
+            // The plain file too: older Android saves it this way, and newer Android falls back to it
+            try {
+                val downloadDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val targetFile = File(downloadDir, APK_NAME)
+                if (targetFile.exists() && targetFile.delete()) {
+                    Timber.i("Deleted %s", targetFile)
+                }
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not delete the update file")
             }
         }
     }
@@ -754,6 +803,33 @@ data class Release(
 class DownloadFailedException(
     val code: Int,
 ) : IOException("Error downloading the update: HTTP $code")
+
+/** There isn't enough room on this TV or phone to download and install the update */
+class NotEnoughRoomException(
+    val freeBytes: Long,
+    val neededBytes: Long,
+    cause: Throwable? = null,
+) : Exception("Not enough room for the update: $freeBytes bytes free, about $neededBytes needed", cause)
+
+/** Used when GitHub doesn't say how big the update is */
+private const val TYPICAL_UPDATE_BYTES = 50L * 1024 * 1024
+
+/**
+ * Roughly how much free room an update of [apkBytes] needs: the download itself, the copy Android makes before
+ * installing it, and the unpacked app. With less than this, Android only says "There was a problem parsing the package".
+ */
+fun updateRoomNeeded(apkBytes: Long): Long = (if (apkBytes > 0) apkBytes else TYPICAL_UPDATE_BYTES) * 3
+
+/** True when a download stopped because the storage is full */
+fun isOutOfSpace(ex: Throwable?): Boolean {
+    var e = ex
+    while (e != null) {
+        val message = e.message.orEmpty()
+        if (message.contains("ENOSPC") || message.contains("No space left", ignoreCase = true)) return true
+        e = e.cause
+    }
+    return false
+}
 
 interface DownloadCallback {
     fun contentLength(contentLength: Long)
