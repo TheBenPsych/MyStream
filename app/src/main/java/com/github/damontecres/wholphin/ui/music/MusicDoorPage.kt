@@ -3,8 +3,10 @@ package com.github.damontecres.wholphin.ui.music
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,6 +74,8 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -311,54 +316,62 @@ fun MusicDoorPage(
                         overlap = LocalTopBarOverlap.current,
                     )
                 }
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                ) {
-                    if (!wide) {
-                        rows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
-                            item(key = "phoneTop") { MusicPhoneTop(top) { onTile(top) } }
+                // Ben 2026-11-21: like Movies, Shows and Books on TV, the row you move to jumps up whole (name and
+                // all) right under the top area, so its name is never cut off. Rows still slide sideways as before.
+                val defaultSpec = LocalBringIntoViewSpec.current
+                val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
+                CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    ) {
+                        if (!wide) {
+                            rows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
+                                item(key = "phoneTop") { MusicPhoneTop(top) { onTile(top) } }
+                            }
                         }
-                    }
-                    rows.forEachIndexed { rowIndex, row ->
-                        item(key = row.key) {
-                            Column {
-                                MusicRowName(row.title, Modifier.padding(start = side(wide), bottom = 8.dp))
-                                val rowState = rememberLazyListState()
-                                if (rowIndex == 0) {
-                                    LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
-                                }
-                                LazyRow(
-                                    state = rowState,
-                                    contentPadding = PaddingValues(horizontal = side(wide)),
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                ) {
-                                    itemsIndexed(row.tiles, key = { _, t -> t.key }) { i, tile ->
-                                        MusicTileCard(
-                                            tile = tile,
-                                            size = cardSize,
-                                            onClick = {
-                                                if (tile is MusicTile.SeeAll && tile.kind == IMPORT_KIND) {
-                                                    MusicPlaceNav.openAsk(import = true)
-                                                } else {
-                                                    onTile(tile)
-                                                }
-                                            },
-                                            onFocus = {
-                                                viewModel.lastRow = rowIndex
-                                                viewModel.lastIndex = i
-                                                lit.value = tile
-                                                frame.atTop = rowIndex == 0 && i == 0
-                                            },
-                                            modifier =
-                                                if (isTarget(rowIndex, i, row.tiles.size)) {
-                                                    Modifier.focusRequester(firstFocus)
-                                                } else {
-                                                    Modifier
-                                                },
-                                        )
+                        rows.forEachIndexed { rowIndex, row ->
+                            item(key = row.key) {
+                                CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                                    Column(Modifier.scrollAsOneBlock()) {
+                                        MusicRowName(row.title, Modifier.padding(start = side(wide), bottom = 8.dp))
+                                        val rowState = rememberLazyListState()
+                                        if (rowIndex == 0) {
+                                            LaunchedEffect(topRequest) { if (topRequest > 0) rowState.scrollToItem(0) }
+                                        }
+                                        LazyRow(
+                                            state = rowState,
+                                            contentPadding = PaddingValues(horizontal = side(wide)),
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                        ) {
+                                            itemsIndexed(row.tiles, key = { _, t -> t.key }) { i, tile ->
+                                                MusicTileCard(
+                                                    tile = tile,
+                                                    size = cardSize,
+                                                    onClick = {
+                                                        if (tile is MusicTile.SeeAll && tile.kind == IMPORT_KIND) {
+                                                            MusicPlaceNav.openAsk(import = true)
+                                                        } else {
+                                                            onTile(tile)
+                                                        }
+                                                    },
+                                                    onFocus = {
+                                                        viewModel.lastRow = rowIndex
+                                                        viewModel.lastIndex = i
+                                                        lit.value = tile
+                                                        frame.atTop = rowIndex == 0 && i == 0
+                                                    },
+                                                    modifier =
+                                                        if (isTarget(rowIndex, i, row.tiles.size)) {
+                                                            Modifier.focusRequester(firstFocus)
+                                                        } else {
+                                                            Modifier
+                                                        },
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

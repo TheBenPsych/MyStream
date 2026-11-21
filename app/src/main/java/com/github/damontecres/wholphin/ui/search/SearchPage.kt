@@ -299,8 +299,14 @@ fun SearchPage(
         RecentSearches.add(searchContext, viewModel.recentAccount, name)
         triggerImmediateSearch(name)
     }
+    // Ben's rule: Search opens on the search box. Coming from the side menu, the focus is handed to the page as a
+    // whole, which picks the thing nearest the top left: the microphone (the box's own "start on me" is skipped
+    // that way). So a focus that lands on the microphone just as it arrives on the page moves on to the box.
+    // Moving Left from the box onto the microphone yourself still works, because the page already had the focus.
+    val pageFocus = remember { longArrayOf(0L, 0L) } // [0] = 1 while the page has the focus, [1] = when it arrived
     val searchBox: @Composable (Modifier) -> Unit = { boxModifier ->
         var isSearchActive by remember { mutableStateOf(false) }
+        var micFocused by remember { mutableIntStateOf(0) }
         // Phones type as soon as you tap the box; TVs wait for the OK button
         var isTextFieldFocused by remember { mutableStateOf(false) }
         val textFieldFocusRequester = remember { FocusRequester() }
@@ -318,6 +324,11 @@ fun SearchPage(
             }
         }
 
+        LaunchedEffect(micFocused) {
+            if (isTv && micFocused > 0 && System.currentTimeMillis() - pageFocus[1] < FOCUS_ARRIVED_MS) {
+                textFieldFocusRequester.tryRequestFocus()
+            }
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -341,7 +352,7 @@ fun SearchPage(
                         triggerImmediateSearch(spokenText)
                     },
                     voiceInputManager = viewModel.voiceInputManager,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 8.dp).onFocusChanged { if (it.hasFocus) micFocused++ },
                 )
             }
 
@@ -374,7 +385,18 @@ fun SearchPage(
                         }.onPreviewKeyEvent { event ->
                             val isActivationKey =
                                 event.key in listOf(Key.DirectionCenter, Key.Enter)
-                            if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive && isTv && !keyboardOpen) {
+                            // TV: with letters in the box, Left and Right only moved the text cursor, so you
+                            // couldn't leave the box sideways. While you aren't typing they move the focus.
+                            val sideways =
+                                when (event.key) {
+                                    Key.DirectionLeft -> FocusDirection.Left
+                                    Key.DirectionRight -> FocusDirection.Right
+                                    else -> null
+                                }
+                            if (isTv && !isSearchActive && sideways != null) {
+                                // (at the page's edge nothing moves, and the press goes on as before)
+                                event.type == KeyEventType.KeyDown && focusManager.moveFocus(sideways)
+                            } else if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive && isTv && !keyboardOpen) {
                                 // TV: OK pops the Benflix keyboard out first
                                 keyboardOpen = true
                                 focusKeyboard++
@@ -453,7 +475,13 @@ fun SearchPage(
             )
         }
     }
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            modifier.fillMaxSize().onFocusChanged {
+                if (it.hasFocus && pageFocus[0] == 0L) pageFocus[1] = System.currentTimeMillis()
+                pageFocus[0] = if (it.hasFocus) 1L else 0L
+            },
+    ) {
         if (isTv) {
             // Redesign 2, TV: the search box with its column of suggestions on the left (recent searches and
             // Popular before you type), the door cards on the right. OK on the box pops the A to Z keyboard out
@@ -783,3 +811,6 @@ fun SearchResultPlaceholder(
         )
     }
 }
+
+/** A focus that reaches the microphone this soon after arriving on the Search page was handed over, not moved there */
+private const val FOCUS_ARRIVED_MS = 400L
