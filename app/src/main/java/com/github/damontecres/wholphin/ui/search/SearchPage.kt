@@ -190,6 +190,13 @@ fun SearchPage(
         }
         if (!landed) focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
+    // The side menu hands the focus to the page a moment after it opens, which picks the first
+    // button it finds (the microphone). While Search is opening, pass that on to the box.
+    var justOpened by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(1500)
+        justOpened = false
+    }
     LaunchedEffect(Unit) {
         if (position.row == SEARCH_ROW) {
             focusSearchRow()
@@ -302,7 +309,7 @@ fun SearchPage(
     }
     BackHandler(keyboardHasFocus) {
         keyboardOpen = false
-        if (!(isTv && searchFieldFocus.tryRequestFocus())) focusRequesters[SEARCH_ROW].tryRequestFocus()
+        focusRequesters[SEARCH_ROW].tryRequestFocus()
     }
     val suggestions by viewModel.suggestions.collectAsState()
     val foundBooks by viewModel.books.collectAsState()
@@ -359,7 +366,15 @@ fun SearchPage(
                         triggerImmediateSearch(spokenText)
                     },
                     voiceInputManager = viewModel.voiceInputManager,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier =
+                        Modifier
+                            .padding(end = 8.dp)
+                            .onFocusChanged {
+                                if (it.hasFocus && isTv && justOpened && position.row == SEARCH_ROW) {
+                                    justOpened = false
+                                    searchFieldFocus.tryRequestFocus()
+                                }
+                            },
                 )
             }
 
