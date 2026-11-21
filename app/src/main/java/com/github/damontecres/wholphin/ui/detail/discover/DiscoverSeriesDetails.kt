@@ -233,6 +233,7 @@ fun DiscoverSeriesDetailsContent(
         }
     RequestTitlePage(
         streamingOn = streamingOn,
+        posterPath = series.posterPath,
         isMovie = false,
         tmdbId = series.id,
         title = series.name.orEmpty(),

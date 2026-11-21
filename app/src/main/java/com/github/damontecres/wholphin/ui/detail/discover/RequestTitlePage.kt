@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.github.damontecres.wholphin.data.model.DiscoverItem
 import com.github.damontecres.wholphin.data.model.DiscoverRating
 import com.github.damontecres.wholphin.data.model.SeerrAvailability
@@ -23,6 +25,8 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleOverview
 import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.discover.WishList
+import com.github.damontecres.wholphin.ui.discover.WishListViewModel
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlin.math.roundToInt
 
@@ -59,8 +63,15 @@ fun RequestTitlePage(
     modifier: Modifier = Modifier,
     /** Streaming services that have it right now ("Netflix", "Hulu"), so nobody waits for a download they don't need */
     streamingOn: List<String> = emptyList(),
+    /** TMDB's poster for it, kept with the My List entry */
+    posterPath: String? = null,
+    wishViewModel: WishListViewModel = hiltViewModel(),
 ) {
     val kids by KidsMode.active.collectAsState()
+    // My List for a title that isn't here yet: Tower keeps it and moves it to the real My List when it arrives
+    val wishes by WishList.keys.collectAsState()
+    LaunchedEffect(Unit) { wishViewModel.load() }
+    val wished = tmdbId != null && WishList.key(isMovie, tmdbId) in wishes
     val here = availability == SeerrAvailability.AVAILABLE || availability == SeerrAvailability.PARTIALLY_AVAILABLE
     val blocked = cantFind && !here
     val first =
@@ -107,6 +118,25 @@ fun RequestTitlePage(
     val buttons =
         buildList {
             add(first)
+            if (!here && !kids && tmdbId != null) {
+                add(
+                    TitleButton(
+                        "My List",
+                        if (wished) BenflixIcon.CHECK else BenflixIcon.PLUS,
+                        {
+                            wishViewModel.set(isMovie, tmdbId, title, posterPath, !wished)
+                            // Not asked for yet: adding it to My List asks for it too
+                            if (!wished && !blocked && canRequest && availability == SeerrAvailability.UNKNOWN) requestOnClick()
+                        },
+                        note =
+                            if (wished) {
+                                "On your list. It moves into My List the moment it arrives"
+                            } else {
+                                "Keeps it on your list and asks for it"
+                            },
+                    ),
+                )
+            }
             if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
                 add(TitleButton("Ask for the rest", BenflixIcon.REQUESTS, requestOnClick, note = "Some of it isn't on Glowfin yet"))
             }

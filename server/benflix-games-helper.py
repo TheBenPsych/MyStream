@@ -1472,7 +1472,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, anime_tmdb(query))
             if path.startswith("/api/asks/"):
                 # Why Ben said no (everyone reads, Ben writes) and who gets an automatic yes (Ben only)
-                return self.send(200, asks_route(method, path, token, is_admin, self.read_json))
+                return self.send(200, asks_route(method, path, token, user_id, is_admin, is_kids, self.read_json))
             if method == "GET" and path == "/api/family":
                 # Ben's "Request for" picker: who he can ask for (grown-ups only, never Kids)
                 if not is_admin:
@@ -1927,6 +1927,7 @@ def _asks_load():
     got.setdefault("reasons", {})
     got.setdefault("trust", {})
     got.setdefault("auto", [])
+    got.setdefault("wish", {})
     return got
 
 
@@ -1949,8 +1950,36 @@ def _asks_used(state, uid, now=None):
     return sum(1 for a in state["auto"] if a.get("user") == uid and now - a.get("at", 0) < ASKS_WEEK_S)
 
 
-def asks_route(method, path, token, is_admin, read_json):
-    """/api/asks/reasons (everyone signed in reads; Ben writes) and /api/asks/trust (Ben only)"""
+def asks_route(method, path, token, user_id, is_admin, is_kids, read_json):
+    """/api/asks/reasons (everyone signed in reads; Ben writes), /api/asks/wish (your own My List of things that
+    aren't on Glowfin yet; not Kids) and /api/asks/trust (Ben only)"""
+    if path == "/api/asks/wish":
+        uid = _asks_plain(user_id)
+        if method == "GET":
+            with _asks_lock:
+                mine = _asks_load()["wish"].get(uid) or {}
+            return {"items": sorted(mine.values(), key=lambda w: -w.get("at", 0))}
+        if method == "POST":
+            if is_kids:
+                raise HelperError(403, "Ask a grown-up to add this one.")
+            body = read_json() or {}
+            kind = "movie" if str(body.get("type")) == "movie" else "tv"
+            try:
+                tmdb = int(body.get("tmdb"))
+            except (TypeError, ValueError):
+                raise HelperError(400, "Which title is this?")
+            key = f"{kind}:{tmdb}"
+            with _asks_lock:
+                state = _asks_load()
+                mine = state["wish"].setdefault(uid, {})
+                if body.get("on", True):
+                    mine[key] = {"type": kind, "tmdb": tmdb, "title": str(body.get("title") or "")[:200], "poster": str(body.get("poster") or "")[:200], "at": time.time()}
+                    for old in sorted(mine, key=lambda k: -mine[k].get("at", 0))[200:]:
+                        mine.pop(old, None)
+                else:
+                    mine.pop(key, None)
+                _asks_save(state)
+            return {"ok": True}
     if path == "/api/asks/reasons" and method == "GET":
         with _asks_lock:
             return {"reasons": {k: v.get("reason", "") for k, v in _asks_load()["reasons"].items()}}
@@ -2031,15 +2060,45 @@ def _asks_auto_yes(link, token):
             _asks_save(fresh)
 
 
+def _asks_wish_arrivals(link, token):
+    """My List for things not on Glowfin yet: once one arrives it goes on that person's real My List"""
+    with _asks_lock:
+        wish = _asks_load()["wish"]
+    landed = []
+    for uid, mine in wish.items():
+        for key, w in mine.items():
+            try:
+                info = (_seerr(link, "GET", f"/{w.get('type')}/{w.get('tmdb')}") or {}).get("mediaInfo") or {}
+            except Exception:
+                continue
+            item = re.sub(r"[^0-9a-fA-F]", "", str(info.get("jellyfinMediaId") or ""))
+            if info.get("status") != 5 or not item:
+                continue
+            status, _, _ = jellyfin_call("POST", f"/UserFavoriteItems/{item}?userId={uid}", token=token, body=b"", device_id="benflix-helper")
+            if status in (200, 204):
+                landed.append((uid, key))
+                _doctor_log(f"{w.get('title')} arrived and went on a My List")
+    if landed:
+        with _asks_lock:
+            state = _asks_load()
+            for uid, key in landed:
+                (state["wish"].get(uid) or {}).pop(key, None)
+            _asks_save(state)
+
+
 def asks_auto_yes(admin):
     """Every 3 minutes, so a trusted person's request starts almost right away"""
     time.sleep(150)
+    passes = 0
     while True:
         try:
             token = (admin() or (None, None))[0]
             link = _seerr_link(token) if token else None
             if link:
                 _asks_auto_yes(link, token)
+                if passes % 5 == 0:
+                    _asks_wish_arrivals(link, token)
+            passes += 1
         except Exception as e:
             _doctor_log(f"auto-yes problem ({e})")
         time.sleep(180)

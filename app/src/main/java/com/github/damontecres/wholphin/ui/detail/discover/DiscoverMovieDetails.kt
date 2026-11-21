@@ -212,6 +212,7 @@ fun DiscoverMovieDetailsContent(
         }
     RequestTitlePage(
         streamingOn = streamingOn,
+        posterPath = movie.posterPath,
         isMovie = true,
         tmdbId = movie.id,
         title = movie.title.orEmpty(),

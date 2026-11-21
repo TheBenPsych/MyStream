@@ -10,6 +10,8 @@
     const [, type, id] = m;
     B.page().innerHTML = B.top("") + B.spinner();
     B.wireTop();
+    // My List for titles that aren't here yet: kept on Tower, which moves it to the real My List when it arrives
+    const wishes = B.call("GET", "api/asks/wish").then((w) => (w && w.items) || []).catch(() => []);
     let d;
     try { d = await B.seerr(`/${type}/${id}`); } catch (e) {
       B.page().innerHTML = B.top("") + `<div class="wrap"><div class="note">Couldn't open that one. ${esc(e.message || "")}</div></div>`;
@@ -37,8 +39,20 @@
     else first = { label: "Ask for it", icon: "plus", onClick: ask };
     const videos = (d.relatedVideos || []).filter((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"));
     const trailer = videos.find((v) => v.type === "Trailer") || videos[0];
+    let wished = (await wishes).some((w) => w.type === type && String(w.tmdb) === String(id));
+    if (!B.alive(nav)) return;
+    const wish = async (e, el) => {
+      wished = !wished;
+      await B.call("POST", "api/asks/wish", { type, tmdb: +id, title: t, poster: d.posterPath || "", on: wished }).catch((err) => { wished = !wished; B.toast(err.message); });
+      if (el) el.innerHTML = `${I(wished ? "check" : "plus")} <span>My List</span>`;
+      if (wished) {
+        B.toast(status > 1 ? "On your list. It shows up in My List the moment it arrives." : "On your list. Asking for it now.");
+        if (status <= 1) ask();
+      } else B.toast("Taken off your list.");
+    };
     const buttons = [
       first,
+      !here && !kids ? { id: "bWish", label: "My List", icon: wished ? "check" : "plus", onClick: wish } : null,
       status === 4 && !kids && type === "tv" ? { label: "Ask for the rest", icon: "plus", note: "Some of it isn't on Glowfin yet", onClick: ask } : null,
       { label: "Trailer", icon: "trailer", off: trailer ? "" : "No trailer for this one yet", onClick: () => B.trailer({ RemoteTrailers: [{ Url: `https://www.youtube.com/watch?v=${trailer.key}` }] }) },
       { label: "More", icon: "more", onClick: () => B.tpMore(t, [
