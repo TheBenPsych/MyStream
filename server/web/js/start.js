@@ -377,10 +377,14 @@ B.route(/^\/me$/, async (m, nav) => {
       <button type="button" class="btn small" data-go="#/who">${I("swap")} Switch profile</button></div></div>
     <div class="me-tiles">${items.map(([where, icon, label, line]) => `<button type="button" class="me-tile ${where === "#/server" ? "admin" : ""}" data-go="${esc(where)}"><span class="me-ic">${I(icon)}</span><span class="me-tx"><b>${esc(label)}</b><small>${esc(line || "")}</small></span></button>`).join("")}</div>
     <button type="button" class="me-out" data-go="signout">${I("out")}<span>Sign out</span></button>
+    ${window.glowfinDesktop ? `<div class="me-app"><span class="dim">Glowfin on this computer</span><button type="button" class="btn small" data-app="fullscreen">Full screen on or off</button><button type="button" class="btn small" data-app="changeServer">Change Tower's address</button><button type="button" class="btn small" data-app="quit">Close Glowfin</button></div>` : ""}
   </div>`;
   B.wireTop();
   const page = $(".mepage");
   page.addEventListener("click", (e) => {
+    // The Glowfin app for computers (Linux, Steam Deck, Windows): its own window buttons, reachable by controller
+    const app = e.target.closest("[data-app]");
+    if (app && window.glowfinDesktop && window.glowfinDesktop[app.dataset.app]) { window.glowfinDesktop[app.dataset.app](); return; }
     const b = e.target.closest("[data-go]"); if (!b) return;
     B.profileGo(b.dataset.go);
   });

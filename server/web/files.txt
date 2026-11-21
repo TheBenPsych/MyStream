@@ -23,6 +23,7 @@ js/core.js
 js/sea.js
 js/doors.js
 js/nav.js
+js/pad.js
 js/extras.js
 js/fix.js
 js/games.js
