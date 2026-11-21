@@ -341,6 +341,11 @@ fun EpisodeDetailsContent(
         rows = true,
         story = dto.overview,
         scores = scores,
+        chips =
+            remember(dto.id, dto.mediaSources) {
+                com.github.damontecres.wholphin.ui.detail.title
+                    .qualityChips(BaseItem(dto))
+            },
         modifier = modifier,
     )
 }

@@ -49,6 +49,7 @@ object PageRows {
                 listOf(
                     DoorViewModel.TOP_10 to "Top 10 this week",
                     DoorViewModel.BECAUSE to "Because you watched…",
+                    DoorViewModel.LOVED to "Because you loved…",
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.RELEASED to "Recently released",
                     DoorViewModel.TOP_RATED to "Top rated you haven't seen",
@@ -62,6 +63,7 @@ object PageRows {
                     DoorViewModel.TOP_10 to "Top 10 this week",
                     DoorViewModel.NEW_EPISODES to "New episodes",
                     DoorViewModel.BECAUSE to "Because you watched…",
+                    DoorViewModel.LOVED to "Because you loved…",
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.TOP_RATED to "Top rated you haven't seen",
                     DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",

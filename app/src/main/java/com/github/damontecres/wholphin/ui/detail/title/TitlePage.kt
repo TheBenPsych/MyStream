@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.title
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -27,7 +28,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -203,6 +206,63 @@ fun TitlePage(
     story: String? = null,
     /** Rows pages: "IMDb 7.8   Rotten Tomatoes 91%" after the info line */
     scores: List<StripPart> = emptyList(),
+    /** The title's own logo art, shown in place of the typed name when it fits (Ben 2026-11-21) */
+    logoUrl: String? = null,
+    /** The one-line tagline under the name ("In space no one can hear you scream") */
+    tagline: String? = null,
+    /** Small picture and sound tags after the info line: "4K", "Dolby Vision", "Atmos", "CC" */
+    chips: List<String> = emptyList(),
+) {
+    val extras = remember(logoUrl, tagline, chips) { TitleExtras(logoUrl, tagline, chips) }
+    CompositionLocalProvider(LocalTitleExtras provides extras) {
+        TitlePageBody(
+            title,
+            accent,
+            picture,
+            info,
+            buttons,
+            tabs,
+            modifier,
+            originalTitle,
+            rating,
+            infoExtra,
+            statusLine,
+            openTab,
+            big,
+            rows,
+            story,
+            scores,
+        )
+    }
+}
+
+/** The logo art, tagline and picture/sound tags of the title page being shown */
+internal data class TitleExtras(
+    val logoUrl: String? = null,
+    val tagline: String? = null,
+    val chips: List<String> = emptyList(),
+)
+
+internal val LocalTitleExtras = compositionLocalOf { TitleExtras() }
+
+@Composable
+private fun TitlePageBody(
+    title: String,
+    accent: Color,
+    picture: TitlePicture,
+    info: String,
+    buttons: List<TitleButton>,
+    tabs: List<TitleTab>,
+    modifier: Modifier,
+    originalTitle: String?,
+    rating: String?,
+    infoExtra: (@Composable () -> Unit)?,
+    statusLine: String?,
+    openTab: String?,
+    big: Boolean,
+    rows: Boolean,
+    story: String?,
+    scores: List<StripPart>,
 ) {
     if (rows) {
         // Buttons that only open a tab (Episodes) aren't needed: the rows are right under the buttons
@@ -365,6 +425,7 @@ private fun WideTitlePage(
                     .widthIn(max = maxWidth * .7f),
         ) {
             InfoLine(info, rating)
+            QualityChips()
             infoExtra?.invoke()
         }
         // Buttons: always 36% down
@@ -482,6 +543,7 @@ private fun PhoneTitlePage(
                     ) {
                         TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = false)
                         InfoLine(info, rating)
+                        QualityChips()
                         infoExtra?.invoke()
                         buttons.firstOrNull()?.let { b ->
                             TitleButtonView(
@@ -695,17 +757,54 @@ internal fun TitleWords(
             title.length > 30 || original != null -> 32.sp
             else -> 40.sp
         }
+    val extras = LocalTitleExtras.current
+    // The title's own logo art in place of the typed name. Long or odd-shaped logos (anime has plenty)
+    // would shrink until they can't be read, so those keep the typed name (Ben 2026-11-21).
+    var logoBad by remember(extras.logoUrl) { mutableStateOf(false) }
+    var logoReady by remember(extras.logoUrl) { mutableStateOf(false) }
+    val logoUrl = extras.logoUrl?.takeIf { !logoBad }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = title,
-            color = BenflixColors.Text,
-            fontSize = size,
-            lineHeight = size * 1.1f,
-            fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = if (wide) 2 else 3,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (logoUrl != null) {
+            AsyncImage(
+                model = logoUrl,
+                contentDescription = title,
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.BottomStart,
+                onSuccess = {
+                    val w = it.result.image.width
+                    val h = it.result.image.height
+                    if (h <= 0 || w <= 0 || !logoFits(w.toFloat() / h)) logoBad = true else logoReady = true
+                },
+                onError = { logoBad = true },
+                modifier =
+                    Modifier
+                        .height(if (wide) 86.dp else 64.dp)
+                        .widthIn(max = if (wide) 360.dp else 260.dp),
+            )
+        }
+        if (logoUrl == null || !logoReady) {
+            Text(
+                text = title,
+                color = BenflixColors.Text,
+                fontSize = size,
+                lineHeight = size * 1.1f,
+                fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = if (wide) 2 else 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (original == null && !extras.tagline.isNullOrBlank()) {
+            Text(
+                text = extras.tagline.orEmpty(),
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.small,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (original != null) {
             Text(
                 text = original,
@@ -722,6 +821,34 @@ internal fun TitleWords(
                 .size(width = 44.dp, height = 4.dp)
                 .background(accent, RoundedCornerShape(2.dp)),
         )
+    }
+}
+
+/**
+ * Does a logo this shape (width / height) read well in the title's spot? Very wide ones (long anime
+ * names) shrink to a thin strip, and tall or square ones turn into a small busy stamp.
+ */
+internal fun logoFits(ratio: Float): Boolean = ratio in 1.3f..5.5f
+
+/** "4K" "Dolby Vision" "Atmos" "CC": small quiet tags saying what you're about to get */
+@Composable
+internal fun QualityChips() {
+    val chips = LocalTitleExtras.current.chips
+    if (chips.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        chips.forEach { chip ->
+            Text(
+                text = chip,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.tag,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier =
+                    Modifier
+                        .border(1.dp, BenflixColors.Muted.copy(alpha = .45f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+            )
+        }
     }
 }
 

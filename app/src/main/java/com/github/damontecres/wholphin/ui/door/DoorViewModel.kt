@@ -390,6 +390,16 @@ class DoorViewModel
                     }
                     launch {
                         val dislikes = disliked.await()
+                        val skip = animeIds.await()
+                        val found = data.loved(userId, BaseItemKind.MOVIE, dislikes) { it !in skip }
+                        if (found == null) {
+                            remove(LOVED)
+                        } else {
+                            putOrRemove(order, DoorRowData(LOVED, "Because you loved ${found.first}", found.second))
+                        }
+                    }
+                    launch {
+                        val dislikes = disliked.await()
                         val items = data.recentlyReleased(userId, main + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
                         putOrRemove(order, DoorRowData(RELEASED, "Recently released", items))
                     }
@@ -478,6 +488,16 @@ class DoorViewModel
                         } else {
                             putOrRemove(order, DoorRowData(BECAUSE, "Because you watched ${found.first}", found.second))
                             becausePick = pickFrom(found.second)
+                        }
+                    }
+                    launch {
+                        val dislikes = disliked.await()
+                        val skip = animeIds.await()
+                        val found = data.loved(userId, BaseItemKind.SERIES, dislikes) { it !in skip }
+                        if (found == null) {
+                            remove(LOVED)
+                        } else {
+                            putOrRemove(order, DoorRowData(LOVED, "Because you loved ${found.first}", found.second))
                         }
                     }
                     launch {
@@ -812,6 +832,7 @@ class DoorViewModel
             const val TOP_10 = "top10"
             const val TOP_10_ANIME = "top10anime"
             const val BECAUSE = "because"
+            const val LOVED = "loved"
             const val MORE_GENRE = "moregenre"
             const val ANIME = "anime"
             const val STAND_UP = "standup"

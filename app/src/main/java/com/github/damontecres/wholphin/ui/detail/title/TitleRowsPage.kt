@@ -152,6 +152,7 @@ internal fun WideRowsTitlePage(
                         ) {
                             InfoLine(info, rating)
                             ScoreLine(scores)
+                            QualityChips()
                             infoExtra?.invoke()
                         }
                         if (!story.isNullOrBlank()) {
@@ -290,6 +291,7 @@ internal fun PhoneRowsTitlePage(
                         TitleWords(title = title, originalTitle = originalTitle, accent = accent, wide = false)
                         InfoLine(info, rating)
                         ScoreLine(scores)
+                        QualityChips()
                         infoExtra?.invoke()
                         buttons.firstOrNull()?.let { b ->
                             TitleButtonView(

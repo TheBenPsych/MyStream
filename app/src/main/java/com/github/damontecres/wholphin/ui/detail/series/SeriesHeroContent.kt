@@ -242,6 +242,17 @@ fun SeriesHeroContent(
         rows = true,
         story = series.data.overview,
         scores = if (easy) emptyList() else scores,
+        logoUrl =
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoUrl(series),
+        tagline =
+            if (easy) {
+                null
+            } else {
+                series.data.taglines
+                    ?.firstOrNull()
+                    ?.takeIf { it.isNotBlank() }
+            },
         modifier = modifier,
     )
 

@@ -1032,6 +1032,12 @@ body.reading .mbar { display: none; }
 .tp .tp-name { grid-row: 2; align-self: end; max-width: 55%; display: flex; flex-direction: column; gap: 4px; }
 .tp .tp-name .t { font-size: clamp(30px, 3.4vw, 52px); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .tp .tp-name .t2 { margin: 0; font-size: 15px; color: var(--ink3); }
+.tp .tp-name .tp-logo { display: block; max-height: 110px; max-width: min(420px, 100%); width: auto; height: auto; object-fit: contain; object-position: left bottom; align-self: flex-start; filter: drop-shadow(0 2px 8px rgba(0,0,0,.6)); }
+.tp .tp-name .t.tp-hid { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tp .tp-name .tp-tag { font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tp .tp-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 6px; }
+.tp .tp-chips span { border: 1px solid var(--ink3); color: var(--ink2); border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: .3px; }
+@media (max-width: 720px) { .tp .tp-name .tp-logo { max-height: 76px; max-width: 260px; } }
 .tp .tp-line { display: block; width: 44px; height: 4px; border-radius: 2px; background: var(--door); margin-top: 8px; }
 .tp .meta { grid-row: 3; align-self: start; margin: 14px 0 0; max-width: 70%; }
 .tp .meta .partline { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
