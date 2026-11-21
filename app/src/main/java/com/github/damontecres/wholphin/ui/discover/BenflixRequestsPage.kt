@@ -79,6 +79,8 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.services.requestedArrived
 import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.components.BasicDialog
+import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabViewModel
@@ -2332,16 +2334,15 @@ private fun RequestList(
 
             list.isEmpty() && extras.isEmpty() && otherLines.isEmpty() -> {
                 item {
-                    Text(
-                        text =
+                    EmptyPage(
+                        icon = BenflixIcon.REQUESTS,
+                        title = if (arrivedOnly == true) "Nothing has arrived yet" else "No requests yet",
+                        line =
                             when (arrivedOnly) {
-                                true -> "Nothing you asked for has arrived yet."
+                                true -> "Things you asked for show up here as soon as they are ready to watch."
                                 false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
-                                null -> if (mineOnly) NOTHING_ASKED_YET else "No requests yet."
+                                null -> if (mineOnly) NOTHING_ASKED_YET else "When someone asks for something, it shows up here."
                             },
-                        fontSize = BenflixType.lead,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(32.dp),
                     )
                 }
             }

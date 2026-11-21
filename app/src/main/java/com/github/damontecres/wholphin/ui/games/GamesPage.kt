@@ -78,6 +78,7 @@ import com.github.damontecres.wholphin.games.PhonePadActivity
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
@@ -85,6 +86,7 @@ import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.door.doorTabsHeight
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
+import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.preferences.StringInput
@@ -543,26 +545,16 @@ fun GamesPage(
                                     }
 
                                     is LibraryState.Failed -> {
-                                        InfoText(state.message)
-                                        val retryTiles: @Composable () -> Unit = {
-                                            ActionTile(
-                                                title = "Try again",
-                                                subtitle = "Reload your games",
-                                                onClick = { viewModel.reload() },
-                                            )
+                                        // The same empty page as Home, Books and Live TV (Ben 2026-11-21)
+                                        EmptyPage(
+                                            icon = BenflixIcon.PAD,
+                                            title = state.title,
+                                            line = state.message,
+                                        ) {
+                                            MusicButton("Try again", BenflixIcon.REFRESH, { viewModel.reload() }, primary = true)
                                             if (state.askAddress) {
-                                                ActionTile(
-                                                    title = "Set server address",
-                                                    subtitle = "Only if it can't find it",
-                                                    onClick = { askAddress = true },
-                                                )
+                                                MusicButton("Set server address", null, { askAddress = true })
                                             }
-                                        }
-                                        // Two tiles side by side are wider than a phone, so on phones they go one under the other
-                                        if (isTv) {
-                                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { retryTiles() }
-                                        } else {
-                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { retryTiles() }
                                         }
                                         if (state.downloaded.isNotEmpty()) {
                                             Text(
