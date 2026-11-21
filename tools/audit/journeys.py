@@ -18,6 +18,7 @@ Usage: journeys.py <tv|phone> <package> <results dir>
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -129,6 +130,29 @@ def first_poster_phone():
     return None
 
 
+PLAY_RX = r"^Play$|^Resume$|^Play from start$"
+
+
+def press_play():
+    """TV: walk the focus onto Play with the remote and press OK (a tap can land on a
+    cast picture instead). Phone: tap it."""
+    if MODE != "tv":
+        return d.press(PLAY_RX, timeout=6)
+    if d.find(d.dump(), PLAY_RX) is None:
+        return False
+    for move in [None, "DPAD_LEFT", "DPAD_LEFT", "DPAD_LEFT", "DPAD_UP", "DPAD_UP"]:
+        if move:
+            d.key(move, wait=0.6)
+        if re.search(PLAY_RX, label(d.focused_node(d.dump())) or "", re.I):
+            d.key("DPAD_CENTER", wait=1.5)
+            return True
+    return d.press(PLAY_RX, timeout=3)
+
+
+def keyboard_showing():
+    return "mInputShown=true" in d.sh("dumpsys input_method")
+
+
 def movie_trip(door):
     """A door -> scroll a bit -> open a poster -> look around -> Play -> Back -> Back"""
     if not open_door(door):
@@ -162,7 +186,8 @@ def movie_trip(door):
         d.sh("input swipe 500 600 500 2000 300")
         d.sh("input swipe 500 600 500 2000 300")
         time.sleep(1)
-    if d.press(r"^Play$|^Resume$|^Play from start$", timeout=6):
+    played = press_play()
+    if played:
         time.sleep(10)
         step(f"{door}-playing")
         if MODE == "tv":
@@ -189,7 +214,8 @@ def movie_trip(door):
         problem("no Play button on the title page's first screen", f"{door}: {picked}")
     d.key("BACK", wait=2)
     root, s = step(f"{door}-back-to-door")
-    if MODE == "tv" and picked and s.get("focused") != picked:
+    # after playing, Continue watching reorders itself, so a moved focus isn't a fault then
+    if MODE == "tv" and picked and t is not None and not played and s.get("focused") != picked:
         problem("Back doesn't return to the poster you opened", f"{door}: opened '{picked}', focus came back on '{s.get('focused')}'")
 
 
@@ -205,18 +231,29 @@ def search_trip():
     if MODE != "tv" and edit:
         d.touch_tap(edit[0])
         time.sleep(1)
+    if MODE == "tv":
+        # the box says "OK to type": OK opens the keyboard, like on a real remote
+        if not keyboard_showing():
+            d.key("DPAD_CENTER", wait=1.5)
     d.sh("input text 'the'")
     time.sleep(4)
-    step("search-typed")
+    root, _ = step("search-typed")
+    if d.find(root, r"^the$") is None:
+        problem("robot", "could not type in Search, so the search trip was skipped")
+        if keyboard_showing():
+            d.key("BACK", wait=1)
+        return
     if MODE == "tv":
-        d.key("BACK", wait=1)  # hide the keyboard like a person would
+        if keyboard_showing():
+            d.key("BACK", wait=1)  # hide the keyboard like a person would
         step("search-keyboard-closed")
         d.key("DPAD_DOWN", 2, wait=0.7)
         picked = label(d.focused_node(d.dump()))
         step("search-result-focused", picked=picked)
         d.key("DPAD_CENTER", wait=1)
     else:
-        d.key("BACK", wait=1)
+        if keyboard_showing():
+            d.key("BACK", wait=1)
         time.sleep(1)
         step("search-keyboard-closed")
         picked = first_poster_phone()
