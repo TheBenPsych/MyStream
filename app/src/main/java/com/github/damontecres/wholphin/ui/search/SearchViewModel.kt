@@ -330,6 +330,10 @@ class SearchViewModel
         /** Benflix speed: the searches still running, stopped when the words change */
         private val searchJobs: MutableList<kotlinx.coroutines.Job> = java.util.Collections.synchronizedList(mutableListOf())
 
+        /** Search speed: answers from the last couple of minutes, so going back to words already searched is instant */
+        private val libraryAnswers = RecentAnswers<LibraryAnswer>()
+        private val askAnswers = RecentAnswers<List<DiscoverItem>>()
+
         private val _programDialogState = MutableStateFlow(ProgramDialogState())
         val programDialogState: StateFlow<ProgramDialogState> = _programDialogState
 
@@ -457,6 +461,11 @@ class SearchViewModel
             force: Boolean = false,
             /** Trying a suggestion (landing on it): the suggestions stay as they are */
             preview: Boolean = false,
+            /**
+             * Search speed (Ben 2026-11-21): while typing, what was found for the letters before stays on screen
+             * until the new answer is in, so the page doesn't blink to "Searching" on every letter
+             */
+            keepShowing: Boolean = false,
         ) {
             if (!preview) {
                 if (typedQuery != query) _suggestions.value = _suggestions.value.takeIf { query.isNotNullOrBlank() }.orEmpty()
@@ -467,6 +476,10 @@ class SearchViewModel
             }
             currentQuery = query
             combinedMode = combined
+            if (force) {
+                libraryAnswers.clear()
+                askAnswers.clear()
+            }
             searchGames(query)
             searchBooks(query)
             // Benflix speed: stop searching for what was typed before, so the server only works on
@@ -476,6 +489,8 @@ class SearchViewModel
                 searchJobs.clear()
             }
             if (query.isNotNullOrBlank()) {
+                // Searched a moment ago (a letter deleted, or a suggestion tried again): it's shown straight away
+                val known = if (combined) libraryAnswers.get(query) else null
                 _state.update {
                     it.copy(
                         results =
@@ -484,17 +499,26 @@ class SearchViewModel
                                     put(it, SearchResult.Searching)
                                 }
                             },
-                        combinedResults = SearchResult.Searching,
+                        combinedResults =
+                            when {
+                                known != null -> SearchResult.Success(known.items)
+                                keepShowing && it.combinedResults is SearchResult.Success -> it.combinedResults
+                                else -> SearchResult.Searching
+                            },
+                        didYouMean = if (known != null) known.didYouMean else it.didYouMean,
+                        plainWords = if (known != null) known.plainWords else it.plainWords,
                     )
                 }
-                if (combined) {
+                if (known != null) {
+                    if (query == typedQuery) _suggestions.value = suggestionsFor(query, known.names + _books.value.map { it.name })
+                } else if (combined) {
                     searchCombined(query)
                 } else {
                     state.value.includedSearchableTypes.forEach { type ->
                         searchType(query, type)
                     }
                 }
-                searchSeerr(query)
+                searchSeerr(query, keepShowing)
                 searchMusicAsk(query)
             } else {
                 _musicAsk.value = emptyList()
@@ -591,60 +615,47 @@ class SearchViewModel
                 viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                     try {
                         Timber.v("Starting searchCombined")
-                        // Benflix (Ben, 2026-11-09): music is looked up on its own, at the same time. In one
-                        // shared list of 50, a word like "star" filled every spot with movies, shows and episodes,
-                        // so the Music door always said "Nothing in Music".
+                        // Search speed (Ben 2026-11-21): everything is asked for at the same time, and movies and
+                        // shows are shown the moment Tower answers. Before, they waited for episodes, live TV,
+                        // people, music and the plain-words search to all finish first.
+                        // Music is looked up on its own (Ben, 2026-11-09): in one shared list of 50, a word like
+                        // "star" filled every spot with movies, shows and episodes, so Music always said "Nothing".
                         val types = state.value.includedSearchableTypes
                         val musicTypes = types.filter { it in COMBINED_MUSIC_TYPES }
-                        val otherTypes = types.filter { it !in COMBINED_MUSIC_TYPES }
+                        val titleTypes = types.filter { it in FUZZY_TYPES }
+                        // Only kinds that have a row (videos and photos were searched but never shown)
+                        val otherTypes = types.filter { it in COMBINED_OTHER_TYPES }
                         val musicJob =
                             async {
                                 if (musicTypes.isEmpty() || KidsMode.isActive) return@async emptyList()
-                                try {
-                                    api.itemsApi
-                                        .getItems(
-                                            GetItemsRequest(
-                                                searchTerm = query,
-                                                recursive = true,
-                                                includeItemTypes = musicTypes,
-                                                fields = SlimItemFields,
-                                                limit = SEARCH_LIMIT,
-                                            ),
-                                        ).content.items
-                                        .map { BaseItem(it, false) }
-                                } catch (ex: CancellationException) {
-                                    throw ex
-                                } catch (ex: Exception) {
-                                    if (!ex.isCancellation()) Timber.w(ex, "Search: music")
-                                    emptyList()
-                                }
+                                quietly("music") { find(query, musicTypes, SlimItemFields) }
                             }
-                        val result =
-                            if (otherTypes.isEmpty()) {
-                                emptyList()
-                            } else {
-                                api.itemsApi
-                                    .getItems(
-                                        GetItemsRequest(
-                                            searchTerm = query,
-                                            recursive = true,
-                                            includeItemTypes = otherTypes,
-                                            fields = SearchRowFields,
-                                            limit = SEARCH_LIMIT,
-                                        ),
-                                    ).content.items
-                                    .map { BaseItem(it, false) }
+                        val otherJob =
+                            async {
+                                if (otherTypes.isEmpty()) return@async emptyList()
+                                quietly("episodes, live TV and people") { find(query, otherTypes, SearchRowFields) }
                             }
-                        val items =
-                            withCloseMatches(
-                                query,
-                                otherTypes,
-                                result,
-                            ) + musicJob.await()
-                        val sorted =
-                            items.sortedWith(
-                                compareBy<BaseItem> { SearchRelevance.score(it, query) },
-                            )
+                        // Benflix "Search in plain words": "funny 90s movie under 2 hours" becomes filters
+                        val words = PlainWordsQuery.parse(query)
+                        val wordsJob =
+                            async {
+                                if (!words.understood) return@async emptyList()
+                                quietly("plain words") { PlainWordsQuery.search(api, serverRepository.currentUser?.id, words) }
+                            }
+                        val byScore = compareBy<BaseItem> { SearchRelevance.score(it, query) }
+                        val titles = if (titleTypes.isEmpty()) emptyList() else find(query, titleTypes, SearchRowFields)
+                        if (titles.isNotEmpty()) {
+                            // First look: the movies and shows, in the same order they will end up in
+                            val first = titles.sortedWith(byScore)
+                            if (query == typedQuery) {
+                                _suggestions.value = suggestionsFor(query, first.mapNotNull { it.name } + _books.value.map { it.name })
+                            }
+                            _state.update {
+                                it.copy(combinedResults = SearchResult.Success(first), didYouMean = null, plainWords = null)
+                            }
+                        }
+                        val items = withCloseMatches(query, titleTypes, titles) + otherJob.await() + musicJob.await()
+                        val sorted = items.sortedWith(byScore)
                         Timber.v("searchCombined complete %s results", sorted.size)
                         // Nothing has what was typed in its name: the results are close matches for a typo
                         val plain = query.trim().lowercase()
@@ -653,14 +664,7 @@ class SearchViewModel
                                 .takeIf { list -> plain.length >= 3 && list.none { it.title?.lowercase()?.contains(plain) == true } }
                                 ?.firstOrNull { it.type == BaseItemKind.MOVIE || it.type == BaseItemKind.SERIES }
                                 ?.title
-                        // Benflix "Search in plain words": "funny 90s movie under 2 hours" becomes filters
-                        val words = PlainWordsQuery.parse(query)
-                        val understood =
-                            if (words.understood) {
-                                PlainWordsQuery.search(api, serverRepository.currentUser?.id, words)
-                            } else {
-                                emptyList()
-                            }
+                        val understood = wordsJob.await()
                         val combined =
                             when {
                                 understood.isEmpty() -> sorted
@@ -671,13 +675,16 @@ class SearchViewModel
                                 else -> (sorted + understood).distinctBy { it.id }
                             }
                         val plainWords = words.label.takeIf { understood.isNotEmpty() && it.isNotBlank() }
+                        val names = sorted.mapNotNull { it.name }
                         if (query == typedQuery) {
-                            _suggestions.value = suggestionsFor(query, sorted.mapNotNull { it.name } + _books.value.map { it.name })
+                            _suggestions.value = suggestionsFor(query, names + _books.value.map { it.name })
                         }
+                        val meant = didYouMean.takeIf { plainWords == null }
+                        libraryAnswers.put(query, LibraryAnswer(combined, meant, plainWords, names))
                         _state.update {
                             it.copy(
                                 combinedResults = SearchResult.Success(combined),
-                                didYouMean = didYouMean.takeIf { plainWords == null },
+                                didYouMean = meant,
                                 plainWords = plainWords,
                             )
                         }
@@ -691,6 +698,39 @@ class SearchViewModel
                     }
                 }
         }
+
+        /** One search of Tower for these kinds, without the slow "how many are there in total" count */
+        private suspend fun find(
+            query: String,
+            types: List<BaseItemKind>,
+            fields: List<org.jellyfin.sdk.model.api.ItemFields>,
+        ): List<BaseItem> =
+            api.itemsApi
+                .getItems(
+                    GetItemsRequest(
+                        searchTerm = query,
+                        recursive = true,
+                        includeItemTypes = types,
+                        fields = fields,
+                        limit = SEARCH_LIMIT,
+                        enableTotalRecordCount = false,
+                    ),
+                ).content.items
+                .map { BaseItem(it, false) }
+
+        /** A side search that fails just finds nothing; the movies and shows still show */
+        private suspend fun quietly(
+            what: String,
+            block: suspend () -> List<BaseItem>,
+        ): List<BaseItem> =
+            try {
+                block()
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                if (!ex.isCancellation()) Timber.w(ex, "Search: %s", what)
+                emptyList()
+            }
 
         /**
          * Benflix typo-forgiving search: when the server finds fewer than 3 movies or shows,
@@ -751,18 +791,39 @@ class SearchViewModel
             }
         }
 
-        private fun searchSeerr(query: String) {
+        private fun searchSeerr(
+            query: String,
+            keepShowing: Boolean = false,
+        ) {
+            askAnswers.get(query)?.let { known ->
+                _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(known)) }
+                return
+            }
             searchJobs +=
                 viewModelScope.launchIO {
                     if (seerrActive.first() && state.value.discoverEnabled) {
-                        _state.update { it.copy(seerrResults = SearchResult.Searching) }
+                        _state.update {
+                            // While typing, the Ask for it row stays until the new one is in
+                            val keep = keepShowing && it.seerrResults is SearchResult.SuccessSeerr
+                            if (keep) it else it.copy(seerrResults = SearchResult.Searching)
+                        }
                         // Benflix "Ask for it": only things that are not on Benflix yet
                         val results =
-                            seerrService
-                                .search(query)
-                                .map { seerrService.createDiscoverItem(it) }
-                                .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
-                                .filter { it.availability != SeerrAvailability.AVAILABLE }
+                            try {
+                                seerrService
+                                    .search(query)
+                                    .map { seerrService.createDiscoverItem(it) }
+                                    .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                                    .filter { it.availability != SeerrAvailability.AVAILABLE }
+                                    .also { askAnswers.put(query, it) }
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                if (ex.isCancellation()) return@launchIO
+                                Timber.w(ex, "Search: ask for it")
+                                emptyList()
+                            }
+                        if (currentQuery != query) return@launchIO
                         _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
                     }
                 }
@@ -770,6 +831,12 @@ class SearchViewModel
 
         init {
             addCloseable(voiceInputManager)
+            // Search speed: the list of names used for typo-forgiving search is fetched quietly once the page is
+            // open, so the first misspelled search doesn't wait for it
+            viewModelScope.launchIO {
+                kotlinx.coroutines.delay(FUZZY_WARM_DELAY_MS)
+                FuzzyTitles.warm(api, serverRepository.currentUser?.id)
+            }
         }
 
         override fun navigateTo(destination: Destination) {
@@ -1048,13 +1115,63 @@ private val COMBINED_MUSIC_TYPES =
     setOf(BaseItemKind.AUDIO, BaseItemKind.MUSIC_ALBUM, BaseItemKind.MUSIC_ARTIST, BaseItemKind.PLAYLIST)
 private val FUZZY_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.BOX_SET)
 
+/** Searched beside the movies and shows, and added to the rows when they answer */
+private val COMBINED_OTHER_TYPES =
+    setOf(BaseItemKind.EPISODE, BaseItemKind.PERSON, BaseItemKind.TV_CHANNEL, BaseItemKind.LIVE_TV_PROGRAM)
+
+private const val FUZZY_WARM_DELAY_MS = 1500L
+
+/** What one search of the library found, kept for a short while */
+private class LibraryAnswer(
+    val items: List<BaseItem>,
+    val didYouMean: String?,
+    val plainWords: String?,
+    /** Names for the whole-name suggestions */
+    val names: List<String>,
+)
+
+/** A small memory of the newest answers; each is forgotten after [keepMs] */
+internal class RecentAnswers<T>(
+    private val keepMs: Long = 120_000L,
+    private val max: Int = 24,
+    private val now: () -> Long = System::currentTimeMillis,
+) {
+    private val answers = LinkedHashMap<String, Pair<Long, T>>()
+
+    @Synchronized
+    fun get(key: String): T? {
+        val (at, answer) = answers[key] ?: return null
+        if (now() - at > keepMs) {
+            answers.remove(key)
+            return null
+        }
+        return answer
+    }
+
+    @Synchronized
+    fun put(
+        key: String,
+        answer: T,
+    ) {
+        answers.remove(key)
+        answers[key] = now() to answer
+        while (answers.size > max) answers.remove(answers.keys.first())
+    }
+
+    @Synchronized
+    fun clear() = answers.clear()
+}
+
+private val MARKS = Regex("\\p{M}")
+private val NOT_PLAIN = Regex("[^a-z0-9]+")
+
 /** For matching names: no capitals, accents or punctuation */
 internal fun searchPlain(text: String?): String =
     java.text.Normalizer
         .normalize(text.orEmpty(), java.text.Normalizer.Form.NFKD)
-        .replace(Regex("\\p{M}"), "")
+        .replace(MARKS, "")
         .lowercase()
-        .replace(Regex("[^a-z0-9]+"), " ")
+        .replace(NOT_PLAIN, " ")
         .trim()
 
 /**
