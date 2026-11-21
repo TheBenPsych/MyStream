@@ -168,7 +168,7 @@ fun SignInScreens(
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)
-                        .padding(start = if (isTv) BenflixSpace.tvEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
+                        .padding(start = if (isTv) BenflixSpace.tvOuterEdge else BenflixSpace.phoneEdge, top = if (isTv) 27.dp else 17.dp),
             )
             if (isTv) {
                 Row(
@@ -177,7 +177,7 @@ fun SignInScreens(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 64.dp, bottom = 20.dp),
+                            .padding(start = BenflixSpace.tvOuterEdge, end = BenflixSpace.tvOuterEdge, top = 64.dp, bottom = 20.dp),
                 ) {
                     if (phoneAllowed) {
                         Column(

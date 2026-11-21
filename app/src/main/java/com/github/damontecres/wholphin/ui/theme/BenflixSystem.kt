@@ -65,9 +65,15 @@ object BenflixMotion {
     fun <T> exit(): FiniteAnimationSpec<T> = tween(OUT_MS, easing = Ease)
 }
 
-/** The same page edges everywhere. TV keeps 48 from the edge because some older TVs cut edges off. */
+/**
+ * The same page edges everywhere. Ben 2026-11-18 + 2026-11-21: on TV every page starts right next to the side
+ * menu ([tvEdge], the same 16 as Movies, Shows and title pages), so Live TV, Music, Books and Requests line up
+ * with them. Screens with no side menu (sign-in, screensaver) keep [tvOuterEdge] from the screen's real edge,
+ * because some older TVs cut edges off.
+ */
 object BenflixSpace {
-    val tvEdge = 48.dp
+    val tvEdge = 16.dp
+    val tvOuterEdge = 48.dp
     val phoneEdge = 16.dp
     val tvRowGap = 30.dp
     val phoneRowGap = 22.dp

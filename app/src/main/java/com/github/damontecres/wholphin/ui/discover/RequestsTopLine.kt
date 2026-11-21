@@ -33,11 +33,16 @@ internal fun RequestsTopLine(
     modifier: Modifier = Modifier,
     /** Where Up goes (the tab you're on), so the remote never gets stuck on this line */
     up: FocusRequester? = null,
+    /**
+     * Ben 2026-11-21 (TV photo): Search sat alone at the far right with a wide empty band beside it. On TV the
+     * line starts at the left, under the tabs and in line with the rows. Phones keep it on the right.
+     */
+    atStart: Boolean = false,
 ) {
     if (!showSearch && !canFor && waitingCount == null) return
     val upModifier = if (up != null) Modifier.focusProperties { this.up = up } else Modifier
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, if (atStart) Alignment.Start else Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
     ) {

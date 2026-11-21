@@ -269,8 +269,8 @@ fun ChannelsPage(
 private const val LIVE_FAVOURITES = "favourites"
 private const val LIVE_RECENT = "recent"
 
-/** The page's own left and right margins inside the door frame (TV: clear of the tucked side menu) */
-private fun liveEdges(isTv: Boolean): Dp = if (isTv) 40.dp + 16.dp else 8.dp
+/** The page's own left and right margins inside the door frame (TV: right next to the side menu, like Movies) */
+private fun liveEdges(isTv: Boolean): Dp = if (isTv) BenflixSpace.tvEdge + 16.dp else 8.dp
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -434,7 +434,7 @@ private fun GuideGrid(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             Modifier
-                .padding(top = 12.dp, start = if (isTv) 40.dp else 8.dp, end = if (isTv) 16.dp else 0.dp)
+                .padding(top = 12.dp, start = if (isTv) BenflixSpace.tvEdge else 8.dp, end = if (isTv) 16.dp else 0.dp)
                 .onPreviewKeyEvent { event ->
                     val digit = digitOf(event) ?: return@onPreviewKeyEvent false
                     if (addChannels) return@onPreviewKeyEvent false
@@ -1260,7 +1260,7 @@ fun ChannelBanner(
                 Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Glowfin.Ink.copy(alpha = .92f))))
-                    .padding(start = BenflixSpace.tvEdge, end = BenflixSpace.tvEdge, top = 40.dp, bottom = 28.dp),
+                    .padding(start = BenflixSpace.tvOuterEdge, end = BenflixSpace.tvOuterEdge, top = 40.dp, bottom = 28.dp),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val logo =

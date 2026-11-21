@@ -91,7 +91,7 @@ fun BenflixPageHeader(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = HEADER_START, end = BenflixSpace.tvEdge, top = 18.dp, bottom = 6.dp)
+                .padding(start = HEADER_START, end = BenflixSpace.tvOuterEdge, top = 18.dp, bottom = 6.dp)
                 .height(TopNavBarHeight * scale)
                 .focusGroup(),
     ) {
