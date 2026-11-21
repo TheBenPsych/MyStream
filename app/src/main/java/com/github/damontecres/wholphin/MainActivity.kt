@@ -36,7 +36,6 @@ import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.services.AppUpgradeHandler
 import com.github.damontecres.wholphin.services.BackdropService
@@ -72,7 +71,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.PlayExternalViewModel
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
-import com.github.damontecres.wholphin.ui.theme.colors.PurpleThemeColors
+import com.github.damontecres.wholphin.ui.theme.colors.MyStreamThemeColors
 import com.github.damontecres.wholphin.ui.touch.PhoneFit
 import com.github.damontecres.wholphin.ui.touch.touchTaps
 import com.github.damontecres.wholphin.ui.util.ProvideLocalClock
@@ -284,7 +283,7 @@ class MainActivity : AppCompatActivity() {
             .isTvDevice(this)
         setContent {
             PhoneFit {
-                MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
+                MaterialTheme(colorScheme = MyStreamThemeColors.darkScheme) {
                     Surface(Modifier.fillMaxSize().touchTaps()) {
                         val userPreferences by userPreferencesService.flow.collectAsState(null)
                         // Benflix startup animation, every time the app is opened fresh
@@ -337,8 +336,6 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     WholphinTheme(
                                         true,
-                                        // Benflix always uses its own red and black look
-                                        appThemeColors = AppThemeColors.MYSTREAM,
                                         accent = appPreferences.benflixPreferences.accent,
                                     ) {
                                         com.github.damontecres.wholphin.ui.touch.Haptics.enabled =

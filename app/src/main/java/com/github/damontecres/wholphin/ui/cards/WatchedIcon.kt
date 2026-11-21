@@ -12,10 +12,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
-import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 
 @Composable
@@ -36,37 +34,10 @@ fun WatchedIcon(
 }
 
 @Composable
-fun WatchedIconBackground(): Color =
-    when (LocalTheme.current) {
-        AppThemeColors.UNRECOGNIZED,
-        AppThemeColors.PURPLE,
-        AppThemeColors.BLUE,
-        AppThemeColors.GREEN,
-        AppThemeColors.ORANGE,
-        AppThemeColors.BOLD_BLUE,
-        AppThemeColors.RED,
-        AppThemeColors.BROWN,
-        AppThemeColors.MYSTREAM,
-        -> MaterialTheme.colorScheme.border.copy(alpha = 1f)
-
-        AppThemeColors.OLED_BLACK -> MaterialTheme.colorScheme.secondaryContainer
-    }
+fun WatchedIconBackground(): Color = MaterialTheme.colorScheme.border.copy(alpha = 1f)
 
 @Composable
-fun WatchedIconColor(): Color =
-    when (LocalTheme.current) {
-        AppThemeColors.UNRECOGNIZED,
-        AppThemeColors.PURPLE,
-        AppThemeColors.BLUE,
-        AppThemeColors.GREEN,
-        AppThemeColors.ORANGE,
-        AppThemeColors.BOLD_BLUE,
-        AppThemeColors.OLED_BLACK,
-        AppThemeColors.RED,
-        AppThemeColors.BROWN,
-        AppThemeColors.MYSTREAM,
-        -> Color.White // MaterialTheme.colorScheme.onSurface
-    }
+fun WatchedIconColor(): Color = Color.White
 
 @PreviewTvSpec
 @Composable

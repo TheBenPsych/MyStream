@@ -3,48 +3,21 @@ package com.github.damontecres.wholphin.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.MaterialTheme
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.BenflixAccent
-import com.github.damontecres.wholphin.ui.theme.colors.BlueThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.BoldBlueThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.BrownThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.GreenThemeColors
 import com.github.damontecres.wholphin.ui.theme.colors.MyStreamThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.OledThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.OrangeThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.PurpleThemeColors
-import com.github.damontecres.wholphin.ui.theme.colors.RedThemeColors
-
-val LocalTheme =
-    compositionLocalOf<AppThemeColors> { AppThemeColors.PURPLE }
-
-fun getThemeColors(appThemeColors: AppThemeColors): ThemeColors =
-    when (appThemeColors) {
-        AppThemeColors.PURPLE -> PurpleThemeColors
-        AppThemeColors.BLUE -> BlueThemeColors
-        AppThemeColors.GREEN -> GreenThemeColors
-        AppThemeColors.ORANGE -> OrangeThemeColors
-        AppThemeColors.OLED_BLACK -> OledThemeColors
-        AppThemeColors.BOLD_BLUE -> BoldBlueThemeColors
-        AppThemeColors.RED -> RedThemeColors
-        AppThemeColors.BROWN -> BrownThemeColors
-        AppThemeColors.MYSTREAM -> MyStreamThemeColors
-        AppThemeColors.UNRECOGNIZED -> PurpleThemeColors
-    }
 
 @Composable
 fun WholphinTheme(
     darkTheme: Boolean = true,
-    appThemeColors: AppThemeColors = AppThemeColors.PURPLE,
     accent: BenflixAccent = BenflixAccent.ACCENT_RED,
     content: @Composable () -> Unit,
 ) {
-    val themeColors = getThemeColors(appThemeColors)
+    // Glowfin has one look. The eight old Wholphin colour themes were removed (Ben 2026-11-21).
+    val themeColors = MyStreamThemeColors
     KidsLookWatcher()
 
     val baseScheme =
@@ -65,10 +38,7 @@ fun WholphinTheme(
     val kidsFont = KidsLook.on
     val tvTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appTypography() }
     val materialTypography = androidx.compose.runtime.remember(isTv, kidsFont) { appMaterialTypography() }
-    CompositionLocalProvider(
-        LocalTheme provides appThemeColors,
-        LocalBenflixAccent provides accentColor,
-    ) {
+    CompositionLocalProvider(LocalBenflixAccent provides accentColor) {
         androidx.compose.material3.MaterialTheme(
             colorScheme =
                 (if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial).let { scheme ->

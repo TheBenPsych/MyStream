@@ -72,12 +72,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.Chapter
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.services.SkipFix
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.FontAwesome
@@ -96,7 +94,6 @@ import com.github.damontecres.wholphin.ui.skipStringRes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
-import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -1126,12 +1123,7 @@ fun PlaybackButton(
             modifier = Modifier.fillMaxSize(),
             painter = painterResource(iconRes),
             contentDescription = "",
-            tint =
-                if (LocalTheme.current == AppThemeColors.OLED_BLACK) {
-                    LocalContentColor.current
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+            tint = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -1171,8 +1163,6 @@ fun PlaybackFaButton(
             color =
                 if (textColor.isSpecified) {
                     textColor
-                } else if (LocalTheme.current == AppThemeColors.OLED_BLACK) {
-                    LocalContentColor.current
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
