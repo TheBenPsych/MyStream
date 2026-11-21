@@ -1,0 +1,81 @@
+{
+  "name": "glowfin-desktop",
+  "productName": "Glowfin",
+  "version": "1.0.0",
+  "description": "Glowfin for computers: movies, shows, Live TV, music, books and games from your own server",
+  "homepage": "https://github.com/thebenpsych/mystream",
+  "author": "Glowfin <glowfin@users.noreply.github.com>",
+  "license": "GPL-2.0-only",
+  "private": true,
+  "main": "app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check app/main.js && node --check app/preload.js && node --check app/downloads.js && node --check app/offline.js && node --check app/connect.js && node app/selftest.js",
+    "dist:linux": "electron-builder --linux AppImage deb --x64 --publish never",
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.github.thebenpsych.glowfin.desktop",
+    "productName": "Glowfin",
+    "artifactName": "Glowfin-${os}.${ext}",
+    "files": [
+      "app/**/*",
+      "package.json",
+      {
+        "from": "../server/web/vendor",
+        "to": "app/vendor",
+        "filter": [
+          "hls.min.js",
+          "hls.LICENSE.txt"
+        ]
+      },
+      {
+        "from": "../server/web/js",
+        "to": "app/vendor",
+        "filter": [
+          "pad.js"
+        ]
+      }
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/thebenpsych/mystream/releases/download/desktop-latest"
+      }
+    ],
+    "linux": {
+      "category": "AudioVideo",
+      "icon": "build/icon.png",
+      "synopsis": "Movies, shows, Live TV and games from your own server",
+      "maintainer": "Glowfin <glowfin@users.noreply.github.com>",
+      "desktop": {
+        "entry": {
+          "Name": "Glowfin",
+          "StartupWMClass": "Glowfin",
+          "Keywords": "movies;shows;tv;music;games;jellyfin;"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "win": {
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Glowfin"
+    }
+  },
+  "desktopName": "Glowfin.desktop"
+}

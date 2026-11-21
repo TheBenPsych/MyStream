@@ -2392,3 +2392,40 @@ a:focus-visible, button:focus-visible { outline: 3px solid #3FE0E8; outline-offs
 .ask-steps .ask-parts .poster{flex:none;width:112px}
 .ask-steps .ask-parts .newp.grey{background:#3A3F55;color:#fff}
 #askSetBox:empty{display:none}
+/* ---------- controller mode (js/pad.js): a game controller drives Glowfin like a TV remote ---------- */
+/* The highlight is bigger and brighter than the keyboard one, so it reads on a Steam Deck or from the sofa */
+html.pad-on .pad-focus { outline: 4px solid #fff !important; outline-offset: 4px; box-shadow: 0 0 0 9px rgba(63, 224, 232, .28); border-radius: 10px; position: relative; z-index: 2; }
+html.pad-on .poster.pad-focus, html.pad-on .tile2.pad-focus, html.pad-on a.wide.pad-focus { border-radius: var(--r); }
+html.pad-on .circle.pad-focus, html.pad-on .pbtn.pad-focus:not(.lab) { border-radius: 999px; }
+html.pad-on input.pad-focus, html.pad-on textarea.pad-focus, html.pad-on select.pad-focus { outline-offset: 2px; }
+html.pad-on { scroll-padding: calc(var(--bar) + 28px) 40px 56px; }
+html.pad-on * { scroll-margin: 28px 40px; }
+html.pad-on, html.pad-on * { cursor: none !important; }
+/* The on-screen keyboard: opens when A is pressed on a typing box */
+.osk { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 400; width: min(860px, calc(100vw - 24px)); padding: 16px; border-radius: 18px;
+  background: var(--pg2); border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+.osk-in { background: var(--tray); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px 10px; margin-bottom: 12px; }
+.osk-in small { display: block; color: var(--ink3); font-size: 13px; font-weight: 600; min-height: 1.2em; }
+.osk-val { font-size: 22px; font-weight: 600; min-height: 1.4em; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 3.4em; overflow: hidden; }
+.osk-val i { display: inline-block; width: 2px; height: 1.05em; background: #3FE0E8; margin-left: 2px; vertical-align: -0.15em; animation: oskblink 1s steps(2, start) infinite; }
+@keyframes oskblink { to { visibility: hidden; } }
+.osk-row { display: flex; gap: 6px; margin-top: 6px; }
+.osk-row button { flex: 1 1 0; min-width: 0; height: 52px; border: 0; border-radius: 10px; background: var(--pg4); color: var(--ink); font-size: 20px; font-weight: 600; cursor: pointer; padding: 0 4px; }
+.osk-row button small { font-size: 12px; font-weight: 700; color: var(--ink3); margin-left: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; }
+.osk-last button { font-size: 16px; }
+.osk-last .wide { flex: 3 1 0; }
+.osk-last .go { background: var(--ink); color: var(--dark); }
+.osk-last .go small { color: var(--dark); border-color: rgba(0, 0, 0, .3); }
+.osk-row button.on { background: #3FE0E8; color: var(--dark); }
+html.pad-on .osk-row button.pad-focus { outline-offset: 2px; box-shadow: none; }
+@media (max-width: 620px) { .osk { padding: 10px; bottom: 8px; } .osk-row { gap: 4px; margin-top: 4px; } .osk-row button { height: 44px; font-size: 17px; } .osk-last button { font-size: 13px; } .osk-row button small { display: none; } }
+/* Me page, only inside the Glowfin app for computers: full screen, Tower's address, close */
+.me-app { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.me-app .dim { flex: 1 0 100%; font-size: 14px; font-weight: 600; }
+/* With a controller the mouse pointer may be resting over the side menu: it only opens when the highlight is on it */
+html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
+.osk-last .wide { text-align: center; }
+/* Me > Downloads (only in the Glowfin app for computers) */
+.dlrow { gap: 10px; }
+.dlbar { height: 5px; border-radius: 3px; background: var(--pg4); margin-top: 8px; max-width: 420px; overflow: hidden; }
+.dlbar i { display: block; height: 100%; background: #3FE0E8; transition: width .4s; }

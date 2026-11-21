@@ -603,6 +603,7 @@ const movieMore = (it) => {
     resume ? { label: "Play from the start", icon: "restart", onClick: () => B.go(`#/play/${it.Id}`) } : null,
     !B.lobby || !B.lobby.allowed() ? null : { label: "Watch together in the Lobby", icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: it, pos: resume ? ud.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Audio, subtitles and version", icon: "sub", onClick: () => B.trackPicker(it, (a, s) => B.go(`#/play/${it.Id}?resume=1&audio=${a}&sub=${s}`)) },
+    B.offline ? B.offline.menu(it) : null,
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     ids.Imdb ? { label: "Open on IMDb", icon: "info", href: `https://www.imdb.com/title/${esc(ids.Imdb)}`, blank: true } : null,
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
@@ -715,6 +716,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   $("#bMore").onclick = () => B.tpMore(it.Name, [
     { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
     B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+    // Glowfin app for computers: the season showing now, saved to watch with no connection
+    B.offline && B.offline.can() ? { label: "Download this season", icon: "dl", onClick: () => { const on = $("#seasons .chip.on"); B.offline.season(it, on ? on.dataset.season : "", on ? on.textContent.trim() : "").catch((err) => B.toast(err.message)); } } : null,
     !B.lobby || !B.lobby.allowed() || !target ? null : { label: `Watch S${target.ParentIndexNumber} E${target.IndexNumber} together in the Lobby`, icon: "tv", onClick: () => B.busy(null, () => B.lobby.open({ item: Object.assign({ OfficialRating: it.OfficialRating }, target, target.OfficialRating ? {} : { OfficialRating: it.OfficialRating }), pos: target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? target.UserData.PlaybackPositionTicks / B.TICKS : 0 })) },
     { label: "Report a problem", icon: "flag", onClick: () => B.report({ id: it.Id, title: it.Name }) },
     B.me.admin ? { label: "Pick a poster", icon: "swap", youOnly: true, onClick: () => B.fixItem(it) } : null,
@@ -752,8 +755,9 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     const c = e.target.closest(".wide[data-id]"); if (!c) return;
     e.preventDefault();
     const ep = B.items[c.dataset.id], idx = episodes.findIndex((x) => x.Id === ep.Id), played = (ep.UserData || {}).Played;
-    B.dropdown(c, [{ value: "w", label: played ? "Mark as not watched" : "Mark as watched" }, { value: "before", label: "Mark all before as watched" }, { value: "start", label: "Play from start" }], null, (v) => {
+    B.dropdown(c, [{ value: "w", label: played ? "Mark as not watched" : "Mark as watched" }, { value: "before", label: "Mark all before as watched" }, { value: "start", label: "Play from start" }].concat(B.offline && B.offline.can() ? [{ value: "dl", label: "Download to this computer" }] : []), null, (v) => {
       if (v === "start") return B.go(`#/play/${ep.Id}`);
+      if (v === "dl") return B.offline.one(Object.assign({ SeriesName: it.Name, SeriesId: it.Id }, ep)).catch((err) => B.toast(err.message));
       B.busy(null, async () => {
         const list = v === "w" ? [ep] : episodes.slice(0, idx);
         for (const x of list) await B.markWatched(x, v === "w" ? !played : true);

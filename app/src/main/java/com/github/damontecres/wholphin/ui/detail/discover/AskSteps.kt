@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -85,6 +86,64 @@ fun AskStepsBlock(
                         .fillMaxWidth(if (at == 1) 0.17f else 0.5f)
                         .fillMaxHeight()
                         .background(Glowfin.GlowAcross, CircleShape),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The same three steps as one short line, for places with little room: the Ask for it panel and a book's
+ * page (Ben 2026-11-21: books and music asks say what happens next too). [last] is the final step, like
+ * "Ready to read". [at] lights the steps up to where the ask is now.
+ */
+@Composable
+fun AskStepsLine(
+    isAdmin: Boolean,
+    last: String,
+    modifier: Modifier = Modifier,
+    at: Int = 0,
+) {
+    val names = listOf(if (isAdmin) "It gets a yes" else "Ben says yes", "Glowfin fetches it", last)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.widthIn(max = 560.dp).fillMaxWidth(),
+    ) {
+        names.forEachIndexed { index, name ->
+            val lit = at >= index + 1
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier =
+                        Modifier
+                            .size(20.dp)
+                            .then(
+                                if (lit) {
+                                    Modifier.background(Glowfin.Glow, CircleShape)
+                                } else {
+                                    Modifier.border(1.5.dp, BenflixColors.Muted, CircleShape)
+                                },
+                            ),
+                ) {
+                    Text(
+                        text = (index + 1).toString(),
+                        color = if (lit) Glowfin.Ink else BenflixColors.Soft,
+                        fontSize = BenflixType.tag,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
+                Text(
+                    text = name,
+                    color = if (at == index + 1) BenflixColors.Text else BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    lineHeight = BenflixType.small * 1.25f,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

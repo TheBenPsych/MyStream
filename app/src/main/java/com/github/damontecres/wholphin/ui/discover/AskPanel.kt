@@ -33,6 +33,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.detail.discover.AskStepsLine
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -57,6 +58,7 @@ data class AskChoice(
  * The Ask for it panel. [line] is the small line under the name (year, rating, length or artist).
  * [note] is a short grey line above the choices, like "Also adds it to Want to read".
  * [extra] sits between the note and the choices (the 30 second preview button for songs).
+ * [steps] is the short "what happens next" line for books and songs.
  */
 @Composable
 fun AskForItPanel(
@@ -68,6 +70,7 @@ fun AskForItPanel(
     note: String? = null,
     squareCover: Boolean = false,
     extra: (@Composable () -> Unit)? = null,
+    steps: (@Composable () -> Unit)? = null,
 ) {
     val first = remember { FocusRequester() }
     BasicDialog(onDismissRequest = onDismiss) {
@@ -118,6 +121,7 @@ fun AskForItPanel(
                 overflow = TextOverflow.Ellipsis,
             )
             if (!note.isNullOrBlank()) Text(note, fontSize = BenflixType.small, color = BenflixColors.Muted)
+            steps?.invoke()
             extra?.invoke()
             choices.forEachIndexed { i, c ->
                 MusicButton(
@@ -186,7 +190,8 @@ fun BookAskPanel(
         cover = cover,
         choices = choices,
         onDismiss = onDismiss,
-        note = if (admin) "Also adds it to Want to read" else "Also adds it to Want to read. Ben says yes first.",
+        note = "Also adds it to Want to read",
+        steps = { AskStepsLine(isAdmin = admin, last = "Ready to read") },
     )
 }
 
@@ -213,7 +218,7 @@ fun SongAskPanel(
         line = listOfNotNull(artist.ifBlank { null }, len, album.ifBlank { null }).joinToString(" · "),
         cover = cover,
         squareCover = true,
-        note = if (admin) null else "Ben says yes before it downloads",
+        steps = { AskStepsLine(isAdmin = admin, last = "Ready to play") },
         choices =
             if (admin) {
                 listOf(AskChoice("Ask for this song", onSong, primary = true), AskChoice("Ask for the whole album", onAlbum))
