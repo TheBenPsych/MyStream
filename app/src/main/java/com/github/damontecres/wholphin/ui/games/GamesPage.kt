@@ -415,7 +415,11 @@ fun GamesPage(
                         height = gamesTopHeight(config.screenHeightDp.dp, top),
                         glowAbove = top,
                         // (lines up with the tiles under it: the page edge plus the rows' own 8)
-                        modifier = Modifier.padding(start = if (isTv) BenflixSpace.tvEdge + 8.dp else 16.dp, end = if (isTv) BenflixSpace.tvEdge else 8.dp),
+                        modifier =
+                            Modifier.padding(
+                                start = if (isTv) BenflixSpace.tvEdge + 8.dp else 16.dp,
+                                end = if (isTv) BenflixSpace.tvEdge else 8.dp,
+                            ),
                     )
                 }
                 // Ben 2026-11-18: like Movies and Shows on TV, the row you move to jumps up whole (name and all) right
