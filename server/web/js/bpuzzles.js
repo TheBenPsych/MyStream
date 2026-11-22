@@ -29,7 +29,7 @@
       stills: Array.from(new Set(chapters.concat(backs))),
       overview: it.Overview || "", genres: it.Genres || [], studios: (it.Studios || []).map((s) => s.Name).filter(Boolean),
       tagline: (it.Taglines || [])[0] || "",
-      actors: (it.People || []).filter((p) => p.Type === "Actor" && p.Name).slice(0, 12).map((p) => ({ id: p.Id, name: p.Name, photo: p.PrimaryImageTag ? B.img(p.Id, "Primary", { h: 900, tag: p.PrimaryImageTag }) : "" })),
+      actors: (it.People || []).filter((p) => p.Type === "Actor" && p.Name).slice(0, 12).map((p) => ({ id: p.Id, name: p.Name, role: p.Role || "", photo: p.PrimaryImageTag ? B.img(p.Id, "Primary", { h: 900, tag: p.PrimaryImageTag }) : "" })),
       runtime: it.RunTimeTicks ? Math.round(it.RunTimeTicks / 600000000) : null,
       rating: it.CommunityRating ? Math.round(it.CommunityRating * 10) : 0,
       critics: it.CriticRating ? Math.round(it.CriticRating) : 0,
@@ -562,6 +562,194 @@
       return true;
     };
     keyFn = true; draw();
+  };
+
+  // ---------- Ben's five new games (2026-11-22): Quote it, Close-up, Who played them?, Which season?, 60-second blitz ----------
+  // The first four share one engine: answering early is worth more (100 to 500), one wrong answer or
+  // running out of time ends the run (the same as the app's RunGames.kt).
+  const sid = (t) => t.id.replace(/-/g, "");
+  const sceneSrc = (t, file) => `api/scenes/${sid(t)}/${file}?api_key=${encodeURIComponent(B.me.token)}`;
+  const can = (what) => B.call("GET", "api/scenes/ok").then((r) => !!(r && r.ok && (what === "ok" || r[what]))).catch(() => false);
+  const hideName = (name, text) => [name, name.split(":")[0].trim()].filter((x, i, a) => x.length > 3 && a.indexOf(x) === i).reduce((s, p) => s.replace(new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), "▇▇▇▇"), text);
+  const cleanRole = (r) => { r = (r || "").replace(/\s*\((voice|uncredited|archive footage)\)/ig, "").trim(); return r.length < 3 || r.length > 40 || /^(him|her|them)sel(f|ves)$|^self$|^narrator$|^additional voices$/i.test(r) ? null : r; };
+  /** Runs a game of rounds. make() returns { t, ask, choices, answer, html(q), tick(q, left) } or null. */
+  const runGame = async (ctx, title, game, make, ms) => {
+    const every = timers(ctx);
+    let points = 0, round = 0;
+    const run = [];
+    const next = async () => {
+      const r = await make();
+      if (!ctx.alive()) return;
+      if (!r) return notEnough(ctx, `${title} couldn't find more to ask from what's on Tower.`);
+      round++; saw(game, r.t.id);
+      const q = screen(ctx, `${head(title, `Round ${round} · ${points} points · Best ${ctx.best()}`)}<div class="bgq-say dim">${esc(r.ask)}</div>${r.html}<div class="bgq-say" id="bgSay"></div><div class="bgq-choices ${r.grid || ""}" id="bgCh"></div>`);
+      const started = Date.now();
+      let done = false;
+      const left = () => Math.max(0, 1 - (Date.now() - started) / (ms || 15000));
+      const worth = () => Math.round(100 + 400 * left());
+      const said = r.answer === r.t.name ? label(r.t) : r.answer;
+      const paint = () => { const l = left(); $("#bgSay", q).textContent = `Guess now for ${worth()} points`; const ring = $(".bg-ring", q); if (ring) { ring.style.setProperty("--left", l.toFixed(3)); ring.classList.toggle("low", l < 0.25); } if (r.tick) r.tick(q, l); return l; };
+      paint();
+      const t = every(() => { if (done) return; if (paint() <= 0) { done = true; clearInterval(t); B.bgSound("miss"); B.bgOver(ctx, "Out of time!", `It was ${said}.\nYou got ${round - 1} right for ${points} points.`, points, { run, answer: r.t }); } }, 100);
+      (r.pick || choices)($("#bgCh", q), r.choices, (n, b) => {
+        if (done) return;
+        done = true; clearInterval(t);
+        $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
+        if (r.tick) r.tick(q, 0, true);
+        if (n === r.answer) {
+          const won = worth(); points += won; run.push(runPick(r.t, `+${won}`)); B.bgSound("point"); b.classList.add("right");
+          $("#bgSay", q).textContent = `Right! ${said} +${won}`;
+          setTimeout(() => ctx.alive() && next().catch((e) => failed(ctx, e)), 1400);
+        } else {
+          b.classList.add("wrong"); B.bgSound("miss");
+          B.bgOver(ctx, "Run over", `Not ${n}. It was ${said}.\nYou got ${round - 1} right for ${points} points.`, points, { run, answer: r.t });
+        }
+      });
+    };
+    keyFn = true; await next();
+  };
+
+  PUZ.QUOTE = async (ctx) => {
+    if (!(await can("quotes"))) return notEnough(ctx, "Quote it reads subtitles on Tower. It arrives with Tower's next hourly update.");
+    const pool = (await titles()).filter((t) => !t.series);
+    if (pool.length < 8) return notEnough(ctx, "Quote it needs at least 8 movies on Tower." + tip());
+    let deck = fresh("QUOTE", pool);
+    await runGame(ctx, "Quote it", "QUOTE", async () => {
+      for (let i = 0; i < 8; i++) {
+        if (!deck.length) deck = fresh("QUOTE", pool);
+        const t = deck.shift();
+        const lines = ((await B.call("GET", `api/scenes/${sid(t)}/quotes`).catch(() => null)) || {}).lines || [];
+        if (lines.length < 3) { saw("QUOTE", t.id); continue; }
+        const pick = shuffle(lines.map((_, k) => k)).slice(0, 3).sort((a, b) => a - b).map((k) => `“${hideName(t.name, lines[k])}”`);
+        return {
+          t, ask: "Which movie says this?", answer: t.name, choices: shuffle(otherNames(pool, t, 5).concat(t.name)),
+          html: `<div class="bg-ring"><div class="bgq-clue bg-quote">${pick.map((x, k) => `<p data-k="${k}"${k ? ' hidden' : ""}>${esc(x)}</p>`).join("")}</div></div>`,
+          tick: (q, l, all) => $$(".bg-quote p", q).forEach((p) => { p.hidden = !all && +p.dataset.k > Math.min(2, Math.floor((1 - l) * 3)); }),
+        };
+      }
+      return null;
+    }, 20000);
+  };
+
+  PUZ.CLOSEUP = async (ctx) => {
+    const real = await can("ok");
+    const pool = (await titles()).filter((t) => real || t.stills.length);
+    if (pool.length < 8) return notEnough(ctx, "Close-up needs at least 8 titles with pictures on Tower." + tip());
+    let deck = fresh("CLOSEUP", pool);
+    await runGame(ctx, "Close-up", "CLOSEUP", async () => {
+      if (!deck.length) deck = fresh("CLOSEUP", pool);
+      const t = deck.shift();
+      const src = real ? sceneSrc(t, `${Math.floor(Math.random() * 6)}.jpg`) : t.stills[0];
+      const back = t.stills[0] || t.poster;
+      return {
+        t, ask: "What's this close-up from?", answer: t.name, choices: shuffle(otherNames(pool, t, 5).concat(t.name)),
+        html: `<div class="bg-ring"><div class="bgq-pic wide"><img id="bgPic" src="${src}" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='${back}'}" alt="" style="transform-origin:50% 45%"></div></div>`,
+        // Fully zoomed out with 30% of the time left, then it's a last chance
+        tick: (q, l, all) => { const z = all ? 0 : Math.min(1, Math.max(0, (l - 0.3) / 0.7)); $("#bgPic", q).style.transform = `scale(${1 + 5 * z * z})`; },
+      };
+    });
+  };
+
+  PUZ.ROLE = async (ctx) => {
+    const roles = (t) => t.actors.filter((a) => a.photo && cleanRole(a.role));
+    const all = await titles();
+    const pool = all.filter((t) => roles(t).length && t.actors.filter((a) => a.photo).length >= 2);
+    if (pool.length < 6) return notEnough(ctx, "Who played them? needs movies with character names on Tower." + tip());
+    let deck = fresh("ROLE", pool);
+    await runGame(ctx, "Who played them?", "ROLE", async () => {
+      if (!deck.length) deck = fresh("ROLE", pool);
+      const t = deck.shift();
+      const who = pickN(roles(t).slice(0, 4), 1)[0];
+      // The other choices are the same movie's cast first (much harder than random actors)
+      const seen = new Set([who.name]);
+      const others = shuffle(t.actors.filter((a) => a.photo)).concat(shuffle(all.flatMap((x) => x.actors).filter((a) => a.photo))).filter((a) => !seen.has(a.name) && seen.add(a.name)).slice(0, 3);
+      const people = shuffle(others.concat(who));
+      return {
+        t, ask: `Who played ${cleanRole(who.role)} in ${label(t)}?`, answer: who.name, choices: people.map((p) => p.name), grid: "faces",
+        html: `<div class="bg-clock"><i id="bgClk"></i></div>`,
+        tick: (q, l) => { $("#bgClk", q).style.width = `${l * 100}%`; },
+        // Four actor photos with their names
+        pick: (box, names, onPick) => {
+          box.innerHTML = people.map((p, i) => `<button class="btn bg-choice bg-face" data-i="${i}"><img src="${p.photo}" alt=""><span><span class="n">${i + 1}</span>${esc(p.name)}</span></button>`).join("");
+          box.onclick = (e) => { const b = e.target.closest(".bg-choice"); if (b && !b.disabled) onPick(names[+b.dataset.i], b); };
+          const first = $(".bg-choice", box); if (first) setTimeout(() => first.focus({ preventScroll: true }), 30);
+        },
+      };
+    });
+  };
+
+  PUZ.SEASON = async (ctx) => {
+    if (!(await can("seasons"))) return notEnough(ctx, "Which season? takes pictures on Tower. It arrives with Tower's next hourly update.");
+    const shows = (await titles()).filter((t) => t.series);
+    if (shows.length < 3) return notEnough(ctx, "Which season? needs at least 3 shows on Tower." + tip());
+    let deck = fresh("SEASON", shows);
+    await runGame(ctx, "Which season?", "SEASON", async () => {
+      for (let i = 0; i < 8; i++) {
+        if (!deck.length) deck = fresh("SEASON", shows);
+        const t = deck.shift();
+        const seasons = ((await B.call("GET", `api/scenes/${sid(t)}/seasons`).catch(() => null)) || {}).seasons || [];
+        if (seasons.length < 2) { saw("SEASON", t.id); continue; }
+        const k = seasons[Math.floor(Math.random() * seasons.length)], at = seasons.indexOf(k);
+        const from = Math.min(Math.max(0, at - 2), Math.max(0, seasons.length - 6));
+        return {
+          t, ask: `Which season of ${t.name} is this from?`, answer: `Season ${k}`, choices: seasons.slice(from, from + 6).map((x) => `Season ${x}`),
+          html: `<div class="bg-ring"><div class="bgq-pic wide"><img src="${sceneSrc(t, `s${k}-${Math.floor(Math.random() * 3)}.jpg`)}" onerror="this.src='${t.stills[0] || t.poster}'" alt=""></div></div>`,
+        };
+      }
+      return null;
+    });
+  };
+
+  // 60-second blitz: true or false lines about what's on Tower; a wrong answer costs 3 seconds (score = right answers)
+  PUZ.BLITZ = async (ctx) => {
+    const pool = (await titles()).filter((t) => t.year);
+    if (pool.length < 12) return notEnough(ctx, "60-second blitz needs at least 12 titles on Tower." + tip());
+    const every = timers(ctx);
+    const genres = [...new Set(pool.flatMap((t) => t.genres))];
+    let deck = fresh("BLITZ", pool), right = 0, wrong = 0, busy = false;
+    const run = [];
+    const nextTitle = () => { if (!deck.length) deck = fresh("BLITZ", pool); const t = deck.shift(); saw("BLITZ", t.id); return t; };
+    const fact = () => {
+      const t = nextTitle(), yes = Math.random() < 0.5;
+      const kinds = ["year"].concat(t.actors.length ? ["actor"] : [], t.rating ? ["rating"] : [], !t.series && t.runtime ? ["length"] : [], t.genres.length ? ["genre"] : []);
+      const k = pickN(kinds, 1)[0];
+      if (k === "actor") {
+        const other = pickN(pool.filter((x) => x.id !== t.id && x.genres.some((g) => t.genres.includes(g))).flatMap((x) => x.actors.slice(0, 5)).filter((a) => !t.actors.some((b) => b.name === a.name)), 1)[0];
+        const real = yes || !other;
+        return { t, text: `${real ? pickN(t.actors.slice(0, 5), 1)[0].name : other.name} is in ${t.name}`, truth: real };
+      }
+      if (k === "rating") { const line = pickN([60, 65, 70, 75, 80], 1)[0]; return { t, text: `${t.name} is rated ${(line / 10).toFixed(1)} or more on IMDb`, truth: t.rating >= line }; }
+      if (k === "length") return { t, text: `${t.name} is longer than 2 hours`, truth: t.runtime > 120 };
+      if (k === "genre") {
+        const g = yes ? pickN(t.genres, 1)[0] : (pickN(genres.filter((x) => !t.genres.includes(x)), 1)[0] || t.genres[0]);
+        return { t, text: `${t.name} is ${/^[aeiou]/i.test(g) ? "an" : "a"} ${g.toLowerCase()} ${t.series ? "show" : "movie"}`, truth: t.genres.includes(g) };
+      }
+      const shown = yes ? t.year : t.year + pickN([-3, -2, -1, 1, 2, 3], 1)[0];
+      return { t, text: `${t.name} came out in ${shown}`, truth: shown === t.year };
+    };
+    let endsAt = Date.now() + 60000, f = fact(), over = false;
+    const draw = (say, good) => {
+      const left = Math.max(0, endsAt - Date.now());
+      const q = screen(ctx, `${head("60-second blitz", `${Math.ceil(left / 1000)}s left · ${right} right · Best ${ctx.best()}`)}<div class="bg-clock"><i id="bgClk" style="width:${(left / 600).toFixed(1)}%"></i></div><div class="bg-blitz">${f.t.poster ? `<img src="${f.t.poster}" alt="">` : ""}<b>${esc(f.text)}</b></div><div class="bgq-say ${good === false ? "bad" : ""}" id="bgSay">${esc(say || "True or false?")}</div><div class="bgq-choices two" id="bgCh"></div>`);
+      choices($("#bgCh", q), ["✓ True", "✗ False"], (n, b) => {
+        if (busy || over) return;
+        busy = true;
+        const ok = (n === "✓ True") === f.truth;
+        $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
+        b.classList.add(ok ? "right" : "wrong");
+        if (ok) { right++; run.push(runPick(f.t, "✓")); B.bgSound("point"); } else { wrong++; endsAt -= 3000; B.bgSound("miss"); $("#bgSay", q).textContent = `It was ${f.truth ? "true" : "false"}. −3 seconds`; }
+        setTimeout(() => { busy = false; if (!over && ctx.alive()) { f = fact(); draw(); } }, ok ? 350 : 900);
+      });
+    };
+    draw();
+    const t = every(() => {
+      if (over) return;
+      const left = Math.max(0, endsAt - Date.now());
+      const c = $("#bgClk"); if (c) { c.style.width = `${(left / 600).toFixed(1)}%`; }
+      const line = $("#bgLine"); if (line) line.innerHTML = chips(`${Math.ceil(left / 1000)}s left · ${right} right · Best ${ctx.best()}`);
+      if (left <= 0) { over = true; clearInterval(t); B.bgOver(ctx, "Time's up!", `${right} right and ${wrong} wrong in 60 seconds.`, right, { run }); }
+    }, 200);
+    keyFn = true;
   };
 
   B.bgPuzzle = async (ctx) => {

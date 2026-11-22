@@ -1844,6 +1844,17 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
   .bg-line { min-height: 270px; } .bg-tlp { width: 76px; } .bg-tlp .bg-tl { width: 64px; }
   .bg-thumbs span { width: 56px; }
 }
+/* The five new games (2026-11-22) */
+.bg-quote { font-style: italic; font-size: 20px; text-align: left; border-radius: 12px; }
+.bg-quote p[hidden] { display: none; }
+.bgq-choices.faces { grid-template-columns: repeat(4, 1fr); }
+.bg-face { flex-direction: column; align-items: stretch; padding: 8px; gap: 6px; text-align: center; }
+.bg-face img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 10px; background: var(--pg3); }
+.bg-face > span { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 14px; }
+.bg-blitz { display: flex; gap: 20px; align-items: center; justify-content: center; min-height: 200px; }
+.bg-blitz img { width: 130px; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px; background: var(--pg3); }
+.bg-blitz b { font-size: 26px; line-height: 1.3; max-width: 560px; }
+@media (max-width: 700px) { .bg-blitz b { font-size: 20px; } .bg-blitz img { width: 90px; } .bgq-choices.faces { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) {
   .bgq-choices { grid-template-columns: repeat(2, 1fr); }
   .bgq-pic.tall { height: 36vh; }

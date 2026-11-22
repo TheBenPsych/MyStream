@@ -1,6 +1,12 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "game-quote", "title": "New game: Quote it (lines from a movie's subtitles)", "where": "any TV or phone · Games > Quote it (needs Tower's next hourly update)", "date": "Nov 22"},
+    {"id": "game-closeup", "title": "New game: Close-up (a real scene zooms out)", "where": "any TV or phone · Games > Close-up", "date": "Nov 22"},
+    {"id": "game-role", "title": "New game: Who played them? (pick the actor from 4 photos)", "where": "any TV or phone · Games > Who played them?", "date": "Nov 22"},
+    {"id": "game-blitz", "title": "New game: 60-second blitz (true or false)", "where": "any TV or phone · Games > 60-second blitz", "date": "Nov 22"},
+    {"id": "game-season", "title": "New game: Which season? (a scene from a show)", "where": "any TV or phone · Games > Which season? (needs Tower's next hourly update)", "date": "Nov 22"},
+    {"id": "game-caption", "title": "New party game: Caption this (write captions on phones, then vote)", "where": "living room TV + 3 phones · Games > Caption this", "date": "Nov 22"},
     {"id": "games-look", "title": "Movie games new look: scoreboard bar, game-colour glow, numbered answers", "where": "any TV or phone · Games, play Scene by scene or Poster puzzle", "date": "Nov 22"},
     {"id": "games-endscreen", "title": "Game end screen shows your score big, the posters you got right and the one that got you", "where": "any screen · Games, finish a run of any puzzle", "date": "Nov 22"},
     {"id": "actor-ring", "title": "Who's that actor? timer ring around the photo and guess dots", "where": "any TV · Games > Who's that actor?", "date": "Nov 22"},
