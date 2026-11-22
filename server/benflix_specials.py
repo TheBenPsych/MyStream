@@ -1339,7 +1339,7 @@ def route(method, path, query, read_json, is_admin, is_kids):
         if method == "GET" and path == "/api/specials/moved":
             with _lock:
                 moves = _state.get("moves") or {}
-                return 200, {"tmdb": sorted(moves.keys()), "keep": list(_state.get("keep", []))}
+                return 200, {"tmdb": sorted(moves.keys()), "items": {k: v.get("jf") for k, v in moves.items() if v.get("jf")}, "keep": list(_state.get("keep", []))}
         if method == "GET" and path == "/api/specials/show":
             tvdb = _tvdb_for(query)
             if not tvdb or not _arr_ready():

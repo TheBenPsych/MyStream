@@ -17,18 +17,90 @@ import java.util.UUID
  * Jellyfin's own "next up" goes by the date an episode was last touched, so an old episode that
  * still has a little saved progress (or was opened again by mistake) can win over the real next
  * one ("Resume S6 E7" when E7 to E23 are all watched). This goes by episode order instead:
- * - find the last watched episode (specials left out)
+ * - find the last watched episode (short specials left out; movie-length ones count, in story order)
  * - if an episode after it is part way through, resume that one
  * - otherwise play the first unwatched episode after it
  * Nothing watched yet: the first episode. Everything watched: null (callers keep Jellyfin's answer).
  */
 object NextEpisode {
-    /** Pure pick from a show's episodes (any order) */
+    /** 40 minutes: shorter specials are extras, longer ones are movies */
+    private const val MOVIE_TICKS = 40L * 60L * 10_000_000L
+
+    /** A special as long as a movie (anime movies filed in the show's Specials, Ben 2026-11-22) */
+    fun isMovieSpecial(item: BaseItemDto): Boolean =
+        item.parentIndexNumber == 0 && (item.runTimeTicks ?: 0L) >= MOVIE_TICKS
+
+    /**
+     * The whole show in story order: regular episodes by season and number, with each special slotted
+     * where TheTVDB says it airs ("airs after Season 1", "airs before S2 E5"), else where its date falls.
+     */
+    fun storyOrder(episodes: List<BaseItemDto>): List<BaseItemDto> {
+        val out =
+            episodes
+                .filter { (it.parentIndexNumber ?: 1) > 0 }
+                .sortedWith(compareBy({ it.parentIndexNumber ?: 1 }, { it.indexNumber ?: 0 }))
+                .toMutableList()
+        val specials = episodes.filter { it.parentIndexNumber == 0 }.sortedWith(compareBy({ it.premiereDate }, { it.indexNumber ?: 0 }))
+        specials.forEach { sp ->
+            val after = sp.airsAfterSeasonNumber
+            val beforeSeason = sp.airsBeforeSeasonNumber
+            val beforeEp = sp.airsBeforeEpisodeNumber
+            val at =
+                when {
+                    after != null -> {
+                        val last = out.indexOfLast { (it.parentIndexNumber ?: 0) in 1..after }
+                        // after the season's last episode (and any specials already placed after it)
+                        var i = last + 1
+                        while (i < out.size && out[i].parentIndexNumber == 0) i++
+                        i
+                    }
+
+                    beforeSeason != null -> {
+                        out
+                            .indexOfFirst {
+                                val s = it.parentIndexNumber ?: 0
+                                s > beforeSeason || (s == beforeSeason && (it.indexNumber ?: 0) >= (beforeEp ?: 1))
+                            }.let { if (it < 0) out.size else it }
+                    }
+
+                    sp.premiereDate != null -> {
+                        out
+                            .indexOfFirst { (it.parentIndexNumber ?: 0) > 0 && it.premiereDate?.isAfter(sp.premiereDate) == true }
+                            .let { if (it < 0) out.size else it }
+                    }
+
+                    else -> {
+                        out.size
+                    }
+                }
+            out.add(at.coerceIn(0, out.size), sp)
+        }
+        return out
+    }
+
+    /**
+     * The special right before [episodeId] in story order when it's a movie you haven't watched
+     * ("Watch Mugen Train first?"), else null
+     */
+    fun movieBefore(
+        episodes: List<BaseItemDto>,
+        episodeId: java.util.UUID,
+    ): BaseItemDto? {
+        val order = storyOrder(episodes.filter { it.locationType != LocationType.VIRTUAL })
+        val i = order.indexOfFirst { it.id == episodeId }
+        if (i <= 0) return null
+        val before = order[i - 1]
+        return before.takeIf { isMovieSpecial(it) && it.userData?.played != true && (it.userData?.playbackPositionTicks ?: 0L) == 0L }
+    }
+
+    /** Pure pick from a show's episodes (any order); movie-length specials count, in story order */
     fun choose(episodes: List<BaseItemDto>): BaseItemDto? {
         val eps =
-            episodes
-                .filter { (it.parentIndexNumber ?: 1) > 0 && it.locationType != LocationType.VIRTUAL }
-                .sortedWith(compareBy({ it.parentIndexNumber ?: 1 }, { it.indexNumber ?: 0 }))
+            storyOrder(
+                episodes.filter {
+                    it.locationType != LocationType.VIRTUAL && ((it.parentIndexNumber ?: 1) > 0 || isMovieSpecial(it))
+                },
+            )
         if (eps.isEmpty()) return null
         val lastWatched = eps.indexOfLast { it.userData?.played == true }
         val after = eps.drop(lastWatched + 1)
@@ -53,7 +125,7 @@ object NextEpisode {
                         GetEpisodesRequest(
                             seriesId = seriesId,
                             userId = userId,
-                            fields = fields,
+                            fields = (fields.orEmpty() + ItemFields.SPECIAL_EPISODE_NUMBERS).distinct(),
                             isMissing = false,
                             enableImages = fields != null,
                             imageTypeLimit = if (fields != null) 1 else null,

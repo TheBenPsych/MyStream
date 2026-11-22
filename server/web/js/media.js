@@ -772,7 +772,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   const focus = landed || target;
   if (wantEp && !landed && B.alive(nav)) history.replaceState(null, "", `#/show/${m[1]}${wantSeason ? `?season=${wantSeason}` : ""}`);
   const seasonId = wantSeason || (focus && focus.SeasonId) || (seasons.find((s) => s.IndexNumber > 0) || seasons[0] || {}).Id;
-  const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? "Resume" : "Play"} S${target.ParentIndexNumber} E${target.IndexNumber}` : "Play";
+  const resumeLabel = target ? `${target.UserData && target.UserData.PlaybackPositionTicks && !target.UserData.Played ? "Resume" : "Play"} ${target.ParentIndexNumber === 0 ? String(target.Name || "the movie").slice(0, 28) : `S${target.ParentIndexNumber} E${target.IndexNumber}`}` : "Play";
   const bits = [it.ProductionYear ? (it.Status === "Ended" && it.EndDate ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear) : "", seasons.filter((s) => s.IndexNumber > 0).length ? `${seasons.filter((s) => s.IndexNumber > 0).length} seasons` : "", it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : "", it.Status === "Ended" ? "Ended" : it.AirDays && it.AirDays.length ? `New episodes on ${it.AirDays[0]}s` : ""].filter(Boolean);
   const creators = (it.People || []).filter((p) => p.Type === "Creator").map((p) => p.Name).slice(0, 2);
   const maker = creators.length ? ["Created by", creators.join(", "), true] : it.Studios && it.Studios.length ? ["Network", it.Studios[0].Name, true] : null;
@@ -801,7 +801,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     strip: B.tpStrip([maker]),
     tabs: [
       { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}" ${seasonSeen(s).say ? `title="${seasonSeen(s).say}"` : ""}>${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}${seasonSeen(s).pct ? `<i class="seen"><i style="width:${seasonSeen(s).pct}%"></i></i>` : ""}</button>`).join("")}</div>
-        <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div>` },
+        <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div><div id="story"></div>` },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "tv", nav) },
       { name: "More like this", id: "below2", load: async (pane) => {
@@ -826,15 +826,18 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     B.me.admin && !B.me.kids && B.kidsChoice ? { label: "Kids profile", icon: "star", youOnly: true, onClick: () => B.kidsChoice(it) } : null,
   ]);
   let episodes = [], group = 0;
+  const story = { filler: null };
   const drawEps = () => {
     const now = Date.now();
     const list = episodes.length > 50 ? episodes.slice(group * 25, group * 25 + 25) : episodes;
     $("#groups").innerHTML = episodes.length > 50 ? Array.from({ length: Math.ceil(episodes.length / 25) }, (_, i) => `<button class="chip ${i === group ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-group="${i}">${i * 25 + 1}–${Math.min(episodes.length, i * 25 + 25)}</button>`).join("") : "";
     $("#eps").innerHTML = B.row("Episodes", list.map((e) => {
       const soon = e.PremiereDate && new Date(e.PremiereDate) > now && e.LocationType === "Virtual";
-      const special = e.ParentIndexNumber === 0;
-      const sub = soon ? `Coming ${B.day(e.PremiereDate)}` : [special ? "Special" : `E${e.IndexNumber}`, e.RunTimeTicks ? B.len(B.minutes(e.RunTimeTicks)) : "", B.isNew(e) && !(e.UserData || {}).Played ? "New" : ""].filter(Boolean).join(" · ");
-      return B.wideCard(e, { href: `#/play/${e.Id}?resume=1`, title: `${special ? "" : e.IndexNumber + ". "}${e.Name}`, sub, story: true, soon, tag: special ? "SPECIAL" : "" });
+      const special = e.ParentIndexNumber === 0, movie = B.isMovieSpecial(e);
+      // Anime: Canon / Mixed / Filler from Anime Filler List (through Tower)
+      const kind = !special && story.filler ? story.filler[`${e.ParentIndexNumber}x${e.IndexNumber}`] : "";
+      const sub = soon ? `Coming ${B.day(e.PremiereDate)}` : [special ? (movie ? "Movie" : "Special") : `E${e.IndexNumber}`, e.RunTimeTicks ? B.len(B.minutes(e.RunTimeTicks)) : "", B.isNew(e) && !(e.UserData || {}).Played ? "New" : ""].filter(Boolean).join(" · ");
+      return B.wideCard(e, { href: `#/play/${e.Id}?resume=1`, title: `${special ? "" : e.IndexNumber + ". "}${e.Name}`, sub, story: true, soon, tag: special ? (movie ? "MOVIE" : "SPECIAL") : kind === "filler" ? "FILLER" : kind === "mixed" ? "MIXED" : "" });
     }), { id: "epRow" });
     const t = focus && $(`#epRow [data-id="${CSS.escape(focus.Id)}"]`);
     if (t) { t.scrollIntoView({ inline: "start", block: "nearest" }); $("#epRow .strip").scrollLeft -= 48; }
@@ -869,6 +872,17 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
+  // Ben 2026-11-22: anime shows get Watch order, Missing pieces, filler tags and "Watch the movie first?"
+  if (B.alive(nav)) B.story.show(it, nav, $("#story"), story, () => { if (B.alive(nav) && episodes.length) drawEps(); });
+  $("#eps").addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="#/play/"]'); if (!a || e.ctrlKey || e.metaKey) return;
+    const id = (a.getAttribute("href").match(/#\/play\/([\w-]+)/) || [])[1];
+    if (!id || !story.order) return;
+    const movie = B.story.movieBefore(story.order, id);
+    if (!movie) return;
+    e.preventDefault();
+    B.story.askFirst(movie, a.getAttribute("href"));
+  }, true);
   // Newer seasons to ask for, Ask for similar, and anime extras (extras.js)
   if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), ask: tp.pane("tpAsk"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
 });
@@ -943,3 +957,104 @@ B.reviewsRow = async (pane, it, kind, nav) => {
     B.side(`<h3>${esc(head(r))}</h3><p class="dim">A TMDb member's review</p><div style="white-space:pre-wrap;line-height:1.55">${esc(r.text)}</div>`);
   });
 };
+
+// ---------- Movies and specials on anime shows (Ben 2026-11-22) ----------
+// Tower (benflix_specials.py) files anime movies into their show's Specials at TheTVDB's spot. Here: the whole show in
+// story order, Missing pieces (Canon / Mixed / Filler / Recap from TheTVDB, AniList and Anime Filler List) with Get,
+// "Story complete", filler tags on episodes, Skip filler for Up next, and "Watch Mugen Train first?" once per movie.
+B.story = (() => {
+  const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } return null; };
+  const note = (p) => [p.kind === "movie" ? "Movie" : "Special", p.label_words, p.where, p.coming ? "On its way" : ""].filter(Boolean).join(" · ");
+  const get = (body) => B.busy(null, async () => { const r = await B.call("POST", "api/specials/get", body); return (r && r.message) || "Asked Tower for it."; });
+  const orderPanel = (show, order) => {
+    const p = B.side(`<h3>Watch order</h3><p class="dim">${esc(show.Name)}: seasons, movies and specials in story order</p>${order.map((e) => {
+      const sp = e.ParentIndexNumber === 0, done = (e.UserData || {}).Played;
+      const label = sp ? `${B.isMovieSpecial(e) ? "Movie" : "Special"} · ${e.Name || ""}` : `S${e.ParentIndexNumber} E${e.IndexNumber} · ${e.Name || ""}`;
+      return `<a class="opt" href="#/play/${e.Id}?resume=1">${done ? I("check") : sp ? I("star") : I("play")} ${esc(label)}</a>`;
+    }).join("")}`);
+    p.onclick = (e) => { if (e.target.closest("a.opt")) B.closeAll(); };
+  };
+  const missingPanel = (info, showAll) => {
+    const list = info.pieces.filter((x) => !x.have && (showAll || x.shown));
+    const hidden = info.pieces.filter((x) => !x.have && !x.shown).length;
+    const p = B.side(`<h3>Missing pieces</h3><p class="dim">Canon and mixed help complete the story. Filler, recaps and extras are hidden.</p>
+      ${list.map((x, i) => `<div class="opt" style="display:flex;gap:10px;align-items:center;cursor:default"><div style="flex:1"><b>${esc(x.title)}</b><small style="display:block">${esc(note(x))}</small></div>${info.can_get && !x.coming ? `<button class="btn small" data-get="${i}">Get</button>` : ""}</div>`).join("") || '<p class="dim">Nothing missing.</p>'}
+      ${hidden ? `<button class="btn small" data-all style="margin-top:12px">${showAll ? "Hide" : "Show"} filler, recaps and extras (${hidden})</button>` : ""}`);
+    p.onclick = (e) => {
+      const g = e.target.closest("[data-get]");
+      if (g) { const x = list[+g.dataset.get]; g.disabled = true; return get(x.tmdb ? { tmdb: x.tmdb } : { episode_id: x.ep_id }); }
+      if (e.target.closest("[data-all]")) missingPanel(info, !showAll);
+    };
+  };
+  const show = async (it, nav, box, story, redraw) => {
+    if (!box) return;
+    const ids = it.ProviderIds || {};
+    const q = ids.Tvdb ? `tvdb=${encodeURIComponent(ids.Tvdb)}` : ids.Tmdb ? `tmdb=${encodeURIComponent(ids.Tmdb)}` : "";
+    const [info, eps] = await Promise.all([
+      q ? B.call("GET", `api/specials/show?${q}`).catch(() => null) : null,
+      B.get(`/Shows/${it.Id}/Episodes?userId=${B.uid()}&IsMissing=false&EnableUserData=true&EnableImages=false&Fields=SpecialEpisodeNumbers`).then((r) => r.Items || []).catch(() => []),
+    ]);
+    if (!B.alive(nav)) return;
+    story.order = B.storyOrder(eps);
+    if (!info || !info.anime) return;
+    story.filler = info.filler || {};
+    story.series = it.Id;
+    if (Object.keys(story.filler).length) redraw();
+    const missing = info.pieces.filter((x) => x.shown && !x.have), getAll = info.can_get && missing.some((x) => x.label === "canon" || x.label === "mixed");
+    const skipOn = store(`skipFiller:${it.Id}`) === "1";
+    const line = info.complete && !missing.length ? "<b>Story complete:</b> you have every canon and mixed movie and special" : !missing.length ? "Nothing important is missing" : `${missing.length} movie${missing.length === 1 ? "" : "s"} or special${missing.length === 1 ? "" : "s"} that help complete the story ${missing.length === 1 ? "isn't" : "aren't"} here yet`;
+    box.innerHTML = `<div class="wrap" style="margin-top:14px"><p class="dim" style="margin:0 0 10px">${line}</p><div class="pills" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn small" data-story="order">${I("list")} Watch order</button>
+      ${info.pieces.some((x) => !x.have) ? `<button class="btn small" data-story="missing">Missing pieces${missing.length ? ` (${missing.length})` : ""}</button>` : ""}
+      ${getAll ? `<button class="btn small" data-story="all">${I("plus")} Get all canon + mixed</button>` : ""}
+      ${Object.keys(story.filler).length ? `<button class="btn small ${skipOn ? "white" : ""}" data-story="skip">${skipOn ? "Skipping filler" : "Skip filler"}</button>` : ""}</div></div>`;
+    box.onclick = (e) => {
+      const b = e.target.closest("[data-story]"); if (!b) return;
+      const w = b.dataset.story;
+      if (w === "order") return orderPanel(it, story.order);
+      if (w === "missing") return missingPanel(info, false);
+      if (w === "all") return get({ all: true, tvdb: info.tvdb });
+      if (w === "skip") {
+        const on = store(`skipFiller:${it.Id}`) !== "1";
+        store(`skipFiller:${it.Id}`, on ? "1" : "0");
+        store(`fillerList:${it.Id}`, JSON.stringify(Object.keys(story.filler).filter((k) => story.filler[k] === "filler")));
+        b.classList.toggle("white", on); b.textContent = on ? "Skipping filler" : "Skip filler";
+        B.toast(on ? "Up next jumps over filler episodes of this show." : "Filler episodes play again.");
+      }
+    };
+  };
+  const movieBefore = (order, id) => {
+    const i = order.findIndex((e) => e.Id === id);
+    if (i <= 0) return null;
+    const m = order[i - 1], ud = m.UserData || {};
+    if (!B.isMovieSpecial(m) || ud.Played || ud.PlaybackPositionTicks > 0 || store(`askedFirst:${m.Id}`) === "1") return null;
+    return m;
+  };
+  const askFirst = (movie, href) => {
+    store(`askedFirst:${movie.Id}`, "1");
+    const p = B.side(`<h3>Watch ${esc(movie.Name)} first?</h3><p class="dim">It comes right before this in the story.</p>
+      <div class="acts" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><a class="btn white" href="#/play/${movie.Id}">${I("play")} Watch ${esc(movie.Name)} first</a><a class="btn" href="${esc(href)}">Play this episode</a></div>`);
+    p.onclick = (e) => { if (e.target.closest("a.btn")) B.closeAll(); };
+  };
+  // Up next in the player: is this episode filler you asked to skip?
+  const skipThis = (seriesId, e) => {
+    if (!seriesId || !e || store(`skipFiller:${seriesId}`) !== "1") return false;
+    try { return (JSON.parse(store(`fillerList:${seriesId}`) || "[]")).includes(`${e.ParentIndexNumber}x${e.IndexNumber}`); } catch (x) { return false; }
+  };
+  // Requests: after asking for an anime show, offer its canon and mixed movies with one press
+  const offerMovies = async (tmdb, name) => {
+    const info = await B.call("GET", `api/specials/show?tmdb=${encodeURIComponent(tmdb)}`).catch(() => null);
+    if (!info || !info.anime || !info.can_get) return;
+    const list = info.pieces.filter((x) => x.kind === "movie" && x.tmdb && !x.have && !x.coming && (x.label === "canon" || x.label === "mixed"));
+    if (!list.length) return;
+    const p = B.side(`<h3>Also get its movies?</h3><p class="dim">${esc(name)} has ${list.length} canon or mixed movie${list.length === 1 ? "" : "s"}. They go into the show's Specials, in story order.</p>
+      ${list.map((x) => `<div class="opt" style="cursor:default"><b>${esc(x.title)}</b><small style="display:block">${esc(note(x))}</small></div>`).join("")}
+      <div class="acts" style="display:flex;gap:10px;margin-top:14px"><button class="btn white" data-yes>${I("plus")} ${list.length === 1 ? "Yes, get the movie too" : `Yes, get all ${list.length}`}</button><button class="btn" data-close>No thanks</button></div>`);
+    p.onclick = (e) => {
+      if (!e.target.closest("[data-yes]")) return;
+      B.closeAll();
+      B.busy(null, async () => { for (const x of list) await B.call("POST", "api/specials/get", { tmdb: x.tmdb }).catch(() => null); return list.length === 1 ? "Getting the movie. It goes into the show by itself." : `Getting ${list.length} movies. They go into the show by themselves.`; });
+    };
+  };
+  return { show, movieBefore, askFirst, skipThis, offerMovies };
+})();

@@ -439,9 +439,10 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const findNext = () => {
     if (!nextAsk) nextAsk = (async () => {
       if (isEp) {
-        const r = await B.get(`/Shows/${it.SeriesId}/Episodes?userId=${u}&StartItemId=${it.Id}&Limit=2&Fields=Overview`);
-        const list = r.Items || [];
-        const n = list[0] && list[0].Id === it.Id ? list[1] : list.find((x) => x.Id !== it.Id);
+        const r = await B.get(`/Shows/${it.SeriesId}/Episodes?userId=${u}&StartItemId=${it.Id}&Limit=12&Fields=Overview`);
+        const list = (r.Items || []).filter((x) => x.Id !== it.Id);
+        // Skip filler (an anime show's page): Up next jumps over filler episodes of that show
+        const n = list.find((x) => !(B.story && B.story.skipThis(it.SeriesId, x))) || list[0];
         return n || null;
       }
       if (B.q("trailer")) return null;
