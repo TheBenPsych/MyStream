@@ -1019,6 +1019,15 @@ def _jellyfin_card():
 CARDS = {"jobs": _jobs_card, "backup": _backup_card, "away": _away_card, "try": _try_card, "addons": _addons_card, "convert": _convert_card, "jellyfin": _jellyfin_card}
 
 
+_EXTRA_DO = {}  # cards other modules add: name -> do(button id) -> message
+
+
+def add_card(name, fn, do):
+    """Lets another module add a card in the same shape (fn() -> card, do(button id) -> message)"""
+    CARDS[name] = fn
+    _EXTRA_DO[name] = do
+
+
 def admin_route(method, path, read_json, token=None):
     """GET /api/admin/card/<name> and POST /api/admin/card/<name>/do. Returns (status, answer) or None."""
     if token:
@@ -1040,6 +1049,11 @@ def admin_route(method, path, read_json, token=None):
                 return 200, {"message": _addons_do(do)}
             if name == "convert":
                 return 200, {"message": _convert_do(do)}
+            if name in _EXTRA_DO:
+                try:
+                    return 200, {"message": _EXTRA_DO[name](do)}
+                except Exception as e:  # noqa: BLE001
+                    return 502, {"message": _plain(e)}
             if name == "try" and do.split(":")[0] in ("works", "bad") and ":" in do:
                 return 200, {"message": _try_mark(*do.split(":", 1))}
             return 400, {"message": "Glowfin didn't understand that button."}

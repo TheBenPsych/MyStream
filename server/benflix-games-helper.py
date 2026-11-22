@@ -75,6 +75,11 @@ try:  # Better copies from Radarr/Sonarr keep their first "date added", so they 
 except ImportError:
     arrivals = None
 
+try:  # Anime movies go into their show's Specials, plus Missing pieces and filler labels, in benflix_specials.py
+    import benflix_specials as specials
+except ImportError:
+    specials = None
+
 try:  # Fix posters: blurry poster finder and night-time fill of missing pictures, in benflix_posters.py
     import benflix_posters as posters
 except ImportError:
@@ -202,7 +207,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 16
+SETUP_VERSION = 17
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 # 2026-11-21: autosetup now also keeps Harbor on its newest build
@@ -1486,6 +1491,12 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
+            if path.startswith("/api/specials/"):
+                # Anime shows: Missing pieces, filler labels, Get (everyone signed in; Kids can't Get)
+                if specials is None:
+                    raise HelperError(503, "Missing pieces aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer = specials.route(method, path, query, self.read_json, is_admin, is_kids)
+                return self.send(status, answer)
             if path.startswith("/api/asks/"):
                 # Why Ben said no (everyone reads, Ben writes) and who gets an automatic yes (Ben only)
                 return self.send(200, asks_route(method, path, token, user_id, is_admin, is_kids, self.read_json))
@@ -2529,6 +2540,13 @@ if __name__ == "__main__":
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
         )
+    if specials is not None:
+        specials.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            tools,
+            arrivals,
+        )
     if keeper is not None:
         # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
         keeper.start(tower_addresses, tools._docker if tools is not None else None, jellyfin_call)
@@ -2540,6 +2558,10 @@ if __name__ == "__main__":
             keeper.job("posters", "Fill in missing posters and actor photos", "Every night between 3 and 5 AM", posters, "fill_missing", run=lambda: posters.fill_missing(why="asked"))
         if web is not None:
             keeper.job("web", "Update the browser version of Glowfin", "Every hour", web, "update", run=lambda: web.update())
+        if specials is not None:
+            keeper.job("specials", "Put anime movies into their shows' Specials", "Every 10 minutes", specials, "check", run=specials.check)
+            keeper.job("specials-week", "Check every anime show's specials against TheTVDB", "Every week", specials, "weekly", run=specials.weekly)
+            keeper.add_card("animemovies", specials.card, specials.card_do)
         if arrivals is not None:
             keeper.job("arrivals", "Keep first dates when a better copy arrives", "Every few minutes", arrivals, "check")
         keeper.job("doctor", "Fix asks that got stuck", "Every hour")

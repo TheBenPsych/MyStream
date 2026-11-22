@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 16
+            const val SETUP_NEEDED = 17
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -136,6 +136,10 @@ class TowerSetupCheck
                     16 to
                         listOf(
                             "What's the hold-up? on request pages: why something you said yes to hasn't arrived yet",
+                        ),
+                    17 to
+                        listOf(
+                            "Anime movies go into their show's Specials, in story order, and anime shows get Missing pieces",
                         ),
                 )
 
