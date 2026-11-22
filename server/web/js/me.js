@@ -122,7 +122,8 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
     ["Server: Find copies", "find better copy missing episodes", "#/server/tools/find"], ["Server: Downloads", "download stuck sonarr radarr", "#/server/tools/downloads"],
     ["Server: Messages", "message note send", "#/server/tools/messages"], ["Server: Glowfin versions", "versions update out of date", "#/server/tools/versions"],
     ["Server: Track names", "track names audio subtitle labels", "#/server/tools/tracks"], ["Server: Setup command", "setup command tower helper terminal", "#/server/tools/setup"],
-    ["Server: Apps on Tower", "apps docker restart", "#/server/tools/apps"], ["Server: Chores and restart", "chores restart jellyfin tasks", "#/server/tools/chores"],
+    ["Server: Apps on Tower", "apps docker restart", "#/server/tools/apps"], ["Server: Jobs and restart", "jobs chores restart jellyfin tasks", "#/server/tools/chores"],
+    ["Server: Safety copy", "backup safety copy save", "#/server/tools/backup"], ["Server: Away check", "away outside internet remote lock certificate", "#/server/tools/away"],
     ["Server: Live TV lists", "live tv channels guide", "#/server/tools/livetv"], ["Server: Book lists", "books nyt hardcover keys", "#/server/tools/booklists"],
   ] : []);
   const findHits = (t) => FIND.filter(([label, words]) => t.length > 1 && (label.toLowerCase().includes(t) || words.split(" ").some((w) => w.startsWith(t)))).slice(0, 8);

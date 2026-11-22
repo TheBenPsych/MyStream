@@ -301,6 +301,15 @@ class BenflixTower
         /** Fix posters on Tower (benflix_posters.py): blurry poster sizes and last night's fill-in */
         suspend fun posters(path: String): JSONObject = atHome { helper.getJson("/api/admin/posters/$path") }
 
+        /** A Tower card from benflix_keeper.py: [name] is jobs, backup, away or try */
+        suspend fun card(name: String): JSONObject = atHome { helper.getJson("/api/admin/card/$name") }
+
+        /** Presses a button on a Tower card; the answer is Tower's words, like "Safety copy made: 412 MB." */
+        suspend fun cardDo(
+            name: String,
+            act: String,
+        ): String = message(atHome { helper.postJson("/api/admin/card/$name/do", JSONObject().put("do", act)) })
+
         suspend fun carePost(
             path: String,
             body: JSONObject = JSONObject(),

@@ -46,7 +46,7 @@ say "Downloading the helper"
 NEW=$APP/.new
 GOOD=$APP/.last-good
 rm -rf "$NEW"; mkdir -p "$NEW"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_posters.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_posters.py benflix_keeper.py benflix_facts.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     rm -rf "$NEW"
@@ -331,6 +331,9 @@ find_slskd() {
 }
 find_slskd
 mkdir -p "$SLSK_DL"
+# The nightly safety copy (Ben 2026-11-21) goes next to the Media folder, on the big drives, not on the drive Tower runs from
+BACKUPS="$(dirname "$MEDIA")/Backups/Glowfin"
+mkdir -p "$BACKUPS" && chown nobody:users "$(dirname "$BACKUPS")" "$BACKUPS" 2>/dev/null
 
 say "Starting the helper (benflix-games on port 8097)"
 # The helper's tools (ffmpeg and friends) are baked into a small image once, so a restart takes seconds instead of
@@ -348,7 +351,7 @@ start_helper() {
   docker run -d --name benflix-games --restart unless-stopped --network host \
     --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
     -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-    -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" \
+    -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" -v /mnt/user/appdata:/appdata:ro -v "$BACKUPS:/backups:rw" \
     "$HELPER_IMAGE" sh -c "command -v ffmpeg >/dev/null || apk add --no-cache $HELPER_TOOLS >/dev/null 2>&1 || echo 'Track or skip tools missing (no internet?)'; exec python -u /app/benflix-games-helper.py" \
     >/dev/null && sleep 5
   # The first start also installs ffmpeg for the skip times, which can take a minute or two

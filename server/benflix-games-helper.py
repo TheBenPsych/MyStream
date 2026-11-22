@@ -85,6 +85,11 @@ try:  # Fix posters: blurry poster finder and night-time fill of missing picture
 except ImportError:
     posters = None
 
+try:  # Tower's jobs list, nightly safety copy, away check and the "Try these" list, in benflix_keeper.py
+    import benflix_keeper as keeper
+except ImportError:
+    keeper = None
+
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
@@ -1547,6 +1552,10 @@ class Handler(BaseHTTPRequestHandler):
                     answer = care.admin_route(method, path, query, self.read_json)
                     if answer is not None:
                         return self.send(answer[0], answer[1])
+                if keeper is not None and path.startswith("/api/admin/card/"):
+                    answer = keeper.admin_route(method, path, self.read_json)
+                    if answer is not None:
+                        return self.send(answer[0], answer[1])
                 if posters is not None and path.startswith("/api/admin/posters/"):
                     posters.remember_admin(token, user_id)
                     answer = posters.admin_route(method, path, query, self.read_json)
@@ -2464,8 +2473,12 @@ def request_doctor(admin):
                         _doctor_log(f"{job.__name__} skipped ({e})")
                 _doctor_save(state)
             _anime_ids_load()
+            if keeper is not None:
+                keeper.ran("doctor")
         except Exception as e:
             _doctor_log(f"problem ({e})")
+            if keeper is not None:
+                keeper.ran("doctor", False, str(e)[:160])
         time.sleep(3600)
 
 
@@ -2532,6 +2545,22 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
+    if keeper is not None:
+        # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
+        keeper.start(tower_addresses, tools._docker if tools is not None else None)
+        if care is not None:
+            keeper.job("playtest", "Play test: start a few random titles", "Every night between 1 and 3 AM", care, "playtest", run=lambda: care.playtest(5, "asked"))
+        if skips is not None:
+            keeper.job("skips", "Find intros and credits in new episodes", "Every night between 3 and 5 AM", skips, "sweep", run=lambda: skips.sweep("asked"))
+        if posters is not None:
+            keeper.job("posters", "Fill in missing posters and actor photos", "Every night between 3 and 5 AM", posters, "fill_missing", run=lambda: posters.fill_missing(why="asked"))
+        if web is not None:
+            keeper.job("web", "Update the browser version of Glowfin", "Every hour", web, "update", run=lambda: web.update())
+        if arrivals is not None:
+            keeper.job("arrivals", "Keep first dates when a better copy arrives", "Every few minutes", arrivals, "check")
+        keeper.job("doctor", "Fix asks that got stuck", "Every hour")
+        if books is not None:
+            keeper.job("books", "Look for new books and audiobooks", "Every 10 minutes", books, "scan", run=lambda: books.scan())
     threading.Thread(
         target=request_doctor,
         args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),

@@ -99,3 +99,4 @@ fonts/glowfin_inter_medium.ttf
 fonts/glowfin_inter_semibold.ttf
 fonts/glowfin_inter_bold.ttf
 fonts/inter.LICENSE.txt
+try-list.json
