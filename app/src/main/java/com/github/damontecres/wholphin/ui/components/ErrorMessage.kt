@@ -64,6 +64,21 @@ private fun friendlyError(exception: Throwable?): FriendlyError {
                     "or clear an app's cache), then come back and press Install now.",
             )
         }
+        if (cause is com.github.damontecres.wholphin.ui.playback.StuckPlayerException) {
+            return if (cause.reason == com.github.damontecres.wholphin.ui.playback.StuckReason.DECODER) {
+                FriendlyError(
+                    "This TV's video player stopped answering",
+                    "Nothing will play until the TV itself restarts. Closing Glowfin won't fix it. " +
+                        "Unplug the TV for 10 seconds (or hold the power button and pick Restart), then press Play again.",
+                )
+            } else {
+                FriendlyError(
+                    "This kept loading and never started",
+                    "Go back and try again. If everything does this, unplug the TV for 10 seconds " +
+                        "(or hold the power button and pick Restart), then try again.",
+                )
+            }
+        }
         cause = cause.cause
     }
     var status: Int? = null

@@ -357,6 +357,8 @@ class PlaybackViewModel
             isHdr: Boolean,
             is4k: Boolean,
             styledSubs: Boolean = false,
+            // Glowfin: make a brand new player even when the kind of player stays the same (see PlaybackStuck)
+            force: Boolean = false,
         ) {
             val softwareDecoding =
                 !preferences.appPreferences.playbackPreferences.mpvOptions.enableHardwareDecoding
@@ -387,7 +389,7 @@ class PlaybackViewModel
                 }
 
             Timber.d("Selected backend: %s", playerBackend)
-            if (currentPlayer.value?.backend != playerBackend) {
+            if (force || currentPlayer.value?.backend != playerBackend) {
                 Timber.i("Switching player backend to %s", playerBackend)
                 withContext(WholphinDispatchers.Main) {
                     disconnectPlayer()
@@ -411,6 +413,7 @@ class PlaybackViewModel
             (player as? ExoPlayer)?.addAnalyticsListener(this)
             subscribeToWebSocket()
             jobs.add(listenForTranscodeReason())
+            jobs.add(watchForStuckPlayer())
             val sessionPlayer =
                 MediaSessionPlayer(
                     player,
@@ -1451,6 +1454,12 @@ class PlaybackViewModel
 
         @Volatile internal var firstReadyAt = 0L
 
+        /** Glowfin: the video that was already started again after loading for ever (see PlaybackStuck) */
+        @Volatile internal var stuckRetryFor: UUID? = null
+
+        /** Glowfin: the "this TV's video player stopped answering" page is showing, so leave the player alone */
+        @Volatile internal var stuckGaveUp = false
+
         /** Benflix: where the current video started, so the busy check can tell it is moving */
         @Volatile internal var startPositionMs = 0L
 
@@ -2085,6 +2094,7 @@ class PlaybackViewModel
 
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error, "Playback error")
+            if (stuckGaveUp) return
             // Benflix "Pause live TV": paused longer than the channel keeps, so carry on from live
             if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
                 viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
