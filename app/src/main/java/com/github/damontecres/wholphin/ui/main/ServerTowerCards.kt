@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -284,7 +285,7 @@ private fun SparkLine(points: List<Float?>) {
                 .height(40.dp),
     ) {
         val step = size.width / (points.size - 1).coerceAtLeast(1)
-        val path = androidx.compose.ui.graphics.Path()
+        val path = Path()
         var pen = false
         points.forEachIndexed { i, v ->
             if (v == null) {
