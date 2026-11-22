@@ -35,6 +35,39 @@ CACHE=${TDARR_CACHE:-/mnt/user/appdata/tdarr/cache}
 RAW=${TDARR_RAW:-https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/tdarr}
 ENCODER=${TDARR_ENCODER:-qsv}
 IMAGE=haveagitgat/tdarr:latest
+TRIM_LANGUAGES=true # keep only English + the original language for sound, English subtitles
+FOLDERS_OFF=""      # folders Ben switched off in Harbor, separated by |
+
+# Harbor's Shrinker page saves Ben's changes here; they win over the defaults above (2026-11-22).
+# Read line by line and checked, never run, so a bad line can't do anything.
+SETTINGS_FILE="$APP/harbor/settings.env"
+num_in() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge "$2" ] && [ "$1" -le "$3" ]; }
+if [ -f "$SETTINGS_FILE" ]; then
+  while IFS='=' read -r k v; do
+    v=${v%$'\r'}
+    case "$k" in
+      NIGHT_START | NIGHT_END) num_in "$v" 0 23 && printf -v "$k" '%s' "$v" ;;
+      EPISODE_GB | MOVIE_GB) [[ "$v" =~ ^[0-9]{1,2}(\.[0-9])?$ ]] && [ "$v" != 0 ] && printf -v "$k" '%s' "$v" ;;
+      KEEP_PERCENT) num_in "$v" 20 90 && KEEP_PERCENT=$v ;;
+      MIN_KBPS_1080) num_in "$v" 800 8000 && MIN_KBPS_1080=$v ;;
+      BACKUP_DAYS) num_in "$v" 1 14 && BACKUP_DAYS=$v ;;
+      MIN_FREE_GB) num_in "$v" 0 5000 && MIN_FREE_GB=$v ;;
+      TRIM_LANGUAGES) [ "$v" = true ] || [ "$v" = false ] && TRIM_LANGUAGES=$v ;;
+      FOLDERS_OFF) [[ "$v" =~ ^[][A-Za-z0-9\ _.,\'\(\)\&\!+|-]*$ ]] && FOLDERS_OFF=$v ;;
+    esac
+  done <"$SETTINGS_FILE"
+fi
+[ "$NIGHT_START" = "$NIGHT_END" ] && NIGHT_END=$(((NIGHT_START + 7) % 24))
+night_hour() { # is hour $1 inside the working hours? (they may run past midnight, e.g. 22 to 6)
+  if [ "$NIGHT_START" -lt "$NIGHT_END" ]; then [ "$1" -ge "$NIGHT_START" ] && [ "$1" -lt "$NIGHT_END" ]
+  else [ "$1" -ge "$NIGHT_START" ] || [ "$1" -lt "$NIGHT_END" ]; fi
+}
+hour_word() { # 1 -> "1 AM", 13 -> "1 PM", 0 -> "midnight"
+  local h=$1
+  if [ "$h" -eq 0 ]; then echo "midnight"; elif [ "$h" -eq 12 ]; then echo "noon"
+  elif [ "$h" -lt 12 ]; then echo "$h AM"; else echo "$((h - 12)) PM"; fi
+}
+jesc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 PLUGINS="benflixShouldShrink benflixPrepare benflixCheckNewFile benflixKeepBackup benflixReport"
 API=http://127.0.0.1:8265/api/v2
 say() { echo; echo "== $*"; }
@@ -57,15 +90,21 @@ echo "  ok  downloaded"
 
 say "Finding the folders to shrink"
 FOLDERS=()
+OFF_FOUND=()
 while IFS= read -r d; do
   name=$(basename "$d")
   echo "$name" | grep -qiE "$FOLDER_SKIP" && continue
   # Only folders that actually hold videos
   [ -n "$(find "$d" -maxdepth 5 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.m4v' \) -print -quit 2>/dev/null)" ] || continue
+  # Switched off in Harbor
+  if [ -n "$FOLDERS_OFF" ] && printf '%s\n' "$FOLDERS_OFF" | tr '|' '\n' | grep -qxF "$name"; then
+    OFF_FOUND+=("$name"); continue
+  fi
   FOLDERS+=("$name")
 done < <(find "$MEDIA" -mindepth 1 -maxdepth 1 -type d -iname "*$FOLDER_MATCH*" | sort)
 if [ ${#FOLDERS[@]} -eq 0 ]; then problem "No video folders found inside $MEDIA"; exit 1; fi
 for d in "${FOLDERS[@]}"; do echo "  ok  $MEDIA/$d"; done
+for d in "${OFF_FOUND[@]}"; do echo "  --  $MEDIA/$d (switched off in Harbor)"; done
 
 say "Finding the Arc graphics card"
 GPU=""
@@ -164,7 +203,7 @@ post sync-plugins '{"data":{}}' >/dev/null
 echo "  ok  5 Benflix steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
-sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__MIN_FREE_GB__|$MIN_FREE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" \
+sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__MIN_FREE_GB__|$MIN_FREE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" -e "s|__TRIM__|$TRIM_LANGUAGES|" \
   -e "s|__ENCODER__|$ENCODER|" -e "s|__DEVICE__|${GPU:-/dev/dri/renderD128}|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
   -e "s|__RADARR_URL__|$(esc "$radarr_url")|" -e "s|__RADARR_KEY__|$(esc "$radarr_key")|" \
   -e "s|__SONARR_URL__|$(esc "$sonarr_url")|" -e "s|__SONARR_KEY__|$(esc "$sonarr_key")|" \
@@ -177,21 +216,23 @@ else
   problem "Couldn't save the flow"; exit 1
 fi
 
-say "Adding the libraries (works $NIGHT_START AM to $NIGHT_END AM)"
+say "Adding the libraries (works $(hour_word "$NIGHT_START") to $(hour_word "$NIGHT_END"))"
 schedule=""
 for day in Sun Mon Tue Wed Thur Fri Sat; do
   for h in $(seq 0 23); do
     a=$(printf '%02d' "$h"); b=$(printf '%02d' $(((h + 1) % 24)))
     on=false
-    if [ "$h" -ge "$NIGHT_START" ] && [ "$h" -lt "$NIGHT_END" ]; then on=true; fi
+    if night_hour "$h"; then on=true; fi
     schedule="$schedule{\"_id\":\"$day:$a-$b\",\"checked\":$on},"
   done
 done
 schedule="[${schedule%,}]"
 n=0
+KEEP_IDS=" "
 for d in "${FOLDERS[@]}"; do
   id="benflix_$(echo "$d" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | sed 's/_*$//')"
   name=$(printf '%s' "$d" | sed 's/["\\]//g')
+  KEEP_IDS="$KEEP_IDS$id "
   lib="{\"name\":\"$name\",\"folder\":\"/media/$name\",\"cache\":\"/temp\",\"output\":\"\",
 \"priority\":$n,\"foldersToIgnore\":\"\",\"foldersToIgnoreCaseInsensitive\":false,
 \"folderWatchScanInterval\":30,\"scannerThreadCount\":2,\"folderToFolderConversion\":false,
@@ -226,15 +267,16 @@ for d in "${FOLDERS[@]}"; do
   n=$((n + 1))
 done
 
-say "Removing libraries that aren't Benflix ones (your files are never touched)"
+say "Removing libraries it shouldn't have (your files are never touched)"
 # Tdarr can make its own library over all of Media with its default rules (it did on Tower, 2026-11-16).
-# Those rules would re-encode everything on the CPU, so only the Benflix libraries may stay.
+# Those rules would re-encode everything on the CPU, so only the Benflix libraries may stay, and only for
+# folders that are switched on (a folder switched off in Harbor loses its library; its files stay as they are).
 others=$(docker exec tdarr node -e '
 const h=require("http");
 const q=h.request({host:"127.0.0.1",port:8265,path:"/api/v2/cruddb",method:"POST",headers:{"content-type":"application/json"}},s=>{
   let d="";s.on("data",c=>d+=c);s.on("end",()=>{for(const l of JSON.parse(d||"[]")){
-    if(!String(l._id).startsWith("benflix_"))console.log(l._id+"\t"+(l.name||"")+"\t"+(l.folder||""));}});});
-q.end(JSON.stringify({data:{collection:"LibrarySettingsJSONDB",mode:"getAll"}}));' 2>/dev/null)
+    if(!process.argv[1].includes(" "+l._id+" "))console.log(l._id+"\t"+(l.name||"")+"\t"+(l.folder||""));}});});
+q.end(JSON.stringify({data:{collection:"LibrarySettingsJSONDB",mode:"getAll"}}));' "$KEEP_IDS" 2>/dev/null)
 if [ -z "$others" ]; then
   echo "  ok  none"
 else
@@ -270,11 +312,13 @@ if [ -z "${TDARR_TEST:-}" ]; then
   say "Watcher: pauses while someone watches, clears old backups, keeps this up to date"
   mkdir -p /boot/config/benflix
   cp "$TMP/tdarr-watch.sh" /boot/config/benflix/tdarr-watch.sh
-  printf 'BACKUP=%s\nBACKUP_DAYS=%s\nRAW=%s\nAPP=%s\n' "$BACKUP" "$BACKUP_DAYS" "$RAW" "$APP" >/boot/config/benflix/tdarr-watch.env
+  printf 'BACKUP=%s\nBACKUP_DAYS=%s\nRAW=%s\nAPP=%s\nMEDIA=%s\nNIGHT_START=%s\nNIGHT_END=%s\n' \
+    "$BACKUP" "$BACKUP_DAYS" "$RAW" "$APP" "$MEDIA" "$NIGHT_START" "$NIGHT_END" >/boot/config/benflix/tdarr-watch.env
   cron=/boot/config/plugins/dynamix/benflix-tdarr.cron
   {
     echo "# Benflix Tdarr: pause while someone watches (every 2 minutes), tidy + self-update (hourly)"
     echo "*/2 * * * * /bin/bash /boot/config/benflix/tdarr-watch.sh pause >/dev/null 2>&1"
+    echo "*/2 * * * * /bin/bash /boot/config/benflix/tdarr-watch.sh harbor >/dev/null 2>&1"
     echo "41 * * * * /bin/bash /boot/config/benflix/tdarr-watch.sh hourly >/dev/null 2>&1"
   } >"$cron"
   if command -v update_cron >/dev/null 2>&1; then update_cron; else
@@ -285,9 +329,21 @@ if [ -z "${TDARR_TEST:-}" ]; then
   mkdir -p "$APP/benflix-installed"
   cp "$TMP"/* "$APP/benflix-installed/" 2>/dev/null
   wget -qO "$APP/benflix-installed/setup-tdarr.sh" "$RAW/setup-tdarr.sh"
+  # Which Harbor settings are in use now (the watcher re-runs this when Harbor saves new ones)
+  if [ -f "$SETTINGS_FILE" ]; then cp "$SETTINGS_FILE" "$APP/benflix-installed/settings.env"; else rm -f "$APP/benflix-installed/settings.env"; fi
 fi
+
+# What Harbor's Shrinker page shows: the settings in use and the folders
+json_list() { local out="" x; for x in "$@"; do out="$out\"$(jesc "$x")\","; done; printf '[%s]' "${out%,}"; }
+{
+  printf '{"version":%s,"at":"%s","gpu":"%s","encoder":"%s",' "$SETUP_VERSION" "$(date -Iseconds)" "$(jesc "${GPU:-}")" "$ENCODER"
+  printf '"folders":%s,"folders_off":%s,' "$(json_list "${FOLDERS[@]}")" "$(json_list "${OFF_FOUND[@]}")"
+  printf '"settings":{"night_start":%s,"night_end":%s,"episode_gb":%s,"movie_gb":%s,"keep_percent":%s,' "$NIGHT_START" "$NIGHT_END" "$EPISODE_GB" "$MOVIE_GB" "$KEEP_PERCENT"
+  printf '"min_kbps_1080":%s,"backup_days":%s,"min_free_gb":%s,"trim_languages":%s}}\n' "$MIN_KBPS_1080" "$BACKUP_DAYS" "$MIN_FREE_GB" "$TRIM_LANGUAGES"
+} >"$APP/benflix-setup.json.tmp" && mv "$APP/benflix-setup.json.tmp" "$APP/benflix-setup.json"
+chmod 644 "$APP/benflix-setup.json" 2>/dev/null
 
 echo
 echo "All done. Tdarr's page: http://$HOST_IP:8265"
-echo "It shrinks between $NIGHT_START AM and $NIGHT_END AM. What it did: $BACKUP/shrink-log.txt"
+echo "It shrinks between $(hour_word "$NIGHT_START") and $(hour_word "$NIGHT_END"). What it did: $BACKUP/shrink-log.txt"
 echo "Paste everything above to Claude if any line says PROBLEM."

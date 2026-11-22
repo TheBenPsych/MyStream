@@ -23,6 +23,8 @@ var details = function () { return ({
     { label: "Keep this much disk free (GB)", name: "minFreeGB", type: "number", defaultValue: "300",
       inputUI: { type: "text" }, tooltip: "Backups of originals need room. Below this, files are left for another night." },
     { label: "Backup folder", name: "backupFolder", type: "string", defaultValue: "/backup", inputUI: { type: "text" }, tooltip: "" },
+    { label: "Files to keep as they are", name: "keepList", type: "string", defaultValue: "/backup/benflix-keep.txt",
+      inputUI: { type: "text" }, tooltip: "One path per line. Files Ben put back from Harbor's Shrinker page are never shrunk again." },
   ],
   outputs: [
     { number: 1, tooltip: "Shrink it" },
@@ -40,6 +42,11 @@ var plugin = function (args) {
     args.jobLog("Leaving it alone: " + why);
     return { outputFileObj: args.inputFileObj, outputNumber: 2, variables: args.variables };
   };
+  // Put back from Harbor's Shrinker page: never shrink that file again (2026-11-22)
+  try {
+    var keep = fs.readFileSync(String(inputs.keepList || "/backup/benflix-keep.txt"), "utf8").split("\n");
+    if (keep.indexOf(file) !== -1) return leave("you put the original back, so it stays as it is");
+  } catch (e) { /* no list yet */ }
   var ext = (file.split(".").pop() || "").toLowerCase();
   if (["mkv", "mp4", "m4v"].indexOf(ext) === -1) return leave("." + ext + " files are skipped (only mkv and mp4)");
   var streams = (args.inputFileObj.ffProbeData && args.inputFileObj.ffProbeData.streams) || [];
