@@ -450,10 +450,10 @@ fun ContextMenu(
     }
 }
 
-/** Titles the "Kids profile" choice is offered on (an episode or season opens its show) */
 /** Titles whose name, year, age rating and description the admin can fix from the hold menu */
 private val FIX_DETAILS_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
 
+/** Titles the "Kids profile" choice is offered on (an episode or season opens its show) */
 private val KIDS_CHOICE_TYPES =
     setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.SEASON, BaseItemKind.EPISODE)
 
