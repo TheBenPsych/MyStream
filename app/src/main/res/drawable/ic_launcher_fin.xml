@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by sharp.js (project files: benflix/rename/icon-sharp). Don't edit by hand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path android:pathData="M49.04,90.75 C59.36,74.41 73.98,56.35 102.36,46.89 C96.34,62.37 94.62,76.99 104.08,90.75 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="49.04"
+                android:startY="90.75"
+                android:endX="91.793"
+                android:endY="37.099">
+                <item android:offset="0" android:color="#FFA55BE0" />
+                <item android:offset="0.6" android:color="#FF1FA8E6" />
+                <item android:offset="1" android:color="#FF3FE0E8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M102.36,46.89 C96.34,62.37 94.62,76.99 104.08,90.75"
+        android:strokeWidth="1.204"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="102.36"
+                android:startY="46.89"
+                android:endX="102.36"
+                android:endY="90.75">
+                <item android:offset="0" android:color="#00E9FDFF" />
+                <item android:offset="0.35" android:color="#F2E9FDFF" />
+                <item android:offset="0.75" android:color="#99BFF6FF" />
+                <item android:offset="1" android:color="#00BFF6FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by sharp.js (project files: benflix/rename/icon-sharp). Don't edit by hand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M49.04,90.75 C59.36,74.41 73.98,56.35 102.36,46.89 C96.34,62.37 94.62,76.99 104.08,90.75 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M53.512,95.222H101.328A1.892,1.892 0 0 1 101.328,99.006H53.512A1.892,1.892 0 0 1 53.512,95.222Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M59.274,101.414H95.566A1.634,1.634 0 0 1 95.566,104.682H59.274A1.634,1.634 0 0 1 59.274,101.414Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M66.756,106.918H89.804A1.376,1.376 0 0 1 89.804,109.67H66.756A1.376,1.376 0 0 1 66.756,106.918Z" />
+</vector>
