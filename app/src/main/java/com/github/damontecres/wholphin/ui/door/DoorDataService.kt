@@ -257,16 +257,18 @@ class DoorDataService
         }
 
         /**
-         * Top 10: what is trending now (from Seerr) that is on the server, otherwise the best rated of
-         * this year and last. [anime] picks anime only; otherwise anime is left out.
+         * Top 10: what is trending now (from Seerr) that is on the server, topped up to a full ten with
+         * the best rated of this year and last, then the best rated of any year. [anime] picks anime
+         * only; otherwise anime is left out. [exclude] (thumbs-down titles) never takes one of the ten spots.
          */
         suspend fun top10(
             userId: UUID,
             type: BaseItemKind,
             animeIds: Set<UUID>,
             anime: Boolean,
+            exclude: Set<UUID> = emptySet(),
         ): List<BaseItem> {
-            fun keep(id: UUID) = if (anime) id in animeIds else id !in animeIds
+            fun keep(id: UUID) = (if (anime) id in animeIds else id !in animeIds) && id !in exclude
             val seerrType = if (type == BaseItemKind.MOVIE) SeerrItemType.MOVIE else SeerrItemType.TV
             val trendingIds =
                 safe {
@@ -276,35 +278,44 @@ class DoorDataService
                         .mapNotNull { it.jellyfinItemId }
                         .distinct()
                         .filter { keep(it) }
-                        .take(TOP)
+                        // More than ten: some may be hidden from this profile, the next ones take their place
+                        .take(TOP * 3)
                 }
             val trending =
                 if (trendingIds.isEmpty()) {
                     emptyList()
                 } else {
                     val found =
-                        items(GetItemsRequest(userId = userId, ids = trendingIds, fields = SlimItemFields, enableUserData = true))
-                            .associateBy { it.id }
-                    trendingIds.mapNotNull { found[it] }
+                        safe {
+                            items(GetItemsRequest(userId = userId, ids = trendingIds, fields = SlimItemFields, enableUserData = true))
+                        }.associateBy { it.id }
+                    trendingIds.mapNotNull { found[it] }.take(TOP)
                 }
-            if (trending.size >= TOP_MIN) return trending
+            if (trending.size >= TOP) return trending
+
+            suspend fun best(years: List<Int>?) =
+                safe {
+                    items(
+                        GetItemsRequest(
+                            userId = userId,
+                            includeItemTypes = listOf(type),
+                            recursive = true,
+                            years = years,
+                            imageTypes = listOf(ImageType.PRIMARY),
+                            sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            fields = SlimItemFields,
+                            enableUserData = true,
+                            limit = TOP * 6,
+                        ),
+                    )
+                }.filter { keep(it.id) }
+
             val year = LocalDate.now().year
-            val best =
-                items(
-                    GetItemsRequest(
-                        userId = userId,
-                        includeItemTypes = listOf(type),
-                        recursive = true,
-                        years = if (anime) null else listOf(year, year - 1),
-                        imageTypes = listOf(ImageType.PRIMARY),
-                        sortBy = listOf(ItemSortBy.COMMUNITY_RATING),
-                        sortOrder = listOf(SortOrder.DESCENDING),
-                        fields = SlimItemFields,
-                        enableUserData = true,
-                        limit = TOP * 6,
-                    ),
-                ).filter { keep(it.id) }
-            return (trending + best).distinctBy { it.id }.take(TOP)
+            val recent = (trending + best(if (anime) null else listOf(year, year - 1))).distinctBy { it.id }
+            if (anime || recent.size >= TOP) return recent.take(TOP)
+            // Still short (few new titles on the server): fill the rest with the best rated of any year
+            return (recent + best(null)).distinctBy { it.id }.take(TOP)
         }
 
         private val trendingLock = Mutex()
@@ -865,7 +876,6 @@ class DoorDataService
             const val ROW = 20
             const val TOP = 10
             private const val EVERYTHING_LIMIT = 5000
-            private const val TOP_MIN = 5
             private const val BECAUSE_TRIES = 4
             private const val HISTORY_MAX = 120
             private const val BECAUSE_MIN = 5

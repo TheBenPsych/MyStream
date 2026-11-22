@@ -97,12 +97,18 @@ B.trending = async (type, onlyAnime) => {
     const by = {}; (r.Items || []).forEach((x) => { by[x.Id] = x; });
     items = ids.map((id) => by[id]).filter((x) => x && keep(x.Id));
   }
-  if (items.length < 6) {
+  // Fewer than ten trending titles are on the server: fill the rest with the best rated of this year and
+  // last, then the best rated of any year, so the row always reaches 10
+  const fill = async (years) => {
+    const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=${type}&Recursive=true${years}&SortBy=CommunityRating&SortOrder=Descending&Limit=${onlyAnime ? 200 : 60}&Fields=${B.FIELDS}&ImageTypes=Primary`).catch(() => null);
+    const seen = new Set(items.map((x) => x.Id));
+    items = items.concat(((r && r.Items) || []).filter((x) => keep(x.Id) && !seen.has(x.Id)));
+  };
+  if (items.length < 10) {
     const y = new Date().getFullYear();
     // Top 10 anime: the best rated anime of any year (like the TV app)
-    const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=${type}&Recursive=true${onlyAnime ? "" : `&Years=${y},${y - 1}`}&SortBy=CommunityRating&SortOrder=Descending&Limit=${onlyAnime ? 200 : 40}&Fields=${B.FIELDS}&ImageTypes=Primary`);
-    const seen = new Set(items.map((x) => x.Id));
-    items = items.concat((r.Items || []).filter((x) => keep(x.Id) && !seen.has(x.Id)));
+    await fill(onlyAnime ? "" : `&Years=${y},${y - 1}`);
+    if (items.length < 10 && !onlyAnime) await fill("");
   }
   return B.keep(items.slice(0, 10));
 };

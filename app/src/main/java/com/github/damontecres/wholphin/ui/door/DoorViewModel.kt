@@ -374,7 +374,7 @@ class DoorViewModel
                 if (!easy) {
                     launch {
                         val dislikes = disliked.await()
-                        val items = data.top10(userId, BaseItemKind.MOVIE, animeIds.await(), anime = false).filter { it.id !in dislikes }
+                        val items = data.top10(userId, BaseItemKind.MOVIE, animeIds.await(), anime = false, exclude = dislikes)
                         putOrRemove(order, DoorRowData(TOP_10, "Top 10 movies this week", items, style = DoorRowStyle.TOP10))
                     }
                     launch {
@@ -468,7 +468,7 @@ class DoorViewModel
                 if (!easy) {
                     launch {
                         val dislikes = disliked.await()
-                        val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = false).filter { it.id !in dislikes }
+                        val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = false, exclude = dislikes)
                         putOrRemove(order, DoorRowData(TOP_10, "Top 10 shows this week", items, style = DoorRowStyle.TOP10))
                     }
                 }
@@ -657,8 +657,8 @@ class DoorViewModel
                         val dislikes = disliked.await()
                         val animeIds =
                             data.idsIn(userId, animeMovies, BaseItemKind.MOVIE) + data.idsIn(userId, animeShows, BaseItemKind.SERIES)
-                        val movies = data.top10(userId, BaseItemKind.MOVIE, animeIds, anime = false)
-                        val shows = data.top10(userId, BaseItemKind.SERIES, animeIds, anime = false)
+                        val movies = data.top10(userId, BaseItemKind.MOVIE, animeIds, anime = false, exclude = dislikes)
+                        val shows = data.top10(userId, BaseItemKind.SERIES, animeIds, anime = false, exclude = dislikes)
                         // Movies and shows take turns, so both are in the ten
                         val items =
                             (0 until maxOf(movies.size, shows.size))
