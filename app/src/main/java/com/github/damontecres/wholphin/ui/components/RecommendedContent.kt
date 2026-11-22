@@ -557,6 +557,14 @@ class RecommendedViewModel
             }
         }
 
+        /** Glowfin: Remove from Keep watching, then reload the rows so the card goes away */
+        fun removeContinueWatching(item: BaseItem) {
+            viewModelScope.launchIO {
+                favoriteWatchManager.removeContinueWatching(item)
+                refreshProgressRows()
+            }
+        }
+
         fun setFavorite(
             position: RowColumn,
             itemId: UUID,
@@ -741,6 +749,7 @@ fun RecommendedContent(
                         onClearChosenStreams = {
                             // Not supported on this page
                         },
+                        onClickRemoveContinueWatching = viewModel::removeContinueWatching,
                     )
                 }
 
@@ -757,7 +766,7 @@ fun RecommendedContent(
                             showGoTo = true,
                             showStreamChoices = false,
                             canDelete = viewModel.canDelete(item, preferences.appPreferences),
-                            canRemoveContinueWatching = false,
+                            canRemoveContinueWatching = true,
                             canRemoveNextUp = false,
                             actions = contextActions,
                         )

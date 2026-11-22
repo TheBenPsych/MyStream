@@ -85,6 +85,14 @@ class PosterHoldMenuViewModel
         }
 
         override fun sendReportFor(itemId: UUID) = serverReportService.sendMediaReportFor(itemId)
+
+        override fun canRemoveContinueWatching(): Boolean = true
+
+        override fun removeContinueWatching(item: BaseItem) {
+            viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
+                favoriteWatchManager.removeContinueWatching(item)
+            }
+        }
     }
 
 /**

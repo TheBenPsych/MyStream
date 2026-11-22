@@ -93,6 +93,8 @@ data class ContextMenuActions(
     val onClearChosenStreams: (ChosenStreams?) -> Unit,
     val onClickGoTo: (BaseItem) -> Unit = { navigateTo(it.destination()) },
     val onClickRemoveFromNextUp: (BaseItem) -> Unit = {},
+    // Glowfin: clears only the saved spot (see FavoriteWatchManager.removeContinueWatching)
+    val onClickRemoveContinueWatching: (BaseItem) -> Unit = { onClickWatch(it.id, false) },
     val onClickAddToQueue: (BaseItem) -> Unit = {},
     val onRemoveFromPlaylist: (Int, UUID) -> Unit = { _, _ -> },
 )
@@ -661,7 +663,7 @@ private fun buildContextMenuItems(
                     iconStringRes = R.string.fa_eye,
                     dismissOnClick = true,
                 ) {
-                    actions.onClickWatch.invoke(item.id, false)
+                    actions.onClickRemoveContinueWatching.invoke(item)
                 },
             )
         }

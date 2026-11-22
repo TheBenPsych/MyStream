@@ -91,6 +91,7 @@ class ContextMenuUtils(
                             // Not supported on this page
                         },
                         onClickAddToQueue = playlistViewModel::addToQueue,
+                        onClickRemoveContinueWatching = { provider.removeContinueWatching(it) },
                     )
                 }
             val contextMenu =
@@ -102,7 +103,7 @@ class ContextMenuUtils(
                         showGoTo = true,
                         showStreamChoices = false,
                         canDelete = provider.canDelete(item, preferences.appPreferences),
-                        canRemoveContinueWatching = false,
+                        canRemoveContinueWatching = provider.canRemoveContinueWatching(),
                         canRemoveNextUp = false,
                         actions = contextActions,
                     )
@@ -163,4 +164,9 @@ interface ContextMenuProvider {
     )
 
     fun sendReportFor(itemId: UUID)
+
+    /** Glowfin: Remove from Keep watching (only shown for titles with a saved spot) */
+    fun canRemoveContinueWatching(): Boolean = false
+
+    fun removeContinueWatching(item: BaseItem) {}
 }

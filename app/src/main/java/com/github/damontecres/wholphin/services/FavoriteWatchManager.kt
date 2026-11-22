@@ -2,8 +2,10 @@ package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.data.model.BaseItem
 import org.jellyfin.sdk.api.client.ApiClient
+import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.playStateApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.UpdateUserItemDataDto
 import org.jellyfin.sdk.model.api.UserItemDataDto
 import java.util.UUID
 import javax.inject.Inject
@@ -57,6 +59,14 @@ class FavoriteWatchManager
                 api.userLibraryApi.updateUserItemRating(itemId, likes = likes).content
             }
 
+        /**
+         * Glowfin (Idea Box 26, Ben 2026-11-22): take a title out of Keep watching without marking it
+         * watched. Only the saved spot is cleared, so it stays unwatched and keeps its play count.
+         */
         suspend fun removeContinueWatching(item: BaseItem) {
+            api.itemsApi.updateItemUserData(
+                itemId = item.id,
+                data = UpdateUserItemDataDto(playbackPositionTicks = 0L),
+            )
         }
     }
