@@ -1044,6 +1044,11 @@ body.reading .mbar { display: none; }
 .tp .btns { grid-row: 4; align-self: start; margin: 0; flex-wrap: nowrap; }
 .tp .btns .btn.big { padding: 12px 22px; font-size: 16px; }
 .tp .btns .btn.off { opacity: .45; cursor: default; }
+.tp .btns .btn { position: relative; }
+.tp .btns .tp-left { display: none; font-weight: 500; opacity: .7; margin-left: 4px; }
+@media (max-width: 700px) { .tp .btns .tp-left { display: inline; } }
+.tp .btns .tp-prog { position: absolute; left: 14px; right: 14px; bottom: 6px; height: 3px; border-radius: 3px; background: rgba(0,0,0,.18); overflow: hidden; }
+.tp .btns .tp-prog i { display: block; height: 100%; background: currentColor; border-radius: 3px; }
 .tp .btns [hidden] { display: none !important; }
 /* Glowfin for Kids (K1): Play is big and round */
 html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-size: 20px; }

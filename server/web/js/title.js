@@ -40,7 +40,9 @@
     const btn = (b, i) => {
       const cls = `btn big ${i === 0 ? "white" : ""} ${b.off ? "off" : ""}`;
       const attrs = `${b.id ? `id="${b.id}"` : ""} data-tpb="${i}" ${b.off ? `aria-disabled="true"` : ""} ${kids && i > 0 ? "hidden" : ""}`;
-      const inner = `${I(b.icon || "play")} <span>${esc(b.label)}</span>`;
+      // Resume (Ben's pick): a thin progress line inside the button on every screen (drawn over its bottom edge, so the
+      // button keeps its size); phones also show the time left inside it, where the button is full width anyway
+      const inner = `${I(b.icon || "play")} <span>${esc(b.label)}</span>${b.left ? `<span class="tp-left">${esc(b.left)}</span>` : ""}${b.pct ? `<i class="tp-prog"><i style="width:${Math.max(2, Math.min(100, b.pct))}%"></i></i>` : ""}`;
       return b.href && !b.off ? `<a class="${cls}" ${attrs} href="${b.href}">${inner}</a>` : `<button class="${cls}" ${attrs}>${inner}</button>`;
     };
     const chips = kids ? [] : (opts.chips || []).filter(Boolean);
@@ -85,7 +87,8 @@
     }
     // Buttons: greyed-out ones say why; the rest run their action
     const why = $("#tpWhy");
-    const say = (b) => { why.textContent = b ? b.off || b.note || opts.status || "" : opts.status || ""; why.classList.toggle("off", !!(b && b.off)); };
+    // Phones show Resume's time left inside the button itself, so the line under the buttons doesn't repeat it
+    const say = (b) => { why.textContent = b ? b.off || (b.left && matchMedia("(max-width: 700px)").matches ? "" : b.note) || opts.status || "" : opts.status || ""; why.classList.toggle("off", !!(b && b.off)); };
     root.addEventListener("click", (e) => {
       const el = e.target.closest("[data-tpb]"); if (!el) return;
       const b = buttons[+el.dataset.tpb];

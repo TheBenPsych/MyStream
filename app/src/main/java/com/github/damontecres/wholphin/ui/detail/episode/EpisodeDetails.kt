@@ -283,6 +283,7 @@ fun EpisodeDetailsContent(
                 icon = BenflixIcon.PLAY,
                 onClick = { playOnClick(if (canResume) resume else Duration.ZERO) },
                 note = left?.let { "${lengthText(it)} left" },
+                progress = if (canResume) dto.userData?.playedPercentage?.let { (it / 100.0).toFloat() } else null,
             ),
             TitleButton(
                 label = "Start over",

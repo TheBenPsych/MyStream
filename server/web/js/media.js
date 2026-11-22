@@ -635,7 +635,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
     rating: it.OfficialRating,
     info: [it.ProductionYear, len ? B.len(len) : "", (it.Genres || []).slice(0, 2).join(" · ")],
     buttons: [
-      { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "" },
+      { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", left: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", pct: resume ? ud.PlayedPercentage || 0 : 0 },
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
       B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
