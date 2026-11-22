@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.util.DataLoadingState
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.serializer.toUUID
 import java.util.UUID
@@ -61,6 +62,9 @@ fun SeriesDetails(
     var showWatchConfirmation by remember { mutableStateOf(false) }
     var showFixMatch by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf<Optional<UUID>>(Optional.absent()) }
+    val story: StoryViewModel = hiltViewModel(key = "story-${destination.itemId}")
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var firstAsk by remember { mutableStateOf<Triple<BaseItem, Boolean, org.jellyfin.sdk.model.api.BaseItemDto>?>(null) }
 
     val contextActions =
         remember {
@@ -149,7 +153,18 @@ fun SeriesDetails(
                         shuffle = { viewModel.navigateTo(Destination.PlaybackList(itemId = series.id, shuffle = true)) },
                         rewatch = if (played && state.progress?.firstEpisodeId != null) viewModel::rewatch else null,
                         playEpisode = { episode, fromStart ->
-                            viewModel.navigateTo(Destination.Playback(episode.id, if (fromStart) 0L else episode.resumeMs))
+                            // Ben 2026-11-22: a movie comes right before this episode and you haven't seen it? Ask once.
+                            scope.launch {
+                                val movie =
+                                    kotlinx.coroutines.withContext(com.github.damontecres.wholphin.util.WholphinDispatchers.IO) {
+                                        story.movieFirst(series.id, episode.id)
+                                    }
+                                if (movie != null) {
+                                    firstAsk = Triple(episode, fromStart, movie)
+                                } else {
+                                    viewModel.navigateTo(Destination.Playback(episode.id, if (fromStart) 0L else episode.resumeMs))
+                                }
+                            }
                         },
                         setEpisodeWatched = { episode, watched -> viewModel.setWatched(episode.id, watched, null) },
                         trailer = { TrailerService.onClick(context, it, viewModel::navigateTo) },
@@ -165,6 +180,27 @@ fun SeriesDetails(
                         pickPoster = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id)) }) else null,
                     ),
             )
+            firstAsk?.let { (episode, fromStart, movie) ->
+                com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog(
+                    title = "Watch ${movie.name} first?",
+                    subtitle = "It comes right before this in the story",
+                    choices =
+                        listOf(
+                            com.github.damontecres.wholphin.ui.components.BenflixChoice(
+                                label = "Watch ${movie.name} first",
+                                icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.PLAY,
+                                onClick = { viewModel.navigateTo(Destination.Playback(movie.id, 0L)) },
+                            ),
+                            com.github.damontecres.wholphin.ui.components.BenflixChoice(
+                                label = "Play ${episode.name ?: "this episode"}",
+                                onClick = {
+                                    viewModel.navigateTo(Destination.Playback(episode.id, if (fromStart) 0L else episode.resumeMs))
+                                },
+                            ),
+                        ),
+                    onDismissRequest = { firstAsk = null },
+                )
+            }
             if (showFixMatch) {
                 com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
                     item = series,

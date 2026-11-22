@@ -194,6 +194,14 @@ fun SeriesHeroContent(
                                 modifier = Modifier.padding(start = scope.side, end = scope.side, top = 12.dp),
                             )
                         }
+                        // Ben 2026-11-22: anime shows get Watch order and Missing pieces (movies and specials)
+                        if (anime && !easy) {
+                            StoryRow(
+                                series = series,
+                                side = scope.side,
+                                onPlay = { actions.playEpisode(BaseItem(it), false) },
+                            )
+                        }
                     },
                 )
             }
@@ -616,7 +624,15 @@ internal fun EpisodeCard(
                 }
                 if (episode.isSpecial()) {
                     Text(
-                        text = "SPECIAL",
+                        // Anime movies filed in the show's Specials get MOVIE (Ben 2026-11-22)
+                        text =
+                            if (com.github.damontecres.wholphin.services.NextEpisode
+                                    .isMovieSpecial(episode.data)
+                            ) {
+                                "MOVIE"
+                            } else {
+                                "SPECIAL"
+                            },
                         color = BenflixColors.Tray,
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.Black,
@@ -780,7 +796,15 @@ private fun episodeNumber(
     episode: BaseItem,
     offset: Int?,
 ): String? {
-    if (episode.isSpecial()) return "Special"
+    if (episode.isSpecial()) {
+        return if (com.github.damontecres.wholphin.services.NextEpisode
+                .isMovieSpecial(episode.data)
+        ) {
+            "Movie"
+        } else {
+            "Special"
+        }
+    }
     val number = episode.data.indexNumber ?: return null
     return if (offset != null && offset > 0) "E$number · #${offset + number}" else "E$number"
 }

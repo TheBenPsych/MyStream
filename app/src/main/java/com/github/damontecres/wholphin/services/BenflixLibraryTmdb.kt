@@ -39,6 +39,7 @@ class BenflixLibraryTmdb
         private val serverRepository: ServerRepository,
         private val seerrService: SeerrService,
         private val showArrival: ShowArrival,
+        private val helper: GameLibraryClient,
     ) {
         private val lock = Mutex()
         private var cached: Pair<Long, Map<String, UUID>>? = null
@@ -72,13 +73,38 @@ class BenflixLibraryTmdb
                             val tmdb = dto.providerIds?.get("Tmdb")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                             val kind = if (dto.type == BaseItemKind.MOVIE) SeerrItemType.MOVIE else SeerrItemType.TV
                             "${kind.name}-$tmdb" to dto.id
-                        }.toMap()
+                        }.toMap() + movedIntoShows()
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Couldn't list what's already on Benflix")
                     null
                 }
+            }
+
+        /** Anime movies Tower moved into their show's Specials (Ben 2026-11-22): still here, as an episode now */
+        private suspend fun movedIntoShows(): Map<String, UUID> =
+            try {
+                val items = helper.getJson("/api/specials/moved").optJSONObject("items")
+                items
+                    ?.keys()
+                    ?.asSequence()
+                    ?.mapNotNull { tmdb ->
+                        val id = runCatching { UUID.fromString(dashed(items.optString(tmdb))) }.getOrNull()
+                        id?.let { "${SeerrItemType.MOVIE.name}-$tmdb" to it }
+                    }?.toMap()
+                    .orEmpty()
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                emptyMap()
+            }
+
+        private fun dashed(id: String): String =
+            if (id.length == 32 && '-' !in id) {
+                listOf(0..7, 8..11, 12..15, 16..19, 20..31).joinToString("-") { id.substring(it) }
+            } else {
+                id
             }
 
         /**

@@ -1,6 +1,10 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "anime-watch-order", "title": "Anime shows: Watch order, Missing pieces with Get, Story complete, and Watch the movie first?", "where": "any screen · open an anime show, Episodes, the buttons under the episodes", "date": "Nov 22"},
+    {"id": "anime-movie-next", "title": "Play on a show goes into a movie filed in its Specials (cards say MOVIE)", "where": "any screen · a show with a movie in Specials, after finishing the season before it", "date": "Nov 22"},
+    {"id": "anime-movies-requests", "title": "Asking for an anime show offers its canon movies too", "where": "any screen · Requests, ask for an anime show", "date": "Nov 22"},
+    {"id": "anime-movies-specials", "title": "Anime movies that belong to a show move into its Specials (press Move all once for the ones already here)", "where": "Server > Tools > Library > Anime movies, then open the show", "date": "Nov 22"},
     {"id": "keep-watching-remove", "title": "Remove from Keep watching (it stays unwatched)", "where": "any screen · Home, hold OK (or press and hold, or right-click) on a Keep watching card", "date": "Nov 22"},
     {"id": "score-colours", "title": "Score boxes in each site's colour, and Metacritic next to IMDb and Rotten Tomatoes", "where": "any screen · open a movie or show page, and a page in Requests", "date": "Nov 22"},
     {"id": "season-progress", "title": "Season buttons show a thin line for how much of each season you've watched", "where": "any screen · open a show you're partway through", "date": "Nov 22"},

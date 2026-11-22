@@ -54,6 +54,9 @@ fun DiscoverSeriesDetails(
     var seasonDialog by remember { mutableStateOf<DialogParams?>(null) }
     var moreDialog by remember { mutableStateOf<DialogParams?>(null) }
     var showRequestSeasonDialog by remember { mutableStateOf(false) }
+    val animeMovies: com.github.damontecres.wholphin.ui.detail.series.AnimeMoviesAskViewModel =
+        androidx.hilt.lifecycle.viewmodel.compose
+            .hiltViewModel()
 
     when (val st = state.tvSeries) {
         is DataLoadingState.Error -> {
@@ -149,6 +152,10 @@ fun DiscoverSeriesDetails(
             waitToLoad = params.fromLongClick,
         )
     }
+    com.github.damontecres.wholphin.ui.detail.series.AnimeMoviesAsk(
+        showName = state.tvSeries.successValue?.name ?: "This show",
+        viewModel = animeMovies,
+    )
     if (showRequestSeasonDialog) {
         RequestSeasonsDialog(
             id = state.tvSeries.successValue?.id ?: -1,
@@ -160,6 +167,8 @@ fun DiscoverSeriesDetails(
             onSubmit = {
                 showRequestSeasonDialog = false
                 viewModel.request(it)
+                // Ben 2026-11-22: an anime show? Offer its canon and mixed movies too
+                animeMovies.check(it.tvId)
             },
             loading = state.profileLoading,
             data = state.requestData,

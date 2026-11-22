@@ -63,6 +63,29 @@ class NextEpisodeTest {
     }
 
     @Test
+    fun movieAfterSeasonOneComesNext() {
+        // Demon Slayer: Mugen Train is filed as a special that airs after Season 1
+        val movie =
+            ep(0, 2).copy(
+                name = "Mugen Train",
+                runTimeTicks = 117L * 60L * 10_000_000L,
+                airsAfterSeasonNumber = 1,
+            )
+        val eps = listOf(ep(1, 1, played = true), ep(1, 2, played = true), movie, ep(2, 1), ep(0, 1))
+        assertEquals("Mugen Train", NextEpisode.choose(eps)?.name)
+        assertEquals("Mugen Train", NextEpisode.movieBefore(eps, eps[3].id)?.name)
+        assertNull(NextEpisode.movieBefore(eps, eps[1].id))
+    }
+
+    @Test
+    fun movieByDateWhenThereIsNoNote() {
+        val d = java.time.LocalDateTime.of(2020, 10, 16, 0, 0)
+        val movie = ep(0, 5).copy(name = "Movie", runTimeTicks = 100L * 60L * 10_000_000L, premiereDate = d)
+        val eps = listOf(ep(1, 1, played = true).copy(premiereDate = d.minusYears(1)), ep(2, 1).copy(premiereDate = d.plusYears(1)), movie)
+        assertEquals("Movie", NextEpisode.choose(eps)?.name)
+    }
+
+    @Test
     fun allWatchedGivesNothing() {
         assertNull(NextEpisode.choose(listOf(ep(1, 1, played = true), ep(1, 2, played = true))))
     }

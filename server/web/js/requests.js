@@ -15,6 +15,9 @@ B.libTmdb = () => B.cached("lib-tmdb", 600000, async () => {
   const r = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Movie,Series&Recursive=true&Fields=ProviderIds&EnableImages=false&EnableUserData=false&EnableTotalRecordCount=false`).catch(() => ({}));
   const m = new Map();
   (r.Items || []).forEach((x) => { const t = (x.ProviderIds || {}).Tmdb; if (t) m.set((x.Type === "Movie" ? "movie:" : "tv:") + t, x.Id); });
+  // Anime movies Tower moved into their show's Specials are still here (as an episode now)
+  const moved = await B.call("GET", "api/specials/moved").catch(() => null);
+  Object.entries((moved && moved.items) || {}).forEach(([t, id]) => { if (!m.has("movie:" + t)) m.set("movie:" + t, id); });
   libTmdb = m;
   return m;
 }).then((m) => { libTmdb = m; return m; });
@@ -135,6 +138,8 @@ B.askPanel = async (type, id) => {
       await seerr("/request", "POST", body);
       B.closeAll();
       B.cache["seerr-mine"] = null;
+      // Ben 2026-11-22: an anime show? Offer its canon and mixed movies too (they go into the show's Specials)
+      if (type === "tv" && B.story) setTimeout(() => B.story.offerMovies(id, t), 400);
       return forWho ? `Asked for ${t} for ${forWho.name}. It's on their list, and they're told when it's ready.` : `Asked for ${t}. It shows in Your requests as Asked.`;
     });
     p.addEventListener("click", (e) => {

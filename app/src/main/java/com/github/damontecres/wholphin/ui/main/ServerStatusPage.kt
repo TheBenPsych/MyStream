@@ -813,6 +813,7 @@ fun ServerStatusPage(
                             }
                         }
                         spaceItems(toolsState, toolsViewModel, sectionTitle)
+                        towerCardItems("animemovies", "Anime movies into their shows")
                         careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
                     }
 

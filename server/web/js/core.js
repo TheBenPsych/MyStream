@@ -292,10 +292,31 @@ B.get = (path) => B.jf("GET", /\/Items\?/.test(path) && !/CollapseBoxSetItems=/.
 B.uid = () => enc(B.me.id);
 // Which episode a show's Play / Resume opens, by episode order (Jellyfin's next up goes by date, so an old
 // episode with leftover progress could win): one part way through after the last watched, else the next unwatched.
-B.pickNextEpisode = (eps) => {
+// Anime movies filed in a show's Specials (Ben 2026-11-22): a special 40 minutes or longer is a movie
+B.isMovieSpecial = (e) => !!e && e.ParentIndexNumber === 0 && (e.RunTimeTicks || 0) >= 40 * 60 * 1e7;
+// The whole show in story order: seasons in order, each special where TheTVDB says it airs, else by its date
+B.storyOrder = (eps) => {
   const sn = (e) => (e.ParentIndexNumber == null ? 1 : e.ParentIndexNumber);
-  const list = (eps || []).filter((e) => sn(e) > 0 && e.LocationType !== "Virtual")
-    .sort((a, b) => (sn(a) - sn(b)) || ((a.IndexNumber || 0) - (b.IndexNumber || 0)));
+  const out = (eps || []).filter((e) => sn(e) > 0).sort((a, b) => (sn(a) - sn(b)) || ((a.IndexNumber || 0) - (b.IndexNumber || 0)));
+  const day = (e) => (e.PremiereDate ? new Date(e.PremiereDate).getTime() : null);
+  (eps || []).filter((e) => e.ParentIndexNumber === 0).sort((a, b) => (day(a) || 0) - (day(b) || 0) || (a.IndexNumber || 0) - (b.IndexNumber || 0)).forEach((sp) => {
+    let at = out.length;
+    if (sp.AirsAfterSeasonNumber != null) {
+      at = 0; out.forEach((e, i) => { if (sn(e) >= 1 && sn(e) <= sp.AirsAfterSeasonNumber) at = i + 1; });
+      while (at < out.length && out[at].ParentIndexNumber === 0) at++;
+    } else if (sp.AirsBeforeSeasonNumber != null) {
+      const i = out.findIndex((e) => sn(e) > sp.AirsBeforeSeasonNumber || (sn(e) === sp.AirsBeforeSeasonNumber && (e.IndexNumber || 0) >= (sp.AirsBeforeEpisodeNumber || 1)));
+      at = i < 0 ? out.length : i;
+    } else if (day(sp)) {
+      const i = out.findIndex((e) => sn(e) > 0 && day(e) && day(e) > day(sp));
+      at = i < 0 ? out.length : i;
+    }
+    out.splice(at, 0, sp);
+  });
+  return out;
+};
+B.pickNextEpisode = (eps) => {
+  const list = B.storyOrder((eps || []).filter((e) => e.LocationType !== "Virtual" && (e.ParentIndexNumber !== 0 || B.isMovieSpecial(e))));
   let last = -1;
   list.forEach((e, i) => { if ((e.UserData || {}).Played) last = i; });
   const after = list.slice(last + 1);
@@ -303,7 +324,7 @@ B.pickNextEpisode = (eps) => {
   return after.filter((e) => ((e.UserData || {}).PlaybackPositionTicks || 0) > 0).pop() || after[0];
 };
 B.watchedEp = (it) => !!it && it.Type === "Episode" && !!(it.UserData || {}).Played;
-B.nextEpisode = (seriesId, fields) => B.get(`/Shows/${seriesId}/Episodes?userId=${B.uid()}&IsMissing=false&EnableUserData=true${fields ? `&Fields=${fields}&ImageTypeLimit=1` : "&EnableImages=false"}`)
+B.nextEpisode = (seriesId, fields) => B.get(`/Shows/${seriesId}/Episodes?userId=${B.uid()}&IsMissing=false&EnableUserData=true${fields ? `&Fields=${fields},SpecialEpisodeNumbers&ImageTypeLimit=1` : "&Fields=SpecialEpisodeNumbers&EnableImages=false"}`)
   .then((r) => B.pickNextEpisode(r.Items)).catch(() => null);
 // Next up / resume lists: swap an already-watched episode for that show's real next one (costs nothing when none)
 B.fixNextUp = async (items, fields) => {

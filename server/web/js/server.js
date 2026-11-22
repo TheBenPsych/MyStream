@@ -67,12 +67,14 @@ PAGES.backup = (el) => cardPage("backup", el);
 PAGES.away = (el) => cardPage("away", el);
 // Ben's picks, 2026-11-22: Jellyfin's add-ons, its converting settings, and shortcuts to what stays in Jellyfin
 PAGES.addons = (el) => cardPage("addons", el);
+// Ben 2026-11-22: anime movies that belong to a show go into its Specials (benflix_specials.py on Tower)
+PAGES.animemovies = (el) => cardPage("animemovies", el);
 PAGES.convert = (el) => cardPage("convert", el);
 PAGES.jellyfin = (el) => cardPage("jellyfin", el);
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
 // (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
 const TOOL_GROUPS = [
-  { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
+  { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["animemovies", "Anime movies"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start, converting", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"], ["convert", "Converting"]] },
@@ -96,7 +98,7 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 16;
+const SETUP_NEEDED = 17;
 const SETUP_WAITING = {
   1: ["Glowfin can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Glowfin inside their pages"],
@@ -113,6 +115,7 @@ const SETUP_WAITING = {
   14: ["Music gets Discover weekly, Release radar, a daylist, This is mixes, Fresh on Glowfin and skip learning"],
   15: ["When Radarr or Sonarr swap in a better copy, the movie or episode keeps its first date and doesn't show as new again"],
   16: ["What's the hold-up? on request pages: why something you said yes to hasn't arrived yet"],
+  17: ["Anime movies go into their show's Specials, in story order, and anime shows get Missing pieces"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
 const setupNeed = async () => {
