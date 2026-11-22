@@ -8,7 +8,7 @@
       "position": { "x": 400, "y": 40 }, "fpEnabled": true, "inputsDB": {} },
     { "name": "Worth shrinking?", "sourceRepo": "Local", "pluginName": "benflixShouldShrink", "version": "1.0.0", "id": "bfShould",
       "position": { "x": 400, "y": 140 }, "fpEnabled": true,
-      "inputsDB": { "episodeMinGB": "__EPISODE_GB__", "movieMinGB": "__MOVIE_GB__" } },
+      "inputsDB": { "episodeMinGB": "__EPISODE_GB__", "movieMinGB": "__MOVIE_GB__", "minFreeGB": "__MIN_FREE_GB__", "backupFolder": "/backup" } },
     { "name": "Start", "sourceRepo": "Community", "pluginName": "ffmpegCommandStart", "version": "1.0.0", "id": "bfStart",
       "position": { "x": 300, "y": 240 }, "fpEnabled": true, "inputsDB": {} },
     { "name": "Prepare", "sourceRepo": "Local", "pluginName": "benflixPrepare", "version": "1.0.0", "id": "bfPrepare",

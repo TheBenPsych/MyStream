@@ -21,7 +21,10 @@ MIN_KBPS_1080=2600  # never below this for 1080p (about 450 MB per 24 min episod
 BACKUP_DAYS=3
 NIGHT_START=1       # 1 AM
 NIGHT_END=8         # 8 AM
-FOLDER_MATCH=anime  # which Media folders it works on (any folder whose name contains this)
+FOLDER_MATCH=""     # which Media folders: empty = every folder with videos in it (was "anime" for the test)
+# Folders never touched, even if a video is inside (Ben 2026-11-21: "go ahead with the rest" after the anime test)
+FOLDER_SKIP='music|audio|book|manga|comic|podcast|game|roms|photo|picture|download|torrent|trailer|backup|recording'
+MIN_FREE_GB=300     # stop starting new files while the backup folder's disk has less free than this
 SETUP_VERSION=2     # bump when the container itself needs re-making
 
 # ---- Where things are ----
@@ -54,8 +57,14 @@ echo "  ok  downloaded"
 
 say "Finding the folders to shrink"
 FOLDERS=()
-while IFS= read -r d; do FOLDERS+=("$(basename "$d")"); done < <(find "$MEDIA" -mindepth 1 -maxdepth 1 -type d -iname "*$FOLDER_MATCH*" | sort)
-if [ ${#FOLDERS[@]} -eq 0 ]; then problem "No folder with \"$FOLDER_MATCH\" in its name inside $MEDIA"; exit 1; fi
+while IFS= read -r d; do
+  name=$(basename "$d")
+  echo "$name" | grep -qiE "$FOLDER_SKIP" && continue
+  # Only folders that actually hold videos
+  [ -n "$(find "$d" -maxdepth 5 -type f \( -iname '*.mkv' -o -iname '*.mp4' -o -iname '*.m4v' \) -print -quit 2>/dev/null)" ] || continue
+  FOLDERS+=("$name")
+done < <(find "$MEDIA" -mindepth 1 -maxdepth 1 -type d -iname "*$FOLDER_MATCH*" | sort)
+if [ ${#FOLDERS[@]} -eq 0 ]; then problem "No video folders found inside $MEDIA"; exit 1; fi
 for d in "${FOLDERS[@]}"; do echo "  ok  $MEDIA/$d"; done
 
 say "Finding the Arc graphics card"
@@ -155,7 +164,7 @@ post sync-plugins '{"data":{}}' >/dev/null
 echo "  ok  5 Benflix steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
-sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" \
+sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__MIN_FREE_GB__|$MIN_FREE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" \
   -e "s|__ENCODER__|$ENCODER|" -e "s|__DEVICE__|${GPU:-/dev/dri/renderD128}|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
   -e "s|__RADARR_URL__|$(esc "$radarr_url")|" -e "s|__RADARR_KEY__|$(esc "$radarr_key")|" \
   -e "s|__SONARR_URL__|$(esc "$sonarr_url")|" -e "s|__SONARR_KEY__|$(esc "$sonarr_key")|" \
