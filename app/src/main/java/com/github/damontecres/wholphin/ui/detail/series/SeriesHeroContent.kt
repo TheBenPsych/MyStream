@@ -797,7 +797,13 @@ private fun episodeNumber(
     offset: Int?,
 ): String? {
     if (episode.isSpecial()) {
-        return if (com.github.damontecres.wholphin.services.NextEpisode.isMovieSpecial(episode.data)) "Movie" else "Special"
+        return if (com.github.damontecres.wholphin.services.NextEpisode
+                .isMovieSpecial(episode.data)
+        ) {
+            "Movie"
+        } else {
+            "Special"
+        }
     }
     val number = episode.data.indexNumber ?: return null
     return if (offset != null && offset > 0) "E$number · #${offset + number}" else "E$number"

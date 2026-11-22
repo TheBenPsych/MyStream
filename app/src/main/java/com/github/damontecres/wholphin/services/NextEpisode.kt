@@ -27,8 +27,7 @@ object NextEpisode {
     private const val MOVIE_TICKS = 40L * 60L * 10_000_000L
 
     /** A special as long as a movie (anime movies filed in the show's Specials, Ben 2026-11-22) */
-    fun isMovieSpecial(item: BaseItemDto): Boolean =
-        item.parentIndexNumber == 0 && (item.runTimeTicks ?: 0L) >= MOVIE_TICKS
+    fun isMovieSpecial(item: BaseItemDto): Boolean = item.parentIndexNumber == 0 && (item.runTimeTicks ?: 0L) >= MOVIE_TICKS
 
     /**
      * The whole show in story order: regular episodes by season and number, with each special slotted

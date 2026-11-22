@@ -31,10 +31,10 @@ import com.github.damontecres.wholphin.services.NextEpisode
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
-import com.github.damontecres.wholphin.ui.showToast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
