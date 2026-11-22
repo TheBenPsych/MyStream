@@ -77,7 +77,7 @@ B.nightSea = () => {
 B.signInProblem = (err, name) => {
   const st = err && err.status, msg = String((err && err.message) || "");
   const who = String(name || "").trim();
-  if (st === 0 || /couldn't reach|is it on/i.test(msg)) return { kind: "reach", title: "Can't reach the Tower (is it on?)", line: "Check the Tower is switched on, then try again in a minute.", button: "Try again" };
+  if (st === 0 || /couldn't reach|is it on/i.test(msg)) return { kind: "reach", title: "Tower is restarting or offline", line: "If it's restarting, it's back in a few minutes. Try again then.", button: "Try again" };
   if (st === 403 || /too many|limit how many devices/i.test(msg)) {
     const whose = who ? `${who}'s account` : "This account";
     return { kind: "many", title: "On too many TVs", line: `${whose} is on too many TVs. Sign out on one${/^ben$/i.test(who) ? "" : ", or ask Ben"}.`, button: "OK" };

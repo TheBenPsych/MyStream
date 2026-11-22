@@ -271,7 +271,8 @@ B.call = async (method, path, body, opts) => {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    const err = new Error("Couldn't reach Tower. Is it on?"); err.status = 0; throw err;
+    // Ben 2026-11-22: say Tower may be restarting (it comes back by itself) instead of a bare error
+    const err = new Error("Couldn't reach Tower. It may be restarting, which takes a few minutes."); err.status = 0; throw err;
   }
   const text = await r.text();
   let data = null;
@@ -512,7 +513,7 @@ B.alive = (nav) => nav === B.nav;
 // One safety net for every page: code words never reach the screen. Messages Tower wrote in plain words pass through.
 B.say = (e) => {
   const m = String((e && e.message) || e || "");
-  if (/Failed to fetch|NetworkError|Load failed|network (error|request)/i.test(m)) return "Couldn't reach Tower. Check that it's on, then try again.";
+  if (/Failed to fetch|NetworkError|Load failed|network (error|request)/i.test(m)) return "Couldn't reach Tower. It may be restarting, which takes a few minutes. Try again then.";
   const code = e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError || e instanceof SyntaxError
     || /is not a function|is not defined|is not iterable|Cannot read|Cannot set|undefined|Unexpected (token|end)|JSON|\[object |=>|\|\||\(\)|^\w+Error\b/.test(m);
   if (!m || code) { if (m) console.error(e); return "Tower gave an answer Glowfin didn't expect. Try again in a moment."; }

@@ -77,6 +77,9 @@ data class TowerStatus(
     val disks: List<Triple<String, Long, Long>> = emptyList(),
     /** Drives with warning signs (from Scrutiny) */
     val drivesBad: List<DriveHealth> = emptyList(),
+    /** Server > Health's answer: ok, warn or bad (null when Tower doesn't have Health yet) */
+    val healthLevel: String? = null,
+    val healthHeadline: String? = null,
 )
 
 /** The track tidy tool's state */
@@ -201,6 +204,8 @@ class BenflixTower
                         ?.objects()
                         .orEmpty()
                         .map { driveOf(it) },
+                healthLevel = j.optJSONObject("health")?.optString("level")?.takeIf { it.isNotBlank() },
+                healthHeadline = j.optJSONObject("health")?.optString("headline")?.takeIf { it.isNotBlank() },
             )
         }
 

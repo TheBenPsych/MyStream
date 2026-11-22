@@ -94,6 +94,7 @@ enum class ServerSection(
     NOW("Watching", "Who's watching, and how hard the server works for it", BenflixPlayFilled),
     LIBRARY("Library", "Movie and show numbers, disk space, the library checkup and downloads", BenflixIcon.LIST.vector),
     PEOPLE("People", "Accounts for family and friends, and messages to them", BenflixIcon.PERSON.vector),
+    HEALTH("Health", "Tower's parts, the black box before a crash, and the changes diary", BenflixIcon.HEART.vector),
     TOOLS(
         "Tools",
         "Scan for new stuff, the server's chores, tidy track names, Home's weather town, and restarting Jellyfin",
@@ -111,6 +112,7 @@ enum class ServerSection(
                 NOW -> BenflixIcon.PLAY
                 LIBRARY -> BenflixIcon.FILM
                 PEOPLE -> BenflixIcon.PERSON
+                HEALTH -> BenflixIcon.HEART
                 TOOLS -> BenflixIcon.WRENCH
             }
 
@@ -400,6 +402,11 @@ fun ServerStatusPage(
             ServerSection.LIBRARY -> {
                 data.refreshTower()
             }
+
+            ServerSection.HEALTH -> {
+                // Its Tower cards load themselves
+                data.refreshTower(fresh = false)
+            }
         }
     }
 
@@ -469,6 +476,13 @@ fun ServerStatusPage(
                         tower?.downloads.orEmpty().any { it.stuck } -> Light.WARN
                         else -> Light.GOOD
                     },
+                ServerSection.HEALTH to
+                    when (tower?.healthLevel) {
+                        null -> Light.UNKNOWN
+                        "bad" -> Light.BAD
+                        "warn" -> Light.WARN
+                        else -> Light.GOOD
+                    },
             )
         }
     val sectionTitle: @Composable (String) -> Unit = { SectionTitle(it) }
@@ -518,6 +532,17 @@ fun ServerStatusPage(
                             text = "Tower needs the setup command",
                             light = Light.WARN,
                             supporting = "The yellow card above has it, with Copy",
+                        ),
+                    )
+                }
+                tower?.takeIf { it.healthLevel == "warn" || it.healthLevel == "bad" }?.let { t ->
+                    add(
+                        NeedLine(
+                            key = "health",
+                            text = t.healthHeadline ?: "Tower's health needs a look",
+                            light = if (t.healthLevel == "bad") Light.BAD else Light.WARN,
+                            supporting = "Server > Health has the details",
+                            actions = listOf("Go" to { frame.pick(ServerSection.HEALTH.key) }),
                         ),
                     )
                 }
@@ -779,6 +804,16 @@ fun ServerStatusPage(
                         actions = listOf("Open" to { openTools(ServerToolGroup.PEOPLE) }),
                     )
                 }
+            }
+
+            ServerSection.HEALTH -> {
+                // Ben's picks, 2026-11-22 (benflix_health.py on Tower): all six Health cards on one page
+                towerCardItems("health", "Health")
+                towerCardItems("healthparts", "Parts")
+                towerCardItems("health24", "Last 24 hours")
+                towerCardItems("healthfix", "Warn me and fix it")
+                towerCardItems("crashes", "Crash notebook")
+                towerCardItems("diary", "Changes diary")
             }
 
             ServerSection.TOOLS -> {

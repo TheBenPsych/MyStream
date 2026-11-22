@@ -25,7 +25,8 @@ RAW=https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server
 
 say() { printf '\n== %s ==\n' "$1"; }
 
-mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS" "$MUSICDATA" "$BOOKSDATA"
+HEALTH=/mnt/user/appdata/benflix-health
+mkdir -p "$APP" "$BIOS" "$SAVES" "$TRACKS" "$LIVETV" "$SKIPS" "$MUSICDATA" "$BOOKSDATA" "$HEALTH"
 # Books: the folders the Books door reads (Chaptarr fills Books and Audiobooks; manga goes in Manga by hand)
 for d in Books Audiobooks Manga; do
   [ -d "$MEDIA/$d" ] || { mkdir -p "$MEDIA/$d"; chown nobody:users "$MEDIA/$d" 2>/dev/null; }
@@ -46,7 +47,7 @@ say "Downloading the helper"
 NEW=$APP/.new
 GOOD=$APP/.last-good
 rm -rf "$NEW"; mkdir -p "$NEW"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_posters.py benflix_keeper.py benflix_health.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html benflix-health.sh; do
   if curl -fsSL "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     rm -rf "$NEW"
@@ -79,6 +80,8 @@ if [ -z "$HELPER_KEPT" ]; then
   fi
   cp "$NEW"/*.py "$APP"/
 fi
+# Tower health runs on Tower itself (see benflix-health.sh); kept beside the helper so the hourly check can compare it
+cp "$NEW/benflix-health.sh" "$APP/benflix-health.sh" 2>/dev/null
 rm -rf "$NEW"
 
 say "Downloading Benflix for web browsers"
@@ -351,7 +354,7 @@ start_helper() {
   docker run -d --name benflix-games --restart unless-stopped --network host \
     --env-file "$ENV" --env-file "$TOOLS_ENV" --env-file "$MUSIC_ENV" -e LC_ALL=C.UTF-8 -e ROMM_URL=http://127.0.0.1:8095 -e JELLYFIN_URL="$JF" \
     -v "$APP:/app:ro" -v "$ROMS:/ROMs:ro" -v "$BIOS:/bios:ro" -v "$SAVES:/saves:rw" \
-    -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" -v /mnt/user/appdata:/appdata:ro -v "$BACKUPS:/backups:rw" \
+    -v /var/run/docker.sock:/var/run/docker.sock -v "$MEDIA:/media:rw" -v "$TRACKS:/tracks:rw" -v "$LIVETV:/livetv:rw" -v "$SKIPS:/skips:rw" -v "$MUSICDATA:/musicdata:rw" -v "$BOOKSDATA:/booksdata:rw" -v "$SLSK_DL:/slskd:rw" -v /mnt/user/appdata:/appdata:ro -v "$BACKUPS:/backups:rw" -v "$HEALTH:/towerhealth:rw" \
     "$HELPER_IMAGE" sh -c "command -v ffmpeg >/dev/null || apk add --no-cache $HELPER_TOOLS >/dev/null 2>&1 || echo 'Track or skip tools missing (no internet?)'; exec python -u /app/benflix-games-helper.py" \
     >/dev/null && sleep 5
   # The first start also installs ffmpeg for the skip times, which can take a minute or two
@@ -488,6 +491,14 @@ install_autosetup() {
   echo "      You won't need to run this command again after updates. What it did: $APP/autosetup.log"
 }
 install_autosetup
+
+say "Tower health (black box, crash check, freeze timer)"
+if [ -f "$APP/benflix-health.sh" ]; then
+  bash "$APP/benflix-health.sh" install
+  echo "      Glowfin > Server > Health shows it. The first readings arrive within a minute."
+else
+  echo "  PROBLEM  Tower health didn't download. Run this command again."
+fi
 
 echo
 echo "All done. Open Benflix > Games on your TV or phone and press a game."

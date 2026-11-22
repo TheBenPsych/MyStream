@@ -350,6 +350,7 @@ private val serverToolEntries: List<ServerToolEntry> =
             ServerToolEntry("Who's watching now", "watching streams stop pause message", ServerSection.NOW),
             ServerToolEntry("Disk space", "disks full storage", ServerSection.LIBRARY),
             ServerToolEntry("People and accounts", "users add person password account", ServerSection.PEOPLE),
+            ServerToolEntry("Tower health", "health crash black box freeze watchdog temperature ups memory diary", ServerSection.HEALTH),
             ServerToolEntry("Scan for new stuff", "scan library refresh new files", ServerSection.TOOLS, ServerToolGroup.LIBRARY),
             ServerToolEntry("Library checkup", "missing episodes low quality checkup", ServerSection.TOOLS, ServerToolGroup.LIBRARY),
             ServerToolEntry("Fix posters", "poster pictures art blurry", ServerSection.TOOLS, ServerToolGroup.LIBRARY),

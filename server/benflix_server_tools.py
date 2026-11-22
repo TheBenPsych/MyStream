@@ -30,6 +30,7 @@ MEDIA = "/media"  # Homelab/Media on the server
 TRACKS_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benflix-fix-tracks.py")
 TRACK_LOGS = "/tracks"  # appdata/benflix-tracks on the server: reports and undo files
 CACHE_SECONDS = 20
+HEALTH = None  # benflix_health.summary, set by the helper: {"level", "headline"} for the Server page's Health dot
 SKIP_MEDIA_FOLDERS = {"downloads", "incomplete", "trailers", "torrents"}
 
 ARRS = {
@@ -1025,6 +1026,11 @@ def tower(fresh=False):
         if not fresh and _cache["data"] is not None and time.time() - _cache["at"] < CACHE_SECONDS:
             return _cache["data"]
     result = {"up_seconds": up_seconds(), "memory": memory_busy(), "gpu": gpu_busy(), "disks": disks()}
+    if HEALTH is not None:
+        try:
+            result["health"] = HEALTH()
+        except Exception:  # noqa: BLE001 - the Health page is extra, never a reason for Overview to fail
+            result["health"] = None
     try:  # Drives with warning signs show on the Server page's first screen
         result["drives_bad"] = [d for d in drives().get("drives", []) if not d["ok"]]
     except ToolError:
