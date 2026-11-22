@@ -95,10 +95,13 @@
   const PUZ = {};
 
   // Scene by scene: 400 / 300 / 200 / 100 points for each scene shown; out of scenes ends the run
+  // Scenes are real frames Tower takes from the movie file itself (benflix_scenes.py), spread across the movie,
+  // so every scene is different. Without them (older Tower) it falls back to chapter and background pictures.
+  const frames = (t) => shuffle([0, 1, 2, 3, 4, 5]).slice(0, 4).map((n) => `api/scenes/${t.id.replace(/-/g, "")}/${n}.jpg?api_key=${encodeURIComponent(B.me.token)}`);
+  const preload = (urls) => urls.forEach((u) => { const i = new Image(); i.src = u; });
   PUZ.SCENES = async (ctx) => {
-    // Two pictures or more when there are enough; many libraries keep only one background per title
-    const all = await titles();
-    let pool = all.filter((t) => t.stills.length >= 2);
+    const [all, real] = await Promise.all([titles(), B.call("GET", "api/scenes/ok").then((r) => !!(r && r.ok)).catch(() => false)]);
+    let pool = real ? all.filter((t) => t.stills.length >= 1) : all.filter((t) => t.stills.length >= 2);
     if (pool.length < 8) pool = all.filter((t) => t.stills.length >= 1);
     if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures on Tower." + tip());
     let deck = shuffle(pool), points = 0, round = 0;
@@ -106,10 +109,15 @@
       if (!deck.length) deck = shuffle(pool);
       const a = deck.shift(); round++;
       // One picture only: show it twice, so a wrong guess still gets a second try
-      const scenes = a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
+      const scenes = real ? frames(a) : a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
+      // A wrong pick that Tower can't take a picture from (no file it can see) falls back to its own pictures
+      const fallback = a.stills.slice();
+      preload(scenes.slice(1));
+      if (real && deck.length) preload([frames(deck[0])[0]]);
       let shown = 0;
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
       const q = screen(ctx, `${head("Scene by scene", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic wide"><img id="bgPic" alt=""></div><div class="bgq-say" id="bgSay">Scene 1 of ${scenes.length}: worth 400</div><div class="bgq-choices" id="bgCh"></div>`);
+      $("#bgPic", q).onerror = (e) => { const f = fallback.shift(); if (f) { e.target.src = f; } };
       const show = () => { $("#bgPic", q).src = scenes[shown]; $("#bgSay", q).textContent = `Scene ${shown + 1} of ${scenes.length}: worth ${[400, 300, 200, 100][shown]}`; };
       show();
       choices($("#bgCh", q), names, (n, b) => {
