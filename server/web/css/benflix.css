@@ -2579,3 +2579,10 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
 .sk-name { flex: 0 0 150px; }
 @media (max-width: 700px) { .sk-p { flex-basis: 110px; } .sk-wall { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; } .sk-name { flex-basis: 96px; } .sk-title { padding-top: 30vh; } }
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; opacity: 1; } }
+
+/* Ben 2026-11-22: on an upright phone the wide picture was stretched over the tall page, so only a zoomed-in slice showed.
+   Now the whole picture sits across the top and its bottom melts into the page. */
+@media (max-width: 900px) and (orientation: portrait) {
+  #doorTop .art { inset: 0 0 auto 0; height: 56.25vw; background-size: 100% auto; background-position: center top; }
+  #doorTop .art::after { background: linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 50%, rgba(var(--trayrgb),.7) 82%, var(--tray) 100%); }
+}
