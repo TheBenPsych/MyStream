@@ -1154,4 +1154,5 @@
     <string name="benflix_banner_previous">Previous</string>
     <string name="benflix_banner_next">Next</string>
     <string name="search_failed">Couldn\'t search right now. Check your connection and try again.</string>
+    <string name="glowfin_phone_alerts">Phone notifications</string>
 </resources>

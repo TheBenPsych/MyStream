@@ -63,6 +63,7 @@ class RequestReadyService
         private val seerrService: SeerrService,
         private val serverRepository: ServerRepository,
         private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
+        private val libraryTmdb: com.github.damontecres.wholphin.services.BenflixLibraryTmdb,
     ) {
         /** One arrived request, newest first */
         data class Ready(
@@ -206,6 +207,29 @@ class RequestReadyService
                         )
                     }
                 hereIds = here.mapNotNull { it.id }
+                // Glowfin phone notifications: what you're still waiting for (and isn't on Glowfin at all yet),
+                // so the phone can tell you when it lands even while Glowfin is closed
+                val library = libraryTmdb.keys()
+                com.github.damontecres.wholphin.services.PhoneAlerts.saveWaiting(
+                    context,
+                    serverRepository.currentUser?.id,
+                    mine
+                        .filter { r ->
+                            r.id !in hereIds &&
+                                RequestStatus.from(r.status).let { it == RequestStatus.PENDING || it == RequestStatus.APPROVED }
+                        }.mapNotNull { r ->
+                            val tmdb = r.media?.tmdbId ?: return@mapNotNull null
+                            val kind =
+                                if (SeerrItemType.fromString(r.type) ==
+                                    SeerrItemType.MOVIE
+                                ) {
+                                    SeerrItemType.MOVIE
+                                } else {
+                                    SeerrItemType.TV
+                                }
+                            "${kind.name}-$tmdb"
+                        }.filter { it !in library },
+                )
                 // Benflix Home: your own requests that aren't here yet (newest first), with how far along they are
                 val hereSet = hereIds.toSet()
                 _onTheWay.value =

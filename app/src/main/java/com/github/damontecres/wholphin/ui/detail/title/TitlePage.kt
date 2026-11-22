@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -107,6 +108,8 @@ class TitleButton(
     val note: String? = null,
     /** Pressing it opens this tab instead (like Episodes on a show) */
     val opensTab: String? = null,
+    /** Resume: how far you are, 0 to 1. A thin line inside the button's bottom edge (the button keeps its size). */
+    val progress: Float? = null,
 )
 
 /** One tab: [content] is only drawn (and so only fetched) once you land on it */
@@ -319,7 +322,7 @@ private fun TitlePageBody(
                 TitleButton(b.label, b.icon, {
                     picked = to
                     jump++
-                }, b.off, b.note)
+                }, b.off, b.note, progress = b.progress)
             }
         }
     if (rememberTitleWide()) {
@@ -945,6 +948,44 @@ internal fun TitleButtonView(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Phones (Ben's pick): the full-width Resume also says the time left inside it. TVs keep it on the line
+            // under the buttons, so the other buttons never move.
+            val inside = button.note
+            if (fill && button.progress != null && inside != null) {
+                Text(
+                    text = inside,
+                    color = content.copy(alpha = .7f),
+                    fontSize = if (big) BenflixType.lead else BenflixType.body,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        // Resume: how far you are, drawn over the bottom edge inside the button (no extra height or width)
+        val progress = button.progress
+        if (progress != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .padding(start = 14.dp, end = 14.dp, bottom = 6.dp),
+            ) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(content.copy(alpha = .18f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(progress.coerceIn(.02f, 1f))
+                            .fillMaxHeight()
+                            .background(content),
+                    )
+                }
+            }
         }
     }
 }

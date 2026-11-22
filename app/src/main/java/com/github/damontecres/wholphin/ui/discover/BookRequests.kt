@@ -491,7 +491,7 @@ private fun BookLine(
 
 /** The Books wall: covers 7 across on TV (3 on phones), names under every cover, the Top 10 numbered */
 @Composable
-private fun BookWall(
+internal fun BookWall(
     list: BookList,
     books: List<BookCard>,
     onOpen: (BookCard) -> Unit,

@@ -189,7 +189,7 @@
     const score = m.averageScore || m.meanScore;
     if (score && !B.me.kids) {
       const s = $(".details .scores");
-      const html = `<span><b>${score}%</b>AniList</span>${m.idMal ? `<a href="https://myanimelist.net/anime/${m.idMal}" target="_blank" rel="noopener" class="dim" style="align-self:center">MyAnimeList ↗</a>` : ""}`;
+      const html = `<span data-s="al"><b>${score}%</b>AniList</span>${m.idMal ? `<a href="https://myanimelist.net/anime/${m.idMal}" target="_blank" rel="noopener" class="dim" style="align-self:center">MyAnimeList ↗</a>` : ""}`;
       if (s) s.insertAdjacentHTML("beforeend", html);
       else { const meta = $(".details .meta"); if (meta) meta.insertAdjacentHTML("afterend", `<div class="scores">${html}</div>`); }
     }
@@ -221,11 +221,31 @@
   };
 
   // Everything below a movie's or show's page, once its own rows are in
+  // ---------- Metacritic (Idea Box 27) ----------
+  // From OMDb, with the key Ben saved once in the app's Settings (no key = no box). Joins the scores line.
+  X.metacritic = async (it, nav) => {
+    if (B.me.kids) return;
+    const imdb = idOf(it, "Imdb");
+    if (!imdb || !/^tt\d+$/.test(imdb)) return;
+    const score = await B.cached("omdb-meta-" + imdb, 7 * 86400000, async () => {
+      const key = await B.cached("omdb-key", 3600000, async () => (((await B.prefs().catch(() => null)) || {}).CustomPrefs || {})["benflix.omdb.key"] || "");
+      if (!key) return "";
+      const r = await fetch(`https://www.omdbapi.com/?i=${imdb}&apikey=${encodeURIComponent(key.trim())}`).then((x) => x.json()).catch(() => null);
+      const m = r && r.Metascore;
+      return m && /^\d+$/.test(m) ? m : "";
+    }).catch(() => "");
+    if (!score || !B.alive(nav)) return;
+    const html = `<span data-s="mc"><b>${esc(score)}</b>Metacritic</span>`;
+    const line = $(".tp-scores") || $(".details .scores") || $(".tp-strip");
+    if (line && !line.querySelector('[data-s="mc"]')) line.insertAdjacentHTML("beforeend", html);
+  };
+
   // Each part goes into its own tab on the title page (panes: more, chars)
   X.movie = (it, nav, panes) => {
     const p = panes || {};
     const box = p.more || $("#below");
     X.collection(it, nav, box).catch(() => {});
+    X.metacritic(it, nav).catch(() => {});
     X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
   };
@@ -233,6 +253,7 @@
     const p = panes || {};
     const box = p.more || $("#below2");
     X.nextSeason(it, nav).catch(() => {});
+    X.metacritic(it, nav).catch(() => {});
     X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
   };

@@ -1459,7 +1459,7 @@ fun BenflixRequestsPage(
         Column(modifier = Modifier.fillMaxSize()) {
             // Up from the line goes back to the tabs (Ben 2026-11-17: it used to get stuck there)
             RequestsTopLine(
-                showSearch = isTv && index < 5,
+                showSearch = isTv && index < tabs.lastIndex,
                 canFor = canFor,
                 waitingCount = if (admin) waitingCount else null,
                 onWaiting = { tabViewModel.updateSelectedTabIndex(tabs.lastIndex) },
@@ -1519,14 +1519,16 @@ private fun RequestTab(
 
             4 -> BooksShelf()
 
+            5 -> MangaShelf()
+
             // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
             else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
         }
     }
 }
 
-/** Requests tabs, in the order Ben kept (Movies, Shows, Anime, Music, Books), then Your requests */
-private val REQUEST_TABS = listOf("Movies", "Shows", "Anime", "Music", "Books", "Your requests")
+/** Requests tabs, in the order Ben kept (Movies, Shows, Anime, Music, Books), Manga (2026-11-22), then Your requests */
+private val REQUEST_TABS = listOf("Movies", "Shows", "Anime", "Music", "Books", "Manga", "Your requests")
 
 /** The Requests tab each person used last, on this device */
 internal object RequestsLastTab {

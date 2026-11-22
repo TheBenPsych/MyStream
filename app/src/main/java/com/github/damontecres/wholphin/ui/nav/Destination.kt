@@ -208,6 +208,13 @@ sealed class Destination(
         val audioOnly: Boolean = false,
     ) : Destination(false)
 
+    /** Requests > Manga: one manga's page from AniList (Ask for it, its story, More like this) */
+    @Serializable
+    data class MangaAbout(
+        val id: Int,
+        val name: String,
+    ) : Destination(false)
+
     /** Requests > Books: one genre's page (an empty [slug] is "All genres") */
     @Serializable
     data class BookGenre(

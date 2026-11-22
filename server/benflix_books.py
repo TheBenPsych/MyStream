@@ -247,6 +247,7 @@ def _loop():
                 last_meta = time.time()
             if now - last_ll > 300:
                 check_requests()
+                manga_check()
                 last_ll = time.time()
             if now - last_tidy > 86400:
                 last_tidy = time.time()
@@ -3282,6 +3283,312 @@ def tidy_page_copies(days=30):
         log(f"Tidied {gone} shrunk manga pages nobody opened for {days} days")
 
 
+# ---------- Manga in Requests (Ben 2026-11-22, Idea Box 26 "manga") ----------
+# Popular manga, genres and a page for each one from AniList, like the Anime tab. Asking goes to Ben (or straight
+# through for Ben); a yes is written into Manga/.harbor/asks.json, and Harbor gets it from the manga sites by itself
+# and writes what happened into Manga/.harbor/asks-done.json. Never on Kids profiles.
+
+MANGA_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Mystery", "Psychological", "Romance",
+                "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller", "Mecha", "Music"]
+_MR_FIELDS = """id title { romaji english native } synonyms description(asHtml: false) genres averageScore popularity
+  volumes chapters status startDate { year } format countryOfOrigin isAdult coverImage { extraLarge large } bannerImage
+  staff(perPage: 3) { edges { role node { name { full } } } }"""
+_MR_LIST = ("query ($page: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $q: String) { Page(page: $page, perPage: 24) { "
+            "media(type: MANGA, isAdult: false, format_not: NOVEL, sort: $sort, genre: $genre, status: $status, search: $q) { " + _MR_FIELDS + " } } }")
+_MR_ONE = "query ($id: Int) { Media(id: $id, type: MANGA) { " + _MR_FIELDS + " recommendations(perPage: 12, sort: RATING_DESC) { nodes { mediaRecommendation { " + _MR_FIELDS + " } } } } }"
+_mr_cache = {}
+
+
+def _anilist(query, variables, ttl=6 * 3600):
+    key = query[:40] + json.dumps(variables, sort_keys=True)
+    hit = _mr_cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    body = json.dumps({"query": query, "variables": variables}).encode()
+    j = _json("https://graphql.anilist.co", data=body, headers={"Content-Type": "application/json", "Accept": "application/json"})
+    data = (j or {}).get("data") or {}
+    if len(_mr_cache) > 400:
+        _mr_cache.clear()
+    _mr_cache[key] = (time.time(), data)
+    return data
+
+
+def _manga_here():
+    """What's on Glowfin's Manga shelf: AniList numbers and plain names"""
+    ids, names = set(), {}
+    for t in _lib["titles"].values():
+        if t["kind"] not in ("manga", "comic"):
+            continue
+        names[norm(t["name"])] = t["id"]
+        al = t.get("anilist") or (_meta.get(meta_key(t)) or {}).get("anilist")
+        if al:
+            ids.add(int(al))
+            names[f"#{al}"] = t["id"]
+    return ids, names
+
+
+def _manga_names(m):
+    ti = m.get("title") or {}
+    out = []
+    for n in [ti.get("english"), ti.get("romaji")] + list(m.get("synonyms") or [])[:4]:
+        if n and n not in out and all(ord(ch) < 0x3000 for ch in n):
+            out.append(n)
+    return out or [ti.get("native") or "Manga"]
+
+
+def _manga_card(m, here=None, asks=None):
+    here = here or _manga_here()
+    names = _manga_names(m)
+    shelf = here[1].get(f"#{m['id']}") or next((here[1].get(norm(n)) for n in names if here[1].get(norm(n))), None)
+    a = (asks or {}).get(m["id"])
+    return {
+        "id": m["id"],
+        "name": names[0],
+        "cover": (m.get("coverImage") or {}).get("extraLarge") or (m.get("coverImage") or {}).get("large"),
+        "year": (m.get("startDate") or {}).get("year"),
+        "score": round(m["averageScore"] / 10, 1) if m.get("averageScore") else None,
+        "genres": (m.get("genres") or [])[:3],
+        "chapters": m.get("chapters"),
+        "volumes": m.get("volumes"),
+        "status": ANILIST_STATUS.get(m.get("status") or "", ""),
+        "from": {"JP": "Japan", "KR": "Korea", "CN": "China", "TW": "Taiwan"}.get(m.get("countryOfOrigin") or "", ""),
+        "here": shelf,
+        "asked": _manga_ask_words(a) if a and not shelf else None,
+    }
+
+
+def _asks_by_id():
+    return {a["anilist"]: a for a in _state.setdefault("manga_asks", []) if a["state"] not in ("no",)}
+
+
+def _manga_list(variables):
+    here, asks = _manga_here(), _asks_by_id()
+    media = (_anilist(_MR_LIST, variables).get("Page") or {}).get("media") or []
+    return [_manga_card(m, here, asks) for m in media if not m.get("isAdult")]
+
+
+def manga_discover():
+    rows = [
+        ("Popular right now", {"sort": ["TRENDING_DESC"], "page": 1}),
+        ("Most loved of all time", {"sort": ["POPULARITY_DESC"], "page": 1}),
+        ("Top rated", {"sort": ["SCORE_DESC"], "page": 1}),
+        ("Still coming out", {"sort": ["POPULARITY_DESC"], "status": "RELEASING", "page": 1}),
+        ("Finished, read it all", {"sort": ["POPULARITY_DESC"], "status": "FINISHED", "page": 1}),
+    ]
+    return {"rows": [{"name": n, "items": _manga_list(v)} for n, v in rows], "genres": MANGA_GENRES}
+
+
+def manga_genre(genre, page=1):
+    if genre not in MANGA_GENRES:
+        raise BooksError(404, "No such genre.")
+    return {"name": genre, "items": _manga_list({"sort": ["POPULARITY_DESC"], "genre": genre, "page": max(1, min(page, 20))})}
+
+
+def manga_search(q):
+    q = (q or "").strip()[:80]
+    if len(q) < 2:
+        return {"items": []}
+    return {"items": _manga_list({"sort": ["SEARCH_MATCH"], "q": q, "page": 1})}
+
+
+def manga_title(aid, is_admin):
+    m = _anilist(_MR_ONE, {"id": int(aid)}).get("Media")
+    if not m or m.get("isAdult"):
+        raise BooksError(404, "That manga isn't on AniList.")
+    here, asks = _manga_here(), _asks_by_id()
+    out = _manga_card(m, here, asks)
+    author = ""
+    for e in ((m.get("staff") or {}).get("edges") or []):
+        if "story" in (e.get("role") or "").lower() or not author:
+            author = ((e.get("node") or {}).get("name") or {}).get("full") or author
+    a = asks.get(m["id"])
+    out.update({
+        "author": author,
+        "story": clean_html(m.get("description")),
+        "banner": m.get("bannerImage"),
+        "names": _manga_names(m),
+        "askState": a["state"] if a and not out["here"] else None,
+        "askId": a["id"] if a else None,
+        "more": [_manga_card(r["mediaRecommendation"], here, asks) for r in ((m.get("recommendations") or {}).get("nodes") or [])
+                 if r.get("mediaRecommendation") and not r["mediaRecommendation"].get("isAdult")][:12],
+    })
+    return out
+
+
+def _manga_ask_words(a):
+    return {
+        "waiting": "Asked · waiting for Ben",
+        "sent": "Getting it",
+        "getting": "Getting it",
+        "ready": "On Glowfin",
+        "cant": "Couldn't find it on the manga sites",
+        "no": "Ben said no",
+    }.get(a["state"], "Getting it")
+
+
+def _manga_ask_view(a, is_admin):
+    out = {k: a.get(k) for k in ("id", "anilist", "name", "cover", "state", "who", "at", "title", "note")}
+    out["words"] = _manga_ask_words(a)
+    out["canRetry"] = is_admin and a["state"] == "cant"
+    return out
+
+
+def _write_harbor_asks():
+    """The asks Harbor should get, in the file Harbor reads (Manga/.harbor/asks.json)"""
+    dirs = section_dirs("manga")
+    if not dirs:
+        return
+    path = os.path.join(dirs[0], ".harbor", "asks.json")
+    with _lock:
+        sent = [{"id": a["id"] + (f"-{a['tries']}" if a.get("tries") else ""), "anilist": a["anilist"], "title": a["name"], "titles": a.get("names") or [],
+                 "asked": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(a["at"]))}
+                for a in _state.setdefault("manga_asks", []) if a["state"] in ("sent", "getting", "cant", "ready")]
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(sent, f, ensure_ascii=False, indent=1)
+        os.replace(path + ".tmp", path)
+    except OSError as e:
+        log(f"Couldn't write Harbor's manga asks: {e}")
+
+
+def manga_ask(user_id, user_name, is_admin, body):
+    aid = int(body.get("id") or 0)
+    if not aid:
+        raise BooksError(400, "Which manga?")
+    m = _anilist(_MR_ONE, {"id": aid}).get("Media")
+    if not m or m.get("isAdult"):
+        raise BooksError(404, "That manga isn't on AniList.")
+    with _lock:
+        for a in _state.setdefault("manga_asks", []):
+            if a["anilist"] == aid and a["state"] not in ("no", "cant"):
+                return {"ask": _manga_ask_view(a, is_admin), "words": "Already asked for."}
+        a = {
+            "id": uuid.uuid4().hex[:10],
+            "anilist": aid,
+            "name": _manga_names(m)[0],
+            "names": _manga_names(m),
+            "cover": (m.get("coverImage") or {}).get("large"),
+            "user": user_id,
+            "who": user_name,
+            "at": int(time.time()),
+            "state": "sent" if is_admin else "waiting",
+        }
+        _state["manga_asks"].insert(0, a)
+        del _state["manga_asks"][200:]
+    _save_state()
+    if a["state"] == "sent":
+        _write_harbor_asks()
+    return {"ask": _manga_ask_view(a, is_admin), "words": "Harbor is getting it. It shows in Books > Manga as chapters arrive." if is_admin else "Asked Ben."}
+
+
+def manga_answer(body):
+    with _lock:
+        a = next((x for x in _state.setdefault("manga_asks", []) if x["id"] == str(body.get("id") or "")), None)
+        if not a:
+            raise BooksError(404, "That request is gone.")
+        a["state"] = "sent" if body.get("yes") else "no"
+        a["at"] = int(time.time())
+    _save_state()
+    _write_harbor_asks()
+    return {"ok": True}
+
+
+def manga_retry(aid):
+    with _lock:
+        a = next((x for x in _state.setdefault("manga_asks", []) if x["id"] == aid), None)
+        if not a:
+            raise BooksError(404, "That request is gone.")
+        a["state"], a["tries"], a["at"] = "sent", (a.get("tries") or 0) + 1, int(time.time())
+        a.pop("note", None)
+    _save_state()
+    _write_harbor_asks()
+    return {"ok": True}
+
+
+def manga_forget(aid, user_id, is_admin):
+    with _lock:
+        a = next((x for x in _state.setdefault("manga_asks", []) if x["id"] == aid), None)
+        if a and (is_admin or a.get("user") == user_id):
+            _state["manga_asks"].remove(a)
+    _save_state()
+    _write_harbor_asks()
+    return {"ok": True}
+
+
+def manga_check():
+    """Every few minutes: what Harbor did (asks-done.json), and which asks are on the Manga shelf now"""
+    asks = _state.setdefault("manga_asks", [])
+    if not any(a["state"] in ("sent", "getting") for a in asks):
+        return
+    done = {}
+    for d in section_dirs("manga")[:1]:
+        try:
+            with open(os.path.join(d, ".harbor", "asks-done.json"), encoding="utf-8") as f:
+                done = {x.get("id"): x for x in json.load(f) or []}
+        except (OSError, ValueError):
+            done = {}
+    here = _manga_here()
+    changed = False
+    with _lock:
+        for a in asks:
+            if a["state"] not in ("sent", "getting"):
+                continue
+            shelf = here[1].get(f"#{a['anilist']}") or next((here[1].get(norm(n)) for n in a.get("names") or [a["name"]] if here[1].get(norm(n))), None)
+            d = done.get(a["id"] + (f"-{a['tries']}" if a.get("tries") else "")) or {}
+            if not shelf and d.get("shelf"):
+                shelf = here[1].get(norm(d["shelf"]))
+            if shelf:
+                a.update(state="ready", title=shelf, readyAt=int(time.time()))
+                changed = True
+            elif d.get("state") == "got" and a["state"] != "getting":
+                a["state"] = "getting"
+                changed = True
+            elif d.get("state") == "notfound" or (d.get("state") == "trouble" and (d.get("tries") or 0) >= 3):
+                a.update(state="cant", note=d.get("note") or "")
+                changed = True
+    if changed:
+        _save_state()
+
+
+def manga_requests_view(user_id, is_admin):
+    asks = _state.setdefault("manga_asks", [])
+    out = {"mine": [_manga_ask_view(a, is_admin) for a in asks if a.get("user") == user_id and a["state"] != "no"][:60]}
+    if is_admin:
+        out["waiting"] = [_manga_ask_view(a, True) for a in asks if a["state"] == "waiting"]
+        out["others"] = [_manga_ask_view(a, True) for a in asks if a.get("user") != user_id and a["state"] not in ("waiting", "no")][:60]
+    return out
+
+
+def _manga_route(method, path, q, user_id, is_admin, is_kids, read_json, user_name):
+    if is_kids:
+        raise BooksError(404, "That isn't on Glowfin.")
+    if method == "GET" and path == "/api/books/manga/discover":
+        return manga_discover()
+    if method == "GET" and path == "/api/books/manga/genre":
+        return manga_genre(q("g"), int(q("page") or 1))
+    if method == "GET" and path == "/api/books/manga/search":
+        return manga_search(q("q"))
+    m = re.fullmatch(r"/api/books/manga/title/(\d+)", path)
+    if method == "GET" and m:
+        return manga_title(m.group(1), is_admin)
+    if method == "GET" and path == "/api/books/manga/requests":
+        return manga_requests_view(user_id, is_admin)
+    if method == "POST" and path == "/api/books/manga/ask":
+        return manga_ask(user_id, user_name, is_admin, read_json())
+    if method == "POST" and path == "/api/books/manga/answer":
+        if not is_admin:
+            raise BooksError(403, "Only Ben can say yes or no.")
+        return manga_answer(read_json())
+    m = re.fullmatch(r"/api/books/manga/requests/(\w+)/retry", path)
+    if method == "POST" and m and is_admin:
+        return manga_retry(m.group(1))
+    m = re.fullmatch(r"/api/books/manga/requests/(\w+)", path)
+    if method == "DELETE" and m:
+        return manga_forget(m.group(1), user_id, is_admin)
+    return None
+
+
 def _kids_blocked(path):
     """Ben 2026-11-21: no manga on Kids profiles at all, so a Kids profile can't open manga by its link either"""
     m = re.match(r"/api/books/(?:title|next|cover|vol|file|place|opened|marks|send)/(\w+)", path)
@@ -3315,6 +3622,10 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
     try:
         if is_kids and _kids_blocked(path):
             return 404, {"error": "That isn't on Glowfin."}
+        if path.startswith("/api/books/manga/"):
+            answer = _manga_route(method, path, q, user_id, is_admin, is_kids, read_json, user_name)
+            if answer is not None:
+                return 200, answer
         if method == "GET" and path == "/api/books/home":
             return 200, home(user_id, is_kids)
         if method == "GET" and path == "/api/books/library":

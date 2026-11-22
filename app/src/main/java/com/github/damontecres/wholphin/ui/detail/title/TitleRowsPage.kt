@@ -42,11 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
@@ -387,24 +384,10 @@ private suspend fun LazyListState.backToTop() {
     if (firstVisibleItemIndex != 0 || firstVisibleItemScrollOffset != 0) animateScrollToItem(0)
 }
 
-/** "IMDb 7.8   Rotten Tomatoes 91%": quiet label, bright number */
+/** "[7.8] IMDb   [91%] Rotten Tomatoes": each number in its site's coloured box (ScoreBadges) */
 @Composable
 private fun ScoreLine(scores: List<StripPart>) {
-    if (scores.isEmpty()) return
-    val text =
-        remember(scores) {
-            buildAnnotatedString {
-                scores.forEachIndexed { i, p ->
-                    if (i > 0) append("   ")
-                    withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(p.label) }
-                    if (p.value != null) {
-                        append(" ")
-                        withStyle(SpanStyle(color = BenflixColors.Text, fontWeight = FontWeight.ExtraBold)) { append(p.value) }
-                    }
-                }
-            }
-        }
-    Text(text = text, fontSize = BenflixType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    ScoreBadges(scores)
 }
 
 /** A row's name in the title font, with an optional quiet note beside it */

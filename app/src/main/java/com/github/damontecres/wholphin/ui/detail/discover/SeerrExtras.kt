@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.services.MalScores
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.detail.title.ScoreBox
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -76,6 +77,8 @@ data class SeerrExtras(
     val imdb: Double? = null,
     val rtCritics: Int? = null,
     val rtAudience: Int? = null,
+    /** Glowfin: Metacritic, from OMDb */
+    val metacritic: Int? = null,
     val tags: List<String> = emptyList(),
     // Benflix: porn, hentai, softcore or erotica (see isAdultContent)
     val adult: Boolean = false,
@@ -227,6 +230,7 @@ class SeerrExtrasViewModel
                             extras.copy(
                                 imdb = if (extras.anime) extras.imdb else extras.imdb ?: omdb.imdb,
                                 rtCritics = if (extras.anime) extras.rtCritics else extras.rtCritics ?: omdb.rtCritics,
+                                metacritic = if (extras.anime) null else omdb.metacritic,
                                 details =
                                     if (omdb.awards != null &&
                                         details != null
@@ -503,6 +507,7 @@ fun SeerrExtrasBlock(
                 (e.rtCritics ?: fallbackCritic)?.let {
                     add(Score("$it%", "Critics", if (it >= 60) FRESH_RED else ROTTEN_GREEN))
                 }
+                e.metacritic?.let { add(Score("$it", "Metacritic", Color.White)) }
             }
             val audience = e.rtAudience ?: fallbackAudience
             when {
@@ -647,15 +652,9 @@ private fun InfoStrip(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         scores.forEach { score ->
-            Column {
-                Text(
-                    text = score.value,
-                    color = score.color,
-                    fontSize = BenflixType.rowName,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                // Glowfin (Idea Box 27): the number in its site's coloured box
+                ScoreBox(value = score.value, label = score.label, fontSize = BenflixType.rowName, plainColor = score.color)
                 Text(
                     text = score.label,
                     color = Color(0xFFC9CCD4),
@@ -715,11 +714,11 @@ private fun ScoresCard(
         Row(horizontalArrangement = Arrangement.spacedBy(if (big) 24.dp else 0.dp, Alignment.Start)) {
             scores.forEach { score ->
                 Column(modifier = if (big) Modifier else Modifier.weight(1f)) {
-                    Text(
-                        text = score.value,
-                        color = score.color,
+                    ScoreBox(
+                        value = score.value,
+                        label = score.label,
                         fontSize = if (big) BenflixType.pageTitle else BenflixType.rowName,
-                        fontWeight = FontWeight.Bold,
+                        plainColor = score.color,
                     )
                     Text(text = score.label, color = Color(0xFFC9CCD4), fontSize = BenflixType.small)
                 }

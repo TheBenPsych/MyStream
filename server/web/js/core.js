@@ -1010,10 +1010,16 @@ B.pageTabs = (hash) => {
   const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l === "Recently watched" ? "Recent" : l);
   return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
 };
+// Glowfin (Idea Box 27, Ben 2026-11-22): every score's number sits in a box in its site's own colour
+// (IMDb yellow, Rotten Tomatoes red, Metacritic green, AniList light blue, MyAnimeList dark blue, user scores grey)
+B.scoreKey = (label) => {
+  const l = String(label || "").toLowerCase();
+  return l === "imdb" ? "imdb" : /rotten|critics/.test(l) ? "rt" : /metacritic/.test(l) ? "mc" : l === "anilist" ? "al" : /^mal$|myanimelist/.test(l) ? "mal" : /tmdb|users|audience|goodreads|open library/.test(l) ? "user" : "";
+};
 B.scores = (it) => {
   const out = [];
-  if (it.CommunityRating) out.push(`<span><b>${(+it.CommunityRating).toFixed(1)}</b>IMDb</span>`);
-  if (it.CriticRating) out.push(`<span><b>${Math.round(it.CriticRating)}%</b>Rotten Tomatoes</span>`);
+  if (it.CommunityRating) out.push(`<span data-s="imdb"><b>${(+it.CommunityRating).toFixed(1)}</b>IMDb</span>`);
+  if (it.CriticRating) out.push(`<span data-s="rt"><b>${Math.round(it.CriticRating)}%</b>Rotten Tomatoes</span>`);
   if (B.me && B.me.kids) return "";
   return out.length ? `<div class="scores">${out.join("")}</div>` : "";
 };

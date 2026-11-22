@@ -537,6 +537,8 @@ class SeriesViewModel
                                 listOf(
                                     ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
                                     ItemFields.CAN_DELETE,
+                                    // Season buttons show how much of each season you've watched
+                                    ItemFields.CHILD_COUNT,
                                 )
                             } else {
                                 listOf(

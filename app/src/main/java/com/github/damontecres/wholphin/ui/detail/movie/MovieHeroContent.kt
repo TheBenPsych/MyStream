@@ -116,6 +116,7 @@ fun MovieHeroContent(
                     icon = BenflixIcon.PLAY,
                     onClick = { actions.play(if (canResume) resume else Duration.ZERO) },
                     note = left?.let { "${lengthText(it)} left" },
+                    progress = if (canResume) dto.userData?.playedPercentage?.let { (it / 100.0).toFloat() } else null,
                 ),
             )
             // Glowfin Kids (K1): just Play, big and round. No trailer, My List, rating or More.

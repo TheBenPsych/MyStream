@@ -48,7 +48,9 @@ fun rememberScoreParts(item: BaseItem): List<StripPart> {
     val mal by MalFacts.scores.collectAsState()
     val facts = aniList[item.id]
     val malScore = facts?.malId?.let { mal[it] }
-    return remember(item, facts, malScore) {
+    // Glowfin (Idea Box 27): Metacritic joins IMDb and Rotten Tomatoes (not for anime)
+    val metacritic = if (facts == null) rememberMetacritic(item) else null
+    return remember(item, facts, malScore, metacritic) {
         buildList {
             if (facts != null) {
                 facts.scoreText?.let { add(StripPart("AniList", it)) }
@@ -61,6 +63,7 @@ fun rememberScoreParts(item: BaseItem): List<StripPart> {
                 item.data.criticRating
                     ?.takeIf { it > 0f }
                     ?.let { add(StripPart("Rotten Tomatoes", "${it.toInt()}%")) }
+                metacritic?.let { add(StripPart("Metacritic", "$it")) }
             }
         }
     }

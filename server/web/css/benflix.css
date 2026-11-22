@@ -341,6 +341,11 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .seasons { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 var(--gutter); margin-bottom: 12px; }
 /* Benflix: a long season name wraps inside its chip instead of running off a phone screen */
 .seasons .chip { max-width: 100%; white-space: normal; text-align: left; }
+.seasons .chip { position: relative; }
+.seasons .chip .seen { position: absolute; left: 12px; right: 12px; bottom: 3px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; pointer-events: none; }
+.seasons .chip .seen i { display: block; height: 100%; background: var(--accent, var(--ink)); border-radius: 2px; }
+.seasons .chip.on .seen { background: rgba(0,0,0,.18); }
+.seasons .chip.on .seen i { background: currentColor; }
 
 /* ---------- grid page ---------- */
 .gridbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 6px var(--gutter) 10px; position: sticky; top: var(--bar); z-index: 20; background: var(--tray); }
@@ -1039,6 +1044,11 @@ body.reading .mbar { display: none; }
 .tp .btns { grid-row: 4; align-self: start; margin: 0; flex-wrap: nowrap; }
 .tp .btns .btn.big { padding: 12px 22px; font-size: 16px; }
 .tp .btns .btn.off { opacity: .45; cursor: default; }
+.tp .btns .btn { position: relative; }
+.tp .btns .tp-left { display: none; font-weight: 500; opacity: .7; margin-left: 4px; }
+@media (max-width: 700px) { .tp .btns .tp-left { display: inline; } }
+.tp .btns .tp-prog { position: absolute; left: 14px; right: 14px; bottom: 6px; height: 3px; border-radius: 3px; background: rgba(0,0,0,.18); overflow: hidden; }
+.tp .btns .tp-prog i { display: block; height: 100%; background: currentColor; border-radius: 3px; }
 .tp .btns [hidden] { display: none !important; }
 /* Glowfin for Kids (K1): Play is big and round */
 html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-size: 20px; }
@@ -2586,3 +2596,15 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
   #doorTop .art { inset: 0 0 auto 0; height: 56.25vw; background-size: 100% auto; background-position: center top; }
   #doorTop .art::after { background: linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 50%, rgba(var(--trayrgb),.7) 82%, var(--tray) 100%); }
 }
+
+/* Glowfin (Idea Box 27): score numbers in their site's colour */
+.scores span[data-s] b, .tp-scores span[data-s] b, .tp-strip span[data-s] b { display: inline-block; border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-weight: 800; line-height: 1.35; }
+span[data-s="imdb"] b { background: #F5C518 !important; color: #111 !important; }
+span[data-s="rt"] b { background: #FA320A !important; color: #fff !important; }
+span[data-s="mc"] b { background: #66CC33 !important; color: #0b0c14 !important; }
+span[data-s="al"] b { background: #3DB4F2 !important; color: #0b0c14 !important; }
+span[data-s="mal"] b { background: #2E51A2 !important; color: #fff !important; border: 1px solid #6F8BD6; }
+span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; }
+.scores span[data-s], .tp-scores span[data-s], .tp-strip span[data-s] { white-space: nowrap; }
+.tp-scores { flex-wrap: wrap; row-gap: 6px; }
+@media (max-width: 480px) { .tp-scores { gap: 10px !important; } .tp-scores span[data-s] { font-size: 13px !important; } .tp-scores span[data-s] b { padding: 1px 5px; margin-right: 4px; } }
