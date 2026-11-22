@@ -191,6 +191,10 @@ class PlayerFactory
                             .setMediaSourceFactory(mediaSourceFactory)
                             .setRenderersFactory(renderersFactory)
                             .setTrackSelector(trackSelector)
+                            // Glowfin: slow TVs get longer to let go of the video decoder before the next
+                            // video asks for it (the player's own wait is half a second, then it moves on
+                            // regardless, and an older TCL's decoder stopped answering altogether)
+                            .setReleaseTimeoutMs(DECODER_LET_GO_MS)
                             .build()
                             .apply {
                                 assHandler?.init(this)
@@ -319,6 +323,9 @@ val Player.isReleased: Boolean
             else -> throw IllegalStateException("Unknown Player type: ${this::class.qualifiedName}")
         }
     }
+
+/** How long a video player may take to let go of the TV's decoder when it closes */
+private const val DECODER_LET_GO_MS = 2_000L
 
 data class PlayerCreation(
     val player: Player,
