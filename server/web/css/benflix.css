@@ -915,11 +915,6 @@ body.reading .mbar { display: none; }
 .details .main .anitags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .details .main .anitags span { border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; font-size: 13px; color: var(--ink2); }
 .details .nextask { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 16px; padding: 12px 16px; border-radius: var(--r); background: var(--pg2); border: 1px solid var(--line); width: fit-content; max-width: 100%; font-weight: 600; }
-.parents { display: grid; gap: 8px; max-width: 520px; }
-.parents div { display: grid; grid-template-columns: 170px auto 1fr; align-items: center; gap: 12px; font-size: 15px; }
-.parents i { display: inline-flex; gap: 4px; }
-.parents i b { width: 8px; height: 8px; border-radius: 50%; }
-.parents small { margin-top: 2px; }
 .roulette .rl-card { display: grid; justify-items: center; gap: 8px; padding: 18px; border-radius: var(--r2); background: var(--pg2); border: 1px solid var(--line); text-align: center; }
 .roulette .rl-card .pic { width: 180px; height: 240px; border-radius: 10px; background: var(--pg3) center/cover no-repeat; }
 .roulette .rl-card b { font-size: 20px; }
@@ -1062,7 +1057,7 @@ html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-siz
 .tp .tp-strip span b { font-size: 16px; }
 .tp .tp-strip span.lf b { margin: 0 0 0 4px; }
 .tp .tp-pane .rowx { margin-top: 0; }
-.tp .tp-pane .parents, .tp .tp-pane .facts { max-width: 760px; }
+.tp .tp-pane .facts { max-width: 760px; }
 /* Overview: the whole story + strip on the left, Details on the right (stacked on narrow windows) */
 .tp .tp-pane > .tp-ov { display: grid; grid-template-columns: minmax(0, 760px) minmax(0, 520px); gap: 24px 56px; align-items: start; margin: 0 var(--gutter); }
 .tp .tp-ov .ov { max-width: none; display: block; -webkit-line-clamp: unset; overflow: visible; line-height: 1.6; }

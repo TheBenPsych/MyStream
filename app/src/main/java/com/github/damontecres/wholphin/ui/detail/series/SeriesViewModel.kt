@@ -27,8 +27,6 @@ import com.github.damontecres.wholphin.services.FillerService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.NextEpisode
-import com.github.damontecres.wholphin.services.ParentsGuide
-import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.services.PeopleFavorites
 import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
@@ -120,7 +118,6 @@ class SeriesViewModel
         private val detailsPrefetch: DetailsPrefetch,
         private val fillerService: FillerService,
         private val playbackPrep: PlaybackPrep,
-        private val parentsGuide: ParentsGuide,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -168,11 +165,6 @@ class SeriesViewModel
                 viewModelScope.launchIO { fillerService.load(api, series, serverRepository.currentUser?.id) }
                 // Benflix: finale tags, time left and the first episode
                 viewModelScope.launchIO { loadProgress(series) }
-                // Benflix "Parents' guide"
-                viewModelScope.launchIO {
-                    val guide = parentsGuide.guideFor(series.data)
-                    if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
-                }
                 // Benflix (Idea Box 25): "Catch me up" after a break from the show
                 viewModelScope.launchIO { loadCatchUp(series) }
                 _state.update { it.copy(isAdmin = serverRepository.currentUserDto?.policy?.isAdministrator == true) }
@@ -1226,8 +1218,6 @@ data class SeriesState(
     val isAdmin: Boolean = false,
     /** Benflix look A: "Resume S2 · E4" on the show page's Play button */
     val nextUpLabel: String? = null,
-    /** Benflix "Parents' guide" (empty = none) */
-    val parentsGuide: List<ParentsGuideLine> = emptyList(),
     /** Benflix (Idea Box 25) "Catch me up": the last episodes watched, oldest first (empty = no button) */
     val catchUp: List<CatchUpLine> = emptyList(),
 )

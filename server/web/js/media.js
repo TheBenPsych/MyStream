@@ -649,13 +649,12 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
         if (B.alive(nav)) pane.insertAdjacentHTML("afterbegin", B.row("More like this", similar.map((x) => B.posterCard(x))));
       } },
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
-      { name: "Parents' guide", id: "tpParents" },
     ],
   });
   // Details (studio, release date, the file for you) under the whole story
   B.facts(it).then((html) => tp.setStoryExtra(html));
-  // In this collection, Ask for similar, anime extras and the parents' guide (extras.js)
-  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpCast") });
+  // In this collection, Ask for similar, and anime extras (extras.js)
+  if (B.extras) B.extras.movie(it, nav, { more: tp.pane("below"), ask: tp.pane("tpAsk"), chars: tp.pane("tpCast") });
 });
 // Play on TV (2026-11-21): send a movie or episode from the browser to a TV that has Glowfin open, at the same spot
 B.playOnTv = async (it) => {
@@ -797,7 +796,6 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
       } },
       { name: "Ask for similar", id: "tpAsk", skip: !!B.me.kids },
       { name: "Characters and voices", id: "tpChars" },
-      { name: "Parents' guide", id: "tpParents" },
     ],
   });
   B.facts(it).then((html) => tp.setStoryExtra(html));
@@ -857,8 +855,8 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
-  // Newer seasons to ask for, Ask for similar, anime extras and the parents' guide (extras.js)
-  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), ask: tp.pane("tpAsk"), parents: tp.pane("tpParents"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
+  // Newer seasons to ask for, Ask for similar, and anime extras (extras.js)
+  if (B.alive(nav) && B.extras) B.extras.show(it, nav, { more: tp.pane("below2"), ask: tp.pane("tpAsk"), chars: tp.pane("tpChars"), episodes: tp.pane("tpEpisodes") });
 });
 
 // ---------- collection page ----------

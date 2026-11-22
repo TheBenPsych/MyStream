@@ -77,7 +77,7 @@ class MovieHeroActions(
 /**
  * Glowfin D1: a movie's own page. Buttons: Resume (or Play), Trailer (greyed out when there isn't one),
  * My List, Rate, More. Rows under them: Cast and crew, More like this, Ask for similar, Finish the
- * collection, More from the director, About (details) and Parents' guide.
+ * collection, More from the director, and About (details).
  * Kids and Easy read get bigger buttons and no Rate or asking.
  */
 @Composable
@@ -221,7 +221,6 @@ fun MovieHeroContent(
                         story = null,
                         strip = strip,
                         details = remember(movie, isAdmin) { titleDetails(movie, isAdmin) },
-                        guide = if (!easy) state.parentsGuide else emptyList(),
                     )
                 },
             )

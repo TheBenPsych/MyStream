@@ -64,12 +64,10 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
-import com.github.damontecres.wholphin.ui.detail.ParentsGuideBlock
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -305,7 +303,7 @@ private fun TitlePageBody(
         return
     }
     val shownTabs = tabs
-    // The tab you're on is kept by name, so a tab that turns up later (say Parents' guide) doesn't move you
+    // The tab you're on is kept by name, so a tab that turns up later doesn't move you
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
     val tab =
         shownTabs.indexOfFirst { it.name == picked }.takeIf { it >= 0 }
@@ -1077,8 +1075,6 @@ fun TitleOverview(
     modifier: Modifier = Modifier,
     extra: (@Composable () -> Unit)? = null,
     details: List<Pair<String, String>> = emptyList(),
-    /** Ben 2026-11-18: the Parents' guide sits in About (beside Details on TV) instead of a row of its own */
-    guide: List<ParentsGuideLine> = emptyList(),
 ) {
     var showStory by remember { mutableStateOf(false) }
     // (a part already in Details, like "Network CBS", isn't said twice)
@@ -1118,7 +1114,7 @@ fun TitleOverview(
             extra?.invoke()
         }
     }
-    if (scope.wide && (details.isNotEmpty() || guide.isNotEmpty())) {
+    if (scope.wide && details.isNotEmpty()) {
         // TV: side by side in one short block, so all of it fits on the screen at once
         Row(
             horizontalArrangement = Arrangement.spacedBy(48.dp),
@@ -1126,13 +1122,6 @@ fun TitleOverview(
         ) {
             if (hasLeft) left(Modifier.weight(1.2f).widthIn(max = 760.dp))
             if (details.isNotEmpty()) TitleDetailsList(details, wide = true, modifier = Modifier.weight(1f).widthIn(max = 560.dp))
-            if (guide.isNotEmpty()) {
-                ParentsGuideBlock(
-                    guide,
-                    compact = true,
-                    modifier = Modifier.weight(1f).widthIn(max = 460.dp),
-                )
-            }
         }
     } else {
         Column(
@@ -1144,9 +1133,6 @@ fun TitleOverview(
         ) {
             if (hasLeft) left(Modifier.fillMaxWidth())
             if (details.isNotEmpty()) TitleDetailsList(details, wide = false)
-            if (guide.isNotEmpty()) {
-                ParentsGuideBlock(guide, compact = true)
-            }
         }
     }
     if (showStory && !story.isNullOrBlank()) {
