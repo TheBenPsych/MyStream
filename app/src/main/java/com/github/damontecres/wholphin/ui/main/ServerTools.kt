@@ -220,6 +220,16 @@ class ServerToolsViewModel
             _state.value = _state.value.copy(people = people.list())
         }
 
+        /** Flips one "may do" switch for a person */
+        fun toggleAllowed(
+            user: UserDto,
+            what: PersonAllowed,
+        ) = work(showBusy = false) {
+            val current = _state.value.people?.firstOrNull { it.id == user.id } ?: user
+            actions.toggleAllowed(current, what)
+            _state.value = _state.value.copy(people = people.list())
+        }
+
         /** Benflix: signs them out on every device (not this one) */
         fun signOutEverywhere(user: UserDto) =
             work {
@@ -548,6 +558,11 @@ sealed interface ServerToolsDialog {
         val user: UserDto,
     ) : ServerToolsDialog
 
+    /** What a person may do: away from home, downloads, deleting, Live TV, account on or off */
+    data class Allowed(
+        val user: UserDto,
+    ) : ServerToolsDialog
+
     /** Benflix: which libraries they see */
     data class Libraries(
         val user: UserDto,
@@ -784,6 +799,8 @@ fun LazyListScope.peopleItems(
                 listOfNotNull(
                     if (user.policy?.isAdministrator == true) "Admin" else null,
                     if (user.policy?.isDisabled == true) "Turned off" else null,
+                    if (user.policy?.enableRemoteAccess == false) "Home Wi-Fi only" else null,
+                    if (user.policy?.enableContentDeletion == true) "Can delete" else null,
                     user.lastActivityDate?.let { "Last seen ${it.toLocalDate()}" } ?: "Never signed in",
                     awayQualityLabel(user.policy?.remoteClientBitrateLimit)
                         .takeIf { (user.policy?.remoteClientBitrateLimit ?: 0) > 0 }
@@ -1021,6 +1038,13 @@ fun ServerToolsDialogs(
                         )
                         add(
                             DialogItem(
+                                headlineContent = { Text("What they may do") },
+                                supportingContent = { Text("Watching away from home, downloads, deleting, Live TV, account on or off") },
+                                onClick = { showDialog(ServerToolsDialog.Allowed(user)) },
+                            ),
+                        )
+                        add(
+                            DialogItem(
                                 headlineContent = { Text("Sign out everywhere") },
                                 supportingContent = { Text("Like if they lost a phone or hit their screen limit") },
                                 onClick = { showDialog(ServerToolsDialog.SignOut(user)) },
@@ -1177,6 +1201,30 @@ fun ServerToolsDialogs(
                             )
                         }
                     },
+                onDismissRequest = onDismiss,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        is ServerToolsDialog.Allowed -> {
+            // Read the person again each time, so the ticks show straight after a change
+            val user = state.people?.firstOrNull { it.id == dialog.user.id } ?: dialog.user
+            DialogPopup(
+                showDialog = true,
+                title = "What ${user.name} may do",
+                dialogItems =
+                    PersonAllowed.entries
+                        // The admin can't switch their own account off
+                        .filter { it != PersonAllowed.ACCOUNT || user.policy?.isAdministrator != true }
+                        .map { what ->
+                            DialogItem(
+                                headlineContent = { Text(what.title) },
+                                supportingContent = { Text(what.line) },
+                                selected = what.isOn(user.policy),
+                                onClick = { viewModel.toggleAllowed(user, what) },
+                            )
+                        },
                 onDismissRequest = onDismiss,
                 dismissOnClick = false,
                 waitToLoad = false,

@@ -4,7 +4,15 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +20,8 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.ConfirmDialog
+import com.github.damontecres.wholphin.ui.preferences.StringInput
+import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +39,7 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.MediaStreamType
+import org.jellyfin.sdk.model.api.MetadataField
 import org.jellyfin.sdk.model.api.MetadataRefreshMode
 import timber.log.Timber
 import java.util.UUID
@@ -288,10 +299,117 @@ class AdminTitleViewModel
             _details.value = null
         }
 
+        /** The title whose name, year, age rating or description is being fixed (Ben's pick, 2026-11-22) */
+        private val _fixDetails = MutableStateFlow<FixDetails?>(null)
+        val fixDetails: StateFlow<FixDetails?> = _fixDetails
+
+        fun openFixDetails(itemId: UUID) {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    _fixDetails.value = fixDetailsOf(api.userLibraryApi.getItem(itemId, serverRepository.currentUser?.id).content)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not open Fix details")
+                    showToast(context, "Couldn't open that title.")
+                }
+            }
+        }
+
+        fun closeFixDetails() {
+            _fixDetails.value = null
+        }
+
+        /**
+         * Saves one changed detail. Jellyfin wants the whole title back with the change in it. The changed part is
+         * locked, so Jellyfin's next look-up doesn't put the old words back.
+         */
+        fun saveFixDetail(
+            itemId: UUID,
+            part: FixPart,
+            value: String,
+        ) {
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                val text = value.trim()
+                val said =
+                    try {
+                        val dto = api.userLibraryApi.getItem(itemId, serverRepository.currentUser?.id).content
+                        val locked = dto.lockedFields.orEmpty()
+                        val changed =
+                            when (part) {
+                                FixPart.NAME -> {
+                                    if (text.isEmpty()) {
+                                        null
+                                    } else {
+                                        dto.copy(name = text, lockedFields = (locked + MetadataField.NAME).distinct())
+                                    }
+                                }
+
+                                FixPart.YEAR -> {
+                                    text.toIntOrNull()?.takeIf { it in 1870..2200 }?.let { dto.copy(productionYear = it) }
+                                }
+
+                                FixPart.RATING -> {
+                                    dto.copy(
+                                        officialRating = text.takeIf { it.isNotEmpty() },
+                                        lockedFields = (locked + MetadataField.OFFICIAL_RATING).distinct(),
+                                    )
+                                }
+
+                                FixPart.ABOUT -> {
+                                    dto.copy(overview = text, lockedFields = (locked + MetadataField.OVERVIEW).distinct())
+                                }
+                            }
+                        if (changed == null) {
+                            if (part == FixPart.YEAR) {
+                                "That isn't a year. Nothing was changed."
+                            } else {
+                                "The name can't be empty. Nothing was changed."
+                            }
+                        } else {
+                            api.itemUpdateApi.updateItem(itemId, changed)
+                            _fixDetails.value = fixDetailsOf(changed)
+                            "Saved. It can take a minute to show everywhere."
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not save %s", part)
+                        "Couldn't save that. Try again in a moment."
+                    }
+                showToast(context, said, Toast.LENGTH_LONG)
+            }
+        }
+
         fun closeFixMatch() {
             _fixItem.value = null
         }
     }
+
+/** The parts of a title the admin can fix from the hold menu */
+enum class FixPart { NAME, YEAR, RATING, ABOUT }
+
+data class FixDetails(
+    val id: UUID,
+    val name: String,
+    val year: Int?,
+    val rating: String?,
+    val about: String,
+    val show: Boolean,
+)
+
+private fun fixDetailsOf(dto: BaseItemDto) =
+    FixDetails(
+        id = dto.id,
+        name = dto.name.orEmpty(),
+        year = dto.productionYear,
+        rating = dto.officialRating?.takeIf { it.isNotBlank() },
+        about = dto.overview.orEmpty(),
+        show = dto.type == BaseItemKind.SERIES || dto.type == BaseItemKind.EPISODE,
+    )
+
+private val MOVIE_RATINGS = listOf("G", "PG", "PG-13", "R", "NC-17")
+private val SHOW_RATINGS = listOf("TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14", "TV-MA")
 
 /** One title's Kids profile settings, for the hold menu's "Kids profile" choices */
 data class KidsChoice(
@@ -353,12 +471,121 @@ fun AdminTitleDialogs(viewModel: AdminTitleViewModel) {
     }
     val kids by viewModel.kids.collectAsState()
     kids?.let { choice -> KidsChoiceDialog(choice, viewModel) }
+    val fixDetails by viewModel.fixDetails.collectAsState()
+    fixDetails?.let { fix -> FixDetailsDialog(fix, viewModel) }
     fixItem?.let { item ->
         com.github.damontecres.wholphin.ui.detail.FixMatchDialog(
             item = item,
             onDismissRequest = viewModel::closeFixMatch,
             onFixed = viewModel::closeFixMatch,
         )
+    }
+}
+
+/**
+ * Glowfin (Ben's pick, 2026-11-22): the short version of Jellyfin's 40-box editor. Name, year, age rating and
+ * description, each changed and saved on its own, so it works with a remote as well as a finger.
+ */
+@Composable
+private fun FixDetailsDialog(
+    fix: FixDetails,
+    viewModel: AdminTitleViewModel,
+) {
+    var part by remember(fix.id) { mutableStateOf<FixPart?>(null) }
+    val line: @Composable (String) -> Unit = { androidx.tv.material3.Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+    val entry: (String, String, FixPart) -> com.github.damontecres.wholphin.ui.components.DialogItem = { title, now, opens ->
+        com.github.damontecres.wholphin.ui.components.DialogItem(
+            headlineContent = { line(title) },
+            supportingContent = { line(now) },
+            onClick = { part = opens },
+        )
+    }
+    when (val editing = part) {
+        null -> {
+            com.github.damontecres.wholphin.ui.components.DialogPopup(
+                showDialog = true,
+                title = "Fix details: ${fix.name}",
+                dialogItems =
+                    listOf(
+                        entry("Name", fix.name, FixPart.NAME),
+                        entry("Year", fix.year?.toString() ?: "Not set", FixPart.YEAR),
+                        entry("Age rating", fix.rating ?: "Not rated", FixPart.RATING),
+                        entry("What it's about", fix.about.ifBlank { "Nothing written yet" }, FixPart.ABOUT),
+                    ),
+                onDismissRequest = viewModel::closeFixDetails,
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        FixPart.RATING -> {
+            val ratings = if (fix.show) SHOW_RATINGS + MOVIE_RATINGS else MOVIE_RATINGS + SHOW_RATINGS
+            com.github.damontecres.wholphin.ui.components.DialogPopup(
+                showDialog = true,
+                title = "Age rating: ${fix.name}",
+                dialogItems =
+                    (listOfNotNull(fix.rating?.takeIf { it !in ratings }) + ratings).map { rating ->
+                        com.github.damontecres.wholphin.ui.components.DialogItem(
+                            headlineContent = { line(rating) },
+                            selected = rating == fix.rating,
+                            onClick = {
+                                part = null
+                                viewModel.saveFixDetail(fix.id, FixPart.RATING, rating)
+                            },
+                        )
+                    } +
+                        com.github.damontecres.wholphin.ui.components.DialogItem(
+                            headlineContent = { line("Not rated") },
+                            supportingContent = { line("Kids profiles don't see titles with no rating") },
+                            selected = fix.rating == null,
+                            onClick = {
+                                part = null
+                                viewModel.saveFixDetail(fix.id, FixPart.RATING, "")
+                            },
+                        ),
+                onDismissRequest = { part = null },
+                dismissOnClick = false,
+                waitToLoad = false,
+            )
+        }
+
+        else -> {
+            StringInputDialog(
+                input =
+                    StringInput(
+                        title =
+                            when (editing) {
+                                FixPart.NAME -> "Name"
+                                FixPart.YEAR -> "Year it came out"
+                                else -> "What it's about"
+                            },
+                        value =
+                            when (editing) {
+                                FixPart.NAME -> fix.name
+                                FixPart.YEAR -> fix.year?.toString().orEmpty()
+                                else -> fix.about
+                            },
+                        keyboardOptions =
+                            KeyboardOptions(
+                                capitalization =
+                                    if (editing == FixPart.NAME) {
+                                        KeyboardCapitalization.Words
+                                    } else {
+                                        KeyboardCapitalization.Sentences
+                                    },
+                                keyboardType = if (editing == FixPart.YEAR) KeyboardType.Number else KeyboardType.Text,
+                                imeAction = ImeAction.Done,
+                            ),
+                        onSubmit = {},
+                        maxLines = if (editing == FixPart.ABOUT) 6 else 1,
+                    ),
+                onSave = {
+                    part = null
+                    viewModel.saveFixDetail(fix.id, editing, it)
+                },
+                onDismissRequest = { part = null },
+            )
+        }
     }
 }
 

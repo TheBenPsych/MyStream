@@ -29,10 +29,16 @@ const PAGES = {};
 // {level, headline, reason, acts: [{label, do}], rows: [{light, t, s, acts}]}
 const cardLight = (l) => (l === "ok" ? "" : l === "warn" ? "warn" : l === "bad" ? "bad" : "off");
 const cardActs = (name, acts, white) => (acts || []).map((a, i) => `<button class="btn small ${white && i === 0 ? "white" : ""}" data-card="${esc(name)}" data-do="${esc(a.do)}">${esc(a.label)}</button>`).join("");
+// Where Jellyfin's own pages live, seen from this browser: the same machine at home, the internet name when away
+function jellyfinPage(c) {
+  const host = location.hostname, port = c.port || 8096;
+  const home = /^[\d.]+$/.test(host) || !host.includes(".") || host.includes(":");
+  return (home || !c.internet ? `http://${host.includes(":") ? `[${host}]` : host}:${port}` : String(c.internet).replace(/\/+$/, "")) + "/web/";
+}
 function cardHtml(name, c, opts) {
   opts = opts || {};
   const rows = (c.rows || []).slice(0, opts.max || 999);
-  const list = rows.map((r) => `<div class="item"><span class="dot ${cardLight(r.light)}"></span><div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s || "")}</div></div><div class="acts">${cardActs(name, r.acts, true)}</div></div>`).join("");
+  const list = rows.map((r) => `<div class="item"><span class="dot ${cardLight(r.light)}"></span><div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s || "")}</div></div><div class="acts">${cardActs(name, r.acts, true)}${r.link ? `<a class="btn small" target="_blank" rel="noopener" href="${esc(jellyfinPage(c) + r.link)}">Open in Jellyfin</a>` : ""}</div></div>`).join("");
   const copy = c.copy ? `<button class="btn small" data-copy="${esc(c.copy)}">Copy the list for Claude</button>` : "";
   const banner = opts.plain ? "" : `<div class="srv-banner ${c.level === "ok" ? "" : c.level === "bad" ? "bad" : "warn"}"${c.level === "off" ? ' style="background:var(--pg2);border-color:var(--line);--c:#5A5E6B"' : ""}><div class="h"><span class="big-dot"></span>${esc(c.headline || "")}</div>${c.reason ? `<div class="r">${esc(c.reason)}</div>` : ""}${(c.acts || []).length || copy ? `<div class="pills">${cardActs(name, c.acts, true)}${copy}</div>` : ""}</div>`;
   return banner + (list ? `<div class="list">${list}</div>` : "");
@@ -59,14 +65,18 @@ function cardPage(name, el, into) {
 }
 PAGES.backup = (el) => cardPage("backup", el);
 PAGES.away = (el) => cardPage("away", el);
+// Ben's picks, 2026-11-22: Jellyfin's add-ons, its converting settings, and shortcuts to what stays in Jellyfin
+PAGES.addons = (el) => cardPage("addons", el);
+PAGES.convert = (el) => cardPage("convert", el);
+PAGES.jellyfin = (el) => cardPage("jellyfin", el);
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
 // (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
 const TOOL_GROUPS = [
   { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
-  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, jobs, safety copy, away check", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Jobs and restart"], ["backup", "Safety copy"], ["away", "Away check"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"]] },
+  { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start, converting", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"], ["convert", "Converting"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, jobs, safety copy, away check", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Jobs and restart"], ["backup", "Safety copy"], ["away", "Away check"], ["addons", "Jellyfin add-ons"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"], ["jellyfin", "Rarely needed"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
@@ -908,6 +918,14 @@ PAGES.library = (el) => {
   draw();
 };
 
+// What each person may do (Jellyfin's user policy). flip: the switch reads the other way round from Jellyfin's.
+const ALLOWED = [
+  { key: "EnableRemoteAccess", t: "Watch away from home", s: "Off means {name} can only watch on your home Wi-Fi" },
+  { key: "EnableContentDownloading", t: "Download to a phone or tablet", s: "Save movies and shows to watch without internet" },
+  { key: "EnableContentDeletion", t: "Delete movies and shows", s: "Removes the file from Tower for everyone" },
+  { key: "EnableLiveTvAccess", t: "Live TV", s: "Watch the Live TV channels" },
+  { key: "IsDisabled", flip: true, t: "Account switched on", s: "Off keeps {name}'s history and lists, but they can't sign in" },
+];
 PAGES.people = (el) => {
   el.innerHTML = `<h2>People</h2><p class="sub">Accounts for family and friends.</p>
     <div class="row" style="margin-bottom:16px"><button class="btn red" id="addPerson">Add a person</button></div><div id="pp">${loading()}</div>`;
@@ -919,13 +937,14 @@ PAGES.people = (el) => {
       $("#pp").innerHTML = `<div class="list">` + list.map((u, i) => {
         const p = u.Policy || {};
         const seen = u.LastActivityDate ? "Last seen " + when(u.LastActivityDate) : "Never signed in";
-        const bits = [p.IsAdministrator ? "Admin" : null, p.IsDisabled ? "Turned off" : null, p.MaxParentalRating != null ? "Kids limits" : null,
+        const bits = [p.IsAdministrator ? "Admin" : null, p.IsDisabled ? "Turned off" : null, p.EnableRemoteAccess === false ? "Home Wi-Fi only" : null, p.EnableContentDeletion ? "Can delete" : null, p.MaxParentalRating != null ? "Kids limits" : null,
           p.MaxActiveSessions ? `${p.MaxActiveSessions} screen${p.MaxActiveSessions === 1 ? "" : "s"} at once` : "Any number of screens",
           p.EnableAllFolders ? "All libraries" : `${(p.EnabledFolders || []).length} of ${libs.length} libraries`].filter(Boolean);
         return `<div class="item">
           <img src="api/web/jf/Users/${encodeURIComponent(u.Id)}/Images/Primary?maxHeight=96&api_key=${encodeURIComponent(B.me.token)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#333;flex:none" onerror="this.style.visibility='hidden'">
           <div class="grow"><div class="t">${esc(u.Name)}</div><div class="s">${esc(seen)} · ${esc(bits.join(" · "))}</div></div>
           <div class="acts">
+            <button class="btn small" data-a="allowed" data-i="${i}">Allowed</button>
             <button class="btn small" data-a="screens" data-i="${i}">Screens</button>
             <button class="btn small" data-a="libs" data-i="${i}">Libraries</button>
             <button class="btn small" data-a="password" data-i="${i}">New password</button>
@@ -962,6 +981,26 @@ PAGES.people = (el) => {
       const v = await B.askText(`How many screens can ${u.Name} watch on at once?`, "0 means no limit.", String(cur));
       if (v == null || !/^\d+$/.test(v.trim())) return;
       busy(b, async () => { await setPolicy(u, (p) => { p.MaxActiveSessions = +v.trim(); }); draw(); return "Saved."; });
+    } else if (b.dataset.a === "allowed") {
+      // Ben's pick, 2026-11-22: Jellyfin's per-person switches that matter, in plain words
+      const p = u.Policy || {};
+      const rows = ALLOWED.filter((r) => r.key !== "IsDisabled" || u.Id !== B.me.id);
+      $("#libPick").innerHTML = `<h3 class="section-title" style="margin-top:8px">What ${esc(u.Name)} may do</h3><div class="list">
+        ${rows.map((r) => `<label class="item" style="cursor:pointer"><input type="checkbox" value="${r.key}" ${(r.flip ? !p[r.key] : p[r.key] !== false && p[r.key] != null) ? "checked" : ""}> <div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s.replace("{name}", u.Name))}</div></div></label>`).join("")}
+        <div class="item"><div class="grow"></div><div class="acts"><button class="btn small" id="libCancel">Cancel</button><button class="btn small red" id="libSave">Save</button></div></div></div>`;
+      $("#libPick").scrollIntoView({ behavior: "smooth" });
+      $("#libCancel").onclick = () => { $("#libPick").innerHTML = ""; };
+      $("#libSave").onclick = (ev) => {
+        const on = new Set([...document.querySelectorAll("#libPick input:checked")].map((c) => c.value));
+        busy(ev.target, async () => {
+          await setPolicy(u, (pol) => {
+            rows.forEach((r) => { pol[r.key] = r.flip ? !on.has(r.key) : on.has(r.key); });
+            if (!pol.EnableContentDeletion) pol.EnableContentDeletionFromFolders = [];
+            if ("EnableLiveTvManagement" in pol && !pol.EnableLiveTvAccess) pol.EnableLiveTvManagement = false;
+          });
+          $("#libPick").innerHTML = ""; draw(); return "Saved.";
+        });
+      };
     } else if (b.dataset.a === "libs") {
       const p = u.Policy || {};
       $("#libPick").innerHTML = `<h3 class="section-title" style="margin-top:8px">Libraries ${esc(u.Name)} can see</h3><div class="list">

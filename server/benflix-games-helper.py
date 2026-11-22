@@ -1542,7 +1542,7 @@ class Handler(BaseHTTPRequestHandler):
                     if answer is not None:
                         return self.send(answer[0], answer[1])
                 if keeper is not None and path.startswith("/api/admin/card/"):
-                    answer = keeper.admin_route(method, path, self.read_json)
+                    answer = keeper.admin_route(method, path, self.read_json, token)
                     if answer is not None:
                         return self.send(answer[0], answer[1])
                 if posters is not None and path.startswith("/api/admin/posters/"):
@@ -2531,7 +2531,7 @@ if __name__ == "__main__":
         )
     if keeper is not None:
         # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
-        keeper.start(tower_addresses, tools._docker if tools is not None else None)
+        keeper.start(tower_addresses, tools._docker if tools is not None else None, jellyfin_call)
         if care is not None:
             keeper.job("playtest", "Play test: start a few random titles", "Every night between 1 and 3 AM", care, "playtest", run=lambda: care.playtest(5, "asked"))
         if skips is not None:

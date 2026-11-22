@@ -204,6 +204,49 @@ class BenflixServerActions
             api.userApi.updateUserPolicy(user.id, policy.copy(maxActiveSessions = screens))
         }
 
+        /** Flips one of a person's "may do" switches (Ben's pick, 2026-11-22) */
+        suspend fun toggleAllowed(
+            user: UserDto,
+            what: PersonAllowed,
+        ) = io {
+            val policy =
+                api.userApi
+                    .getUserById(user.id)
+                    .content.policy ?: return@io
+            api.userApi.updateUserPolicy(
+                user.id,
+                when (what) {
+                    PersonAllowed.AWAY -> {
+                        policy.copy(enableRemoteAccess = !policy.enableRemoteAccess)
+                    }
+
+                    PersonAllowed.DOWNLOAD -> {
+                        policy.copy(enableContentDownloading = !policy.enableContentDownloading)
+                    }
+
+                    PersonAllowed.DELETE -> {
+                        if (policy.enableContentDeletion) {
+                            policy.copy(enableContentDeletion = false, enableContentDeletionFromFolders = emptyList())
+                        } else {
+                            policy.copy(enableContentDeletion = true)
+                        }
+                    }
+
+                    PersonAllowed.LIVE_TV -> {
+                        if (policy.enableLiveTvAccess) {
+                            policy.copy(enableLiveTvAccess = false, enableLiveTvManagement = false)
+                        } else {
+                            policy.copy(enableLiveTvAccess = true)
+                        }
+                    }
+
+                    PersonAllowed.ACCOUNT -> {
+                        policy.copy(isDisabled = !policy.isDisabled)
+                    }
+                },
+            )
+        }
+
         /** Which libraries a person can see; all of them when [folders] is null */
         suspend fun setLibraries(
             user: UserDto,
@@ -268,3 +311,25 @@ class BenflixServerActions
 
         private suspend fun <T> io(block: suspend () -> T): T = withContext(WholphinDispatchers.IO) { block() }
     }
+
+/** What a person may do: Jellyfin's per-person switches that matter, in plain words */
+enum class PersonAllowed(
+    val title: String,
+    val line: String,
+) {
+    AWAY("Watch away from home", "Off means they can only watch on your home Wi-Fi"),
+    DOWNLOAD("Download to a phone or tablet", "Save movies and shows to watch without internet"),
+    DELETE("Delete movies and shows", "Removes the file from Tower for everyone"),
+    LIVE_TV("Live TV", "Watch the Live TV channels"),
+    ACCOUNT("Account switched on", "Off keeps their history and lists, but they can't sign in"),
+    ;
+
+    fun isOn(policy: org.jellyfin.sdk.model.api.UserPolicy?): Boolean =
+        when (this) {
+            AWAY -> policy?.enableRemoteAccess != false
+            DOWNLOAD -> policy?.enableContentDownloading != false
+            DELETE -> policy?.enableContentDeletion == true
+            LIVE_TV -> policy?.enableLiveTvAccess != false
+            ACCOUNT -> policy?.isDisabled != true
+        }
+}
