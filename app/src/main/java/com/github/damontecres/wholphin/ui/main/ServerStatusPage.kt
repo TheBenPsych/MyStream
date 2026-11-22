@@ -718,6 +718,7 @@ fun ServerStatusPage(
                         onOpenWatching = { frame.pick(ServerSection.NOW.key) },
                     )
                 }
+                towerCardItems("try", "Try these on a real screen", max = 4, hideWhenEmpty = true)
                 if (!seerrActive) {
                     item {
                         ServerActionRow(
@@ -864,7 +865,10 @@ fun ServerStatusPage(
                             onCancelRestart = viewModel::cancelRestart,
                             showScan = false,
                         )
+                        towerCardItems("jobs", "Tower's own jobs")
                         driveHealthItems()
+                        towerCardItems("backup", "Safety copy")
+                        towerCardItems("away", "Away check")
                         bookListItems()
                     }
                 }

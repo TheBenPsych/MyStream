@@ -25,6 +25,40 @@ function loading(text) { return `<div class="list"><div class="empty">${esc(text
 B.notice = (text) => B.ask(text, "", "OK", "Close");
 
 const PAGES = {};
+// Tower cards (benflix_keeper.py): jobs, safety copy, away check and "Try these" all come in one shape, drawn here once.
+// {level, headline, reason, acts: [{label, do}], rows: [{light, t, s, acts}]}
+const cardLight = (l) => (l === "ok" ? "" : l === "warn" ? "warn" : l === "bad" ? "bad" : "off");
+const cardActs = (name, acts, white) => (acts || []).map((a, i) => `<button class="btn small ${white && i === 0 ? "white" : ""}" data-card="${esc(name)}" data-do="${esc(a.do)}">${esc(a.label)}</button>`).join("");
+function cardHtml(name, c, opts) {
+  opts = opts || {};
+  const rows = (c.rows || []).slice(0, opts.max || 999);
+  const list = rows.map((r) => `<div class="item"><span class="dot ${cardLight(r.light)}"></span><div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s || "")}</div></div><div class="acts">${cardActs(name, r.acts, true)}</div></div>`).join("");
+  const copy = c.copy ? `<button class="btn small" data-copy="${esc(c.copy)}">Copy the list for Claude</button>` : "";
+  const banner = opts.plain ? "" : `<div class="srv-banner ${c.level === "ok" ? "" : c.level === "bad" ? "bad" : "warn"}"${c.level === "off" ? ' style="background:var(--pg2);border-color:var(--line);--c:#5A5E6B"' : ""}><div class="h"><span class="big-dot"></span>${esc(c.headline || "")}</div>${c.reason ? `<div class="r">${esc(c.reason)}</div>` : ""}${(c.acts || []).length || copy ? `<div class="pills">${cardActs(name, c.acts, true)}${copy}</div>` : ""}</div>`;
+  return banner + (list ? `<div class="list">${list}</div>` : "");
+}
+// One page for a card: loads it, redraws after a button, and again every 20 seconds while it's open
+function cardPage(name, el, into) {
+  const box = into || el;
+  const draw = async () => {
+    try {
+      const c = await call("GET", `api/admin/card/${name}`);
+      if (!box.isConnected) return;
+      box.innerHTML = (into ? "" : `<p class="sub">${esc(c.intro || "")}</p>`) + cardHtml(name, c);
+    } catch (err) { if (box.isConnected) box.innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
+  };
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-card]"), cp = e.target.closest("[data-copy]");
+    if (cp) { navigator.clipboard.writeText(cp.dataset.copy).then(() => B.toast("Copied. Paste it to Claude."), () => B.toast("Couldn't copy. Tell Claude which ones are not right.")); return; }
+    if (!b || b.dataset.card !== name) return;
+    e.stopPropagation();
+    busy(b, async () => { const r = await call("POST", `api/admin/card/${name}/do`, { do: b.dataset.do }); setTimeout(draw, 600); setTimeout(draw, 4000); return (r && r.message) || "Done."; });
+  });
+  box.innerHTML = loading();
+  draw(); every(20000, draw);
+}
+PAGES.backup = (el) => cardPage("backup", el);
+PAGES.away = (el) => cardPage("away", el);
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
 // (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
 const TOOL_GROUPS = [
@@ -32,7 +66,7 @@ const TOOL_GROUPS = [
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, restart, chores, lists", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Chores and restart"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, jobs, safety copy, away check", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Jobs and restart"], ["backup", "Safety copy"], ["away", "Away check"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
@@ -135,14 +169,16 @@ PAGES.overview = (el) => {
   el.innerHTML = `<div id="ov">${loading()}</div>`;
   let setupWaiting = null;
   setupNeed().then((w) => { setupWaiting = w; });
+  let tryAll = false;
   const draw = async (fresh) => {
     try {
-      const [t, sessions, info, reqs, signs] = await Promise.all([
+      const [t, sessions, info, reqs, signs, tryCard] = await Promise.all([
         tower(fresh).catch((e) => ({ problems: [B.say(e)] })),
         jf("GET", "/Sessions?activeWithinSeconds=960").catch(() => null),
         jf("GET", "/System/Info").catch(() => null),
         jf("GET", "/JellyfinEnhanced/jellyseerr/request?take=50&filter=pending").catch(() => null),
         call("GET", "api/admin/care/signins").catch(() => null),
+        call("GET", "api/admin/card/try").catch(() => null),
       ]);
       if (current !== "overview") return;
       const watching = (Array.isArray(sessions) ? sessions : []).filter((s) => s.NowPlayingItem);
@@ -169,6 +205,8 @@ PAGES.overview = (el) => {
         return m < 1 ? "just now" : m < 60 ? say(m, "minute") : m < 1440 ? say(Math.floor(m / 60), "hour") : say(Math.floor(m / 1440), "day");
       };
       const newSigns = ((signs && signs.items) || []).map((n) => ["warn", `New sign-in on ${n.user}'s account`, [n.device, n.away === true ? "away from home" : n.away === false ? "at home" : "", ago(n.at)].filter(Boolean).join(" · "), `<button class="btn small white" data-sign="${esc(n.id)}">That's fine</button><button class="btn small" data-sign="${esc(n.id)}" data-out="1" data-dev="${esc(n.device)}">Sign it out</button>`]);
+      // Safety copy and away check only speak up here when one has a problem
+      (t.notes || []).forEach((n) => health.push([n.light === "bad" ? "bad" : "warn", n.t, n.s, `<a class="btn small white" href="#/server/tools/${esc(n.go)}">Go</a>`]));
       const bad = health.some((h) => h[0] === "bad");
       const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
       const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";
@@ -194,6 +232,8 @@ PAGES.overview = (el) => {
           const pct = len ? Math.min(100, Math.round(100 * pos / len)) : null;
           return `<a class="srv-watch" href="#/server/watching/now"><img src="${imgUrl(pic, 120)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="grow"><div class="t">${esc(s.UserName || "Someone")}</div><div class="s">${esc(title)}</div><div class="s dim">${esc(s.DeviceName || "")}${s.PlayState && s.PlayState.IsPaused ? " · Paused" : ""}</div>${pct == null ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div></a>`;
         }).join("") || `<div class="empty">Nobody is watching right now.</div>`}</section></div>`;
+      // "Try these on a real screen" (Ben 2026-11-21): new things only the test robot has checked
+      if (tryCard && (tryCard.rows || []).length) html += `<section class="srv-card" id="tryCard" style="margin:16px 0"><h3>Try these on a real screen${tryCard.count ? ` <span class="cnt">${tryCard.count}</span>` : ""}</h3><div class="s dim" style="margin:-4px 0 4px">${esc(tryCard.intro || "")}</div>${cardHtml("try", tryCard, { plain: true, max: tryAll ? 999 : 4 })}<div class="acts" style="display:flex;gap:8px;margin-top:4px">${(tryCard.rows || []).length > 4 && !tryAll ? `<button class="btn small" id="tryMore">See all ${tryCard.rows.length}</button>` : ""}${tryCard.copy ? `<button class="btn small" data-copy="${esc(tryCard.copy)}">Copy the not-right list for Claude</button>` : ""}</div></section>`;
       html += `<h3 class="section-title">Tools</h3>${toolTiles(null)}`;
       $("#ov").innerHTML = html;
     } catch (err) {
@@ -202,6 +242,10 @@ PAGES.overview = (el) => {
   };
   el.onclick = async (e) => {
     const r = e.target.closest("[data-rq]"), d = e.target.closest("[data-replace]"), sg = e.target.closest("[data-sign]");
+    const tc = e.target.closest("[data-card]"), cp = e.target.closest("[data-copy]");
+    if (e.target.id === "tryMore") { tryAll = true; draw(false); return; }
+    if (cp) { navigator.clipboard.writeText(cp.dataset.copy).then(() => B.toast("Copied. Paste it to Claude."), () => B.toast("Couldn't copy. Tell Claude which ones are not right.")); return; }
+    if (tc) { B.busy(tc, async () => { const a = await call("POST", `api/admin/card/${tc.dataset.card}/do`, { do: tc.dataset.do }); draw(false); return (a && a.message) || "Done."; }); return; }
     if (sg) {
       const out = !!sg.dataset.out;
       if (out && !await B.ask(`Sign out ${sg.dataset.dev || "this device"}? It will need the password to come back.`)) return;
@@ -1133,7 +1177,8 @@ PAGES.versions = (el) => {
 };
 
 PAGES.chores = (el) => {
-  el.innerHTML = `<h2>Chores</h2><p class="sub">Jellyfin's background jobs. Run one now if you don't want to wait for its turn.</p>
+  el.innerHTML = `<h2>Jobs</h2><p class="sub">Everything Tower does by itself: its own jobs first, then Jellyfin's. Run one now if you don't want to wait for its turn.</p>
+    <div id="tj" style="margin-bottom:16px"></div><h3 class="section-title">Jellyfin's jobs</h3>
     <div class="list" style="margin-bottom:16px"><div class="item"><span class="dot warn"></span><div class="grow"><div class="t">Restart Jellyfin</div><div class="s">Fixes most odd problems. Everyone watching is cut off for about a minute.</div></div><div class="acts"><button class="btn small" id="restartJf">Restart Jellyfin</button></div></div></div>
     <div id="ch">${loading()}</div>`;
   const draw = async () => {
@@ -1159,6 +1204,7 @@ PAGES.chores = (el) => {
       busy(e.target, async () => { await jf("POST", "/System/Restart"); return "Jellyfin is restarting. Give it a minute."; });
     }
   };
+  cardPage("jobs", el, $("#tj"));
   draw(); every(5000, draw);
 };
 

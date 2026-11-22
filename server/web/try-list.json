@@ -1,0 +1,19 @@
+{
+  "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
+  "items": [
+    {"id": "harbor-self-update", "title": "Harbor updates itself, with no command to paste", "where": "computer · Server > Tools > Tower > Setup command shows a Harbor line", "date": "Nov 21"},
+    {"id": "safety-copy", "title": "The nightly safety copy gets made", "where": "any screen · Server > Tools > Tower > Safety copy, press Make one now", "date": "Nov 21"},
+    {"id": "away-check", "title": "The Away check reads your internet name and its lock", "where": "any screen · Server > Tools > Tower > Away check", "date": "Nov 21"},
+    {"id": "update-room", "title": "Updates check there's room first and clean up after themselves", "where": "any TV · Settings > Help > Install update", "date": "Nov 21"},
+    {"id": "tv-align", "title": "Every TV page starts at the same spot beside the menu", "where": "any TV · open Movies, Shows, Music and a title page", "date": "Nov 21"},
+    {"id": "music-rows", "title": "Music rows scroll fully into view", "where": "any TV · Music, press Down a few times", "date": "Nov 21"},
+    {"id": "search-box", "title": "Search opens on the search box, and Left and Right can leave it", "where": "any TV · open Search", "date": "Nov 21"},
+    {"id": "arrived-popup", "title": "The \"your request arrived\" pop-up only informs and never catches OK", "where": "any TV · wait for a request to arrive", "date": "Nov 21"},
+    {"id": "manage-stop", "title": "Stop and Changed my mind on the Manage board", "where": "phone or computer · Requests > Manage", "date": "Nov 21"},
+    {"id": "search-speed", "title": "Search results show sooner while you type", "where": "living room TV · Search, type a few letters", "date": "Nov 21"},
+    {"id": "audio-pick", "title": "Picking a sound track works on the first try", "where": "any TV · play something with two languages, change Audio", "date": "Nov 21"},
+    {"id": "holdup", "title": "What's the hold-up? on a request that is on its way", "where": "any screen · Requests, open something you said yes to", "date": "Nov 21"},
+    {"id": "desktop-app", "title": "Glowfin for computers opens, plays and updates itself", "where": "Windows PC or Steam Deck", "date": "Nov 21"},
+    {"id": "focus-stripes", "title": "Three small stripes under the highlighted poster", "where": "any TV · Home, move along a row", "date": "Nov 20"}
+  ]
+}

@@ -1010,6 +1010,16 @@ def _forget():
         _cache["at"] = 0.0
 
 
+def _keeper_notes():
+    """Lines for "Needs you" from the safety copy and the away check (benflix_keeper.py), only when one has a problem."""
+    try:
+        import benflix_keeper
+
+        return benflix_keeper.notes()
+    except Exception:  # noqa: BLE001 - an older Tower without the keeper
+        return []
+
+
 def tower(fresh=False):
     with _lock:
         if not fresh and _cache["data"] is not None and time.time() - _cache["at"] < CACHE_SECONDS:
@@ -1047,6 +1057,7 @@ def tower(fresh=False):
             "radarr": arr_ready("radarr"),
             "problems": problems,
             "tracks": tracks_ready(),
+            "notes": _keeper_notes(),
         }
     )
     with _lock:
