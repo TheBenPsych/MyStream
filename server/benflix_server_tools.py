@@ -989,6 +989,22 @@ def holdup_copies(tmdb):
 # ---------------------------------------------------------------------------
 
 
+def harbor():
+    """Harbor on Tower: is it there, and since when has its current build been running?
+    Tower's hourly self-update (benflix-autosetup.sh) puts a newer Harbor in by itself."""
+    try:
+        info = _docker("GET", "/containers/harbor/json", timeout=10) or {}
+    except ToolError:
+        return {"installed": False}
+    labels = (info.get("Config") or {}).get("Labels") or {}
+    return {
+        "installed": True,
+        "running": bool((info.get("State") or {}).get("Running")),
+        "mode": labels.get("harbor.mode") or "",
+        "since": info.get("Created") or "",
+    }
+
+
 def _forget():
     with _lock:
         _cache["at"] = 0.0

@@ -205,6 +205,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 SETUP_VERSION = 16
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
+# 2026-11-21: autosetup now also keeps Harbor on its newest build
 
 _games = {}  # RomM id -> (platform folder, file name)
 _tokens = {}  # Jellyfin token -> (time it was checked, account id, is admin)
@@ -1298,6 +1299,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, arrivals.status())
         if method == "GET" and path == "/api/admin/drives":
             return self.send(200, tools.drives(fresh=(query.get("fresh") or ["0"])[0] == "1"))
+        if method == "GET" and path == "/api/admin/harbor":
+            return self.send(200, tools.harbor())
         if method == "GET" and path == "/api/admin/tower":
             return self.send(200, tools.tower(fresh=(query.get("fresh") or ["0"])[0] == "1"))
         m = re.fullmatch(r"/api/admin/apps/([\w.-]+)/restart", path)

@@ -116,10 +116,17 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
 
 // ---------- Tools > Tower > Setup command ----------
 PAGES.setup = (el) => {
-  el.innerHTML = `<p class="sub">When an update needs the setup command, a yellow card shows here and on Overview.</p><div id="su">${loading()}</div>`;
-  setupNeed().then((waiting) => {
+  el.innerHTML = `<p class="sub">Tower keeps itself up to date every hour. When an update needs the setup command, a yellow card shows here and on Overview.</p><div id="su">${loading()}</div>`;
+  const sinceWords = (iso) => {
+    const d = new Date(iso);
+    return isNaN(d) ? "" : ` since ${d.toLocaleDateString([], { month: "short", day: "numeric" })} at ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  };
+  Promise.all([setupNeed(), call("GET", "api/admin/harbor").catch(() => null)]).then(([waiting, hb]) => {
     if (current !== "setup") return;
-    $("#su").innerHTML = waiting ? setupCard(waiting) : `<div class="list"><div class="item"><span class="dot"></span><div class="grow"><div class="t">Tower is up to date</div><div class="s">You only need the setup command again when a yellow card asks.</div></div></div></div>`;
+    const row = (light, t, s) => `<div class="item"><span class="dot ${light}"></span><div class="grow"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div></div>`;
+    // Harbor (Ben 2026-11-21): Tower's hourly update now also puts in a newer Harbor by itself
+    const harbor = hb && hb.installed ? row(hb.running ? "" : "warn", "Harbor", hb.running ? `Updates itself every hour. On this build${sinceWords(hb.since)}. No command needed.` : "Harbor is installed but not running. Start it in Unraid's Docker tab.") : "";
+    $("#su").innerHTML = (waiting ? setupCard(waiting) : "") + `<div class="list">${waiting ? "" : row("", "Glowfin on Tower", "Up to date. You only need the setup command again when a yellow card asks.")}${harbor}</div>`;
   });
 };
 

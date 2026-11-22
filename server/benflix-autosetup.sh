@@ -7,7 +7,8 @@
 # Silent (Ben 2026-11-15): it never updates while anyone is watching or using Benflix. It waits until Jellyfin
 # is playing nothing and the helper hasn't been used for 15 minutes, checking again every hour.
 #
-# It also keeps Recyclarr's settings (Sonarr/Radarr scoring) in step with GitHub and syncs them.
+# It also keeps Recyclarr's settings (Sonarr/Radarr scoring) in step with GitHub and syncs them,
+# and keeps Harbor on its newest build.
 #
 # What it did last: /mnt/user/appdata/benflix-games/autosetup.log (and autosetup-last.txt, the full output).
 # To turn it off: delete /boot/config/plugins/dynamix/benflix-autosetup.cron and run update_cron.
@@ -54,6 +55,35 @@ if [ -f "$RC/recyclarr.yml" ] && docker ps --format '{{.Names}}' | grep -qx recy
       note "Recyclarr: PROBLEM syncing the new settings. See $RC/sync-last.txt"
     fi
   fi
+fi
+
+# Harbor (Ben 2026-11-21): when a newer Harbor has been built on GitHub, Tower puts it in by itself, the same
+# way the install command would, keeping the mode, port and media folder Harbor already runs with.
+# Harbor being away for a few seconds never interrupts anyone watching, so this doesn't wait.
+if docker ps -a --format '{{.Names}}' | grep -qx harbor; then
+  h_img=$(docker inspect harbor --format '{{.Config.Image}}' 2>/dev/null)
+  h_mode=$(docker inspect harbor --format '{{index .Config.Labels "harbor.mode"}}' 2>/dev/null)
+  h_port=$(docker port harbor 2>/dev/null | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p' | head -n1)
+  h_media=$(docker inspect harbor --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' 2>/dev/null)
+  case "$h_img:$h_mode" in
+  ghcr.io/thebenpsych/harbor:*:watch | ghcr.io/thebenpsych/harbor:*:full)
+    if docker pull -q "$h_img" >/dev/null 2>&1; then
+      h_have=$(docker inspect harbor --format '{{.Image}}' 2>/dev/null)
+      h_new=$(docker image inspect "$h_img" --format '{{.Id}}' 2>/dev/null)
+      if [ -n "$h_new" ] && [ -n "$h_have" ] && [ "$h_have" != "$h_new" ] &&
+        curl -fsSL -m 60 https://raw.githubusercontent.com/TheBenPsych/HolyArrs/main/deploy/harbor/harbor-install.sh -o "$TMP/harbor-install.sh" &&
+        grep -q "Harbor install" "$TMP/harbor-install.sh"; then
+        note "Updating Harbor (a newer build is ready)"
+        if HARBOR_MODE="$h_mode" HARBOR_PORT="${h_port:-6262}" HARBOR_MEDIA="$h_media" HARBOR_IMAGE="$h_img" \
+          bash "$TMP/harbor-install.sh" </dev/null >"$APP/harbor-update-last.txt" 2>&1; then
+          note "  ok  Harbor updated itself"
+        else
+          note "  PROBLEM  Harbor's update didn't finish. See harbor-update-last.txt"
+        fi
+      fi
+    fi
+    ;;
+  esac
 fi
 
 # No internet or GitHub is down: try again next hour
