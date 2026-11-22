@@ -32,6 +32,7 @@
       actors: (it.People || []).filter((p) => p.Type === "Actor" && p.Name).slice(0, 12).map((p) => ({ id: p.Id, name: p.Name, photo: p.PrimaryImageTag ? B.img(p.Id, "Primary", { h: 900, tag: p.PrimaryImageTag }) : "" })),
       runtime: it.RunTimeTicks ? Math.round(it.RunTimeTicks / 600000000) : null,
       rating: it.CommunityRating ? Math.round(it.CommunityRating * 10) : 0,
+      critics: it.CriticRating ? Math.round(it.CriticRating) : 0,
     };
   };
   // One pool per anime mix. "Anime only" loads straight from the anime libraries (it used to pick 500
@@ -71,7 +72,13 @@
     screen(ctx, `<div class="bg-msg"><h2>Couldn't load from Tower</h2><p class="dim">Try again in a moment.</p><button class="btn white" id="bgRetry">Try again</button> <button class="btn" id="bgBack">Back</button></div>`);
     $("#bgRetry").onclick = ctx.again; $("#bgBack").onclick = ctx.quit;
   };
-  const head = (title, line) => `<div class="bgq-head"><b>${esc(title)}</b><span id="bgLine">${esc(line)}</span></div>`;
+  // The scoreboard bar (Ben's pick: the new game look): the game's colour square and name, then round, points
+  // and best as chips, and dots for guesses left when the game has them
+  const chips = (line) => line.split("·").map((x) => x.trim()).filter(Boolean).map((x) => `<i class="${/best/i.test(x) ? "best" : ""}">${esc(x)}</i>`).join("");
+  const dots = (left, of) => `<i class="gs">Guesses ${Array.from({ length: of }, (_, k) => `<u class="${k < left ? "on" : ""}"></u>`).join("")}</i>`;
+  const head = (title, line, guesses) => `<div class="bgq-head"><s></s><b>${esc(title)}</b><span id="bgLine">${chips(line)}${guesses ? `<em id="bgGs">${dots(guesses[0], guesses[1])}</em>` : ""}</span></div>`;
+  /** Points a run earned, for the end screen's "Your run" posters */
+  const runPick = (t, badge) => ({ t, badge });
   /** Choice buttons; number keys pick them too. Returns a function that turns them off. */
   const choices = (box, names, onPick) => {
     box.innerHTML = names.map((n, i) => `<button class="btn bg-choice" data-i="${i}"><span class="n">${i + 1}</span>${esc(n)}</button>`).join("");
@@ -130,6 +137,7 @@
     if (pool.length < 8) pool = all.filter((t) => t.stills.length >= 1);
     if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures on Tower." + tip());
     let deck = fresh("SCENES", pool), points = 0, round = 0;
+    const run = [];
     const next = () => {
       if (!deck.length) deck = fresh("SCENES", pool);
       const a = deck.shift(); round++; saw("SCENES", a.id);
@@ -141,20 +149,22 @@
       if (real && deck.length) preload([frames(deck[0])[0]]);
       let shown = 0;
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
-      const q = screen(ctx, `${head("Scene by scene", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic wide"><img id="bgPic" alt=""></div><div class="bgq-say" id="bgSay">Scene 1 of ${scenes.length}: worth 400</div><div class="bgq-choices" id="bgCh"></div>`);
+      const q = screen(ctx, `${head("Scene by scene", `Round ${round} · ${points} points · Best ${ctx.best()}`)}<div class="bgq-pic wide"><img id="bgPic" alt=""></div><div class="bg-thumbs" id="bgTh"></div><div class="bgq-say" id="bgSay">Scene 1 of ${scenes.length}: worth 400</div><div class="bgq-choices" id="bgCh"></div>`);
+      // The scenes so far as small pictures (the one showing now ringed in gold), the rest locked with their points
+      const thumbs = () => { $("#bgTh", q).innerHTML = scenes.map((u, k) => k <= shown ? `<span class="${k === shown ? "now" : ""}"><img src="${u}" alt="" onerror="this.remove()"></span>` : `<span class="lock">${[400, 300, 200, 100][k]}</span>`).join(""); };
       $("#bgPic", q).onerror = (e) => { const f = fallback.shift(); if (f) { e.target.src = f; } };
-      const show = () => { $("#bgPic", q).src = scenes[shown]; $("#bgSay", q).textContent = `Scene ${shown + 1} of ${scenes.length}: worth ${[400, 300, 200, 100][shown]}`; };
+      const show = () => { $("#bgPic", q).src = scenes[shown]; thumbs(); $("#bgSay", q).textContent = `Scene ${shown + 1} of ${scenes.length}: worth ${[400, 300, 200, 100][shown]}`; };
       show();
       choices($("#bgCh", q), names, (n, b) => {
         if (n === a.name) {
-          const won = [400, 300, 200, 100][shown]; points += won; B.bgSound("point");
+          const won = [400, 300, 200, 100][shown]; points += won; B.bgSound("point"); run.push(runPick(a, `+${won}`));
           b.classList.add("right"); $("#bgSay", q).textContent = `Right! ${label(a)} +${won}`;
           $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
           setTimeout(() => ctx.alive() && next(), 1400);
         } else {
           b.disabled = true; b.classList.add("wrong"); B.bgSound("miss");
           shown++;
-          if (shown >= scenes.length) { B.bgOver(ctx, "Out of scenes!", `It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points); return; }
+          if (shown >= scenes.length) { B.bgOver(ctx, "Out of scenes!", `It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points, { run, answer: a }); return; }
           show();
         }
       });
@@ -168,19 +178,23 @@
     if (pool.length < 8) return notEnough(ctx, "Poster puzzle needs at least 8 titles with posters on Tower." + tip());
     const every = timers(ctx);
     let deck = fresh("POSTER", pool), points = 0, round = 0, tick = null;
+    const run = [];
     const next = () => {
       if (!deck.length) deck = fresh("POSTER", pool);
       const a = deck.shift(); round++; saw("POSTER", a.id);
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
-      const q = screen(ctx, `${head("Poster puzzle", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic tall"><img src="${a.poster}" alt=""><div class="bg-tiles">${"<i></i>".repeat(16)}</div></div><div class="bgq-say" id="bgSay">Guess now for 500 points</div><div class="bgq-choices" id="bgCh"></div>`);
+      const q = screen(ctx, `${head("Poster puzzle", `Round ${round} · ${points} points · Best ${ctx.best()}`)}<div class="bgq-pic tall"><img src="${a.poster}" alt=""><div class="bg-tiles">${"<i></i>".repeat(16)}</div></div><div class="bgq-say" id="bgSay">Guess now for 500 points</div><div class="bgq-choices" id="bgCh"></div>`);
       const tiles = $$(".bg-tiles i", q), order = shuffle(tiles.map((_, i) => i));
       let covered = 16, done = false, waited = 0;
+      // The whole poster never shows (Ben: waiting until it was almost all showing was too easy). At most 10
+      // tiles flip, one fewer every 3 rounds, down to 6
+      const maxOpen = Math.max(6, 10 - Math.floor((round - 1) / 3));
       const step = Math.max(450, 900 - round * 30);
       const worth = () => 100 + covered * 25;
       tick = every(() => {
         if (done) return;
-        if (covered > 0) { tiles[order[16 - covered]].classList.add("off"); covered--; $("#bgSay", q).textContent = `Guess now for ${worth()} points`; B.bgSound("flip"); }
-        else { waited += step; if (waited >= 4000) { done = true; clearInterval(tick); B.bgOver(ctx, "Run over", `Too slow! The whole poster was showing. It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points); } }
+        if (16 - covered < maxOpen) { tiles[order[16 - covered]].classList.add("off"); covered--; $("#bgSay", q).textContent = `Guess now for ${worth()} points`; B.bgSound("flip"); }
+        else { waited += step; if (waited >= 4000) { done = true; clearInterval(tick); B.bgOver(ctx, "Run over", `Too slow! No more tiles were flipping. It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points, { run, answer: a }); } }
       }, step);
       choices($("#bgCh", q), names, (n, b) => {
         if (done) return;
@@ -188,12 +202,12 @@
         $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
         tiles.forEach((t) => t.classList.add("off"));
         if (n === a.name) {
-          const won = worth(); points += won; B.bgSound("point"); b.classList.add("right");
+          const won = worth(); points += won; B.bgSound("point"); b.classList.add("right"); run.push(runPick(a, `+${won}`));
           $("#bgSay", q).textContent = `Right! ${label(a)} +${won}`;
           setTimeout(() => ctx.alive() && next(), 1400);
         } else {
           b.classList.add("wrong"); B.bgSound("miss");
-          B.bgOver(ctx, "Run over", `Not ${n}. It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points);
+          B.bgOver(ctx, "Run over", `Not ${n}. It was ${label(a)}.\nYou got ${round - 1} right for ${points} points.`, points, { run, answer: a });
         }
       });
     };
@@ -208,8 +222,11 @@
     const deck = fresh("TIMELINE", pool);
     const line = [deck.shift()];
     const card = (t, year) => `<div class="bg-tl"><img src="${t.poster}" alt=""><b>${esc(t.name)}</b>${year ? `<span>${t.year}</span>` : ""}</div>`;
+    // The line (Ben's pick: the new Timeline look): a real line with a tick and year for each poster, the
+    // posters taking turns above and below it, and a round + spot on the line before, between and after them
+    const placed = (t, i) => `<div class="bg-tlp ${i % 2 ? "down" : "up"}"><div class="bg-tl"><img src="${t.poster}" alt=""><span>${t.year}</span></div><em></em></div>`;
     const draw = (cur, msg) => {
-      const q = screen(ctx, `${head("Timeline", `Line of ${line.length} · Your best ${ctx.best()}`)}<div class="bg-tl-new">${card(cur, false)}<div><div class="bgq-say">${esc(msg || "Where does it go? Pick a Here spot on the line.")}</div></div></div><div class="bg-line" id="bgLn">${line.map((t, i) => `<button class="bg-slot" data-s="${i}">Here</button>${card(t, true)}`).join("")}<button class="bg-slot" data-s="${line.length}">Here</button></div>`);
+      const q = screen(ctx, `${head("Timeline", `${line.length - 1} placed · Best ${ctx.best()}`)}<div class="bg-tl-new">${card(cur, false)}<div><div class="bgq-say">${esc(msg || "Where does it go? Pick a + spot on the line. Older on the left.")}</div></div></div><div class="bg-line" id="bgLn">${line.map((t, i) => `<button class="bg-slot" data-s="${i}" aria-label="Here">+</button>${placed(t, i)}`).join("")}<button class="bg-slot" data-s="${line.length}" aria-label="Here">+</button></div>`);
       const slots = $$(".bg-slot", q);
       setTimeout(() => { const mid = slots[Math.floor(slots.length / 2)]; if (mid) { mid.focus({ preventScroll: true }); mid.scrollIntoView({ inline: "center", block: "nearest" }); } }, 30);
       $("#bgLn", q).onclick = (e) => {
@@ -218,14 +235,14 @@
         const before = s > 0 ? line[s - 1].year : -1e9, after = s < line.length ? line[s].year : 1e9;
         if (cur.year >= before && cur.year <= after) {
           line.splice(s, 0, cur); B.bgSound("point");
-          if (!deck.length) { B.bgOver(ctx, "You placed every title!", `Your line has ${line.length} titles.`, line.length - 1); return; }
+          if (!deck.length) { B.bgOver(ctx, "You placed every title!", `Your line has ${line.length} titles.`, line.length - 1, { run: line.map((t) => runPick(t, String(t.year))) }); return; }
           { const nx = deck.shift(); saw("TIMELINE", nx.id); draw(nx, `Right! ${label(cur)}`); }
         } else {
           B.bgSound("miss");
           const r = line.findIndex((t) => t.year > cur.year), ri = r < 0 ? line.length : r;
           const A = line[ri - 1], Bt = line[ri];
           const where = !A ? `before ${label(Bt)}` : !Bt ? `after ${label(A)}` : `between ${label(A)} and ${label(Bt)}`;
-          B.bgOver(ctx, "Run over", `${label(cur)} goes ${where}.\nYour line had ${line.length} titles.`, line.length - 1);
+          B.bgOver(ctx, "Run over", `${label(cur)} goes ${where}.\nYour line had ${line.length} titles.`, line.length - 1, { run: line.map((t) => runPick(t, String(t.year))), answer: cur });
         }
       };
     };
@@ -245,7 +262,7 @@
       if (!deck.length) { const known = actors.filter((a) => a.titles.length >= 2); deck = fresh("ACTOR", known.length ? known : actors, (x) => x.p.id); }
       const a = deck.shift(); round++; saw("ACTOR", a.p.id);
       const names = shuffle(pickN(actors.filter((x) => x.p.name !== a.p.name), 5).map((x) => x.p.name).concat(a.p.name));
-      const q = screen(ctx, `${head("Who's that actor?", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic tall zoom"><img id="bgPic" src="${a.p.photo}" alt=""></div><div class="bgq-say" id="bgSay"></div><div class="bg-hints" id="bgHints"></div><div class="bgq-choices" id="bgCh"></div>`);
+      const q = screen(ctx, `${head("Who's that actor?", `Round ${round} · ${points} points · Best ${ctx.best()}`, [3, 3])}<div class="bg-ring" id="bgRing"><div class="bgq-pic tall zoom"><img id="bgPic" src="${a.p.photo}" alt=""></div></div><div class="bgq-say" id="bgSay"></div><div class="bg-hints" id="bgHints"></div><div class="bgq-choices" id="bgCh"></div>`);
       const LAST = 10000, MAX = 3;
       let reveal = 0, misses = 0, out = 0, done = false, timedOut = false;
       const hints = [];
@@ -259,14 +276,20 @@
         if (misses) return `Not them. ${g}${clock}`;
         return `Who is this? Guess now for ${worth()} points${clock}`;
       };
-      const paint = () => { $("#bgPic", q).style.transform = `scale(${1 + 5 * (1 - reveal) ** 2})`; const sy = $("#bgSay", q); sy.textContent = say(); sy.classList.toggle("bad", misses > 0); $("#bgHints", q).innerHTML = hints.map((h) => `<span>${esc(h)}</span>`).join(""); };
+      const paint = () => {
+        // The ring empties as the photo zooms out, then counts down the last seconds
+        const left = reveal >= 1 ? 1 - out / LAST : 1 - reveal;
+        const ring = $("#bgRing", q); ring.style.setProperty("--left", Math.max(0, left).toFixed(3)); ring.classList.toggle("low", left < 0.25);
+        $("#bgGs", q).innerHTML = dots(MAX - misses, MAX);
+        $("#bgPic", q).style.transform = `scale(${1 + 5 * (1 - reveal) ** 2})`; const sy = $("#bgSay", q); sy.textContent = say(); sy.classList.toggle("bad", misses > 0); $("#bgHints", q).innerHTML = hints.map((h) => `<span>${esc(h)}</span>`).join("");
+      };
       paint();
       const t = every(() => {
         if (done) return;
         if (reveal >= 1) {
           out += 100;
           if (out < LAST) { paint(); return; }
-          if (misses + 1 >= MAX) { done = true; clearInterval(t); B.bgSound("miss"); B.bgOver(ctx, "Run over", `Out of time! It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points); return; }
+          if (misses + 1 >= MAX) { done = true; clearInterval(t); B.bgSound("miss"); B.bgOver(ctx, "Run over", `Out of time! It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points, { answer: a.titles[0] }); return; }
           misses++; out = 0; timedOut = true; addHint(); B.bgSound("miss"); paint();
         } else { reveal = Math.min(1, reveal + 100 / 15000); paint(); }
       }, 100);
@@ -282,7 +305,7 @@
           return;
         } else if (misses + 1 >= MAX) {
           done = true; clearInterval(t); B.bgSound("miss");
-          B.bgOver(ctx, "Run over", `Not ${n}. It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points);
+          B.bgOver(ctx, "Run over", `Not ${n}. It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points, { answer: a.titles[0] });
         } else {
           misses++; out = 0; timedOut = false; b.disabled = true; b.classList.add("wrong"); B.bgSound("miss");
           addHint();
@@ -394,31 +417,67 @@
     keyFn = true; next();
   };
 
-  // Higher or Lower: is the next one rated higher or lower on IMDb? Endless until the first miss (score = streak)
+  // Higher or Lower: is the next one's number higher or lower? Endless until the first miss (score = streak).
+  // Modes (Ben's pick): IMDb rating, release year, running time, Rotten Tomatoes, or a mix. Each keeps its own
+  // best; IMDb keeps the old best and is the one on the "Highest scores" board.
+  const HL = {
+    IMDB: { title: "IMDb rating", q: "Is the second one rated higher or lower on IMDb?", v: (t) => t.rating || null, show: (t) => `IMDb ${(t.rating / 10).toFixed(1)}`, hide: "IMDb ?", up: "▲ Higher", down: "▼ Lower" },
+    YEAR: { title: "Release year", q: "Did the second one come out later or earlier?", v: (t) => t.year || null, show: (t) => String(t.year), hide: "?", up: "▲ Later", down: "▼ Earlier" },
+    LENGTH: { title: "Running time", q: "Is the second one longer or shorter?", v: (t) => (!t.series && t.runtime >= 20 ? t.runtime : null), show: (t) => (t.runtime >= 60 ? `${Math.floor(t.runtime / 60)}h ${t.runtime % 60}m` : `${t.runtime}m`), hide: "?", up: "▲ Longer", down: "▼ Shorter" },
+    CRITICS: { title: "Rotten Tomatoes", q: "Did critics score the second one higher or lower?", v: (t) => (t.critics > 0 ? t.critics : null), show: (t) => `🍅 ${t.critics}%`, hide: "🍅 ?", up: "▲ Higher", down: "▼ Lower" },
+    MIX: { title: "Mix", q: "A different question every round." },
+  };
+  const MIXED = ["IMDB", "YEAR", "LENGTH", "CRITICS"];
+  const hlBestKey = (m) => `benflix.hl.${B.me.id}.${m}`;
+  const hlBest = (m, ctx) => { if (m === "IMDB") return ctx.best(); try { return +localStorage.getItem(hlBestKey(m)) || 0; } catch (e) { return 0; } };
   PUZ.HIGHER_LOWER = async (ctx) => {
-    const pool = (await titles()).filter((t) => t.rating > 0 && t.poster);
-    if (pool.length < 4) return notEnough(ctx, "Higher or Lower needs at least 4 titles with an IMDb rating on Tower." + tip());
-    let deck = fresh("HIGHER_LOWER", pool), streak = 0;
-    let a = deck.shift();
-    const side = (t, showRating) => `<div class="bg-hl"><img src="${t.poster}" alt=""><b class="${label(t).length > 38 ? "xl" : label(t).length > 22 ? "l" : ""}" title="${esc(label(t))}">${esc(label(t))}</b><span class="r">${showRating ? (t.rating / 10).toFixed(1) + " IMDb" : "?"}</span></div>`;
-    const next = () => {
-      if (!deck.length) deck = fresh("HIGHER_LOWER", pool.filter((t) => t !== a));
-      const b = deck.shift(); saw("HIGHER_LOWER", b.id);
-      const q = screen(ctx, `${head("Higher or Lower", `Streak ${streak} · Your best ${ctx.best()}`)}<div class="bg-hls">${side(a, true)}<div class="bg-hlq" id="bgSay">Is it higher or lower?</div><div id="bgB" class="fadein">${side(b, false)}</div></div><div class="bgq-choices two" id="bgCh"></div>`);
-      choices($("#bgCh", q), ["Higher", "Lower"], (n, btn) => {
-        $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
-        $("#bgB", q).innerHTML = side(b, true);
-        const right = b.rating === a.rating || (n === "Higher" ? b.rating > a.rating : b.rating < a.rating);
-        if (right) {
-          streak++; btn.classList.add("right"); B.bgSound("point"); $("#bgSay", q).textContent = "Right!";
-          a = b; setTimeout(() => ctx.alive() && next(), 1300);
-        } else {
-          btn.classList.add("wrong"); B.bgSound("miss");
-          setTimeout(() => ctx.alive() && B.bgOver(ctx, "Streak over", `${label(b)} is rated ${(b.rating / 10).toFixed(1)}.\nYour streak: ${streak}.`, streak), 900);
-        }
-      });
+    const all = (await titles()).filter((t) => t.poster);
+    const playable = (m) => (m === "MIX" ? all.filter((t) => MIXED.filter((k) => HL[k].v(t) != null).length >= 2) : all.filter((t) => HL[m].v(t) != null));
+    if (Object.keys(HL).every((m) => playable(m).length < 6)) return notEnough(ctx, "Higher or Lower needs at least 6 titles with an IMDb rating on Tower." + tip());
+    // The mode picker
+    const pick = () => {
+      const q = screen(ctx, `${head("Higher or Lower", "Pick what to compare")}<div class="bg-modes" id="bgModes">${Object.keys(HL).map((m) => { const ok = playable(m).length >= 6; return `<button class="btn bg-choice bg-mode" data-m="${m}" ${ok ? "" : "disabled"}><span><b>${esc(HL[m].title)}</b><small>${esc(ok ? HL[m].q : "Not enough titles with this on Tower yet")}</small></span><em>Best ${hlBest(m, ctx)}</em></button>`; }).join("")}</div>`);
+      const first = $(".bg-mode:not([disabled])", q); if (first) setTimeout(() => first.focus({ preventScroll: true }), 30);
+      $("#bgModes", q).onclick = (e) => { const b = e.target.closest(".bg-mode"); if (b && !b.disabled) play(b.dataset.m); };
     };
-    keyFn = true; next();
+    const play = (mode) => {
+      const pool = playable(mode), dk = mode === "IMDB" ? "HIGHER_LOWER" : `HIGHER_LOWER_${mode}`;
+      let deck = fresh(dk, pool), streak = 0;
+      let a = deck.shift();
+      const statFor = (x, y) => (mode !== "MIX" ? mode : pickN(MIXED.filter((k) => HL[k].v(x) != null && HL[k].v(y) != null), 1)[0] || "YEAR");
+      const extra = { again: () => play(mode), other: ["Change mode", pick] };
+      const over = (b, stat) => {
+        if (mode === "IMDB") { B.bgOver(ctx, "Streak over", `${label(b)}: ${HL[stat].show(b)}.\nYour streak: ${streak}.`, streak, Object.assign({ answer: b }, extra)); return; }
+        let best = hlBest(mode, ctx), newBest = false;
+        if (streak > best) { newBest = true; best = streak; try { localStorage.setItem(hlBestKey(mode), String(streak)); } catch (e) { /* private window */ } }
+        B.bgOver(ctx, newBest ? `New best: ${streak}!` : "Streak over", `${label(b)}: ${HL[stat].show(b)}.\nYour streak: ${streak}. Your best in ${HL[mode].title}: ${best}.`, streak, Object.assign({ answer: b, local: { best, newBest } }, extra));
+      };
+      // The face-off (Ben's pick): each movie on its own half with its background picture behind it and a VS badge
+      const side = (t, stat, show, cls) => `<div class="bg-hl ${cls || ""}">${t.backdrop ? `<img class="bk" src="${B.img(t.id, "Backdrop", { w: 960, tag: t.backdrop.tag, index: 0 })}" alt="">` : ""}<img class="p" src="${t.poster}" alt=""><div class="w"><b class="${t.name.length > 38 ? "xl" : t.name.length > 22 ? "l" : ""}" title="${esc(t.name)}">${esc(t.name)}</b>${stat !== "YEAR" && t.year ? `<small>${t.year}</small>` : ""}<span class="r">${show ? esc(HL[stat].show(t)) : esc(HL[stat].hide)}</span></div></div>`;
+      const next = () => {
+        if (!deck.length) deck = fresh(dk, pool.filter((t) => t !== a));
+        let b = deck.shift();
+        let stat = statFor(a, b);
+        if ((HL[stat].v(a) == null || HL[stat].v(b) == null) && deck.length) { b = deck.shift(); stat = statFor(a, b); }
+        saw(dk, b.id);
+        const q = screen(ctx, `${head("Higher or Lower", `${HL[mode].title} · Streak ${streak} · Best ${Math.max(hlBest(mode, ctx), streak)}`)}<div class="bgq-say">${esc(HL[stat].q)}</div><div class="bg-hls">${side(a, stat, true)}<div class="bg-vs">VS</div><div id="bgB" class="fadein">${side(b, stat, false)}</div></div><div class="bgq-say" id="bgSay"> </div><div class="bgq-choices two" id="bgCh"></div>`);
+        choices($("#bgCh", q), [HL[stat].up, HL[stat].down], (n, btn) => {
+          $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
+          const va = HL[stat].v(a) || 0, vb = HL[stat].v(b) || 0;
+          const right = va === vb || (n === HL[stat].up ? vb > va : vb < va);
+          $("#bgB", q).innerHTML = side(b, stat, true, right ? "good" : "bad");
+          if (right) {
+            streak++; btn.classList.add("right"); B.bgSound("point"); $("#bgSay", q).textContent = `Right! It's ${HL[stat].show(b)}`;
+            a = b; setTimeout(() => ctx.alive() && next(), 1300);
+          } else {
+            btn.classList.add("wrong"); B.bgSound("miss"); $("#bgSay", q).textContent = `Nope, it's ${HL[stat].show(b)}`;
+            setTimeout(() => ctx.alive() && over(b, stat), 900);
+          }
+        });
+      };
+      next();
+    };
+    keyFn = true; pick();
   };
 
   // Movie grid: 3 by 3, each square fits its row and column rule; 100 a square, 3 lives, full grid +200 and +50 a life

@@ -62,12 +62,16 @@ sealed interface PosterState {
         val newBest: Boolean,
         val answer: PuzzleTitle,
         val why: String,
+        val run: List<RunPick> = emptyList(),
     ) : PosterState
 }
 
 private const val TILES = 16
 private const val BASE = 100
 private const val PER_TILE = 25
+
+/** How many tiles flip in round [round] (0 = the first): 10, then one fewer every 3 rounds, down to 6 */
+internal fun maxOpen(round: Int) = (10 - round / 3).coerceAtLeast(6)
 
 /**
  * "Poster puzzle": a poster hidden under 16 tiles that flip away one by one. Guess whenever you
@@ -87,12 +91,16 @@ class PosterPuzzleViewModel
         private var titles: List<PuzzleTitle> = emptyList()
         private var ticker: Job? = null
 
+        /** What they got right this run, for the end screen */
+        private val run = mutableListOf<RunPick>()
+
         init {
             start()
         }
 
         fun start() {
             ticker?.cancel()
+            run.clear()
             _state.value = PosterState.Loading
             viewModelScope.launch {
                 try {
@@ -146,7 +154,10 @@ class PosterPuzzleViewModel
                     // Tiles flip faster as the run goes on
                     val step = (FLIP_MS - round * 30L).coerceAtLeast(450L)
                     val order = (0 until TILES).shuffled()
-                    for (tile in order) {
+                    // The whole poster never shows (Ben 2026-11-22: waiting until it was almost all showing
+                    // made it too easy, forever). At most 10 of the 16 tiles flip, fewer as the run goes on,
+                    // then a short last chance.
+                    for (tile in order.take(maxOpen(round))) {
                         delay(step)
                         val p = _state.value as? PosterState.Playing ?: return@launch
                         if (p.won != null) return@launch
@@ -154,7 +165,7 @@ class PosterPuzzleViewModel
                     }
                     delay(LAST_CHANCE_MS)
                     val p = _state.value as? PosterState.Playing ?: return@launch
-                    if (p.won == null) over(p, "Too slow! The whole poster was showing.")
+                    if (p.won == null) over(p, "Too slow! No more tiles were flipping.")
                 }
         }
 
@@ -164,6 +175,7 @@ class PosterPuzzleViewModel
             if (name == p.answer.name) {
                 ticker?.cancel()
                 val won = p.worth
+                run += RunPick(p.answer, "+$won")
                 _state.value = p.copy(won = won, points = p.points + won, covered = emptySet())
                 viewModelScope.launch {
                     delay(1_400)
@@ -180,7 +192,7 @@ class PosterPuzzleViewModel
         ) {
             ticker?.cancel()
             val newBest = pool.submit(BOARD_KEY, p.points)
-            _state.value = PosterState.Over(p.points, p.round - 1, maxOf(p.best, p.points), newBest, p.answer, why)
+            _state.value = PosterState.Over(p.points, p.round - 1, maxOf(p.best, p.points), newBest, p.answer, why, run.toList())
         }
 
         override fun onCleared() {
@@ -220,6 +232,9 @@ fun PosterPuzzleScreen(
                     actions = viewModel.actions,
                     isTv = isTv,
                     onAgain = viewModel::start,
+                    run = s.run,
+                    score = s.points,
+                    newBest = s.newBest,
                 )
             }
 
@@ -229,7 +244,7 @@ fun PosterPuzzleScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
                 ) {
-                    PuzzleHeader("Poster puzzle", "Round ${s.round}  ·  ${s.points} points  ·  Your best ${s.best}", isTv)
+                    PuzzleHeader("Poster puzzle", "Round ${s.round}  ·  ${s.points} points  ·  Best ${s.best}", isTv)
                     val posterMod = if (isTv) Modifier.width(tvPictureHeight(0.48f) * (2f / 3f)) else Modifier.width(210.dp)
                     // Keyed by the title: a new poster starts fully covered. Before, the tiles faded back in over
                     // the new poster for a moment, so you could glimpse it before the round started.

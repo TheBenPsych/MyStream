@@ -50,8 +50,12 @@ enum class MovieGame(
     POSTER(
         "Poster puzzle",
         "Tiles flip off a poster. Guess early for more points.",
-        "A poster hides under 16 tiles that flip away one by one. Guess as soon as you know it.",
-        listOf("Watch the tiles flip away.", "Pick the title whenever you know it.", "One wrong guess ends the run."),
+        "A poster hides under 16 tiles that flip away one by one, but never all of them. Guess as soon as you know it.",
+        listOf(
+            "Watch the tiles flip away.",
+            "Pick the title whenever you know it.",
+            "Fewer tiles flip as you go. One wrong guess ends the run.",
+        ),
         "1 player",
         "About 3 min",
         PosterPuzzleViewModel.BOARD_KEY,

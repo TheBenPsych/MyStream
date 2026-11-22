@@ -9,7 +9,7 @@
   // The same games, names, words and colours as the app (ui/games/MovieGames.kt and GamesViewModel.kt)
   const PUZZLES = [
     { key: "SCENES", title: "Scene by scene", short: "Guess the movie from a still scene. Each miss shows an easier one.", about: "Guess the movie or show from a still picture taken from it. Each wrong guess shows a new, easier scene.", steps: ["Look at the scene.", "Pick the title from 6 names.", "Wrong? An easier scene shows. Out of scenes ends the run."], minutes: "About 3 min", board: "SCENE_BY_SCENE", ranked: "most points in a run", colors: C("#BE123C", "#4C0519"), icon: "film", kids: true },
-    { key: "POSTER", title: "Poster puzzle", short: "Tiles flip off a poster. Guess early for more points.", about: "A poster hides under 16 tiles that flip away one by one. Guess as soon as you know it.", steps: ["Watch the tiles flip away.", "Pick the title whenever you know it.", "One wrong guess ends the run."], minutes: "About 3 min", board: "POSTER_PUZZLE", ranked: "most points in a run", colors: C("#A16207", "#422006"), icon: "list", kids: true },
+    { key: "POSTER", title: "Poster puzzle", short: "Tiles flip off a poster. Guess early for more points.", about: "A poster hides under 16 tiles that flip away one by one, but never all of them. Guess as soon as you know it.", steps: ["Watch the tiles flip away.", "Pick the title whenever you know it.", "Fewer tiles flip as you go. One wrong guess ends the run."], minutes: "About 3 min", board: "POSTER_PUZZLE", ranked: "most points in a run", colors: C("#A16207", "#422006"), icon: "list", kids: true },
     { key: "GRID", title: "Movie grid", short: "Fill a 3 by 3 board with titles that fit both rules.", about: "Every square needs a movie or show from Tower that fits its row rule and its column rule.", steps: ["Pick a square.", "Pick the title that fits both rules.", "3 lives. A full grid earns a bonus."], minutes: "About 5 min", board: "MOVIE_GRID", ranked: "most points on a grid", colors: C("#4338CA", "#1E1B4B"), icon: "list", kids: false },
     { key: "TIMELINE", title: "Timeline", short: "Put each poster in the right spot by release year.", about: "Posters arrive one at a time. Slot each one into the right place on a growing line of years.", steps: ["Look at the new poster.", "Move along the line and press Here.", "One wrong spot ends the run."], minutes: "About 3 min", board: "TIMELINE", ranked: "longest line", colors: C("#0F766E", "#042F2E"), icon: "swap", kids: true },
     { key: "ACTOR", title: "Who's that actor?", short: "A zoomed-in photo zooms out until you know them.", about: "An actor's photo starts zoomed right in on their eyes and slowly zooms out.", steps: ["Watch the photo zoom out.", "Pick their name from 6.", "Misses add hints. Three misses ends the run."], minutes: "About 3 min", board: "WHOS_THAT_ACTOR", ranked: "most points in a run", colors: C("#9333EA", "#3B0764"), icon: "user", kids: false },
@@ -234,16 +234,31 @@
     }
   });
 
-  /** The end-of-run card every game shows */
-  B.bgOver = (ctx, title, body, score) => {
-    const newBest = ctx.submit(score);
-    const best = ctx.best();
+  /**
+   * The end-of-run card every game shows (Ben's pick: the better end screen): the score big, a NEW BEST
+   * label, the posters of the titles you got right with what each earned (opts.run), and "The one that got
+   * you" (opts.answer) with Open and My List. opts.local = { best, newBest } for scores kept off the board.
+   */
+  B.bgOver = (ctx, title, body, score, opts) => {
+    const o = opts || {};
+    const newBest = o.local ? o.local.newBest : ctx.submit(score);
+    const best = o.local ? o.local.best : ctx.best();
     const box = document.createElement("div");
     box.className = "bg-over";
-    box.innerHTML = `<div class="bg-card"><h2>${esc(newBest ? `New best: ${score.toLocaleString()}!` : title)}</h2><p>${esc(body).replace(/\n/g, "<br>")}</p><p class="dim">Your best: ${best.toLocaleString()}</p><div class="acts"><button class="btn white" id="bgAgain">${I("restart")} Play again</button><button class="btn" id="bgDone">Done</button></div></div>`;
+    const run = (o.run || []).slice(-8);
+    const a = o.answer;
+    box.innerHTML = `<div class="bg-card${run.length ? " wide" : ""}"><div class="bg-end-l">${newBest ? `<div class="bg-newbest">NEW BEST!</div>` : ""}<div class="bg-big">${score.toLocaleString()}</div><h2>${esc(newBest ? `New best: ${score.toLocaleString()}!` : title)}</h2><p>${esc(body).replace(/\n/g, "<br>")}</p><p class="dim">Your best: ${best.toLocaleString()}</p><div class="acts"><button class="btn white" id="bgAgain">${I("restart")} Play again</button>${o.other ? `<button class="btn" id="bgOther">${esc(o.other[0])}</button>` : ""}<button class="btn" id="bgDone">Done</button></div>${a ? `<div class="bg-gotyou">${a.poster ? `<img src="${a.poster}" alt="">` : ""}<div><small>The one that got you</small><b>${esc(a.name)}${a.year ? ` (${a.year})` : ""}</b><span><button class="btn small" id="bgOpen">Open ${a.series ? "show" : "movie"}</button><button class="btn small" id="bgList">${I("plus")} My List</button></span></div></div>` : ""}</div>${run.length ? `<div class="bg-end-r"><small>Your run</small><div class="bg-runs">${run.map((x) => `<span>${x.t.poster ? `<img src="${x.t.poster}" alt="${esc(x.t.name)}">` : `<i>${esc(x.t.name)}</i>`}<em>${esc(x.badge)}</em></span>`).join("")}</div></div>` : ""}</div>`;
     ctx.stage.appendChild(box);
-    $("#bgAgain", box).onclick = ctx.again;
+    $("#bgAgain", box).onclick = o.again || ctx.again;
     $("#bgDone", box).onclick = ctx.quit;
+    if (o.other) $("#bgOther", box).onclick = () => { box.remove(); o.other[1](); };
+    if (a) {
+      $("#bgOpen", box).onclick = () => B.go(`#/${a.series ? "show" : "movie"}/${a.id}`);
+      $("#bgList", box).onclick = async (e) => {
+        const b = e.currentTarget;
+        try { await B.jf("POST", `/UserFavoriteItems/${a.id}?userId=${B.uid()}`); b.innerHTML = `${I("check")} On My List`; b.disabled = true; } catch (err) { console.warn(err); }
+      };
+    }
     setTimeout(() => { const b = $("#bgAgain", box); if (b) b.focus(); }, 300);
     return newBest;
   };

@@ -1,12 +1,14 @@
 package com.github.damontecres.wholphin.ui.games
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.games.party.PartyJoinScreen
+import com.github.damontecres.wholphin.ui.games.puzzles.LocalPuzzleAccent
 import com.github.damontecres.wholphin.ui.games.puzzles.MovieGridScreen
 import com.github.damontecres.wholphin.ui.games.puzzles.PosterPuzzleScreen
 import com.github.damontecres.wholphin.ui.games.puzzles.SceneBySceneScreen
@@ -21,7 +23,19 @@ fun MovieGamePlayPage(
     name: String,
     modifier: Modifier = Modifier,
 ) {
-    when (MovieGame.entries.firstOrNull { it.name == name }) {
+    val game = MovieGame.entries.firstOrNull { it.name == name }
+    // Each game glows in its own colours (the same as its tile)
+    CompositionLocalProvider(LocalPuzzleAccent provides (game?.colors ?: LocalPuzzleAccent.current)) {
+        MovieGamePlayContent(game, modifier)
+    }
+}
+
+@Composable
+private fun MovieGamePlayContent(
+    game: MovieGame?,
+    modifier: Modifier,
+) {
+    when (game) {
         MovieGame.SCENES -> {
             SceneBySceneScreen(modifier)
         }
