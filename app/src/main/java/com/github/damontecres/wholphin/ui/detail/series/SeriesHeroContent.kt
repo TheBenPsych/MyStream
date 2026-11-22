@@ -96,8 +96,8 @@ class SeriesHeroActions(
 /**
  * Glowfin D1: a show's own page. Buttons: Resume S2 E4 (or Play), Trailer (greyed out when there isn't
  * one), My List, More. Right under them: season chips and one row of wide episode pictures, then Cast and
- * crew, More like this, Ask for similar, About and Parents' guide. Anime shows get Characters and voices
- * instead of Parents' guide. It is one list, so Down always reaches every row (the remote used to get
+ * crew, More like this, Ask for similar and About. Anime shows also get Characters and voices.
+ * It is one list, so Down always reaches every row (the remote used to get
  * stuck on Play here).
  */
 @Composable
@@ -237,7 +237,6 @@ fun SeriesHeroContent(
                         strip = strip,
                         extra = if (anime && !easy) ({ AnimeFacts(series) }) else null,
                         details = remember(series, state.isAdmin) { titleDetails(series, state.isAdmin, show = true) },
-                        guide = if (!easy && !anime) state.parentsGuide else emptyList(),
                     )
                 },
             )

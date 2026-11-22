@@ -2,7 +2,6 @@
    the browser (2026-11-10 "Find features missing from web"):
      - "Part 1 of 3" + In this collection (movies in a collection)
      - Ask for similar tab (titles of the same kind that aren't on Glowfin yet, from Requests)
-     - Parents' guide (IMDb's guide, through Tower)
      - Season 4 is out. Ask for it (once you've watched everything of a show)
      - Anime extras: AniList score, English and Japanese names, next episode countdown, fan tags,
        characters and their voices
@@ -111,138 +110,13 @@
     if (h) h.insertAdjacentHTML("beforeend", " " + note);
   };
 
-  // ---------- Parents' guide ----------
-  X.parents = async (it, nav, box) => {
-    const imdb = idOf(it, "Imdb");
-    if (!imdb || !/^tt\d+$/.test(imdb)) return;
-    const got = await B.call("GET", `api/facts/parents/${imdb}`).catch(() => null);
-    const lines = (got && got.lines) || [];
-    if (!lines.length || !B.alive(nav)) return;
-    const colour = (r) => (r >= 3 ? "var(--bad)" : r === 2 ? "var(--warn)" : "var(--ok)");
-    add(box, `<section class="rowx"><h3>Parents' guide</h3><div class="wrap parents">
-      ${lines.map((l) => `<div><span class="dim">${esc(l.label)}</span><i>${[0, 1, 2].map((d) => `<b style="background:${d < l.rank ? colour(l.rank) : "var(--line)"}"></b>`).join("")}</i>${esc(l.level)}</div>`).join("")}
-      <small class="dim3">From IMDb's parents guide</small></div></section>`);
-  };
-
-  // ---------- Season 4 is out. Ask for it ----------
-  X.nextSeason = async (it, nav) => {
-    const tmdb = tmdbOf(it);
-    if (!tmdb || !(await requestsOn())) return;
-    const d = await B.seerr(`/tv/${tmdb}`).catch(() => null);
-    if (!d || !B.alive(nav)) return;
-    const today = new Date().toISOString().slice(0, 10);
-    // "New episode Thursday" for shows still airing
-    const next = d.nextEpisodeToAir && d.nextEpisodeToAir.airDate;
-    if (next && next >= today && !/New episodes on|New episode/.test($(".details .meta") ? $(".details .meta").textContent : "")) {
-      const when = new Date(next + "T12:00:00");
-      const days = Math.round((when - new Date(today + "T12:00:00")) / 86400000);
-      const word = days === 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? when.toLocaleDateString([], { weekday: "long" }) : B.day(next);
-      $(".details .meta") && $(".details .meta").insertAdjacentHTML("beforeend", `<span>New episode ${esc(word)}</span>`);
-    }
-    // Only once everything on Benflix has been watched
-    if (((it.UserData || {}).UnplayedItemCount || 0) > 0) return;
-    const here = ((await B.get(`/Shows/${it.Id}/Seasons?userId=${B.uid()}`).catch(() => ({}))).Items || []).map((s) => s.IndexNumber || 0).filter((n) => n > 0);
-    const last = Math.max(0, ...here);
-    if (!last || !B.alive(nav)) return;
-    const st = {}; ((d.mediaInfo && d.mediaInfo.seasons) || []).forEach((s) => { st[s.seasonNumber] = s.status || 1; });
-    const newer = (d.seasons || []).filter((s) => s.seasonNumber > last && s.airDate && s.airDate.slice(0, 10) <= today && (st[s.seasonNumber] || 1) <= 1).map((s) => s.seasonNumber).sort((a, b) => a - b);
-    if (!newer.length) return;
-    const words = newer.length === 1 ? `Season ${newer[0]} is out` : `Seasons ${newer[0]} to ${newer[newer.length - 1]} are out`;
-    // At the end of the Episodes tab
-    const btns = $("#tpEpisodes") || $(".details .btns");
-    if (!btns) return;
-    btns.insertAdjacentHTML(btns.id === "tpEpisodes" ? "beforeend" : "afterend", `<div class="nextask wrap0"><span>${esc(words)}. They aren't on Glowfin yet.</span><button class="btn white" id="askNext">${I("plus")} Ask for ${newer.length === 1 ? "it" : "them"}</button></div>`);
-    $("#askNext").onclick = (e) => B.busy(e.currentTarget, async () => {
-      await B.seerr("/request", "POST", { mediaType: "tv", mediaId: tmdb, seasons: newer });
-      $(".nextask").remove();
-      B.cache["seerr-mine"] = null;
-      return `Asked for ${newer.length === 1 ? "Season " + newer[0] : newer.length + " seasons"}. You'll see it in Your requests.`;
-    });
-  };
-
-  // ---------- Anime extras (AniList) ----------
-  const ANI_FIELDS = `id idMal format averageScore meanScore genres title { english romaji native } synonyms
-    tags { name rank isMediaSpoiler isGeneralSpoiler isAdult } nextAiringEpisode { episode airingAt }
-    characters(sort: [ROLE, RELEVANCE, ID], perPage: 16) { edges { role node { name { full } image { medium } }
-      japanese: voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) { name { full } }
-      english: voiceActors(language: ENGLISH, sort: [RELEVANCE, ID]) { name { full } } } }`;
-  const aniAsk = async (query, variables) => {
-    const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
-    if (!r.ok) throw new Error("AniList " + r.status);
-    return (await r.json()).data;
-  };
-  const clean = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const aniInfo = (it) => B.cached("anilist-" + it.Id, 86400000, async () => {
-    const saved = (() => { try { return JSON.parse(localStorage.getItem("benflix.anilist." + it.Id) || "null"); } catch (e) { return null; } })();
-    if (saved && Date.now() - saved.at < 3 * 86400000 && !(saved.m && saved.m.nextAiringEpisode && saved.m.nextAiringEpisode.airingAt * 1000 < Date.now())) return saved.m;
-    const al = idOf(it, "AniList"), mal = idOf(it, "MyAnimeList") || idOf(it, "Mal");
-    let m = null;
-    if (al || mal) {
-      const d = await aniAsk(`query ($id: Int, $idMal: Int) { Media(id: $id, idMal: $idMal, type: ANIME) { ${ANI_FIELDS} } }`, al ? { id: +al } : { idMal: +mal });
-      m = d && d.Media;
-    } else {
-      const d = await aniAsk(`query ($q: String) { Page(perPage: 5) { media(search: $q, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { ${ANI_FIELDS} startDate { year } } } }`, { q: it.Name });
-      const want = clean(it.Name), wantMovie = it.Type === "Movie";
-      const list = (d && d.Page && d.Page.media) || [];
-      m = list.find((x) => [x.title.english, x.title.romaji, ...(x.synonyms || [])].some((n) => clean(n) === want) && ((x.format === "MOVIE") === wantMovie)) ||
-        list.find((x) => (x.format === "MOVIE") === wantMovie && (!it.ProductionYear || !x.startDate || !x.startDate.year || Math.abs(x.startDate.year - it.ProductionYear) <= 1)) || null;
-    }
-    try { localStorage.setItem("benflix.anilist." + it.Id, JSON.stringify({ at: Date.now(), m })); } catch (e) {}
-    return m;
-  });
-  X.anime = async (it, nav, box, charBox) => {
-    const ids = await B.animeIds(it.Type === "Movie" ? "Movie" : "Series").catch(() => new Set());
-    if (!ids.has(it.Id)) return;
-    const m = await aniInfo(it).catch(() => null);
-    if (!m || !B.alive(nav)) return;
-    // English name with the Japanese (romaji) one under it
-    const t = $(".details h1.t");
-    const romaji = m.title && m.title.romaji;
-    if (t && romaji && clean(romaji) !== clean(it.Name) && !$(".details .t2")) t.insertAdjacentHTML("afterend", `<div class="t2">${esc(romaji)}</div>`);
-    // AniList score on the scores line
-    const score = m.averageScore || m.meanScore;
-    if (score && !B.me.kids) {
-      const s = $(".details .scores");
-      const html = `<span><b>${score}%</b>AniList</span>${m.idMal ? `<a href="https://myanimelist.net/anime/${m.idMal}" target="_blank" rel="noopener" class="dim" style="align-self:center">MyAnimeList ↗</a>` : ""}`;
-      if (s) s.insertAdjacentHTML("beforeend", html);
-      else { const meta = $(".details .meta"); if (meta) meta.insertAdjacentHTML("afterend", `<div class="scores">${html}</div>`); }
-    }
-    // Episode 9 out Saturday 5:30 PM · in 2 days
-    const na = m.nextAiringEpisode;
-    if (na && na.airingAt * 1000 > Date.now()) {
-      const at = new Date(na.airingAt * 1000), days = Math.floor((at - Date.now()) / 86400000);
-      const meta = $(".details .meta");
-      if (meta) meta.insertAdjacentHTML("beforeend", `<span>Episode ${na.episode} out ${esc(at.toLocaleDateString([], { weekday: "long" }))} ${esc(B.clock(at))} · ${days < 1 ? "very soon" : days === 1 ? "in 1 day" : `in ${days} days`}</span>`);
-    }
-    // Up to 5 fan tags
-    const tags = (m.tags || []).filter((x) => x.rank >= 60 && !x.isMediaSpoiler && !x.isGeneralSpoiler && !x.isAdult).slice(0, 5).map((x) => x.name);
-    const ov = $(".details .ov");
-    if (tags.length && ov) ov.insertAdjacentHTML("afterend", `<div class="anitags">${tags.map((x) => `<span>${esc(x)}</span>`).join("")}</div>`);
-    // Characters and their voices (Japanese, and English when there's a dub)
-    const chars = ((m.characters && m.characters.edges) || []).filter((e) => e.node && e.node.name);
-    if (chars.length && (charBox || box)) {
-      const html = `<section class="rowx people-row"><h3>Characters and voices</h3><div class="strip">${chars.map((e) => {
-        const ja = (e.japanese || [])[0], en = (e.english || [])[0];
-        const img = e.node.image && e.node.image.medium;
-        return `<div class="person-c"><span class="pic" style="${img ? `background-image:url('${esc(img)}')` : ""}">${img ? "" : esc(B.initials(e.node.name.full))}</span>${esc(e.node.name.full)}<small>${esc([ja && ja.name.full, en && "English: " + en.name.full].filter(Boolean).join(" · "))}</small></div>`;
-      }).join("")}</div></section>`;
-      if (charBox) add(charBox, html);
-      else {
-        const cast = box.querySelector(".people-row");
-        if (cast) cast.insertAdjacentHTML("afterend", html); else add(box, html);
-      }
-    }
-  };
-
-  // Everything below a movie's or show's page, once its own rows are in
-  // Each part goes into its own tab on the title page (panes: more, parents, chars)
+  // Each part goes into its own tab on the title page (panes: more, chars)
   X.movie = (it, nav, panes) => {
     const p = panes || {};
     const box = p.more || $("#below");
     X.collection(it, nav, box).catch(() => {});
     X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
-    X.parents(it, nav, p.parents || box).catch(() => {});
   };
   X.show = (it, nav, panes) => {
     const p = panes || {};
@@ -250,7 +124,6 @@
     X.nextSeason(it, nav).catch(() => {});
     X.askMore(it, nav, p.ask).catch(() => {});
     X.anime(it, nav, box, p.chars).catch(() => {});
-    X.parents(it, nav, p.parents || box).catch(() => {});
   };
 
   // ---------- Not on Benflix yet (actor and director pages) ----------

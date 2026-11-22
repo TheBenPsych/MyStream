@@ -24,8 +24,6 @@ import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.MovieCollection
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.ParentsGuide
-import com.github.damontecres.wholphin.services.ParentsGuideLine
 import com.github.damontecres.wholphin.services.PeopleFavorites
 import com.github.damontecres.wholphin.services.PlaybackPrep
 import com.github.damontecres.wholphin.services.SeerrService
@@ -89,7 +87,6 @@ class MovieViewModel
         private val detailsPrefetch: DetailsPrefetch,
         private val playbackPrep: PlaybackPrep,
         private val collectionLookup: CollectionLookup,
-        private val parentsGuide: ParentsGuide,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -168,11 +165,6 @@ class MovieViewModel
                 }
                 // Benflix "More from this director"
                 viewModelScope.launchIO { loadDirector(movie) }
-                // Benflix "Parents' guide"
-                viewModelScope.launchIO {
-                    val guide = parentsGuide.guideFor(movie.data)
-                    if (guide.isNotEmpty()) _state.update { it.copy(parentsGuide = guide) }
-                }
                 // Benflix redesign: "Part 1 of 3" and the "In this collection" row
                 viewModelScope.launchIO {
                     val userId = serverRepository.currentUser?.id ?: return@launchIO
@@ -378,8 +370,6 @@ data class MovieState(
     val fromDirector: List<BaseItem> = emptyList(),
     /** Benflix redesign: the collection this movie is part of */
     val collection: MovieCollection? = null,
-    /** Benflix "Parents' guide" (empty = none) */
-    val parentsGuide: List<ParentsGuideLine> = emptyList(),
 ) {
     val movie: BaseItem? = (loading as? DataLoadingState.Success<BaseItem>)?.data
 }

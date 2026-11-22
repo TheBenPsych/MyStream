@@ -70,11 +70,6 @@ try:  # Report card, tidy-up, night-time play test and subtitle fixer, in benfli
 except ImportError:
     care = None
 
-try:  # Parents' guide for the web version, in benflix_facts.py ("Did you know" facts were removed)
-    import benflix_facts as facts
-except ImportError:
-    facts = None
-
 try:  # Better copies from Radarr/Sonarr keep their first "date added", so they don't show as new, in benflix_arrivals.py
     import benflix_arrivals as arrivals
 except ImportError:
@@ -1379,7 +1374,7 @@ class Handler(BaseHTTPRequestHandler):
                         "skips": skips is not None and skips.tools_ok(),
                         "music": music is not None,
                         "care": care is not None and care.ffmpeg_ok(),
-                        "facts": facts is not None,
+                        "facts": True,  # old apps look for this; the facts module itself is gone
                         "books": books is not None,
                         "lobby": lobby is not None,
                         # Which setup the helper came from (the app and web show the yellow setup card when it's older)
@@ -1478,12 +1473,6 @@ class Handler(BaseHTTPRequestHandler):
                 if skips is None:
                     raise HelperError(503, "Skip times aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
-                return self.send(status, answer)
-            if path.startswith("/api/facts/"):
-                # Parents' guide for the web version (anyone signed in). Did you know facts were removed.
-                if facts is None:
-                    raise HelperError(503, "Facts aren't on the server yet. Run the Glowfin setup command again.")
-                status, answer = facts.route(method, path, query, token, user_id, is_admin)
                 return self.send(status, answer)
             if path.startswith("/api/lobby/"):
                 # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
@@ -2539,11 +2528,6 @@ if __name__ == "__main__":
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
-        )
-    if facts is not None:
-        facts.start(
-            jellyfin_call,
-            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
         )
     if keeper is not None:
         # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
