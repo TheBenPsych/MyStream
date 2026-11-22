@@ -96,7 +96,11 @@
   // guess by elimination (Ben 2026-11-22). A little randomness keeps them from always being the same few.
   const lookAlikes = (pool, answer, n, keep) => {
     const g = new Set(answer.genres || []);
-    const scored = pool.filter((t) => t.name !== answer.name && (!keep || keep(t))).map((t) => {
+    // Anime answers get anime choices and the other way round (Ben: one anime choice gives it away)
+    let from = pool.filter((t) => t.name !== answer.name && (!keep || keep(t)));
+    const same = from.filter((t) => !!t.anime === !!answer.anime);
+    if (same.length >= n) from = same;
+    const scored = from.map((t) => {
       let sc = Math.random() * 3 + (t.genres || []).filter((x) => g.has(x)).length * 3 + (t.series === answer.series ? 4 : 0);
       if (t.year && answer.year) sc += Math.max(0, 6 - Math.floor(Math.abs(t.year - answer.year) / 2));
       return [t, sc];

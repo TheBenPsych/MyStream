@@ -84,12 +84,18 @@ fun <T> lookAlikes(
     genres: (T) -> Collection<String>,
     year: (T) -> Int?,
     series: (T) -> Boolean = { false },
+    anime: (T) -> Boolean = { false },
 ): List<T> {
     val a = name(answer)
     val g = genres(answer).toSet()
     val y = year(answer)
     val s = series(answer)
-    return from
+    val an = anime(answer)
+    // Anime answers get anime choices and the other way round (Ben: "anime are so obvious when there's
+    // only one anime option"). Only falls back to the other kind when there aren't enough.
+    val sameLook = from.filter { anime(it) == an && name(it) != a }.distinctBy { name(it) }
+    val source = if (sameLook.size >= n) sameLook else from
+    return source
         .asSequence()
         .filter { name(it) != a }
         .distinctBy { name(it) }

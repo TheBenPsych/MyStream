@@ -119,7 +119,17 @@ class PosterPuzzleViewModel
             if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
             val answer = deck.removeFirst()
             pool.saw(BOARD_KEY, answer.id)
-            val others = lookAlikes(answer, titles, 5, { it.name }, { it.genres }, { it.year }, { it.isSeries }).map { it.name }
+            val others =
+                lookAlikes(
+                    answer,
+                    titles,
+                    5,
+                    { it.name },
+                    { it.genres },
+                    { it.year },
+                    { it.isSeries },
+                    { it.anime },
+                ).map { it.name }
             val playing =
                 PosterState.Playing(
                     answer = answer,
