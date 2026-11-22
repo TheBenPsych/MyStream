@@ -48,6 +48,9 @@ class ParentsGuide
     ) {
         private val json = Json { ignoreUnknownKeys = true }
 
+        /** Glowfin: IMDb said no. Don't ask again until this time, so title pages don't keep knocking */
+        @Volatile private var refusedUntil = 0L
+
         /** The guide for [item], or an empty list when there is none */
         suspend fun guideFor(item: BaseItemDto): List<ParentsGuideLine> {
             val imdbId =
@@ -58,6 +61,7 @@ class ParentsGuide
                     ?.takeIf { it.startsWith("tt") } ?: return emptyList()
             val cacheName = "parents-$imdbId"
             diskCache.read(cacheName, ListSerializer(ParentsGuideLine.serializer()), MONTH_MS)?.let { return it }
+            if (System.currentTimeMillis() < refusedUntil) return emptyList()
             return withContext(WholphinDispatchers.IO) {
                 val lines = ask(imdbId) ?: return@withContext emptyList()
                 diskCache.write(cacheName, ListSerializer(ParentsGuideLine.serializer()), lines)
@@ -84,6 +88,7 @@ class ParentsGuide
                 http.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         Timber.w("Parents guide: IMDb answered %s for %s", response.code, imdbId)
+                        if (response.code == 403 || response.code == 429) refusedUntil = System.currentTimeMillis() + REFUSED_WAIT_MS
                         return null
                     }
                     parse(json.parseToJsonElement(response.body.string()) as? JsonObject)
@@ -98,6 +103,7 @@ class ParentsGuide
         companion object {
             private const val URL = "https://graphql.imdb.com/"
             private const val MONTH_MS = 30L * 24 * 60 * 60 * 1000
+            private const val REFUSED_WAIT_MS = 6L * 60 * 60 * 1000
             private const val QUERY =
                 "query ParentsGuide(\$id: ID!) { title(id: \$id) { parentsGuide { categories " +
                     "{ category { id text } severity { text } } } } }"

@@ -637,6 +637,8 @@ class PlaybackViewModel
                         is PlaylistItem.Media -> playlistItem.item
                     }
 
+                com.github.damontecres.wholphin.util.PlayerTimer
+                    .loadStarted()
                 Timber.i("Playing ${item.id}")
 
                 // New item, so we can clear the media segment tracker & subtitle cues

@@ -503,6 +503,8 @@ class ServerRepository
          * Update [currentUserDto] by querying the server
          */
         suspend fun updateUserDto() {
+            // Glowfin: nobody is signed in yet (the app is still starting), so there is nothing to refresh
+            if (apiClient.baseUrl == null) return
             val userDto by apiClient.userApi.getCurrentUser()
             updateUserDto(userDto)
         }

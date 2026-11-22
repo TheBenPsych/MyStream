@@ -52,6 +52,24 @@ class WholphinApplication :
         Composer.setDiagnosticStackTraceEnabled(BuildConfig.DEBUG)
     }
 
+    /**
+     * Glowfin (crash report check, 2026-11-21): the TV says it is short of memory. Let go of the posters
+     * kept ready in memory, so the TV is less likely to close Glowfin. They load again when needed.
+     */
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_UI_HIDDEN || level == TRIM_MEMORY_RUNNING_CRITICAL) {
+            runCatching {
+                coil3.SingletonImageLoader
+                    .get(this)
+                    .memoryCache
+                    ?.clear()
+            }
+            Timber.i("Glowfin: memory warning %s, let go of posters in memory", level)
+        }
+    }
+
     override fun onCreate() {
         // Benflix: crashing on every open fixes itself (clears saved screen copies, keeps sign-ins)
         com.github.damontecres.wholphin.util.CrashLoopGuard
