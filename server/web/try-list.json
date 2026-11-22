@@ -4,6 +4,7 @@
     {"id": "keep-watching-remove", "title": "Remove from Keep watching (it stays unwatched)", "where": "any screen · Home, hold OK (or press and hold, or right-click) on a Keep watching card", "date": "Nov 22"},
     {"id": "score-colours", "title": "Score boxes in each site's colour, and Metacritic next to IMDb and Rotten Tomatoes", "where": "any screen · open a movie or show page, and a page in Requests", "date": "Nov 22"},
     {"id": "season-progress", "title": "Season buttons show a thin line for how much of each season you've watched", "where": "any screen · open a show you're partway through", "date": "Nov 22"},
+    {"id": "phone-alerts", "title": "Phone notifications when your request arrives or a new episode of a show you watch lands", "where": "Android phone · open Glowfin once and allow notifications; pick which ones in Settings > Phones and TVs > Phone notifications", "date": "Nov 22"},
     {"id": "person-allowed", "title": "What each person may do: away from home, downloads, deleting, Live TV, account on or off", "where": "any screen · Server > People, pick a person, What they may do (Allowed in the browser)", "date": "Nov 22"},
     {"id": "fix-details-app", "title": "Fix details: change a title's name, year, age rating or description", "where": "TV or phone · hold OK (or press and hold) on a movie or show, Fix details", "date": "Nov 22"},
     {"id": "jellyfin-addons", "title": "Jellyfin add-ons list with Update", "where": "any screen · Server > Tools > Tower > Jellyfin add-ons", "date": "Nov 22"},

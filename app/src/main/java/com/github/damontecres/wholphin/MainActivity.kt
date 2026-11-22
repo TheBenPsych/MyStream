@@ -202,6 +202,12 @@ class MainActivity : AppCompatActivity() {
                 delay(UPDATE_CHECK_DELAY_MS)
                 updateChecker.cleanupLeftoverDownload()
             }
+            // Glowfin phone notifications: start the half-hourly look on phones, and ask Android once (after Who's watching)
+            lifecycleScope.launch {
+                delay(15_000L)
+                com.github.damontecres.wholphin.services.PhoneAlerts
+                    .start(this@MainActivity)
+            }
         }
 
         val backStackStr = savedInstanceState?.getString(KEY_BACK_STACK)

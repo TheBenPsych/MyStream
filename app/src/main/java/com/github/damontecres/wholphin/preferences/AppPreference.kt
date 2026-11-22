@@ -1089,6 +1089,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_omdb_key,
             )
 
+        /** Glowfin (phones): which phone notifications this person gets (see PhoneAlerts) */
+        val PhoneAlertsPref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.glowfin_phone_alerts,
+            )
+
         /** Benflix: Big kids tile, Guest tile and what Kids watched this week */
         val ParentalMore =
             AppClickablePreference<AppPreferences>(
@@ -1481,7 +1487,13 @@ val basicPreferences =
         PreferenceGroup(
             title = R.string.benflix_settings_phone,
             // Glowfin (S1): Phones and TVs also holds "Sign in a TV or phone" (Quick Connect)
-            preferences = listOf(AppPreference.QuickConnect, AppPreference.MobileDataQualityPref, AppPreference.HapticsPref),
+            preferences =
+                listOf(
+                    AppPreference.QuickConnect,
+                    AppPreference.MobileDataQualityPref,
+                    AppPreference.HapticsPref,
+                    AppPreference.PhoneAlertsPref,
+                ),
         ),
         PreferenceGroup(
             title = R.string.benflix_settings_help,

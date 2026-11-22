@@ -206,6 +206,7 @@ fun PreferencesContent(
         (isTv || pref != AppPreference.ScreensaverSettings) &&
             (!isTv || pref != AppPreference.MobileDataQualityPref) &&
             (!isTv || pref != AppPreference.HapticsPref) &&
+            (!isTv || pref != AppPreference.PhoneAlertsPref) &&
             (isAdmin || pref != AppPreference.ServerPage) &&
             (isAdmin || pref != AppPreference.OmdbKey) &&
             (!guest || pref in guestPreferences)
@@ -597,6 +598,14 @@ fun PreferencesContent(
 
                                     AppPreference.TrailerAppPref -> {
                                         com.github.damontecres.wholphin.ui.components.TrailerAppSetting(
+                                            title = stringResource(pref.title),
+                                            modifier = focusModifier,
+                                            interactionSource = interactionSource,
+                                        )
+                                    }
+
+                                    AppPreference.PhoneAlertsPref -> {
+                                        PhoneAlertsSetting(
                                             title = stringResource(pref.title),
                                             modifier = focusModifier,
                                             interactionSource = interactionSource,
