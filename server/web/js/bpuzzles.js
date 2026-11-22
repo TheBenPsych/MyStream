@@ -16,12 +16,14 @@
   };
   const toTitle = (it, anime, stand) => {
     if (!it.Name) return null;
+    // Jellyfin sometimes keeps the year on the end of a name ("Doctor Who (2005)"): the games show it without
+    const name = it.Name.replace(/\s*[(\[](18|19|20)\d{2}[)\]]\s*$/, "").trim() || it.Name;
     let ch = (it.Chapters || []).map((c, i) => ({ c, i })).filter((x) => x.c.ImageTag);
     if (ch.length > 4) ch = ch.slice(1, -1);
     const chapters = shuffle(ch).slice(0, 4).map(({ c, i }) => B.img(it.Id, "Chapter", { w: 1280, tag: c.ImageTag, index: i }));
     const backs = (it.BackdropImageTags || []).map((tag, i) => ({ tag, i })).reverse().slice(0, 3).map(({ tag, i }) => B.img(it.Id, "Backdrop", { w: 1280, tag, index: i }));
     return {
-      id: it.Id, name: it.Name, year: it.ProductionYear || null, series: it.Type === "Series", anime, stand,
+      id: it.Id, name, year: it.ProductionYear || null, series: it.Type === "Series", anime, stand,
       poster: it.ImageTags && it.ImageTags.Primary ? B.img(it.Id, "Primary", { h: 600, tag: it.ImageTags.Primary }) : "",
       backdrop: (it.BackdropImageTags || [])[0] ? { tag: it.BackdropImageTags[0] } : null,
       stills: Array.from(new Set(chapters.concat(backs))),
@@ -90,7 +92,26 @@
     }
   });
   const timers = (ctx) => { const list = []; B.onLeave(() => list.forEach(clearInterval)); return (fn, ms) => { const t = setInterval(() => { if (!ctx.alive()) clearInterval(t); else fn(); }, ms); list.push(t); return t; }; };
-  const otherNames = (pool, answer, n, keep) => pickN(pool.filter((t) => t.name !== answer.name && (!keep || keep(t))), n).map((t) => t.name);
+  // Wrong answers that look just as likely (same kind, shared genres, around the same year), so it's not a
+  // guess by elimination (Ben 2026-11-22). A little randomness keeps them from always being the same few.
+  const lookAlikes = (pool, answer, n, keep) => {
+    const g = new Set(answer.genres || []);
+    const scored = pool.filter((t) => t.name !== answer.name && (!keep || keep(t))).map((t) => {
+      let sc = Math.random() * 3 + (t.genres || []).filter((x) => g.has(x)).length * 3 + (t.series === answer.series ? 4 : 0);
+      if (t.year && answer.year) sc += Math.max(0, 6 - Math.floor(Math.abs(t.year - answer.year) / 2));
+      return [t, sc];
+    }).sort((a, b) => b[1] - a[1]);
+    const seen = new Set(), out = [];
+    for (const [t] of scored) { if (!seen.has(t.name)) { seen.add(t.name); out.push(t); } if (out.length >= n * 3) break; }
+    return pickN(out, n);
+  };
+  const otherNames = (pool, answer, n, keep) => lookAlikes(pool, answer, n, keep).map((t) => t.name);
+  // Fewer repeats: each game remembers the last 80 titles this person saw and deals unseen ones first
+  const seenKey = (game) => `benflix.seen.${B.me.id}.${game}`;
+  const seenList = (game) => { try { return JSON.parse(localStorage.getItem(seenKey(game)) || "[]"); } catch (e) { return []; } };
+  const saw = (game, id) => { try { const l = seenList(game).filter((x) => x !== id); l.push(id); localStorage.setItem(seenKey(game), JSON.stringify(l.slice(-80))); } catch (e) { /* private window */ } };
+  const fresh = (game, list, id) => { const seen = seenList(game), key = id || ((t) => t.id); const sh = shuffle(list); return sh.filter((t) => !seen.includes(key(t))).concat(sh.filter((t) => seen.includes(key(t))).sort((a, b) => seen.indexOf(key(a)) - seen.indexOf(key(b)))); };
+  const YEAR_IN_NAME = /\b(18|19|20)\d{2}\b/;
 
   const PUZ = {};
 
@@ -104,10 +125,10 @@
     let pool = real ? all.filter((t) => t.stills.length >= 1) : all.filter((t) => t.stills.length >= 2);
     if (pool.length < 8) pool = all.filter((t) => t.stills.length >= 1);
     if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures on Tower." + tip());
-    let deck = shuffle(pool), points = 0, round = 0;
+    let deck = fresh("SCENES", pool), points = 0, round = 0;
     const next = () => {
-      if (!deck.length) deck = shuffle(pool);
-      const a = deck.shift(); round++;
+      if (!deck.length) deck = fresh("SCENES", pool);
+      const a = deck.shift(); round++; saw("SCENES", a.id);
       // One picture only: show it twice, so a wrong guess still gets a second try
       const scenes = real ? frames(a) : a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
       // A wrong pick that Tower can't take a picture from (no file it can see) falls back to its own pictures
@@ -142,10 +163,10 @@
     const pool = (await titles()).filter((t) => t.poster);
     if (pool.length < 8) return notEnough(ctx, "Poster puzzle needs at least 8 titles with posters on Tower." + tip());
     const every = timers(ctx);
-    let deck = shuffle(pool), points = 0, round = 0, tick = null;
+    let deck = fresh("POSTER", pool), points = 0, round = 0, tick = null;
     const next = () => {
-      if (!deck.length) deck = shuffle(pool);
-      const a = deck.shift(); round++;
+      if (!deck.length) deck = fresh("POSTER", pool);
+      const a = deck.shift(); round++; saw("POSTER", a.id);
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
       const q = screen(ctx, `${head("Poster puzzle", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic tall"><img src="${a.poster}" alt=""><div class="bg-tiles">${"<i></i>".repeat(16)}</div></div><div class="bgq-say" id="bgSay">Guess now for 500 points</div><div class="bgq-choices" id="bgCh"></div>`);
       const tiles = $$(".bg-tiles i", q), order = shuffle(tiles.map((_, i) => i));
@@ -177,9 +198,10 @@
 
   // Timeline: slot each poster into a growing line of years; one wrong spot ends the run (score = line length - 1)
   PUZ.TIMELINE = async (ctx) => {
-    const pool = (await titles()).filter((t) => t.year && t.poster);
+    // Names with a year in them ("Halloween 2018") would give the answer away
+    const pool = (await titles()).filter((t) => t.year && t.poster && !YEAR_IN_NAME.test(t.name));
     if (pool.length < 8) return notEnough(ctx, "Timeline needs at least 8 titles with a year on Tower." + tip());
-    const deck = shuffle(pool);
+    const deck = fresh("TIMELINE", pool);
     const line = [deck.shift()];
     const card = (t, year) => `<div class="bg-tl"><img src="${t.poster}" alt=""><b>${esc(t.name)}</b>${year ? `<span>${t.year}</span>` : ""}</div>`;
     const draw = (cur, msg) => {
@@ -193,7 +215,7 @@
         if (cur.year >= before && cur.year <= after) {
           line.splice(s, 0, cur); B.bgSound("point");
           if (!deck.length) { B.bgOver(ctx, "You placed every title!", `Your line has ${line.length} titles.`, line.length - 1); return; }
-          draw(deck.shift(), `Right! ${label(cur)}`);
+          { const nx = deck.shift(); saw("TIMELINE", nx.id); draw(nx, `Right! ${label(cur)}`); }
         } else {
           B.bgSound("miss");
           const r = line.findIndex((t) => t.year > cur.year), ri = r < 0 ? line.length : r;
@@ -203,7 +225,7 @@
         }
       };
     };
-    keyFn = true; draw(deck.shift());
+    keyFn = true; { const nx = deck.shift(); saw("TIMELINE", nx.id); draw(nx); }
   };
 
   // Who's that actor? A photo zooms out over 15 s; 100 + up to 400 for speed; misses add hints; 3 misses ends it.
@@ -216,8 +238,8 @@
     const every = timers(ctx);
     let deck = [], points = 0, round = 0;
     const next = () => {
-      if (!deck.length) { deck = shuffle(actors.filter((a) => a.titles.length >= 2)); if (!deck.length) deck = shuffle(actors); }
-      const a = deck.shift(); round++;
+      if (!deck.length) { const known = actors.filter((a) => a.titles.length >= 2); deck = fresh("ACTOR", known.length ? known : actors, (x) => x.p.id); }
+      const a = deck.shift(); round++; saw("ACTOR", a.p.id);
       const names = shuffle(pickN(actors.filter((x) => x.p.name !== a.p.name), 5).map((x) => x.p.name).concat(a.p.name));
       const q = screen(ctx, `${head("Who's that actor?", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic tall zoom"><img id="bgPic" src="${a.p.photo}" alt=""></div><div class="bgq-say" id="bgSay"></div><div class="bg-hints" id="bgHints"></div><div class="bgq-choices" id="bgCh"></div>`);
       const LAST = 10000, MAX = 3;
@@ -272,7 +294,8 @@
     const pool = (await titles()).filter((t) => !t.series && t.backdrop);
     if (pool.length < 4) return notEnough(ctx, "Guess the movie needs at least 4 movies with pictures on Tower." + tip());
     const every = timers(ctx);
-    const rounds = pickN(pool, 10);
+    const rounds = fresh("GUESS", pool).slice(0, 10);
+    rounds.forEach((t) => saw("GUESS", t.id));
     let i = 0, score = 0, correct = 0;
     const BLUR = [60, 35, 20, 10, 4, 0];
     const play = () => {
@@ -327,13 +350,13 @@
       return [first, s.length > 20 ? `“${hideIn(m, s)}”` : null, cast.length ? "Starring " + cast.join(", ") : null].filter(Boolean);
     };
     const total = ctx.kids ? 30 : 20;
-    let deck = shuffle(pool), score = 0, streak = 0;
+    let deck = fresh("RIDDLE", pool), score = 0, streak = 0;
     const next = () => {
-      if (deck.length < 1) deck = shuffle(pool);
+      if (deck.length < 1) deck = fresh("RIDDLE", pool);
       let m = null, cl = [];
-      for (let tries = 0; tries < 4 && deck.length; tries++) { const c = deck.shift(); cl = clues(c); if (cl.length >= 2) { m = c; break; } }
+      for (let tries = 0; tries < 4 && deck.length; tries++) { const c = deck.shift(); cl = clues(c); if (cl.length >= 2) { m = c; saw("RIDDLE", c.id); break; } }
       if (!m) return notEnough(ctx, "Movie riddle couldn't find movies with enough details for clues.");
-      let others = pickN(pool.filter((t) => t.name !== m.name && series(t.name) !== series(m.name)), 4).map((t) => t.name);
+      let others = otherNames(pool, m, 4, (t) => series(t.name) !== series(m.name));
       if (others.length < 4) others = others.concat(pickN(pool.filter((t) => t.name !== m.name && !others.includes(t.name)), 4 - others.length).map((t) => t.name));
       const names = shuffle(others.concat(m.name));
       const q = screen(ctx, `${head("Movie riddle", `${streak} right · ${score.toLocaleString()} points · Your best ${ctx.best().toLocaleString()}`)}<div class="bg-clock"><i id="bgClock"></i></div><div class="bgq-clue" id="bgClues"></div><div class="bgq-say" id="bgSay"></div><div class="bgq-choices" id="bgCh"></div>`);
@@ -371,12 +394,12 @@
   PUZ.HIGHER_LOWER = async (ctx) => {
     const pool = (await titles()).filter((t) => t.rating > 0 && t.poster);
     if (pool.length < 4) return notEnough(ctx, "Higher or Lower needs at least 4 titles with an IMDb rating on Tower." + tip());
-    let deck = shuffle(pool), streak = 0;
+    let deck = fresh("HIGHER_LOWER", pool), streak = 0;
     let a = deck.shift();
     const side = (t, showRating) => `<div class="bg-hl"><img src="${t.poster}" alt=""><b class="${label(t).length > 38 ? "xl" : label(t).length > 22 ? "l" : ""}" title="${esc(label(t))}">${esc(label(t))}</b><span class="r">${showRating ? (t.rating / 10).toFixed(1) + " IMDb" : "?"}</span></div>`;
     const next = () => {
-      if (!deck.length) deck = shuffle(pool.filter((t) => t !== a));
-      const b = deck.shift();
+      if (!deck.length) deck = fresh("HIGHER_LOWER", pool.filter((t) => t !== a));
+      const b = deck.shift(); saw("HIGHER_LOWER", b.id);
       const q = screen(ctx, `${head("Higher or Lower", `Streak ${streak} · Your best ${ctx.best()}`)}<div class="bg-hls">${side(a, true)}<div class="bg-hlq" id="bgSay">Is it higher or lower?</div><div id="bgB" class="fadein">${side(b, false)}</div></div><div class="bgq-choices two" id="bgCh"></div>`);
       choices($("#bgCh", q), ["Higher", "Lower"], (n, btn) => {
         $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
@@ -412,15 +435,24 @@
     rules.push({ k: "type", name: "A TV show", f: (t) => t.series });
     rules.push({ k: "length", name: "Over 2 hours", f: (t) => !t.series && (t.runtime || 0) > 120 });
     if (rules.length < 6) return notEnough(ctx, "Movie grid needs more movies and shows on Tower to make a board." + tip());
-    // Try random rules until every square has an answer (each kind of rule used once per side)
+    // Pick 3 column rules, then look for 3 row rules with an answer under every column (two when it can).
+    // It used to pick all 6 at random and hope, which often failed, so the grid "didn't like to make a game".
+    const ONE_ONLY = new Set(["decade", "score", "type", "length"]);
+    const hits = new Map(rules.map((r) => [r, new Set(pool.filter(r.f).map((t) => t.id))]));
+    const usable = [...new Set(rules.map((r) => r.name))].map((n) => rules.find((r) => r.name === n)).filter((r) => hits.get(r).size >= 2);
+    const clash = (a, b) => a.name === b.name || (a.k === b.k && ONE_ONLY.has(a.k));
+    const both = (a, b) => { let n = 0; hits.get(a).forEach((id) => { if (hits.get(b).has(id)) n++; }); return n; };
+    // Rows mix kinds when they can (an actor, a genre, a decade), else any that don't rule each other out
+    const pickRows = (from) => { for (const mix of [true, false]) { const rows = []; for (const r of from) { if (rows.length === 3) break; if (!rows.some((x) => clash(x, r) || (mix && x.k === r.k))) rows.push(r); } if (rows.length === 3) return rows; } return null; };
     let board = null, fallback = null;
-    for (let i = 0; i < 400 && !board; i++) {
-      const sh = shuffle(rules), rows = [], cols = [];
-      for (const r of sh) { if (rows.length < 3 && !rows.some((x) => x.k === r.k)) rows.push(r); else if (cols.length < 3 && !cols.some((x) => x.k === r.k) && !rows.includes(r)) cols.push(r); if (rows.length === 3 && cols.length === 3) break; }
-      if (rows.length < 3 || cols.length < 3) continue;
-      const fits = rows.map((r) => cols.map((c) => pool.filter((t) => r.f(t) && c.f(t)).length));
-      if (fits.every((row) => row.every((n) => n >= 2))) board = { rows, cols };
-      else if (!fallback && fits.every((row) => row.every((n) => n >= 1))) fallback = { rows, cols };
+    for (let i = 0; i < 300 && !board && usable.length >= 6; i++) {
+      const cols = [];
+      for (const r of shuffle(usable)) { if (cols.length === 3) break; if (!cols.some((x) => clash(x, r) || (x.k === r.k && cols.length < 2))) cols.push(r); }
+      if (cols.length < 3) continue;
+      const fits = usable.filter((r) => !cols.some((c) => clash(c, r) || c.k === r.k)).map((r) => [r, Math.min(...cols.map((c) => both(r, c)))]).filter((x) => x[1] >= 1);
+      const rows = pickRows(shuffle(fits.filter((x) => x[1] >= 2).map((x) => x[0])));
+      if (rows) board = { rows, cols };
+      else if (!fallback) { const fr = pickRows(shuffle(fits.map((x) => x[0]))); if (fr) fallback = { rows: fr, cols }; }
     }
     board = board || fallback;
     if (!board) return notEnough(ctx, "Movie grid couldn't make a board from what's on Tower. Try again later." + tip());

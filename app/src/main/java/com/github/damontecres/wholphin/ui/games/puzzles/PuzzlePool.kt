@@ -33,6 +33,8 @@ data class PuzzlePerson(
     val id: UUID,
     val name: String,
     val photo: String?,
+    /** The character they play in this title ("Captain Ada Voss"), when Tower knows it */
+    val role: String? = null,
 )
 
 /**
@@ -58,7 +60,52 @@ data class PuzzleTitle(
     val episodes: Int?,
 ) {
     val kind: BaseItemKind get() = if (isSeries) BaseItemKind.SERIES else BaseItemKind.MOVIE
+
+    /** The name has a year in it ("Halloween 2018", "2012"), which gives the Timeline answer away */
+    val nameHasYear: Boolean get() = YEAR_IN_NAME.containsMatchIn(name)
     val label: String get() = name + (year?.let { " ($it)" } ?: "")
+}
+
+private val YEAR_IN_NAME = Regex("\\b(18|19|20)\\d{2}\\b")
+
+/** Jellyfin sometimes keeps the year on the end of a name ("Doctor Who (2005)"): the games show it without */
+internal fun cleanTitleName(name: String): String = name.replace(Regex("\\s*[(\\[](18|19|20)\\d{2}[)\\]]\\s*$"), "").trim().ifEmpty { name }
+
+/**
+ * Wrong answers that look just as likely as the right one (Ben 2026-11-22: "harder to guess, no
+ * process of elimination"): same kind (movie or show), sharing genres, made around the same time.
+ * A little randomness keeps them from always being the same few.
+ */
+fun <T> lookAlikes(
+    answer: T,
+    from: List<T>,
+    n: Int,
+    name: (T) -> String,
+    genres: (T) -> Collection<String>,
+    year: (T) -> Int?,
+    series: (T) -> Boolean = { false },
+): List<T> {
+    val a = name(answer)
+    val g = genres(answer).toSet()
+    val y = year(answer)
+    val s = series(answer)
+    return from
+        .asSequence()
+        .filter { name(it) != a }
+        .distinctBy { name(it) }
+        .map { t ->
+            var score = Math.random() * 3
+            score += genres(t).count { it in g } * 3
+            val ty = year(t)
+            if (y != null && ty != null) score += (6 - kotlin.math.abs(y - ty) / 2).coerceAtLeast(0)
+            if (series(t) == s) score += 4
+            t to score
+        }.sortedByDescending { it.second }
+        .take(n * 3)
+        .map { it.first }
+        .toList()
+        .shuffled()
+        .take(n)
 }
 
 /** The anime switch on every movie game (Ben asked for it on the older games too) */
@@ -119,6 +166,40 @@ class PuzzlePool
                 KidsMode.isActive -> "kids"
                 else -> serverRepository.currentUser?.id?.toString() ?: "guest"
             }
+
+        /**
+         * [list] shuffled, with titles this profile saw lately in [game] moved to the back, so the same
+         * ones don't keep coming up (Ben 2026-11-22: "we see a lot of the same stuff").
+         */
+        fun <T> freshFirst(
+            game: String,
+            list: List<T>,
+            id: (T) -> Any,
+        ): List<T> {
+            val seen = seen(game)
+            val (old, new) = list.shuffled().partition { id(it).toString() in seen }
+            // The ones seen longest ago come back first
+            return new + old.sortedBy { seen.indexOf(id(it).toString()) }
+        }
+
+        /** Remembers that [id] was shown in [game] (the last $SEEN_KEEP are kept) */
+        fun saw(
+            game: String,
+            id: Any,
+        ) {
+            val key = id.toString()
+            val list = (seen(game) - key + key).takeLast(SEEN_KEEP)
+            prefs.edit().putString(seenKey(game), list.joinToString(",")).apply()
+        }
+
+        private fun seen(game: String): List<String> =
+            prefs
+                .getString(seenKey(game), null)
+                ?.split(",")
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+        private fun seenKey(game: String) = "${profileKey()}_seen_$game"
 
         fun best(boardKey: String): Int = prefs.getInt("${profileKey()}_$boardKey", 0)
 
@@ -279,7 +360,7 @@ class PuzzlePool
             dto: BaseItemDto,
             anime: Boolean,
         ): PuzzleTitle? {
-            val name = dto.name?.takeIf { it.isNotBlank() } ?: return null
+            val name = dto.name?.takeIf { it.isNotBlank() }?.let(::cleanTitleName) ?: return null
             val chapterStills =
                 dto.chapters
                     .orEmpty()
@@ -339,6 +420,7 @@ class PuzzlePool
                             PuzzlePerson(
                                 id = p.id,
                                 name = p.name!!,
+                                role = p.role?.trim()?.takeIf { it.isNotEmpty() },
                                 photo =
                                     p.primaryImageTag?.let { tag ->
                                         imageUrlService.getItemImageUrl(
@@ -358,7 +440,10 @@ class PuzzlePool
 
         companion object {
             private const val ANIME_KEY = "puzzle_anime_mode"
-            private const val CACHE_MS = 30 * 60_000L
+
+            // A fresh random set every 15 minutes, so long sessions don't keep showing the same titles
+            private const val CACHE_MS = 15 * 60_000L
+            private const val SEEN_KEEP = 80
             private const val POOL_SIZE = 500
             private const val STILL_WIDTH = 1280
             private const val POSTER_WIDTH = 420

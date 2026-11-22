@@ -151,8 +151,8 @@ class HigherLowerViewModel
                             HigherLowerState.NotEnough("You need at least $MIN_MOVIES movies with IMDb ratings to play.")
                         return@launch
                     }
-                    deck = ArrayDeque(movies.shuffled())
-                    _state.value = HigherLowerState.Playing(deck.removeFirst(), deck.removeFirst(), 0, best())
+                    deck = ArrayDeque(puzzlePool.freshFirst(BOARD_KEY, movies) { it.name })
+                    _state.value = HigherLowerState.Playing(deal(), deal(), 0, best())
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -174,8 +174,8 @@ class HigherLowerViewModel
                 delay(REVEAL_MS)
                 if (right) {
                     // Endless: when every movie has been shown, shuffle them all back in
-                    if (deck.isEmpty()) deck = ArrayDeque(pool.filter { it != playing.guess }.shuffled())
-                    _state.value = HigherLowerState.Playing(playing.guess, deck.removeFirst(), streak, playing.best)
+                    if (deck.isEmpty()) deck = ArrayDeque(puzzlePool.freshFirst(BOARD_KEY, pool.filter { it != playing.guess }) { it.name })
+                    _state.value = HigherLowerState.Playing(playing.guess, deal(), streak, playing.best)
                 } else {
                     val best = prefs.getInt(bestKey(), 0)
                     val newBest = streak > best
@@ -184,6 +184,8 @@ class HigherLowerViewModel
                 }
             }
         }
+
+        private fun deal(): ScoredMovie = deck.removeFirst().also { puzzlePool.saw(BOARD_KEY, it.name) }
 
         fun best(): Int = prefs.getInt(bestKey(), 0)
 

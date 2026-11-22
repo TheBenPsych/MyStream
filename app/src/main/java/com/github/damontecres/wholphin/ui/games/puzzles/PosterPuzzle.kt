@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -100,7 +101,7 @@ class PosterPuzzleViewModel
                         _state.value = PosterState.NotEnough(notEnough("Not enough posters to play.", pool.mode()))
                         return@launch
                     }
-                    deck = ArrayDeque(titles.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
                     next(0, 0)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -115,14 +116,10 @@ class PosterPuzzleViewModel
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(titles.shuffled())
+            if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
             val answer = deck.removeFirst()
-            val others =
-                titles
-                    .filter { it.name != answer.name }
-                    .shuffled()
-                    .take(5)
-                    .map { it.name }
+            pool.saw(BOARD_KEY, answer.id)
+            val others = lookAlikes(answer, titles, 5, { it.name }, { it.genres }, { it.year }, { it.isSeries }).map { it.name }
             val playing =
                 PosterState.Playing(
                     answer = answer,
@@ -224,34 +221,44 @@ fun PosterPuzzleScreen(
                 ) {
                     PuzzleHeader("Poster puzzle", "Round ${s.round}  ·  ${s.points} points  ·  Your best ${s.best}", isTv)
                     val posterMod = if (isTv) Modifier.width(tvPictureHeight(0.48f) * (2f / 3f)) else Modifier.width(210.dp)
-                    Box(posterMod) {
-                        PuzzlePoster(s.answer.poster, "Hidden poster", Modifier.fillMaxWidth())
-                        // The tiles on top, 4 by 4
-                        Column(Modifier.matchParentSize()) {
-                            repeat(4) { r ->
-                                Row(Modifier.weight(1f).fillMaxWidth()) {
-                                    repeat(4) { c ->
-                                        val i = r * 4 + c
-                                        val color by animateColorAsState(
-                                            if (i in
-                                                s.covered
-                                            ) {
-                                                Color(if ((r + c) % 2 == 0) 0xFF2B2B33 else 0xFF23232A)
-                                            } else {
-                                                Color.Transparent
-                                            },
-                                            tween(250),
-                                            label = "tile",
-                                        )
-                                        Box(
-                                            Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .background(color)
-                                                .then(
-                                                    if (i in s.covered) Modifier.border(1.dp, Color.Black.copy(alpha = .5f)) else Modifier,
-                                                ),
-                                        )
+                    // Keyed by the title: a new poster starts fully covered. Before, the tiles faded back in over
+                    // the new poster for a moment, so you could glimpse it before the round started.
+                    key(s.answer.id) {
+                        Box(posterMod) {
+                            PuzzlePoster(s.answer.poster, "Hidden poster", Modifier.fillMaxWidth())
+                            // The tiles on top, 4 by 4
+                            Column(Modifier.matchParentSize()) {
+                                repeat(4) { r ->
+                                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                                        repeat(4) { c ->
+                                            val i = r * 4 + c
+                                            val color by animateColorAsState(
+                                                if (i in
+                                                    s.covered
+                                                ) {
+                                                    Color(if ((r + c) % 2 == 0) 0xFF2B2B33 else 0xFF23232A)
+                                                } else {
+                                                    Color.Transparent
+                                                },
+                                                tween(250),
+                                                label = "tile",
+                                            )
+                                            Box(
+                                                Modifier
+                                                    .weight(1f)
+                                                    .fillMaxHeight()
+                                                    .background(color)
+                                                    .then(
+                                                        if (i in
+                                                            s.covered
+                                                        ) {
+                                                            Modifier.border(1.dp, Color.Black.copy(alpha = .5f))
+                                                        } else {
+                                                            Modifier
+                                                        },
+                                                    ),
+                                            )
+                                        }
                                     }
                                 }
                             }

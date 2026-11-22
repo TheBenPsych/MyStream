@@ -1,6 +1,10 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "games-fresh", "title": "Movie games show fewer repeats, and wrong answers look just as likely as the right one", "where": "any screen · Games, play any movie puzzle twice in a row", "date": "Nov 22"},
+    {"id": "grid-builds", "title": "Movie grid makes a board every time", "where": "any screen · Games, Movie grid", "date": "Nov 22"},
+    {"id": "timeline-years", "title": "Timeline never shows a title with its year in the name", "where": "any screen · Games, Timeline", "date": "Nov 22"},
+    {"id": "poster-no-peek", "title": "Poster puzzle no longer flashes the poster before the tiles cover it", "where": "TV and phone · Games, Poster puzzle, get one right", "date": "Nov 22"},
     {"id": "scene-frames", "title": "Scene by scene shows real, different scenes from inside each movie (first one can take a few seconds)", "where": "any screen · Games, Scene by scene, after Tower's next hourly update", "date": "Nov 22"},
     {"id": "actor-second-guess", "title": "Who's that actor? second and third guesses really work, with a countdown once the whole photo shows", "where": "any screen · Games, Who's that actor?, pick a wrong name on purpose", "date": "Nov 22"},
     {"id": "higher-lower-names", "title": "Higher or Lower: long movie names fit under the posters", "where": "TV, phone and browser · Games, Higher or Lower", "date": "Nov 22"},

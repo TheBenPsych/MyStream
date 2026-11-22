@@ -128,7 +128,7 @@ class SceneBySceneViewModel
                         _state.value = SceneState.NotEnough(notEnough("Not enough movies with pictures to play.", pool.mode()))
                         return@launch
                     }
-                    deck = ArrayDeque(playable.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, playable) { it.id })
                     next(0, 0)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -174,15 +174,11 @@ class SceneBySceneViewModel
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(playable().shuffled())
+            if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, playable()) { it.id })
             val answer = deck.removeFirst()
+            pool.saw(BOARD_KEY, answer.id)
             val others =
-                titles
-                    .filter { it.name != answer.name && it.isSeries == answer.isSeries }
-                    .ifEmpty { titles.filter { it.name != answer.name } }
-                    .shuffled()
-                    .take(CHOICES - 1)
-                    .map { it.name }
+                lookAlikes(answer, titles, CHOICES - 1, { it.name }, { it.genres }, { it.year }, { it.isSeries }).map { it.name }
             _state.value =
                 SceneState.Playing(
                     answer = answer,

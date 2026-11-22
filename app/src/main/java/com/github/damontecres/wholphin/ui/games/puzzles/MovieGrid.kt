@@ -248,29 +248,68 @@ class MovieGridViewModel
                 return rules
             }
 
-            /** Tries random rules until every square has at least one answer (two when it can) */
+            /** Kinds where two different rules can never both be true (a title is made in one decade) */
+            private val ONE_ONLY = setOf("decade", "score", "type", "length")
+
+            /**
+             * Picks 3 column rules, then looks for 3 row rules that have an answer in every column (two
+             * when it can). It used to pick all 6 at random and hope, which often failed on a smaller or
+             * mixed library, so the grid "didn't like to make a game" (Ben 2026-11-22).
+             */
             fun makeBoard(titles: List<PuzzleTitle>): Pair<List<GridRule>, List<GridRule>>? {
-                val rules = allRules(titles)
+                val rules = allRules(titles).distinctBy { it.label }
                 if (rules.size < 6) return null
+                // Each rule's titles, worked out once
+                val hits = rules.associateWith { r -> titles.filter { r.test(it) }.map { it.id }.toSet() }
+                val usable = rules.filter { (hits[it]?.size ?: 0) >= 2 }
+                if (usable.size < 6) return null
+
+                fun clash(
+                    a: GridRule,
+                    b: GridRule,
+                ) = a.label == b.label || (a.kind == b.kind && a.kind in ONE_ONLY)
+
+                fun both(
+                    a: GridRule,
+                    b: GridRule,
+                ) = hits.getValue(a).count { it in hits.getValue(b) }
                 var fallback: Pair<List<GridRule>, List<GridRule>>? = null
-                repeat(400) {
-                    val shuffled = rules.shuffled()
-                    // Rows and columns use different kinds of rules, so no square is impossible by design
-                    val rowKinds =
-                        shuffled
-                            .map { it.kind }
-                            .distinct()
-                            .shuffled()
-                            .take(2)
-                            .toSet()
-                    val rows = shuffled.filter { it.kind in rowKinds }.take(3)
-                    val cols = shuffled.filter { it.kind !in rowKinds }.distinctBy { it.label }.take(3)
-                    if (rows.size < 3 || cols.size < 3) return@repeat
-                    val counts = rows.flatMap { r -> cols.map { c -> titles.count { r.test(it) && c.test(it) } } }
-                    if (counts.all { it >= 2 }) return rows to cols
-                    if (fallback == null && counts.all { it >= 1 }) fallback = rows to cols
+                repeat(300) {
+                    // Columns: three rules that don't rule each other out, mixing kinds when it can
+                    val cols = mutableListOf<GridRule>()
+                    for (r in usable.shuffled()) {
+                        if (cols.size == 3) break
+                        if (cols.none { clash(it, r) || (it.kind == r.kind && cols.size < 2) }) cols += r
+                    }
+                    if (cols.size < 3) return@repeat
+                    // Rows: every other rule that has an answer under all three columns
+                    val fits =
+                        usable
+                            .filter { r -> cols.none { clash(it, r) || it.kind == r.kind } }
+                            .map { r -> r to cols.minOf { c -> both(r, c) } }
+                            .filter { it.second >= 1 }
+                    val good = fits.filter { it.second >= 2 }.map { it.first }.shuffled()
+                    val rows = pickRows(good, ::clash)
+                    if (rows != null) return rows to cols
+                    if (fallback == null) pickRows(fits.map { it.first }.shuffled(), ::clash)?.let { fallback = it to cols }
                 }
                 return fallback
+            }
+
+            private fun pickRows(
+                from: List<GridRule>,
+                clash: (GridRule, GridRule) -> Boolean,
+            ): List<GridRule>? {
+                // Rows mix kinds when they can (an actor, a genre, a decade), else any that don't rule each other out
+                for (mix in listOf(true, false)) {
+                    val rows = mutableListOf<GridRule>()
+                    for (r in from) {
+                        if (rows.size == 3) break
+                        if (rows.none { clash(it, r) || (mix && it.kind == r.kind) }) rows += r
+                    }
+                    if (rows.size == 3) return rows
+                }
+                return null
             }
         }
     }

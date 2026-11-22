@@ -91,15 +91,16 @@ class TimelineViewModel
             _state.value = TimelineState.Loading
             viewModelScope.launch {
                 try {
-                    val titles = pool.titles().filter { it.year != null && it.poster != null }
+                    // Names with a year in them ("Halloween 2018", "Doctor Who (2005)") would give the answer away
+                    val titles = pool.titles().filter { it.year != null && it.poster != null && !it.nameHasYear }
                     if (titles.size < 8) {
                         _state.value =
                             TimelineState.NotEnough(notEnough("Not enough movies with release years to play.", pool.mode()))
                         return@launch
                     }
-                    deck = ArrayDeque(titles.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
                     val first = deck.removeFirst()
-                    _state.value = TimelineState.Playing(listOf(first), deck.removeFirst(), pool.best(BOARD_KEY))
+                    _state.value = TimelineState.Playing(listOf(first), deal(), pool.best(BOARD_KEY))
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -108,6 +109,8 @@ class TimelineViewModel
                 }
             }
         }
+
+        private fun deal(): PuzzleTitle = deck.removeFirst().also { pool.saw(BOARD_KEY, it.id) }
 
         /** Put the card in slot [slot] (0 = before everything, line.size = after everything) */
         fun place(slot: Int) {
@@ -127,7 +130,7 @@ class TimelineViewModel
                 _state.value = p.copy(line = line, justRight = true)
                 viewModelScope.launch {
                     delay(900)
-                    _state.value = TimelineState.Playing(line, deck.removeFirst(), p.best)
+                    _state.value = TimelineState.Playing(line, deal(), p.best)
                 }
             } else {
                 val right = p.line.indexOfFirst { (it.year ?: 0) > year }.let { if (it < 0) p.line.size else it }

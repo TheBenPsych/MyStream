@@ -126,7 +126,7 @@ class WhosThatActorViewModel
                         _state.value = ActorState.NotEnough("Not enough actor photos on Tower to play.")
                         return@launch
                     }
-                    deck = ArrayDeque(known.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, known) { it.person.id })
                     next(0, 0)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -141,8 +141,12 @@ class WhosThatActorViewModel
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(actors.filter { it.titles.size >= 2 }.ifEmpty { actors }.shuffled())
+            if (deck.isEmpty()) {
+                deck =
+                    ArrayDeque(pool.freshFirst(BOARD_KEY, actors.filter { it.titles.size >= 2 }.ifEmpty { actors }) { it.person.id })
+            }
             val actor = deck.removeFirst()
+            pool.saw(BOARD_KEY, actor.person.id)
             val others =
                 actors
                     .filter { it.person.name != actor.person.name }
