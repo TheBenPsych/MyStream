@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -423,6 +424,7 @@ private fun EpisodesSection(
                 itemsIndexed(seasons) { index, season ->
                     SeasonChip(
                         text = season?.name ?: "Season ${index + 1}",
+                        seen = remember(season) { season?.let(::seasonSeen) },
                         selected = index == seasonIndex,
                         onClick = { onPickSeason(index) },
                     )
@@ -487,9 +489,22 @@ private fun EpisodesSection(
     }
 }
 
+/**
+ * How much of a season you've watched, 0 to 1, or null when you haven't started it (or it's unknown).
+ * Shown as a thin line inside the bottom of the season button, so the button keeps its size.
+ */
+private fun seasonSeen(season: BaseItem): Float? {
+    val all = season.data.childCount ?: 0
+    val unplayed = season.data.userData?.unplayedItemCount
+    if (all <= 0 || unplayed == null) return if (season.data.userData?.played == true) 1f else null
+    val seen = (all - unplayed).coerceIn(0, all)
+    return if (seen == 0) null else seen.toFloat() / all
+}
+
 @Composable
 private fun SeasonChip(
     text: String,
+    seen: Float?,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -515,6 +530,30 @@ private fun SeasonChip(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
         )
+        // Drawn over the bottom edge, inside the button: no extra height or width, so nothing below moves
+        if (seen != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 3.dp),
+            ) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (selected) Color(0x2E000000) else Color(0x24FFFFFF)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(seen)
+                            .fillMaxHeight()
+                            .background(if (selected) BenflixColors.OnShows else BenflixColors.Shows),
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -743,6 +743,15 @@ B.catchUp = async (show, target, nav) => {
 };
 
 // ---------- show page: seasons + episodes ----------
+// How much of a season you've watched: a thin line drawn inside the bottom of its button (no extra height or width,
+// so the episodes row and TV scrolling stay exactly where they were). Nothing for seasons you haven't started.
+const seasonSeen = (s) => {
+  const ud = s.UserData || {}, all = s.ChildCount || 0;
+  if (!all || ud.UnplayedItemCount == null) return { pct: ud.Played ? 100 : 0, say: ud.Played ? "Watched" : "" };
+  const seen = Math.max(0, all - ud.UnplayedItemCount);
+  if (!seen) return { pct: 0, say: "" };
+  return { pct: Math.round((seen / all) * 100), say: seen >= all ? "Watched" : `${seen} of ${all} watched` };
+};
 B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   const u = B.uid();
   const [it, seasons, nextUp] = await Promise.all([
@@ -791,7 +800,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     scores: B.tpStrip(scores),
     strip: B.tpStrip([maker]),
     tabs: [
-      { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}">${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}</button>`).join("")}</div>
+      { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}" ${seasonSeen(s).say ? `title="${seasonSeen(s).say}"` : ""}>${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}${seasonSeen(s).pct ? `<i class="seen"><i style="width:${seasonSeen(s).pct}%"></i></i>` : ""}</button>`).join("")}</div>
         <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div>` },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "tv", nav) },
