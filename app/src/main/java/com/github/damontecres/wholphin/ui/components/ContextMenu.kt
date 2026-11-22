@@ -308,6 +308,12 @@ fun ContextMenu(
                     } else {
                         null
                     },
+                onFixDetails =
+                    if (markUpToViewModel.isAdmin && item.type in FIX_DETAILS_TYPES) {
+                        { adminTitle.openFixDetails(item.id) }
+                    } else {
+                        null
+                    },
                 onKidsChoice =
                     if (markUpToViewModel.isAdmin &&
                         !com.github.damontecres.wholphin.services.KidsMode.isActive &&
@@ -444,6 +450,9 @@ fun ContextMenu(
     }
 }
 
+/** Titles whose name, year, age rating and description the admin can fix from the hold menu */
+private val FIX_DETAILS_TYPES = setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.EPISODE)
+
 /** Titles the "Kids profile" choice is offered on (an episode or season opens its show) */
 private val KIDS_CHOICE_TYPES =
     setOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.SEASON, BaseItemKind.EPISODE)
@@ -471,6 +480,7 @@ private fun buildContextMenuItems(
     onChangePoster: (() -> Unit)? = null,
     onFileDetails: (() -> Unit)? = null,
     onKidsChoice: (() -> Unit)? = null,
+    onFixDetails: (() -> Unit)? = null,
 ): List<DialogItem> =
     buildList {
         // Songs should not show Go to
@@ -706,6 +716,17 @@ private fun buildContextMenuItems(
                     BenflixIcon.IMAGE.vector,
                     dismissOnClick = false,
                     onClick = onChangePoster,
+                ),
+            )
+        }
+        // Glowfin (admins, 2026-11-22): fix a wrong name, year, age rating or description
+        if (onFixDetails != null) {
+            add(
+                DialogItem(
+                    "Fix details",
+                    BenflixIcon.INFO.vector,
+                    dismissOnClick = false,
+                    onClick = onFixDetails,
                 ),
             )
         }

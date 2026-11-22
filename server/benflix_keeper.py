@@ -4,6 +4,9 @@
   backup  A nightly safety copy of the small things that would be painful to lose (not the movies).
   away    A nightly check that the family can still reach Glowfin from outside the house.
   try     "Try these on a real screen": new things only the test robot has checked, with Works / Not right.
+  addons  Jellyfin's add-ons (plugins) in plain words, with Update (Ben's picks, 2026-11-22).
+  convert The few converting settings that matter, checked against what Tower has inside.
+  jellyfin Shortcuts to the Jellyfin pages that are set once and left alone (rows carry "link").
 
 Every card answers GET /api/admin/card/<name> with
   {"title", "intro", "level": ok|warn|bad|off, "headline", "reason",
@@ -41,6 +44,8 @@ _order = []
 _running = set()
 _addresses = None
 _docker = None
+_jellyfin = None  # the helper's jellyfin_call(method, path, token, body)
+_admin = {"token": None}  # the admin's sign-in from their last Server page visit, used for Jellyfin's own settings
 
 
 def log(text):
@@ -639,13 +644,385 @@ def _try_mark(what, item_id):
     return "Marked as working. Thanks!" if what == "works" else "Marked as not right. Tell Claude what you saw."
 
 
+# --------------------------------------------------------------------------- Jellyfin's own settings (2026-11-22)
+
+ADDON_WORDS = (
+    ("intro skipper", "Finds intros and credits for Skip intro"),
+    ("jellyfin enhanced", "Powers Requests inside Glowfin"),
+    ("omdb", "Rotten Tomatoes and IMDb scores"),
+    ("tvdb", "Episode names and pictures for shows"),
+    ("anilist", "Anime names and scores"),
+    ("anidb", "Anime names and episode order"),
+    ("tmdb", "Names, posters and descriptions for movies and shows"),
+    ("open subtitles", "Finds subtitles online"),
+    ("opensubtitles", "Finds subtitles online"),
+    ("musicbrainz", "Album and artist details for music"),
+    ("audiodb", "Artist photos and album art for music"),
+    ("studio images", "Studio logos"),
+    ("trakt", "Sends what you watch to Trakt"),
+    ("playback reporting", "Keeps a history of what was played"),
+    ("bookshelf", "Details and covers for books"),
+    ("lyrics", "Finds song words"),
+    ("fanart", "Extra artwork"),
+    ("kodi", "Keeps Kodi in step with Jellyfin"),
+    ("webhook", "Tells other apps when something happens in Jellyfin"),
+)
+HW_NAMES = {"qsv": "Intel Quick Sync", "vaapi": "VA-API", "nvenc": "Nvidia", "amf": "AMD", "videotoolbox": "Apple", "v4l2m2m": "V4L2", "rkmpp": "Rockchip"}
+HW_CODECS = ["h264", "hevc", "mpeg2video", "vc1", "vp8", "vp9", "av1"]
+CODEC_WORDS = {"h264": "H.264", "hevc": "HEVC (most 4K)", "vp9": "VP9", "av1": "AV1 (the newest)"}
+WHY_WORDS = (
+    ("AudioCodecNotSupported", "it can't play this sound type"),
+    ("VideoCodecNotSupported", "it can't play this video type"),
+    ("ContainerNotSupported", "it can't open this kind of file"),
+    ("SubtitleCodecNotSupported", "the subtitles have to be drawn into the picture"),
+    ("ContainerBitrateExceedsLimit", "its quality limit is lower than the file"),
+    ("VideoBitrateNotSupported", "its quality limit is lower than the file"),
+    ("VideoResolutionNotSupported", "the picture is bigger than it can show"),
+    ("VideoRangeTypeNotSupported", "it can't show this kind of HDR"),
+    ("VideoLevelNotSupported", "the video is too demanding for it"),
+    ("VideoProfileNotSupported", "the video is too demanding for it"),
+    ("AudioChannelsNotSupported", "it can't play surround sound"),
+)
+JELLYFIN_PAGES = (
+    ("Add or remove a library folder", "Dashboard > Libraries", "#/dashboard/libraries"),
+    ("Internet address, ports and the safety lock", "Dashboard > Networking. A mistake here can lock everyone out.", "#/dashboard/networking"),
+    ("Fine tuning for converting", "Dashboard > Playback > Transcoding", "#/dashboard/playback/transcoding"),
+    ("Live TV tuners and recording", "Dashboard > Live TV", "#/dashboard/livetv"),
+    ("Where names and pictures come from, and in which language", "Dashboard > Libraries > Metadata", "#/dashboard/libraries/metadata"),
+    ("Finding and adding brand new add-ons", "Dashboard > Plugins", "#/dashboard/plugins"),
+    ("Keys for other apps", "Dashboard > API Keys", "#/dashboard/keys"),
+    ("Jellyfin's full log files", "Dashboard > Logs", "#/dashboard/logs"),
+    ("Jellyfin's own look and login message", "Dashboard > General", "#/dashboard/settings"),
+)
+
+
+def _jf(method, path, body=None):
+    """One question to Jellyfin as the admin. Returns the parsed answer (None when Jellyfin sends nothing back)."""
+    if not _jellyfin or not _admin.get("token"):
+        raise CardError(503, "Tower couldn't ask Jellyfin. Open the Server page again and try once more.")
+    try:
+        status, raw, _ = _jellyfin(method, path, _admin["token"], None if body is None else json.dumps(body).encode())
+    except CardError:
+        raise
+    except Exception as e:  # noqa: BLE001 - the helper's own "couldn't reach Jellyfin"
+        raise CardError(502, _plain(e))
+    if status in (401, 403):
+        raise CardError(403, "Jellyfin said no. Sign in again as the admin and try once more.")
+    if status >= 400:
+        raise CardError(502, f"Jellyfin answered with a problem ({status}). Try again in a minute.")
+    try:
+        return json.loads(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _ver(text):
+    out = []
+    for part in str(text or "").split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        out.append(int(digits) if digits else 0)
+    return tuple(out)
+
+
+def _watching():
+    """Names of the people playing something right now."""
+    try:
+        return [s.get("UserName") or "Someone" for s in (_jf("GET", "/Sessions") or []) if isinstance(s, dict) and s.get("NowPlayingItem")]
+    except CardError:
+        return []
+
+
+def _addons():
+    """Installed add-ons, one per name (the newest copy), each with the newest version Jellyfin's catalog offers."""
+    have = {}
+    for p in _jf("GET", "/Plugins") or []:
+        if not isinstance(p, dict) or not p.get("Name"):
+            continue
+        key = str(p.get("Id") or p["Name"]).replace("-", "").lower()
+        old = have.get(key)
+        if p.get("Status") in ("Superceded", "Deleted") and old:
+            continue
+        if not old or old.get("Status") in ("Superceded", "Deleted") or _ver(p.get("Version")) > _ver(old.get("Version")):
+            have[key] = p
+    try:
+        catalog = _jf("GET", "/Packages") or []
+    except CardError:
+        catalog = []
+    newest = {}
+    for c in catalog:
+        if not isinstance(c, dict):
+            continue
+        versions = sorted((v for v in c.get("versions") or [] if isinstance(v, dict) and v.get("version")), key=lambda v: _ver(v["version"]), reverse=True)
+        if versions:
+            newest[str(c.get("guid") or "").replace("-", "").lower()] = (c.get("name"), c.get("guid"), versions[0])
+    out = []
+    for key, p in sorted(have.items(), key=lambda kv: kv[1]["Name"].lower()):
+        offer = newest.get(key)
+        behind = bool(offer and _ver(offer[2]["version"]) > _ver(p.get("Version")) and p.get("Status") != "Restart")
+        out.append({"key": key, "plugin": p, "offer": offer if behind else None})
+    return out
+
+
+def _addon_words(p):
+    low = p["Name"].lower()
+    for word, plain in ADDON_WORDS:
+        if word in low:
+            return plain
+    text = " ".join(str(p.get("Description") or "").split())
+    return text[:90] + ("…" if len(text) > 90 else "")
+
+
+def _addons_card():
+    items = _addons()
+    waiting = _read("addons.json", {}).get("restart_wanted")
+    rows, behind, broken, restart = [], 0, 0, 0
+    for it in items:
+        p, offer = it["plugin"], it["offer"]
+        status = p.get("Status") or "Active"
+        bits = [b for b in (_addon_words(p), f"version {p.get('Version')}") if b]
+        row = {"light": "ok", "t": p["Name"]}
+        if status == "Restart":
+            restart += 1
+            row["light"] = "warn"
+            bits.append("starts working after Jellyfin restarts")
+        elif status == "Disabled":
+            row["light"] = "off"
+            bits.append("switched off in Jellyfin")
+        elif status in ("Malfunctioned", "NotSupported"):
+            broken += 1
+            row["light"] = "bad"
+            bits.append("it stopped working" if status == "Malfunctioned" else "it doesn't fit this Jellyfin version")
+        if offer:
+            behind += 1
+            if row["light"] == "ok":
+                row["light"] = "warn"
+            bits.append(f"{offer[2]['version']} is out")
+            row["acts"] = [{"label": "Update", "do": "update:" + it["key"]}]
+        elif status == "Active":
+            bits.append("up to date")
+        row["s"] = " · ".join(bits)
+        rows.append(row)
+    rows.sort(key=lambda r: {"bad": 0, "warn": 1, "ok": 2, "off": 3}.get(r["light"], 2))
+    acts = []
+    if behind > 1:
+        acts.append({"label": f"Update the {behind} that are behind", "do": "updateall"})
+    if restart or waiting:
+        acts.append({"label": "Restart Jellyfin now", "do": "restart"})
+    if broken:
+        level, headline = "bad", f"{broken} add-on{'' if broken == 1 else 's'} stopped working"
+        reason = "Updating it usually fixes this. If there is no Update button, look in Jellyfin (Tools > Tower > Rarely needed)."
+    elif behind:
+        level, headline = "warn", f"{behind} add-on{' is' if behind == 1 else 's are'} behind"
+        reason = "Update puts the new version in, then Jellyfin restarts by itself as soon as nobody is watching."
+    elif restart or waiting:
+        level, headline = "warn", "Jellyfin needs a restart to finish an update"
+        reason = "It restarts by itself as soon as nobody is watching. That takes about a minute."
+    elif not rows:
+        level, headline, reason = "off", "Jellyfin has no add-ons", ""
+    else:
+        level, headline, reason = "ok", "Every add-on is up to date", ""
+    return {
+        "title": "Jellyfin add-ons",
+        "intro": "The extra parts added to Jellyfin that Glowfin leans on. Finding brand new ones stays in Jellyfin.",
+        "level": level,
+        "headline": headline,
+        "reason": reason,
+        "acts": acts,
+        "rows": rows,
+    }
+
+
+def _restart_jellyfin_when_quiet():
+    """After an add-on update: restart Jellyfin once nobody is playing anything. Gives up after 12 hours."""
+    with _lock:
+        if "addon-restart" in _running:
+            return
+        _running.add("addon-restart")
+    notes = _read("addons.json", {})
+    notes["restart_wanted"] = int(time.time())
+    _write("addons.json", notes)
+
+    def work():
+        try:
+            time.sleep(45)  # Jellyfin downloads the new version first
+            for _ in range(144):
+                if not _read("addons.json", {}).get("restart_wanted"):
+                    return  # someone restarted it by hand
+                if not _watching():
+                    _jf("POST", "/System/Restart")
+                    log("restarted Jellyfin to finish an add-on update")
+                    break
+                time.sleep(300)
+        except Exception as e:  # noqa: BLE001 - the card still shows the Restart button
+            log(f"couldn't restart Jellyfin after an add-on update: {_plain(e)}")
+        finally:
+            notes = _read("addons.json", {})
+            notes.pop("restart_wanted", None)
+            _write("addons.json", notes)
+            with _lock:
+                _running.discard("addon-restart")
+
+    threading.Thread(target=work, name="keeper-addon-restart", daemon=True).start()
+
+
+def _addons_do(do):
+    if do == "restart":
+        who = _watching()
+        if who:
+            raise CardError(409, f"{', '.join(sorted(set(who)))} {'is' if len(set(who)) == 1 else 'are'} watching right now. Jellyfin restarts by itself when they finish.")
+        notes = _read("addons.json", {})
+        notes.pop("restart_wanted", None)
+        _write("addons.json", notes)
+        _jf("POST", "/System/Restart")
+        return "Jellyfin is restarting. Give it a minute."
+    todo = [it for it in _addons() if it["offer"] and (do == "updateall" or do == "update:" + it["key"])]
+    if not todo:
+        return "Nothing to update. It may already be done."
+    done = []
+    for it in todo:
+        name, guid, v = it["offer"]
+        q = urllib.parse.urlencode({k: val for k, val in (("assemblyGuid", guid), ("version", v["version"]), ("repositoryUrl", v.get("repositoryUrl"))) if val})
+        _jf("POST", f"/Packages/Installed/{urllib.parse.quote(str(name), safe='')}?{q}")
+        done.append(it["plugin"]["Name"])
+    _restart_jellyfin_when_quiet()
+    who = _watching()
+    after = "as soon as nobody is watching" if who else "in about a minute"
+    return f"Updating {', '.join(done)}. Jellyfin restarts by itself {after} to finish."
+
+
+def _jellyfin_sees_chip():
+    """True when Jellyfin's container was given Tower's graphics chip (/dev/dri), False when not, None when unknown."""
+    name = _find_container("jellyfin")
+    if not name:
+        return None
+    try:
+        info = _docker("GET", f"/containers/{urllib.parse.quote(name)}/json", timeout=10) or {}
+    except Exception:  # noqa: BLE001
+        return None
+    host = info.get("HostConfig") or {}
+    paths = [d.get("PathOnHost") or "" for d in host.get("Devices") or []] + [m.get("Source") or "" for m in info.get("Mounts") or []]
+    return bool(host.get("Privileged")) or any(p.startswith("/dev/dri") for p in paths)
+
+
+def _convert_card():
+    conf = _jf("GET", "/System/Configuration/encoding") or {}
+    kind = str(conf.get("HardwareAccelerationType") or "none").lower()
+    chip_on = kind != "none"
+    saved = _read("convert.json", {}).get("before")
+    rows, wrong = [], 0
+    if chip_on:
+        rows.append({"light": "ok", "t": "Tower's graphics chip does the converting", "s": f"On · {HW_NAMES.get(kind, kind.upper())}. Tower can convert several movies at once."})
+    else:
+        wrong += 1
+        sees = _jellyfin_sees_chip()
+        row = {"light": "warn", "t": "Tower's graphics chip is not being used", "s": "The main processor does all the converting, so two or three people watching away from home can make everything stutter."}
+        if sees:
+            row["acts"] = [{"label": "Turn it on", "do": "chip"}]
+        elif sees is False:
+            row["s"] += " Jellyfin's app in Unraid hasn't been given the graphics chip yet, so this can't be switched on from here."
+        rows.append(row)
+    if chip_on:
+        tone = bool(conf.get("EnableTonemapping"))
+        row = {"light": "ok" if tone else "warn", "t": "4K HDR on older TVs keeps its colours", "s": "On" if tone else "Off. HDR movies look grey and washed out on screens that can't show HDR."}
+        if not tone:
+            wrong += 1
+            row["acts"] = [{"label": "Turn it on", "do": "tone"}]
+        rows.append(row)
+        if kind in ("qsv", "vaapi"):
+            have = {str(c).lower() for c in conf.get("HardwareDecodingCodecs") or []}
+            missing = [CODEC_WORDS[c] for c in CODEC_WORDS if c not in have]
+            row = {"light": "warn" if missing else "ok", "t": "The chip also opens every common video type", "s": ("Not yet for " + ", ".join(missing) + ". Those are opened the slow way.") if missing else "H.264, HEVC, VP9 and AV1"}
+            if missing:
+                wrong += 1
+                row["acts"] = [{"label": "Turn them on", "do": "codecs"}]
+            rows.append(row)
+    try:
+        sessions = [s for s in (_jf("GET", "/Sessions") or []) if isinstance(s, dict) and s.get("NowPlayingItem")]
+    except CardError:
+        sessions = []
+    busy = [s for s in sessions if (s.get("TranscodingInfo") or {}).get("IsVideoDirect") is False]
+    if busy:
+        for s in busy[:4]:
+            why = next((plain for word, plain in WHY_WORDS if word in ((s.get("TranscodingInfo") or {}).get("TranscodeReasons") or [])), "")
+            rows.append({"light": "ok", "t": f"Converting now: {s['NowPlayingItem'].get('Name') or 'a title'}", "s": f"For {s.get('UserName') or 'someone'} on {s.get('DeviceName') or 'a screen'}" + (f" · {why}" if why else "")})
+    else:
+        rows.append({"light": "off", "t": "Nothing is being converted right now", "s": f"{len(sessions)} playing as they are, which is the best case" if sessions else "Nobody is watching"})
+    if saved:
+        rows.append({"light": "off", "t": "Movies stopped playing after a change here?", "s": "This puts Jellyfin's converting settings back to how they were before Glowfin changed them.", "acts": [{"label": "Put it back", "do": "undo"}]})
+    return {
+        "title": "Converting",
+        "intro": "When a screen can't play a file as it is, Tower converts it while you watch. These are Jellyfin's settings for that, the few that matter.",
+        "level": "warn" if wrong else "ok",
+        "headline": f"{wrong} converting setting{'' if wrong == 1 else 's'} could be better" if wrong else "Converting is set up well",
+        "reason": "" if wrong else "Everything else on Jellyfin's converting page can stay as it is.",
+        "rows": rows,
+    }
+
+
+def _convert_do(do):
+    if do not in ("chip", "tone", "codecs", "undo"):
+        raise CardError(400, "Glowfin didn't understand that button.")
+    notes = _read("convert.json", {})
+    if do == "undo":
+        if not notes.get("before"):
+            return "There is nothing to put back."
+        _jf("POST", "/System/Configuration/encoding", notes["before"])
+        _write("convert.json", {})
+        return "Converting settings are back to how they were."
+    conf = _jf("GET", "/System/Configuration/encoding")
+    if not isinstance(conf, dict) or "HardwareAccelerationType" not in conf:
+        raise CardError(502, "Jellyfin didn't send its converting settings. Nothing was changed.")
+    if not notes.get("before"):
+        notes["before"] = json.loads(json.dumps(conf))
+    codecs = sorted({str(c).lower() for c in conf.get("HardwareDecodingCodecs") or []} | set(HW_CODECS))
+    if do == "chip":
+        if not _jellyfin_sees_chip():
+            raise CardError(409, "Jellyfin's app in Unraid hasn't been given the graphics chip, so nothing was changed.")
+        conf.update({"HardwareAccelerationType": "qsv", "EnableHardwareEncoding": True, "HardwareDecodingCodecs": codecs, "EnableDecodingColorDepth10Hevc": True, "EnableDecodingColorDepth10Vp9": True})
+        said = "The graphics chip is on. Play something away from home to try it. If it won't play, press Put it back."
+    elif do == "tone":
+        conf["EnableTonemapping"] = True
+        said = "HDR colours are on."
+    else:
+        conf.update({"HardwareDecodingCodecs": codecs, "EnableDecodingColorDepth10Hevc": True, "EnableDecodingColorDepth10Vp9": True})
+        said = "The chip now opens every common video type. If something won't play, press Put it back."
+    _jf("POST", "/System/Configuration/encoding", conf)
+    _write("convert.json", notes)
+    return said
+
+
+def _jellyfin_card():
+    port, internet = 8096, None
+    try:
+        for a in ((_addresses() or {}).get("addresses") or []) if _addresses else []:
+            if a.get("kind") == "home":
+                port = urllib.parse.urlparse(a["url"]).port or port
+            elif a.get("kind") == "internet" and not internet:
+                internet = a["url"]
+    except Exception:  # noqa: BLE001 - the browser falls back to this page's own address
+        pass
+    return {
+        "title": "Rarely needed",
+        "intro": "Things you set once and leave. They stay in Jellyfin, and each button opens the exact Jellyfin page.",
+        "level": "off",
+        "headline": "These stay in Jellyfin",
+        "reason": "They are set once and left alone, and Jellyfin's own page is the safer place to change them. Sign in there as the admin.",
+        "port": port,
+        "internet": internet,
+        "rows": [{"light": "off", "t": t, "s": s, "link": link} for t, s, link in JELLYFIN_PAGES],
+    }
+
+
+
 # --------------------------------------------------------------------------- the helper's side
 
-CARDS = {"jobs": _jobs_card, "backup": _backup_card, "away": _away_card, "try": _try_card}
+CARDS = {"jobs": _jobs_card, "backup": _backup_card, "away": _away_card, "try": _try_card, "addons": _addons_card, "convert": _convert_card, "jellyfin": _jellyfin_card}
 
 
-def admin_route(method, path, read_json):
+def admin_route(method, path, read_json, token=None):
     """GET /api/admin/card/<name> and POST /api/admin/card/<name>/do. Returns (status, answer) or None."""
+    if token:
+        _admin["token"] = token
     parts = path.strip("/").split("/")
     if len(parts) < 4 or parts[:3] != ["api", "admin", "card"] or parts[3] not in CARDS:
         return None
@@ -659,6 +1036,10 @@ def admin_route(method, path, read_json):
                 return 200, {"message": _run_job(do[4:])}
             if name in ("backup", "away") and do == "now":
                 return 200, {"message": _run_job(name)}
+            if name == "addons" and (do in ("updateall", "restart") or do.startswith("update:")):
+                return 200, {"message": _addons_do(do)}
+            if name == "convert":
+                return 200, {"message": _convert_do(do)}
             if name == "try" and do.split(":")[0] in ("works", "bad") and ":" in do:
                 return 200, {"message": _try_mark(*do.split(":", 1))}
             return 400, {"message": "Glowfin didn't understand that button."}
@@ -683,11 +1064,12 @@ def _nightly():
         time.sleep(600)
 
 
-def start(addresses=None, docker=None):
-    """Called once by the helper when it starts. addresses() lists Tower's addresses; docker(method, path) asks Docker."""
-    global _dir, _addresses, _docker
+def start(addresses=None, docker=None, jellyfin=None):
+    """Called once by the helper when it starts. addresses() lists Tower's addresses; docker(method, path) asks Docker;
+    jellyfin(method, path, token, body) asks Jellyfin."""
+    global _dir, _addresses, _docker, _jellyfin
     _dir = _pick_dir()
-    _addresses, _docker = addresses, docker
+    _addresses, _docker, _jellyfin = addresses, docker, jellyfin
     if not _dir:
         log("no folder to save notes in, so the jobs list forgets when Tower restarts")
     job("backup", "Make the nightly safety copy", "Every night between 5 and 6 AM", run=_backup_job)

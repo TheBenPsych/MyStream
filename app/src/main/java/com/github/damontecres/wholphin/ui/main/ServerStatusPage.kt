@@ -836,6 +836,7 @@ fun ServerStatusPage(
                     ServerToolGroup.FIXES -> {
                         trackTidyItems(tracks, tracksProblem, towerViewModel)
                         gameProblemItems()
+                        towerCardItems("convert", "Converting")
                         speedCheckItems(speedState, speedCheck)
                         startupSpeedItem(sectionTitle)
                     }
@@ -869,7 +870,9 @@ fun ServerStatusPage(
                         driveHealthItems()
                         towerCardItems("backup", "Safety copy")
                         towerCardItems("away", "Away check")
+                        towerCardItems("addons", "Jellyfin add-ons")
                         bookListItems()
+                        towerCardItems("jellyfin", "Rarely needed (these stay in Jellyfin)")
                     }
                 }
             }
