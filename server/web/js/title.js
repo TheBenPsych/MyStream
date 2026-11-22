@@ -180,7 +180,8 @@
   // [label, value] puts the value first ("8.5 IMDb"); [label, value, true] puts the label first ("Director Denis Villeneuve")
   B.tpStrip = (parts) => parts.filter((p) => p && (p[0] || p[1])).map(([label, value, labelFirst]) => {
     const v = value != null && value !== "" ? `<b>${esc(value)}</b>` : "";
-    return `<span class="${labelFirst ? "lf" : ""}">${labelFirst ? `${esc(label || "")} ${v}` : `${v}${esc(label || "")}`}</span>`;
+    const s = !labelFirst && v && B.scoreKey ? B.scoreKey(label) : "";
+    return `<span class="${labelFirst ? "lf" : ""}"${s ? ` data-s="${s}"` : ""}>${labelFirst ? `${esc(label || "")} ${v}` : `${v}${esc(label || "")}`}</span>`;
   }).join("");
   // The More panel: one list, admin-only lines marked "You only"
   B.tpMore = (title, items, onPick) => {

@@ -2586,3 +2586,15 @@ html.pad-on .brail:not(:focus-within):not(.always) { pointer-events: none; }
   #doorTop .art { inset: 0 0 auto 0; height: 56.25vw; background-size: 100% auto; background-position: center top; }
   #doorTop .art::after { background: linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 50%, rgba(var(--trayrgb),.7) 82%, var(--tray) 100%); }
 }
+
+/* Glowfin (Idea Box 27): score numbers in their site's colour */
+.scores span[data-s] b, .tp-scores span[data-s] b, .tp-strip span[data-s] b { display: inline-block; border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-weight: 800; line-height: 1.35; }
+span[data-s="imdb"] b { background: #F5C518 !important; color: #111 !important; }
+span[data-s="rt"] b { background: #FA320A !important; color: #fff !important; }
+span[data-s="mc"] b { background: #66CC33 !important; color: #0b0c14 !important; }
+span[data-s="al"] b { background: #3DB4F2 !important; color: #0b0c14 !important; }
+span[data-s="mal"] b { background: #2E51A2 !important; color: #fff !important; border: 1px solid #6F8BD6; }
+span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; }
+.scores span[data-s], .tp-scores span[data-s], .tp-strip span[data-s] { white-space: nowrap; }
+.tp-scores { flex-wrap: wrap; row-gap: 6px; }
+@media (max-width: 480px) { .tp-scores { gap: 10px !important; } .tp-scores span[data-s] { font-size: 13px !important; } .tp-scores span[data-s] b { padding: 1px 5px; margin-right: 4px; } }
