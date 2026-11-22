@@ -208,8 +208,6 @@ internal fun PlaybackViewModel.benflixStartChecks(
     // Benflix (Ben, 2026-11-18): the picture checker only runs when "Picture stutters" is pressed
     pictureWatchdog.cancel()
     firstReadyAt = 0L
-    com.github.damontecres.wholphin.util.PlayerTimer
-        .loadStarted()
     startPositionMs = positionMs.coerceAtLeast(0L)
     bufferTimes.clear()
     val pending = BenflixPlayerPrefs.pendingNotice
@@ -472,8 +470,6 @@ internal fun PlaybackViewModel.trackBuffering(playbackState: Int) {
     )
     if (playbackState == Player.STATE_READY && firstReadyAt == 0L) {
         firstReadyAt = now
-        com.github.damontecres.wholphin.util.PlayerTimer
-            .pictureReady(context)
         busyJob?.cancel()
         if (state.value.notice?.busy == true) showNotice(null)
     }

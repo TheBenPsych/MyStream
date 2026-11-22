@@ -36,7 +36,7 @@ object PlayerTimer {
     }
 
     /** The first picture of that video is ready */
-    fun pictureReady(context: Context) {
+    private fun pictureReady(context: Context) {
         val start = loadAt
         loadAt = 0L
         if (start > 0L) add(context, START, now() - start)
@@ -55,6 +55,11 @@ object PlayerTimer {
         ready: Boolean,
         loading: Boolean,
     ) {
+        // The first picture of a video that was loading
+        if (ready && loadAt != 0L) {
+            pictureReady(context)
+            return
+        }
         val start = seekAt
         if (start == 0L) return
         if (loading) {
