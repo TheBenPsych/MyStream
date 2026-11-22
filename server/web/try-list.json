@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "phone-whole-wallpaper", "title": "Home shows the whole picture at the top on a phone, not a zoomed-in corner", "where": "phone held upright · Home, Movies or Shows (app and browser)", "date": "Nov 22"},
     {"id": "harbor-self-update", "title": "Harbor updates itself, with no command to paste", "where": "computer · Server > Tools > Tower > Setup command shows a Harbor line", "date": "Nov 21"},
     {"id": "safety-copy", "title": "The nightly safety copy gets made", "where": "any screen · Server > Tools > Tower > Safety copy, press Make one now", "date": "Nov 21"},
     {"id": "away-check", "title": "The Away check reads your internet name and its lock", "where": "any screen · Server > Tools > Tower > Away check", "date": "Nov 21"},

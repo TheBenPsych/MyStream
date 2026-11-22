@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -642,13 +643,22 @@ internal fun PageBackdrop(
     overlap: Dp = 0.dp,
     /** Wholphin style: the picture only in the top right of the page, its left and bottom edges faded away */
     portion: Boolean = false,
+    /**
+     * Upright phones (Ben 2026-11-22): a wide picture stretched over a tall page only showed a zoomed-in slice of it.
+     * Set this to the page's width and the whole picture is shown across the top instead, its bottom melting into the page.
+     */
+    wholeWidth: Dp? = null,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
     val url =
-        remember(item?.id, pageHeight) {
+        remember(item?.id, pageHeight, wholeWidth) {
             item?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() })
+                if (wholeWidth != null) {
+                    imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = with(density) { wholeWidth.roundToPx() })
+                } else {
+                    imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() })
+                }
             }
         }
     // Like Wholphin: another episode of the same show has the same picture, so it just stays. A new picture:
@@ -683,6 +693,26 @@ internal fun PageBackdrop(
                 }
                 // Plain painted fades into the page colour (cheap on older TVs): strong from the left, soft at the bottom
                 Box(Modifier.fillMaxSize().background(BenflixShade.portionSide))
+                Box(Modifier.fillMaxSize().background(BenflixShade.portionBottom))
+            }
+        }
+        return
+    }
+    if (wholeWidth != null) {
+        Box(Modifier.fillMaxSize()) {
+            // Wide pictures are 16:9, so this box shows all of one; an odd-shaped picture is fitted inside, never cut
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().aspectRatio(16f / 9f)) {
+                Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
+                    if (picture != null) {
+                        AsyncImage(
+                            model = picture,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.TopCenter,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
                 Box(Modifier.fillMaxSize().background(BenflixShade.portionBottom))
             }
         }
@@ -936,7 +966,13 @@ internal fun PhoneDoor(
         // Now it shows the first thing on the page instead, and closes up if the page has nothing at all.
         val pick = state.pick ?: if (state.loaded) state.rows.firstNotNullOfOrNull { it.items.firstOrNull() } else null
         val topHeight = if (pick == null && state.loaded) 0.dp else (maxHeight * 0.36f).coerceIn(200.dp, 320.dp)
-        PageBackdrop(item = pick, pageHeight = maxHeight, brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f))
+        PageBackdrop(
+            item = pick,
+            pageHeight = maxHeight,
+            brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f),
+            // Held upright, show the whole picture across the top (it was a zoomed-in slice); on its side it fills the page as before
+            wholeWidth = if (maxHeight > maxWidth) maxWidth else null,
+        )
         Column(Modifier.fillMaxSize()) {
             PhoneTop(pick, easy, onClick = { pick?.let(onClick) }, Modifier.fillMaxWidth().height(topHeight))
             LazyColumn(
