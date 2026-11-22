@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.KidsMode
+import com.github.damontecres.wholphin.ui.games.puzzles.lookAlikes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
@@ -224,7 +225,7 @@ class GuessTheMovieViewModel
                                 recursive = true,
                                 imageTypes = listOf(ImageType.BACKDROP),
                                 sortBy = listOf(ItemSortBy.RANDOM),
-                                fields = listOf(ItemFields.OVERVIEW, ItemFields.PEOPLE),
+                                fields = listOf(ItemFields.OVERVIEW, ItemFields.PEOPLE, ItemFields.GENRES),
                                 limit = POOL_SIZE,
                             ),
                         ).content.items
@@ -236,10 +237,13 @@ class GuessTheMovieViewModel
 
         private fun buildRounds(movies: List<BaseItemDto>): List<GuessRound> {
             if (movies.size < CHOICES) return emptyList()
-            val names = movies.mapNotNull { it.name }
-            return movies.shuffled().take(ROUNDS).mapIndexedNotNull { i, movie ->
+            return puzzlePool.freshFirst(GAME_KEY, movies) { it.id }.take(ROUNDS).mapIndexedNotNull { i, movie ->
                 val answer = movie.name ?: return@mapIndexedNotNull null
-                val others = names.filter { it != answer }.shuffled().take(CHOICES - 1)
+                puzzlePool.saw(GAME_KEY, movie.id)
+                // Wrong answers like the right one (same genres, around the same year), so it's not a guess by elimination
+                val others =
+                    lookAlikes(movie, movies, CHOICES - 1, { it.name.orEmpty() }, { it.genres.orEmpty() }, { it.productionYear })
+                        .mapNotNull { it.name }
                 val choices = (others + answer).shuffled()
                 val plot = plotClue(movie)
                 val cast =
@@ -294,6 +298,7 @@ class GuessTheMovieViewModel
         }
 
         companion object {
+            private const val GAME_KEY = "GUESS_THE_MOVIE"
             private const val POOL_SIZE = 60
             private const val ROUNDS = 10
             private const val MIN_ROUNDS = 4

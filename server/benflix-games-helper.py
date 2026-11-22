@@ -1457,7 +1457,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token and method in ("GET", "HEAD") and (
                 (path.startswith("/api/web/jf/") and "/Images/" in path)
                 or path.startswith("/api/web/stream/")
-                or re.fullmatch(r"/api/scenes/[0-9a-fA-F-]+/\d\.jpg", path)
+                or re.fullmatch(r"/api/scenes/[0-9a-fA-F-]+/(?:\d|s\d{1,3}-\d)\.jpg", path)
                 or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/(?:file|zip)|bios/file)", path)
                 or re.fullmatch(r"/api/books/(?:cover/\w+|vol/\w+/p/\d+|file/\w+(?:/\d+)?|x/\w+/.+)", path)
             ):

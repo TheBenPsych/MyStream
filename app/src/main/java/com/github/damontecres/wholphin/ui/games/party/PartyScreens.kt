@@ -239,6 +239,21 @@ private fun Live(
     )
     when (ui.phase) {
         PartyPhase.VOTE -> {
+            // Caption this: the scene stays up while everyone votes
+            if (ui.kind == PartyKind.CAPTION) {
+                ui.image?.let { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .width(if (isTv) tvPictureHeight(0.26f) * (16f / 9f) else 260.dp)
+                                .aspectRatio(16f / 9f)
+                                .background(PuzzlePanel, RoundedCornerShape(10.dp)),
+                    )
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 ui.plots.forEachIndexed { i, p ->
                     Panel { Text("${i + 1}.  ${p.text}", fontSize = 18.sp, lineHeight = 25.sp, color = Color.White) }

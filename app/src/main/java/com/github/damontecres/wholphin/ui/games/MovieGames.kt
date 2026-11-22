@@ -3,10 +3,15 @@ package com.github.damontecres.wholphin.ui.games
 import androidx.compose.ui.graphics.Color
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.games.party.PartyKind
+import com.github.damontecres.wholphin.ui.games.puzzles.BlitzViewModel
+import com.github.damontecres.wholphin.ui.games.puzzles.CloseUpViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.MovieGridViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.PosterPuzzleViewModel
+import com.github.damontecres.wholphin.ui.games.puzzles.QuoteItViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.SceneBySceneViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.TimelineViewModel
+import com.github.damontecres.wholphin.ui.games.puzzles.WhichSeasonViewModel
+import com.github.damontecres.wholphin.ui.games.puzzles.WhoPlayedViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.WhosThatActorViewModel
 
 enum class MovieGameGroup { PUZZLE, PARTY }
@@ -50,8 +55,12 @@ enum class MovieGame(
     POSTER(
         "Poster puzzle",
         "Tiles flip off a poster. Guess early for more points.",
-        "A poster hides under 16 tiles that flip away one by one. Guess as soon as you know it.",
-        listOf("Watch the tiles flip away.", "Pick the title whenever you know it.", "One wrong guess ends the run."),
+        "A poster hides under 16 tiles that flip away one by one, but never all of them. Guess as soon as you know it.",
+        listOf(
+            "Watch the tiles flip away.",
+            "Pick the title whenever you know it.",
+            "Fewer tiles flip as you go. One wrong guess ends the run.",
+        ),
         "1 player",
         "About 3 min",
         PosterPuzzleViewModel.BOARD_KEY,
@@ -100,6 +109,76 @@ enum class MovieGame(
         "most points in a run",
         listOf(Color(0xFF9333EA), Color(0xFF3B0764)),
         R.string.fa_user,
+        false,
+        MovieGameGroup.PUZZLE,
+    ),
+    QUOTE(
+        "Quote it",
+        "Lines from a movie's subtitles. Which movie says them?",
+        "Three lines people say in a movie, taken from its subtitles, show one by one. Name the movie.",
+        listOf("Read the line.", "More lines show as the clock runs.", "Pick the movie. One wrong guess ends the run."),
+        "1 player",
+        "About 3 min",
+        QuoteItViewModel.BOARD_KEY,
+        "most points in a run",
+        listOf(Color(0xFF0891B2), Color(0xFF164E63)),
+        R.string.fa_closed_captioning,
+        false,
+        MovieGameGroup.PUZZLE,
+    ),
+    CLOSEUP(
+        "Close-up",
+        "A real scene starts zoomed right in. Guess it early.",
+        "A real scene from a movie or show starts zoomed right in and slowly zooms out. Guess it early for more points.",
+        listOf("Watch the scene zoom out.", "Pick the title from 6.", "One wrong guess ends the run."),
+        "1 player",
+        "About 3 min",
+        CloseUpViewModel.BOARD_KEY,
+        "most points in a run",
+        listOf(Color(0xFFDB2777), Color(0xFF500724)),
+        R.string.fa_magnifying_glass_plus,
+        true,
+        MovieGameGroup.PUZZLE,
+    ),
+    ROLE(
+        "Who played them?",
+        "A character's name. Pick who played them from 4 photos.",
+        "You get a character and the movie they're in. Pick the actor who played them from 4 photos.",
+        listOf("Read the character's name.", "Pick the actor from 4 photos.", "One wrong pick ends the run."),
+        "1 player",
+        "About 3 min",
+        WhoPlayedViewModel.BOARD_KEY,
+        "most points in a run",
+        listOf(Color(0xFF7C3AED), Color(0xFF2E1065)),
+        R.string.fa_face_smile,
+        false,
+        MovieGameGroup.PUZZLE,
+    ),
+    BLITZ(
+        "60-second blitz",
+        "True or false, as many as you can in 60 seconds.",
+        "True or false lines about what's on Tower. Answer as many as you can in 60 seconds.",
+        listOf("Read the line.", "True or false?", "A wrong answer costs 3 seconds."),
+        "1 player",
+        "1 min",
+        BlitzViewModel.BOARD_KEY,
+        "most right in a blitz",
+        listOf(Color(0xFFEAB308), Color(0xFF713F12)),
+        R.string.fa_bolt,
+        false,
+        MovieGameGroup.PUZZLE,
+    ),
+    SEASON(
+        "Which season?",
+        "A scene from a show. Which season is it from?",
+        "A real scene from one of your shows. Guess which season it's from.",
+        listOf("Look at the scene.", "Pick the season.", "One wrong guess ends the run."),
+        "1 player",
+        "About 3 min",
+        WhichSeasonViewModel.BOARD_KEY,
+        "most points in a run",
+        listOf(Color(0xFF2563EB), Color(0xFF172554)),
+        R.string.fa_tv,
         false,
         MovieGameGroup.PUZZLE,
     ),
@@ -204,6 +283,21 @@ enum class MovieGame(
         true,
         MovieGameGroup.PARTY,
         PartyKind.CLOSEST,
+    ),
+    CAPTION(
+        "Caption this",
+        "Write a funny caption for a real scene, then vote.",
+        PartyKind.CAPTION.about,
+        PartyKind.CAPTION.steps,
+        "3 to 8 players",
+        "About 8 min",
+        null,
+        "",
+        listOf(Color(0xFFF43F5E), Color(0xFF4C0519)),
+        R.string.fa_face_smile,
+        true,
+        MovieGameGroup.PARTY,
+        PartyKind.CAPTION,
     ),
     ;
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -126,7 +127,7 @@ class WhosThatActorViewModel
                         _state.value = ActorState.NotEnough("Not enough actor photos on Tower to play.")
                         return@launch
                     }
-                    deck = ArrayDeque(known.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, known) { it.person.id })
                     next(0, 0)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -141,8 +142,12 @@ class WhosThatActorViewModel
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(actors.filter { it.titles.size >= 2 }.ifEmpty { actors }.shuffled())
+            if (deck.isEmpty()) {
+                deck =
+                    ArrayDeque(pool.freshFirst(BOARD_KEY, actors.filter { it.titles.size >= 2 }.ifEmpty { actors }) { it.person.id })
+            }
             val actor = deck.removeFirst()
+            pool.saw(BOARD_KEY, actor.person.id)
             val others =
                 actors
                     .filter { it.person.name != actor.person.name }
@@ -277,6 +282,8 @@ fun WhosThatActorScreen(
                     actions = viewModel.actions,
                     isTv = isTv,
                     onAgain = viewModel::start,
+                    score = s.points,
+                    newBest = s.newBest,
                 )
             }
 
@@ -286,12 +293,26 @@ fun WhosThatActorScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
                 ) {
-                    PuzzleHeader("Who's that actor?", "Round ${s.round}  ·  ${s.points} points  ·  Your best ${s.best}", isTv)
+                    PuzzleHeader(
+                        "Who's that actor?",
+                        "Round ${s.round}  ·  ${s.points} points  ·  Best ${s.best}",
+                        isTv,
+                        guessesLeft = s.guessesLeft,
+                        guessesOf = MAX_MISSES,
+                    )
                     val w = if (isTv) tvPictureHeight(0.42f) * (2f / 3f) else 190.dp
                     Box(
                         Modifier
                             .width(w)
                             .aspectRatio(2f / 3f)
+                            // The ring empties as the photo zooms out, then counts down the last seconds
+                            .timerRing(
+                                if (s.secondsLeft != null) {
+                                    1f - s.outFor.toFloat() / LAST_CHANCE_MS
+                                } else {
+                                    1f - s.reveal
+                                },
+                            ).padding(7.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(PuzzlePanel),
                     ) {
@@ -311,7 +332,7 @@ fun WhosThatActorScreen(
                                     },
                         )
                     }
-                    s.hints.forEach { Text(it, fontSize = 16.sp, color = PuzzleGold, textAlign = TextAlign.Center) }
+                    HintChips(s.hints)
                     AnswerLine(
                         text =
                             when {

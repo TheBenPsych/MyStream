@@ -57,6 +57,16 @@ enum class PartyKind(
         1,
         listOf("A question shows on the TV.", "Type a number on your phone.", "Closest gets 1,000. Exactly right gets a bonus."),
     ),
+    CAPTION(
+        "Caption this",
+        "A real scene from a movie shows on the TV. Everyone writes a funny caption on their phone, then votes for the best one.",
+        3,
+        listOf(
+            "Look at the scene on the TV.",
+            "Write a funny caption on your phone.",
+            "Vote for the best. 500 points for every vote you get.",
+        ),
+    ),
 }
 
 enum class PartyPhase { LOBBY, QUESTION, WRITE, VOTE, DRAWING, REVEAL, OVER }
@@ -110,6 +120,7 @@ class PartyViewModel
     constructor(
         @param:ApplicationContext private val context: Context,
         private val pool: PuzzlePool,
+        private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
     ) : ViewModel() {
         private val _ui = MutableStateFlow(PartyUi())
         val ui: StateFlow<PartyUi> = _ui
@@ -183,6 +194,7 @@ class PartyViewModel
                         PartyKind.CLOSEST -> runClosest()
                         PartyKind.FAKE_PLOT -> runFakePlot()
                         PartyKind.DRAW -> runDraw()
+                        PartyKind.CAPTION -> runCaption()
                     }
                     _ui.update { it.copy(phase = PartyPhase.OVER) }
                     push()
@@ -423,6 +435,89 @@ class PartyViewModel
             }
         }
 
+        // ---------- Caption this ----------
+
+        /** A real frame from the movie (Tower takes it from the file), else one of its own pictures */
+        private suspend fun captionScene(t: PuzzleTitle): String? {
+            val real =
+                kotlinx.coroutines.withTimeoutOrNull(4_000) {
+                    try {
+                        helper.getJson("/api/scenes/ok").optBoolean("ok")
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (_: Exception) {
+                        false
+                    }
+                } == true
+            if (!real) return t.stills.randomOrNull()
+            val id = t.id.toString().replace("-", "")
+            return "${helper.address}/api/scenes/$id/${(0 until 6).random()}.jpg?api_key=${android.net.Uri.encode(helper.token)}"
+        }
+
+        private suspend fun runCaption() {
+            val rounds = 4
+            val candidates = titles.filter { !it.isSeries || it.stills.isNotEmpty() }.shuffled()
+            repeat(rounds) { r ->
+                val t = candidates.getOrNull(r) ?: return
+                val scene = captionScene(t) ?: return@repeat
+                answers.clear()
+                answerTimes.clear()
+                _ui.update {
+                    it.copy(
+                        phase = PartyPhase.WRITE,
+                        round = r + 1,
+                        rounds = rounds,
+                        prompt = "Write a funny caption for this scene from ${t.label}",
+                        image = scene,
+                        wide = true,
+                        choices = emptyList(),
+                        endsAt = System.currentTimeMillis() + CAPTION_MS,
+                        answered = emptySet(),
+                        plots = emptyList(),
+                        title = t,
+                    )
+                }
+                push()
+                waitForAnswers(CAPTION_MS)
+                val captions = answers.map { (id, text) -> PartyPlot(text.trim().take(160), id) }.shuffled()
+                if (captions.size < 2) {
+                    showReveal(
+                        if (captions.isEmpty()) "No captions this time!" else "Only one caption: \"${captions[0].text}\"",
+                        emptyMap(),
+                    )
+                    return@repeat
+                }
+                votes.clear()
+                answers.clear()
+                _ui.update {
+                    it.copy(
+                        phase = PartyPhase.VOTE,
+                        prompt = "Which caption is the funniest?",
+                        plots = captions,
+                        endsAt = System.currentTimeMillis() + VOTE_MS,
+                        answered = emptySet(),
+                    )
+                }
+                push()
+                waitForAnswers(VOTE_MS)
+                val gained = mutableMapOf<String, Int>()
+                votes.values.forEach { i -> captions[i].by?.let { gained[it] = (gained[it] ?: 0) + 500 } }
+                award(gained)
+                val top =
+                    votes.values
+                        .groupingBy { it }
+                        .eachCount()
+                        .maxByOrNull { it.value }
+                showReveal(
+                    top?.let { (i, n) ->
+                        "Funniest: ${name(captions[i].by ?: "")}, with $n ${if (n == 1) "vote" else "votes"}\n\"${captions[i].text}\""
+                    }
+                        ?: "Nobody voted!",
+                    gained,
+                )
+            }
+        }
+
         // ---------- Draw the movie ----------
 
         private suspend fun runDraw() {
@@ -615,7 +710,13 @@ class PartyViewModel
                 PartyPhase.WRITE -> {
                     PhoneView(
                         title = "Round ${u.round} of ${u.rounds}",
-                        text = if (done) "Sent! Waiting for the others…" else u.prompt + ". Make it sound real!",
+                        text =
+                            if (done) {
+                                "Sent! Waiting for the others…"
+                            } else {
+                                u.prompt +
+                                    if (u.kind == PartyKind.CAPTION) ". The scene is on the TV. Make it funny!" else ". Make it sound real!"
+                            },
                         input = if (done) "" else "text",
                         status = status,
                         round = u.round,
@@ -690,6 +791,7 @@ class PartyViewModel
             private const val WRITE_MS = 90_000L
             private const val VOTE_MS = 40_000L
             private const val DRAW_MS = 70_000L
+            private const val CAPTION_MS = 75_000L
             private const val REVEAL_MS = 5_000L
 
             /** The first few sentences of a plot */

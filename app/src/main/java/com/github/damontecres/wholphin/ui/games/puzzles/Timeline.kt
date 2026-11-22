@@ -1,13 +1,19 @@
 package com.github.damontecres.wholphin.ui.games.puzzles
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,8 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +73,8 @@ sealed interface TimelineState {
         val newBest: Boolean,
         val card: PuzzleTitle,
         val between: String,
+        /** The line they built, oldest first */
+        val line: List<PuzzleTitle> = emptyList(),
     ) : TimelineState
 }
 
@@ -91,15 +101,16 @@ class TimelineViewModel
             _state.value = TimelineState.Loading
             viewModelScope.launch {
                 try {
-                    val titles = pool.titles().filter { it.year != null && it.poster != null }
+                    // Names with a year in them ("Halloween 2018", "Doctor Who (2005)") would give the answer away
+                    val titles = pool.titles().filter { it.year != null && it.poster != null && !it.nameHasYear }
                     if (titles.size < 8) {
                         _state.value =
                             TimelineState.NotEnough(notEnough("Not enough movies with release years to play.", pool.mode()))
                         return@launch
                     }
-                    deck = ArrayDeque(titles.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
                     val first = deck.removeFirst()
-                    _state.value = TimelineState.Playing(listOf(first), deck.removeFirst(), pool.best(BOARD_KEY))
+                    _state.value = TimelineState.Playing(listOf(first), deal(), pool.best(BOARD_KEY))
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -108,6 +119,8 @@ class TimelineViewModel
                 }
             }
         }
+
+        private fun deal(): PuzzleTitle = deck.removeFirst().also { pool.saw(BOARD_KEY, it.id) }
 
         /** Put the card in slot [slot] (0 = before everything, line.size = after everything) */
         fun place(slot: Int) {
@@ -127,7 +140,7 @@ class TimelineViewModel
                 _state.value = p.copy(line = line, justRight = true)
                 viewModelScope.launch {
                     delay(900)
-                    _state.value = TimelineState.Playing(line, deck.removeFirst(), p.best)
+                    _state.value = TimelineState.Playing(line, deal(), p.best)
                 }
             } else {
                 val right = p.line.indexOfFirst { (it.year ?: 0) > year }.let { if (it < 0) p.line.size else it }
@@ -149,7 +162,7 @@ class TimelineViewModel
         ) {
             val score = p.line.size - 1
             val newBest = pool.submit(BOARD_KEY, score)
-            _state.value = TimelineState.Over(score, maxOf(p.best, score), newBest, p.card, between)
+            _state.value = TimelineState.Over(score, maxOf(p.best, score), newBest, p.card, between, p.line)
         }
 
         companion object {
@@ -182,6 +195,9 @@ fun TimelineScreen(
                     actions = viewModel.actions,
                     isTv = isTv,
                     onAgain = viewModel::start,
+                    run = s.line.map { RunPick(it, "${it.year}") },
+                    score = s.score,
+                    newBest = s.newBest,
                 )
             }
 
@@ -203,8 +219,8 @@ private fun TimelinePlay(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        PuzzleHeader("Timeline", "${s.score} placed  ·  Your best ${s.best}", isTv)
-        val cardWidth = if (isTv) tvPictureHeight(0.30f) * (2f / 3f) else 120.dp
+        PuzzleHeader("Timeline", "${s.score} placed  ·  Best ${s.best}", isTv)
+        val cardWidth = if (isTv) tvPictureHeight(0.24f) * (2f / 3f) else 110.dp
         PuzzlePoster(s.card.poster, s.card.name, Modifier.width(cardWidth))
         Text(
             s.card.name,
@@ -218,8 +234,11 @@ private fun TimelinePlay(
             text = if (s.justRight) "Right! ${s.card.label}" else "Where does it go? Older on the left, newer on the right.",
             good = if (s.justRight) true else null,
         )
-        // The line: a "Here" button before, between and after every placed poster
-        val small = if (isTv) tvPictureHeight(0.20f) * (2f / 3f) else 72.dp
+        // The line (Ben's pick: the new Timeline look): a real line with a tick and year for each placed
+        // poster, the posters taking turns above and below it, and a round "+" spot on the line before,
+        // between and after every one of them
+        val small = if (isTv) tvPictureHeight(0.17f) * (2f / 3f) else 60.dp
+        val half = small * 1.5f + 26.dp
         val listState = rememberLazyListState()
         val middle = s.line.size / 2
         val focus = remember(s.card.id) { FocusRequester() }
@@ -227,38 +246,82 @@ private fun TimelinePlay(
             listState.scrollToItem((middle * 2 - 2).coerceAtLeast(0))
             focus.tryRequestFocus()
         }
+        val lineColor = Color.White.copy(alpha = .28f)
         LazyRow(
             state = listState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(half * 2 + 16.dp),
         ) {
             items(s.line.size * 2 + 1) { i ->
-                if (i % 2 == 0) {
-                    val slot = i / 2
-                    Button(
-                        onClick = { onPlace(slot) },
-                        colors =
-                            ButtonDefaults.colors(
-                                containerColor = Color(0xFF2A2A2E),
-                                contentColor = Color.White,
-                                focusedContainerColor = PuzzleGold,
-                                focusedContentColor = Color.Black,
-                            ),
-                        modifier =
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier =
+                        Modifier
+                            .height(half * 2)
+                            .drawBehind {
+                                drawLine(lineColor, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 3.dp.toPx())
+                            },
+                ) {
+                    if (i % 2 == 0) {
+                        val slot = i / 2
+                        Button(
+                            onClick = { onPlace(slot) },
+                            shape = ButtonDefaults.shape(CircleShape),
+                            colors =
+                                ButtonDefaults.colors(
+                                    containerColor = Color(0xFF1A1E38),
+                                    contentColor = PuzzleAqua,
+                                    focusedContainerColor = PuzzleGold,
+                                    focusedContentColor = Color.Black,
+                                ),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = 6.dp)
+                                    .size(if (isTv) 40.dp else 36.dp)
+                                    .then(if (slot == middle) Modifier.focusRequester(focus) else Modifier),
+                            scale = ButtonDefaults.scale(focusedScale = 1.15f),
+                        ) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        val idx = i / 2
+                        val t = s.line[idx]
+                        val up = idx % 2 == 0
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(small + 8.dp),
+                        ) {
+                            // Above the line: poster then year; below: year then poster
+                            Box(Modifier.height(half), contentAlignment = Alignment.BottomCenter) {
+                                if (up) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        PuzzlePoster(t.poster, t.name, Modifier.width(small))
+                                        Text("${t.year}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PuzzleGold)
+                                    }
+                                }
+                            }
+                            Box(Modifier.height(half), contentAlignment = Alignment.TopCenter) {
+                                if (!up) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("${t.year}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PuzzleGold)
+                                        PuzzlePoster(t.poster, t.name, Modifier.width(small))
+                                    }
+                                }
+                            }
+                        }
+                        // The tick on the line
+                        Box(
                             Modifier
-                                .height(small * 1.5f)
-                                .then(if (slot == middle) Modifier.focusRequester(focus) else Modifier),
-                        scale = ButtonDefaults.scale(focusedScale = 1f),
-                    ) {
-                        Text("Here", textAlign = TextAlign.Center)
-                    }
-                } else {
-                    val t = s.line[i / 2]
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        PuzzlePoster(t.poster, t.name, Modifier.width(small))
-                        Text("${t.year}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PuzzleGold)
+                                .size(width = 3.dp, height = 18.dp)
+                                .background(Color.White.copy(alpha = .7f)),
+                        )
                     }
                 }
             }
