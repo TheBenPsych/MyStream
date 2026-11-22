@@ -228,17 +228,17 @@ B.rqWaitingCount = async () => {
   ]);
   return ((sw && sw.results) || []).length + ((mus && mus.requests) || []).filter((r) => r.waiting).length + ((bks && bks.waiting) || []).length;
 };
-const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["yours", "Your requests"]];
+const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["manga", "Manga"], ["yours", "Your requests"]];
 const detailsAnime = (d) => ((d.genres || []).some((g) => g.id === 16) || (d.genreIds || []).includes(16)) && d.originalLanguage === "ja";
 B.route(/^\/requests/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
   // Requests opens on the tab you used last (the tab order stays Movies, Shows, Anime, Music, Books)
   let tab = B.q("tab");
   if (!tab) { try { tab = localStorage.getItem("bf-rq-tab"); } catch (e) { tab = null; } }
-  if (!RQ_TABS.some(([k]) => k === tab) || (tab === "books" && !B.booksTab)) tab = "movies";
+  if (!RQ_TABS.some(([k]) => k === tab) || ((tab === "books" || tab === "manga") && !B.booksTab)) tab = "movies";
   try { localStorage.setItem("bf-rq-tab", tab); } catch (e) { /* private window */ }
   B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
-    <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => k !== "books" || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${k === "yours" && B.me.admin ? "Manage" : l}</a>`).join("")}
+    <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => (k !== "books" && k !== "manga") || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${k === "yours" && B.me.admin ? "Manage" : l}</a>`).join("")}
       <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
       <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin && tab !== "yours" ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
 </div></div>
@@ -248,6 +248,7 @@ B.route(/^\/requests/, async (m, nav) => {
   if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
   if (tab === "music") return B.musicTab(nav);
   if (tab === "books") return B.booksTab(nav);
+  if (tab === "manga") return B.mangaTab(nav);
   if (tab === "yours") return B.yoursTab(nav);
   const me = await B.seerrMe();
   if (!B.alive(nav)) return;

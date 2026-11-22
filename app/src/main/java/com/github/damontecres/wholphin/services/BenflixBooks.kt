@@ -913,9 +913,143 @@ class BenflixBooks
                 problem = j.text("problem"),
             )
 
+        // ---------- Requests > Manga (AniList lists; a yes goes to Harbor) ----------
+
+        suspend fun mangaDiscover(): MangaDiscover {
+            val j = helper.getJson("/api/books/manga/discover")
+            return MangaDiscover(
+                rows =
+                    j.optJSONArray("rows").objects().map { r ->
+                        r.optString("name") to r.optJSONArray("items").objects().map(::mangaCard)
+                    },
+                genres = j.optJSONArray("genres").strings(),
+            )
+        }
+
+        suspend fun mangaGenre(genre: String): List<BookCard> =
+            helper
+                .getJson("/api/books/manga/genre?g=" + Uri.encode(genre))
+                .optJSONArray("items")
+                .objects()
+                .map(::mangaCard)
+
+        suspend fun mangaSearch(text: String): List<BookCard> =
+            helper
+                .getJson("/api/books/manga/search?q=" + Uri.encode(text))
+                .optJSONArray("items")
+                .objects()
+                .map(::mangaCard)
+
+        suspend fun mangaAbout(id: Int): MangaAbout {
+            val j = helper.getJson("/api/books/manga/title/$id")
+            return MangaAbout(
+                card = mangaCard(j),
+                author = j.optString("author"),
+                story = j.optString("story"),
+                status = j.optString("status"),
+                chapters = if (j.isNull("chapters")) null else j.optInt("chapters"),
+                volumes = if (j.isNull("volumes")) null else j.optInt("volumes"),
+                genres = j.optJSONArray("genres").strings(),
+                otherName = j.optJSONArray("names").strings().getOrNull(1),
+                askState = j.text("askState"),
+                more = j.optJSONArray("more").objects().map(::mangaCard),
+            )
+        }
+
+        suspend fun mangaRequests(): BookRequests {
+            val j = helper.getJson("/api/books/manga/requests")
+            return BookRequests(
+                mine = j.optJSONArray("mine").objects().map(::mangaRequest),
+                waiting = j.optJSONArray("waiting").objects().map(::mangaRequest),
+                others = j.optJSONArray("others").objects().map(::mangaRequest),
+                connected = true,
+                problems = emptyList(),
+            )
+        }
+
+        suspend fun mangaAsk(id: Int): String =
+            helper.postJson("/api/books/manga/ask", JSONObject().put("id", id)).optString("words", "Asked for.")
+
+        suspend fun mangaAnswer(
+            id: String,
+            yes: Boolean,
+        ) {
+            helper.postJson("/api/books/manga/answer", JSONObject().put("id", id).put("yes", yes))
+        }
+
+        suspend fun mangaRetry(id: String) {
+            helper.postJson("/api/books/manga/requests/" + Uri.encode(id) + "/retry")
+        }
+
+        suspend fun mangaForget(id: String) {
+            helper.deleteJson("/api/books/manga/requests/" + Uri.encode(id))
+        }
+
+        /** An AniList manga as a cover card ("al:<number>"), with its year and AniList score as the small line */
+        private fun mangaCard(j: JSONObject) =
+            BookCard(
+                key = "al:" + j.optInt("id"),
+                name = j.optString("name"),
+                author =
+                    listOfNotNull(
+                        if (j.isNull("year")) null else j.optInt("year").toString(),
+                        if (j.isNull("score")) null else "%.1f AniList".format(j.optDouble("score")),
+                    ).joinToString(" · "),
+                year = if (j.isNull("year")) null else j.optInt("year"),
+                cover = j.text("cover"),
+                score = if (j.isNull("score")) null else j.optDouble("score"),
+                rank = null,
+                weeks = 0,
+                award = null,
+                audioMinutes = null,
+                asked = j.text("asked"),
+                line = null,
+                desc = null,
+                have = j.text("here"),
+                audioOnly = false,
+            )
+
+        private fun mangaRequest(j: JSONObject) =
+            BookRequest(
+                id = j.optString("id"),
+                key = "al:" + j.optInt("anilist"),
+                name = j.optString("name"),
+                author = "",
+                cover = j.text("cover"),
+                types = listOf("manga"),
+                // Harbor getting it shows as Getting it
+                state = j.optString("state").let { if (it == "sent" || it == "getting") "downloading" else it },
+                words = j.optString("words"),
+                titleId = j.text("title"),
+                who = j.optString("who"),
+                canRetry = j.optBoolean("canRetry"),
+                problem = j.text("note"),
+            )
+
         private fun counts(j: JSONObject?): Map<String, Int> =
             j?.let { o -> o.keys().asSequence().associateWith { o.optInt(it) } } ?: emptyMap()
     }
+
+/** Requests > Manga: the lists from AniList and its genres */
+data class MangaDiscover(
+    val rows: List<Pair<String, List<BookCard>>>,
+    val genres: List<String>,
+)
+
+/** Requests > Manga: one manga's page */
+data class MangaAbout(
+    val card: BookCard,
+    val author: String,
+    val story: String,
+    val status: String,
+    val chapters: Int?,
+    val volumes: Int?,
+    val genres: List<String>,
+    val otherName: String?,
+    /** waiting, sent, getting, cant ... when someone already asked */
+    val askState: String?,
+    val more: List<BookCard>,
+)
 
 private fun JSONObject.text(key: String): String? = if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() && it != "null" }
 

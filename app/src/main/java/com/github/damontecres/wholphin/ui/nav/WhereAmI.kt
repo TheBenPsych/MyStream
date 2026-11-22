@@ -50,7 +50,7 @@ object WhereAmI {
             is Destination.DoorBrowse -> destination.what.replaceFirstChar { it.uppercase() }
             is Destination.MediaItem -> names[destination.itemId]
             is Destination.SeriesOverview -> names[destination.itemId]
-            is Destination.BookTitle, is Destination.BookAbout -> null
+            is Destination.BookTitle, is Destination.BookAbout, is Destination.MangaAbout -> null
             else -> destination.door()?.title
         }
 
