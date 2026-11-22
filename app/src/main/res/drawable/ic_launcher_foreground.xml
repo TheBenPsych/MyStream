@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by sharp.js (project files: benflix/rename/icon-sharp). Don't edit by hand. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_glow" />
+    <item android:drawable="@drawable/ic_launcher_fin" />
+</layer-list>
