@@ -786,6 +786,8 @@ B.cardMenu = (it, href) => {
   B.tpMore(it.Name || "", [
     href ? { label: "Open", icon: "right", href } : null,
     video ? { label: ud.PlaybackPositionTicks > 0 && !ud.Played ? "Resume" : "Play", icon: "play", onClick: () => B.go(`#/play/${it.Id}${ud.PlaybackPositionTicks > 0 && !ud.Played ? "?resume=1" : ""}`) } : null,
+    // Glowfin (Idea Box 26): out of Keep watching without marking it watched
+    video && B.forgetSpot && ud.PlaybackPositionTicks > 0 && !ud.Played ? { label: "Remove from Keep watching", icon: "x", onClick: () => B.busy(null, async () => { await B.forgetSpot(it); B.render(); return "Removed from Keep watching."; }) } : null,
     watchable && B.markWatched ? { label: ud.Played ? "Mark as not watched" : "Mark as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return ud.Played ? "Marked as not watched." : "Marked as watched."; }) } : null,
     B.toggleList && it.Type !== "TvChannel" ? { label: ud.IsFavorite ? "Take off My List" : "Add to My List", icon: ud.IsFavorite ? "check" : "plus", onClick: () => B.toggleList(it) } : null,
     B.offline ? B.offline.menu(it) : null,

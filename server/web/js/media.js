@@ -560,6 +560,11 @@ B.markWatched = async (it, played) => {
   await B.jf(played ? "POST" : "DELETE", `/UserPlayedItems/${it.Id}?userId=${B.uid()}`).catch(() => B.jf(played ? "POST" : "DELETE", `/Users/${B.uid()}/PlayedItems/${it.Id}`));
   it.UserData = Object.assign({}, it.UserData, { Played: played });
 };
+// Glowfin (Idea Box 26): clear only the saved spot, so it leaves Keep watching but stays unwatched
+B.forgetSpot = async (it) => {
+  await B.jf("POST", `/UserItems/${it.Id}/UserData?userId=${B.uid()}`, { PlaybackPositionTicks: 0 });
+  it.UserData = Object.assign({}, it.UserData, { PlaybackPositionTicks: 0, PlayedPercentage: 0 });
+};
 B.trailer = async (it) => {
   try {
     const local = it.LocalTrailerCount ? await B.get(`/Items/${it.Id}/LocalTrailers?userId=${B.uid()}`) : [];
