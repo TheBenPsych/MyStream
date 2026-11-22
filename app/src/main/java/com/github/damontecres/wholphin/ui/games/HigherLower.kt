@@ -362,8 +362,11 @@ private fun HigherLowerRound(
         Text(
             text =
                 when (state.right) {
-                    true -> "Right! ${state.guess.name} is rated ${state.guess.rating}"
-                    false -> "Nope, ${state.guess.name} is rated ${state.guess.rating}"
+                    // The name already shows under its poster, so a long one can't push this off the line
+                    true -> "Right! It's rated ${state.guess.rating}"
+
+                    false -> "Nope, it's rated ${state.guess.rating}"
+
                     null -> " "
                 },
             fontSize = 22.sp,
@@ -459,17 +462,37 @@ private fun PosterSide(
                         ).padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
+        // Long names get smaller text and up to 3 lines so the whole name fits under the poster.
+        // Both sides keep the same height so the posters and buttons never jump around.
+        val size = nameSize(movie.name)
         Text(
-            text = movie.name + (movie.year?.let { " ($it)" } ?: ""),
-            fontSize = 16.sp,
+            text = movie.name,
+            fontSize = size,
+            lineHeight = size * 1.2f,
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
-            maxLines = 2,
+            minLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = movie.year?.toString() ?: " ",
+            fontSize = 14.sp,
+            color = BenflixColors.Soft,
+            maxLines = 1,
         )
     }
 }
+
+/** Shorter names stay big; long ones step down so they fit in three lines under a poster */
+internal fun nameSize(name: String) =
+    when {
+        name.length <= 22 -> 17.sp
+        name.length <= 38 -> 15.sp
+        else -> 13.sp
+    }
 
 @Composable
 private fun HigherLowerEnd(

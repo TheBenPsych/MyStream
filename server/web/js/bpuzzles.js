@@ -95,10 +95,13 @@
   const PUZ = {};
 
   // Scene by scene: 400 / 300 / 200 / 100 points for each scene shown; out of scenes ends the run
+  // Scenes are real frames Tower takes from the movie file itself (benflix_scenes.py), spread across the movie,
+  // so every scene is different. Without them (older Tower) it falls back to chapter and background pictures.
+  const frames = (t) => shuffle([0, 1, 2, 3, 4, 5]).slice(0, 4).map((n) => `api/scenes/${t.id.replace(/-/g, "")}/${n}.jpg?api_key=${encodeURIComponent(B.me.token)}`);
+  const preload = (urls) => urls.forEach((u) => { const i = new Image(); i.src = u; });
   PUZ.SCENES = async (ctx) => {
-    // Two pictures or more when there are enough; many libraries keep only one background per title
-    const all = await titles();
-    let pool = all.filter((t) => t.stills.length >= 2);
+    const [all, real] = await Promise.all([titles(), B.call("GET", "api/scenes/ok").then((r) => !!(r && r.ok)).catch(() => false)]);
+    let pool = real ? all.filter((t) => t.stills.length >= 1) : all.filter((t) => t.stills.length >= 2);
     if (pool.length < 8) pool = all.filter((t) => t.stills.length >= 1);
     if (pool.length < 8) return notEnough(ctx, "Scene by scene needs at least 8 titles with pictures on Tower." + tip());
     let deck = shuffle(pool), points = 0, round = 0;
@@ -106,10 +109,15 @@
       if (!deck.length) deck = shuffle(pool);
       const a = deck.shift(); round++;
       // One picture only: show it twice, so a wrong guess still gets a second try
-      const scenes = a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
+      const scenes = real ? frames(a) : a.stills.length === 1 ? [a.stills[0], a.stills[0]] : a.stills.slice(0, 4);
+      // A wrong pick that Tower can't take a picture from (no file it can see) falls back to its own pictures
+      const fallback = a.stills.slice();
+      preload(scenes.slice(1));
+      if (real && deck.length) preload([frames(deck[0])[0]]);
       let shown = 0;
       const names = shuffle(otherNames(pool, a, 5).concat(a.name));
       const q = screen(ctx, `${head("Scene by scene", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic wide"><img id="bgPic" alt=""></div><div class="bgq-say" id="bgSay">Scene 1 of ${scenes.length}: worth 400</div><div class="bgq-choices" id="bgCh"></div>`);
+      $("#bgPic", q).onerror = (e) => { const f = fallback.shift(); if (f) { e.target.src = f; } };
       const show = () => { $("#bgPic", q).src = scenes[shown]; $("#bgSay", q).textContent = `Scene ${shown + 1} of ${scenes.length}: worth ${[400, 300, 200, 100][shown]}`; };
       show();
       choices($("#bgCh", q), names, (n, b) => {
@@ -198,7 +206,8 @@
     keyFn = true; draw(deck.shift());
   };
 
-  // Who's that actor? A photo zooms out over 15 s; 100 + up to 400 for speed; misses add hints; 3 misses ends it
+  // Who's that actor? A photo zooms out over 15 s; 100 + up to 400 for speed; misses add hints; 3 misses ends it.
+  // Once the whole photo shows a 10 s countdown runs; running out costs a guess (not the run) and every miss restarts it.
   PUZ.ACTOR = async (ctx) => {
     const byName = {};
     (await titles()).forEach((t) => t.actors.forEach((p) => { if (!p.photo) return; const a = byName[p.name] || (byName[p.name] = { p, titles: [] }); a.titles.push(t); }));
@@ -211,15 +220,29 @@
       const a = deck.shift(); round++;
       const names = shuffle(pickN(actors.filter((x) => x.p.name !== a.p.name), 5).map((x) => x.p.name).concat(a.p.name));
       const q = screen(ctx, `${head("Who's that actor?", `Round ${round} · ${points} points · Your best ${ctx.best()}`)}<div class="bgq-pic tall zoom"><img id="bgPic" src="${a.p.photo}" alt=""></div><div class="bgq-say" id="bgSay"></div><div class="bg-hints" id="bgHints"></div><div class="bgq-choices" id="bgCh"></div>`);
-      let reveal = 0, misses = 0, out = 0, done = false;
+      const LAST = 10000, MAX = 3;
+      let reveal = 0, misses = 0, out = 0, done = false, timedOut = false;
       const hints = [];
+      const tl = a.titles.map(label);
+      const addHint = () => { const h = tl[hints.length] ? `Was in ${tl[hints.length]}` : `Has ${tl.length} titles on Tower`; if (!hints.includes(h)) hints.push(h); };
       const worth = () => Math.round(100 + 400 * (1 - reveal));
-      const paint = () => { $("#bgPic", q).style.transform = `scale(${1 + 5 * (1 - reveal) ** 2})`; $("#bgSay", q).textContent = `Who is this? Guess now for ${worth()} points`; $("#bgHints", q).innerHTML = hints.map((h) => `<span>${esc(h)}</span>`).join(""); };
+      const say = () => {
+        const left = MAX - misses, g = left === 1 ? "1 guess left" : `${left} guesses left`;
+        const clock = reveal >= 1 ? ` · ${Math.max(0, Math.ceil((LAST - out) / 1000))}s to answer` : "";
+        if (timedOut) return `Time ran out, that used a guess. ${g}${clock}`;
+        if (misses) return `Not them. ${g}${clock}`;
+        return `Who is this? Guess now for ${worth()} points${clock}`;
+      };
+      const paint = () => { $("#bgPic", q).style.transform = `scale(${1 + 5 * (1 - reveal) ** 2})`; const sy = $("#bgSay", q); sy.textContent = say(); sy.classList.toggle("bad", misses > 0); $("#bgHints", q).innerHTML = hints.map((h) => `<span>${esc(h)}</span>`).join(""); };
       paint();
       const t = every(() => {
         if (done) return;
-        if (reveal >= 1) { out += 100; if (out >= 5000) { done = true; clearInterval(t); B.bgOver(ctx, "Run over", `Too slow! It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points); } }
-        else { reveal = Math.min(1, reveal + 100 / 15000); paint(); }
+        if (reveal >= 1) {
+          out += 100;
+          if (out < LAST) { paint(); return; }
+          if (misses + 1 >= MAX) { done = true; clearInterval(t); B.bgSound("miss"); B.bgOver(ctx, "Run over", `Out of time! It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points); return; }
+          misses++; out = 0; timedOut = true; addHint(); B.bgSound("miss"); paint();
+        } else { reveal = Math.min(1, reveal + 100 / 15000); paint(); }
       }, 100);
       choices($("#bgCh", q), names, (n, b) => {
         if (done) return;
@@ -229,14 +252,15 @@
           $("#bgSay", q).textContent = `Right! ${a.p.name} +${won}`;
           $$(".bg-choice", q).forEach((x) => { x.disabled = true; });
           setTimeout(() => ctx.alive() && next(), 1400);
-        } else if (misses + 1 >= 3) {
+        } else if (b.disabled) {
+          return;
+        } else if (misses + 1 >= MAX) {
           done = true; clearInterval(t); B.bgSound("miss");
           B.bgOver(ctx, "Run over", `Not ${n}. It was ${a.p.name}.\nYou got ${round - 1} right for ${points} points.`, points);
         } else {
-          misses++; b.disabled = true; b.classList.add("wrong"); B.bgSound("miss");
-          const tl = a.titles.map(label);
-          hints.push(tl[hints.length] ? `Was in ${tl[hints.length]}` : `Has ${tl.length} titles on Tower`);
-          reveal = Math.min(1, reveal + 0.25); paint();
+          misses++; out = 0; timedOut = false; b.disabled = true; b.classList.add("wrong"); B.bgSound("miss");
+          addHint();
+          reveal = Math.min(1, reveal + 0.12); paint();
         }
       });
     };
@@ -349,7 +373,7 @@
     if (pool.length < 4) return notEnough(ctx, "Higher or Lower needs at least 4 titles with an IMDb rating on Tower." + tip());
     let deck = shuffle(pool), streak = 0;
     let a = deck.shift();
-    const side = (t, showRating) => `<div class="bg-hl"><img src="${t.poster}" alt=""><b>${esc(label(t))}</b><span class="r">${showRating ? (t.rating / 10).toFixed(1) + " IMDb" : "?"}</span></div>`;
+    const side = (t, showRating) => `<div class="bg-hl"><img src="${t.poster}" alt=""><b class="${label(t).length > 38 ? "xl" : label(t).length > 22 ? "l" : ""}" title="${esc(label(t))}">${esc(label(t))}</b><span class="r">${showRating ? (t.rating / 10).toFixed(1) + " IMDb" : "?"}</span></div>`;
     const next = () => {
       if (!deck.length) deck = shuffle(pool.filter((t) => t !== a));
       const b = deck.shift();

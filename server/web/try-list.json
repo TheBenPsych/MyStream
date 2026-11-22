@@ -1,6 +1,9 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "scene-frames", "title": "Scene by scene shows real, different scenes from inside each movie (first one can take a few seconds)", "where": "any screen · Games, Scene by scene, after Tower's next hourly update", "date": "Nov 22"},
+    {"id": "actor-second-guess", "title": "Who's that actor? second and third guesses really work, with a countdown once the whole photo shows", "where": "any screen · Games, Who's that actor?, pick a wrong name on purpose", "date": "Nov 22"},
+    {"id": "higher-lower-names", "title": "Higher or Lower: long movie names fit under the posters", "where": "TV, phone and browser · Games, Higher or Lower", "date": "Nov 22"},
     {"id": "anime-watch-order", "title": "Anime shows: Watch order, Missing pieces with Get, Story complete, and Watch the movie first?", "where": "any screen · open an anime show, Episodes, the buttons under the episodes", "date": "Nov 22"},
     {"id": "anime-movie-next", "title": "Play on a show goes into a movie filed in its Specials (cards say MOVIE)", "where": "any screen · a show with a movie in Specials, after finishing the season before it", "date": "Nov 22"},
     {"id": "anime-movies-requests", "title": "Asking for an anime show offers its canon movies too", "where": "any screen · Requests, ask for an anime show", "date": "Nov 22"},

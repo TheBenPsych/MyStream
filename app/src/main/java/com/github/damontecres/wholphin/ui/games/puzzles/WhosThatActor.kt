@@ -63,8 +63,16 @@ sealed interface ActorState {
         val round: Int,
         val best: Int,
         val won: Int? = null,
+        /** Wrong names plus times the clock ran out */
+        val misses: Int = 0,
+        /** How long the whole photo has been showing (ms) */
+        val outFor: Long = 0,
+        /** The clock ran out once and used up a guess */
+        val timedOut: Boolean = false,
     ) : ActorState {
         val worth: Int get() = (100 + 400 * (1f - reveal)).toInt()
+        val guessesLeft: Int get() = (MAX_MISSES - misses).coerceAtLeast(0)
+        val secondsLeft: Int? get() = if (reveal >= 1f) ((LAST_CHANCE_MS - outFor + 999) / 1000).toInt().coerceAtLeast(0) else null
     }
 
     data class Over(
@@ -79,8 +87,10 @@ sealed interface ActorState {
 
 /**
  * "Who's that actor?": an actor's photo zoomed right in on their eyes slowly zooms out. Each miss
- * zooms out more and adds a hint (a title of theirs on Tower). Three misses, or the photo fully out
- * for too long, ends the run. Board = most points in a run.
+ * zooms out a little and adds a hint (a title of theirs on Tower). Once the whole photo shows there
+ * is a visible countdown; running out uses up a guess and starts a fresh countdown, and every wrong
+ * name restarts it too, so the "guesses left" are always real. Three misses ends the run.
+ * Board = most points in a run.
  */
 @HiltViewModel
 class WhosThatActorViewModel
@@ -153,16 +163,20 @@ class WhosThatActorViewModel
             ticker?.cancel()
             ticker =
                 viewModelScope.launch {
-                    var outFor = 0L
                     while (true) {
                         delay(TICK_MS)
                         val p = _state.value as? ActorState.Playing ?: return@launch
                         if (p.won != null) return@launch
                         if (p.reveal >= 1f) {
-                            outFor += TICK_MS
-                            if (outFor >= LAST_CHANCE_MS) {
-                                over(p, "Too slow!")
+                            val outFor = p.outFor + TICK_MS
+                            if (outFor < LAST_CHANCE_MS) {
+                                _state.value = p.copy(outFor = outFor)
+                            } else if (p.misses + 1 >= MAX_MISSES) {
+                                over(p, "Out of time!")
                                 return@launch
+                            } else {
+                                // Time ran out: it costs one guess, not the whole run
+                                _state.value = p.withHint().copy(misses = p.misses + 1, outFor = 0, timedOut = true)
                             }
                         } else {
                             _state.value = p.copy(reveal = (p.reveal + TICK_MS.toFloat() / ZOOM_MS).coerceAtMost(1f))
@@ -182,18 +196,27 @@ class WhosThatActorViewModel
                     delay(1_400)
                     next(p.points + won, p.round)
                 }
-            } else if (p.crossed.size + 1 >= MAX_MISSES) {
+            } else if (name in p.crossed) {
+                return
+            } else if (p.misses + 1 >= MAX_MISSES) {
                 over(p, "Not $name.")
             } else {
-                val titles = p.actor.titles.map { it.label }
-                val hint = titles.getOrNull(p.hints.size)?.let { "Was in $it" } ?: "Has ${titles.size} titles on Tower"
+                // A wrong name zooms out a little, adds a hint and gives a full, fresh countdown
                 _state.value =
-                    p.copy(
+                    p.withHint().copy(
                         crossed = p.crossed + name,
-                        reveal = (p.reveal + 0.25f).coerceAtMost(1f),
-                        hints = p.hints + hint,
+                        misses = p.misses + 1,
+                        reveal = (p.reveal + MISS_ZOOM).coerceAtMost(1f),
+                        outFor = 0,
+                        timedOut = false,
                     )
             }
+        }
+
+        private fun ActorState.Playing.withHint(): ActorState.Playing {
+            val titles = actor.titles.map { it.label }
+            val hint = titles.getOrNull(hints.size)?.let { "Was in $it" } ?: "Has ${titles.size} titles on Tower"
+            return if (hint in hints) this else copy(hints = hints + hint)
         }
 
         private fun over(
@@ -214,10 +237,13 @@ class WhosThatActorViewModel
             const val BOARD_KEY = "WHOS_THAT_ACTOR"
             private const val TICK_MS = 100L
             private const val ZOOM_MS = 15_000f
-            private const val LAST_CHANCE_MS = 5_000L
-            private const val MAX_MISSES = 3
+            private const val MISS_ZOOM = 0.12f
         }
     }
+
+/** Time to answer once the whole photo shows, fresh after every miss */
+internal const val LAST_CHANCE_MS = 10_000L
+internal const val MAX_MISSES = 3
 
 @Composable
 fun WhosThatActorScreen(
@@ -290,13 +316,12 @@ fun WhosThatActorScreen(
                         text =
                             when {
                                 s.won != null -> "Right! ${s.actor.person.name}  +${s.won}"
-                                s.crossed.isNotEmpty() -> "Not them. ${3 - s.crossed.size} guesses left."
-                                else -> "Who is this? Guess now for ${s.worth} points"
+                                else -> actorPrompt(s)
                             },
                         good =
                             if (s.won != null) {
                                 true
-                            } else if (s.crossed.isNotEmpty()) {
+                            } else if (s.misses > 0) {
                                 false
                             } else {
                                 null
@@ -305,7 +330,7 @@ fun WhosThatActorScreen(
                     ChoiceGrid(
                         choices = s.choices,
                         isTv = isTv,
-                        focusKey = s.actor.person.id to s.crossed.size,
+                        focusKey = s.actor.person.id to s.misses,
                         onPick = viewModel::pick,
                         crossed = s.crossed,
                         right = if (s.won != null) s.actor.person.name else null,
@@ -314,5 +339,16 @@ fun WhosThatActorScreen(
                 }
             }
         }
+    }
+}
+
+private fun actorPrompt(s: ActorState.Playing): String {
+    val left = s.guessesLeft
+    val guesses = if (left == 1) "1 guess left" else "$left guesses left"
+    val clock = s.secondsLeft?.let { "  ·  ${it}s to answer" } ?: ""
+    return when {
+        s.timedOut -> "Time ran out, that used a guess. $guesses$clock"
+        s.misses > 0 -> "Not them. $guesses$clock"
+        else -> "Who is this? Guess now for ${s.worth} points$clock"
     }
 }

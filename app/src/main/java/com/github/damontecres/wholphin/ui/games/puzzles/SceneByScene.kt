@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.games.puzzles
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -22,11 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -57,6 +64,10 @@ sealed interface SceneState {
         val best: Int,
         /** Set once they got it: the points it was worth */
         val won: Int? = null,
+        /** The title's own pictures, used if Tower can't take a frame from the file */
+        val fallback: List<String> = emptyList(),
+        /** The next round's first scene, loaded early so it shows straight away */
+        val upNext: String? = null,
     ) : SceneState
 
     data class Over(
@@ -71,6 +82,11 @@ sealed interface SceneState {
 /**
  * "Scene by scene": guess the movie or show from a still picture taken from it. Each wrong guess
  * shows an easier scene. Endless: running out of scenes ends the run. Board = most points in a run.
+ *
+ * The scenes are real frames Tower takes from the movie file itself (server/benflix_scenes.py), spread
+ * across the movie (or across a show's episodes), so each one is different. Before Ben's 2026-11-22 report
+ * it used background art, which is often the same picture as the poster and only one per title.
+ * Older Towers without that fall back to chapter and background pictures.
  */
 @HiltViewModel
 class SceneBySceneViewModel
@@ -78,8 +94,12 @@ class SceneBySceneViewModel
     constructor(
         private val pool: PuzzlePool,
         val actions: PuzzleActions,
+        private val helper: GameLibraryClient,
     ) : ViewModel() {
         private val _state = MutableStateFlow<SceneState>(SceneState.Loading)
+
+        /** Tower can take real frames from the movie files */
+        private var real = false
         val state: StateFlow<SceneState> = _state
         private var deck = ArrayDeque<PuzzleTitle>()
         private var titles: List<PuzzleTitle> = emptyList()
@@ -93,6 +113,16 @@ class SceneBySceneViewModel
             viewModelScope.launch {
                 try {
                     titles = pool.titles()
+                    real =
+                        withTimeoutOrNull(4_000) {
+                            try {
+                                helper.getJson("/api/scenes/ok").optBoolean("ok")
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (_: Exception) {
+                                false
+                            }
+                        } == true
                     val playable = playable()
                     if (playable.size < 8) {
                         _state.value = SceneState.NotEnough(notEnough("Not enough movies with pictures to play.", pool.mode()))
@@ -116,9 +146,29 @@ class SceneBySceneViewModel
          */
         private fun playable(): List<PuzzleTitle> =
             titles
-                .filter { it.stills.size >= 2 }
+                .filter { real || it.stills.size >= 2 }
+                .filter { it.stills.isNotEmpty() }
                 .takeIf { it.size >= 8 }
                 ?: titles.filter { it.stills.isNotEmpty() }
+
+        /** 4 of the 6 frames Tower takes from across the movie, in a random order */
+        private fun frames(t: PuzzleTitle): List<String> {
+            val id = t.id.toString().replace("-", "")
+            val key = Uri.encode(helper.token)
+            return (0 until 6).shuffled().take(POINTS.size).map { "${helper.address}/api/scenes/$id/$it.jpg?api_key=$key" }
+        }
+
+        /** Tower couldn't take a frame from this one: show one of its own pictures instead */
+        fun sceneFailed(url: String) {
+            val p = _state.value as? SceneState.Playing ?: return
+            if (p.scenes.getOrNull(p.shown) != url) return
+            val swap = p.fallback.firstOrNull() ?: return
+            _state.value =
+                p.copy(
+                    scenes = p.scenes.toMutableList().also { it[p.shown] = swap },
+                    fallback = p.fallback.drop(1),
+                )
+        }
 
         private fun next(
             points: Int,
@@ -137,7 +187,14 @@ class SceneBySceneViewModel
                 SceneState.Playing(
                     answer = answer,
                     // One picture only: show it twice, so a wrong guess still gets a second try
-                    scenes = answer.stills.take(POINTS.size).let { if (it.size == 1) it + it else it },
+                    scenes =
+                        if (real) {
+                            frames(answer)
+                        } else {
+                            answer.stills.take(POINTS.size).let { if (it.size == 1) it + it else it }
+                        },
+                    fallback = if (real) answer.stills else emptyList(),
+                    upNext = if (real) deck.firstOrNull()?.let { frames(it).first() } else null,
                     shown = 0,
                     choices = (others + answer.name).shuffled(),
                     crossed = emptySet(),
@@ -214,8 +271,19 @@ fun SceneBySceneScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(PuzzlePanel),
                     ) {
+                        // Load this round's other scenes (and the next round's first) early, so a wrong
+                        // guess shows the next scene straight away
+                        val context = LocalContext.current
+                        LaunchedEffect(s.answer.id) {
+                            val loader = SingletonImageLoader.get(context)
+                            (s.scenes.drop(1) + listOfNotNull(s.upNext)).forEach {
+                                loader.enqueue(ImageRequest.Builder(context).data(it).build())
+                            }
+                        }
+                        val url = s.scenes[s.shown]
                         AsyncImage(
-                            model = s.scenes[s.shown],
+                            model = url,
+                            onError = { viewModel.sceneFailed(url) },
                             contentDescription = "A scene",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),

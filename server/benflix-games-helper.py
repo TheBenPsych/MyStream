@@ -75,6 +75,11 @@ try:  # Better copies from Radarr/Sonarr keep their first "date added", so they 
 except ImportError:
     arrivals = None
 
+try:  # Real frames from the movie files for the Scene by scene game (benflix_scenes.py next to this file)
+    import benflix_scenes as scenes
+except ImportError:
+    scenes = None
+
 try:  # Anime movies go into their show's Specials, plus Missing pieces and filler labels, in benflix_specials.py
     import benflix_specials as specials
 except ImportError:
@@ -1452,6 +1457,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token and method in ("GET", "HEAD") and (
                 (path.startswith("/api/web/jf/") and "/Images/" in path)
                 or path.startswith("/api/web/stream/")
+                or re.fullmatch(r"/api/scenes/[0-9a-fA-F-]+/\d\.jpg", path)
                 or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/(?:file|zip)|bios/file)", path)
                 or re.fullmatch(r"/api/books/(?:cover/\w+|vol/\w+/p/\d+|file/\w+(?:/\d+)?|x/\w+/.+)", path)
             ):
@@ -1478,6 +1484,14 @@ class Handler(BaseHTTPRequestHandler):
                 if skips is None:
                     raise HelperError(503, "Skip times aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
+                return self.send(status, answer)
+            if path.startswith("/api/scenes/"):
+                # Scene by scene pictures taken from the movie itself (anyone signed in who can see the title)
+                if scenes is None:
+                    raise HelperError(503, "Scene pictures aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer, kind = scenes.route(method, path, token, user_id)
+                if kind:
+                    return self.send(status, answer, kind, etag='"' + hashlib.sha1(answer).hexdigest()[:20] + '"')
                 return self.send(status, answer)
             if path.startswith("/api/lobby/"):
                 # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
@@ -2517,6 +2531,8 @@ if __name__ == "__main__":
         livetv.start()
     if skips is not None:
         skips.start(jellyfin_call)
+    if scenes is not None:
+        scenes.start(jellyfin_call)
     if web is not None:
         web.start()
     if music is not None:
