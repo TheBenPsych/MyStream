@@ -229,7 +229,7 @@
       else B.bgPuzzle(ctx);
     } catch (e) {
       console.warn(e);
-      stage.innerHTML = `<div class="bg-msg"><h2>That game didn't start</h2><p class="dim">${esc(e.message || "")}</p><button class="btn white" id="bgBack">Back</button></div>`;
+      stage.innerHTML = `<div class="bg-msg"><h2>That game didn't start</h2><p class="dim">${esc(B.say(e))}</p><button class="btn white" id="bgBack">Back</button></div>`;
       $("#bgBack").onclick = quit;
     }
   });

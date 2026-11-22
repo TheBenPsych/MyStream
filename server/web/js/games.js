@@ -127,7 +127,7 @@ B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
     if (!B.bgRows) { rows.innerHTML = ""; return; }
     try {
       rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade", "ember"] : ["party"]);
-    } catch (e) { rows.innerHTML = `<div class="wrap empty">${esc(e.message)}</div>`; }
+    } catch (e) { rows.innerHTML = `<div class="wrap empty">${esc(B.say(e))}</div>`; }
     if (place === "party") rows.insertAdjacentHTML("beforeend", `<div class="wrap"><p class="dim" style="max-width:62ch">Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and presses Join a party, then answers on the phone. 3 to 8 players.</p></div>`);
     if (B.bgWire) B.bgWire(rows, null);
     return;
@@ -138,7 +138,7 @@ B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
     if (!B.alive(nav)) return;
     // For you still has Glowfin's own games when the console games can't load
     const own = home && B.bgRows ? await B.bgRows(["puzzles", "arcade"]).catch(() => "") : "";
-    rows.innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(e.message)}</div><button class="btn white" onclick="B.render()">Try again</button></div>` + own;
+    rows.innerHTML = `<div class="wrap" style="padding-top:24px"><div class="note">${esc(B.say(e))}</div><button class="btn white" onclick="B.render()">Try again</button></div>` + own;
     if (own && B.bgWire) B.bgWire(rows, $("#gInfo"));
     return;
   }

@@ -206,7 +206,7 @@
     const wishes = B.call("GET", "api/asks/wish").then((w) => (w && w.items) || []).catch(() => []);
     let d;
     try { d = await B.seerr(`/${type}/${id}`); } catch (e) {
-      B.page().innerHTML = B.top("") + `<div class="wrap"><div class="note">Couldn't open that one. ${esc(e.message || "")}</div></div>`;
+      B.page().innerHTML = B.top("") + `<div class="wrap"><div class="note">Couldn't open that one. ${esc(B.say(e))}</div></div>`;
       B.wireTop();
       return;
     }
@@ -235,7 +235,7 @@
     if (!B.alive(nav)) return;
     const wish = async (e, el) => {
       wished = !wished;
-      await B.call("POST", "api/asks/wish", { type, tmdb: +id, title: t, poster: d.posterPath || "", on: wished }).catch((err) => { wished = !wished; B.toast(err.message); });
+      await B.call("POST", "api/asks/wish", { type, tmdb: +id, title: t, poster: d.posterPath || "", on: wished }).catch((err) => { wished = !wished; B.toast(B.say(err)); });
       if (el) el.innerHTML = `${I(wished ? "check" : "plus")} <span>My List</span>`;
       if (wished) {
         B.toast(status > 1 ? "On your list. It shows up in My List the moment it arrives." : "On your list. Asking for it now.");

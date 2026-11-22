@@ -131,14 +131,14 @@ PAGES.overview = (el) => {
   const draw = async (fresh) => {
     try {
       const [t, sessions, info, reqs, signs] = await Promise.all([
-        tower(fresh).catch((e) => ({ problems: [e.message] })),
+        tower(fresh).catch((e) => ({ problems: [B.say(e)] })),
         jf("GET", "/Sessions?activeWithinSeconds=960").catch(() => null),
         jf("GET", "/System/Info").catch(() => null),
         jf("GET", "/JellyfinEnhanced/jellyseerr/request?take=50&filter=pending").catch(() => null),
         call("GET", "api/admin/care/signins").catch(() => null),
       ]);
       if (current !== "overview") return;
-      const watching = (sessions || []).filter((s) => s.NowPlayingItem);
+      const watching = (Array.isArray(sessions) ? sessions : []).filter((s) => s.NowPlayingItem);
       const apps = t.apps || [];
       const down = apps.filter((a) => (a.problem ?? !a.ok) && a.status !== "Never started");
       const stuck = (t.downloads || []).filter((d) => d.stuck);
@@ -190,7 +190,7 @@ PAGES.overview = (el) => {
       html += `<h3 class="section-title">Tools</h3>${toolTiles(null)}`;
       $("#ov").innerHTML = html;
     } catch (err) {
-      if (current === "overview") $("#ov").innerHTML = `<div class="note">${esc(err.message)}</div>`;
+      if (current === "overview") $("#ov").innerHTML = `<div class="note">${esc(B.say(err))}</div>`;
     }
   };
   el.onclick = async (e) => {
@@ -220,7 +220,7 @@ PAGES.overview = (el) => {
         : `Remove this download of ${d.dataset.title} and look for a different copy?`;
       if (!await B.ask(ask)) return;
       d.disabled = true;
-      try { B.toast((await call("POST", `api/admin/downloads/${d.dataset.replace}/replace`)).message); } catch (err) { B.toast(err.message); }
+      try { B.toast((await call("POST", `api/admin/downloads/${d.dataset.replace}/replace`)).message); } catch (err) { B.toast(B.say(err)); }
       draw(true);
     }
   };
@@ -251,7 +251,7 @@ PAGES.livetv = (el) => {
       ].join("") + src;
       $("#lt").innerHTML = `<div class="list">${rows || '<div class="empty">No status yet.</div>'}</div><button class="btn white" id="ltRefresh">Rebuild the list now</button>`;
       $("#ltRefresh").onclick = (e) => B.busy(e.target, async () => { await call("POST", "api/admin/livetv/refresh"); setTimeout(draw, 1000); return "Rebuilding. It checks every channel, so it takes about 15 minutes."; });
-    } catch (err) { if (current === "livetv") $("#lt").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "livetv") $("#lt").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   draw(); every(10000, draw);
 };
@@ -301,7 +301,7 @@ PAGES.booklists = (el) => {
     if ($("#rvClear")) $("#rvClear").onclick = (e) => saveReviews(e.target, true);
     $("#blGather").onclick = (e) => B.busy(e.target, async () => (await call("POST", "api/books/lists/gather")).message);
   };
-  Promise.all([call("GET", "api/books/lists/keys"), call("GET", "api/reviews/key").catch(() => ({}))]).then(([k, r]) => draw(Object.assign(k, { reviews: !!r.set }))).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
+  Promise.all([call("GET", "api/books/lists/keys"), call("GET", "api/reviews/key").catch(() => ({}))]).then(([k, r]) => draw(Object.assign(k, { reviews: !!r.set }))).catch((err) => { $("#bl").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; });
 };
 
 // ---------- Kids ratings: kids-looking titles with no rating (Redesign 2, section 11) ----------
@@ -335,7 +335,7 @@ PAGES.kidsratings = (el) => {
           }));
         };
       });
-    } catch (err) { if (current === "kidsratings") $("#kr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "kidsratings") $("#kr").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   draw();
 };
@@ -376,7 +376,7 @@ PAGES.kidsgames = (el) => {
       all = r.games || [];
       if (!all.length) { $("#kg").innerHTML = `<div class="list"><div class="item"><div class="grow"><div class="t">No games yet</div><div class="s">Games you add to RomM show up here.</div></div></div></div>`; return; }
       paint();
-    } catch (err) { if (current === "kidsgames") $("#kg").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "kidsgames") $("#kg").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   load();
 };
@@ -387,7 +387,7 @@ PAGES.drives = (el) => {
   el.innerHTML = `<p class="sub">Every drive in Tower checks its own health. Scrutiny reads those checks and spots the warning signs of a drive that's wearing out, so you can swap it before anything is lost.</p><div id="dh">${loading()}</div>`;
   const draw = async (fresh) => {
     let r;
-    try { r = await call("GET", "api/admin/drives" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "drives") $("#dh").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    try { r = await call("GET", "api/admin/drives" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "drives") $("#dh").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; return; }
     if (current !== "drives") return;
     if (!r.set_up) { $("#dh").innerHTML = `<div class="note">Scrutiny isn't connected yet. Install Scrutiny from Apps on Tower (search "scrutiny"), then run the setup command again (Tools, Tower, Setup command).</div>`; return; }
     const list = r.drives || [];
@@ -415,7 +415,7 @@ PAGES.gameproblems = (el) => {
         : `<div class="list"><div class="item"><span class="dot ok"></span><div class="grow"><div class="t">Every game started fine</div><div class="s">Nothing to fix.</div></div></div></div>`;
       el.querySelectorAll("[data-gpx]").forEach((b) => { b.onclick = () => B.busy(b, async () => { await call("DELETE", `api/games/problems?id=${b.dataset.gpx}`); await load(); return "Taken off the list."; }); });
       const all = $("#gpAll"); if (all) all.onclick = () => B.busy(all, async () => { await call("DELETE", "api/games/problems"); await load(); return "List cleared."; });
-    } catch (err) { if (current === "gameproblems") $("#gp").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "gameproblems") $("#gp").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   load();
 };
@@ -430,7 +430,7 @@ PAGES.webversion = (el) => {
       <div class="item"><div class="grow"><div class="t">Last checked</div><div class="s">${s.checked ? esc(B.when(new Date(s.checked * 1000).toISOString())) : "Not yet"}</div></div></div>
       ${s.problem ? `<div class="item"><span class="dot warn"></span><div class="grow"><div class="t">Problem</div><div class="s">${esc(s.problem)}</div></div></div>` : ""}
     </div>`;
-  }).catch((err) => { $("#wv").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
+  }).catch((err) => { $("#wv").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; });
 };
 
 // ---------- the old Tools website's pages, moved here ----------
@@ -448,14 +448,14 @@ PAGES.apps = (el) => {
           <div class="acts">${a.restartable ? `<button class="btn small" data-restart="${esc(a.name)}" data-nice="${esc(a.nice)}">Restart</button>` : ""}</div>
         </div>`).join("") + `</div>`;
       $("#ap").innerHTML = html;
-    } catch (err) { if (current === "apps") $("#ap").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "apps") $("#ap").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-restart]"); if (!b) return;
     if (!await B.ask(`Restart ${b.dataset.nice}? Anyone using it will be cut off for about a minute.`)) return;
     b.disabled = true; b.textContent = "Restarting…";
     try { B.toast((await call("POST", `api/admin/apps/${encodeURIComponent(b.dataset.restart)}/restart`)).message); }
-    catch (err) { B.toast(err.message); }
+    catch (err) { B.toast(B.say(err)); }
     draw(true);
   };
   draw(true); every(20000, () => draw(false));
@@ -482,7 +482,7 @@ PAGES.downloads = (el) => {
           </div>
         </div>`).join("") || `<div class="empty">Nothing downloading right now.</div>`) + `</div>`;
       $("#dl").innerHTML = html;
-    } catch (err) { if (current === "downloads") $("#dl").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "downloads") $("#dl").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-act]"); if (!b) return;
@@ -493,7 +493,7 @@ PAGES.downloads = (el) => {
     if (b.dataset.act === "replace" && !await B.ask(ask)) return;
     b.disabled = true;
     try { B.toast((await call("POST", `api/admin/downloads/${b.dataset.app}/${b.dataset.id}/${b.dataset.act}`)).message); }
-    catch (err) { B.toast(err.message); }
+    catch (err) { B.toast(B.say(err)); }
     draw(true);
   };
   draw(true); every(15000, () => draw(true));
@@ -526,10 +526,10 @@ PAGES.find = (el) => {
         const info = { name: it.Name, tmdb: ids.Tmdb || ids.tmdb, tvdb: ids.Tvdb || ids.tvdb, imdb: ids.Imdb || ids.imdb };
         b.disabled = true;
         try { B.toast((await call("POST", it.Type === "Series" ? "api/admin/search/missing" : "api/admin/search/better", info)).message); }
-        catch (err) { B.toast(err.message); }
+        catch (err) { B.toast(B.say(err)); }
         b.disabled = false;
       };
-    } catch (err) { $("#fRes").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { $("#fRes").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
 };
 
@@ -565,7 +565,7 @@ PAGES.tracks = (el) => {
       const log = $("#tr pre.log"); log.scrollTop = log.scrollHeight;
       $("#trFolder").onchange = (e) => { picked = e.target.value; store("benflix_web_folder", picked); };
       if (keepFocus === "trFolder") $("#trFolder").focus();
-    } catch (err) { if (current === "tracks") $("#tr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "tracks") $("#tr").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-mode],[data-undo]"); if (!b) return;
@@ -577,7 +577,7 @@ PAGES.tracks = (el) => {
       if (b.dataset.mode === "apply" && !await B.ask(`Fix the track names in ${picked}? You can undo it afterwards.`)) return;
       body = { mode: b.dataset.mode, folder: picked };
     }
-    try { await call("POST", "api/admin/tracks", body); } catch (err) { B.toast(err.message); }
+    try { await call("POST", "api/admin/tracks", body); } catch (err) { B.toast(B.say(err)); }
     draw();
   };
   draw(); every(2000, () => { if (document.activeElement?.id !== "trFolder") draw(); });
@@ -633,7 +633,7 @@ async function updatePrefs(userId, change) {
 const users = () => jf("GET", "/Users").then((u) => (u || []).sort((a, b) => a.Name.localeCompare(b.Name)));
 const busy = async (b, fn) => {
   b.disabled = true;
-  try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }
+  try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(B.say(err)); }
   b.disabled = false;
 };
 
@@ -648,7 +648,7 @@ PAGES.activity = (el) => {
   const draw = async (month) => {
     let d;
     try { d = await call("GET", "api/activity" + (month ? "?month=" + encodeURIComponent(month) : "")); }
-    catch (err) { if (current === "activity") $("#act").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    catch (err) { if (current === "activity") $("#act").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; return; }
     if (current !== "activity") return;
     // Tower keeps the week in world time (UTC); move every hour onto this screen's own clock
     const shift = Math.round(-new Date().getTimezoneOffset() / 60);
@@ -708,7 +708,7 @@ PAGES.now = (el) => {
           <div class="acts">${s.SupportsRemoteControl ? `<button class="btn small" data-pp="${i}">${ps.IsPaused ? "Resume" : "Pause"}</button><button class="btn small" data-msg="${i}">Message</button>` : ""}</div>
         </div>`;
       }).join("") || `<div class="empty">Nobody is watching right now.</div>`) + `</div>`;
-    } catch (err) { if (current === "now") $("#nw").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "now") $("#nw").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   const history = async () => {
     try {
@@ -718,7 +718,7 @@ PAGES.now = (el) => {
       if (current !== "now") return;
       $("#hist").innerHTML = `<div class="list">` + (plays.map((e) => `<div class="item"><div class="grow"><div class="t">${esc(e.Name)}</div><div class="s">${esc(when(e.Date))}</div></div></div>`).join("")
         || `<div class="empty">Nothing watched this week.</div>`) + `</div>`;
-    } catch (err) { if (current === "now") $("#hist").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "now") $("#hist").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const pp = e.target.closest("[data-pp]"), m = e.target.closest("[data-msg]");
@@ -807,7 +807,7 @@ PAGES.posters = (el) => {
     const pr = list[0];
     if (what === "use" && best) {
       saving = true; draw();
-      try { await B.posters.use(pr.id, pr.img, best); next(true); } catch (e) { saving = false; B.toast(e.message); draw(); }
+      try { await B.posters.use(pr.id, pr.img, best); next(true); } catch (e) { saving = false; B.toast(B.say(e)); draw(); }
     } else if (what === "skip") {
       if (list.length > 1) { list.push(list.shift()); suggest(); } else next(false);
     } else if (what === "leave") {
@@ -820,7 +820,7 @@ PAGES.posters = (el) => {
   const start = async () => {
     list = null; done = 0;
     if (box()) box().innerHTML = loading("Looking for posters that need a look…");
-    try { const r = await posterProblems(); list = r.list; night = r.night; } catch (err) { if (box()) box().innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    try { const r = await posterProblems(); list = r.list; night = r.night; } catch (err) { if (box()) box().innerHTML = `<div class="note">${esc(B.say(err))}</div>`; return; }
     suggest();
   };
   start();
@@ -843,7 +843,7 @@ PAGES.library = (el) => {
         <h3 class="section-title">Scan for new files</h3>
         <div class="list"><div class="item"><div class="grow"><div class="t">Every library</div><div class="s">Finds new and changed files everywhere. Can take a while.</div></div><div class="acts"><button class="btn small red" data-scan="">Scan all</button></div></div>
         ${list.map((l) => `<div class="item"><div class="grow"><div class="t">${esc(l.Name)}</div></div><div class="acts"><button class="btn small" data-scan="${esc(l.Id)}" data-name="${esc(l.Name)}">Scan</button></div></div>`).join("")}</div>`;
-    } catch (err) { if (current === "library") $("#lb").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "library") $("#lb").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-scan]"); if (!b) return;
@@ -882,7 +882,7 @@ PAGES.people = (el) => {
             ${u.Id === B.me.id ? "" : `<button class="btn small" data-a="remove" data-i="${i}">Remove</button>`}
           </div></div>`;
       }).join("") + `</div><div id="libPick"></div>`;
-    } catch (err) { if (current === "people") $("#pp").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "people") $("#pp").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   const newPassword = () => {
     const letters = "abcdefghjkmnpqrstuvwxyz23456789", a = new Uint32Array(8);
@@ -983,7 +983,7 @@ PAGES.problems = (el) => {
         <div class="grow"><div class="t">${esc(r.problem)} · ${esc(r.title)}</div><div class="s">${esc(r.user)} on ${esc(r.device)} · ${esc(when(new Date(r.at).toISOString()))}</div></div>
         <div class="acts"><button class="btn small" data-fix="${i}">Fixed</button></div></div>`).join("")
         || `<div class="empty">Nobody reported a problem. 🎉</div>`) + `</div>`;
-    } catch (err) { if (current === "problems") $("#rep").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "problems") $("#rep").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   const drawServer = async () => {
     try {
@@ -1001,7 +1001,7 @@ PAGES.problems = (el) => {
       $("#srv").innerHTML = `<div class="list">` + (list.map((g) => `<div class="item"><span class="dot bad"></span><div class="grow">
         <div class="t">${esc(g.text)}${g.count > 1 ? ` ×${g.count}` : ""}</div><div class="s">${esc(when(g.date))}${g.tip ? " · " + esc(g.tip) : ""}</div></div></div>`).join("")
         || `<div class="empty">No server problems in the last day.</div>`) + `</div>`;
-    } catch (err) { if (current === "problems") $("#srv").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "problems") $("#srv").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-fix]"); if (!b) return;
@@ -1110,7 +1110,7 @@ PAGES.versions = (el) => {
         ${rows.map((r, i) => `<div class="item"><span class="dot ${dot(r)}"></span><div class="grow"><div class="t">${esc(r.user)} · ${esc(r.device)}</div>
           <div class="s">Version ${esc(r.version || "not known")} · ${esc(behindText(r))} · Last on ${esc(seenAgo(r.seen))}</div></div>
           <div class="acts">${r.id ? `<button class="btn small" data-v="one" data-i="${i}">Message</button>` : ""}</div></div>`).join("")}</div>`;
-    } catch (err) { if (current === "versions") $("#vr").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "versions") $("#vr").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-v]"); if (!b) return;
@@ -1142,7 +1142,7 @@ PAGES.chores = (el) => {
             ${running && t.CurrentProgressPercentage != null ? `<div class="bar"><i style="width:${t.CurrentProgressPercentage}%"></i></div>` : ""}</div>
           <div class="acts">${running ? "" : `<button class="btn small" data-run="${esc(t.Id)}" data-name="${esc(t.Name)}">Run now</button>`}</div></div>`;
       }).join("") + `</div>`;
-    } catch (err) { if (current === "chores") $("#ch").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "chores") $("#ch").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   el.onclick = async (e) => {
     const b = e.target.closest("[data-run]");
@@ -1162,7 +1162,7 @@ PAGES.week = (el) => {
   el.innerHTML = `<p class="sub">A short look back at the last 7 days. It's ready fresh every Sunday morning.</p><div id="wk">${loading()}</div>`;
   const draw = async (fresh) => {
     let r;
-    try { r = await call("GET", "api/admin/care/report" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "week") $("#wk").innerHTML = `<div class="note">${esc(err.message)}</div>`; return; }
+    try { r = await call("GET", "api/admin/care/report" + (fresh ? "?fresh=1" : "")); } catch (err) { if (current === "week") $("#wk").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; return; }
     if (current !== "week") return;
     const sundayNote = new Date().getDay() === 0 ? `<div class="note">It's Sunday: here's your report card.</div>` : "";
     const watchers = (r.watchers || []).map((w, i) => `<div class="item"><div class="grow"><div class="t">${i === 0 ? "🏆 " : ""}${esc(w.name)}</div><div class="s">${w.plays} thing${w.plays === 1 ? "" : "s"} played</div></div></div>`).join("");
@@ -1230,7 +1230,7 @@ PAGES.tidy = (el) => {
         if (!d.working) { data = d; if (d.problem) $("#td").innerHTML = `<div class="note">${esc(d.problem)}</div>`; else draw(); return; }
         await new Promise((r) => setTimeout(r, 5000));
       }
-    } catch (err) { if (current === "tidy") $("#td").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
+    } catch (err) { if (current === "tidy") $("#td").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; }
   };
   fetchLists(false);
 };
@@ -1249,5 +1249,5 @@ PAGES.playtest = (el) => {
     el.querySelectorAll("[data-ok]").forEach((b) => { b.onclick = () => B.busy(b, async () => { draw(await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.ok)}/ok`)); }); });
     el.querySelectorAll("[data-again]").forEach((b) => { b.onclick = () => B.busy(b, async () => (await call("POST", `api/admin/care/playtest/${encodeURIComponent(b.dataset.again)}/again`)).message); });
   };
-  call("GET", "api/admin/care/playtest").then(draw).catch((err) => { if (current === "playtest") $("#pt").innerHTML = `<div class="note">${esc(err.message)}</div>`; });
+  call("GET", "api/admin/care/playtest").then(draw).catch((err) => { if (current === "playtest") $("#pt").innerHTML = `<div class="note">${esc(B.say(err))}</div>`; });
 };

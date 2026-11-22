@@ -278,7 +278,7 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     if (tower) tryUrl(tower[0].slice(1), () => tryUrl(tower[0].slice(1) + "?skip=1", viaJellyfin));
     else if (src.Path && /^https?:\/\/.*\.m3u8/i.test(src.Path) && location.protocol === "http:") tryUrl(src.Path, viaJellyfin);
     else viaJellyfin();
-  } catch (e) { msg(e.message); }
+  } catch (e) { msg(B.say(e)); }
   v.addEventListener("playing", () => msg(""));
   paint(); poke();
   B.every(30000, paint);

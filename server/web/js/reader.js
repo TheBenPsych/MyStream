@@ -229,7 +229,7 @@
               setTimeout(() => { if (left > 0) { left = 0; finish(); } }, 2500);
             }
           } catch (e) {
-            msg("This page wouldn't open", e.message);
+            msg("This page wouldn't open", B.say(e));
             done();
           }
         };
@@ -446,7 +446,7 @@
       if (marks.some((k) => k.chapter === chapter && k.text === text)) { showBar(true); panel.classList.remove("hidden"); return marksPanel(); }
       api("POST", "api/books/marks/" + id, { chapter, cpos: pages > 1 ? page / (pages - 1) : 0, text })
         .then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} toast("Highlighted. Open Highlights to add a note."); })
-        .catch((e) => toast(e.message));
+        .catch((e) => toast(B.say(e)));
     }
 
     function marksPanel(editing) {
@@ -586,10 +586,10 @@
       if (b.dataset.mnote) return marksPanel(b.dataset.mnote);
       if (b.dataset.mdel || b.dataset.msave) {
         const body = b.dataset.mdel ? { id: b.dataset.mdel, remove: true } : { id: b.dataset.msave, note: (panel.querySelector(".rd-note") || {}).value || "" };
-        return api("POST", "api/books/marks/" + id, body).then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} marksPanel(); }).catch((err) => toast(err.message));
+        return api("POST", "api/books/marks/" + id, body).then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} marksPanel(); }).catch((err) => toast(B.say(err)));
       }
       if (b.dataset.left) { settings.left = b.dataset.left; store("benflix.reader", settings); foot(); return aa(); }
-      if (a === "send") return api("POST", "api/books/send/" + id).then((j) => toast(j.words || "Sent.")).catch((err) => toast(err.message));
+      if (a === "send") return api("POST", "api/books/send/" + id).then((j) => toast(j.words || "Sent.")).catch((err) => toast(B.say(err)));
       if (b.dataset.go != null) {
         panel.classList.add("hidden");
         showBar(false);
@@ -740,7 +740,7 @@
         if (opts.onReady) opts.onReady();
         api("GET", "api/books/marks/" + id).then((j) => { marks = j.marks || []; try { paint(); } catch (e) {} }).catch(() => {});
       })
-      .catch((e) => msg("Couldn't open this book", e.message));
+      .catch((e) => msg("Couldn't open this book", B.say(e)));
 
     return { close, back, next, prev, save, spoke, stopAloud };
   }

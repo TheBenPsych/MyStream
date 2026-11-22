@@ -619,7 +619,7 @@
     };
     let toastTimer = 0;
     const toast = (text) => { const el = $("#lbToast"); if (!el) return; el.textContent = text; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 5000); };
-    const say = (text) => { text = String(text || "").trim(); if (!text) return; api("POST", code + "/say", { text }).catch((e) => toast(e.message)); };
+    const say = (text) => { text = String(text || "").trim(); if (!text) return; api("POST", code + "/say", { text }).catch((e) => toast(B.say(e))); };
     const openChat = () => {
       if (locked && document.exitPointerLock) document.exitPointerLock();
       if (kids) {
@@ -692,7 +692,7 @@
         B.lastPlayed = { id: it.Id, title: L.titleOf(it) };
         video.addEventListener("loadeddata", () => { showTvPicture(); report(""); }, { once: true });
       } catch (e) {
-        loadingMsg = "This one won't play here"; showTvPicture(); toast(e.message);
+        loadingMsg = "This one won't play here"; showTvPicture(); toast(B.say(e));
       }
     }
     const wantPos = () => tvRef.pos + (tv.playing ? (performance.now() - tvRef.t) / 1000 : 0);
@@ -709,7 +709,7 @@
       const d = world ? Math.hypot(player.x - world.tv.x, player.z - world.tv.z) : 0;
       video.volume = look.fullSound || player.sit >= 0 ? 1 : Math.max(0.35, Math.min(1, 1 - (d - 5) / 14));
     }
-    const tvSend = (action, extra) => api("POST", code + "/tv", Object.assign({ action }, extra || {})).then((t) => { gotTv(t, 0); }).catch((e) => toast(e.message));
+    const tvSend = (action, extra) => api("POST", code + "/tv", Object.assign({ action }, extra || {})).then((t) => { gotTv(t, 0); }).catch((e) => toast(B.say(e)));
     function gotTv(t, rtt) {
       const changed = t.item !== tv.item;
       tv = t;
@@ -829,8 +829,8 @@
       };
       const p = B.side(`<div class="lb-games">${draw()}</div>`, () => { if (cine && started) cine.begin(); });
       p.addEventListener("click", (e) => {
-        if (e.target.closest("[data-gstop]")) { B.closeAll(); api("POST", code + "/game", { action: "stop" }).then(gotGame).catch((er) => toast(er.message)); if (cine) cine.begin(); return; }
-        if (e.target.closest("[data-gstart]")) { B.closeAll(); api("POST", code + "/game", { action: "start", mode: st.mode, set: st[st.mode], it: st.it }).then(gotGame).catch((er) => toast(er.message)); if (cine) cine.begin(); return; }
+        if (e.target.closest("[data-gstop]")) { B.closeAll(); api("POST", code + "/game", { action: "stop" }).then(gotGame).catch((er) => toast(B.say(er))); if (cine) cine.begin(); return; }
+        if (e.target.closest("[data-gstart]")) { B.closeAll(); api("POST", code + "/game", { action: "start", mode: st.mode, set: st[st.mode], it: st.it }).then(gotGame).catch((er) => toast(B.say(er))); if (cine) cine.begin(); return; }
         const b = e.target.closest("[data-gk]"); if (!b) return;
         const k = b.dataset.gk, v = b.dataset.gv;
         if (k === "mode") st.mode = v; else if (k === "it") st.it = v; else st[st.mode][k] = +v;
@@ -854,8 +854,8 @@
       p.onclick = (e) => {
         const b = e.target.closest("[data-room],[data-remote],[data-style],[data-color],[data-sound],[data-q]"); if (!b) return;
         const d = b.dataset;
-        if (d.room) api("POST", code + "/settings", { room: d.room }).catch((er) => toast(er.message));
-        if (d.remote) { anyoneRemote = d.remote === "1"; api("POST", code + "/settings", { anyone_remote: anyoneRemote }).catch((er) => toast(er.message)); }
+        if (d.room) api("POST", code + "/settings", { room: d.room }).catch((er) => toast(B.say(er)));
+        if (d.remote) { anyoneRemote = d.remote === "1"; api("POST", code + "/settings", { anyone_remote: anyoneRemote }).catch((er) => toast(B.say(er))); }
         if (d.style) look.style = d.style;
         if (d.color) look.color = d.color;
         if (d.sound) look.fullSound = d.sound === "1";
@@ -1011,7 +1011,7 @@
         if (seen.size !== boardCount) { boardCount = seen.size; drawBoard(); }
       } catch (e) {
         if (closed) return;
-        if (e.status === 404 || e.status === 403) { closed = true; showGone(e.message); }
+        if (e.status === 404 || e.status === 403) { closed = true; showGone(B.say(e)); }
         else if (++fails === 5) toast("Lost touch with Tower. Trying again…");
       } finally { syncing = false; }
     }

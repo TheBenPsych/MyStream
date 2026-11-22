@@ -256,7 +256,7 @@
       B.toast(on ? "Added to Liked songs" : "Taken out of Liked songs");
       draw();
       $$(`[data-heart="${id}"]`).forEach((h) => h.classList.toggle("on", on));
-    } catch (e) { B.toast(e.message); }
+    } catch (e) { B.toast(B.say(e)); }
   };
 
   // ---------- lyrics ----------
@@ -416,7 +416,7 @@
     const admin = B.me.admin;
     box.innerHTML = `<p class="dim">Songs that sound like ${esc(title)} that you don't have yet. The round button plays 30 seconds. Pick one to ask for it.</p><div class="np-sim">${B.spinner()}</div>`;
     let found;
-    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { const l = $(".np-sim", box); if (l) l.innerHTML = `<p class="dim">${esc(e.message)}</p>`; return; }
+    try { found = await B.call("GET", `api/music/similar?artist=${enc(artist)}&title=${enc(title)}`); } catch (e) { const l = $(".np-sim", box); if (l) l.innerHTML = `<p class="dim">${esc(B.say(e))}</p>`; return; }
     if (M.current() !== s || !document.body.contains(box)) return;
     const songs = (found && found.songs) || [];
     const list = $(".np-sim", box);
@@ -822,7 +822,7 @@
     try {
       const r = await B.call("POST", "api/music/redo", { id: s.Id });
       B.toast((r && r.words) || "Deleted. Tower is finding a new copy.");
-    } catch (e) { B.toast(e.message); }
+    } catch (e) { B.toast(B.say(e)); }
   };
   const deleteSong = async (s) => {
     const yes = await B.ask("Delete this song?", `This deletes "${s.Name}" from Tower for everyone and tells Lidarr not to get it again. It can't be undone (you can still ask for it again later).`, "Delete", "Cancel");
@@ -832,7 +832,7 @@
       B.toast((r && r.words) || "Deleted. It won't be downloaded again.");
       document.querySelectorAll(".srow").forEach((row) => { if (row.querySelector(`[data-heart="${s.Id}"]`)) row.remove(); });
       if (M.current() && M.current().Id === s.Id && M.next) M.next();
-    } catch (e) { B.toast(e.message); }
+    } catch (e) { B.toast(B.say(e)); }
   };
   const addToPlaylist = async (anchor, songs) => {
     try {
@@ -851,7 +851,7 @@
         await B.jf("POST", `/Playlists/${enc(id)}/Items?Ids=${enc(ids)}&UserId=${B.uid()}`);
         B.toast("Added to the playlist");
       });
-    } catch (e) { B.toast(e.message); }
+    } catch (e) { B.toast(B.say(e)); }
   };
   // ---------- Music redesign 3: songs Benflix doesn't have yet (greyed, with a 30-second preview and Ask) ----------
   const songKey = (t) => String(t || "").toLowerCase().replace(/\s*[([].*?[)\]]/g, "").replace(/\s+-\s+.*(remaster|version|edit|mix|live|mono|stereo).*$/, "").replace(/[^\p{L}\p{N}]/gu, "");
@@ -942,7 +942,7 @@
     return me || (me = { recents: [], searches: [], pins: [] });
   };
   const meSave = async (path, body) => {
-    try { const j = await B.call("POST", path, body); if (j && j.recents) { me = j; meAt = Date.now(); } } catch (e) { if (e && e.message && /pin/i.test(e.message)) B.toast(e.message); }
+    try { const j = await B.call("POST", path, body); if (j && j.recents) { me = j; meAt = Date.now(); } } catch (e) { if (e && e.message && /pin/i.test(e.message)) B.toast(B.say(e)); }
   };
   B.musicPlayed = (place) => {
     const mine = me || (me = { recents: [], searches: [], pins: [] });
@@ -1210,7 +1210,7 @@
       if (l.dataset.l === "new") {
         const name = await B.askText("New playlist", "What should it be called?", "");
         if (!name) return;
-        try { await B.jf("POST", `/Playlists`, { Name: name, Ids: [], UserId: B.me.id, MediaType: "Audio" }); B.toast(`Made ${name}`); B.render(); } catch (err) { B.toast(err.message); }
+        try { await B.jf("POST", `/Playlists`, { Name: name, Ids: [], UserId: B.me.id, MediaType: "Audio" }); B.toast(`Made ${name}`); B.render(); } catch (err) { B.toast(B.say(err)); }
       }
     });
     // Right-click (or a long press on a touch screen) pins or unpins
@@ -1606,7 +1606,7 @@
         Object.keys(B.cache).filter((k) => k.startsWith("music-mixes-") || k.startsWith("music-themes-")).forEach((k) => delete B.cache[k]);
         B.toast(`Took ${s.Name} out of ${mix.name}`);
         B.render();
-      } catch (e) { B.toast(e.message || "Couldn't take that song out. Try again in a minute."); }
+      } catch (e) { B.toast(B.say(e) || "Couldn't take that song out. Try again in a minute."); }
     } }];
     await collection(nav, { kick: mix.group ? "PLAYLIST BY THEME" : "MADE FOR YOU", title: mix.name, line: mix.note ? `${mix.line} · ${mix.note}` : mix.line, art, collage: covers, songs, sourceId: null, extra: notHere, place: { kind: "mix", id: mix.key, name: mix.name } });
     if (mix.adds) themeAdds(nav, mix);
