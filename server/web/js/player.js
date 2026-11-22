@@ -388,7 +388,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   v.addEventListener("playing", () => msg(""));
   v.addEventListener("waiting", () => msg("Loading…"));
   v.addEventListener("error", () => { if (method === "DirectPlay" && !stopped) { audioIndex = audioIndex ?? 0; settings.quality = settings.quality || "auto"; forceTranscode(); } });
-  const forceTranscode = () => { const at = v.currentTime; source = Object.assign({}, source, { DefaultAudioStreamIndex: -99 }); load(at).catch((e) => msg(e.message)); };
+  const forceTranscode = () => { const at = v.currentTime; source = Object.assign({}, source, { DefaultAudioStreamIndex: -99 }); load(at).catch((e) => msg(B.say(e))); };
 
   // ---------- skip intro / credits, Up next ----------
   const series = isEp ? it.SeriesId : null;
@@ -523,7 +523,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     if (!next) return B.toast("That's the lightest picture already. Report a problem so Ben can look at it.");
     settings.quality = next; B.setWebSetting("quality", next);
     B.toast(`Trying a lighter picture: ${QUALITY_WORDS[next]}. Change it back in Settings > Quality.`);
-    load(v.currentTime).catch((err) => msg(err.message));
+    load(v.currentTime).catch((err) => msg(B.say(err)));
   };
   // ---------- Idea Box 25 "Also counts for": someone watching with Ben on his profile keeps up too ----------
   // Only the main profile (Jellyfin only lets an admin save someone else's spot). The ticks last until the player is left.
@@ -630,14 +630,14 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       }
       if (e.target.closest("[data-towerfix]")) { p.remove(); return fixSubs(); }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
-      if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
+      if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(B.say(err))); }
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);
         subIndex = idx; p.remove();
         if (idx === -1 || (st && st.DeliveryMethod === "External")) { showSubs(); return report("/Progress"); } // tell Tower straight away
-        return load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
+        return load(v.currentTime).catch((err) => msg(B.say(err))); // picture subtitles are drawn in by the server
       }
-      if (qq) { settings.quality = qq.dataset.q; B.setWebSetting("quality", qq.dataset.q); p.remove(); return load(v.currentTime).catch((err) => msg(err.message)); }
+      if (qq) { settings.quality = qq.dataset.q; B.setWebSetting("quality", qq.dataset.q); p.remove(); return load(v.currentTime).catch((err) => msg(B.say(err))); }
       if (sk) {
         const k = sk.dataset.skip, set = alwaysSkip[k], on = !set.has(plain(series));
         on ? set.add(plain(series)) : set.delete(plain(series));
@@ -652,7 +652,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const fixSkip = async (kind) => {
     const at = Math.round(v.currentTime * 100) / 100;
     let r;
-    try { r = await B.call("POST", `api/skips/${plain(it.Id)}/fix`, { kind, at }); } catch (err) { return B.toast(err.message); }
+    try { r = await B.call("POST", `api/skips/${plain(it.Id)}/fix`, { kind, at }); } catch (err) { return B.toast(B.say(err)); }
     useTower(r);
     // Don't jump away straight after marking where something starts (you may want to mark its end too)
     if (kind === "intro_start") skipped.add("Intro");
@@ -665,7 +665,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const fixSubs = async (better) => {
     const was = ((source && source.MediaStreams) || []).find((x) => x.Index === subIndex) || {};
     let job;
-    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex, better: !!better }); } catch (err) { return B.toast(err.message); }
+    try { job = await B.call("POST", `api/subsync/${enc(it.Id)}`, { index: subIndex, better: !!better }); } catch (err) { return B.toast(B.say(err)); }
     B.toast(job.message || "Tower is lining the subtitles up. It takes a minute or two.");
     for (let i = 0; i < 90 && here(); i++) {
       await new Promise((r) => setTimeout(r, 4000));
@@ -676,7 +676,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     B.toast(job.message || "Done.");
     if (job.state !== "done" || !job.changed) return;
     const before = new Set(((source && source.MediaStreams) || []).map((x) => x.Index));
-    await load(v.currentTime).catch((err) => msg(err.message));
+    await load(v.currentTime).catch((err) => msg(B.say(err)));
     // Subtitles that were inside the video come back as a new choice: switch to it
     const fresh = ((source && source.MediaStreams) || []).filter((x) => x.Type === "Subtitle" && x.IsExternal && !before.has(x.Index) && (!was.Language || (x.Language || "") === was.Language));
     if (fresh.length) { subIndex = fresh[fresh.length - 1].Index; await load(v.currentTime).catch(() => {}); }
@@ -731,7 +731,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     subIndex = pick.Index;
     B.toast("Subtitles: " + B.subLabel(pick, (source && source.MediaStreams) || []));
     if (pick.DeliveryMethod === "External") showSubs();
-    else load(v.currentTime).catch((err) => msg(err.message)); // picture subtitles are drawn in by the server
+    else load(v.currentTime).catch((err) => msg(B.say(err))); // picture subtitles are drawn in by the server
   };
   const KEYS = [
     ["Space or K", "Play / pause"], ["Hold Space or the mouse", "2× speed while held"], ["← / →  or  J / L", "Back / forward 10 seconds"], ["↑ / ↓", "Louder / quieter"],
@@ -817,6 +817,6 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     setTimeout(() => { if (away()) (v.paused ? B.dropKept() : B.restoreKept()); }, 250);
   });
 
-  try { await load(startTicks / B.TICKS); } catch (e) { msg(""); $("#msg").innerHTML = `<div><div class="h1" style="font-size:24px">${esc(e.message)}</div></div>`; }
+  try { await load(startTicks / B.TICKS); } catch (e) { msg(""); $("#msg").innerHTML = `<div><div class="h1" style="font-size:24px">${esc(B.say(e))}</div></div>`; }
   poke();
 });

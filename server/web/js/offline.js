@@ -101,7 +101,7 @@
     // A line for a More menu, or nothing in a normal browser
     menu(it) {
       if (!can() || !it || !/^(Movie|Episode|Video)$/.test(it.Type)) return null;
-      return { label: "Download to this computer", icon: "dl", onClick: () => B.offline.one(it).catch((e) => B.toast(e.message)) };
+      return { label: "Download to this computer", icon: "dl", onClick: () => B.offline.one(it).catch((e) => B.toast(B.say(e))) };
     },
   };
 

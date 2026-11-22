@@ -148,7 +148,7 @@ B.askPanel = async (type, id) => {
       $$("[data-sall],[data-slast]", p).forEach((x) => x.classList.toggle("on", x === (all || last)));
     });
   } catch (e) {
-    p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
+    p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(B.say(e))}</p>`;
   }
 };
 document.addEventListener("click", (e) => {
@@ -458,7 +458,7 @@ B.whyNo = (key) => new Promise((done) => {
 });
 // Auto-yes (2026-11-21, Ben only): people Ben trusts get an automatic yes for movies and shows, up to a number a week
 B.autoYes = async () => {
-  const d = await B.call("GET", "api/asks/trust").catch((e) => ({ err: e.message }));
+  const d = await B.call("GET", "api/asks/trust").catch((e) => ({ err: B.say(e) }));
   const people = (d && d.people) || [];
   const p = B.side(`<h3>Auto-yes</h3><p class="dim">Tower says yes for you to movie and show requests from the people you switch on, up to their number each week. After that their requests wait for you as normal. Kids never get this.</p>`
     + (d.err ? `<p class="dim">${esc(d.err)}</p>` : people.length ? `<div class="list">${people.map((x) => `<div class="item" data-p="${esc(x.id)}"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.on ? `${x.used} of ${x.weekly} used this week` : "Off: every request waits for you"}</div></div>
@@ -475,7 +475,7 @@ B.autoYes = async () => {
     on.textContent = x.on ? "On" : "Off"; on.classList.toggle("white", x.on);
     row.querySelector("[data-n]").textContent = x.weekly;
     row.querySelector(".s").textContent = x.on ? `${x.used} of ${x.weekly} used this week` : "Off: every request waits for you";
-    B.call("POST", "api/asks/trust", { id: x.id, on: x.on, weekly: x.weekly }).catch((err) => B.toast(err.message));
+    B.call("POST", "api/asks/trust", { id: x.id, on: x.on, weekly: x.weekly }).catch((err) => B.toast(B.say(err)));
   });
 };
 B.seerrLine = (r, answer) => {
@@ -839,7 +839,7 @@ B.musicTab = async (nav) => {
   const drawDiscover = async (again) => {
     if (!disc || again) {
       const old = disc;
-      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mwall").innerHTML = `<p class="dim">Couldn't load what's popular right now. ${esc(e.message)}</p>`; return; }
+      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mwall").innerHTML = `<p class="dim">Couldn't load what's popular right now. ${esc(B.say(e))}</p>`; return; }
       // Tower picks new "Because you have" songs on every look: after an ask keep the lists on screen as they were
       // (the list you were in used to change under you), with the song just asked for marked
       if (again && old && old.because) disc.because = old.because;
@@ -847,7 +847,7 @@ B.musicTab = async (nav) => {
     if (B.alive(nav) && !searching) draw();
   };
   const loadStatus = async () => {
-    try { st = await music("GET", "/status"); } catch (e) { if (B.alive(nav) && !st) B.toast(e.message); return; }
+    try { st = await music("GET", "/status"); } catch (e) { if (B.alive(nav) && !st) B.toast(B.say(e)); return; }
     if (B.alive(nav) && !searching && picked !== "playlist") draw();
     if (picked === "playlist") drawTools();
   };
@@ -879,7 +879,7 @@ B.musicTab = async (nav) => {
     if (!searching) { box.innerHTML = ""; draw(); return; }
     box.innerHTML = `<div class="wrap">${B.spinner("list")}</div>`;
     let r;
-    try { r = await music("GET", "/search?q=" + enc(text.trim())); } catch (e) { box.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`; return; }
+    try { r = await music("GET", "/search?q=" + enc(text.trim())); } catch (e) { box.innerHTML = `<div class="wrap"><div class="note">${esc(B.say(e))}</div></div>`; return; }
     if (!B.alive(nav) || $("#rq").value.trim() !== text.trim()) return;
     const none = !r.songs.length && !r.albums.length && !r.artists.length;
     box.innerHTML = (r.songs.length ? `<div class="wrap"><h3 class="section-title">Songs</h3><div class="list">${r.songs.slice(0, 12).map((x) => songLine(x)).join("")}</div></div>` : "")
@@ -919,7 +919,7 @@ B.musicTab = async (nav) => {
           <h4 class="dim" style="margin:12px 0 8px">Albums, EPs and singles</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.albums.map(albumCard).join("")}</div>`;
       }
     } catch (e) {
-      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
+      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(B.say(e))}</p>`;
     }
     return p;
   };
@@ -933,7 +933,7 @@ B.musicTab = async (nav) => {
         ${[["New releases", d.new], ["Top albums", d.albums]].filter(([, l]) => l && l.length).map(([t, l]) => `<h4 class="dim" style="margin:12px 0 8px">${t}</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${l.map(albumCard).join("")}</div>`).join("")}
         ${d.artists.length ? `<h4 class="dim" style="margin:12px 0 8px">Artists</h4><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">${d.artists.map(artistCard).join("")}</div>` : ""}`;
     } catch (e) {
-      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(e.message)}</p>`;
+      p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(B.say(e))}</p>`;
     }
     return p;
   };

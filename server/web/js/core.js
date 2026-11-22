@@ -488,9 +488,18 @@ B.render = async () => {
   B.go(B.me ? "#/home" : "#/who");
 };
 B.alive = (nav) => nav === B.nav;
+// One safety net for every page: code words never reach the screen. Messages Tower wrote in plain words pass through.
+B.say = (e) => {
+  const m = String((e && e.message) || e || "");
+  if (/Failed to fetch|NetworkError|Load failed|network (error|request)/i.test(m)) return "Couldn't reach Tower. Check that it's on, then try again.";
+  const code = e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError || e instanceof SyntaxError
+    || /is not a function|is not defined|is not iterable|Cannot read|Cannot set|undefined|Unexpected (token|end)|JSON|\[object |=>|\|\||\(\)|^\w+Error\b/.test(m);
+  if (!m || code) { if (m) console.error(e); return "Tower gave an answer Glowfin didn't expect. Try again in a moment."; }
+  return m;
+};
 B.fail = (e) => {
   console.error(e);
-  B.page().innerHTML = B.top("") + `<div class="center"><div><div class="h1">Something went wrong</div><p class="sub" style="overflow-wrap:anywhere;max-width:560px">${esc(e.message || e)}</p><button class="btn white" onclick="B.render()">Try again</button></div></div>`;
+  B.page().innerHTML = B.top("") + `<div class="center"><div><div class="h1">Something went wrong</div><p class="sub" style="overflow-wrap:anywhere;max-width:560px">${esc(B.say(e))}</p><button class="btn white" onclick="B.render()">Try again</button></div></div>`;
   B.wireTop();
 };
 window.addEventListener("hashchange", B.render);
@@ -689,7 +698,7 @@ B.needsYou = (label, title, text) => new Promise((resolve) => {
 });
 B.busy = async (btn, fn) => {
   if (btn) btn.disabled = true;
-  try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(err.message); }
+  try { const msg = await fn(); if (msg) B.toast(msg); } catch (err) { B.toast(B.say(err)); }
   if (btn) btn.disabled = false;
 };
 // Loading (feel check 3, Ben 2026-11-21): B.spinner() is the small circle for pop-ups and little boxes.

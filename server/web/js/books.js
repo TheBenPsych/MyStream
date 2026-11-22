@@ -74,7 +74,7 @@
       home = await B.cached("books-home", 15000, () => api("GET", "home"));
     } catch (e) {
       if (!B.alive(nav)) return;
-      $("#bkMain").innerHTML = `<div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(e.message)}</p><p class="sub">If Books is new, Tower's Glowfin helper needs its setup run once more.</p>`;
+      $("#bkMain").innerHTML = `<div class="h1">Couldn't reach the Books helper on Tower</div><p class="sub">${esc(B.say(e))}</p><p class="sub">If Books is new, Tower's Glowfin helper needs its setup run once more.</p>`;
       return;
     }
     if (!B.alive(nav)) return;
@@ -304,7 +304,7 @@
       v = await api("GET", "vol/" + enc(id));
     } catch (e) {
       if (!B.alive(nav)) return;
-      $("#bkp").innerHTML = `<div class="center"><div><div class="h1">Couldn't open it</div><p class="sub">${esc(e.message)}</p><button class="btn" onclick="B.back()">Back</button></div></div>`;
+      $("#bkp").innerHTML = `<div class="center"><div><div class="h1">Couldn't open it</div><p class="sub">${esc(B.say(e))}</p><button class="btn" onclick="B.back()">Back</button></div></div>`;
       return;
     }
     if (!B.alive(nav)) return;
@@ -432,7 +432,7 @@
 
   // ---------- Send to Kindle (2026-11-21): Tower emails the EPUB to your Kindle's address. EPUB only. ----------
   async function kindle(t) {
-    const d = await api("GET", "kindle").catch((e) => ({ err: e.message }));
+    const d = await api("GET", "kindle").catch((e) => ({ err: B.say(e) }));
     B.closeAll();
     B.shade(() => B.closeAll());
     const m = document.createElement("form");
@@ -458,7 +458,7 @@
         try {
           await api("POST", "kindle/mail", { host: f.host.value.trim(), port: +f.port.value || 587, user: f.user.value.trim(), password: f.password.value });
           B.toast("Saved Tower's email account.");
-        } catch (err) { B.toast(err.message); }
+        } catch (err) { B.toast(B.say(err)); }
       }
     };
     m.onsubmit = async (e) => {
@@ -471,7 +471,7 @@
         B.toast("Sending to your Kindle…");
         const j = await api("POST", "kindle/" + enc(t.id));
         B.toast(j.words || "Sent.");
-      } catch (err) { B.toast(err.message); }
+      } catch (err) { B.toast(B.say(err)); }
     };
     document.body.appendChild(m);
     m.elements.address.focus();
@@ -725,11 +725,11 @@
       wall.innerHTML = notes + line + `${B.rqGrid(shown.map((c) => BQ.card(c, false)), !!cur.ranked)}${B.rqOwned(owned, ownedOpen === cur.id)}`;
     };
     const lists = async () => {
-      try { req = await api("GET", "requests"); } catch (e) { if (!req) B.toast(e.message); }
+      try { req = await api("GET", "requests"); } catch (e) { if (!req) B.toast(B.say(e)); }
       if (B.alive(nav) && !input.value.trim()) draw();
     };
     const shelves = async () => {
-      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bwall").innerHTML = `<div class="note">Couldn't load the book lists. ${esc(e.message)}</div>`; return; }
+      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bwall").innerHTML = `<div class="note">Couldn't load the book lists. ${esc(B.say(e))}</div>`; return; }
       if (B.alive(nav)) draw();
     };
     const found = (f) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.score ? "Open Library " + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
@@ -740,7 +740,7 @@
       $("#bsplit").style.display = on ? "none" : "";
       if (!on) { box.innerHTML = ""; return draw(); }
       box.innerHTML = B.spinner();
-      results = await api("GET", "search?q=" + enc(text.trim())).catch((e) => ({ books: [], error: e.message }));
+      results = await api("GET", "search?q=" + enc(text.trim())).catch((e) => ({ books: [], error: B.say(e) }));
       if (!B.alive(nav) || input.value.trim() !== text.trim()) return;
       box.innerHTML = (results.books.length ? `<section class="rowx"><h3>Books</h3><div class="wrap" style="padding-bottom:0"><div class="list">${results.books.map((f) => found(f)).join("")}</div></div></section>` : "") ||
         `<div class="wrap empty">${esc(results.error || "Nothing found. Try the author's name, or fewer words.")}</div>`;
@@ -872,7 +872,7 @@
         if (!B.alive(nav)) return;
         el.innerHTML = BQ.page(d, true);
       } catch (e) {
-        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`;
+        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(B.say(e))}</div></div>`;
       }
     };
     el.onclick = (e) => { const b = e.target.closest("[data-bq]"); if (b) BQ.quick(b, draw); };
@@ -890,7 +890,7 @@
       try {
         a = await api("GET", `about?key=${enc(key)}&name=${enc(B.q("name") || "")}&author=${enc(B.q("author") || "")}`);
       } catch (e) {
-        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(e.message)}</div></div>`;
+        if (B.alive(nav)) el.innerHTML = `<div class="wrap"><div class="note">${esc(B.say(e))}</div></div>`;
         return;
       }
       if (!B.alive(nav)) return;

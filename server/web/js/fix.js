@@ -15,7 +15,7 @@
   B.fixItem = async (start) => {
     if (!B.me || !B.me.admin) return;
     let it;
-    try { it = await B.get(`/Users/${B.uid()}/Items/${start.Id}`); } catch (e) { return B.toast(e.message); }
+    try { it = await B.get(`/Users/${B.uid()}/Items/${start.Id}`); } catch (e) { return B.toast(B.say(e)); }
     let tab = (start && start.fixTab) || "details";
     // Seasons only for shows; title logos not for seasons or collections
     // Albums, artists, episodes, people, books and channels (Redesign 2: Pick a picture on every card) have just their one picture
@@ -76,7 +76,7 @@
       let now = null;
       try {
         [list, now] = await Promise.all([B.posters.choices(target, kind.img), B.get(`/Users/${B.uid()}/Items/${target}`)]);
-      } catch (e) { if (tab === kind.type) body().innerHTML = tabs() + `<p class="dim">${esc(e.message)}</p>`; return; }
+      } catch (e) { if (tab === kind.type) body().innerHTML = tabs() + `<p class="dim">${esc(B.say(e))}</p>`; return; }
       if (tab !== kind.type) return;
       preview = null; source = "";
       const nowTag = kind.img === "Backdrop" ? (now.BackdropImageTags || [])[0] : (now.ImageTags || {})[kind.img];
@@ -130,7 +130,7 @@
         try {
           const found = await B.jf("POST", `/Items/RemoteSearch/${kind}`, { ItemId: it.Id, SearchInfo: { Name: n, Year: isNaN(y) ? null : y } });
           if (tab === "match") drawMatch(n, isNaN(y) ? "" : y, found || []);
-        } catch (err) { if (tab === "match") { drawMatch(n, y, []); B.toast(err.message); } }
+        } catch (err) { if (tab === "match") { drawMatch(n, y, []); B.toast(B.say(err)); } }
       };
       p.querySelectorAll("[data-match]").forEach((b) => {
         b.onclick = () => B.busy(b, async () => {
@@ -225,7 +225,7 @@
     const load = () => B.get(`/Items/${id}?userId=${B.uid()}&Fields=Overview,Genres,Tags,Studios,People,ProviderIds,Taglines,LockedFields,ProductionLocations,DateCreated,PremiereDate,Path`)
       .then((r) => (r && r.Items ? r.Items[0] : r));
     let it;
-    try { it = await load(); } catch (e) { B.closeAll(); return B.toast(e.message); }
+    try { it = await load(); } catch (e) { B.closeAll(); return B.toast(B.say(e)); }
     if (!it || !body()) return;
     const show = it.Type === "Series";
     const draw = () => {
