@@ -718,6 +718,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
     else if ((k === "p" || k === "P") && $("#pPv")) $("#pPv").click();
     else if (k === "e" && $("#pList")) $("#pList").click();
+    // Glowfin new look: I opens the same Story and details panel as the title page (Up stays volume here)
+    else if (k === "i" || k === "I") {
+      const name = isEp ? `${it.SeriesName || ""} · S${it.ParentIndexNumber}:E${it.IndexNumber} · ${it.Name || ""}` : (it.Name || "");
+      const facts = [[isEp ? "Network" : "Studio", (it.Studios || []).slice(0, 2).map((x) => x.Name).join(", ")], ["Genres", (it.Genres || []).join(", ")], ["Year", it.ProductionYear || ""]].filter((f) => f[1]);
+      B.side(`<h3>Story and details</h3><p class="dim">${esc(name)}</p>${it.Overview ? `<p class="tp-full">${esc(it.Overview)}</p>` : ""}<div class="tp-sidedet">${facts.map((f) => `<p><b>${esc(f[0])}</b> ${esc(String(f[1]))}</p>`).join("")}</div>`);
+    }
     else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) { v.currentTime = (total() * +k) / 10; }
     else if (k === "?" || (k === "/" && e.shiftKey)) { e.preventDefault(); showKeys(); return; }
     else if (k === "Escape" && $(".player .keys-help")) { $(".player .keys-help").remove(); return; }
