@@ -70,6 +70,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.logoChoiceItem
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
@@ -101,6 +102,8 @@ class SeriesHeroActions(
     val openAsk: (DiscoverItem) -> Unit,
     /** Admin only: Change poster */
     val pickPoster: (() -> Unit)? = null,
+    /** Change logo in More (the poster picker on its logo tab) */
+    val pickLogo: (() -> Unit)? = null,
 )
 
 /**
@@ -315,6 +318,10 @@ fun SeriesHeroContent(
     }
 
     if (showMore) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val nameInstead =
+            com.github.damontecres.wholphin.ui.components.LogoChoice
+                .usesName(series.id)
         TitleMorePanel(
             title = series.title.orEmpty(),
             onDismiss = { showMore = false },
@@ -343,7 +350,9 @@ fun SeriesHeroContent(
                         )
                     }
                     actions.request?.let { add(TitleMoreItem("Ask for more seasons", BenflixIcon.REQUESTS, it)) }
+                    add(logoChoiceItem(context, series.id, nameInstead))
                     actions.pickPoster?.let { add(TitleMoreItem("Pick a poster", BenflixIcon.IMAGE, it, youOnly = true)) }
+                    actions.pickLogo?.let { add(TitleMoreItem("Change logo", BenflixIcon.IMAGE, it, youOnly = true)) }
                     actions.fixMatch?.let { add(TitleMoreItem("Wrong show? Fix the match", BenflixIcon.FLAG, it, youOnly = true)) }
                 },
         )

@@ -141,6 +141,7 @@ fun MovieDetails(
                         openCollection = { viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.BOX_SET)) },
                         openAsk = { viewModel.navigateTo(it.destination) },
                         pickPoster = { viewModel.navigateTo(Destination.PosterPicker(movie.id)) },
+                        pickLogo = { viewModel.navigateTo(Destination.PosterPicker(movie.id, "LOGO")) },
                     ),
                 modifier = modifier,
             )
