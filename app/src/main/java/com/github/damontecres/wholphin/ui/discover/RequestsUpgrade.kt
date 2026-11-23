@@ -45,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -55,6 +54,7 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -233,6 +233,9 @@ fun ActiveFilterChip(
     Button(
         onClick = onRemove,
         shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(20.dp)),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
         colors =
             ButtonDefaults.colors(

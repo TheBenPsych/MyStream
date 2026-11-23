@@ -171,7 +171,12 @@ fun buttonDefaultColors(): ClickableSurfaceColors =
 fun buttonDefaultBorder(): ClickableSurfaceBorder =
     ClickableSurfaceDefaults.border(
         border = Border.None,
-        focusedBorder = Border.None,
+        // New look "One focus look everywhere": lit = white with the aqua ring
+        focusedBorder =
+            Border(
+                border = BorderStroke(width = 3.dp, color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Focus),
+                shape = CircleShape,
+            ),
         pressedBorder = Border.None,
         disabledBorder = Border.None,
         focusedDisabledBorder =

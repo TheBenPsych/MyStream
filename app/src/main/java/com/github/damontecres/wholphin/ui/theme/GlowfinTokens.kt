@@ -64,9 +64,10 @@ object Glowfin {
 }
 
 /**
- * Ben's pick "Glow ring" for cards: a thin aqua ring (the card's border) with a soft violet glow around it,
- * and nothing grows. The glow is a few see-through outlines drawn once per size, so it costs almost nothing
- * on older TVs (no blur, nothing that keeps running). Put it on the card's modifier, before its size.
+ * Glowfin new look "One focus look everywhere" (Ben 2026-11-22): a lit card gets a white outline with a soft
+ * aqua ring just outside it (the Kids colour on Kids), and nothing grows. Drawn as a few plain outlines made
+ * once per size, so it costs almost nothing on older TVs (no blur, nothing that keeps running). Put it on the
+ * card's modifier, before its size. [spread] is how far the soft ring may reach (it never goes past 6dp).
  */
 fun Modifier.glowFocus(
     shape: Shape = BenflixShapes.Card,
@@ -77,31 +78,37 @@ fun Modifier.glowFocus(
         this
             .onFocusChanged { focused = it.hasFocus }
             .drawWithCache {
+                val ringPx = FocusRingWidth.toPx()
+                val haloPx = minOf(spread.toPx(), HALO_MAX.toPx())
                 val steps = GLOW_STEPS
-                val spreadPx = spread.toPx()
-                val stroke = spreadPx / steps + 1f
+                val stroke = haloPx / steps + 1f
+                val ring = shape.createOutline(Size(size.width + ringPx, size.height + ringPx), layoutDirection, this)
                 val outlines: List<Pair<Float, Outline>> =
                     (1..steps).map { i ->
-                        val out = spreadPx * i / steps
+                        val out = ringPx + haloPx * i / steps
                         out to shape.createOutline(Size(size.width + out * 2, size.height + out * 2), layoutDirection, this)
                     }
-                onDrawBehind {
+                onDrawWithContent {
+                    drawContent()
                     if (focused) {
-                        // Glowfin for Kids (K1): the ring glows mint instead of violet
-                        val glow = KidsLook.palette?.accent ?: Glowfin.Violet
+                        val halo = KidsLook.palette?.accent ?: Glowfin.Aqua
                         outlines.forEachIndexed { index, (out, outline) ->
                             val a = GLOW_ALPHA * (1f - index.toFloat() / steps)
                             translate(-out, -out) {
-                                drawOutline(outline, glow.copy(alpha = a), style = Stroke(width = stroke))
+                                drawOutline(outline, halo.copy(alpha = a), style = Stroke(width = stroke))
                             }
+                        }
+                        translate(-ringPx / 2f, -ringPx / 2f) {
+                            drawOutline(ring, BenflixColors.Outline, style = Stroke(width = ringPx))
                         }
                     }
                 }
             }
     }
 
-private const val GLOW_STEPS = 5
-private const val GLOW_ALPHA = .34f
+private const val GLOW_STEPS = 4
+private const val GLOW_ALPHA = .45f
+private val HALO_MAX = 6.dp
 
 /** Where the glow's gradient runs for a box of [size] (bottom-left to top-right, like the logo) */
 fun glowBrushFor(size: Size): Brush =

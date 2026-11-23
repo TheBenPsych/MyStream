@@ -103,7 +103,7 @@ import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import androidx.tv.material3.Button as TvButton
+import com.github.damontecres.wholphin.ui.theme.Button as TvButton
 
 /**
  * Possible actions the user can take during playback
@@ -711,6 +711,9 @@ fun PlayerPillButton(
     TvButton(
         onClick = onClick,
         shape = ButtonDefaults.shape(RoundedCornerShape(21.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(21.dp)),
         contentPadding =
             if (text == null) {
                 PaddingValues(horizontal = 12.dp, vertical = 8.dp)

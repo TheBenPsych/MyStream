@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -41,6 +40,7 @@ import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
@@ -293,6 +293,10 @@ private fun RecentChip(
         Button(
             onClick = onClick,
             shape = ButtonDefaults.shape(RoundedCornerShape(topStartPercent = 50, bottomStartPercent = 50)),
+            border =
+                com.github.damontecres.wholphin.ui.theme.glowfinButtonBorder(
+                    RoundedCornerShape(topStartPercent = 50, bottomStartPercent = 50),
+                ),
             contentPadding = PaddingValues(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
             colors =
                 ButtonDefaults.colors(
@@ -308,6 +312,10 @@ private fun RecentChip(
         Button(
             onClick = onRemove,
             shape = ButtonDefaults.shape(RoundedCornerShape(topEndPercent = 50, bottomEndPercent = 50)),
+            border =
+                com.github.damontecres.wholphin.ui.theme.glowfinButtonBorder(
+                    RoundedCornerShape(topEndPercent = 50, bottomEndPercent = 50),
+                ),
             contentPadding = PaddingValues(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
             colors =
                 ButtonDefaults.colors(
@@ -342,6 +350,9 @@ private fun StartButton(
     Button(
         onClick = onClick,
         shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(10.dp)),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors =
             ButtonDefaults.colors(

@@ -38,12 +38,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -616,6 +616,9 @@ fun WhoPlayedScreen(
                         Button(
                             onClick = { viewModel.pick(name) },
                             shape = ButtonDefaults.shape(RoundedCornerShape(14.dp)),
+                            border =
+                                com.github.damontecres.wholphin.ui.theme
+                                    .glowfinButtonBorder(RoundedCornerShape(14.dp)),
                             colors =
                                 ButtonDefaults.colors(
                                     containerColor = if (isRight) Color(0xFF2E8B57) else Color(0xFF1A1E38),
@@ -626,7 +629,7 @@ fun WhoPlayedScreen(
                             contentPadding =
                                 androidx.compose.foundation.layout
                                     .PaddingValues(8.dp),
-                            scale = ButtonDefaults.scale(focusedScale = 1.04f),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                             modifier =
                                 Modifier
                                     .weight(1f)
