@@ -128,9 +128,7 @@ fun KidsHome(
                     bottom = 24.dp,
                 ),
     ) {
-        FamilyTop(wide = wide, focus = focus) {
-            FamilyHeader(title = "Hi there!", line = "What do you want to watch?", wide = wide)
-        }
+        FamilyHeader(title = "Hi there!", line = "What do you want to watch?", wide = wide)
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
                 KidsDoors.forEachIndexed { i, door ->
@@ -210,14 +208,12 @@ fun GuestHome(
                     bottom = 24.dp,
                 ),
     ) {
-        FamilyTop(wide = wide, focus = focus) {
-            FamilyHeader(
-                title = "Welcome!",
-                line = "Watch anything here. Nothing you watch is saved.",
-                wide = wide,
-                tag = "Guest",
-            )
-        }
+        FamilyHeader(
+            title = "Welcome!",
+            line = "Watch anything here. Nothing you watch is saved.",
+            wide = wide,
+            tag = "Guest",
+        )
         val height = if (wide) 165.dp else 140.dp
         FamilyRow(
             title = "Popular here",
@@ -539,35 +535,4 @@ internal fun FamilyArt(
         .DoorArt(item = focus.shown?.item, pageHeight = height)
 }
 
-/**
- * The top of the Kids and Guest Homes on a TV: the greeting, or (once you're on a card) its logo or name and a
- * few facts, like the grown-up Home's top (the easy version: no story, no scores). The same height either way, so
- * the buttons and rows never jump.
- */
-@Composable
-internal fun FamilyTop(
-    wide: Boolean,
-    focus: FamilyFocus,
-    greeting: @Composable () -> Unit,
-) {
-    if (!wide) {
-        greeting()
-        return
-    }
-    Box(contentAlignment = Alignment.BottomStart, modifier = Modifier.fillMaxWidth().height(FAMILY_TOP)) {
-        val item = focus.shown?.item
-        if (item == null) {
-            greeting()
-        } else {
-            com.github.damontecres.wholphin.ui.door.DoorInfo(
-                item = item,
-                easy = true,
-                brightArt = false,
-                modifier = Modifier.widthIn(max = 560.dp),
-            )
-        }
-    }
-}
-
 private const val FAMILY_SETTLE_MS = 350L
-private val FAMILY_TOP = 120.dp
