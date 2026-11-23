@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -110,8 +109,9 @@ private fun buildSections(guest: Boolean): List<SettingsSection> =
     }
 
 /**
- * Glowfin Settings (Ben's pick S1). TV: the groups in a plain list on the left with Find a setting on top,
- * the lit group's settings on the right. Phone: the groups list; tap one to open its page.
+ * Glowfin Settings (Ben's pick S1, new look 2026-11-23). TV: the groups as see-through pills on the left
+ * with Find a setting on top (the open group solid white), the lit group's settings in a tall right-hand panel
+ * over the dimmed picture. Phone: the groups list; tap one to open its page.
  */
 @Composable
 fun BenflixSettingsPage(
@@ -168,12 +168,13 @@ fun BenflixSettingsPage(
         val firstFocus = remember { FocusRequester() }
         LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
         BackHandler(enabled = query.isNotBlank()) { query = "" }
+        // New look: the group pills float over the dimmed picture, the settings sit in a tall right-hand panel
         Row(
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
             modifier =
                 modifier
                     .fillMaxSize()
-                    .benflixLookABackground(),
+                    .glowfinDimmedPage(),
         ) {
             GlowfinSideListPanel {
                 Column(
@@ -206,14 +207,12 @@ fun BenflixSettingsPage(
                     }
                 }
             }
-            Page(
-                section = sections.getOrNull(selected.coerceAtLeast(0)),
-                pageModifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(end = 32.dp, top = 12.dp),
-            )
+            GlowfinRightPanel(Modifier.weight(1f)) {
+                Page(
+                    section = sections.getOrNull(selected.coerceAtLeast(0)),
+                    pageModifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     } else {
         val section = sections.getOrNull(selected)
