@@ -148,6 +148,23 @@ def _alike(a, b):
     return difflib.SequenceMatcher(None, x, y).ratio()
 
 
+def _disagree(item, ep_no, title):
+    """Why Jellyfin and TheTVDB disagree about one special, or "" when they agree.
+
+    The title is what counts: when Jellyfin shows TheTVDB's title, the special is in the right spot even if
+    Jellyfin's own number differs (its order can come from another site, a two-part file covers two numbers,
+    or the number is blank). The number only decides when there is no title to compare."""
+    name = item.get("Name")
+    if title and name:
+        if _alike(name, title) >= 0.6:
+            return ""
+        return f"Jellyfin calls special {ep_no} \"{name}\" but TheTVDB says \"{title}\""
+    first, last = item.get("IndexNumber"), item.get("IndexNumberEnd") or item.get("IndexNumber")
+    if first is None or ep_no is None or first <= ep_no <= last:
+        return ""
+    return f"Jellyfin numbers it {first} instead of {ep_no}"
+
+
 def _day(text):
     """'2020-10-16' or an ISO time -> seconds, or None"""
     if not text:
@@ -711,10 +728,11 @@ def _check_moves(token):
             changed = True
         else:
             wrong = []
-            if item.get("IndexNumber") != note["ep"] or item.get("ParentIndexNumber") not in (0, None):
-                wrong.append(f"Jellyfin numbers it {item.get('IndexNumber')} instead of {note['ep']}")
-            if note.get("ep_title") and _alike(item.get("Name"), note["ep_title"]) < 0.6:
-                wrong.append(f"Jellyfin calls it \"{item.get('Name')}\" but TheTVDB says \"{note['ep_title']}\"")
+            if item.get("ParentIndexNumber") not in (0, None):
+                wrong.append(f"Jellyfin put it in season {item.get('ParentIndexNumber')} instead of Specials")
+            problem = _disagree(item, note["ep"], note.get("ep_title"))
+            if problem:
+                wrong.append(problem)
             note.update({"state": "mismatch" if wrong else "checked", "problem": "; ".join(wrong), "jf": item.get("Id")})
             if not wrong and note.get("keep_date") and note.get("added") and _arrivals is not None:
                 # Movies that were already here keep their first date, so they don't show up as new episodes
@@ -803,8 +821,8 @@ def weekly(token=None):
             j = next((x for x in jeps if path and x.get("Path") and os.path.normpath(x["Path"]) == os.path.normpath(path)), None)
             if not j:
                 continue
-            wrong = j.get("IndexNumber") != ep.get("episodeNumber") or (ep.get("title") and _alike(j.get("Name"), ep.get("title")) < 0.6)
-            if wrong:
+            problem = _disagree(j, ep.get("episodeNumber"), ep.get("title"))
+            if problem:
                 key = f"w{tvdb}-{ep.get('episodeNumber')}"
                 bad[key] = {
                     "show": s.get("title"),
@@ -812,6 +830,7 @@ def weekly(token=None):
                     "tvdb_title": ep.get("title"),
                     "jf_title": j.get("Name"),
                     "jf_number": j.get("IndexNumber"),
+                    "problem": problem,
                     "jf": j["Id"],
                     "nfo": os.path.splitext(path)[0] + ".nfo",
                     "nfo_text": _nfo(ep, _episodes(s["id"]), s.get("title")),
@@ -1189,6 +1208,13 @@ def start(jellyfin_call, admin, tools=None, arrivals=None):
     with _lock:
         _state.clear()
         _state.update(_read("state.json", {}) or {})
+        # Older checks also flagged specials whose title matched but whose number didn't: drop those false alarms
+        bad = (_state.get("weekly") or {}).get("bad") or {}
+        for key in [k for k, b in bad.items() if b.get("tvdb_title") and _alike(b.get("jf_title"), b.get("tvdb_title")) >= 0.6]:
+            bad.pop(key, None)
+        for note in (_state.get("moves") or {}).values():
+            if note.get("state") == "mismatch" and str(note.get("problem") or "").startswith("Jellyfin numbers it") and "calls" not in str(note.get("problem")):
+                note.update({"state": "moved", "tries": 0})
     threading.Thread(target=_loop, name="specials", daemon=True).start()
     log(f"ready (notes in {_dir})")
 
@@ -1211,7 +1237,7 @@ def card():
         if n.get("state") == "mismatch":
             rows.append({"light": "bad", "t": f"{n['movie']} in {n['show']}: Jellyfin doesn't agree with TheTVDB", "s": n.get("problem") or "", "acts": [{"label": "Fix it", "do": f"fix:{tmdb}"}, {"label": "Put back in Movies", "do": f"undo:{tmdb}"}]})
     for key, b in list(weekly_bad.items())[:15]:
-        rows.append({"light": "bad", "t": f"{b['show']} special {b['ep']}: Jellyfin shows \"{b['jf_title']}\"", "s": f"TheTVDB says special {b['ep']} is \"{b['tvdb_title']}\".", "acts": [{"label": "Fix it", "do": f"fix:{key}"}]})
+        rows.append({"light": "bad", "t": f"{b['show']} special {b['ep']}: Jellyfin doesn't agree with TheTVDB", "s": b.get("problem") or f"TheTVDB says special {b['ep']} is \"{b['tvdb_title']}\".", "acts": [{"label": "Fix it", "do": f"fix:{key}"}]})
     for r in v["ready"]:
         if r.get("has_file"):
             rows.append({"light": "warn", "t": f"{r['movie']} is in Movies and in {r['show']} Specials", "s": f"Special {r['ep']} already has a file, so the Movies copy is a double.", "acts": [{"label": "Keep in Movies", "do": f"keep:{r['tmdb']}"}]})
