@@ -85,8 +85,10 @@ B.askCard = (r) => {
   const img = tmdbImg(r.posterPath);
   B.items["s" + r.mediaType + r.id] = r;
   const s = B.rqStatus(r);
+  // Glowfin new look (browser): a small Ask button on the cover your mouse is on, so you don't have to open it first
+  const canAsk = !s.dot && (s.k === "nyet" || s.k === "out") && (r.mediaType === "movie" || r.mediaType === "tv");
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
-    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${s.dot ? `<span class="rqdot d-${s.k}" title="${esc(s.w)}"></span>` : ""}</div>
+    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${s.dot ? `<span class="rqdot d-${s.k}" title="${esc(s.w)}"></span>` : ""}${canAsk ? `<span class="rqqask" data-qask role="button" aria-label="Ask for ${esc(t)}">${I("plus")} Ask</span>` : ""}</div>
     <div class="cap">${esc(t)}<small${r._part ? ' class="rqpart"' : ""}>${esc(r._part || year)}</small></div></button>`;
 };
 // Glowfin (Ben, 2026-11-21) "Finish your sets": movies missing from film series you already own part of.
@@ -211,6 +213,7 @@ document.addEventListener("click", (e) => {
   if (!c) return;
   const [type, id] = c.dataset.ask.split(":");
   if (!/^(movie|tv)$/.test(type) || !id) return; // only movie:123 / tv:123 (never a song button)
+  if (e.target.closest("[data-qask]")) return B.askPanel(type, id); // the hover Ask button: ask right away
   // Movies and shows open their full title page (js/ask.js); "Ask for it" there opens this panel
   if ((type === "movie" || type === "tv") && /^\d+$/.test(id || "")) return B.go(`#/ask/${type}/${id}`);
   B.askPanel(type, id);
@@ -311,7 +314,7 @@ B.route(/^\/requests/, async (m, nav) => {
       <span class="rqsearch">${I("search")}<input id="rq" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}"></span>
       ${canFilter ? `<button class="rqround" id="rqfilt" title="Filters" aria-label="Filters">${I("filter")}</button>` : ""}
       ${B.me.admin && tab !== "yours" ? `<a class="rqwaitp" id="rqwait" href="#/requests?tab=yours" hidden><b id="rqwaitn"></b> waiting</a>` : ""}
-    </nav>${canFilter || tab === "anime" || tab === "manga" ? B.doorTop() : tab === "music" || tab === "books" ? B.rqCoverTop(tab === "books") : ""}
+    </nav>${canFilter || tab === "anime" || tab === "manga" ? B.doorTop() : tab === "music" || tab === "books" || (tab === "yours" && !B.me.admin) ? B.rqCoverTop(tab !== "music") : ""}
     <div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").hidden = !(n > 0); } });
@@ -523,7 +526,7 @@ B.seerrNamed = async (l, tab) => {
     const md = r.media || (r.media = {});
     if (!md.tmdbId) return;
     const d = await B.cached(`seerr-${r.type}-${md.tmdbId}`, 3600000, () => seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
-    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; }
+    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; md.backdrop = d.backdropPath; md.overview = d.overview; md.year = (d.releaseDate || d.firstAirDate || "").slice(0, 4); }
   }));
   if (!tab) return items;
   return items.filter((r) => (tab === "movies" ? !r.media.anime : tab === "shows" ? !r.media.anime : r.media.anime));
@@ -596,6 +599,40 @@ B.yoursTab = async (nav) => {
   const rows = $("#rows");
   $("#rq").style.display = "none";
   if (B.me.admin) return B.manageTab(nav);
+  // Glowfin new look (Ben approved 2026-11-22): family members see Your asks as rows of covers, each with its dot,
+  // and the top says where it stands (waiting for Ben, on its way, here, or Ben said no with his reason)
+  let described = null;
+  const famTag = (r) => {
+    const md = r.media || {};
+    if (md.status === 5) return { k: "here", w: "Here now on Glowfin" };
+    if (r.status === 3) return { k: "bad", w: B.reasons["seerr:" + r.id] ? `Ben said no: ${B.reasons["seerr:" + r.id]}` : "Ben said no" };
+    if (r.status === 4) return { k: "bad", w: "Stuck · Ben will have a look" };
+    if (r.status === 1) return { k: "wait", w: `Waiting for Ben · you ${mgAgo(Date.parse(r.createdAt || "") || 0) || "asked"}` };
+    if (md.status === 4) return { k: "way", w: "On its way · partly here" };
+    return { k: "way", w: "On its way · Ben said yes" };
+  };
+  const famCard = (r) => {
+    const md = r.media || {}, key = "ya:" + r.id, tag = famTag(r);
+    B.items[key] = { title: md.title || md.name || "", facts: [r.type === "movie" ? "Movie" : "Show", md.year].filter(Boolean).join(" · "), tag, story: md.overview || "", cover: md.poster ? tmdbImg(md.poster, "w500") : "" };
+    const img = md.poster ? tmdbImg(md.poster) : "";
+    return `<button class="poster askcard" data-ask="${esc(r.type)}:${esc(md.tmdbId)}" data-id="${key}" title="${esc(B.items[key].title)}"><div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(B.items[key].title)}</span></div>`}<span class="rqdot d-${tag.k}" title="${esc(tag.w)}"></span></div></button>`;
+  };
+  const otherCard = (l, i) => {
+    const key = "yo:" + i, k = { ready: "here", getting: "way", looking: "way", cant: "bad" }[l.pill.k] || "wait";
+    B.items[key] = { title: l.title, facts: l.sub, tag: { k, w: l.pill.w }, story: l.why || "", cover: l.cover || "" };
+    const open = l.book ? `href="#/book/${enc(l.book)}"` : "";
+    return `<a class="poster askcard" ${open} data-id="${key}" title="${esc(l.title)}"><div class="im" style="${l.square ? "aspect-ratio:1;" : ""}${l.cover ? `background-image:url('${esc(l.cover)}')` : ""}">${l.cover ? "" : `<div class="noart"><span class="nt">${esc(l.title)}</span></div>`}<span class="rqdot d-${k}" title="${esc(l.pill.w)}"></span></div></a>`;
+  };
+  const famDescribe = (it) => `<h1>${esc(it.title)}</h1><p>${esc(it.facts)}</p><span class="mtop-kick rqfam-${esc(it.tag.k)}">${esc(it.tag.w)}</span>${it.story ? `<p class="ov">${esc(it.story)}</p>` : ""}`;
+  const drawRows = (mine, others) => {
+    const newest = mine.slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const here = newest.filter((r) => (r.media || {}).status === 5), asks = newest.filter((r) => (r.media || {}).status !== 5);
+    const html = B.row("Your asks", asks.map(famCard)) + B.row("Here now from your asks", here.map(famCard)) + B.row("Songs and books you asked for", others.map(otherCard));
+    rows.innerHTML = html || `<div class="wrap empty">Nothing asked for yet. Pick a poster on any tab and ask for it.</div>`;
+    if (!described) described = B.wireRqCoverTop(famDescribe, (it) => it.cover);
+    const first = $("#rows [data-id]");
+    if (first && described) described(B.items[first.dataset.id]);
+  };
   const draw = async () => {
     const me = await B.seerrMe();
     const [seerrMine, seerrWaiting, mus, bks] = await Promise.all([
@@ -612,15 +649,16 @@ B.yoursTab = async (nav) => {
     ((mus && mus.requests) || []).forEach((r) => {
       const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "" };
       if (B.me.admin && r.waiting) wait.push(Object.assign(o, { who: r.who || "", acts: `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>` }));
-      else lines.push(Object.assign(o, { acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
+      else lines.push(Object.assign(o, { other: "music", acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
     });
     if (bks) {
       const bw = new Set((bks.waiting || []).map((r) => r.id));
       const all = (B.me.admin ? [].concat(bks.mine || [], bks.others || []) : bks.mine || []).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i && !bw.has(r.id));
       const line = (r) => ({ title: r.name, sub: [B.me.admin ? r.who : "", r.author, (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r) });
-      all.forEach((r) => lines.push(Object.assign(line(r), { acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
+      all.forEach((r) => lines.push(Object.assign(line(r), { other: "book", book: r.state === "ready" && r.title ? r.title : "", acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
       if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { who: r.who || "", acts: `<button class="btn small white" data-byes="${esc(r.id)}">Yes</button><button class="btn small" data-bno="${esc(r.id)}">No</button>` })));
     }
+    if (!B.me.admin) return drawRows(mine, lines.filter((l) => l.other));
     rows.innerHTML = `<div class="wrap">${B.me.admin ? `<p style="margin:0 0 12px"><button class="btn small" data-autoyes>Auto-yes for people you trust</button></p>` : ""}${B.me.admin && wait.length ? `<h3 class="section-title">Waiting for you <span class="rqpill p-looking">${wait.length}</span></h3>${B.rqLines(wait, false, "")}` : ""}
       ${B.rqLines(lines, true, "Nothing asked for yet. Pick a poster on any tab and ask for it.")}</div>`;
   };
@@ -712,6 +750,8 @@ B.manageTab = async (nav) => {
         kind: md.anime ? "Anime" : r.type === "movie" ? "Movies" : "Shows",
         what: r.type === "movie" ? "Movie" : seasons.length === 1 ? "Season " + seasons[0] : seasons.length ? seasons.length + " seasons" : "Show",
         cover: md.poster ? tmdbImg(md.poster, "w185") : "", type: r.type, tmdb: md.tmdbId,
+        art: md.backdrop ? tmdbImg(md.backdrop, "w1280") : md.poster ? tmdbImg(md.poster, "w500") : "", story: md.overview || "", year: md.year || "",
+        said: r.status === 2 || r.status === 5 || md.status === 5,
         pill: l === "stuck" ? { k: "looking", w: r.status === 4 ? "Stuck · couldn't start" : `Stuck · day ${days + 1}` } : l === "no" ? { k: "cant", w: "You said no" } : l === "needs" ? { k: "asked", w: "Waiting for you" } : B.seerrPill(r),
         why: l === "no" && B.reasons["seerr:" + r.id] ? `Why: ${B.reasons["seerr:" + r.id]}` : "",
       });
@@ -752,6 +792,22 @@ B.manageTab = async (nav) => {
     <div class="grow"><div class="t">${esc(r.title)}</div><div class="mg-meta">${B.picHtml({ name: r.who })}<b>${esc(r.who)}</b><span>${esc([r.what, mgAgo(r.at)].filter(Boolean).map((x) => "· " + x).join(" "))}</span>${B.rqPillHtml(r.pill)}</div>
     ${r.why || holds[r.key] ? `<div class="mg-why">${esc(r.why || holds[r.key])}</div>` : ""}</div>
     <div class="acts">${acts(r)}</div></div>`;
+  // Glowfin new look (Ben approved 2026-11-22): the request you're on fills the right side with its art, who asked
+  // and when, and why it's stuck (wide screens; phones keep the list only)
+  let onKey = null;
+  const side = (r) => {
+    const box = $("#mgSide");
+    if (!box) return;
+    if (!r) { box.innerHTML = ""; return; }
+    const tagK = { needs: "wt", way: "ow", stuck: "bad", ready: "ok", no: "bad" }[r.lane];
+    const tagW = r.lane === "needs" ? `${r.who} ${mgAgo(r.at) || "asked"}` : r.pill ? r.pill.w : "";
+    const why = r.why || holds[r.key] || (r.lane === "stuck" && r.src === "seerr" ? "Why: no copies found yet. Tower keeps looking." : "");
+    const whoLine = r.lane === "needs" ? "" : [r.who + " " + (mgAgo(r.at) || "asked"), r.said ? "you said yes" : ""].filter(Boolean).join(" · ");
+    box.innerHTML = `<div class="mg-art" style="${r.art || r.cover ? `background-image:url('${esc(r.art || r.cover)}')` : ""}"></div>
+      <h2>${esc(r.title)}</h2><p class="mg-facts">${esc([r.what, r.year].filter(Boolean).join(" · "))}</p>
+      <span class="rqtag ${tagK}">${esc(tagW)}</span>${why ? `<p class="mg-sidewhy">${esc(why.startsWith("Why") ? why : "Why: " + why)}</p>` : ""}
+      ${whoLine ? `<p class="dim">${esc(whoLine)}</p>` : ""}${r.story ? `<p class="mg-story">${esc(r.story)}</p>` : ""}`;
+  };
   const draw = () => {
     const vis = shown(), list = vis.filter((r) => r.lane === lane);
     const people = Array.from(new Set(all.map((r) => r.who))).sort((a, b) => a.localeCompare(b));
@@ -766,7 +822,8 @@ B.manageTab = async (nav) => {
       <div class="mg-bar mg-filters"><button class="mg-face all ${who ? "" : "on"}" data-who="">Everyone</button>${people.map((n) => `<button class="mg-face ${who === n ? "on" : ""}" data-who="${esc(n)}">${B.picHtml({ name: n })}${esc(n)} <i>${openOf(n)}</i></button>`).join("")}
         ${kinds.length > 1 ? `<span class="mg-sep"></span><button class="chip ${kind ? "" : "on"}" data-kind="">All</button>${kinds.map((k) => `<button class="chip ${kind === k ? "on" : ""}" data-kind="${k}">${k}</button>`).join("")}` : ""}
         <span class="sp"></span><button class="chip" data-autoyes>Auto-yes ›</button></div>
-      ${bulk}<div class="list mg-list">${list.map(line).join("") || `<div class="item"><div class="grow dim">${esc(who || kind ? "Nothing here with these filters." : empty)}</div></div>`}</div></div>`;
+      ${bulk}<div class="mg-split"><div class="list mg-list">${list.map(line).join("") || `<div class="item"><div class="grow dim">${esc(who || kind ? "Nothing here with these filters." : empty)}</div></div>`}</div><aside class="mg-side" id="mgSide"></aside></div></div>`;
+    side(list.find((r) => r.key === onKey) || list[0]);
     // Stuck rows say why (Radarr / Sonarr, at home only); the line arrives a moment after the row
     if (lane === "stuck") list.filter((r) => r.src === "seerr" && r.tmdb && !(r.key in holds)).slice(0, 12).forEach((r) => {
       holds[r.key] = "";
@@ -795,6 +852,15 @@ B.manageTab = async (nav) => {
     return (a && a.message) || "Looking again.";
   };
   const reload = async () => { await load(); if (B.alive(nav) && !$(".modal")) draw(); };
+  const pointAt = (e) => {
+    const row = e.target.closest(".mg-list [data-key]");
+    if (!row || row.dataset.key === onKey) return;
+    onKey = row.dataset.key;
+    side(all.find((r) => r.key === onKey));
+  };
+  rows.addEventListener("mouseover", pointAt);
+  rows.addEventListener("focusin", pointAt);
+  B.onLeave(() => { rows.removeEventListener("mouseover", pointAt); rows.removeEventListener("focusin", pointAt); });
   rows.onclick = (e) => {
     if (e.target.closest("[data-autoyes]")) return B.autoYes();
     const t = e.target.closest("[data-lane]");

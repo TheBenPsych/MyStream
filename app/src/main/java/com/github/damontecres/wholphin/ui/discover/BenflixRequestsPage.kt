@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -2589,380 +2590,430 @@ private fun RequestList(
         )
         return
     }
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        if (showSearch) {
-            item {
-                if (isTv) {
-                    RequestSearchButton(onClick = { searchOpen = true })
-                } else {
-                    RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
-                }
-            }
-            if (!isTv && query.trim().length >= 2) {
-                searchShelves(
-                    results = searchResults,
-                    visible = familyVisible,
-                    scoreLine = { it.releaseDate?.year?.toString() },
-                    onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
-                    onMenu = { menuItem = it },
-                    onFocusItem = {},
-                    isTv = isTv,
-                )
-                return@LazyColumn
+    // Benflix: "Couldn't find it" cards stay for good, even after Seerr has dropped the request
+    val extras =
+        if (list == null || arrivedOnly == true) {
+            emptyList()
+        } else {
+            val shown = all.orEmpty().mapNotNull { it.cantFindKey() }.toSet()
+            cantFind.values.filter { entry ->
+                entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
             }
         }
-        // Benflix: "Couldn't find it" cards stay for good, even after Seerr has dropped the request
-        val extras =
-            if (list == null || arrivedOnly == true) {
-                emptyList()
-            } else {
-                val shown = all.orEmpty().mapNotNull { it.cantFindKey() }.toSet()
-                cantFind.values.filter { entry ->
-                    entry.key !in shown && (!mineOnly || (myId != null && myId in entry.askedBy))
-                }
-            }
 
-        fun RequestEntry.isNotFound() = !available && cantFindKey()?.let { it in cantFind } == true
-        val boardEntries =
-            if (manage) {
-                list.orEmpty().filter {
-                    (who == null || it.who == who) && (kind == null || it.manageKind() == kind)
-                }
-            } else {
-                emptyList()
+    fun RequestEntry.isNotFound() = !available && cantFindKey()?.let { it in cantFind } == true
+    val boardEntries =
+        if (manage) {
+            list.orEmpty().filter {
+                (who == null || it.who == who) && (kind == null || it.manageKind() == kind)
             }
-        val boardLines =
-            if (manage) {
-                otherLines.filter {
-                    (who == null || (it.who ?: "Ben") == who) &&
-                        (kind == null || it.manageKind() == kind)
-                }
-            } else {
-                emptyList()
+        } else {
+            emptyList()
+        }
+    val boardLines =
+        if (manage) {
+            otherLines.filter {
+                (who == null || (it.who ?: "Ben") == who) &&
+                    (kind == null || it.manageKind() == kind)
             }
-        if (manage && list != null) {
-            item(key = "manage-tiles") {
-                val counts =
-                    ManageLane.entries.associateWith { l ->
-                        boardEntries.count { it.manageLane(it.isNotFound()) == l } + boardLines.count { it.manageLane() == l } +
-                            if (l == ManageLane.STUCK && who == null && kind == null) extras.size else 0
-                    }
-                ManageTiles(
-                    counts = counts,
+        } else {
+            emptyList()
+        }
+    // Glowfin new look (Ben approved 2026-11-22): on a TV the request you're on fills the right side
+    var focusKey by remember { mutableStateOf<String?>(null) }
+    val declineReasons by DeclineWhy.reasons.collectAsState()
+    val laneRows = if (manage) boardEntries.filter { it.manageLane(it.isNotFound()) == lane } else emptyList()
+    val laneLines = if (manage) boardLines.filter { it.manageLane() == lane } else emptyList()
+    val shown =
+        if (!manage || !isTv) {
+            null
+        } else {
+            val onLine = laneLines.firstOrNull { it.key == focusKey }
+            val onRow = laneRows.firstOrNull { "seerr-${it.request.id}" == focusKey } ?: laneRows.firstOrNull()
+            val entry = onRow.takeIf { onLine == null }
+            if (entry != null) {
+                entry.manageShown(
                     lane = lane,
-                    onLane = {
-                        lane = it
-                        picking = false
-                        ticks = emptySet()
-                    },
+                    cantFind = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] },
+                    hold =
+                        entry.request.media
+                            ?.tmdbId
+                            ?.let { holds["${if (entry.item?.type == SeerrItemType.MOVIE) "movie" else "tv"}:$it"] },
+                    declined = entry.request.id?.let { declineReasons[DeclineWhy.key(it)] },
                 )
-            }
-            item(key = "manage-filters") {
-                val open = setOf(ManageLane.NEEDS, ManageLane.WAY, ManageLane.STUCK)
-                val names = (list.map { it.who } + otherLines.map { it.who ?: "Ben" }).distinct().sorted()
-                val people =
-                    names.map { n ->
-                        n to (
-                            list.count { it.who == n && it.manageLane(it.isNotFound()) in open } +
-                                otherLines.count { (it.who ?: "Ben") == n && it.manageLane() in open }
-                        )
-                    }
-                val kindsHere = MANAGE_KINDS.filter { k -> list.any { it.manageKind() == k } || otherLines.any { it.manageKind() == k } }
-                ManageFilters(
-                    people = people,
-                    who = who,
-                    onWho = { who = it },
-                    kinds = kindsHere,
-                    kind = kind,
-                    onKind = { kind = it },
-                    onAutoYes = { autoYes = true },
-                )
+            } else {
+                (onLine ?: laneLines.firstOrNull())?.manageShown(lane)
             }
         }
-        when {
-            list == null && requestsFailed -> {
+    // Glowfin new look: family members see Your asks as rows of covers (Ben's board stays the list above)
+    if (mineOnly && arrivedOnly == null && !showSearch && list != null && (list.isNotEmpty() || otherLines.isNotEmpty())) {
+        FamilyAskRows(
+            entries = list,
+            others = otherLines,
+            cantFind = cantFind,
+            reasons = declineReasons,
+            isTv = isTv,
+            onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
+        )
+        return
+    }
+    ManageFrame(on = manage && isTv, art = shown?.art, side = { ManageSide(shown) }) { listModifier ->
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+            modifier = listModifier,
+        ) {
+            if (showSearch) {
                 item {
-                    LoadFailed(
-                        text = "Couldn't load the requests. Check the connection and try again.",
-                        onRetry = { viewModel.loadRequests(mineOnly) },
+                    if (isTv) {
+                        RequestSearchButton(onClick = { searchOpen = true })
+                    } else {
+                        RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
+                    }
+                }
+                if (!isTv && query.trim().length >= 2) {
+                    searchShelves(
+                        results = searchResults,
+                        visible = familyVisible,
+                        scoreLine = { it.releaseDate?.year?.toString() },
+                        onOpen = { viewModel.navigationManager.navigateTo(it.destination) },
+                        onMenu = { menuItem = it },
+                        onFocusItem = {},
+                        isTv = isTv,
+                    )
+                    return@LazyColumn
+                }
+            }
+            if (manage && list != null) {
+                item(key = "manage-tiles") {
+                    val counts =
+                        ManageLane.entries.associateWith { l ->
+                            boardEntries.count { it.manageLane(it.isNotFound()) == l } + boardLines.count { it.manageLane() == l } +
+                                if (l == ManageLane.STUCK && who == null && kind == null) extras.size else 0
+                        }
+                    ManageTiles(
+                        counts = counts,
+                        lane = lane,
+                        onLane = {
+                            lane = it
+                            picking = false
+                            ticks = emptySet()
+                        },
+                    )
+                }
+                item(key = "manage-filters") {
+                    val open = setOf(ManageLane.NEEDS, ManageLane.WAY, ManageLane.STUCK)
+                    val names = (list.map { it.who } + otherLines.map { it.who ?: "Ben" }).distinct().sorted()
+                    val people =
+                        names.map { n ->
+                            n to (
+                                list.count { it.who == n && it.manageLane(it.isNotFound()) in open } +
+                                    otherLines.count { (it.who ?: "Ben") == n && it.manageLane() in open }
+                            )
+                        }
+                    val kindsHere =
+                        MANAGE_KINDS.filter { k ->
+                            list.any { it.manageKind() == k } || otherLines.any { it.manageKind() == k }
+                        }
+                    ManageFilters(
+                        people = people,
+                        who = who,
+                        onWho = { who = it },
+                        kinds = kindsHere,
+                        kind = kind,
+                        onKind = { kind = it },
+                        onAutoYes = { autoYes = true },
                     )
                 }
             }
+            when {
+                list == null && requestsFailed -> {
+                    item {
+                        LoadFailed(
+                            text = "Couldn't load the requests. Check the connection and try again.",
+                            onRetry = { viewModel.loadRequests(mineOnly) },
+                        )
+                    }
+                }
 
-            list == null -> {
-                item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
-            }
+                list == null -> {
+                    item { LoadingPage(Modifier.height(240.dp), focusEnabled = false) }
+                }
 
-            manage -> {
-                val rows = boardEntries.filter { it.manageLane(it.isNotFound()) == lane }
-                val lines = boardLines.filter { it.manageLane() == lane }
-                val needsEntries = rows.filter { it.status == RequestStatus.PENDING }
-                if (lane == ManageLane.NEEDS && rows.size + lines.size > 1) {
-                    item(key = "manage-bulk") {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        ) {
-                            if (picking) {
-                                val n = ticks.size
-                                val picked = { needsEntries.filter { "seerr-${it.request.id}" in ticks } }
-                                val pickedLines = { lines.filter { it.key in ticks } }
-                                ManageButton(
-                                    label = if (n > 0) "Yes to $n" else "Yes",
-                                    enabled = n > 0,
-                                    onClick = {
-                                        pickedLines().forEach { it.onYes?.invoke() }
-                                        viewModel.answerMany(picked(), true)
-                                        ticks = emptySet()
-                                        picking = false
-                                    },
-                                )
-                                ManageButton(
-                                    label = if (n > 0) "No to $n" else "No",
-                                    enabled = n > 0,
-                                    onClick = {
-                                        pickedLines().forEach { it.onNo?.invoke() }
-                                        viewModel.answerMany(picked(), false)
-                                        ticks = emptySet()
-                                        picking = false
-                                    },
-                                )
-                                ManageButton(
-                                    label = "Done picking",
-                                    onClick = {
-                                        ticks = emptySet()
-                                        picking = false
-                                    },
-                                )
-                            } else {
-                                ManageButton(
-                                    label = "Yes to all ${rows.size + lines.size}",
-                                    onClick = {
-                                        lines.forEach { it.onYes?.invoke() }
-                                        viewModel.answerMany(needsEntries, true)
-                                    },
-                                )
-                                ManageButton(label = "Pick several", onClick = { picking = true })
+                manage -> {
+                    val rows = laneRows
+                    val lines = laneLines
+                    val needsEntries = rows.filter { it.status == RequestStatus.PENDING }
+                    if (lane == ManageLane.NEEDS && rows.size + lines.size > 1) {
+                        item(key = "manage-bulk") {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            ) {
+                                if (picking) {
+                                    val n = ticks.size
+                                    val picked = { needsEntries.filter { "seerr-${it.request.id}" in ticks } }
+                                    val pickedLines = { lines.filter { it.key in ticks } }
+                                    ManageButton(
+                                        label = if (n > 0) "Yes to $n" else "Yes",
+                                        enabled = n > 0,
+                                        onClick = {
+                                            pickedLines().forEach { it.onYes?.invoke() }
+                                            viewModel.answerMany(picked(), true)
+                                            ticks = emptySet()
+                                            picking = false
+                                        },
+                                    )
+                                    ManageButton(
+                                        label = if (n > 0) "No to $n" else "No",
+                                        enabled = n > 0,
+                                        onClick = {
+                                            pickedLines().forEach { it.onNo?.invoke() }
+                                            viewModel.answerMany(picked(), false)
+                                            ticks = emptySet()
+                                            picking = false
+                                        },
+                                    )
+                                    ManageButton(
+                                        label = "Done picking",
+                                        onClick = {
+                                            ticks = emptySet()
+                                            picking = false
+                                        },
+                                    )
+                                } else {
+                                    ManageButton(
+                                        label = "Yes to all ${rows.size + lines.size}",
+                                        onClick = {
+                                            lines.forEach { it.onYes?.invoke() }
+                                            viewModel.answerMany(needsEntries, true)
+                                        },
+                                    )
+                                    ManageButton(label = "Pick several", onClick = { picking = true })
+                                }
                             }
                         }
                     }
-                }
-                // "Couldn't find it" cards whose request Seerr has dropped stay here for good
-                val oldCards = if (lane == ManageLane.STUCK && who == null && kind == null) extras else emptyList()
-                if (rows.isEmpty() && lines.isEmpty() && oldCards.isEmpty()) {
-                    item(key = "manage-empty") {
-                        Text(
-                            text = if (who != null || kind != null) "Nothing here with these filters." else lane.empty,
-                            fontSize = BenflixType.body,
-                            color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
-                        )
-                    }
-                }
-                items(rows, key = { "manage-${it.request.id ?: it.hashCode()}" }) { entry ->
-                    val tickKey = "seerr-${entry.request.id}"
-                    val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
-                    val approved = !entry.available && entry.status == RequestStatus.APPROVED
-                    val tmdb = entry.request.media?.tmdbId
-                    val holdKind = if (entry.item?.type == SeerrItemType.MOVIE) "movie" else "tv"
-                    val requestId = entry.request.id
-                    val changedMind: (() -> Unit)? =
-                        if (entry.status == RequestStatus.DECLINED && requestId != null) {
-                            ({ manageVm.undo(requestId) { viewModel.loadRequests(mineOnly) } })
-                        } else {
-                            null
-                        }
-                    if (lane == ManageLane.STUCK && approved && tmdb != null) {
-                        LaunchedEffect(tmdb) { manageVm.loadHold(holdKind, tmdb) }
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    ) {
-                        if (picking && entry.status == RequestStatus.PENDING) {
-                            ManageTick(on = tickKey in ticks, onClick = {
-                                ticks =
-                                    if (tickKey in
-                                        ticks
-                                    ) {
-                                        ticks - tickKey
-                                    } else {
-                                        ticks + tickKey
-                                    }
-                            })
-                        }
-                        Box(Modifier.weight(1f)) {
-                            RequestRow(
-                                entry = entry,
-                                lookYourself = false,
-                                showWho = true,
-                                canAnswer = entry.status == RequestStatus.PENDING && !entry.available,
-                                onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
-                                onAnswer = { viewModel.answer(entry, it) },
-                                cantFind = notFound,
-                                isAdminList = true,
-                                onCantFind =
-                                    if (lane == ManageLane.STUCK && approved &&
-                                        notFound == null
-                                    ) {
-                                        ({ cantFindFor = entry })
-                                    } else {
-                                        null
-                                    },
-                                onUndoCantFind =
-                                    if (!entry.available && notFound != null) {
-                                        (
-                                            {
-                                                viewModel.undoCantFind(
-                                                    entry,
-                                                )
-                                            }
-                                        )
-                                    } else {
-                                        null
-                                    },
-                                holdLine =
-                                    if (lane == ManageLane.STUCK &&
-                                        tmdb != null
-                                    ) {
-                                        holds["$holdKind:$tmdb"]?.takeIf { it.isNotBlank() }
-                                    } else {
-                                        null
-                                    },
-                                onLookAgain =
-                                    if (lane == ManageLane.STUCK && approved &&
-                                        tmdb != null
-                                    ) {
-                                        ({ manageVm.again(holdKind, tmdb) })
-                                    } else {
-                                        null
-                                    },
-                                onStop = if (approved) ({ stopFor = entry }) else null,
-                                onChangedMind = changedMind,
+                    // "Couldn't find it" cards whose request Seerr has dropped stay here for good
+                    val oldCards = if (lane == ManageLane.STUCK && who == null && kind == null) extras else emptyList()
+                    if (rows.isEmpty() && lines.isEmpty() && oldCards.isEmpty()) {
+                        item(key = "manage-empty") {
+                            Text(
+                                text = if (who != null || kind != null) "Nothing here with these filters." else lane.empty,
+                                fontSize = BenflixType.body,
+                                color = com.github.damontecres.wholphin.ui.theme.Glowfin.Dim,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
                             )
                         }
                     }
-                }
-                items(oldCards, key = { "manage-cant-find-${it.key}" }) { entry ->
-                    Box(Modifier.padding(horizontal = 16.dp)) {
-                        CantFindOnlyRow(
-                            entry = entry,
-                            onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
-                            onTryAgain = { viewModel.undoCantFind(entry.key) },
-                        )
-                    }
-                }
-                items(lines, key = { "manage-other-${it.key}" }) { line ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    ) {
-                        if (picking && line.onYes != null) {
-                            ManageTick(on = line.key in ticks, onClick = {
-                                ticks =
-                                    if (line.key in ticks) ticks - line.key else ticks + line.key
-                            })
+                    items(rows, key = { "manage-${it.request.id ?: it.hashCode()}" }) { entry ->
+                        val tickKey = "seerr-${entry.request.id}"
+                        val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
+                        val approved = !entry.available && entry.status == RequestStatus.APPROVED
+                        val tmdb = entry.request.media?.tmdbId
+                        val holdKind = if (entry.item?.type == SeerrItemType.MOVIE) "movie" else "tv"
+                        val requestId = entry.request.id
+                        val changedMind: (() -> Unit)? =
+                            if (entry.status == RequestStatus.DECLINED && requestId != null) {
+                                ({ manageVm.undo(requestId) { viewModel.loadRequests(mineOnly) } })
+                            } else {
+                                null
+                            }
+                        if (lane == ManageLane.STUCK && approved && tmdb != null) {
+                            LaunchedEffect(tmdb) { manageVm.loadHold(holdKind, tmdb) }
                         }
-                        Box(Modifier.weight(1f)) { AskLineRow(line) }
-                    }
-                }
-            }
-
-            list.isEmpty() && extras.isEmpty() && otherLines.isEmpty() -> {
-                item {
-                    EmptyPage(
-                        icon = BenflixIcon.REQUESTS,
-                        title = if (arrivedOnly == true) "Nothing has arrived yet" else "No requests yet",
-                        line =
-                            when (arrivedOnly) {
-                                true -> "Things you asked for show up here as soon as they are ready to watch."
-                                false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
-                                null -> if (mineOnly) NOTHING_ASKED_YET else "When someone asks for something, it shows up here."
-                            },
-                    )
-                }
-            }
-
-            else -> {
-                if (!mineOnly && waiting > 1) {
-                    item {
-                        Button(
-                            onClick = { confirmAll = true },
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
-                        ) { Text("Yes to all $waiting") }
-                    }
-                }
-
-                fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
-
-                // Benflix (Ben, 2026-11-08): two weeks of searching with nothing found, so Ben starts looking himself.
-                // Only on his list, and not ones he already stopped by hand.
-                fun RequestEntry.lookYourself() = !mineOnly && viewModel.isAdmin && needsLookingFor(cantFindKey()?.let { cantFind[it] })
-                val stillAsking = { it: RequestEntry -> !it.notFound() }
-                // Redesign 2: grouped by the five status pills (Ready first). Ben's "Waiting for you" stays on top.
-                val waitingTitle = "Waiting for you"
-
-                fun RequestEntry.groupTitle(): String =
-                    when {
-                        !mineOnly && !available && status == RequestStatus.PENDING && stillAsking(this) -> waitingTitle
-                        lookYourself() -> AskState.LOOKING.group
-                        else -> askPill(if (available) null else cantFindKey()?.let { cantFind[it] }).state.group
-                    }
-                val byGroup = list.groupBy { it.groupTitle() }
-                val othersByGroup = otherLines.groupBy { if (it.onYes != null) waitingTitle else it.pill.state.group }
-                val order = listOf(waitingTitle) + AskState.entries.map { it.group }
-                val groups =
-                    order
-                        .map { it to byGroup[it].orEmpty() }
-                        .filter {
-                            it.second.isNotEmpty() || othersByGroup[it.first].orEmpty().isNotEmpty() ||
-                                (it.first == AskState.CANT.group && extras.isNotEmpty())
-                        }
-                groups.forEach { (title, entries) ->
-                    val extraCount = if (title == AskState.CANT.group) extras.size else 0
-                    val others = othersByGroup[title].orEmpty()
-                    item(key = "group-$title") {
-                        Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size + extraCount + others.size) }
-                    }
-                    items(others, key = { "other-$title-${it.key}" }) { line ->
-                        Box(Modifier.padding(horizontal = 16.dp)) { AskLineRow(line) }
-                    }
-                    items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
-                        Box(Modifier.padding(horizontal = 16.dp)) {
-                            val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
-                            // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or try again)
-                            val isBen = !mineOnly && viewModel.isAdmin && !entry.available
-                            val canMark = isBen && entry.status == RequestStatus.APPROVED
-                            RequestRow(
-                                entry = entry,
-                                lookYourself = entry.lookYourself(),
-                                showWho = !mineOnly,
-                                canAnswer = !mineOnly && entry.status == RequestStatus.PENDING && !entry.available,
-                                onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
-                                onAnswer = { viewModel.answer(entry, it) },
-                                cantFind = notFound,
-                                isAdminList = !mineOnly,
-                                onCantFind = if (canMark && notFound == null) ({ cantFindFor = entry }) else null,
-                                onUndoCantFind = if (isBen && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
-                            )
-                        }
-                    }
-                    if (extraCount > 0) {
-                        items(extras, key = { "cant-find-${it.key}" }) { entry ->
-                            Box(Modifier.padding(horizontal = 16.dp)) {
-                                CantFindOnlyRow(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .onFocusChanged { if (it.hasFocus) focusKey = tickKey },
+                        ) {
+                            if (picking && entry.status == RequestStatus.PENDING) {
+                                ManageTick(on = tickKey in ticks, onClick = {
+                                    ticks =
+                                        if (tickKey in
+                                            ticks
+                                        ) {
+                                            ticks - tickKey
+                                        } else {
+                                            ticks + tickKey
+                                        }
+                                })
+                            }
+                            Box(Modifier.weight(1f)) {
+                                RequestRow(
                                     entry = entry,
-                                    onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
-                                    onTryAgain = if (viewModel.isAdmin && !mineOnly) ({ viewModel.undoCantFind(entry.key) }) else null,
+                                    lookYourself = false,
+                                    showWho = true,
+                                    canAnswer = entry.status == RequestStatus.PENDING && !entry.available,
+                                    onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
+                                    onAnswer = { viewModel.answer(entry, it) },
+                                    cantFind = notFound,
+                                    isAdminList = true,
+                                    onCantFind =
+                                        if (lane == ManageLane.STUCK && approved &&
+                                            notFound == null
+                                        ) {
+                                            ({ cantFindFor = entry })
+                                        } else {
+                                            null
+                                        },
+                                    onUndoCantFind =
+                                        if (!entry.available && notFound != null) {
+                                            (
+                                                {
+                                                    viewModel.undoCantFind(
+                                                        entry,
+                                                    )
+                                                }
+                                            )
+                                        } else {
+                                            null
+                                        },
+                                    holdLine =
+                                        if (lane == ManageLane.STUCK &&
+                                            tmdb != null
+                                        ) {
+                                            holds["$holdKind:$tmdb"]?.takeIf { it.isNotBlank() }
+                                        } else {
+                                            null
+                                        },
+                                    onLookAgain =
+                                        if (lane == ManageLane.STUCK && approved &&
+                                            tmdb != null
+                                        ) {
+                                            ({ manageVm.again(holdKind, tmdb) })
+                                        } else {
+                                            null
+                                        },
+                                    onStop = if (approved) ({ stopFor = entry }) else null,
+                                    onChangedMind = changedMind,
+                                    slim = isTv,
                                 )
+                            }
+                        }
+                    }
+                    items(oldCards, key = { "manage-cant-find-${it.key}" }) { entry ->
+                        Box(Modifier.padding(horizontal = 16.dp)) {
+                            CantFindOnlyRow(
+                                entry = entry,
+                                onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
+                                onTryAgain = { viewModel.undoCantFind(entry.key) },
+                            )
+                        }
+                    }
+                    items(lines, key = { "manage-other-${it.key}" }) { line ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .onFocusChanged { if (it.hasFocus) focusKey = line.key },
+                        ) {
+                            if (picking && line.onYes != null) {
+                                ManageTick(on = line.key in ticks, onClick = {
+                                    ticks =
+                                        if (line.key in ticks) ticks - line.key else ticks + line.key
+                                })
+                            }
+                            Box(Modifier.weight(1f)) { AskLineRow(line) }
+                        }
+                    }
+                }
+
+                list.isEmpty() && extras.isEmpty() && otherLines.isEmpty() -> {
+                    item {
+                        EmptyPage(
+                            icon = BenflixIcon.REQUESTS,
+                            title = if (arrivedOnly == true) "Nothing has arrived yet" else "No requests yet",
+                            line =
+                                when (arrivedOnly) {
+                                    true -> "Things you asked for show up here as soon as they are ready to watch."
+                                    false -> "You haven't asked for anything yet. Search above for a movie or show and ask for it."
+                                    null -> if (mineOnly) NOTHING_ASKED_YET else "When someone asks for something, it shows up here."
+                                },
+                        )
+                    }
+                }
+
+                else -> {
+                    if (!mineOnly && waiting > 1) {
+                        item {
+                            Button(
+                                onClick = { confirmAll = true },
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                scale = ButtonDefaults.scale(focusedScale = 1f),
+                            ) { Text("Yes to all $waiting") }
+                        }
+                    }
+
+                    fun RequestEntry.notFound() = !available && cantFindKey()?.let { it in cantFind } == true
+
+                    // Benflix (Ben, 2026-11-08): two weeks of searching with nothing found, so Ben starts looking himself.
+                    // Only on his list, and not ones he already stopped by hand.
+                    fun RequestEntry.lookYourself() = !mineOnly && viewModel.isAdmin && needsLookingFor(cantFindKey()?.let { cantFind[it] })
+                    val stillAsking = { it: RequestEntry -> !it.notFound() }
+                    // Redesign 2: grouped by the five status pills (Ready first). Ben's "Waiting for you" stays on top.
+                    val waitingTitle = "Waiting for you"
+
+                    fun RequestEntry.groupTitle(): String =
+                        when {
+                            !mineOnly && !available && status == RequestStatus.PENDING && stillAsking(this) -> waitingTitle
+                            lookYourself() -> AskState.LOOKING.group
+                            else -> askPill(if (available) null else cantFindKey()?.let { cantFind[it] }).state.group
+                        }
+                    val byGroup = list.groupBy { it.groupTitle() }
+                    val othersByGroup = otherLines.groupBy { if (it.onYes != null) waitingTitle else it.pill.state.group }
+                    val order = listOf(waitingTitle) + AskState.entries.map { it.group }
+                    val groups =
+                        order
+                            .map { it to byGroup[it].orEmpty() }
+                            .filter {
+                                it.second.isNotEmpty() || othersByGroup[it.first].orEmpty().isNotEmpty() ||
+                                    (it.first == AskState.CANT.group && extras.isNotEmpty())
+                            }
+                    groups.forEach { (title, entries) ->
+                        val extraCount = if (title == AskState.CANT.group) extras.size else 0
+                        val others = othersByGroup[title].orEmpty()
+                        item(key = "group-$title") {
+                            Box(Modifier.padding(horizontal = 16.dp)) { RequestGroupTitle(title, entries.size + extraCount + others.size) }
+                        }
+                        items(others, key = { "other-$title-${it.key}" }) { line ->
+                            Box(Modifier.padding(horizontal = 16.dp)) { AskLineRow(line) }
+                        }
+                        items(entries, key = { it.request.id ?: it.hashCode() }) { entry ->
+                            Box(Modifier.padding(horizontal = 16.dp)) {
+                                val notFound = if (entry.available) null else entry.cantFindKey()?.let { cantFind[it] }
+                                // Benflix: approved but not downloaded, so Ben can mark it "Couldn't find it" (or try again)
+                                val isBen = !mineOnly && viewModel.isAdmin && !entry.available
+                                val canMark = isBen && entry.status == RequestStatus.APPROVED
+                                RequestRow(
+                                    entry = entry,
+                                    lookYourself = entry.lookYourself(),
+                                    showWho = !mineOnly,
+                                    canAnswer = !mineOnly && entry.status == RequestStatus.PENDING && !entry.available,
+                                    onOpen = { entry.item?.let { viewModel.navigationManager.navigateTo(it.destination) } },
+                                    onAnswer = { viewModel.answer(entry, it) },
+                                    cantFind = notFound,
+                                    isAdminList = !mineOnly,
+                                    onCantFind = if (canMark && notFound == null) ({ cantFindFor = entry }) else null,
+                                    onUndoCantFind = if (isBen && notFound != null) ({ viewModel.undoCantFind(entry) }) else null,
+                                )
+                            }
+                        }
+                        if (extraCount > 0) {
+                            items(extras, key = { "cant-find-${it.key}" }) { entry ->
+                                Box(Modifier.padding(horizontal = 16.dp)) {
+                                    CantFindOnlyRow(
+                                        entry = entry,
+                                        onOpen = { viewModel.navigationManager.navigateTo(entry.discoverItem().destination) },
+                                        onTryAgain = if (viewModel.isAdmin && !mineOnly) ({ viewModel.undoCantFind(entry.key) }) else null,
+                                    )
+                                }
                             }
                         }
                     }
@@ -2989,6 +3040,8 @@ private fun RequestRow(
     onLookAgain: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
     onChangedMind: (() -> Unit)? = null,
+    // Glowfin new look: a slim see-through row on the TV Manage board; the details sit on the right side instead
+    slim: Boolean = false,
 ) {
     // Benflix: on phones the buttons go on their own line under the text, so the title and steps get the full width
     val isTv = rememberIsTv()
@@ -3043,8 +3096,8 @@ private fun RequestRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Deep)
+                .clip(RoundedCornerShape(if (slim) 18.dp else 10.dp))
+                .background(if (slim) SLIM_ROW else com.github.damontecres.wholphin.ui.theme.Glowfin.Deep)
                 .padding(10.dp),
     ) {
         Row(
@@ -3056,7 +3109,7 @@ private fun RequestRow(
             Box(
                 modifier =
                     Modifier
-                        .size(width = 54.dp, height = 80.dp)
+                        .size(width = if (slim) 44.dp else 54.dp, height = if (slim) 64.dp else 80.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise),
             ) {
@@ -3106,8 +3159,8 @@ private fun RequestRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, lookYourself = lookYourself)
-                if (entry.status == RequestStatus.DECLINED) {
+                if (!slim) StatusTag(entry, cantFind = cantFind, daysWaiting = daysWaiting, lookYourself = lookYourself)
+                if (!slim && entry.status == RequestStatus.DECLINED) {
                     val why = entry.request.id?.let { declineReasons[DeclineWhy.key(it)] }
                     if (why != null) {
                         Text(
@@ -3119,7 +3172,7 @@ private fun RequestRow(
                         )
                     }
                 }
-                if (holdLine != null) {
+                if (!slim && holdLine != null) {
                     Text(
                         text = holdLine,
                         fontSize = BenflixType.small,
@@ -3128,8 +3181,8 @@ private fun RequestRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (cantFind != null) CantFindNoteLine(cantFind)
-                if (cantFind == null) {
+                if (!slim && cantFind != null) CantFindNoteLine(cantFind)
+                if (!slim && cantFind == null) {
                     RequestSteps(
                         approved = entry.status == RequestStatus.APPROVED || entry.status == RequestStatus.COMPLETED,
                         downloading = entry.downloading,
@@ -3267,3 +3320,91 @@ fun markOnBenflix(
             }
         }
     }
+
+/** Glowfin new look: the slim see-through rows on the TV Manage board */
+private val SLIM_ROW = Color(0x6B0B0D1A)
+
+/** What the TV Manage board's right side says about a movie or show request */
+internal fun RequestEntry.manageShown(
+    lane: ManageLane,
+    cantFind: CantFindEntry?,
+    hold: String?,
+    declined: String?,
+): ManageShown {
+    val asked = listOfNotNull("$who asked", ago(request.createdAt)).joinToString(" ")
+    val days = BenflixCantFind.daysSince(request.updatedAt ?: request.createdAt) ?: 0L
+    val tag =
+        when (lane) {
+            ManageLane.NEEDS -> RqTag(RqTagKind.WAITING, asked)
+            ManageLane.WAY -> RqTag(RqTagKind.ON_WAY, downloadPercent?.let { "Downloading · $it%" } ?: "On its way")
+            ManageLane.STUCK -> RqTag(RqTagKind.PROBLEM, if (cantFind != null) "Couldn't find it" else "Stuck $days days")
+            ManageLane.READY -> RqTag(RqTagKind.HERE, "Here now")
+            ManageLane.NO -> RqTag(RqTagKind.PROBLEM, "You said no")
+        }
+    val why =
+        when (lane) {
+            ManageLane.STUCK -> {
+                "Why: " + (
+                    cantFind?.note ?: hold?.takeIf { it.isNotBlank() }
+                        ?: if (cantFind != null) "Ben looked but couldn't find a copy" else "no copies found yet. Tower keeps looking."
+                )
+            }
+
+            ManageLane.NO -> {
+                declined?.let { "Your reason: $it" }
+            }
+
+            else -> {
+                null
+            }
+        }
+    val whoLine =
+        if (lane == ManageLane.NEEDS) {
+            null
+        } else {
+            asked + if (status == RequestStatus.APPROVED || status == RequestStatus.COMPLETED || available) " · you said yes" else ""
+        }
+    val facts =
+        listOfNotNull(
+            manageKind().let {
+                if (it == "Movies") {
+                    "Movie"
+                } else if (it == "Shows") {
+                    "Show"
+                } else {
+                    it
+                }
+            },
+            item?.releaseDate?.year?.toString(),
+        ).joinToString(" · ")
+    return ManageShown(
+        key = "seerr-${request.id}",
+        art = item?.backDropUrl ?: item?.posterUrl,
+        title = item?.title ?: "Unknown title",
+        facts = facts,
+        tag = tag,
+        story = item?.overview,
+        lines = listOfNotNull(why, whoLine),
+    )
+}
+
+/** The same for a song, album or book ask */
+internal fun AskLine.manageShown(lane: ManageLane): ManageShown {
+    val kind =
+        when {
+            lane == ManageLane.NEEDS -> RqTagKind.WAITING
+            pill.state == AskState.READY -> RqTagKind.HERE
+            pill.state == AskState.GETTING -> RqTagKind.ON_WAY
+            pill.state == AskState.CANT -> RqTagKind.PROBLEM
+            else -> RqTagKind.WAITING
+        }
+    return ManageShown(
+        key = key,
+        art = cover,
+        title = title,
+        facts = sub,
+        tag = RqTag(kind, if (lane == ManageLane.NEEDS) "Waiting for you" else pill.words),
+        story = null,
+        lines = listOfNotNull(why.takeIf { it.isNotBlank() }?.let { "Why: $it" }),
+    )
+}

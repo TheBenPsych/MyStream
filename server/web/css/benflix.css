@@ -2955,3 +2955,35 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .mtop.tall .art { aspect-ratio: 2 / 3; }
 .rqpillrow { gap: 10px; align-items: center; }
 @media (max-width: 700px) { .mtop.rqctop { display: none; } }
+/* Glowfin new look: the Manage board. Five see-through pills, slim rows on the left, the one you're on on the right */
+.mg-tile { background: rgba(11, 13, 26, .4); border: 2px solid rgba(255, 255, 255, .14); border-radius: 22px; padding: 12px 20px; }
+.mg-tile:hover { background: rgba(255, 255, 255, .08); }
+.mg-tile.on { background: rgba(255, 255, 255, .92); border-color: transparent; color: #1b1f3a; }
+.mg-tile.on b { color: #1b1f3a !important; }
+.mg-tile.on small { color: #4a5078; }
+.mg-split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.mg-list { background: transparent; }
+.mg-list .item { background: rgba(11, 13, 26, .42); border: 2px solid rgba(255, 255, 255, .08); border-radius: 18px; margin-bottom: 10px; }
+.mg-list .item:hover, .mg-list .item:focus-within { background: rgba(26, 30, 56, .85); border-color: rgba(255, 255, 255, .25); }
+.mg-side { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mg-side .mg-art { aspect-ratio: 16 / 9; border-radius: 16px; background: center/cover no-repeat var(--deep, #12152a); box-shadow: 0 14px 36px rgba(0, 0, 0, .5); margin-bottom: 6px; }
+.mg-side h2 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 30px; margin: 0; }
+.mg-side .mg-facts { color: var(--ink2); margin: 0; }
+.mg-side .rqtag { align-self: flex-start; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; border: 1.5px solid; }
+.mg-side .rqtag.wt { background: rgba(242, 179, 61, .18); border-color: rgba(242, 179, 61, .65); color: #FFE7B5; }
+.mg-side .rqtag.ow { background: rgba(63, 224, 232, .14); border-color: rgba(63, 224, 232, .6); color: #CFFBFD; }
+.mg-side .rqtag.ok { background: rgba(87, 214, 141, .16); border-color: rgba(87, 214, 141, .6); color: #C9F7DC; }
+.mg-side .rqtag.bad { background: rgba(255, 107, 107, .16); border-color: rgba(255, 107, 107, .6); color: #FFD2D2; }
+.mg-side .mg-sidewhy { margin: 2px 0 0; font-weight: 600; }
+.mg-side .mg-story { color: var(--ink2); margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 900px) { .mg-split { grid-template-columns: minmax(0, 1fr); } .mg-side { display: none; } }
+/* Glowfin new look (browser): the small Ask button on the cover under the mouse */
+.askcard .rqqask { position: absolute; left: 50%; bottom: 10px; transform: translate(-50%, 6px); display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #1b1f3a; font-weight: 700; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; white-space: nowrap; }
+.askcard .rqqask svg { width: 14px; height: 14px; }
+@media (hover: hover) {
+  .askcard:hover .rqqask { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .askcard .rqqask:hover { background: #fff; box-shadow: 0 0 0 3px rgba(63, 224, 232, .55); }
+}
+/* Glowfin new look: the family's Your asks top says where each ask stands, in its colour */
+.mtop .mtop-kick.rqfam-wait { color: #FFD27A; } .mtop .mtop-kick.rqfam-way { color: #7FEFF4; }
+.mtop .mtop-kick.rqfam-here { color: #8BE7B0; } .mtop .mtop-kick.rqfam-bad { color: #FF9C9C; }
