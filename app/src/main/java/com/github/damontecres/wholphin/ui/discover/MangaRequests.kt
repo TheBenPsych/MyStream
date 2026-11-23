@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.discover
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -202,6 +203,7 @@ private fun MangaMuted(text: String) {
 }
 
 /** The Manga tab: rows of covers, like the Anime tab */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MangaShelf(
     top: Dp = 0.dp,

@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.discover
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
@@ -400,6 +401,7 @@ private class AnimeRowSpec(
  * asked for both), a Moods pill row with the picked mood's row under it, Mix and match tags, Finished and dubbed,
  * Hidden gems, Anime movies, Coming next season and Last season. Shows already on Glowfin are left out.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AnimeShelf(
     isTv: Boolean,
@@ -461,7 +463,7 @@ internal fun AnimeShelf(
                 AnimeRowSpec("last", "Last season", nowSeason.previous().label, viewModel.seasonAsk(nowSeason.previous())),
             )
         }
-    val feelRow = feel?.let { AnimeRowSpec("feel-${it.name}", "Mood: ${it.name}", it.recipe, viewModel.feelAsk(it)) }
+    val feelRow = feel?.let { f -> viewModel.feelAsk(f)?.let { AnimeRowSpec("feel-${f.name}", "Mood: ${f.name}", f.recipe, it) } }
 
     // The anime the top describes: follows focus once you've stopped on a cover for a moment
     var focused by remember { mutableStateOf<AnimeCard?>(null) }

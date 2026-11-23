@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.discover
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,6 +106,7 @@ internal class RqPill(
  * The rows page. [ratio] is a cover's width for its height (1 for music, books are taller); [top] is how far the
  * header reaches down on TV (the top draws up behind it). [above] sits over the rows (notes, the phone search box).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun RequestCoverRows(
     rows: List<RqCoverRow>,
