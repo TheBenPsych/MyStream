@@ -2689,3 +2689,9 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .scores span[data-s], .tp-scores span[data-s], .tp-strip span[data-s] { white-space: nowrap; }
 .tp-scores { flex-wrap: wrap; row-gap: 6px; }
 @media (max-width: 480px) { .tp-scores { gap: 10px !important; } .tp-scores span[data-s] { font-size: 13px !important; } .tp-scores span[data-s] b { padding: 1px 5px; margin-right: 4px; } }
+
+/* Ben 2026-11-23: the times beside the seek bar get fixed-width slots (room for "−0:00:00"), so the bar
+   never changes size as the seconds tick and the progress dot stays still. */
+.player .p4 .srow #pTime, .player .p4 .srow #pLeft { flex: none; min-width: 8.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.player .p4 .srow #pTime { text-align: left; }
+.player .p4 .srow #pLeft { text-align: right; }
