@@ -2760,3 +2760,35 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .tp.tp-rows.tp-bright .tp-hero:not(.covered)::after { content: ""; position: absolute; inset: 0; background: rgba(var(--trayrgb),.2); pointer-events: none; }
 .tp.tp-rows.tp-bright .tp-hero .main { position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
 .tp.tp-rows.tp-bright .tp-hero .main .btn.white { text-shadow: none; }
+
+/* ---------- Glowfin new look, part 2 (Ben 2026-11-22): Home, Movies, Shows, Anime land straight on a row ---------- */
+/* The art of the poster you're on fills the window; only a soft shade on the left and a fade at the bottom */
+#doorTop .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.8) 0%, rgba(var(--trayrgb),.45) 35%, rgba(var(--trayrgb),0) 62%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 42%, rgba(var(--trayrgb),.75) 70%, var(--tray) 100%); }
+.door-top { height: min(52vh, 520px); padding-top: calc(var(--bar) + 8px); }
+.door-top .info { max-width: none; display: flex; flex-direction: column; gap: 8px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.door-top .info > * { max-width: min(620px, 55%); }
+/* Title box: fixed size and spot, so the rows never move */
+.door-top .dt-name { height: 120px; width: min(600px, 50%); display: flex; flex-direction: column; justify-content: flex-end; }
+.door-top .dt-name .t { margin: 0; font-size: clamp(28px, 3vw, 56px); line-height: 1.05; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.door-top .dt-logo { max-height: 120px; max-width: 100%; object-fit: contain; object-position: left bottom; filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.door-top .dt-logo.tp-logo-white { filter: brightness(0) invert(1) drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.door-top .meta { color: var(--ink); font-weight: 600; margin: 0; gap: 0; }
+.door-top .meta span + span::before { content: "·"; margin: 0 10px; color: rgba(236,238,251,.55); }
+.door-top .dt-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.door-top .dt-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; }
+.door-top .ov { color: #e8eafc; -webkit-line-clamp: 2; max-width: min(620px, 50%); }
+/* The score pill at the top right, under the clock (same as the details pages) */
+.door-top .tp-pill.dt-pill { position: absolute; top: 0; right: 0; max-width: none; text-shadow: none; }
+#doorTop ~ .rows .rowx h3 { text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+/* Tabs as see-through pills over the art; the open one solid white */
+.ptabs { gap: 8px; }
+.ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 16px; color: rgba(236,238,251,.9); font-weight: 700; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.ptabs a.on, #page:has(#doorTop) .ptabs a.on { color: #0B0D1A; background: rgba(255,255,255,.92); border-color: transparent; text-shadow: none; }
+.ptabs a.on::after { display: none; }
+.ptabs a:hover, .ptabs a:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: none; text-shadow: none; }
+/* Phones and small tablets: no picture at the top, the rows start right under the tabs. Cover art only. */
+@media (max-width: 700px) {
+  #doorTop { display: none; }
+  .ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 12px; }
+  #doorTop ~ .rows .poster .cap { display: none; }
+}

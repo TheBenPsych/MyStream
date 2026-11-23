@@ -40,11 +40,17 @@ sealed interface HeaderStart {
         val color: androidx.compose.ui.graphics.Color,
     ) : HeaderStart
 
+    /** Movies, Shows and Anime on TV: nothing here, the page's own tabs sit in this spot */
+    data object Empty : HeaderStart
+
     /** Deeper pages: the named Back button ("‹ Action") and the where-am-I line */
     data class Back(
         val name: String,
     ) : HeaderStart
 }
+
+/** Movies, Shows and Anime: their tabs sit in the TV header's row (Glowfin new look, Ben 2026-11-22) */
+fun Destination.tabsInHeader(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor || this is Destination.AnimeDoor
 
 fun headerStart(
     destination: Destination,
@@ -89,7 +95,11 @@ fun BenflixPageHeader(
         Modifier.focusProperties {
             downTarget?.target?.let { down = it }
         }
-    val start = headerStart(destination, stack)
+    val start =
+        headerStart(destination, stack).let {
+            // Glowfin new look: Movies, Shows and Anime put their see-through tab pills in this row instead of the name
+            if (it is HeaderStart.Title && destination.tabsInHeader()) HeaderStart.Empty else it
+        }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -105,9 +115,14 @@ fun BenflixPageHeader(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             // Home's left side is empty (Home draws its own greeting there), so no shadow: it showed as a wide
             // black oval across the top of Home that hid the greeting (Ben 2026-11-17)
-            modifier = Modifier.weight(1f).then(if (overPicture && start !is HeaderStart.None) Modifier.softShadow() else Modifier),
+            modifier =
+                Modifier.weight(1f).then(
+                    if (overPicture && start !is HeaderStart.None && start !is HeaderStart.Empty) Modifier.softShadow() else Modifier,
+                ),
         ) {
             when (start) {
+                is HeaderStart.Empty -> {}
+
                 is HeaderStart.None -> {
                     com.github.damontecres.wholphin.ui.main
                         .ProfileBadge(scale = scale, showGuestLine = true)
