@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -74,6 +75,7 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.AniListService
 import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.BenflixSeerrLink
+import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SearchClock
@@ -85,11 +87,10 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.components.DelayedLoadingPage
 import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
-import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabViewModel
-import com.github.damontecres.wholphin.ui.components.TabbedPage
 import com.github.damontecres.wholphin.ui.components.UNSET
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.detail.discover.AnimeTagCatalogViewModel
@@ -100,6 +101,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.detail.discover.tags
 import com.github.damontecres.wholphin.ui.detail.discover.tvAgeRating
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
@@ -107,7 +109,6 @@ import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
-import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -1410,8 +1411,8 @@ fun BenflixRequestsPage(
     // Grown-up family profiles see Music too; their song and album asks wait for Ben's Approve.
     val tabs =
         remember {
-            // Ben's last tab is his Manage board (2026-11-21); everyone else keeps Your requests
-            REQUEST_TABS.map { TabDetails(StringStringProvider(if (admin && it == "Your requests") "Manage" else it)) }
+            // Ben's last tab is his Manage board (2026-11-21); everyone else has Your asks
+            REQUEST_TABS.map { if (admin && it == "Your asks") "Manage" else it }
         }
     val waitingCount = rememberWaitingCount(viewModel, admin)
     val tabsId = "benflix-requests"
@@ -1446,32 +1447,69 @@ fun BenflixRequestsPage(
         }
         if (tabState in tabs.indices) RequestsLastTab.set(context, viewModel.userKey, tabState)
     }
-    TabbedPage(
-        itemId = tabsId,
-        tabs = tabs,
-        modifier = modifier,
-        viewModel = tabViewModel,
-    ) { index, _ ->
-        // Glowfin R1: Search, For: Me (Ben 2026-11-16, "Request for" someone in the family) and Waiting for you
-        // with its number on one line at the top right of every tab
-        val canFor = rememberCanRequestFor(admin) && index < 5
-        val isTv = rememberIsTv()
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Up from the line goes back to the tabs (Ben 2026-11-17: it used to get stuck there)
-            RequestsTopLine(
-                showSearch = isTv && index < tabs.lastIndex,
-                canFor = canFor,
-                waitingCount = if (admin) waitingCount else null,
-                onWaiting = { tabViewModel.updateSelectedTabIndex(tabs.lastIndex) },
-                up = tabs[index].tabFocusRequester,
-                atStart = isTv,
+    // Glowfin new look (Ben approved 2026-11-22): the tabs are see-through pills, then the round Search and
+    // Filters pills and Ben's yellow Waiting pill. TV: in the header's own row, with the page (and its art)
+    // going up behind them. Phones: one sideways row of pills under the header.
+    val isTv = rememberIsTv()
+    val selected = tabState
+    val showSearch = isTv && selected in 0 until tabs.lastIndex
+    val showFilters = selected == 0 || selected == 1
+    val waiting = if (admin) waitingCount else null
+    val onWaiting = { tabViewModel.updateSelectedTabIndex(tabs.lastIndex) }
+    if (isTv) {
+        val overlap = LocalTopBarOverlap.current
+        Box(modifier.fillMaxSize()) {
+            if (selected in tabs.indices) {
+                RequestTab(selected, viewModel, admin, top = overlap)
+            } else {
+                DelayedLoadingPage(focusEnabled = false)
+            }
+            RequestsPillBar(
+                tabs = tabs,
+                selected = selected,
+                onTab = tabViewModel::updateSelectedTabIndex,
+                showSearch = showSearch,
+                showFilters = showFilters,
+                waitingCount = waiting,
+                onWaiting = onWaiting,
+                wide = true,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = PILLS_TOP, end = CLOCK_ROOM)
+                        .height((overlap - PILLS_GAP).coerceAtLeast(40.dp)),
             )
-            Box(modifier = Modifier.weight(1f)) {
-                RequestTab(index, viewModel, admin)
+        }
+    } else {
+        Column(modifier.fillMaxSize()) {
+            RequestsPillBar(
+                tabs = tabs,
+                selected = selected,
+                onTab = tabViewModel::updateSelectedTabIndex,
+                showSearch = false,
+                showFilters = showFilters,
+                waitingCount = waiting,
+                onWaiting = onWaiting,
+                wide = false,
+                modifier = Modifier.padding(vertical = 8.dp).height(40.dp),
+            )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                if (selected in tabs.indices) {
+                    RequestTab(selected, viewModel, admin, top = 0.dp)
+                } else {
+                    DelayedLoadingPage(focusEnabled = false)
+                }
             }
         }
     }
 }
+
+/** The TV header's row: 18dp from the top, with 6dp under it (see BenflixPageHeader) */
+private val PILLS_TOP = 18.dp
+private val PILLS_GAP = 24.dp
+
+/** Room kept on the right of the pills for the big clock */
+private val CLOCK_ROOM = 184.dp
 
 /**
  * Glowfin R1: how many asks are waiting for Ben's Yes or No, across movies, shows, anime, music and books.
@@ -1506,29 +1544,39 @@ private fun RequestTab(
     index: Int,
     viewModel: BenflixRequestsViewModel,
     admin: Boolean,
+    /** TV: how far down the header (and the pills in it) reach; Movies and Shows draw their art up behind it */
+    top: Dp,
 ) {
-    run {
-        when (index) {
-            0 -> FindShelf(FindSection.MOVIES, viewModel)
+    when (index) {
+        0 -> {
+            FindShelf(FindSection.MOVIES, viewModel, top)
+        }
 
-            1 -> FindShelf(FindSection.SHOWS, viewModel)
+        1 -> {
+            FindShelf(FindSection.SHOWS, viewModel, top)
+        }
 
-            2 -> FindShelf(FindSection.ANIME, viewModel)
+        else -> {
+            Box(Modifier.fillMaxSize().padding(top = top)) {
+                when (index) {
+                    2 -> FindShelf(FindSection.ANIME, viewModel, 0.dp)
 
-            3 -> MusicShelf()
+                    3 -> MusicShelf()
 
-            4 -> BooksShelf()
+                    4 -> BooksShelf()
 
-            5 -> MangaShelf()
+                    5 -> MangaShelf()
 
-            // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
-            else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
+                    // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
+                    else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
+                }
+            }
         }
     }
 }
 
-/** Requests tabs, in the order Ben kept (Movies, Shows, Anime, Music, Books), Manga (2026-11-22), then Your requests */
-private val REQUEST_TABS = listOf("Movies", "Shows", "Anime", "Music", "Books", "Manga", "Your requests")
+/** Requests tabs, in the order Ben kept (Movies, Shows, Anime, Music, Books), Manga (2026-11-22), then Your asks (Manage for Ben) */
+private val REQUEST_TABS = listOf("Movies", "Shows", "Anime", "Music", "Books", "Manga", "Your asks")
 
 /** The Requests tab each person used last, on this device */
 internal object RequestsLastTab {
@@ -1648,12 +1696,16 @@ private fun NotConnected(
 private fun FindShelf(
     section: FindSection,
     viewModel: BenflixRequestsViewModel,
+    /** TV: how far down the header reaches (the art goes up behind it, the words start under it) */
+    top: Dp,
 ) {
     var filters by remember(section) { mutableStateOf(FindFilters()) }
     // Redesign 2: titles already on Benflix never show in the lists; "N more are already on Benflix" at the
     // end of a list opens them for that list only
     var ownedOpen by rememberSaveable(section) { mutableStateOf<String?>(null) }
     var hideAsked by rememberSaveable { mutableStateOf(false) }
+    // Glowfin new look: "Hide what's already on Glowfin" is a switch in the Filters panel (on by default)
+    var hideOwned by rememberSaveable { mutableStateOf(true) }
     // Benflix: family accounts start with Family-friendly only on (like their search), and can turn it off
     var familyOnly by rememberSaveable { mutableStateOf(!viewModel.isAdmin) }
     var showFilters by remember { mutableStateOf(false) }
@@ -1679,6 +1731,8 @@ private fun FindShelf(
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     // Glowfin R1: Search on the top line opens this tab's search
     OnRequestsSearch { searchOpen = true }
+    // Glowfin new look: the round Filters pill opens the right-hand Filters panel
+    OnRequestsFilters { showFilters = true }
     val baseRows = allRows[key]
     // Benflix: "Because you watched" goes after the first row, "Finish the collection" after Popular
     val rows =
@@ -1702,7 +1756,7 @@ private fun FindShelf(
             val here = onBenflix[item.requestKey()]
             // Found in Jellyfin but the show isn't checked yet: keep it out until we know it's missing episodes
             val stillChecking = here == null && item.requestKey() in libraryKeys
-            (withOwned || (item.availability != SeerrAvailability.AVAILABLE && !stillChecking)) &&
+            (withOwned || !hideOwned || (item.availability != SeerrAvailability.AVAILABLE && !stillChecking)) &&
                 (
                     !hideAsked ||
                         (item.availability != SeerrAvailability.PENDING && item.availability != SeerrAvailability.PROCESSING)
@@ -1724,17 +1778,39 @@ private fun FindShelf(
         ).joinToString(" · ").ifBlank { null }
     }
     if (showFilters) {
-        FiltersDialog(
+        RequestFiltersPanel(
             section = section,
-            current = filters,
-            onDismiss = { showFilters = false },
-            onApply = {
-                filters = it
-                showFilters = false
-            },
+            state = RequestFilterState(filters, hideOwned = hideOwned, hideAsked = hideAsked, familyOnly = familyOnly),
+            isAdmin = viewModel.isAdmin,
             showLanguage = !viewModel.viaJellyfin,
+            onChange = {
+                filters = it.filters
+                hideOwned = it.hideOwned
+                hideAsked = it.hideAsked
+                familyOnly = it.familyOnly
+            },
+            onDismiss = { showFilters = false },
         )
     }
+    // Who asked and when ("Mia 2 days ago"), for the status tag at the top
+    LaunchedEffect(Unit) { if (viewModel.requests.value == null) viewModel.loadRequests(mineOnly = !viewModel.isAdmin) }
+    val requests by viewModel.requests.collectAsState()
+    val askedBy =
+        remember(requests) {
+            requests
+                .orEmpty()
+                .mapNotNull { e ->
+                    e.item?.let {
+                        it.requestKey() to
+                            listOfNotNull(
+                                (if (viewModel.isAdmin) e.who else "you").takeIf { w -> w.isNotBlank() },
+                                ago(e.request.createdAt),
+                            ).joinToString(" ")
+                    }
+                }.filter { it.second.isNotBlank() }
+                .toMap()
+        }
+    val cantFindKeys by CantFindBlocked.keys.collectAsState()
     val seasonPick by viewModel.seasonPick.collectAsState()
     seasonPick?.let { pick ->
         SeasonAskPanel(
@@ -1838,7 +1914,7 @@ private fun FindShelf(
     // The lists that have something to show (Redesign 2 names and order). Trending is split into a ranked
     // Top 10 and the rest; Popular joins the end of Trending so the wall stays long.
     val shownRows =
-        remember(rows, section, filters, hidden, ratings, hideAsked, familyOnly, ownedOpen) {
+        remember(rows, section, filters, hidden, ratings, hideAsked, familyOnly, ownedOpen, hideOwned) {
             val base = rows.orEmpty()
             val popular = base.firstOrNull { it.title == "Popular" || it.title == "Popular anime shows" }?.items.orEmpty()
             val out = mutableListOf<ShownRow>()
@@ -1853,7 +1929,11 @@ private fun FindShelf(
                 val unique = items.filter { seen.add(it.requestKey()) }
                 val shown = visibleWith(unique, ownedOpen == title)
                 val owned = visibleWith(unique, true).count { it.availability == SeerrAvailability.AVAILABLE }
-                if (shown.isNotEmpty() || owned > 0) out += ShownRow(title, shown, comingSoon, ranked, ownedCount = owned)
+                if (shown.isNotEmpty() ||
+                    owned > 0
+                ) {
+                    out += ShownRow(title, shown, comingSoon, ranked, ownedCount = if (hideOwned) owned else 0)
+                }
             }
             base.forEach { row ->
                 val t = row.title
@@ -1905,28 +1985,36 @@ private fun FindShelf(
                 }
             }
         }
-    // Glowfin R1 (Ben 2026-11-18): on TV the top area describes the poster you're on, then rows: Top 10 to
-    // ask for (numbers fully beside the posters), Coming soon, Trending, the rest, then Genres. Picking a
-    // genre fills every row with that genre only. Titles already on Glowfin stay hidden ("N more" opens them).
-    val genreChips =
-        remember(section) {
-            FindGenres.filter { if (section == FindSection.MOVIES) it.movieId != null else it.tvId != null }
-        }
-    val onGenre: (FindGenre?) -> Unit = { g -> filters = filters.copy(genre = g) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Ben 2026-11-21 (TV photo): the top area took a fixed 170 however little room was left, so the first row
-        // (Top 10) was cut off at the bottom and moving onto it had nowhere to scroll. The top area now only takes
-        // what is left once one whole row fits under it.
-        val topHeight = (maxHeight - TV_ROW_ROOM).coerceIn(TOP_AREA_MIN, TOP_AREA_HEIGHT)
+        // Glowfin new look (Ben approved 2026-11-22): TV lands straight on the first row. The art of the cover
+        // you're on fills the whole page (up behind the tabs), and the top only describes that cover. About half
+        // the screen, like Home and Movies, but never so tall that the first row doesn't fit whole under it.
+        val topHeight = (maxHeight * TOP_SHARE).coerceIn(top + TOP_AREA_MIN, (maxHeight - TV_ROW_ROOM).coerceAtLeast(top + TOP_AREA_MIN))
+        val shown =
+            if (isTv) rememberShownCover(focusedItem, shownRows.firstOrNull()?.items?.firstOrNull()) else null
+        if (isTv) {
+            RequestArt(shown)
+            if (shown != null) {
+                RequestScorePill(
+                    age = ratings[shown.requestKey()]?.age,
+                    scores = scores[shown.requestKey()],
+                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = top + 2.dp),
+                )
+            }
+        }
         Column(Modifier.fillMaxSize()) {
             if (!isTv) RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
             if (isTv) {
-                DelayedRequestPreview(
-                    focused = focusedItem,
-                    fallback = shownRows.firstOrNull()?.items?.firstOrNull(),
-                    scores = scores,
-                    height = topHeight,
-                )
+                Box(Modifier.fillMaxWidth().height(topHeight)) {
+                    if (shown != null) {
+                        RequestTopWords(
+                            item = shown,
+                            tag = shown.rqTag(viewModel.isAdmin, shown.requestKey() in cantFindKeys, askedBy[shown.requestKey()]),
+                            age = ratings[shown.requestKey()]?.age,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = top + 2.dp),
+                        )
+                    }
+                }
             }
             if (filters.narrowed || filters.genre != null) {
                 LazyRow(
@@ -2015,26 +2103,7 @@ private fun FindShelf(
                             }
                         }
                     }
-                    // Genres: every row shows only the genre you pick ("All" goes back)
-                    item(key = "genres") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-                            RequestChipRow(title = "Genres") {
-                                item(key = "g-all") { RequestsChip("All", filters.genre == null, { onGenre(null) }) }
-                                items(genreChips, key = { "g-${it.label}" }) { g ->
-                                    RequestsChip(g.label, filters.genre == g, { onGenre(g) })
-                                }
-                            }
-                        }
-                    }
-                    item(key = "show") {
-                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-                            RequestChipRow(title = "Show") {
-                                item(key = "s-filters") { RequestsChip("Filters", filters.narrowed, { showFilters = true }) }
-                                item(key = "s-asked") { RequestsChip("Hide what's asked for", hideAsked, { hideAsked = !hideAsked }) }
-                                item(key = "s-family") { RequestsChip("Family-friendly only", familyOnly, { familyOnly = !familyOnly }) }
-                            }
-                        }
-                    }
+                    // (Glowfin new look: Genres, Hide what's asked for and Family-friendly moved into the Filters panel)
                 }
             }
         }
@@ -2066,8 +2135,8 @@ internal fun RequestChipRow(
     }
 }
 
-/** The TV top area's height on the Requests tabs (when the screen has the room) */
-private val TOP_AREA_HEIGHT = 170.dp
+/** The TV top area's share of the screen, like Home and Movies (Glowfin new look) */
+private const val TOP_SHARE = 0.52f
 
 /** The least the top area needs for its name, info line and two lines of story */
 private val TOP_AREA_MIN = 116.dp
@@ -2965,7 +3034,7 @@ fun RequestEntry.cantFindKey(): String? {
 }
 
 /** "3 days ago" from Seerr's date text */
-private fun ago(createdAt: String?): String? =
+internal fun ago(createdAt: String?): String? =
     try {
         createdAt?.let {
             val then = OffsetDateTime.parse(it)

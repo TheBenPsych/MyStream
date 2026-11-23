@@ -49,16 +49,19 @@ B.fitDoorLogo = (box) => {
   };
   if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
 };
-B.wireDescribe = (first) => {
+// (Requests passes its own describe and art, for Seerr titles that aren't on Glowfin yet)
+B.wireDescribe = (first, opts) => {
+  opts = opts || {};
+  const describe = opts.describe || B.describe, artOf = opts.art || ((it) => B.backdrop(it, 1600));
   const top = $("#doorTop");
   if (!top) return;
   let timer, shown = null;
   const show = (it) => {
     if (!it || it === shown) return;
     shown = it;
-    $(".info", top).innerHTML = B.describe(it);
+    $(".info", top).innerHTML = describe(it);
     B.fitDoorLogo($(".info", top));
-    const src = B.backdrop(it, 1600);
+    const src = artOf(it);
     const art = $(".art", top);
     // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.
     // A new picture: the old one fades away, a short wait, then the new one fades in.

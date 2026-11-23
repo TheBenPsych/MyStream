@@ -63,13 +63,29 @@ B.showComplete = (tmdbId) => B.cached("show-here-" + tmdbId, 600000, async () =>
 });
 const asked = (r) => r.mediaInfo && (r.mediaInfo.status === 2 || r.mediaInfo.status === 3 || (r.mediaInfo.requests || []).length);
 const isAnime = (r) => (r.genreIds || []).includes(16) && (r.originalLanguage === "ja" || r.mediaType === "tv");
+// Glowfin new look (Ben 2026-11-22): where a title is at, as a coloured tag at the top and a small dot on its cover.
+// k: nyet (not on Glowfin yet), wait (asked, waiting for Ben), way (on its way), out (not out yet), bad (missing
+// episodes), here (on Glowfin). Nobody asked = no dot.
+B.rqStatus = (r) => {
+  const st = r.mediaInfo ? r.mediaInfo.status : 1;
+  const d = r.releaseDate || r.firstAirDate || "", today = new Date().toISOString().slice(0, 10);
+  const out = d && d.slice(0, 10) > today ? new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.slice(0, 4) === today.slice(0, 4) ? undefined : "numeric" }) : "";
+  if (r._missing) return { k: "bad", w: "Missing episodes", dot: true };
+  if (st === 5 || (st !== 2 && st !== 3 && libTmdb.has(r.mediaType + ":" + r.id))) return { k: "here", w: "On Glowfin", dot: true };
+  if (st === 4) return { k: "bad", w: r.mediaType === "tv" ? "Missing episodes" : "Partly on Glowfin", dot: true };
+  if (st === 2 || (st === 1 && (r.mediaInfo && (r.mediaInfo.requests || []).length))) return { k: "wait", w: B.me && B.me.admin ? "Waiting for you" : "Waiting for Ben", dot: true };
+  if (st === 3) return out ? { k: "out", w: `Out ${out} · Glowfin gets it then`, dot: true } : { k: "way", w: "On its way", dot: true };
+  if (out) return { k: "out", w: "Out " + out, dot: false };
+  return { k: "nyet", w: "Not on Glowfin yet", dot: false };
+};
 B.askCard = (r) => {
   const t = r.title || r.name || "";
   const year = (r.releaseDate || r.firstAirDate || "").slice(0, 4);
   const img = tmdbImg(r.posterPath);
   B.items["s" + r.mediaType + r.id] = r;
+  const s = B.rqStatus(r);
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
-    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${asked(r) ? '<span class="newp">Asked</span>' : r._missing ? '<span class="newp miss">Missing episodes</span>' : ""}</div>
+    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${s.dot ? `<span class="rqdot d-${s.k}" title="${esc(s.w)}"></span>` : ""}</div>
     <div class="cap">${esc(t)}<small${r._part ? ' class="rqpart"' : ""}>${esc(r._part || year)}</small></div></button>`;
 };
 // Glowfin (Ben, 2026-11-21) "Finish your sets": movies missing from film series you already own part of.
@@ -233,7 +249,18 @@ B.rqWaitingCount = async () => {
   ]);
   return ((sw && sw.results) || []).length + ((mus && mus.requests) || []).filter((r) => r.waiting).length + ((bks && bks.waiting) || []).length;
 };
-const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["manga", "Manga"], ["yours", "Your requests"]];
+const RQ_TABS = [["movies", "Movies"], ["shows", "Shows"], ["anime", "Anime"], ["music", "Music"], ["books", "Books"], ["manga", "Manga"], ["yours", "Your asks"]];
+// Glowfin new look: the top describes the request cover you point at (name, facts, coloured status tag, story)
+B.rqDescribe = (r) => {
+  if (!r) return "";
+  const t = r.title || r.name || "", year = (r.releaseDate || r.firstAirDate || "").slice(0, 4), s = B.rqStatus(r);
+  const bits = [r.mediaType === "tv" ? (isAnime(r) ? "Anime" : "Show") : isAnime(r) ? "Anime movie" : "Movie", year, r.voteAverage ? "★ " + r.voteAverage.toFixed(1) : ""].filter(Boolean);
+  const canAsk = s.k === "nyet" || (s.k === "out" && !s.dot);
+  return `<div class="dt-name"><div class="t">${esc(t)}</div></div>
+    <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div><div class="dt-tag rqtag t-${esc(s.k)}">${esc(s.w)}</div>
+    <div class="ov">${esc(r.overview || "")}</div><div class="rqhint">${canAsk ? "Click it to open it and ask for it" : "Asked already, so clicking just opens it"}</div>`;
+};
+const rqArt = (r) => tmdbImg(r && r.backdropPath, "w1280");
 const detailsAnime = (d) => ((d.genres || []).some((g) => g.id === 16) || (d.genreIds || []).includes(16)) && d.originalLanguage === "ja";
 B.route(/^\/requests/, async (m, nav) => {
   if (B.me.kids) return B.go("#/home");
@@ -242,15 +269,18 @@ B.route(/^\/requests/, async (m, nav) => {
   if (!tab) { try { tab = localStorage.getItem("bf-rq-tab"); } catch (e) { tab = null; } }
   if (!RQ_TABS.some(([k]) => k === tab) || ((tab === "books" || tab === "manga") && !B.booksTab)) tab = "movies";
   try { localStorage.setItem("bf-rq-tab", tab); } catch (e) { /* private window */ }
-  B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<div class="wrap" style="padding-bottom:4px">
-    <div class="row" style="margin-bottom:6px;align-items:center">${RQ_TABS.filter(([k]) => (k !== "books" && k !== "manga") || B.booksTab).map(([k, l]) => `<a class="chip ${k === tab ? "on" : ""}" href="#/requests?tab=${k}">${k === "yours" && B.me.admin ? "Manage" : l}</a>`).join("")}
-      <input class="field" id="rq" style="max-width:420px;padding:9px 16px;font-size:16px;border-radius:99px" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}">
-      <span class="rqtopr">${tab !== "yours" ? B.reqForHtml() : ""}${B.me.admin && tab !== "yours" ? `<a class="chip rqwait" id="rqwait" href="#/requests?tab=yours">Waiting for you <b id="rqwaitn">·</b></a>` : ""}</span>
-</div></div>
+  // Glowfin new look (Ben approved 2026-11-22): the tabs are see-through pills, then the search box, a round Filters
+  // button (Movies and Shows) and Ben's yellow Waiting pill. Movies and Shows land straight on a row; the top
+  // describes the cover you point at, with its art behind the page. For: Me lives on the Ask for it panel now.
+  const canFilter = tab === "movies" || tab === "shows";
+  B.page().innerHTML = B.top("Requests", null, { solid: false }) + `<nav class="ptabs rqtabs" aria-label="Requests places">${RQ_TABS.filter(([k]) => (k !== "books" && k !== "manga") || B.booksTab).map(([k, l]) => `<a class="${k === tab ? "on" : ""}" href="#/requests?tab=${k}"><span class="lg">${k === "yours" && B.me.admin ? "Manage" : l}</span><span class="sm">${k === "yours" ? (B.me.admin ? "Manage" : "Yours") : l}</span></a>`).join("")}
+      <span class="rqsearch">${I("search")}<input id="rq" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}"></span>
+      ${canFilter ? `<button class="rqround" id="rqfilt" title="Filters" aria-label="Filters">${I("filter")}</button>` : ""}
+      ${B.me.admin && tab !== "yours" ? `<a class="rqwaitp" id="rqwait" href="#/requests?tab=yours" hidden><b id="rqwaitn"></b> waiting</a>` : ""}
+    </nav>${canFilter ? B.doorTop() : ""}
     <div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
-  B.reqForFill(B.page());
-  if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").classList.toggle("on", n > 0); } });
+  if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").hidden = !(n > 0); } });
   if (tab === "music") return B.musicTab(nav);
   if (tab === "books") return B.booksTab(nav);
   if (tab === "manga") return B.mangaTab(nav);
@@ -287,6 +317,10 @@ B.route(/^\/requests/, async (m, nav) => {
     ? [["Action", 28], ["Adventure", 12], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Fantasy", 14], ["History", 36], ["Horror", 27], ["Mystery", 9648], ["Romance", 10749], ["Sci-Fi", 878], ["Thriller", 53], ["War", 10752], ["Western", 37]]
     : [["Action and adventure", 10759], ["Comedy", 35], ["Crime", 80], ["Documentary", 99], ["Drama", 18], ["Family", 10751], ["Kids", 10762], ["Mystery", 9648], ["Reality", 10764], ["Sci-Fi and fantasy", 10765], ["War and politics", 10768], ["Western", 37]];
   let walls = [], genre = null, ownedOpen = null;
+  // Filters panel switches (remembered in this browser): hide what's on Glowfin (on), hide what's asked for (off)
+  let filt = { owned: true, asked: false };
+  try { filt = Object.assign(filt, JSON.parse(localStorage.getItem("bf-rq-filt") || "{}")); } catch (e) { /* private window */ }
+  const saveFilt = () => { try { localStorage.setItem("bf-rq-filt", JSON.stringify(filt)); } catch (e) { /* private window */ } };
   // Top 10: a number badge on the picture's bottom corner (the name and year stay under the poster)
   let animeUi = null;
   // Anime's own side list opens Your requests / Waiting for you in a side panel (the new status lines)
@@ -315,35 +349,53 @@ B.route(/^\/requests/, async (m, nav) => {
     // Glowfin R1 (Ben 2026-11-18): rows like the TV, Top 10 to ask for (numbers fully beside the posters),
     // Coming soon, Trending, then Genres. Titles already on Glowfin stay hidden; "N more" at a row's end opens them.
     const rowsHtml = walls.map((w) => {
-      const open = ownedOpen === w.id;
-      const shown = open ? w.items.concat(w.owned) : w.items;
+      const open = ownedOpen === w.id || !filt.owned;
+      const shown = (open ? w.items.concat(w.owned) : w.items).filter((x) => !filt.asked || !asked(x));
       const cards = w.ranked
         ? shown.slice(0, 10).map((r, i) => `<div class="top10">${B.t10num(i + 1)}${B.askCard(r)}</div>`)
         : shown.map(B.askCard);
-      if (w.owned.length) cards.push(`<button class="poster see rqownedcard" data-rqowned="${esc(w.id)}">${open ? "Hide the ones already on Glowfin" : `${w.owned.length} more ${w.owned.length === 1 ? "is" : "are"} already on Glowfin ›`}</button>`);
-      return B.row(w.title, cards);
+      if (w.owned.length && filt.owned) cards.push(`<button class="poster see rqownedcard" data-rqowned="${esc(w.id)}">${open ? "Hide the ones already on Glowfin" : `${w.owned.length} more ${w.owned.length === 1 ? "is" : "are"} already on Glowfin ›`}</button>`);
+      return cards.length ? B.row(w.title, cards) : "";
     }).join("");
-    const chips = [["All", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("");
-    box.innerHTML = (rowsHtml || `<div class="wrap empty">Nothing to show right now. Try again in a minute.</div>`)
-      + `<section class="rowx"><h3>Genres</h3><div class="rqgenres rqchips">${chips}</div></section>`;
+    // (Glowfin new look: Genres and the hide switches live in the Filters panel now)
+    box.innerHTML = rowsHtml || `<div class="wrap empty">Nothing to show. Try fewer filters, or again in a minute.</div>`;
+    if (!described) {
+      described = true;
+      const first = walls[0] && walls[0].items[0];
+      B.wireDescribe(first, { describe: B.rqDescribe, art: rqArt });
+    }
   };
+  let described = false;
+  // The Filters panel (right-hand side): the two switches flip straight away, a genre fills every row with it
+  const openFilters = () => {
+    const draw = () => `<h3>Filters</h3><p class="dim">${tab === "movies" ? "Movies" : "Shows"} tab. Changes show straight away.</p>
+      <button class="opt rqsw ${filt.owned ? "on" : ""}" data-f="owned">Hide what's already on Glowfin<small>Shows with missing episodes always stay</small></button>
+      <button class="opt rqsw ${filt.asked ? "on" : ""}" data-f="asked">Hide what's already asked for<small>${filt.asked ? "On" : "Off"}</small></button>
+      <h4 class="dim" style="margin:16px 0 8px">Genre</h4>
+      <div class="rqchips">${[["Any", 0]].concat(GENRES).map(([l, id]) => `<button class="chip ${(genre ? genre[1] : 0) === id ? "on" : ""}" data-rqgenre="${id}">${esc(l)}</button>`).join("")}</div>`;
+    const p = B.side(draw());
+    p.addEventListener("click", (e) => {
+      const f = e.target.closest("[data-f]"), g = e.target.closest("[data-rqgenre]");
+      if (f) {
+        filt[f.dataset.f] = !filt[f.dataset.f];
+        saveFilt();
+        drawWall();
+      } else if (g) {
+        const id = +g.dataset.rqgenre;
+        genre = id ? GENRES.find((x) => x[1] === id) : null;
+        loadWalls();
+      } else return;
+      p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>` + draw();
+    });
+  };
+  if (canFilter) $("#rqfilt").onclick = openFilters;
   const drawRows = async () => {
     if (tab === "anime") { animeUi = B.animeRequests(nav, () => lists, openList); return; }
-    $("#rows").innerHTML = `<div class="wrap rqline" id="rqline"> </div><div id="rqrows">${B.spinner("rows")}</div>`;
+    $("#rows").innerHTML = `<div id="rqrows">${B.spinner("rows")}</div>`;
     const box = $("#rqrows");
     box.onclick = (e) => {
       const o = e.target.closest("[data-rqowned]");
-      if (o) { ownedOpen = ownedOpen === o.dataset.rqowned ? null : o.dataset.rqowned; return drawWall(); }
-      const g = e.target.closest("[data-rqgenre]");
-      if (!g) return;
-      const id = +g.dataset.rqgenre;
-      genre = id ? GENRES.find((x) => x[1] === id) : null;
-      loadWalls();
-    };
-    // The line on top: what the poster under the mouse is
-    box.onmouseover = (e) => {
-      const c = e.target.closest("[data-id]"), line = $("#rqline");
-      if (c && line && B.items[c.dataset.id]) line.textContent = B.rqAbout(B.items[c.dataset.id]);
+      if (o) { ownedOpen = ownedOpen === o.dataset.rqowned ? null : o.dataset.rqowned; drawWall(); }
     };
     await loadWalls();
   };

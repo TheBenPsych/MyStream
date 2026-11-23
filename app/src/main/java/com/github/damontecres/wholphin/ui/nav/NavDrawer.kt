@@ -770,8 +770,8 @@ fun NavDrawer(
                             .weight(1f)
                             .fillMaxWidth()
                             .padding(
-                                start = if (destination.fullBleed()) 0.dp else 16.dp,
-                                end = if (destination.fullBleed()) 0.dp else 8.dp,
+                                start = if (destination.fullBleed() && destination !is Destination.Requests) 0.dp else 16.dp,
+                                end = if (destination.fullBleed() && destination !is Destination.Requests) 0.dp else 8.dp,
                             ),
                 )
                 // Benflix music: a slim bar along the bottom while music plays

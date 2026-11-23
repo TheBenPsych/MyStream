@@ -65,6 +65,8 @@ fun Destination.underTopBar(): Boolean =
         this is Destination.ShowsDoor ||
         this is Destination.AnimeDoor ||
         this is Destination.MusicDoor ||
+        // Glowfin new look (Requests): the tabs sit in the header row and the art goes up behind them
+        this is Destination.Requests ||
         isMusicHero()
 
 /** Album, artist and playlist pages: the cover sits top right, up behind the bar (like a movie page) */
