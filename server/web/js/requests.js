@@ -71,6 +71,7 @@ B.rqStatus = (r) => {
   const d = r.releaseDate || r.firstAirDate || "", today = new Date().toISOString().slice(0, 10);
   const out = d && d.slice(0, 10) > today ? new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.slice(0, 4) === today.slice(0, 4) ? undefined : "numeric" }) : "";
   if (r._missing) return { k: "bad", w: "Missing episodes", dot: true };
+  if (r._newSeason && st !== 2 && st !== 3) return { k: "nyet", w: r._newSeason, dot: false };
   if (st === 5 || (st !== 2 && st !== 3 && libTmdb.has(r.mediaType + ":" + r.id))) return { k: "here", w: "On Glowfin", dot: true };
   if (st === 4) return { k: "bad", w: r.mediaType === "tv" ? "Missing episodes" : "Partly on Glowfin", dot: true };
   if (st === 2 || (st === 1 && (r.mediaInfo && (r.mediaInfo.requests || []).length))) return { k: "wait", w: B.me && B.me.admin ? "Waiting for you" : "Waiting for Ben", dot: true };
@@ -84,8 +85,10 @@ B.askCard = (r) => {
   const img = tmdbImg(r.posterPath);
   B.items["s" + r.mediaType + r.id] = r;
   const s = B.rqStatus(r);
+  // Glowfin new look (browser): a small Ask button on the cover your mouse is on, so you don't have to open it first
+  const canAsk = !s.dot && (s.k === "nyet" || s.k === "out") && (r.mediaType === "movie" || r.mediaType === "tv");
   return `<button class="poster askcard" data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}" title="${esc(t)}">
-    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${s.dot ? `<span class="rqdot d-${s.k}" title="${esc(s.w)}"></span>` : ""}</div>
+    <div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(t)}</span></div>`}${s.dot ? `<span class="rqdot d-${s.k}" title="${esc(s.w)}"></span>` : ""}${canAsk ? `<span class="rqqask" data-qask role="button" aria-label="Ask for ${esc(t)}">${I("plus")} Ask</span>` : ""}</div>
     <div class="cap">${esc(t)}<small${r._part ? ' class="rqpart"' : ""}>${esc(r._part || year)}</small></div></button>`;
 };
 // Glowfin (Ben, 2026-11-21) "Finish your sets": movies missing from film series you already own part of.
@@ -96,6 +99,35 @@ const haveWords = (nums) => {
   if (runs && nums.length > 2) return `${nums[0]} to ${nums[nums.length - 1]}`;
   return nums.slice(0, -1).join(", ") + " and " + nums[nums.length - 1];
 };
+// Glowfin new look (Ben approved 2026-11-22): the Shows tab's first row. Shows you've been watching with a newer
+// season out than Glowfin has, that nobody asked for yet ("Season 4 is out").
+B.newSeasons = () => B.cached("new-seasons", 1800000, async () => {
+  const eps = await B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=Episode&IsPlayed=true&Recursive=true&SortBy=DatePlayed&SortOrder=Descending&Limit=300&EnableImages=false&EnableUserData=false&EnableTotalRecordCount=false`).catch(() => ({}));
+  const ids = [...new Set((eps.Items || []).map((x) => x.SeriesId).filter(Boolean))].slice(0, 20);
+  if (!ids.length) return [];
+  const shows = ((await B.get(`/Items?userId=${B.uid()}&Ids=${ids.join(",")}&Fields=ProviderIds&EnableImages=false`).catch(() => ({}))).Items) || [];
+  const today = new Date().toISOString().slice(0, 10), out = [];
+  let i = 0;
+  const next = async () => {
+    while (i < shows.length) {
+      const sh = shows[i++], tmdb = sh.ProviderIds && sh.ProviderIds.Tmdb;
+      if (!tmdb) continue;
+      const [d, here] = await Promise.all([
+        seerr(`/tv/${tmdb}`).catch(() => null),
+        B.get(`/Shows/${sh.Id}/Seasons?userId=${B.uid()}&EnableImages=false`).catch(() => null),
+      ]);
+      if (!d || !here) continue;
+      const last = Math.max(0, ...((here.Items || []).map((x) => x.IndexNumber || 0)));
+      if (!last) continue;
+      const st = new Map(((d.mediaInfo && d.mediaInfo.seasons) || []).map((x) => [x.seasonNumber, x.status]));
+      const newer = (d.seasons || []).filter((x) => x.seasonNumber > last && x.airDate && x.airDate.slice(0, 10) <= today && (st.get(x.seasonNumber) || 1) <= 1).map((x) => x.seasonNumber).sort((a, b) => a - b);
+      if (!newer.length) continue;
+      out.push(Object.assign(d, { mediaType: "tv", _newSeason: newer.length === 1 ? `Season ${newer[0]} is out` : `Seasons ${newer[0]} to ${newer[newer.length - 1]} are out` }));
+    }
+  };
+  await Promise.all([next(), next(), next(), next()]);
+  return out;
+});
 B.finishSets = () => B.cached("finish-sets", 1800000, async () => {
   const [sets, lib] = await Promise.all([
     B.get(`/Items?userId=${B.uid()}&IncludeItemTypes=BoxSet&Recursive=true&Fields=ProviderIds&EnableImages=false&EnableUserData=false&EnableTotalRecordCount=false&Limit=200`).catch(() => ({})),
@@ -138,7 +170,7 @@ B.askPanel = async (type, id) => {
       ${d.voteAverage ? `<div class="scores"><span data-s="user"><b>${d.voteAverage.toFixed(1)}</b>TMDB</span></div>` : ""}
       <p>${esc(d.overview || "")}</p>
       ${status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Glowfin</a>`
-        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Glowfin" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
+        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-severy title="All of them now, and each new season when it comes out">Every new season from now on</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Glowfin" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
         ${status === 2 || status === 3 ? `<p>${B.rqPillHtml(status === 3 ? { k: "looking", w: "Still looking" } : { k: "asked", w: "Asked · waiting for Ben" })}</p>` : ""}
         <div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for it</button>${B.reqForHtml()}</div>`}`;
     B.reqForFill(p);
@@ -152,6 +184,9 @@ B.askPanel = async (type, id) => {
       }
       const forWho = B.reqForNow();
       await seerr("/request", "POST", body);
+      // Glowfin new look: "Every new season from now on" also has Tower ask for each new season when it comes out
+      const every = type === "tv" && $("[data-severy].on", p);
+      if (every) await B.call("POST", "api/follow-show", { tmdb: +id, name: t }).catch(() => B.toast("Asked, but Tower couldn't remember to get new seasons."));
       B.closeAll();
       B.cache["seerr-mine"] = null;
       // Ben 2026-11-22: an anime show? Offer its canon and mixed movies too (they go into the show's Specials)
@@ -162,11 +197,12 @@ B.askPanel = async (type, id) => {
       const b = e.target.closest("[data-season]");
       if (b && !b.disabled) b.classList.toggle("on");
       // All seasons / the newest season only (Redesign 2's one Ask for it panel)
-      const all = e.target.closest("[data-sall]"), last = e.target.closest("[data-slast]");
+      const all = e.target.closest("[data-sall]") || e.target.closest("[data-severy]"), last = e.target.closest("[data-slast]");
+      if (b && !b.disabled) $$("[data-severy]", p).forEach((x) => x.classList.toggle("on", false));
       if (!all && !last) return;
       const open = $$("[data-season]:not([disabled])", p);
       open.forEach((x, i) => x.classList.toggle("on", !!all || i === open.length - 1));
-      $$("[data-sall],[data-slast]", p).forEach((x) => x.classList.toggle("on", x === (all || last)));
+      $$("[data-sall],[data-slast],[data-severy]", p).forEach((x) => x.classList.toggle("on", x === (all || last)));
     });
   } catch (e) {
     p.innerHTML = `<button class="circle x" data-close>${I("x")}</button><h3>Couldn't open that</h3><p class="dim">${esc(B.say(e))}</p>`;
@@ -177,6 +213,7 @@ document.addEventListener("click", (e) => {
   if (!c) return;
   const [type, id] = c.dataset.ask.split(":");
   if (!/^(movie|tv)$/.test(type) || !id) return; // only movie:123 / tv:123 (never a song button)
+  if (e.target.closest("[data-qask]")) return B.askPanel(type, id); // the hover Ask button: ask right away
   // Movies and shows open their full title page (js/ask.js); "Ask for it" there opens this panel
   if ((type === "movie" || type === "tv") && /^\d+$/.test(id || "")) return B.go(`#/ask/${type}/${id}`);
   B.askPanel(type, id);
@@ -277,7 +314,7 @@ B.route(/^\/requests/, async (m, nav) => {
       <span class="rqsearch">${I("search")}<input id="rq" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}"></span>
       ${canFilter ? `<button class="rqround" id="rqfilt" title="Filters" aria-label="Filters">${I("filter")}</button>` : ""}
       ${B.me.admin && tab !== "yours" ? `<a class="rqwaitp" id="rqwait" href="#/requests?tab=yours" hidden><b id="rqwaitn"></b> waiting</a>` : ""}
-    </nav>${canFilter ? B.doorTop() : ""}
+    </nav>${canFilter || tab === "anime" || tab === "manga" ? B.doorTop() : tab === "music" || tab === "books" || (tab === "yours" && !B.me.admin) ? B.rqCoverTop(tab !== "music") : ""}
     <div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").hidden = !(n > 0); } });
@@ -435,6 +472,14 @@ B.route(/^\/requests/, async (m, nav) => {
     walls = walls.filter((w) => w.items.length || w.owned.length);
     drawWall();
     checkMissing(nav);
+    // Shows: "New seasons for shows you watch" goes first once it's worked out (not inside one genre)
+    if (tab === "shows" && !genre) {
+      B.newSeasons().then((items) => {
+        if (!items.length || !B.alive(nav) || genre || walls.some((w) => w.id === "newseasons")) return;
+        walls.unshift({ id: "newseasons", title: "New seasons for shows you watch", ranked: false, items, owned: [] });
+        drawWall();
+      }).catch(() => {});
+    }
     // "Finish your sets" joins after the Top 10 once it's worked out (Movies only, not inside one genre)
     if (tab === "movies" && !genre) {
       B.finishSets().then((items) => {
@@ -481,7 +526,7 @@ B.seerrNamed = async (l, tab) => {
     const md = r.media || (r.media = {});
     if (!md.tmdbId) return;
     const d = await B.cached(`seerr-${r.type}-${md.tmdbId}`, 3600000, () => seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
-    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; }
+    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; md.backdrop = d.backdropPath; md.overview = d.overview; md.year = (d.releaseDate || d.firstAirDate || "").slice(0, 4); }
   }));
   if (!tab) return items;
   return items.filter((r) => (tab === "movies" ? !r.media.anime : tab === "shows" ? !r.media.anime : r.media.anime));
@@ -554,6 +599,40 @@ B.yoursTab = async (nav) => {
   const rows = $("#rows");
   $("#rq").style.display = "none";
   if (B.me.admin) return B.manageTab(nav);
+  // Glowfin new look (Ben approved 2026-11-22): family members see Your asks as rows of covers, each with its dot,
+  // and the top says where it stands (waiting for Ben, on its way, here, or Ben said no with his reason)
+  let described = null;
+  const famTag = (r) => {
+    const md = r.media || {};
+    if (md.status === 5) return { k: "here", w: "Here now on Glowfin" };
+    if (r.status === 3) return { k: "bad", w: B.reasons["seerr:" + r.id] ? `Ben said no: ${B.reasons["seerr:" + r.id]}` : "Ben said no" };
+    if (r.status === 4) return { k: "bad", w: "Stuck · Ben will have a look" };
+    if (r.status === 1) return { k: "wait", w: `Waiting for Ben · you ${mgAgo(Date.parse(r.createdAt || "") || 0) || "asked"}` };
+    if (md.status === 4) return { k: "way", w: "On its way · partly here" };
+    return { k: "way", w: "On its way · Ben said yes" };
+  };
+  const famCard = (r) => {
+    const md = r.media || {}, key = "ya:" + r.id, tag = famTag(r);
+    B.items[key] = { title: md.title || md.name || "", facts: [r.type === "movie" ? "Movie" : "Show", md.year].filter(Boolean).join(" · "), tag, story: md.overview || "", cover: md.poster ? tmdbImg(md.poster, "w500") : "" };
+    const img = md.poster ? tmdbImg(md.poster) : "";
+    return `<button class="poster askcard" data-ask="${esc(r.type)}:${esc(md.tmdbId)}" data-id="${key}" title="${esc(B.items[key].title)}"><div class="im" ${img ? `style="background-image:url('${img}')"` : ""}>${img ? "" : `<div class="noart"><span class="nt">${esc(B.items[key].title)}</span></div>`}<span class="rqdot d-${tag.k}" title="${esc(tag.w)}"></span></div></button>`;
+  };
+  const otherCard = (l, i) => {
+    const key = "yo:" + i, k = { ready: "here", getting: "way", looking: "way", cant: "bad" }[l.pill.k] || "wait";
+    B.items[key] = { title: l.title, facts: l.sub, tag: { k, w: l.pill.w }, story: l.why || "", cover: l.cover || "" };
+    const open = l.book ? `href="#/book/${enc(l.book)}"` : "";
+    return `<a class="poster askcard" ${open} data-id="${key}" title="${esc(l.title)}"><div class="im" style="${l.square ? "aspect-ratio:1;" : ""}${l.cover ? `background-image:url('${esc(l.cover)}')` : ""}">${l.cover ? "" : `<div class="noart"><span class="nt">${esc(l.title)}</span></div>`}<span class="rqdot d-${k}" title="${esc(l.pill.w)}"></span></div></a>`;
+  };
+  const famDescribe = (it) => `<h1>${esc(it.title)}</h1><p>${esc(it.facts)}</p><span class="mtop-kick rqfam-${esc(it.tag.k)}">${esc(it.tag.w)}</span>${it.story ? `<p class="ov">${esc(it.story)}</p>` : ""}`;
+  const drawRows = (mine, others) => {
+    const newest = mine.slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const here = newest.filter((r) => (r.media || {}).status === 5), asks = newest.filter((r) => (r.media || {}).status !== 5);
+    const html = B.row("Your asks", asks.map(famCard)) + B.row("Here now from your asks", here.map(famCard)) + B.row("Songs and books you asked for", others.map(otherCard));
+    rows.innerHTML = html || `<div class="wrap empty">Nothing asked for yet. Pick a poster on any tab and ask for it.</div>`;
+    if (!described) described = B.wireRqCoverTop(famDescribe, (it) => it.cover);
+    const first = $("#rows [data-id]");
+    if (first && described) described(B.items[first.dataset.id]);
+  };
   const draw = async () => {
     const me = await B.seerrMe();
     const [seerrMine, seerrWaiting, mus, bks] = await Promise.all([
@@ -570,15 +649,16 @@ B.yoursTab = async (nav) => {
     ((mus && mus.requests) || []).forEach((r) => {
       const o = { title: r.title, sub: [B.me.admin ? r.who : "", r.artist, r.kind].filter(Boolean).join(" · "), cover: r.cover, square: true, pill: B.musicPill(r), why: r.why || "" };
       if (B.me.admin && r.waiting) wait.push(Object.assign(o, { who: r.who || "", acts: `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>` }));
-      else lines.push(Object.assign(o, { acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
+      else lines.push(Object.assign(o, { other: "music", acts: r.can_retry && B.me.admin ? `<button class="btn small" data-mretry="${esc(r.id)}">Try again</button>` : "" }));
     });
     if (bks) {
       const bw = new Set((bks.waiting || []).map((r) => r.id));
       const all = (B.me.admin ? [].concat(bks.mine || [], bks.others || []) : bks.mine || []).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i && !bw.has(r.id));
       const line = (r) => ({ title: r.name, sub: [B.me.admin ? r.who : "", r.author, (r.types || []).join(" and ")].filter(Boolean).join(" · "), cover: r.cover, pill: B.bookPill(r) });
-      all.forEach((r) => lines.push(Object.assign(line(r), { acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
+      all.forEach((r) => lines.push(Object.assign(line(r), { other: "book", book: r.state === "ready" && r.title ? r.title : "", acts: r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : "" })));
       if (B.me.admin) (bks.waiting || []).forEach((r) => wait.push(Object.assign(line(r), { who: r.who || "", acts: `<button class="btn small white" data-byes="${esc(r.id)}">Yes</button><button class="btn small" data-bno="${esc(r.id)}">No</button>` })));
     }
+    if (!B.me.admin) return drawRows(mine, lines.filter((l) => l.other));
     rows.innerHTML = `<div class="wrap">${B.me.admin ? `<p style="margin:0 0 12px"><button class="btn small" data-autoyes>Auto-yes for people you trust</button></p>` : ""}${B.me.admin && wait.length ? `<h3 class="section-title">Waiting for you <span class="rqpill p-looking">${wait.length}</span></h3>${B.rqLines(wait, false, "")}` : ""}
       ${B.rqLines(lines, true, "Nothing asked for yet. Pick a poster on any tab and ask for it.")}</div>`;
   };
@@ -670,6 +750,8 @@ B.manageTab = async (nav) => {
         kind: md.anime ? "Anime" : r.type === "movie" ? "Movies" : "Shows",
         what: r.type === "movie" ? "Movie" : seasons.length === 1 ? "Season " + seasons[0] : seasons.length ? seasons.length + " seasons" : "Show",
         cover: md.poster ? tmdbImg(md.poster, "w185") : "", type: r.type, tmdb: md.tmdbId,
+        art: md.backdrop ? tmdbImg(md.backdrop, "w1280") : md.poster ? tmdbImg(md.poster, "w500") : "", story: md.overview || "", year: md.year || "",
+        said: r.status === 2 || r.status === 5 || md.status === 5,
         pill: l === "stuck" ? { k: "looking", w: r.status === 4 ? "Stuck · couldn't start" : `Stuck · day ${days + 1}` } : l === "no" ? { k: "cant", w: "You said no" } : l === "needs" ? { k: "asked", w: "Waiting for you" } : B.seerrPill(r),
         why: l === "no" && B.reasons["seerr:" + r.id] ? `Why: ${B.reasons["seerr:" + r.id]}` : "",
       });
@@ -710,6 +792,22 @@ B.manageTab = async (nav) => {
     <div class="grow"><div class="t">${esc(r.title)}</div><div class="mg-meta">${B.picHtml({ name: r.who })}<b>${esc(r.who)}</b><span>${esc([r.what, mgAgo(r.at)].filter(Boolean).map((x) => "· " + x).join(" "))}</span>${B.rqPillHtml(r.pill)}</div>
     ${r.why || holds[r.key] ? `<div class="mg-why">${esc(r.why || holds[r.key])}</div>` : ""}</div>
     <div class="acts">${acts(r)}</div></div>`;
+  // Glowfin new look (Ben approved 2026-11-22): the request you're on fills the right side with its art, who asked
+  // and when, and why it's stuck (wide screens; phones keep the list only)
+  let onKey = null;
+  const side = (r) => {
+    const box = $("#mgSide");
+    if (!box) return;
+    if (!r) { box.innerHTML = ""; return; }
+    const tagK = { needs: "wt", way: "ow", stuck: "bad", ready: "ok", no: "bad" }[r.lane];
+    const tagW = r.lane === "needs" ? `${r.who} ${mgAgo(r.at) || "asked"}` : r.pill ? r.pill.w : "";
+    const why = r.why || holds[r.key] || (r.lane === "stuck" && r.src === "seerr" ? "Why: no copies found yet. Tower keeps looking." : "");
+    const whoLine = r.lane === "needs" ? "" : [r.who + " " + (mgAgo(r.at) || "asked"), r.said ? "you said yes" : ""].filter(Boolean).join(" · ");
+    box.innerHTML = `<div class="mg-art" style="${r.art || r.cover ? `background-image:url('${esc(r.art || r.cover)}')` : ""}"></div>
+      <h2>${esc(r.title)}</h2><p class="mg-facts">${esc([r.what, r.year].filter(Boolean).join(" · "))}</p>
+      <span class="rqtag ${tagK}">${esc(tagW)}</span>${why ? `<p class="mg-sidewhy">${esc(why.startsWith("Why") ? why : "Why: " + why)}</p>` : ""}
+      ${whoLine ? `<p class="dim">${esc(whoLine)}</p>` : ""}${r.story ? `<p class="mg-story">${esc(r.story)}</p>` : ""}`;
+  };
   const draw = () => {
     const vis = shown(), list = vis.filter((r) => r.lane === lane);
     const people = Array.from(new Set(all.map((r) => r.who))).sort((a, b) => a.localeCompare(b));
@@ -724,7 +822,8 @@ B.manageTab = async (nav) => {
       <div class="mg-bar mg-filters"><button class="mg-face all ${who ? "" : "on"}" data-who="">Everyone</button>${people.map((n) => `<button class="mg-face ${who === n ? "on" : ""}" data-who="${esc(n)}">${B.picHtml({ name: n })}${esc(n)} <i>${openOf(n)}</i></button>`).join("")}
         ${kinds.length > 1 ? `<span class="mg-sep"></span><button class="chip ${kind ? "" : "on"}" data-kind="">All</button>${kinds.map((k) => `<button class="chip ${kind === k ? "on" : ""}" data-kind="${k}">${k}</button>`).join("")}` : ""}
         <span class="sp"></span><button class="chip" data-autoyes>Auto-yes ›</button></div>
-      ${bulk}<div class="list mg-list">${list.map(line).join("") || `<div class="item"><div class="grow dim">${esc(who || kind ? "Nothing here with these filters." : empty)}</div></div>`}</div></div>`;
+      ${bulk}<div class="mg-split"><div class="list mg-list">${list.map(line).join("") || `<div class="item"><div class="grow dim">${esc(who || kind ? "Nothing here with these filters." : empty)}</div></div>`}</div><aside class="mg-side" id="mgSide"></aside></div></div>`;
+    side(list.find((r) => r.key === onKey) || list[0]);
     // Stuck rows say why (Radarr / Sonarr, at home only); the line arrives a moment after the row
     if (lane === "stuck") list.filter((r) => r.src === "seerr" && r.tmdb && !(r.key in holds)).slice(0, 12).forEach((r) => {
       holds[r.key] = "";
@@ -753,6 +852,15 @@ B.manageTab = async (nav) => {
     return (a && a.message) || "Looking again.";
   };
   const reload = async () => { await load(); if (B.alive(nav) && !$(".modal")) draw(); };
+  const pointAt = (e) => {
+    const row = e.target.closest(".mg-list [data-key]");
+    if (!row || row.dataset.key === onKey) return;
+    onKey = row.dataset.key;
+    side(all.find((r) => r.key === onKey));
+  };
+  rows.addEventListener("mouseover", pointAt);
+  rows.addEventListener("focusin", pointAt);
+  B.onLeave(() => { rows.removeEventListener("mouseover", pointAt); rows.removeEventListener("focusin", pointAt); });
   rows.onclick = (e) => {
     if (e.target.closest("[data-autoyes]")) return B.autoYes();
     const t = e.target.closest("[data-lane]");
@@ -834,14 +942,44 @@ const songCard = (s, n) => `<div class="pvcard">${B.previewBtn(s.id, "on-card")}
   <div class="cap">${n ? n + ". " : ""}${esc(s.title)}<small>${esc(s.asked ? B.musicPill({ words: s.asked }).w : s.have ? "Ready to play" : s.artist)}</small></div></button></div>`;
 const artistCard = (a) => `<button class="poster" data-mopen="artist:${a.id}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div></button>`;
 
+// Glowfin new look (Requests > Music and Books, Ben approved 2026-11-22): the cover you point at stands at the top
+// right with its own colours glowing behind the page, its name, facts and status on the left (like the Music tab)
+B.rqCoverTop = (tall) => B.coverGlowHtml() + `<section class="mtop rqctop${tall ? " tall" : ""}" id="rqTop"><div class="art"></div><div class="info"></div></section>`;
+B.wireRqCoverTop = (describe, coverOf) => {
+  const top = $("#rqTop");
+  if (!top) return () => {};
+  let timer, shown = null;
+  const show = (it) => {
+    if (!it || it === shown) return;
+    shown = it;
+    $(".info", top).innerHTML = describe(it);
+    const c = coverOf(it), art = $(".art", top);
+    art.classList.remove("on");
+    art.innerHTML = c ? `<span class="one" style="background-image:url('${esc(c)}')"></span>` : "";
+    B.coverGlow(c || null);
+    requestAnimationFrame(() => art.classList.add("on"));
+  };
+  const pointAt = (e) => {
+    const card = e.target.closest("#rows [data-id]");
+    if (!card || !B.items[card.dataset.id]) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => show(B.items[card.dataset.id]), shown ? 350 : 0);
+  };
+  B.page().addEventListener("mouseover", pointAt);
+  B.page().addEventListener("focusin", pointAt);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+  B.wireCoverGlow();
+  return show;
+};
+B.rqPillsRow = (title, pills) => `<section class="rowx"><h3>${esc(title)}</h3><div class="row rqpillrow">${pills.join("")}</div></section>`;
 // Redesign 2: Music sits on the same side list and wall as the other tabs. Grown-up family profiles can ask
 // too; their song and album asks wait for Ben's Approve before anything downloads.
 B.musicTab = async (nav) => {
   const admin = B.me.admin;
   $("#rq").placeholder = "Search any song, album or artist";
   const rows = $("#rows");
-  rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner("wall")}</div></div>`;
-  let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, ownedOpen = null;
+  rows.innerHTML = `<div id="mfound"></div><div id="msplit">${B.spinner("rows")}</div>`;
+  let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, described = null;
   // Ben 2026-11-15: Top 100, then Trending (one list per genre), then a few "Because you have <song>" lists that
   // Tower picks again every time the page opens, then More.
   const lists = () => {
@@ -865,39 +1003,59 @@ B.musicTab = async (nav) => {
     acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>`
       : `${r.can_retry && admin ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button>`,
   });
+  // Glowfin new look (Ben approved 2026-11-22): Music lands straight on rows of square covers. Top 100 songs (the
+  // first ten numbered), Trending in each genre, Because you have, New this week, Editors' picks, Artists (round),
+  // then Genres and Bring in a playlist (Ben) pills, and Your music asks. Your asks and the playlist tools open in
+  // place of the rows, with a Back pill.
+  const tagged = (html, key, it) => { B.items[key] = it; return html.replace('<button class="poster"', `<button class="poster" data-id="${key}"`); };
+  const mSong = (x) => tagged(songCard(x), "mus:" + x.id, Object.assign({ _k: "song" }, x));
+  const mAlbum = (x) => tagged(albumCard(x), "mal:" + x.id, Object.assign({ _k: "album" }, x));
+  const mArtist = (x) => tagged(artistCard(x), "mar:" + x.id, Object.assign({ _k: "artist" }, x));
+  const describe = (it) => {
+    const len = it.seconds ? `${Math.floor(it.seconds / 60)}:${String(it.seconds % 60).padStart(2, "0")}` : "";
+    const facts = it._k === "song" ? [it.artist, it.album, len] : it._k === "album" ? [it.artist, it.year, it.type === "single" ? "Single" : it.type === "ep" ? "EP" : "Album"] : ["Artist"];
+    const tag = it._k === "artist" ? "Click to see their songs and albums" : it.have ? "In your music" : it.asked ? B.musicPill({ words: it.asked }).w : it._k === "song" ? "Click to hear 30 seconds and ask" : "Not in your music yet";
+    return `<h1>${esc(it.title || it.name || "")}</h1><p>${esc(facts.filter(Boolean).join(" · "))}</p><span class="mtop-kick">${esc(tag)}</span>`;
+  };
+  const coverOf = (it) => it.cover || it.picture || "";
   const draw = () => {
-    const side = $("#mside"), wall = $("#mwall");
-    if (!side || !wall) return;
-    const ls = lists();
+    const box = $("#msplit");
+    if (!box) return;
     const reqs = (st && st.requests) || [];
     const waiting = admin ? reqs.filter((r) => r.waiting) : [];
     const mine = reqs.filter((r) => !admin || !r.waiting);
-    const cur = picked === "yours" || picked === "waiting" ? null : ls.find((l) => l.id === picked) || ls[0];
-    side.innerHTML = B.rqSide(ls, cur ? cur.id : picked, mine.length, admin ? waiting.length : null);
     const notes = ((admin && st && st.problems) || []).map((p) => `<div class="note yellow">${esc(p)}</div>`).join("");
+    const back = `<div class="wrap" style="padding-bottom:0"><button class="chip" data-rqpick="">${B.I("left")} Back to music</button></div>`;
     if (picked === "yours" || picked === "waiting") {
       const w = picked === "waiting";
-      wall.innerHTML = notes + `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? waiting.length : mine.length}</span></div>`
+      box.innerHTML = back + `<div class="wrap">${notes}<div class="rqhead"><b>${w ? "Waiting for you" : "Your music asks"}</b><span>${w ? waiting.length : mine.length}</span></div>`
         + (w || admin ? "" : `<p class="dim">Ben says yes before anything downloads.</p>`)
-        + B.rqLines((w ? waiting : mine).map((r) => reqLine(r, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a song or album and ask for it.");
+        + B.rqLines((w ? waiting : mine).map((r) => reqLine(r, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a song or album and ask for it.") + "</div>";
       return;
     }
-    if (!disc) { wall.innerHTML = notes + B.spinner("wall"); return; }
-    if (!cur) { wall.innerHTML = notes + `<div class="empty">Nothing to show right now. Try again in a minute.</div>`; return; }
-    if (cur.id === "playlist") { wall.innerHTML = notes + `<div id="mstatus">${B.spinner()}</div>`; drawTools(); return; }
-    let cards = [], owned = 0;
-    if (cur.songs) {
-      owned = cur.songs.filter((x) => x.have).length;
-      const shown = ownedOpen === cur.id ? cur.songs : cur.songs.filter((x) => !x.have);
-      cards = shown.map((x) => songCard(x));
-    } else if (cur.albums) cards = cur.albums.map(albumCard);
-    else if (cur.genres) cards = cur.genres.map(genreCard);
-    wall.innerHTML = notes + `<div class="rqline" id="mline"> </div>${B.rqGrid(cards, !!(cur.ranked && cur.songs), "sq")}${B.rqOwned(owned, ownedOpen === cur.id)}`;
+    if (picked === "playlist") { box.innerHTML = back + `<div class="wrap">${notes}<div id="mstatus">${B.spinner()}</div></div>`; drawTools(); return; }
+    if (!disc) { box.innerHTML = notes + B.spinner("rows"); return; }
+    const songsRow = (l) => {
+      const left = l.songs.filter((x) => !x.have);
+      return B.row(l.title, l.ranked ? left.map((x, i) => (i < 10 ? `<div class="top10">${B.t10num(i + 1)}${mSong(x)}</div>` : mSong(x))) : left.map(mSong));
+    };
+    const ls = lists();
+    box.innerHTML = notes + ls.filter((l) => l.songs).map(songsRow).join("")
+      + B.row("New this week", (disc.new || []).map(mAlbum)) + B.row("Editors' picks", (disc.picks || []).map(mAlbum))
+      + B.row("Artists", (disc.artists || []).map(mArtist))
+      + ((disc.genres || []).length ? B.rqPillsRow("Genres", disc.genres.map((g) => `<button class="chip" data-mgenre="${g.id}">${esc(g.name)}</button>`)) : "")
+      + (admin ? B.rqPillsRow("Bring in a playlist", [`<button class="chip on" data-rqpick="playlist">Bring in a playlist ›</button>`]) : "")
+      + B.rqPillsRow("Your music asks", [`<button class="chip" data-rqpick="yours">Asked for <b>${mine.length}</b></button>`].concat(admin ? [`<button class="chip" data-rqpick="waiting">Waiting for you <b>${waiting.length}</b></button>`] : []));
+    if (!described) {
+      described = B.wireRqCoverTop(describe, coverOf);
+      const first = $("#msplit [data-id]");
+      if (first) described(B.items[first.dataset.id]);
+    }
   };
   const drawDiscover = async (again) => {
     if (!disc || again) {
       const old = disc;
-      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mwall").innerHTML = `<p class="dim">Couldn't load what's popular right now. ${esc(B.say(e))}</p>`; return; }
+      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#msplit").innerHTML = `<div class="wrap"><p class="dim">Couldn't load what's popular right now. ${esc(B.say(e))}</p></div>`; return; }
       // Tower picks new "Because you have" songs on every look: after an ask keep the lists on screen as they were
       // (the list you were in used to change under you), with the song just asked for marked
       if (again && old && old.because) disc.because = old.because;
@@ -1011,13 +1169,8 @@ B.musicTab = async (nav) => {
   // One click handler for the whole page and its side panels
   const onClick = (e) => {
     if (!B.alive(nav)) return document.removeEventListener("click", onClick);
-    const pick = e.target.closest("#mside [data-rqpick]");
-    if (pick) { picked = pick.dataset.rqpick; return draw(); }
-    if (e.target.closest("#mwall [data-rqowned]")) {
-      const cur = lists().find((l) => l.id === picked) || lists()[0];
-      ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
-      return draw();
-    }
+    const pick = e.target.closest("#msplit [data-rqpick]");
+    if (pick) { picked = pick.dataset.rqpick || null; return draw(); }
     const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mback],[data-mgenre],[data-mretry],[data-mremove],[data-myes],[data-mno],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
     if (!b) return;
     const d = b.dataset;
@@ -1062,13 +1215,6 @@ B.musicTab = async (nav) => {
   };
   document.addEventListener("click", onClick);
   B.onLeave(() => document.removeEventListener("click", onClick));
-  // The line above the wall: the song or album under the mouse
-  const onOver = (e) => {
-    const c = e.target.closest("#mwall .poster"), line = $("#mline");
-    if (c && line) line.textContent = c.getAttribute("title") || " ";
-  };
-  document.addEventListener("mouseover", onOver);
-  B.onLeave(() => document.removeEventListener("mouseover", onOver));
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 400); };
   B.every(10000, () => { if (!searching) loadStatus(); });
@@ -1081,13 +1227,12 @@ B.musicTab = async (nav) => {
 };
 
 // ---------- Anime tab (Ben's anime Requests design, 2026-11-12) ----------
-// Requests layout C with anime ways in: This season (opens here), Top 10 this week, This week's calendar,
-// Find by feel, Mix and match tags, Hidden gems, Finished and dubbed, Movies, Coming next season.
+// Glowfin new look (2026-11-23): rows (This season first), see the note above draw() below.
 // Lists come from AniList (first seasons only, nothing adult); a poster opens its Requests page, found by name.
 // Shows already on Benflix are left out, with a small "12 already on Benflix" note.
 B.animeRequests = (nav, getLists, openList) => {
   const SHOWS = ["TV", "TV_SHORT", "ONA"];
-  const CARD = "id idMal format status episodes popularity averageScore meanScore isAdult genres seasonYear title { english romaji native } synonyms startDate { year } coverImage { large medium } nextAiringEpisode { episode } relations { edges { relationType node { id format } } }";
+  const CARD = "id idMal format status episodes popularity averageScore meanScore isAdult genres seasonYear title { english romaji native } synonyms startDate { year } coverImage { large medium } bannerImage description(asHtml: false) nextAiringEpisode { episode } relations { edges { relationType node { id format } } }";
   const LIST_Q = `query ($page: Int, $sort: [MediaSort], $season: MediaSeason, $seasonYear: Int, $status: MediaStatus, $formats: [MediaFormat], $genres: [String], $tags: [String], $noGenres: [String], $noTags: [String], $scoreOver: Int, $popUnder: Int, $popOver: Int) {
     Page(page: $page, perPage: 50) { pageInfo { hasNextPage }
       media(type: ANIME, isAdult: false, sort: $sort, season: $season, seasonYear: $seasonYear, status: $status, format_in: $formats, genre_in: $genres, genre_not_in: $noGenres, tag_in: $tags, tag_not_in: $noTags, minimumTagRank: 50, averageScore_greater: $scoreOver, popularity_lesser: $popUnder, popularity_greater: $popOver) { ${CARD} } } }`;
@@ -1099,8 +1244,6 @@ B.animeRequests = (nav, getLists, openList) => {
     ["Romance", "Love stories", "#FF8FB1", { genres: ["Romance"] }], ["Sports", "Teams and matches", "#FFB547", { genres: ["Sports"] }],
     ["Mecha", "Giant robots", "#7AA7FF", { genres: ["Mecha"] }], ["Mystery", "Puzzles, twists", "#3DD6C6", { genres: ["Mystery"] }],
     ["Horror", "Creepy, dark", "#9B7B7B", { genres: ["Horror"] }], ["Comedy", "Just funny", "#F2D65B", { genres: ["Comedy"] }], ["Fantasy", "Magic, quests", "#8FB8FF", { genres: ["Fantasy"] }]];
-  const SIDE = [["season", "This season"], ["top", "Top 10 this week"], ["week", "This week"], ["feel", "Find by feel"], ["tags", "Mix and match tags"],
-    ["gems", "Hidden gems"], ["dubbed", "Finished and dubbed"], ["movies", "Movies"], ["next", "Coming next season"]];
   const cleanName = (t) => String(t || "").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]/gu, "");
   // Ben 2026-11-18: "Slime Season 2" belongs to the show "Slime" (same as the app's AniListService.seasonBase)
   const SEASON_TAIL = /[\s:,\-]*\(?\s*\b(?:(?:season|part|cour)\s*(?:\d+|[ivx]+)|\d+(?:st|nd|rd|th)\s+season|(?:second|third|fourth|fifth|sixth|final)\s+season)\s*\)?\s*$/i;
@@ -1118,7 +1261,8 @@ B.animeRequests = (nav, getLists, openList) => {
     const named = titlesOf(m).some((t) => seasonBase(t));
     const later = SHOWS.includes(m.format) && ((m.relations && m.relations.edges) || []).some((e) => e.relationType === "PREQUEL" && e.node && (SHOWS.includes(e.node.format) || named));
     return { id: m.id, idMal: m.idMal, titles: titlesOf(m), format: m.format, year: (m.startDate && m.startDate.year) || m.seasonYear, score: m.averageScore || m.meanScore,
-      episodes: m.episodes, next: m.nextAiringEpisode && m.nextAiringEpisode.episode, status: m.status, cover: m.coverImage && (m.coverImage.large || m.coverImage.medium), later };
+      episodes: m.episodes, next: m.nextAiringEpisode && m.nextAiringEpisode.episode, status: m.status, cover: m.coverImage && (m.coverImage.large || m.coverImage.medium), later,
+      banner: m.bannerImage || null, story: String(m.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
   };
   const seasonOf = (d) => { const mo = d.getMonth() + 1; return [mo === 12 || mo <= 2 ? "WINTER" : mo <= 5 ? "SPRING" : mo <= 8 ? "SUMMER" : "FALL", mo === 12 ? d.getFullYear() + 1 : d.getFullYear()]; };
   const ORDER = ["WINTER", "SPRING", "SUMMER", "FALL"];
@@ -1129,13 +1273,25 @@ B.animeRequests = (nav, getLists, openList) => {
   const asks = {
     season: (i) => ({ key: "season-" + SEASONS[i].join("-"), season: SEASONS[i][0], seasonYear: SEASONS[i][1], formats: SHOWS }),
     top: () => ({ key: "top", sort: ["TRENDING_DESC"], formats: SHOWS.concat("MOVIE"), pages: 1 }),
+    trending: () => ({ key: "trending-anilist", sort: ["TRENDING_DESC"], formats: SHOWS, pages: 2 }),
+    mal: () => ({ key: "trending-mal", mal: true }),
     gems: () => ({ key: "gems", sort: ["SCORE_DESC"], formats: SHOWS.concat("MOVIE"), scoreOver: 79, popUnder: 50000, popOver: 2000 }),
     dubbed: () => ({ key: "finished", status: "FINISHED", formats: SHOWS, pages: 4 }),
     movies: () => ({ key: "movies", formats: ["MOVIE"] }),
     next: () => { const n = step(NOW, 1); return { key: "next-" + n.join("-"), season: n[0], seasonYear: n[1], formats: SHOWS.concat("MOVIE") }; },
     feel: (f) => Object.assign({ key: "feel-" + f[0], formats: SHOWS.concat("MOVIE") }, f[3], { noGenres: (f[3].noGenres || []).concat("Ecchi") }),
   };
-  const load = (a) => B.cached("anime-req-" + a.key, 6 * 3600000, async () => {
+  // Glowfin new look (Ben 2026-11-22): Trending on MyAnimeList too (Jikan's top anime airing now), matched to AniList cards
+  const malTrending = () => B.cached("anime-req2-trending-mal", 6 * 3600000, async () => {
+    const r = await fetch("https://api.jikan.moe/v4/top/anime?filter=airing&limit=25");
+    if (!r.ok) throw new Error("MyAnimeList " + r.status);
+    const mal = ((await r.json()).data || []).map((x) => x.mal_id).filter(Boolean);
+    if (!mal.length) return [];
+    const p = (await al(`query ($ids: [Int]) { Page(page: 1, perPage: 50) { media(type: ANIME, isAdult: false, idMal_in: $ids) { ${CARD} } } }`, { ids: mal })).Page;
+    const by = new Map(((p && p.media) || []).map(cardOf).filter(Boolean).map((c) => [c.idMal, c]));
+    return mal.map((id) => by.get(id)).filter(Boolean);
+  });
+  const load = (a) => a.mal ? malTrending() : B.cached("anime-req2-" + a.key, 6 * 3600000, async () => {
     const out = [];
     for (let page = 1; page <= (a.pages || 2); page++) {
       const v = { page, sort: a.sort || ["POPULARITY_DESC"], noGenres: (a.noGenres || []).concat("Hentai") };
@@ -1212,14 +1368,8 @@ B.animeRequests = (nav, getLists, openList) => {
     await Promise.all([next(), next(), next()]);
   };
 
-  let pick = "season", seasonI = 0, feel = null, must = [], leave = [], own = null, dub = null, tags = null;
-  const wall = () => $("#rqwall"), side = () => $("#rqside");
-  const drawSide = () => {
-    const l = getLists();
-    // Glowfin R1: the anime ways in as chips across the top (Your requests and Waiting for you are on the top line)
-    side().innerHTML = SIDE.map(([k, t]) => `<button class="chip ${k === pick ? "on" : ""}" data-an-pick="${k}">${esc(t)}</button>`).join("");
-    void l;
-  };
+  let feel = null, must = [], leave = [], own = null, dub = null, tags = null;
+
   const badge = (c) => {
     const bits = [];
     if (c.score) bits.push(`<span class="anb anb-score">${(c.score / 10).toFixed(1)}</span>`);
@@ -1237,121 +1387,142 @@ B.animeRequests = (nav, getLists, openList) => {
       <div class="im" ${c.cover ? `style="background-image:url('${esc(c.cover)}')"` : ""}>${c.cover ? "" : `<div class="noart"><span class="nt">${esc(c.titles[0] || "")}</span></div>`}${c._missing ? '<span class="newp miss">Missing episodes</span>' : ""}${badge(c)}${rank ? `<span class="rqrank anb-rank">${rank}</span>` : c.format === "MOVIE" ? '<span class="anb anb-kind">Movie</span>' : ""}</div>
       <div class="cap">${esc(c.titles[0] || "")}<small>${esc(airing(c) || c.year || "")}</small></div></button>`;
   };
-  const head = (title, note, extra) => `${extra || ""}<div class="rqhead"><b>${esc(title)}</b><span>${esc(note || "")}</span></div>`;
-  const showWall = async (a, title, note, opts) => {
+  // Glowfin new look (Ben approved 2026-11-22): Anime lands straight on a row, like Movies and Shows. The top
+  // describes the anime you point at, with its AniList banner behind. Rows: This season, Top 10 this week, This
+  // week in anime, Trending on AniList, Trending on MyAnimeList, Moods (pills, with that mood's row under them),
+  // Mix and match tags, Finished and dubbed, Hidden gems, Anime movies, Coming next season, Last season.
+  const anDescribe = (c) => {
+    if (!c) return "";
+    const bits = [c.format === "MOVIE" ? "Anime movie" : "Anime", c.year, c.format !== "MOVIE" && c.episodes ? c.episodes + " episodes" : "",
+      dub && dub.size ? (c.idMal && dub.has(c.idMal) ? "Sub+Dub" : "Sub") : "", c.score ? "AniList " + c.score + "%" : ""].filter(Boolean);
+    const air = airing(c);
+    return `<div class="dt-name"><div class="t">${esc(c.titles[0] || "")}</div></div>
+      <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>
+      <div class="row" style="gap:8px">${c._missing ? '<div class="dt-tag rqtag t-nyet">Missing episodes</div>' : '<div class="dt-tag rqtag t-nyet">Not on Glowfin yet</div>'}${air ? `<div class="dt-tag rqtag t-way">Airing now · ${esc(air)}</div>` : ""}</div>
+      <div class="ov">${esc(c.story || "")}</div><div class="rqhint">Click it to open it and ask for it</div>`;
+  };
+  const anArt = (c) => (c && (c.banner || c.cover)) || "";
+  const card = (c, rank, caption) => {
+    B.items["an:" + c.id] = c;
+    const html = poster(c, 0).replace('<button class="poster ancard"', `<button class="poster ancard" data-id="an:${c.id}"`);
+    const withCap = caption ? html.replace(/<small>[^<]*<\/small>/, `<small>${esc(caption)}</small>`) : html;
+    return rank ? `<div class="top10">${B.t10num(rank)}${withCap}</div>` : withCap;
+  };
+  const rowBox = (key) => `<div id="anr-${key}">${""}</div>`;
+  const fillRow = async (key, a, title, note, opts) => {
     opts = opts || {};
-    const w = wall();
-    w.innerHTML = head(title, note, opts.top) + B.spinner("wall");
+    const box = $("#anr-" + key);
+    if (!box) return;
+    box.innerHTML = `<section class="rowx"><h3>${esc(title)}</h3>${B.spinner()}</section>`;
     let items;
     try { items = await load(a); } catch (e) {
-      if (!B.alive(nav) || wall() !== w) return;
-      w.innerHTML = head(title, note, opts.top) + `<div class="empty">These didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div>`;
+      if (box.isConnected) box.innerHTML = `<section class="rowx"><h3>${esc(title)}</h3><div class="wrap empty">These didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div></section>`;
       return;
     }
-    if (!B.alive(nav) || wall() !== w || w.dataset.at !== opts.at) return;
+    if (!B.alive(nav) || !box.isConnected) return;
     if (opts.keep) items = items.filter(opts.keep);
     const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
-    w.innerHTML = head(title, [note, here ? `${here} already on Glowfin` : ""].filter(Boolean).join(" · "), opts.top)
-      + (shown.length ? B.rqGrid(shown.map((c) => poster(c, 0)), !!opts.ranked) : `<div class="empty">${here ? "You already have all of these on Glowfin." : "Nothing here right now."}</div>`);
+    const list = opts.ranked ? shown.slice(0, 10) : shown;
+    if (opts.onShown) opts.onShown(list);
+    const name = title + (note || here ? ` <span class="dim" style="font-size:.7em;font-weight:500">${esc([note, here ? `${here} already on Glowfin` : ""].filter(Boolean).join(" · "))}</span>` : "");
+    box.innerHTML = list.length
+      ? B.row(title, list.map((c, i) => card(c, opts.ranked ? i + 1 : 0))).replace(`<h3>${esc(title)}`, `<h3>${name}`)
+      : `<section class="rowx"><h3>${name}</h3><div class="wrap empty">${here ? "You already have all of these on Glowfin." : "Nothing here right now."}</div></section>`;
+    if (!described && list[0] && key === "season") { described = true; B.wireDescribe(list[0], { describe: anDescribe, art: anArt }); }
     if (here && !opts.ranked) {
-      let grid = $(".grid", w);
-      if (!grid) { grid = document.createElement("div"); grid.className = "grid"; }
-      const live = () => B.alive(nav) && wall() === w && w.dataset.at === opts.at;
-      bringBackMissing(items.filter((c) => has(own, c)), grid, () => { if (live() && !grid.isConnected) { const e = $(".empty", w); if (e) e.replaceWith(grid); } return live(); });
+      const strip = $(".strip", box);
+      if (strip) bringBackMissing(items.filter((c) => has(own, c)), strip, () => B.alive(nav) && strip.isConnected);
     }
   };
-  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  const showWeek = async () => {
-    const w = wall(), at = w.dataset.at;
-    w.innerHTML = head("This week in anime", "New episodes by day, for shows you don't have yet") + B.spinner();
+  const fillWeek = async () => {
+    const box = $("#anr-week");
+    if (!box) return;
+    const title = "This week in anime";
+    box.innerHTML = `<section class="rowx"><h3>${title}</h3>${B.spinner()}</section>`;
     let all;
     try { all = await week(); } catch (e) {
-      if (wall() === w && w.dataset.at === at) w.innerHTML = head("This week in anime", "") + `<div class="empty">The calendar didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div>`;
+      if (box.isConnected) box.innerHTML = `<section class="rowx"><h3>${title}</h3><div class="wrap empty">The calendar didn't load. AniList may be busy. <button class="btn small" data-an-retry>Try again</button></div></section>`;
       return;
     }
-    if (!B.alive(nav) || w.dataset.at !== at) return;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const days = [0, 1, 2, 3, 4, 5, 6].map((n) => new Date(today.getTime() + n * 86400000));
-    const by = {};
-    let here = new Set();
-    all.forEach((a) => {
-      if (has(own, a.card)) { here.add(a.card.id); return; }
-      const k = dayKey(new Date(a.at * 1000));
-      const l = by[k] || (by[k] = []);
-      if (!l.some((x) => x.card.id === a.card.id)) l.push(a);
-    });
-    const name = (d, i) => i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" }) + " " + d.getDate();
-    const time = (a) => new Date(a.at * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
-    const row = (a) => { B.animeCards[a.card.id] = a.card; return `<div class="anep"><button class="anep-open" data-an="${a.card.id}"><span class="pic" ${a.card.cover ? `style="background-image:url('${esc(a.card.cover)}')"` : ""}></span><span class="t"><b>${esc(a.card.titles[0] || "")}</b><small>Ep ${a.ep} · ${esc(time(a))}${a.card.score ? " · AniList " + (a.card.score / 10).toFixed(1) : ""}</small></span></button><button class="btn small white" data-an="${a.card.id}">Ask</button></div>`; };
-    const note = ["New episodes by day, for shows you don't have yet", here.size ? `${here.size} already on Glowfin` : ""].filter(Boolean).join(" · ");
-    let dayI = 0;
-    const draw = () => {
-      const phone = window.innerWidth <= 700;
-      w.innerHTML = head("This week in anime", note) + (phone
-        ? `<div class="row an-days">${days.map((d, i) => `<button class="chip ${i === dayI ? "on" : ""}" data-an-day="${i}">${name(d, i)}</button>`).join("")}</div><div class="anlist">${(by[dayKey(days[dayI])] || []).map(row).join("") || '<div class="empty">Nothing new that day.</div>'}</div>`
-        : `<div class="ancal">${days.map((d, i) => `<div class="anday"><h4 class="${i === 0 ? "on" : ""}">${name(d, i)}</h4>${(by[dayKey(d)] || []).map(row).join("") || '<p class="dim">Nothing new</p>'}</div>`).join("")}</div>`);
+    if (!B.alive(nav) || !box.isConnected) return;
+    const now = Date.now() / 1000, today = new Date(); today.setHours(0, 0, 0, 0);
+    const seen = new Set();
+    const list = all.filter((a) => !has(own, a.card) && a.at >= now - 6 * 3600).sort((x, y) => x.at - y.at).filter((a) => !seen.has(a.card.id) && seen.add(a.card.id));
+    const when = (a) => {
+      const d = new Date(a.at * 1000), dd = new Date(d); dd.setHours(0, 0, 0, 0);
+      const n = Math.round((dd - today) / 86400000);
+      const day = n === 0 ? "Today" : n === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short" });
+      return `${day} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()} · Ep ${a.ep}`;
     };
-    draw();
-    w.onclickday = (i) => { dayI = i; draw(); };
-  };
-  const showFeels = () => {
-    wall().innerHTML = head("What are you in the mood for?", "") + `<div class="anfeels">${FEELS.filter((f) => !tags || (f[3].tags || []).every((t) => tags.some((x) => x.name === t))).map((f) => `<button class="anfeel" data-an-feel="${esc(f[0])}" style="--c:${f[2]}"><b>${esc(f[0])}</b><span>${esc(f[1])}</span></button>`).join("")}</div>`;
+    box.innerHTML = list.length ? B.row(title, list.map((a) => card(a.card, 0, when(a))))
+      : `<section class="rowx"><h3>${title}</h3><div class="wrap empty">Nothing new this week.</div></section>`;
   };
   const recipe = (f) => { const m = (f[3].genres || []).concat(f[3].tags || []).join(" + "), n = (f[3].noGenres || []).concat(f[3].noTags || []); return n.length ? m + " · " + n.map((x) => "no " + x).join(", ") : m; };
-  const showTags = async () => {
-    const w = wall(), at = w.dataset.at;
-    w.innerHTML = head("Mix and match", "Click a tag to need it. Click again to leave it out. A third click clears it.") + B.spinner();
+  const feelsOk = () => FEELS.filter((f) => !tags || (f[3].tags || []).every((t) => tags.some((x) => x.name === t)));
+  const drawMoods = () => {
+    const box = $("#anr-moods");
+    if (!box) return;
+    const fs = feelsOk();
+    if (!feel || !fs.includes(feel)) feel = fs[0] || null;
+    box.innerHTML = `<section class="rowx"><h3>Moods</h3><div class="row an-moods" style="padding:0 var(--gutter);gap:8px;flex-wrap:wrap">${fs.map((f) => `<button class="chip ${f === feel ? "on" : ""}" data-an-feel="${esc(f[0])}" style="--c:${f[2]}">${esc(f[0])}</button>`).join("")}</div></section>`;
+    if (feel) fillRow("mood", asks.feel(feel), "Mood: " + feel[0], recipe(feel));
+  };
+  let topIds = new Set();
+  // Mix and match tags: a side panel. Click a tag to need it, again to leave it out, a third time to clear it.
+  const openTags = async () => {
+    const p = B.side(`<h3>Mix and match tags</h3>${B.spinner()}`);
     if (!tags) { try { tags = await tagList(); } catch (e) { tags = []; } }
-    if (!B.alive(nav) || w.dataset.at !== at) return;
-    const state = (n) => must.includes(n) ? "on" : leave.includes(n) ? "out" : "";
-    const chip = (n) => `<button class="chip antag ${state(n)}" data-an-tag="${esc(n)}">${leave.includes(n) ? "No " : ""}${esc(n)}</button>`;
-    const groups = {};
-    tags.forEach((t) => { const g = (t.category || "Other").split("-")[0]; (groups[g] = groups[g] || []).push(t.name); });
-    const picked = must.length || leave.length;
-    w.innerHTML = head("Mix and match", "Click a tag to need it. Click again to leave it out. A third click clears it.")
-      + (picked ? `<div class="row" style="margin-bottom:10px">${must.concat(leave).map(chip).join("")}<button class="chip" data-an-clear>Clear all</button></div><div id="anmix"></div>` : "")
-      + `<details class="antags" ${picked ? "" : "open"}><summary>Genres and tags</summary><h4>Genres</h4><div class="row">${GENRES.map(chip).join("")}</div>`
-      + Object.keys(groups).sort().map((g) => `<h4>${esc(g)}</h4><div class="row">${groups[g].sort().map(chip).join("")}</div>`).join("") + `</details>`;
-    if (picked) {
-      const box = $("#anmix", w);
-      const fake = document.createElement("div");
+    let at = 0;
+    const paint = async () => {
+      const mine = ++at;
+      const state = (n) => must.includes(n) ? "on" : leave.includes(n) ? "out" : "";
+      const chip = (n) => `<button class="chip antag ${state(n)}" data-an-tag="${esc(n)}">${leave.includes(n) ? "No " : ""}${esc(n)}</button>`;
+      const groups = {};
+      tags.forEach((t) => { const g = (t.category || "Other").split("-")[0]; (groups[g] = groups[g] || []).push(t.name); });
+      const picked = must.length || leave.length;
+      p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button><h3>Mix and match tags</h3><p class="dim">Click a tag to need it. Click again to leave it out. A third click clears it.</p>`
+        + (picked ? `<div class="row" style="margin-bottom:10px;flex-wrap:wrap;gap:6px">${must.concat(leave).map(chip).join("")}<button class="chip" data-an-clear>Clear all</button></div><div id="anmix"></div>` : "")
+        + `<details class="antags" ${picked ? "" : "open"}><summary>Genres and tags</summary><h4>Genres</h4><div class="row" style="flex-wrap:wrap;gap:6px">${GENRES.map(chip).join("")}</div>`
+        + Object.keys(groups).sort().map((g) => `<h4>${esc(g)}</h4><div class="row" style="flex-wrap:wrap;gap:6px">${groups[g].sort().map(chip).join("")}</div>`).join("") + `</details>`;
+      if (!picked) return;
+      const box = $("#anmix", p);
       const a = { key: "mix-" + must.join(",") + "|" + leave.join(","), genres: must.filter((n) => GENRES.includes(n)), tags: must.filter((n) => !GENRES.includes(n)), noGenres: leave.filter((n) => GENRES.includes(n)), noTags: leave.filter((n) => !GENRES.includes(n)), formats: SHOWS.concat("MOVIE"), pages: 2 };
       box.innerHTML = B.spinner();
       let items;
-      try { items = await load(a); } catch (e) { box.innerHTML = `<div class="empty">That didn't load. AniList may be busy.</div>`; return; }
-      if (w.dataset.at !== at || !box.isConnected) return;
+      try { items = await load(a); } catch (e) { if (mine === at) box.innerHTML = `<div class="empty">That didn't load. AniList may be busy.</div>`; return; }
+      if (mine !== at || !box.isConnected) return;
       const shown = items.filter((c) => !has(own, c)), here = items.length - shown.length;
-      fake.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Glowfin` : ""}</p><div class="grid">${shown.map((c) => poster(c, 0)).join("")}</div>`;
-      box.replaceChildren(...fake.childNodes);
-      if (here) bringBackMissing(items, $(".grid", box), () => B.alive(nav) && w.dataset.at === at && box.isConnected);
-    }
-  };
-  const draw = () => {
-    drawSide();
-    const w = wall();
-    w.dataset.at = String(Date.now() + Math.random());
-    const at = w.dataset.at;
-    if (pick === "season") {
-      const pills = `<div class="row" style="margin-bottom:10px">${SEASONS.map((s, i) => `<button class="chip ${i === seasonI ? "on" : ""}" data-an-season="${i}">${sLabel(s)}</button>`).join("")}</div>`;
-      return showWall(asks.season(seasonI), sLabel(SEASONS[seasonI]), seasonI === 0 ? "Airing now" : seasonI === 1 ? "Last season" : "", { top: pills, at });
-    }
-    if (pick === "top") return showWall(asks.top(), "Top 10 this week", "What anime fans are watching most", { ranked: true, at });
-    if (pick === "week") return showWeek();
-    if (pick === "feel") {
-      if (!feel) return showFeels();
-      return showWall(asks.feel(feel), feel[0], recipe(feel), { top: `<div class="row" style="margin-bottom:10px"><button class="chip" data-an-feels>All feels</button></div>`, at });
-    }
-    if (pick === "tags") return showTags();
-    if (pick === "gems") return showWall(asks.gems(), "Hidden gems", "Scores of 8 and up that few people have found", { at });
-    if (pick === "movies") return showWall(asks.movies(), "Movies", "", { at });
-    if (pick === "next") return showWall(asks.next(), "Coming next season", sLabel(step(NOW, 1)), { at });
-    if (pick === "dubbed") {
-      if (!dub || !dub.size) {
-        w.innerHTML = head("Finished and dubbed", "") + `<div class="empty">Couldn't get the list of dubbed anime. <button class="btn small" data-an-retry>Try again</button></div>`;
-        return;
+      box.innerHTML = `<p class="dim">${shown.length} to ask for${here ? ` · ${here} already on Glowfin` : ""}</p><div class="grid">${shown.map((c) => card(c, 0)).join("")}</div>`;
+    };
+    paint();
+    p.addEventListener("click", (e) => {
+      const a = e.target.closest("[data-an]");
+      if (a) { const c = B.animeCards[a.dataset.an]; if (c) open(c, a); return; }
+      const g = e.target.closest("[data-an-tag]");
+      if (g) {
+        const n = g.dataset.anTag;
+        if (must.includes(n)) { must = must.filter((x) => x !== n); leave.push(n); } else if (leave.includes(n)) leave = leave.filter((x) => x !== n); else must.push(n);
+        return paint();
       }
-      return showWall(asks.dubbed(), "Finished and dubbed", "Every episode out, with English voices", { keep: (c) => c.idMal && dub.has(c.idMal), at });
-    }
+      if (e.target.closest("[data-an-clear]")) { must = []; leave = []; paint(); }
+    });
+  };
+  let described = false;
+  const draw = () => {
+    const ROWS = ["season", "top", "week", "tr-al", "tr-mal", "moods", "mood", "tags", "dubbed", "gems", "movies", "next", "last"];
+    $("#rows").innerHTML = ROWS.map(rowBox).join("");
+    $("#anr-tags").innerHTML = `<section class="rowx"><h3>Mix and match tags</h3><div class="row" style="padding:0 var(--gutter);gap:8px"><button class="chip on" data-an-tags>Every genre and tag ›</button></div></section>`;
+    fillRow("season", asks.season(0), "This season", sLabel(SEASONS[0]) + " · airing now");
+    fillRow("top", asks.top(), "Top 10 this week", "What anime fans are watching most", { ranked: true, onShown: (l) => { topIds = new Set(l.map((c) => c.id)); } })
+      .then(() => fillRow("tr-al", asks.trending(), "Trending on AniList", "Right after the Top 10", { keep: (c) => !topIds.has(c.id) }));
+    fillWeek();
+    fillRow("tr-mal", asks.mal(), "Trending on MyAnimeList", "Top anime airing now");
+    drawMoods();
+    if (dub && dub.size) fillRow("dubbed", asks.dubbed(), "Finished and dubbed", "Every episode out, with English voices", { keep: (c) => c.idMal && dub.has(c.idMal) });
+    fillRow("gems", asks.gems(), "Hidden gems", "Scores of 8 and up that few people have found");
+    fillRow("movies", asks.movies(), "Anime movies", "");
+    fillRow("next", asks.next(), "Coming next season", sLabel(step(NOW, 1)));
+    fillRow("last", asks.season(1), "Last season", sLabel(SEASONS[1]));
   };
   // Opens a title's Requests page: AniList and Requests don't share numbers, so it's found by its names and year
   const open = async (c, btn) => {
@@ -1396,42 +1567,23 @@ B.animeRequests = (nav, getLists, openList) => {
     else { const n = c.titles.find(latin) || c.titles[0] || ""; B.go(`#/search?q=${enc(seasonBase(n) || n)}`); }
   };
 
-  $("#rows").innerHTML = `<div class="grid-wrap rqsplit"><nav class="rqside" id="rqside"></nav><div class="grid-body" id="rqwall">${B.spinner("wall")}</div></div>`;
-  side().onclick = (e) => {
-    const l = e.target.closest("[data-rqlist]");
-    if (l) return openList(l.dataset.rqlist);
-    if (e.target.closest("[data-an-search]")) { const q = $("#rq"); if (q) { q.placeholder = "Search anime to ask for"; q.focus(); } return; }
-    const b = e.target.closest("[data-an-pick]");
-    if (b) { pick = b.dataset.anPick; if (pick === "feel") feel = null; draw(); }
-  };
-  wall().onclick = (e) => {
+  $("#rows").onclick = (e) => {
     const t = e.target;
     const a = t.closest("[data-an]");
     if (a) { const c = B.animeCards[a.dataset.an]; if (c) open(c, a); return; }
-    const s = t.closest("[data-an-season]");
-    if (s) { seasonI = +s.dataset.anSeason; return draw(); }
     const f = t.closest("[data-an-feel]");
-    if (f) { feel = FEELS.find((x) => x[0] === f.dataset.anFeel) || null; return draw(); }
-    if (t.closest("[data-an-feels]")) { feel = null; return draw(); }
-    const d = t.closest("[data-an-day]");
-    if (d && wall().onclickday) return wall().onclickday(+d.dataset.anDay);
-    const g = t.closest("[data-an-tag]");
-    if (g) {
-      const n = g.dataset.anTag;
-      if (must.includes(n)) { must = must.filter((x) => x !== n); leave.push(n); } else if (leave.includes(n)) leave = leave.filter((x) => x !== n); else must.push(n);
-      return draw();
-    }
-    if (t.closest("[data-an-clear]")) { must = []; leave = []; return draw(); }
+    if (f) { feel = FEELS.find((x) => x[0] === f.dataset.anFeel) || null; return drawMoods(); }
+    if (t.closest("[data-an-tags]")) return openTags();
     if (t.closest("[data-an-retry]")) {
       Object.keys(B.cache).filter((k) => k.startsWith("anime-")).forEach((k) => { delete B.cache[k]; });
-      if (pick === "dubbed") dubs().then((x) => { dub = x; draw(); }).catch(() => draw()); else draw();
+      draw();
     }
   };
-  draw();
-  // Dubs and what's on Benflix load beside the first list; the wall is drawn again when they're in
+  // Dubs, tags and what's on Glowfin first (so owned shows stay out of every row), then the rows
   Promise.all([owned().catch(() => null), dubs().catch(() => null), tagList().catch(() => null)]).then(([o, d, t]) => {
     own = o; dub = d; tags = t;
-    if (B.alive(nav) && wall()) draw();
+    if (B.alive(nav)) draw();
   });
-  return { drawSide: () => { if (side()) drawSide(); } };
+  $("#rows").innerHTML = B.spinner("rows");
+  return { drawSide: () => {} };
 };

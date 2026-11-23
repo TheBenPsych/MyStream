@@ -1,15 +1,23 @@
 package com.github.damontecres.wholphin.ui.discover
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,18 +33,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.detail.discover.AskStepsLine
 import com.github.damontecres.wholphin.ui.music.MusicButton
+import com.github.damontecres.wholphin.ui.preferences.GlowfinSettingRow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /*
@@ -138,35 +153,143 @@ fun AskForItPanel(
     LaunchedEffect(Unit) { if (extra == null) first.tryRequestFocus() }
 }
 
-/** Shows and anime: All seasons, the newest season only, or pick seasons one by one */
+/**
+ * Shows and anime: which seasons to ask for. Glowfin new look (Ben approved 2026-11-22): a panel that slides in
+ * from the right, like Filters. All seasons, Every new season from now on (all of them now, and Tower asks for
+ * each new one when it comes out), the newest season only, or tick seasons one by one.
+ */
 @Composable
 fun SeasonAskPanel(
     pick: SeasonPick,
     onDismiss: () -> Unit,
     onAsk: (List<Int>) -> Unit,
     line: String? = null,
+    /** Asks for these seasons and every season that comes out later */
+    onAskEvery: ((List<Int>) -> Unit)? = null,
 ) {
+    val isTv = rememberIsTv()
     val open = remember(pick) { pick.seasons.filter { !it.taken }.map { it.number } }
-    var picking by remember(pick) { mutableStateOf(false) }
-    if (picking || open.isEmpty()) {
-        SeasonPickDialog(pick = pick, onDismiss = onDismiss, onAsk = onAsk)
-        return
-    }
+    var chosen by remember(pick) { mutableStateOf(setOf<Int>()) }
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
     val newest = pick.seasons.filter { !it.taken }.maxByOrNull { it.number }
-    val choices =
-        buildList {
-            add(AskChoice(if (open.size > 1) "All seasons (${open.size})" else "Ask for it", { onAsk(open) }, primary = true))
-            if (open.size > 1 && newest != null) add(AskChoice("${newest.name} only", { onAsk(listOf(newest.number)) }))
-            if (open.size > 1) add(AskChoice("Pick seasons…", { picking = true }, icon = null))
+    val first = remember { FocusRequester() }
+    LaunchedEffect(shown) { if (shown) first.tryRequestFocus() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+            AnimatedVisibility(visible = shown, enter = slideInHorizontally(tween(220)) { it }) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxHeight()
+                            .then(if (isTv) Modifier.width(400.dp) else Modifier.fillMaxWidth(.92f))
+                            .background(SEASON_PANEL)
+                            .padding(start = 28.dp, end = 22.dp, top = 24.dp, bottom = 12.dp),
+                ) {
+                    Text(
+                        text = pick.item.title.orEmpty(),
+                        color = Glowfin.Text,
+                        fontFamily = GlowfinDisplayFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = BenflixType.rowName,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = line ?: "Which seasons?",
+                        color = Glowfin.Dim,
+                        fontSize = BenflixType.small,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
+                    )
+                    LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        if (open.isNotEmpty()) {
+                            item(key = "all") {
+                                GlowfinSettingRow(
+                                    title = if (open.size > 1) "All seasons (${open.size})" else "Ask for it",
+                                    value = null,
+                                    explain = if (open.size > 1) "Every season that's out now" else null,
+                                    onClick = { onAsk(open) },
+                                    modifier = Modifier.focusRequester(first),
+                                )
+                            }
+                            if (onAskEvery != null) {
+                                item(key = "every") {
+                                    GlowfinSettingRow(
+                                        title = "Every new season from now on",
+                                        value = null,
+                                        explain = "All of them now, and each new season when it comes out",
+                                        onClick = { onAskEvery(open) },
+                                    )
+                                }
+                            }
+                            if (open.size > 1 && newest != null) {
+                                item(key = "newest") {
+                                    GlowfinSettingRow(
+                                        title = "${newest.name} only",
+                                        value = null,
+                                        explain = newest.episodes?.takeIf { it > 0 }?.let { "$it episodes" },
+                                        onClick = { onAsk(listOf(newest.number)) },
+                                    )
+                                }
+                            }
+                        }
+                        item(key = "pick-head") {
+                            Text(
+                                "Or pick seasons",
+                                color = Glowfin.Dim,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(pick.seasons, key = { "s-${it.number}" }) { season ->
+                            val picked = season.number in chosen
+                            GlowfinSettingRow(
+                                title = season.name,
+                                value =
+                                    if (season.taken) {
+                                        null
+                                    } else if (picked) {
+                                        "✓"
+                                    } else {
+                                        ""
+                                    },
+                                explain =
+                                    when {
+                                        season.taken -> "Already asked for or on Glowfin"
+                                        season.episodes != null && season.episodes > 0 -> "${season.episodes} episodes"
+                                        else -> null
+                                    },
+                                onClick = { chosen = if (picked) chosen - season.number else chosen + season.number },
+                                enabled = !season.taken,
+                            )
+                        }
+                        if (chosen.isNotEmpty()) {
+                            item(key = "ask-picked") {
+                                GlowfinSettingRow(
+                                    title = if (chosen.size == 1) "Ask for 1 season" else "Ask for ${chosen.size} seasons",
+                                    value = null,
+                                    explain = null,
+                                    onClick = { onAsk(chosen.sorted()) },
+                                    titleColor = Glowfin.Aqua,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
-    AskForItPanel(
-        title = pick.item.title.orEmpty(),
-        line = line,
-        cover = pick.item.posterUrl,
-        choices = choices,
-        onDismiss = onDismiss,
-    )
+    }
 }
+
+private val SEASON_PANEL =
+    Brush.horizontalGradient(
+        0f to Glowfin.Deep.copy(alpha = .9f),
+        .2f to Glowfin.Deep.copy(alpha = .97f),
+        1f to Glowfin.Deep,
+    )
 
 /** Books: Ebook and audiobook (picked first), Ebook, or Audiobook. Asking also adds it to Want to read. */
 @Composable
@@ -178,11 +301,13 @@ fun BookAskPanel(
     onDismiss: () -> Unit,
     onAsk: (List<String>) -> Unit,
 ) {
+    val forChoice = forMeChoice(admin)
     val choices =
-        listOf(
+        listOfNotNull(
             AskChoice("Ebook and audiobook", { onAsk(listOf("ebook", "audiobook")) }, primary = true),
             AskChoice("Ebook", { onAsk(listOf("ebook")) }),
             AskChoice("Audiobook", { onAsk(listOf("audiobook")) }),
+            forChoice,
         )
     AskForItPanel(
         title = title,
@@ -213,6 +338,7 @@ fun SongAskPanel(
     onAlbum: () -> Unit,
 ) {
     val len = if (seconds > 0) "%d:%02d".format(seconds / 60, seconds % 60) else null
+    val forChoice = forMeChoice(admin)
     AskForItPanel(
         title = title,
         line = listOfNotNull(artist.ifBlank { null }, len, album.ifBlank { null }).joinToString(" · "),
@@ -221,7 +347,11 @@ fun SongAskPanel(
         steps = { AskStepsLine(isAdmin = admin, last = "Ready to play") },
         choices =
             if (admin) {
-                listOf(AskChoice("Ask for this song", onSong, primary = true), AskChoice("Ask for the whole album", onAlbum))
+                listOfNotNull(
+                    AskChoice("Ask for this song", onSong, primary = true),
+                    AskChoice("Ask for the whole album", onAlbum),
+                    forChoice,
+                )
             } else {
                 listOf(AskChoice("Ask Ben for this song", onSong, primary = true), AskChoice("Ask Ben for the whole album", onAlbum))
             },
@@ -238,4 +368,15 @@ fun SongAskPanel(
             }
         },
     )
+}
+
+/**
+ * Glowfin new look (Ben approved 2026-11-22): Ben's For: Me sits on the ask panel itself (songs, albums and books
+ * too, like the title pages), so who it's for is picked right before asking. Only Ben, never on Kids.
+ */
+@Composable
+private fun forMeChoice(admin: Boolean): AskChoice? {
+    if (!rememberCanRequestFor(admin)) return null
+    val forPick = rememberRequestFor()
+    return AskChoice("For: ${forPick.forName}", forPick.open, icon = BenflixIcon.PERSON)
 }

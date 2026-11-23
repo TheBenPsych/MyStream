@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.discover
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +32,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -52,6 +52,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.books.BOOK_RATIO
 import com.github.damontecres.wholphin.ui.books.BookCoverImage
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.door.CoverTopWords
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.music.MusicButton
@@ -175,6 +176,7 @@ class BookRequestsViewModel
  */
 @Composable
 fun BooksShelf(
+    top: Dp = 0.dp,
     viewModel: BookRequestsViewModel = hiltViewModel(),
     shelvesViewModel: BookShelvesViewModel = hiltViewModel(key = "book-shelves-main"),
 ) {
@@ -269,32 +271,12 @@ fun BooksShelf(
     }
     if (isTv && searchOpen) {
         BackHandler { searchOpen = false }
-        searchList(Modifier.fillMaxSize())
+        searchList(Modifier.fillMaxSize().padding(top = top))
         return
     }
     val d = shelves
     val r = requests ?: BookRequests(emptyList(), emptyList(), emptyList(), true, emptyList())
-    // The lists, in the approved order. Book of the week shows the NYT Fiction list (it's that list's #1).
-    val nytFiction = d?.rows?.firstOrNull { it.items.isNotEmpty() && it.title.contains("Fiction") && !it.title.contains("Nonfiction") }
-    val bookLists =
-        remember(d) {
-            buildList {
-                if (d == null) return@buildList
-                if (d.hero != null) add(BookList("botw", "Book of the week", nytFiction?.items ?: d.top10, ranked = true))
-                if (d.top10.isNotEmpty()) add(BookList("top10", "Top 10", d.top10, ranked = true))
-                d.rows.forEach { row ->
-                    if (row.genres.isNotEmpty()) {
-                        add(BookList("genres", "Genres", emptyList(), genres = row.genres))
-                    } else if (row.items.isNotEmpty()) {
-                        add(BookList(row.key, row.title, row.items, ranked = row.ranked))
-                    }
-                }
-            }
-        }
-    var picked by rememberSaveable { mutableStateOf<String?>(null) }
-    val pickedKey =
-        picked?.takeIf { p -> bookLists.any { it.key == p } } ?: bookLists.firstOrNull()?.key ?: ""
-    var ownedOpen by rememberSaveable { mutableStateOf<String?>(null) }
+    var mode by rememberSaveable { mutableStateOf<String?>(null) }
     val waitingIds = r.waiting.map { it.id }.toSet()
     val yours = (if (admin) r.mine + r.others else r.mine).distinctBy { it.id }.filter { it.id !in waitingIds }
     val yourLines =
@@ -309,132 +291,201 @@ fun BooksShelf(
         r.waiting.map { b ->
             b.toAskLine(showWho = true, onOpen = null, onAnswer = { yes -> viewModel.answer(b, yes) })
         }
-    val focusedLine = remember { mutableStateOf<String?>(null) }
-    val wall: @Composable (Modifier) -> Unit = { m ->
-        Column(m) {
-            (note ?: shelvesNote)?.let {
+    OnRequestsSearch { searchOpen = true }
+    val notes: @Composable () -> Unit = {
+        (note ?: shelvesNote)?.let {
+            Text(
+                it,
+                color = BenflixColors.Books,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+        problem?.let {
+            Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small, modifier = Modifier.padding(horizontal = 16.dp))
+        }
+        if (admin) {
+            r.problems.forEach { line ->
+                Text(line, color = BenflixColors.Warning, fontSize = BenflixType.small, modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            if (requests?.connected == false) {
                 Text(
-                    it,
-                    color = BenflixColors.Books,
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    "Tower's helper can't reach Chaptarr yet, so asks wait here. Run the helper setup on Tower once more " +
+                        "and it finds Chaptarr by itself.",
+                    color = BenflixColors.Warning,
+                    fontSize = BenflixType.small,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
-            problem?.let {
-                Text(it, color = BenflixColors.Warning, fontSize = BenflixType.small, modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            if (admin) {
-                r.problems.forEach { line ->
-                    Text(line, color = BenflixColors.Warning, fontSize = BenflixType.small, modifier = Modifier.padding(horizontal = 16.dp))
-                }
-                if (requests?.connected == false) {
-                    Text(
-                        "Tower's helper can't reach Chaptarr yet, so asks wait here. Run the helper setup on Tower once more " +
-                            "and it finds Chaptarr by itself.",
-                        color = BenflixColors.Warning,
-                        fontSize = BenflixType.small,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-                if (d != null && d.missing.isNotEmpty()) {
-                    Text(
-                        "Some lists are hidden until you type the " + d.missing.joinToString(" and the ") +
-                            " key on the Server page (Tools > Book lists).",
-                        color = BenflixColors.Warning,
-                        fontSize = BenflixType.small,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-            }
-            val list = bookLists.firstOrNull { it.key == pickedKey }
-            when {
-                pickedKey == PICK_YOURS -> {
-                    AskLinesWall(
-                        lines = yourLines,
-                        grouped = true,
-                        empty =
-                            if (isTv) {
-                                "Nothing asked for yet. OK on a cover shows the book; hold OK to ask for it straight away."
-                            } else {
-                                "Nothing asked for yet. Tap a cover to see the book; press and hold to ask for it straight away."
-                            },
-                    )
-                }
-
-                pickedKey == PICK_WAITING -> {
-                    AskLinesWall(lines = waitingLines, grouped = false, empty = "Nobody is waiting on you right now.")
-                }
-
-                d == null -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
-                        if (shelvesProblem != null) {
-                            Text("Couldn't load the book lists. $shelvesProblem", color = BenflixColors.Soft, fontSize = BenflixType.body)
-                            MusicButton("Try again", BenflixIcon.REFRESH, onClick = { shelvesViewModel.load(null) })
-                        } else {
-                            Muted("Loading the book lists…")
-                        }
-                    }
-                }
-
-                list == null -> {
-                    Muted(
-                        if (d.gatheredAt == 0L) {
-                            "Tower is gathering the book lists for the first time. Try again in a few minutes."
-                        } else {
-                            "Nothing to show right now."
-                        },
-                    )
-                }
-
-                list.genres.isNotEmpty() -> {
-                    GenreTileWall(list.genres, onGenre = shelvesViewModel::openGenre)
-                }
-
-                else -> {
-                    if (isTv || list.key == "botw") {
-                        BookLine(
-                            hero = if (list.key == "botw") d.hero else null,
-                            focused = focusedLine.value,
-                            onOpen = shelvesViewModel::open,
-                        )
-                    }
-                    val owned = list.items.count { it.have != null }
-                    val shown = if (ownedOpen == list.key) list.items else list.items.filter { it.have == null }
-                    BookWall(
-                        list = list,
-                        books = shown,
-                        onOpen = shelvesViewModel::open,
-                        onAsk = shelvesViewModel::quickAsk,
-                        onFocus = { c -> focusedLine.value = bookLineWords(c) },
-                        owned = owned,
-                        ownedOpen = ownedOpen == list.key,
-                        onOwned = { ownedOpen = if (ownedOpen == list.key) null else list.key },
-                    )
-                }
+            if (d != null && d.missing.isNotEmpty()) {
+                Text(
+                    "Some lists are hidden until you type the " + d.missing.joinToString(" and the ") +
+                        " key on the Server page (Tools > Book lists).",
+                    color = BenflixColors.Warning,
+                    fontSize = BenflixType.small,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
     }
-    RequestSideFrame(
+    if (mode != null) {
+        BackHandler { mode = null }
+        Column(Modifier.fillMaxSize().padding(top = top)) {
+            notes()
+            if (mode == PICK_WAITING) {
+                AskLinesWall(lines = waitingLines, grouped = false, empty = "Nobody is waiting on you right now.")
+            } else {
+                AskLinesWall(
+                    lines = yourLines,
+                    grouped = true,
+                    empty =
+                        if (isTv) {
+                            "Nothing asked for yet. OK on a cover shows the book; hold OK to ask for it straight away."
+                        } else {
+                            "Nothing asked for yet. Tap a cover to see the book; press and hold to ask for it straight away."
+                        },
+                )
+            }
+        }
+        return
+    }
+    if (!isTv && query.trim().length >= 2) {
+        Column(Modifier.fillMaxSize().padding(top = top)) {
+            RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book or author")
+            searchList(Modifier.fillMaxWidth().weight(1f))
+        }
+        return
+    }
+    // Glowfin new look (Ben approved 2026-11-22): Books lands straight on a row of tall covers, like the Books tab.
+    // On TV the cover you're on stands at the top right with its colours glowing behind. Series to finish comes first
+    // (the next books in series you're reading), then Book of the week's list, Top 10 and the rest; Genres are pills.
+    val bookCard: (BookCard) -> RqCoverCard = { c ->
+        RqCoverCard(
+            key = c.key,
+            cover = c.cover,
+            name = c.name,
+            line = c.asked?.let { pillFromWords(it, AskKind.READ).words } ?: c.line ?: c.author,
+            words =
+                CoverTopWords(
+                    title = c.name,
+                    by = c.author.ifBlank { null },
+                    facts =
+                        listOfNotNull(
+                            if (c.audioOnly) "Audiobook" else "Book",
+                            c.year?.toString(),
+                            c.award ?: c.line,
+                        ).joinToString(" · "),
+                    tag =
+                        when {
+                            c.have != null -> "On Glowfin"
+                            c.asked != null -> pillFromWords(c.asked, AskKind.READ).words
+                            else -> "Not on Glowfin yet · hold OK to ask"
+                        },
+                    story = c.desc,
+                ),
+            onClick = { shelvesViewModel.open(c) },
+            onLongClick = { if (c.have == null && c.asked == null) shelvesViewModel.quickAsk(c) },
+            dot = askDot(c.asked, c.have != null, AskKind.READ),
+        )
+    }
+    val rows =
+        remember(d, yours.size, r.waiting.size) {
+            buildList<RqCoverRow> {
+                if (d == null) {
+                    if (shelvesProblem != null) {
+                        add(
+                            RqCoverRow.Pills(
+                                "retry",
+                                "Book lists",
+                                listOf(RqPill("Try again", { shelvesViewModel.load(null) }, on = true)),
+                            ),
+                        )
+                    }
+                    return@buildList
+                }
+                val nytFiction =
+                    d.rows.firstOrNull {
+                        it.items.isNotEmpty() && it.title.contains("Fiction") &&
+                            !it.title.contains("Nonfiction")
+                    }
+                val series = d.rows.firstOrNull { it.key == "series" && it.items.isNotEmpty() }
+                if (series != null) {
+                    add(
+                        RqCoverRow.Covers(
+                            "series",
+                            "Series to finish",
+                            series.items
+                                .filter {
+                                    it.have == null
+                                }.map(bookCard),
+                            note = "The next books in series you read",
+                        ),
+                    )
+                }
+                if (d.hero != null) {
+                    val botw = listOf(d.hero) + (nytFiction?.items ?: d.top10).filter { it.key != d.hero.key }
+                    add(RqCoverRow.Covers("botw", "Book of the week", botw.filter { it.have == null }.map(bookCard)))
+                }
+                if (d.top10.isNotEmpty()) add(RqCoverRow.Covers("top10", "Top 10", d.top10.map(bookCard), ranked = true))
+                d.rows.forEach { row ->
+                    when {
+                        row.genres.isNotEmpty() -> {
+                            add(
+                                RqCoverRow.Pills(
+                                    "genres",
+                                    "Genres",
+                                    row.genres.map { g ->
+                                        RqPill(g.name, { shelvesViewModel.openGenre(g) })
+                                    },
+                                ),
+                            )
+                        }
+
+                        row.key == "series" || row.items.isEmpty() -> {}
+
+                        else -> {
+                            val left = row.items.filter { it.have == null }
+                            if (left.isNotEmpty()) add(RqCoverRow.Covers(row.key, row.title, left.map(bookCard), ranked = row.ranked))
+                        }
+                    }
+                }
+                add(
+                    RqCoverRow.Pills(
+                        "asks",
+                        "Your book asks",
+                        listOfNotNull(
+                            RqPill("Asked for", { mode = PICK_YOURS }, count = yours.size),
+                            if (admin) RqPill("Waiting for you", { mode = PICK_WAITING }, count = r.waiting.size) else null,
+                        ),
+                    ),
+                )
+            }
+        }
+    RequestCoverRows(
+        rows = rows,
         isTv = isTv,
-        lists = bookLists.map { SideList(it.key, it.title) },
-        picked = pickedKey,
-        onPick = { picked = it },
-        yoursCount = yours.size,
-        waitingCount = if (admin) r.waiting.size else null,
-        onSearch = { searchOpen = true },
-        loading = d == null,
-        searchLabel = "Search any book",
-        phoneTop = { RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book or author") },
-        phoneWall = query.trim().length < 2,
-        phoneAlt = searchList,
-        wall = wall,
+        ratio = BOOK_RATIO,
+        glowFallback = BenflixColors.Books,
+        top = top,
+        loading =
+            when {
+                d == null && shelvesProblem != null -> "Couldn't load the book lists. $shelvesProblem"
+
+                d == null -> "Loading the book lists…"
+
+                rows.none {
+                    it is RqCoverRow.Covers
+                } && d.gatheredAt == 0L -> "Tower is gathering the book lists for the first time. Try again in a few minutes."
+
+                else -> null
+            },
+        above = {
+            if (!isTv) RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any book or author")
+            notes()
+        },
     )
 }
-
-/** The line above the wall for one book: name · author · year · series */
-private fun bookLineWords(c: BookCard): String =
-    listOfNotNull(c.name, c.author.ifBlank { null }, c.year?.toString(), c.line).joinToString(" · ")
 
 /** One list on the Books tab */
 internal class BookList(
@@ -444,50 +495,6 @@ internal class BookList(
     val ranked: Boolean = false,
     val genres: List<BookGenre> = emptyList(),
 )
-
-/** The line above the wall: Book of the week with its cover on the first list, or the book you're on */
-@Composable
-private fun BookLine(
-    hero: BookCard?,
-    focused: String?,
-    onOpen: (BookCard) -> Unit,
-) {
-    if (hero == null) {
-        Text(
-            text = focused ?: " ",
-            fontSize = BenflixType.body,
-            color = BenflixColors.Soft,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-        )
-        return
-    }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-    ) {
-        BookCoverImage(hero.cover, hero.name, Modifier.width(52.dp).aspectRatio(BOOK_RATIO))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-            Text(
-                "BOOK OF THE WEEK · #1 NYT FICTION",
-                color = BenflixColors.Books,
-                fontSize = BenflixType.tag,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                listOfNotNull(hero.name, hero.author.ifBlank { null }, hero.year?.toString(), hero.line).joinToString(" · "),
-                color = BenflixColors.Text,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        MusicButton("About this book", BenflixIcon.BOOK, onClick = { onOpen(hero) })
-    }
-}
 
 /** The Books wall: covers 7 across on TV (3 on phones), names under every cover, the Top 10 numbered */
 @Composable
@@ -586,28 +593,6 @@ private fun BookWallTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-    }
-}
-
-/** Genres: the 12 colour tiles and All genres, as a wall */
-@Composable
-private fun GenreTileWall(
-    genres: List<BookGenre>,
-    onGenre: (BookGenre?) -> Unit,
-) {
-    val isTv = rememberIsTv()
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(if (isTv) 4 else 2),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        items(genres.size, key = { "genre-$it-${genres[it].slug}" }) { i ->
-            val g = genres[i]
-            RequestsChip(g.name, false, { onGenre(g) }, Modifier.fillMaxWidth())
-        }
-        item(key = "genre-all") { RequestsChip("All genres", false, { onGenre(null) }, Modifier.fillMaxWidth()) }
     }
 }
 
