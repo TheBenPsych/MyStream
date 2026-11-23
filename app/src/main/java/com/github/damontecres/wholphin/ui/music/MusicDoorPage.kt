@@ -316,12 +316,16 @@ fun MusicDoorPage(
             MusicSectionPage(frame.section, wide, preferences, inner)
         } else {
             Column(inner.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
-                if (wide) {
+                if (isTv) {
                     MusicTopArea(
                         lit = lit,
                         first = rows.firstOrNull()?.tiles?.firstOrNull(),
                         overlap = LocalTopBarOverlap.current,
                     )
+                } else if (wide) {
+                    // Glowfin new look: tablets and sideways phones have no top either, the rows start right under
+                    // the header and tabs (which sit over the page there)
+                    Spacer(Modifier.height(LocalTopBarOverlap.current))
                 }
                 // Ben 2026-11-21: like Movies, Shows and Books on TV, the row you move to jumps up whole (name and
                 // all) right under the top area, so its name is never cut off. Rows still slide sideways as before.

@@ -142,7 +142,9 @@ fun DoorPage(
                 DoorSectionPage(door, frame.section, preferences, wide, inner)
             }
 
-            wide -> {
+            // Glowfin new look (Ben 2026-11-22): the big top is for the TV remote only. Phones, tablets and phones
+            // turned sideways all land on the rows, right under the tabs (a tap opens the title's own page anyway).
+            isTv -> {
                 WideDoor(state, easy, isTv, viewModel, frame, onClick, onSeeAll, inner)
             }
 
@@ -641,14 +643,23 @@ internal fun PhoneDoor(
     LaunchedEffect(Unit) { snapshotFlow { columnState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it } }
     frame.toTop = { scope.launch { columnState.animateScrollToItem(0) } }
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
-        // About 3.5 posters across
-        val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
+        // About 3.5 posters across on a phone; tablets and sideways phones fit more across instead of bigger ones
+        val across =
+            if (easy) {
+                maxOf(2.6f, maxWidth / PHONE_EASY_POSTER)
+            } else {
+                maxOf(3.5f, maxWidth / PHONE_POSTER)
+            }
+        val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / across).coerceAtLeast(72.dp)
+        // Tablets and sideways phones: the header (and the tabs) sit over the page, so the rows start under them.
+        // 0 on phones held upright, where the tabs are laid out above the page.
+        val underHeader = LocalTopBarOverlap.current
         // Glowfin new look (Ben 2026-11-22): no picture at the top on phones and tablets held upright. The rows
         // start right under the tabs (a tap opens the title's own page, with its big art, anyway).
         Column(Modifier.fillMaxSize()) {
             LazyColumn(
                 state = columnState,
-                contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
+                contentPadding = PaddingValues(top = underHeader + 4.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) {
@@ -715,6 +726,10 @@ internal fun EmptyDoor(
 private val SIDE = 16.dp
 
 private val PHONE_SIDE = BenflixSpace.phoneEdge
+
+/** About how wide a poster is on a tablet or a phone turned sideways (more fit across, none get huge) */
+private val PHONE_POSTER = 132.dp
+private val PHONE_EASY_POSTER = 170.dp
 
 /** How much of the screen the top (the words about the card you're on) takes, from the very top */
 private const val TOP_SHARE = 0.52f

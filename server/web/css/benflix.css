@@ -2787,7 +2787,8 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .ptabs a.on::after { display: none; }
 .ptabs a:hover, .ptabs a:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: none; text-shadow: none; }
 /* Phones and small tablets: no picture at the top, the rows start right under the tabs. Cover art only. */
-@media (max-width: 700px) {
+/* Phones and small tablets (same width as Music, Books and Games): no top, the rows start right under the tabs */
+@media (max-width: 760px) {
   #doorTop { display: none; }
   .ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 12px; }
   #doorTop ~ .rows .poster .cap { display: none; }
