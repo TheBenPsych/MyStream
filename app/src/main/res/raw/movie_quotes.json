@@ -1,0 +1,1811 @@
+{
+"about": "Famous movie and TV lines for the Quote it game. Only lines from titles on Tower are used.",
+"quotes": [
+{
+"t": "The Godfather",
+"y": 1972,
+"q": "I'm gonna make him an offer he can't refuse.",
+"who": "Vito Corleone"
+},
+{
+"t": "The Godfather",
+"y": 1972,
+"q": "Leave the gun. Take the cannoli.",
+"who": "Clemenza"
+},
+{
+"t": "The Godfather Part II",
+"y": 1974,
+"q": "Keep your friends close, but your enemies closer.",
+"who": "Michael Corleone"
+},
+{
+"t": "Casablanca",
+"y": 1942,
+"q": "Here's looking at you, kid.",
+"who": "Rick Blaine"
+},
+{
+"t": "Casablanca",
+"y": 1942,
+"q": "Of all the gin joints in all the towns in all the world, she walks into mine.",
+"who": "Rick Blaine"
+},
+{
+"t": "Gone with the Wind",
+"y": 1939,
+"q": "Frankly, my dear, I don't give a damn.",
+"who": "Rhett Butler"
+},
+{
+"t": "The Wizard of Oz",
+"y": 1939,
+"q": "Toto, I've a feeling we're not in Kansas anymore.",
+"who": "Dorothy"
+},
+{
+"t": "The Wizard of Oz",
+"y": 1939,
+"q": "There's no place like home.",
+"who": "Dorothy"
+},
+{
+"t": "Jaws",
+"y": 1975,
+"q": "You're gonna need a bigger boat.",
+"who": "Chief Brody"
+},
+{
+"t": "Star Wars",
+"y": 1977,
+"q": "May the Force be with you.",
+"who": "Han Solo"
+},
+{
+"t": "Star Wars",
+"y": 1977,
+"q": "Help me, Obi-Wan Kenobi. You're my only hope.",
+"who": "Princess Leia"
+},
+{
+"t": "The Empire Strikes Back",
+"y": 1980,
+"q": "No, I am your father.",
+"who": "Darth Vader"
+},
+{
+"t": "The Empire Strikes Back",
+"y": 1980,
+"q": "Do. Or do not. There is no try.",
+"who": "Yoda"
+},
+{
+"t": "Return of the Jedi",
+"y": 1983,
+"q": "It's a trap!",
+"who": "Admiral Ackbar"
+},
+{
+"t": "The Terminator",
+"y": 1984,
+"q": "I'll be back.",
+"who": "The Terminator"
+},
+{
+"t": "Terminator 2: Judgment Day",
+"y": 1991,
+"q": "Hasta la vista, baby.",
+"who": "The Terminator"
+},
+{
+"t": "E.T. the Extra-Terrestrial",
+"y": 1982,
+"q": "E.T. phone home.",
+"who": "E.T."
+},
+{
+"t": "Back to the Future",
+"y": 1985,
+"q": "Roads? Where we're going, we don't need roads.",
+"who": "Doc Brown"
+},
+{
+"t": "Back to the Future",
+"y": 1985,
+"q": "Great Scott!",
+"who": "Doc Brown"
+},
+{
+"t": "Ghostbusters",
+"y": 1984,
+"q": "Who you gonna call?",
+"who": "Theme song"
+},
+{
+"t": "Field of Dreams",
+"y": 1989,
+"q": "If you build it, he will come.",
+"who": "The Voice"
+},
+{
+"t": "Dirty Harry",
+"y": 1971,
+"q": "You've got to ask yourself one question: Do I feel lucky? Well, do ya, punk?",
+"who": "Harry Callahan"
+},
+{
+"t": "Apocalypse Now",
+"y": 1979,
+"q": "I love the smell of napalm in the morning.",
+"who": "Lt. Col. Kilgore"
+},
+{
+"t": "Taxi Driver",
+"y": 1976,
+"q": "You talkin' to me?",
+"who": "Travis Bickle"
+},
+{
+"t": "Scarface",
+"y": 1983,
+"q": "Say hello to my little friend!",
+"who": "Tony Montana"
+},
+{
+"t": "The Shining",
+"y": 1980,
+"q": "Here's Johnny!",
+"who": "Jack Torrance"
+},
+{
+"t": "A Few Good Men",
+"y": 1992,
+"q": "You can't handle the truth!",
+"who": "Col. Jessup"
+},
+{
+"t": "Jerry Maguire",
+"y": 1996,
+"q": "Show me the money!",
+"who": "Rod Tidwell"
+},
+{
+"t": "Jerry Maguire",
+"y": 1996,
+"q": "You had me at hello.",
+"who": "Dorothy Boyd"
+},
+{
+"t": "Forrest Gump",
+"y": 1994,
+"q": "Life was like a box of chocolates. You never know what you're gonna get.",
+"who": "Forrest Gump"
+},
+{
+"t": "Forrest Gump",
+"y": 1994,
+"q": "Run, Forrest, run!",
+"who": "Jenny"
+},
+{
+"t": "Titanic",
+"y": 1997,
+"q": "I'm the king of the world!",
+"who": "Jack Dawson"
+},
+{
+"t": "Titanic",
+"y": 1997,
+"q": "I'll never let go, Jack.",
+"who": "Rose"
+},
+{
+"t": "The Silence of the Lambs",
+"y": 1991,
+"q": "Hello, Clarice.",
+"who": "Hannibal Lecter"
+},
+{
+"t": "Apollo 13",
+"y": 1995,
+"q": "Houston, we have a problem.",
+"who": "Jim Lovell"
+},
+{
+"t": "The Sixth Sense",
+"y": 1999,
+"q": "I see dead people.",
+"who": "Cole Sear"
+},
+{
+"t": "Toy Story",
+"y": 1995,
+"q": "To infinity and beyond!",
+"who": "Buzz Lightyear"
+},
+{
+"t": "Toy Story",
+"y": 1995,
+"q": "You are a toy!",
+"who": "Woody"
+},
+{
+"t": "Toy Story 2",
+"y": 1999,
+"q": "Buzz, I am your father.",
+"who": "Zurg"
+},
+{
+"t": "Finding Nemo",
+"y": 2003,
+"q": "Just keep swimming.",
+"who": "Dory"
+},
+{
+"t": "Finding Nemo",
+"y": 2003,
+"q": "Fish are friends, not food.",
+"who": "Bruce"
+},
+{
+"t": "The Lion King",
+"y": 1994,
+"q": "Hakuna matata! It means no worries.",
+"who": "Timon and Pumbaa"
+},
+{
+"t": "The Lion King",
+"y": 1994,
+"q": "Remember who you are.",
+"who": "Mufasa"
+},
+{
+"t": "Frozen",
+"y": 2013,
+"q": "Some people are worth melting for.",
+"who": "Olaf"
+},
+{
+"t": "Shrek",
+"y": 2001,
+"q": "Ogres are like onions.",
+"who": "Shrek"
+},
+{
+"t": "Shrek",
+"y": 2001,
+"q": "Donkey! Ogres have layers.",
+"who": "Shrek"
+},
+{
+"t": "Up",
+"y": 2009,
+"q": "Squirrel!",
+"who": "Dug"
+},
+{
+"t": "Ratatouille",
+"y": 2007,
+"q": "Anyone can cook.",
+"who": "Gusteau"
+},
+{
+"t": "The Incredibles",
+"y": 2004,
+"q": "No capes!",
+"who": "Edna Mode"
+},
+{
+"t": "Monsters, Inc.",
+"y": 2001,
+"q": "Kitty!",
+"who": "Boo"
+},
+{
+"t": "Wall-E",
+"y": 2008,
+"q": "Eeeeva?",
+"who": "Wall-E"
+},
+{
+"t": "Moana",
+"y": 2016,
+"q": "You're welcome!",
+"who": "Maui"
+},
+{
+"t": "Coco",
+"y": 2017,
+"q": "Remember me.",
+"who": "Héctor"
+},
+{
+"t": "Kung Fu Panda",
+"y": 2008,
+"q": "There is no secret ingredient.",
+"who": "Mr. Ping"
+},
+{
+"t": "Madagascar",
+"y": 2005,
+"q": "I like to move it, move it!",
+"who": "King Julien"
+},
+{
+"t": "Despicable Me",
+"y": 2010,
+"q": "It's so fluffy I'm gonna die!",
+"who": "Agnes"
+},
+{
+"t": "Mean Girls",
+"y": 2004,
+"q": "On Wednesdays we wear pink.",
+"who": "Karen"
+},
+{
+"t": "Mean Girls",
+"y": 2004,
+"q": "Stop trying to make fetch happen.",
+"who": "Regina George"
+},
+{
+"t": "Clueless",
+"y": 1995,
+"q": "As if!",
+"who": "Cher"
+},
+{
+"t": "The Princess Bride",
+"y": 1987,
+"q": "Hello. My name is Inigo Montoya. You killed my father. Prepare to die.",
+"who": "Inigo Montoya"
+},
+{
+"t": "The Princess Bride",
+"y": 1987,
+"q": "As you wish.",
+"who": "Westley"
+},
+{
+"t": "The Princess Bride",
+"y": 1987,
+"q": "Inconceivable!",
+"who": "Vizzini"
+},
+{
+"t": "Ferris Bueller's Day Off",
+"y": 1986,
+"q": "Life moves pretty fast. If you don't stop and look around once in a while, you could miss it.",
+"who": "Ferris Bueller"
+},
+{
+"t": "The Breakfast Club",
+"y": 1985,
+"q": "Don't you forget about me.",
+"who": "Theme song"
+},
+{
+"t": "Top Gun",
+"y": 1986,
+"q": "I feel the need, the need for speed!",
+"who": "Maverick and Goose"
+},
+{
+"t": "Top Gun: Maverick",
+"y": 2022,
+"q": "It's not the plane, it's the pilot.",
+"who": "Maverick"
+},
+{
+"t": "Dirty Dancing",
+"y": 1987,
+"q": "Nobody puts Baby in a corner.",
+"who": "Johnny Castle"
+},
+{
+"t": "When Harry Met Sally...",
+"y": 1989,
+"q": "I'll have what she's having.",
+"who": "Customer"
+},
+{
+"t": "Wall Street",
+"y": 1987,
+"q": "Greed, for lack of a better word, is good.",
+"who": "Gordon Gekko"
+},
+{
+"t": "Die Hard",
+"y": 1988,
+"q": "Yippee-ki-yay!",
+"who": "John McClane"
+},
+{
+"t": "Die Hard",
+"y": 1988,
+"q": "Welcome to the party, pal!",
+"who": "John McClane"
+},
+{
+"t": "Predator",
+"y": 1987,
+"q": "Get to the chopper!",
+"who": "Dutch"
+},
+{
+"t": "Predator",
+"y": 1987,
+"q": "If it bleeds, we can kill it.",
+"who": "Dutch"
+},
+{
+"t": "Alien",
+"y": 1979,
+"q": "In space no one can hear you scream.",
+"who": "Poster line"
+},
+{
+"t": "RoboCop",
+"y": 1987,
+"q": "Dead or alive, you're coming with me.",
+"who": "RoboCop"
+},
+{
+"t": "Total Recall",
+"y": 1990,
+"q": "Get your ass to Mars.",
+"who": "Hauser"
+},
+{
+"t": "The Matrix",
+"y": 1999,
+"q": "There is no spoon.",
+"who": "Spoon Boy"
+},
+{
+"t": "The Matrix",
+"y": 1999,
+"q": "I know kung fu.",
+"who": "Neo"
+},
+{
+"t": "The Matrix",
+"y": 1999,
+"q": "You take the red pill, you stay in Wonderland.",
+"who": "Morpheus"
+},
+{
+"t": "Fight Club",
+"y": 1999,
+"q": "The first rule of Fight Club is: you do not talk about Fight Club.",
+"who": "Tyler Durden"
+},
+{
+"t": "Pulp Fiction",
+"y": 1994,
+"q": "Say 'what' again. I dare you.",
+"who": "Jules Winnfield"
+},
+{
+"t": "Pulp Fiction",
+"y": 1994,
+"q": "Royale with cheese.",
+"who": "Vincent Vega"
+},
+{
+"t": "Reservoir Dogs",
+"y": 1992,
+"q": "Are you gonna bark all day, little doggy, or are you gonna bite?",
+"who": "Mr. Blonde"
+},
+{
+"t": "Kill Bill: Vol. 1",
+"y": 2003,
+"q": "Wiggle your big toe.",
+"who": "The Bride"
+},
+{
+"t": "Inglourious Basterds",
+"y": 2009,
+"q": "That's a bingo!",
+"who": "Hans Landa"
+},
+{
+"t": "Django Unchained",
+"y": 2012,
+"q": "The D is silent.",
+"who": "Django"
+},
+{
+"t": "The Usual Suspects",
+"y": 1995,
+"q": "The greatest trick the Devil ever pulled was convincing the world he didn't exist.",
+"who": "Verbal Kint"
+},
+{
+"t": "Se7en",
+"y": 1995,
+"q": "What's in the box?!",
+"who": "Mills"
+},
+{
+"t": "Goodfellas",
+"y": 1990,
+"q": "Funny how? I mean, funny like I'm a clown? I amuse you?",
+"who": "Tommy DeVito"
+},
+{
+"t": "Goodfellas",
+"y": 1990,
+"q": "As far back as I can remember, I always wanted to be a gangster.",
+"who": "Henry Hill"
+},
+{
+"t": "The Dark Knight",
+"y": 2008,
+"q": "Why so serious?",
+"who": "The Joker"
+},
+{
+"t": "The Dark Knight",
+"y": 2008,
+"q": "You either die a hero, or you live long enough to see yourself become the villain.",
+"who": "Harvey Dent"
+},
+{
+"t": "Batman Begins",
+"y": 2005,
+"q": "Why do we fall? So we can learn to pick ourselves up.",
+"who": "Thomas Wayne"
+},
+{
+"t": "The Dark Knight Rises",
+"y": 2012,
+"q": "You merely adopted the dark. I was born in it.",
+"who": "Bane"
+},
+{
+"t": "Batman",
+"y": 1989,
+"q": "Ever dance with the devil in the pale moonlight?",
+"who": "The Joker"
+},
+{
+"t": "Spider-Man",
+"y": 2002,
+"q": "With great power comes great responsibility.",
+"who": "Uncle Ben"
+},
+{
+"t": "Iron Man",
+"y": 2008,
+"q": "I am Iron Man.",
+"who": "Tony Stark"
+},
+{
+"t": "The Avengers",
+"y": 2012,
+"q": "Puny god.",
+"who": "Hulk"
+},
+{
+"t": "The Avengers",
+"y": 2012,
+"q": "That's my secret, Cap. I'm always angry.",
+"who": "Bruce Banner"
+},
+{
+"t": "Avengers: Infinity War",
+"y": 2018,
+"q": "I don't feel so good.",
+"who": "Peter Parker"
+},
+{
+"t": "Avengers: Endgame",
+"y": 2019,
+"q": "Avengers... assemble.",
+"who": "Captain America"
+},
+{
+"t": "Avengers: Endgame",
+"y": 2019,
+"q": "I love you 3000.",
+"who": "Morgan Stark"
+},
+{
+"t": "Captain America: The First Avenger",
+"y": 2011,
+"q": "I can do this all day.",
+"who": "Steve Rogers"
+},
+{
+"t": "Guardians of the Galaxy",
+"y": 2014,
+"q": "I am Groot.",
+"who": "Groot"
+},
+{
+"t": "Black Panther",
+"y": 2018,
+"q": "Wakanda forever!",
+"who": "T'Challa"
+},
+{
+"t": "Thor: Ragnarok",
+"y": 2017,
+"q": "We know each other. He's a friend from work!",
+"who": "Thor"
+},
+{
+"t": "Deadpool",
+"y": 2016,
+"q": "Maximum effort!",
+"who": "Deadpool"
+},
+{
+"t": "Wonder Woman",
+"y": 2017,
+"q": "I can save today. You can save the world.",
+"who": "Steve Trevor"
+},
+{
+"t": "The Lord of the Rings: The Fellowship of the Ring",
+"y": 2001,
+"q": "You shall not pass!",
+"who": "Gandalf"
+},
+{
+"t": "The Lord of the Rings: The Fellowship of the Ring",
+"y": 2001,
+"q": "One does not simply walk into Mordor.",
+"who": "Boromir"
+},
+{
+"t": "The Lord of the Rings: The Two Towers",
+"y": 2002,
+"q": "My precious.",
+"who": "Gollum"
+},
+{
+"t": "The Lord of the Rings: The Return of the King",
+"y": 2003,
+"q": "I can't carry it for you, but I can carry you!",
+"who": "Sam"
+},
+{
+"t": "The Hobbit: An Unexpected Journey",
+"y": 2012,
+"q": "If more of us valued home above gold, it would be a merrier world.",
+"who": "Thorin"
+},
+{
+"t": "Harry Potter and the Sorcerer's Stone",
+"y": 2001,
+"q": "You're a wizard, Harry.",
+"who": "Hagrid"
+},
+{
+"t": "Harry Potter and the Sorcerer's Stone",
+"y": 2001,
+"q": "It's Levi-O-sa, not Levio-SA.",
+"who": "Hermione"
+},
+{
+"t": "Harry Potter and the Deathly Hallows: Part 2",
+"y": 2011,
+"q": "Always.",
+"who": "Snape"
+},
+{
+"t": "Harry Potter and the Prisoner of Azkaban",
+"y": 2004,
+"q": "I solemnly swear that I am up to no good.",
+"who": "Harry"
+},
+{
+"t": "Pirates of the Caribbean: The Curse of the Black Pearl",
+"y": 2003,
+"q": "This is the day you will always remember as the day you almost caught Captain Jack Sparrow.",
+"who": "Jack Sparrow"
+},
+{
+"t": "Pirates of the Caribbean: The Curse of the Black Pearl",
+"y": 2003,
+"q": "Why is the rum gone?",
+"who": "Jack Sparrow"
+},
+{
+"t": "Jurassic Park",
+"y": 1993,
+"q": "Life, uh, finds a way.",
+"who": "Ian Malcolm"
+},
+{
+"t": "Jurassic Park",
+"y": 1993,
+"q": "Welcome to Jurassic Park.",
+"who": "John Hammond"
+},
+{
+"t": "Jurassic Park",
+"y": 1993,
+"q": "Clever girl.",
+"who": "Muldoon"
+},
+{
+"t": "Gladiator",
+"y": 2000,
+"q": "Are you not entertained?",
+"who": "Maximus"
+},
+{
+"t": "Gladiator",
+"y": 2000,
+"q": "What we do in life echoes in eternity.",
+"who": "Maximus"
+},
+{
+"t": "300",
+"y": 2006,
+"q": "This is Sparta!",
+"who": "Leonidas"
+},
+{
+"t": "Braveheart",
+"y": 1995,
+"q": "They may take our lives, but they'll never take our freedom!",
+"who": "William Wallace"
+},
+{
+"t": "Rocky",
+"y": 1976,
+"q": "Yo, Adrian!",
+"who": "Rocky Balboa"
+},
+{
+"t": "Rocky Balboa",
+"y": 2006,
+"q": "It ain't about how hard you hit. It's about how hard you can get hit and keep moving forward.",
+"who": "Rocky Balboa"
+},
+{
+"t": "Rocky III",
+"y": 1982,
+"q": "I pity the fool.",
+"who": "Clubber Lang"
+},
+{
+"t": "Taken",
+"y": 2008,
+"q": "I will look for you, I will find you, and I will kill you.",
+"who": "Bryan Mills"
+},
+{
+"t": "Liar Liar",
+"y": 1997,
+"q": "The pen is blue!",
+"who": "Fletcher Reede"
+},
+{
+"t": "Ace Ventura: Pet Detective",
+"y": 1994,
+"q": "Allllrighty then!",
+"who": "Ace Ventura"
+},
+{
+"t": "Dumb and Dumber",
+"y": 1994,
+"q": "So you're telling me there's a chance!",
+"who": "Lloyd"
+},
+{
+"t": "The Mask",
+"y": 1994,
+"q": "Smokin'!",
+"who": "The Mask"
+},
+{
+"t": "Anchorman: The Legend of Ron Burgundy",
+"y": 2004,
+"q": "I'm kind of a big deal.",
+"who": "Ron Burgundy"
+},
+{
+"t": "Anchorman: The Legend of Ron Burgundy",
+"y": 2004,
+"q": "I love lamp.",
+"who": "Brick Tamland"
+},
+{
+"t": "Elf",
+"y": 2003,
+"q": "Son of a nutcracker!",
+"who": "Buddy"
+},
+{
+"t": "Elf",
+"y": 2003,
+"q": "The best way to spread Christmas cheer is singing loud for all to hear.",
+"who": "Buddy"
+},
+{
+"t": "Talladega Nights: The Ballad of Ricky Bobby",
+"y": 2006,
+"q": "If you ain't first, you're last!",
+"who": "Ricky Bobby"
+},
+{
+"t": "Step Brothers",
+"y": 2008,
+"q": "Did we just become best friends?",
+"who": "Brennan"
+},
+{
+"t": "Zoolander",
+"y": 2001,
+"q": "What is this? A center for ants?",
+"who": "Derek Zoolander"
+},
+{
+"t": "Napoleon Dynamite",
+"y": 2004,
+"q": "Vote for Pedro.",
+"who": "Napoleon"
+},
+{
+"t": "Office Space",
+"y": 1999,
+"q": "I believe you have my stapler.",
+"who": "Milton"
+},
+{
+"t": "The Big Lebowski",
+"y": 1998,
+"q": "The Dude abides.",
+"who": "The Dude"
+},
+{
+"t": "Caddyshack",
+"y": 1980,
+"q": "Be the ball.",
+"who": "Ty Webb"
+},
+{
+"t": "Airplane!",
+"y": 1980,
+"q": "Surely you can't be serious. I am serious, and don't call me Shirley.",
+"who": "Rumack"
+},
+{
+"t": "Home Alone",
+"y": 1990,
+"q": "Keep the change, ya filthy animal.",
+"who": "Gangster movie"
+},
+{
+"t": "Home Alone",
+"y": 1990,
+"q": "This is my house. I have to defend it.",
+"who": "Kevin"
+},
+{
+"t": "Bad Boys",
+"y": 1995,
+"q": "Bad boys, bad boys, whatcha gonna do?",
+"who": "Theme song"
+},
+{
+"t": "Bad Boys II",
+"y": 2003,
+"q": "This just got real.",
+"who": "Mike Lowrey"
+},
+{
+"t": "Men in Black",
+"y": 1997,
+"q": "Here come the Men in Black.",
+"who": "Theme song"
+},
+{
+"t": "Independence Day",
+"y": 1996,
+"q": "Welcome to Earth!",
+"who": "Captain Hiller"
+},
+{
+"t": "Armageddon",
+"y": 1998,
+"q": "I won't let you down.",
+"who": "Harry Stamper"
+},
+{
+"t": "Speed",
+"y": 1994,
+"q": "Pop quiz, hotshot.",
+"who": "Howard Payne"
+},
+{
+"t": "Point Break",
+"y": 1991,
+"q": "Vaya con Dios, brother.",
+"who": "Bodhi"
+},
+{
+"t": "The Fast and the Furious",
+"y": 2001,
+"q": "I live my life a quarter mile at a time.",
+"who": "Dom Toretto"
+},
+{
+"t": "Furious 7",
+"y": 2015,
+"q": "I don't have friends. I got family.",
+"who": "Dom Toretto"
+},
+{
+"t": "John Wick",
+"y": 2014,
+"q": "People keep asking if I'm back, and I haven't really had an answer. But now, yeah, I'm thinking I'm back!",
+"who": "John Wick"
+},
+{
+"t": "Mission: Impossible",
+"y": 1996,
+"q": "Your mission, should you choose to accept it.",
+"who": "Briefing"
+},
+{
+"t": "Goldfinger",
+"y": 1964,
+"q": "No, Mr. Bond, I expect you to die!",
+"who": "Goldfinger"
+},
+{
+"t": "Dr. No",
+"y": 1962,
+"q": "Bond. James Bond.",
+"who": "James Bond"
+},
+{
+"t": "Casino Royale",
+"y": 2006,
+"q": "Shaken or stirred? Do I look like I give a damn?",
+"who": "James Bond"
+},
+{
+"t": "Raiders of the Lost Ark",
+"y": 1981,
+"q": "Snakes. Why'd it have to be snakes?",
+"who": "Indiana Jones"
+},
+{
+"t": "Indiana Jones and the Last Crusade",
+"y": 1989,
+"q": "X never, ever marks the spot.",
+"who": "Indiana Jones"
+},
+{
+"t": "Good Will Hunting",
+"y": 1997,
+"q": "How do you like them apples?",
+"who": "Will Hunting"
+},
+{
+"t": "Dead Poets Society",
+"y": 1989,
+"q": "Carpe diem. Seize the day, boys.",
+"who": "John Keating"
+},
+{
+"t": "Dead Poets Society",
+"y": 1989,
+"q": "O Captain! My Captain!",
+"who": "Todd Anderson"
+},
+{
+"t": "The Shawshank Redemption",
+"y": 1994,
+"q": "Get busy living, or get busy dying.",
+"who": "Andy Dufresne"
+},
+{
+"t": "The Shawshank Redemption",
+"y": 1994,
+"q": "Hope is a good thing, maybe the best of things.",
+"who": "Andy Dufresne"
+},
+{
+"t": "The Green Mile",
+"y": 1999,
+"q": "I'm tired, boss.",
+"who": "John Coffey"
+},
+{
+"t": "Saving Private Ryan",
+"y": 1998,
+"q": "Earn this.",
+"who": "Captain Miller"
+},
+{
+"t": "Cast Away",
+"y": 2000,
+"q": "Wilson! I'm sorry!",
+"who": "Chuck Noland"
+},
+{
+"t": "A League of Their Own",
+"y": 1992,
+"q": "There's no crying in baseball!",
+"who": "Jimmy Dugan"
+},
+{
+"t": "Sudden Impact",
+"y": 1983,
+"q": "Go ahead, make my day.",
+"who": "Harry Callahan"
+},
+{
+"t": "Network",
+"y": 1976,
+"q": "I'm as mad as hell, and I'm not going to take this anymore!",
+"who": "Howard Beale"
+},
+{
+"t": "Cool Hand Luke",
+"y": 1967,
+"q": "What we've got here is failure to communicate.",
+"who": "Captain"
+},
+{
+"t": "Planet of the Apes",
+"y": 1968,
+"q": "Take your stinking paws off me, you damned dirty ape!",
+"who": "Taylor"
+},
+{
+"t": "2001: A Space Odyssey",
+"y": 1968,
+"q": "I'm sorry, Dave. I'm afraid I can't do that.",
+"who": "HAL 9000"
+},
+{
+"t": "Blade Runner",
+"y": 1982,
+"q": "All those moments will be lost in time, like tears in rain.",
+"who": "Roy Batty"
+},
+{
+"t": "Psycho",
+"y": 1960,
+"q": "A boy's best friend is his mother.",
+"who": "Norman Bates"
+},
+{
+"t": "Sunset Boulevard",
+"y": 1950,
+"q": "All right, Mr. DeMille, I'm ready for my close-up.",
+"who": "Norma Desmond"
+},
+{
+"t": "Some Like It Hot",
+"y": 1959,
+"q": "Well, nobody's perfect.",
+"who": "Osgood"
+},
+{
+"t": "The Exorcist",
+"y": 1973,
+"q": "The power of Christ compels you!",
+"who": "Father Merrin"
+},
+{
+"t": "Poltergeist",
+"y": 1982,
+"q": "They're here.",
+"who": "Carol Anne"
+},
+{
+"t": "Halloween",
+"y": 1978,
+"q": "It's Halloween. Everyone's entitled to one good scare.",
+"who": "Sheriff Brackett"
+},
+{
+"t": "Scream",
+"y": 1996,
+"q": "What's your favorite scary movie?",
+"who": "Ghostface"
+},
+{
+"t": "It",
+"y": 2017,
+"q": "We all float down here.",
+"who": "Pennywise"
+},
+{
+"t": "Get Out",
+"y": 2017,
+"q": "Now you're in the Sunken Place.",
+"who": "Missy"
+},
+{
+"t": "The Ring",
+"y": 2002,
+"q": "Seven days.",
+"who": "Samara"
+},
+{
+"t": "Beetlejuice",
+"y": 1988,
+"q": "It's showtime!",
+"who": "Beetlejuice"
+},
+{
+"t": "The Sandlot",
+"y": 1993,
+"q": "You're killing me, Smalls!",
+"who": "Ham Porter"
+},
+{
+"t": "The Goonies",
+"y": 1985,
+"q": "Goonies never say die!",
+"who": "Mikey"
+},
+{
+"t": "Hook",
+"y": 1991,
+"q": "Bangarang!",
+"who": "The Lost Boys"
+},
+{
+"t": "Willy Wonka & the Chocolate Factory",
+"y": 1971,
+"q": "You get nothing! You lose! Good day, sir!",
+"who": "Willy Wonka"
+},
+{
+"t": "Mrs. Doubtfire",
+"y": 1993,
+"q": "Hellooo!",
+"who": "Mrs. Doubtfire"
+},
+{
+"t": "Mary Poppins",
+"y": 1964,
+"q": "A spoonful of sugar helps the medicine go down.",
+"who": "Mary Poppins"
+},
+{
+"t": "Snow White and the Seven Dwarfs",
+"y": 1937,
+"q": "Mirror, mirror on the wall, who's the fairest one of all?",
+"who": "The Queen"
+},
+{
+"t": "Aladdin",
+"y": 1992,
+"q": "Phenomenal cosmic powers! Itty-bitty living space.",
+"who": "Genie"
+},
+{
+"t": "Beauty and the Beast",
+"y": 1991,
+"q": "Be our guest!",
+"who": "Lumière"
+},
+{
+"t": "Cars",
+"y": 2006,
+"q": "Ka-chow!",
+"who": "Lightning McQueen"
+},
+{
+"t": "Zootopia",
+"y": 2016,
+"q": "It's called a hustle, sweetheart.",
+"who": "Nick Wilde"
+},
+{
+"t": "Inside Out",
+"y": 2015,
+"q": "Take her to the moon for me.",
+"who": "Bing Bong"
+},
+{
+"t": "Encanto",
+"y": 2021,
+"q": "We don't talk about Bruno.",
+"who": "The family"
+},
+{
+"t": "Spider-Man: Into the Spider-Verse",
+"y": 2018,
+"q": "Anyone can wear the mask.",
+"who": "Miles Morales"
+},
+{
+"t": "The Social Network",
+"y": 2010,
+"q": "A million dollars isn't cool. You know what's cool? A billion dollars.",
+"who": "Sean Parker"
+},
+{
+"t": "The Wolf of Wall Street",
+"y": 2013,
+"q": "Sell me this pen.",
+"who": "Jordan Belfort"
+},
+{
+"t": "Interstellar",
+"y": 2014,
+"q": "Do not go gentle into that good night.",
+"who": "Professor Brand"
+},
+{
+"t": "Inception",
+"y": 2010,
+"q": "You mustn't be afraid to dream a little bigger, darling.",
+"who": "Eames"
+},
+{
+"t": "The Prestige",
+"y": 2006,
+"q": "Are you watching closely?",
+"who": "Alfred Borden"
+},
+{
+"t": "Oppenheimer",
+"y": 2023,
+"q": "Now I am become Death, the destroyer of worlds.",
+"who": "Oppenheimer"
+},
+{
+"t": "Joker",
+"y": 2019,
+"q": "You get what you deserve!",
+"who": "Arthur Fleck"
+},
+{
+"t": "Barbie",
+"y": 2023,
+"q": "Hi Barbie!",
+"who": "Everyone"
+},
+{
+"t": "Dune",
+"y": 2021,
+"q": "Fear is the mind-killer.",
+"who": "Paul Atreides"
+},
+{
+"t": "Avatar",
+"y": 2009,
+"q": "I see you.",
+"who": "Neytiri"
+},
+{
+"t": "La La Land",
+"y": 2016,
+"q": "Here's to the ones who dream.",
+"who": "Mia"
+},
+{
+"t": "The Notebook",
+"y": 2004,
+"q": "If you're a bird, I'm a bird.",
+"who": "Allie"
+},
+{
+"t": "Love Actually",
+"y": 2003,
+"q": "To me, you are perfect.",
+"who": "Mark"
+},
+{
+"t": "Bridesmaids",
+"y": 2011,
+"q": "Help me, I'm poor.",
+"who": "Annie"
+},
+{
+"t": "Superbad",
+"y": 2007,
+"q": "McLovin!",
+"who": "Fogell"
+},
+{
+"t": "The Hangover",
+"y": 2009,
+"q": "Paging Mr. Herman.",
+"who": "Alan"
+},
+{
+"t": "Wayne's World",
+"y": 1992,
+"q": "Party on, Wayne! Party on, Garth!",
+"who": "Wayne and Garth"
+},
+{
+"t": "Austin Powers: International Man of Mystery",
+"y": 1997,
+"q": "Yeah, baby, yeah!",
+"who": "Austin Powers"
+},
+{
+"t": "Ghostbusters",
+"y": 1984,
+"q": "Don't cross the streams.",
+"who": "Egon Spengler"
+},
+{
+"t": "Gremlins",
+"y": 1984,
+"q": "Never feed him after midnight.",
+"who": "Mr. Wing"
+},
+{
+"t": "The Truman Show",
+"y": 1998,
+"q": "Good morning, and in case I don't see ya, good afternoon, good evening, and good night!",
+"who": "Truman"
+},
+{
+"t": "Groundhog Day",
+"y": 1993,
+"q": "Okay, campers, rise and shine!",
+"who": "The radio DJ"
+},
+{
+"t": "Bill & Ted's Excellent Adventure",
+"y": 1989,
+"q": "Be excellent to each other.",
+"who": "Bill and Ted"
+},
+{
+"t": "Taken",
+"y": 2008,
+"q": "What I do have are a very particular set of skills.",
+"who": "Bryan Mills"
+},
+{
+"t": "Breaking Bad",
+"y": 2008,
+"q": "I am the one who knocks!",
+"who": "Walter White"
+},
+{
+"t": "Breaking Bad",
+"y": 2008,
+"q": "Say my name.",
+"who": "Walter White"
+},
+{
+"t": "Breaking Bad",
+"y": 2008,
+"q": "Yeah, science!",
+"who": "Jesse Pinkman"
+},
+{
+"t": "Better Call Saul",
+"y": 2015,
+"q": "S'all good, man.",
+"who": "Saul Goodman"
+},
+{
+"t": "Game of Thrones",
+"y": 2011,
+"q": "Winter is coming.",
+"who": "Ned Stark"
+},
+{
+"t": "Game of Thrones",
+"y": 2011,
+"q": "You know nothing, Jon Snow.",
+"who": "Ygritte"
+},
+{
+"t": "Game of Thrones",
+"y": 2011,
+"q": "Hold the door!",
+"who": "Hodor"
+},
+{
+"t": "Game of Thrones",
+"y": 2011,
+"q": "A Lannister always pays his debts.",
+"who": "Tyrion"
+},
+{
+"t": "Friends",
+"y": 1994,
+"q": "We were on a break!",
+"who": "Ross"
+},
+{
+"t": "Friends",
+"y": 1994,
+"q": "How you doin'?",
+"who": "Joey"
+},
+{
+"t": "Friends",
+"y": 1994,
+"q": "Pivot!",
+"who": "Ross"
+},
+{
+"t": "The Office",
+"y": 2005,
+"q": "That's what she said.",
+"who": "Michael Scott"
+},
+{
+"t": "The Office",
+"y": 2005,
+"q": "Bears. Beets. Battlestar Galactica.",
+"who": "Jim"
+},
+{
+"t": "Seinfeld",
+"y": 1989,
+"q": "No soup for you!",
+"who": "The Soup Nazi"
+},
+{
+"t": "Seinfeld",
+"y": 1989,
+"q": "Serenity now!",
+"who": "Frank Costanza"
+},
+{
+"t": "The Simpsons",
+"y": 1989,
+"q": "D'oh!",
+"who": "Homer Simpson"
+},
+{
+"t": "The Simpsons",
+"y": 1989,
+"q": "Eat my shorts!",
+"who": "Bart Simpson"
+},
+{
+"t": "Family Guy",
+"y": 1999,
+"q": "Giggity giggity goo!",
+"who": "Quagmire"
+},
+{
+"t": "The Big Bang Theory",
+"y": 2007,
+"q": "Bazinga!",
+"who": "Sheldon Cooper"
+},
+{
+"t": "How I Met Your Mother",
+"y": 2005,
+"q": "Suit up!",
+"who": "Barney Stinson"
+},
+{
+"t": "How I Met Your Mother",
+"y": 2005,
+"q": "Legen... wait for it... dary!",
+"who": "Barney Stinson"
+},
+{
+"t": "Parks and Recreation",
+"y": 2009,
+"q": "Treat yo' self!",
+"who": "Tom and Donna"
+},
+{
+"t": "Brooklyn Nine-Nine",
+"y": 2013,
+"q": "Cool cool cool cool cool. No doubt no doubt.",
+"who": "Jake Peralta"
+},
+{
+"t": "Brooklyn Nine-Nine",
+"y": 2013,
+"q": "Title of your sex tape.",
+"who": "Jake Peralta"
+},
+{
+"t": "Stranger Things",
+"y": 2016,
+"q": "Friends don't lie.",
+"who": "Eleven"
+},
+{
+"t": "Stranger Things",
+"y": 2016,
+"q": "Mornings are for coffee and contemplation.",
+"who": "Hopper"
+},
+{
+"t": "The Mandalorian",
+"y": 2019,
+"q": "This is the way.",
+"who": "The Mandalorian"
+},
+{
+"t": "The Mandalorian",
+"y": 2019,
+"q": "I have spoken.",
+"who": "Kuiil"
+},
+{
+"t": "Doctor Who",
+"y": 2005,
+"q": "Allons-y!",
+"who": "The Doctor"
+},
+{
+"t": "Doctor Who",
+"y": 2005,
+"q": "Don't blink.",
+"who": "The Doctor"
+},
+{
+"t": "Sherlock",
+"y": 2010,
+"q": "The game is on!",
+"who": "Sherlock Holmes"
+},
+{
+"t": "The Sopranos",
+"y": 1999,
+"q": "Those who want respect, give respect.",
+"who": "Tony Soprano"
+},
+{
+"t": "The Wire",
+"y": 2002,
+"q": "You come at the king, you best not miss.",
+"who": "Omar Little"
+},
+{
+"t": "Succession",
+"y": 2018,
+"q": "Boar on the floor!",
+"who": "Logan Roy"
+},
+{
+"t": "Ted Lasso",
+"y": 2020,
+"q": "Believe.",
+"who": "Ted Lasso"
+},
+{
+"t": "Ted Lasso",
+"y": 2020,
+"q": "Be curious, not judgmental.",
+"who": "Ted Lasso"
+},
+{
+"t": "Schitt's Creek",
+"y": 2015,
+"q": "Ew, David!",
+"who": "Alexis Rose"
+},
+{
+"t": "The Fresh Prince of Bel-Air",
+"y": 1990,
+"q": "Now this is a story all about how my life got flipped, turned upside down.",
+"who": "Theme song"
+},
+{
+"t": "Star Trek",
+"y": 1966,
+"q": "Beam me up, Scotty.",
+"who": "Captain Kirk"
+},
+{
+"t": "Star Trek: The Next Generation",
+"y": 1987,
+"q": "Make it so.",
+"who": "Captain Picard"
+},
+{
+"t": "Star Trek: The Next Generation",
+"y": 1987,
+"q": "Engage!",
+"who": "Captain Picard"
+},
+{
+"t": "The X-Files",
+"y": 1993,
+"q": "The truth is out there.",
+"who": "Opening line"
+},
+{
+"t": "The Walking Dead",
+"y": 2010,
+"q": "Look at the flowers.",
+"who": "Carol"
+},
+{
+"t": "Lost",
+"y": 2004,
+"q": "We have to go back!",
+"who": "Jack Shephard"
+},
+{
+"t": "Arrested Development",
+"y": 2003,
+"q": "There's always money in the banana stand.",
+"who": "George Bluth"
+},
+{
+"t": "Arrested Development",
+"y": 2003,
+"q": "I've made a huge mistake.",
+"who": "Gob Bluth"
+},
+{
+"t": "Rick and Morty",
+"y": 2013,
+"q": "Wubba lubba dub dub!",
+"who": "Rick"
+},
+{
+"t": "SpongeBob SquarePants",
+"y": 1999,
+"q": "I'm ready! I'm ready!",
+"who": "SpongeBob"
+},
+{
+"t": "Avatar: The Last Airbender",
+"y": 2005,
+"q": "My cabbages!",
+"who": "Cabbage Merchant"
+},
+{
+"t": "Pokémon",
+"y": 1997,
+"q": "Gotta catch 'em all!",
+"who": "Theme song"
+},
+{
+"t": "Pokémon",
+"y": 1997,
+"q": "Pikachu, I choose you!",
+"who": "Ash"
+},
+{
+"t": "Naruto",
+"y": 2002,
+"q": "Believe it!",
+"who": "Naruto Uzumaki"
+},
+{
+"t": "Dragon Ball Z",
+"y": 1989,
+"q": "It's over 9000!",
+"who": "Vegeta"
+},
+{
+"t": "One Piece",
+"y": 1999,
+"q": "I'm gonna be King of the Pirates!",
+"who": "Luffy"
+},
+{
+"t": "Attack on Titan",
+"y": 2013,
+"q": "Dedicate your hearts!",
+"who": "Erwin Smith"
+},
+{
+"t": "Fullmetal Alchemist: Brotherhood",
+"y": 2009,
+"q": "Humankind cannot gain anything without first giving something in return.",
+"who": "Alphonse Elric"
+},
+{
+"t": "Death Note",
+"y": 2006,
+"q": "I'll take a potato chip... and eat it!",
+"who": "Light Yagami"
+},
+{
+"t": "Demon Slayer: Kimetsu no Yaiba",
+"y": 2019,
+"q": "Set your heart ablaze.",
+"who": "Rengoku"
+},
+{
+"t": "Jujutsu Kaisen",
+"y": 2020,
+"q": "Throughout heaven and earth, I alone am the honored one.",
+"who": "Gojo"
+},
+{
+"t": "My Hero Academia",
+"y": 2016,
+"q": "Plus Ultra!",
+"who": "All Might"
+},
+{
+"t": "Cowboy Bebop",
+"y": 1998,
+"q": "See you, space cowboy.",
+"who": "End card"
+},
+{
+"t": "Neon Genesis Evangelion",
+"y": 1995,
+"q": "I mustn't run away.",
+"who": "Shinji Ikari"
+},
+{
+"t": "Spirited Away",
+"y": 2001,
+"q": "Once you've met someone, you never really forget them.",
+"who": "Zeniba"
+},
+{
+"t": "My Neighbor Totoro",
+"y": 1988,
+"q": "Totoro!",
+"who": "Mei"
+},
+{
+"t": "Squid Game",
+"y": 2021,
+"q": "Red light, green light.",
+"who": "The doll"
+},
+{
+"t": "The Crown",
+"y": 2016,
+"q": "Duty must come first.",
+"who": "Queen Mary"
+},
+{
+"t": "Peaky Blinders",
+"y": 2013,
+"q": "By order of the Peaky Blinders!",
+"who": "Tommy Shelby"
+},
+{
+"t": "The Boys",
+"y": 2019,
+"q": "Oh, diabolical.",
+"who": "Butcher"
+},
+{
+"t": "Wednesday",
+"y": 2022,
+"q": "I act as if I don't care if people dislike me. Deep down, I secretly enjoy it.",
+"who": "Wednesday Addams"
+},
+{
+"t": "The Last of Us",
+"y": 2023,
+"q": "Endure and survive.",
+"who": "Ellie"
+},
+{
+"t": "House of the Dragon",
+"y": 2022,
+"q": "Dreams didn't make us kings. Dragons did.",
+"who": "Daemon"
+},
+{
+"t": "Yellowstone",
+"y": 2018,
+"q": "You're on my land.",
+"who": "John Dutton"
+},
+{
+"t": "Bluey",
+"y": 2018,
+"q": "For real life?",
+"who": "Bluey"
+}
+]
+}

@@ -31,6 +31,11 @@ internal fun gameCover(key: String): Int? =
         "GRID" -> R.drawable.game_cover_grid
         "TIMELINE" -> R.drawable.game_cover_timeline
         "ACTOR" -> R.drawable.game_cover_actor
+        "QUOTE" -> R.drawable.game_cover_quote
+        "ROLE" -> R.drawable.game_cover_role
+        "BLITZ" -> R.drawable.game_cover_blitz
+        "SEASON" -> R.drawable.game_cover_season
+        "CAPTION" -> R.drawable.game_cover_caption
         "GUESS" -> R.drawable.game_cover_guess
         "RIDDLE" -> R.drawable.game_cover_riddle
         "HIGHER_LOWER" -> R.drawable.game_cover_higher_lower

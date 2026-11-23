@@ -1845,7 +1845,9 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
   .bg-thumbs span { width: 56px; }
 }
 /* The five new games (2026-11-22) */
-.bg-quote { font-style: italic; font-size: 20px; text-align: left; border-radius: 12px; }
+.bg-quote { border-radius: 12px; }
+.bg-quote p { font-style: italic; font-weight: 600; font-size: 26px; line-height: 1.4; }
+.bg-quote .bg-hints[hidden] { display: none; }
 .bg-quote p[hidden] { display: none; }
 .bgq-choices.faces { grid-template-columns: repeat(4, 1fr); }
 .bg-face { flex-direction: column; align-items: stretch; padding: 8px; gap: 6px; text-align: center; }

@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.games.party.PartyKind
 import com.github.damontecres.wholphin.ui.games.puzzles.BlitzViewModel
-import com.github.damontecres.wholphin.ui.games.puzzles.CloseUpViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.MovieGridViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.PosterPuzzleViewModel
 import com.github.damontecres.wholphin.ui.games.puzzles.QuoteItViewModel
@@ -114,9 +113,9 @@ enum class MovieGame(
     ),
     QUOTE(
         "Quote it",
-        "Lines from a movie's subtitles. Which movie says them?",
-        "Three lines people say in a movie, taken from its subtitles, show one by one. Name the movie.",
-        listOf("Read the line.", "More lines show as the clock runs.", "Pick the movie. One wrong guess ends the run."),
+        "A famous line from a movie or show. Where's it from?",
+        "A famous line from a movie or show on Tower. Name where it's from. Who says it shows partway through.",
+        listOf("Read the famous line.", "Who says it shows as the clock runs.", "Pick the title. One wrong guess ends the run."),
         "1 player",
         "About 3 min",
         QuoteItViewModel.BOARD_KEY,
@@ -124,20 +123,6 @@ enum class MovieGame(
         listOf(Color(0xFF0891B2), Color(0xFF164E63)),
         R.string.fa_closed_captioning,
         false,
-        MovieGameGroup.PUZZLE,
-    ),
-    CLOSEUP(
-        "Close-up",
-        "A real scene starts zoomed right in. Guess it early.",
-        "A real scene from a movie or show starts zoomed right in and slowly zooms out. Guess it early for more points.",
-        listOf("Watch the scene zoom out.", "Pick the title from 6.", "One wrong guess ends the run."),
-        "1 player",
-        "About 3 min",
-        CloseUpViewModel.BOARD_KEY,
-        "most points in a run",
-        listOf(Color(0xFFDB2777), Color(0xFF500724)),
-        R.string.fa_magnifying_glass_plus,
-        true,
         MovieGameGroup.PUZZLE,
     ),
     ROLE(
