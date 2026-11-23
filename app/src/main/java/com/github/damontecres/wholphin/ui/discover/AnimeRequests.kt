@@ -1,13 +1,13 @@
 package com.github.damontecres.wholphin.ui.discover
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,15 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,9 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -71,9 +65,14 @@ import com.github.damontecres.wholphin.ui.components.GlowRanked
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.detail.discover.findAnimeInRequests
 import com.github.damontecres.wholphin.ui.detail.discover.searchNameFor
+import com.github.damontecres.wholphin.ui.detail.title.ScorePill
+import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
+import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -239,22 +238,6 @@ class OwnedAnimeIndex
             }
     }
 
-/** The lists in the anime side list, in order */
-enum class AnimePick(
-    val label: String,
-    val chip: String,
-) {
-    SEASON("This season", "This season"),
-    TOP("Top 10 this week", "Top 10"),
-    WEEK("This week", "This week"),
-    FEEL("Find by feel", "By feel"),
-    TAGS("Mix and match tags", "Tags"),
-    GEMS("Hidden gems", "Gems"),
-    DUBBED("Finished and dubbed", "Dubbed"),
-    MOVIES("Movies", "Movies"),
-    NEXT("Coming next season", "Next season"),
-}
-
 @HiltViewModel
 class AnimeRequestsViewModel
     @Inject
@@ -347,6 +330,8 @@ class AnimeRequestsViewModel
         fun seasonAsk(pick: AnimeSeasonPick) = discover.seasonAsk(pick)
 
         val topAsk get() = discover.topAsk
+        val trendingAsk get() = discover.trendingAsk
+        val malTrendingAsk get() = discover.malTrendingAsk
         val gemsAsk get() = discover.gemsAsk
         val finishedAsk get() = discover.finishedAsk
         val moviesAsk get() = discover.moviesAsk
@@ -396,11 +381,24 @@ class AnimeRequestsViewModel
         }
     }
 
+/** One row on the Anime tab */
+private class AnimeRowSpec(
+    val key: String,
+    val title: String,
+    val note: String?,
+    val ask: AnimeDiscover.Ask,
+    val ranked: Boolean = false,
+    val keep: ((AnimeCard) -> Boolean)? = null,
+) {
+    fun copyKeep(keep: (AnimeCard) -> Boolean) = AnimeRowSpec(key, title, note, ask, ranked, keep)
+}
+
 /**
- * Benflix: the Requests > Anime tab (Ben's design, 2026-11-12). Requests layout C: a list on the left (chips on
- * phones) and a poster wall on the right, filled with anime ways in: This season (opens here), Top 10,
- * This week's calendar, Find by feel, Mix and match tags, Hidden gems, Finished and dubbed, Movies and
- * Coming next season. Shows already on Benflix are left out, with a small note saying how many.
+ * Benflix: the Requests > Anime tab. Glowfin new look (Ben approved 2026-11-22): it lands straight on a row, like
+ * Movies and Shows. On TV the art of the anime you're on (its AniList banner) fills the page and the top describes
+ * it. Rows: This season, Top 10 this week, This week in anime, Trending on AniList, Trending on MyAnimeList (Ben
+ * asked for both), a Moods pill row with the picked mood's row under it, Mix and match tags, Finished and dubbed,
+ * Hidden gems, Anime movies, Coming next season and Last season. Shows already on Glowfin are left out.
  */
 @Composable
 internal fun AnimeShelf(
@@ -408,265 +406,393 @@ internal fun AnimeShelf(
     onAsk: (DiscoverItem) -> Unit,
     onMenu: (DiscoverItem) -> Unit,
     modifier: Modifier = Modifier,
+    top: Dp = 0.dp,
     viewModel: AnimeRequestsViewModel = hiltViewModel(),
 ) {
-    var pick by rememberSaveable { mutableStateOf(AnimePick.SEASON) }
     val nowSeason = remember { AnimeSeasonPick.now() }
-    val seasons = remember(nowSeason) { listOf(nowSeason, nowSeason.previous(), nowSeason.previous().previous()) }
-    var seasonIndex by rememberSaveable { mutableStateOf(0) }
-    var feelName by rememberSaveable { mutableStateOf<String?>(null) }
     val catalog by viewModel.catalog.collectAsState()
+    val dubState by viewModel.dubs.collectAsState()
+    val week by viewModel.week.collectAsState()
+    val owned by viewModel.owned.collectAsState()
+    val lists by viewModel.lists.collectAsState()
     val feels =
         remember(catalog) {
             ANIME_FEELS.filter { f -> catalog.isEmpty() || f.tags.all { AniListService.resolveName(it, catalog) != null } }
         }
-    val feel = feels.firstOrNull { it.name == feelName }
-    val ask: AnimeDiscover.Ask? =
-        when (pick) {
-            AnimePick.SEASON -> viewModel.seasonAsk(seasons[seasonIndex.coerceIn(0, seasons.lastIndex)])
-            AnimePick.TOP -> viewModel.topAsk
-            AnimePick.GEMS -> viewModel.gemsAsk
-            AnimePick.DUBBED -> viewModel.finishedAsk
-            AnimePick.MOVIES -> viewModel.moviesAsk
-            AnimePick.NEXT -> viewModel.nextAsk()
-            AnimePick.FEEL -> feel?.let { viewModel.feelAsk(it) }
-            AnimePick.WEEK, AnimePick.TAGS -> null
+    var feelName by rememberSaveable { mutableStateOf<String?>(null) }
+    val feel = feels.firstOrNull { it.name == feelName } ?: feels.firstOrNull()
+    val quickPicks =
+        remember(catalog) {
+            ANIME_QUICK_PICKS.mapNotNull { label -> AniListService.resolveName(label, catalog)?.let { label to it } }
         }
-    LaunchedEffect(ask?.key, pick) {
-        if (ask != null) viewModel.load(ask)
-        if (pick == AnimePick.WEEK) viewModel.loadWeek()
+    LaunchedEffect(Unit) { viewModel.loadWeek() }
+    val dubs = dubState
+    val firstRows =
+        remember(nowSeason) {
+            listOf(
+                AnimeRowSpec("season", "This season", "${nowSeason.label} · airing now", viewModel.seasonAsk(nowSeason)),
+                AnimeRowSpec("top", "Top 10 this week", "What anime fans are watching most", viewModel.topAsk, ranked = true),
+            )
+        }
+    val trendRows =
+        remember {
+            listOf(
+                AnimeRowSpec("tr-al", "Trending on AniList", "Right after the Top 10", viewModel.trendingAsk),
+                AnimeRowSpec("tr-mal", "Trending on MyAnimeList", "Top anime airing now", viewModel.malTrendingAsk),
+            )
+        }
+    val laterRows =
+        remember(nowSeason, dubs) {
+            listOfNotNull(
+                if (!dubs.isNullOrEmpty()) {
+                    AnimeRowSpec(
+                        "dubbed",
+                        "Finished and dubbed",
+                        "Every episode out, with English voices",
+                        viewModel.finishedAsk,
+                        keep = { c -> c.malId?.let { it in dubs } == true },
+                    )
+                } else {
+                    null
+                },
+                AnimeRowSpec("gems", "Hidden gems", "Scores of 8 and up that few people have found", viewModel.gemsAsk),
+                AnimeRowSpec("movies", "Anime movies", null, viewModel.moviesAsk),
+                AnimeRowSpec("next", "Coming next season", nowSeason.next().label, viewModel.nextAsk()),
+                AnimeRowSpec("last", "Last season", nowSeason.previous().label, viewModel.seasonAsk(nowSeason.previous())),
+            )
+        }
+    val feelRow = feel?.let { AnimeRowSpec("feel-${it.name}", "Mood: ${it.name}", it.recipe, viewModel.feelAsk(it)) }
+
+    // The anime the top describes: follows focus once you've stopped on a cover for a moment
+    var focused by remember { mutableStateOf<AnimeCard?>(null) }
+    var shown by remember { mutableStateOf<AnimeCard?>(null) }
+    LaunchedEffect(focused) {
+        val target = focused ?: return@LaunchedEffect
+        if (shown != null) delay(SHOW_DELAY_MS)
+        shown = target
     }
-    val wall: @Composable (Modifier) -> Unit = { m ->
-        Column(m) {
-            when (pick) {
-                AnimePick.WEEK -> {
-                    AnimeCalendar(isTv, viewModel, onAsk)
-                }
+    val firstCard =
+        lists[firstRows.first().ask.key]
+            ?.items
+            ?.firstOrNull { !owned.has(it) }
+    val described = shown ?: firstCard
+    // Trending on AniList leaves out what the Top 10 already shows
+    val topIds =
+        remember(lists, owned) {
+            lists[firstRows[1].ask.key]
+                ?.items
+                ?.filterNot { owned.has(it) }
+                ?.take(10)
+                ?.map { it.id }
+                ?.toSet()
+                .orEmpty()
+        }
+    val onFocus: (AnimeCard) -> Unit = { focused = it }
 
-                AnimePick.TAGS -> {
-                    AnimeTagWall(catalog, viewModel)
-                }
-
-                AnimePick.FEEL -> {
-                    if (feel == null) {
-                        FeelWall(feels, isTv) { feelName = it.name }
-                    } else {
-                        AnimeWall(
-                            title = feel.name,
-                            note = feel.recipe,
-                            ask = ask,
-                            ranked = false,
-                            isTv = isTv,
-                            viewModel = viewModel,
-                            onMenu = onMenu,
-                            top = { RequestsChip("All feels", false, { feelName = null }) },
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val topHeight =
+            (maxHeight * ANIME_TOP_SHARE).coerceIn(
+                top + ANIME_TOP_MIN,
+                (maxHeight - ANIME_ROW_ROOM).coerceAtLeast(top + ANIME_TOP_MIN),
+            )
+        if (isTv) {
+            RequestArtUrl(described?.let { it.banner ?: it.cover })
+            described?.score?.let { score ->
+                ScorePill(
+                    rating = null,
+                    scores = listOf(StripPart("anilist", "$score%")),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = top + 2.dp),
+                )
+            }
+        }
+        Column(Modifier.fillMaxSize().padding(top = if (isTv) 0.dp else top)) {
+            if (isTv) {
+                Box(Modifier.fillMaxWidth().height(topHeight)) {
+                    described?.let { card ->
+                        RequestTopText(
+                            title = card.title,
+                            facts =
+                                listOfNotNull(
+                                    if (card.isMovie) "Anime movie" else "Anime",
+                                    card.year?.toString(),
+                                    card.episodes?.takeIf { it > 0 && !card.isMovie }?.let { "$it episodes" },
+                                    dubWord(card, dubs),
+                                ).joinToString(" · "),
+                            tags =
+                                listOfNotNull(
+                                    RqTag(RqTagKind.NOT_YET, "Not on Glowfin yet"),
+                                    card.airingLine?.let { RqTag(RqTagKind.ON_WAY, "Airing now · $it") },
+                                ),
+                            story = card.story,
+                            hint = ASK_HINT,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = top + 2.dp),
                         )
                     }
                 }
-
-                AnimePick.SEASON -> {
-                    val s = seasons[seasonIndex.coerceIn(0, seasons.lastIndex)]
-                    AnimeWall(
-                        title = s.label,
-                        note = if (seasonIndex == 0) "Airing now" else "Last season".takeIf { seasonIndex == 1 },
-                        ask = ask,
-                        ranked = false,
-                        isTv = isTv,
-                        viewModel = viewModel,
-                        onMenu = onMenu,
-                        top = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                seasons.forEachIndexed { i, season ->
-                                    RequestsChip(season.label, i == seasonIndex, { seasonIndex = i })
-                                }
+            }
+            val defaultSpec = LocalBringIntoViewSpec.current
+            val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
+            CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(if (isTv) 18.dp else 14.dp),
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 48.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                ) {
+                    fun rows(list: List<AnimeRowSpec>) {
+                        items(list, key = { "anrow-${it.key}" }) { spec ->
+                            CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                                AnimeRow(spec, isTv, viewModel, onMenu, onFocus)
                             }
-                        },
-                    )
-                }
-
-                AnimePick.DUBBED -> {
-                    val dubState by viewModel.dubs.collectAsState()
-                    val dubs = dubState
-                    when {
-                        dubs == null -> {
-                            LoadingPage(Modifier.height(240.dp), focusEnabled = false)
-                        }
-
-                        dubs.isEmpty() -> {
-                            LoadFailed("Couldn't get the list of dubbed anime.", onRetry = viewModel::retryDubs)
-                        }
-
-                        else -> {
-                            AnimeWall(
-                                title = "Finished and dubbed",
-                                note = "Every episode out, with English voices",
-                                ask = ask,
-                                ranked = false,
-                                isTv = isTv,
-                                viewModel = viewModel,
-                                onMenu = onMenu,
-                                keep = { c -> c.malId?.let { it in dubs } == true },
-                            )
                         }
                     }
-                }
-
-                else -> {
-                    AnimeWall(
-                        title = pick.label,
-                        note =
-                            when (pick) {
-                                AnimePick.TOP -> "What anime fans are watching most"
-                                AnimePick.GEMS -> "Scores of 8 and up that few people have found"
-                                AnimePick.NEXT -> AnimeSeasonPick.now().next().label
-                                else -> null
-                            },
-                        ask = ask,
-                        ranked = pick == AnimePick.TOP,
-                        isTv = isTv,
-                        viewModel = viewModel,
-                        onMenu = onMenu,
-                    )
-                }
-            }
-        }
-    }
-    // Glowfin R1 (Ben 2026-11-18): the anime ways in are chips across the top on TV, phone and browser
-    // (This season, Top 10, This week, Find by feel, Mix and match tags, Hidden gems, Finished and dubbed,
-    // Movies, Coming next season). OK or a tap picks one; moving along them only moves.
-    Column(modifier.fillMaxSize()) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-        ) {
-            items(AnimePick.entries, key = { "anc-${it.name}" }) { p ->
-                RequestsChip(if (isTv) p.label else p.chip, p == pick, {
-                    if (p == AnimePick.FEEL) feelName = null
-                    pick = p
-                })
-            }
-        }
-        wall(Modifier.fillMaxWidth().weight(1f))
-    }
-}
-
-/** One poster wall: a title line (with how many are already on Benflix), anything on [top], then the posters */
-@Composable
-private fun AnimeWall(
-    title: String,
-    note: String?,
-    ask: AnimeDiscover.Ask?,
-    ranked: Boolean,
-    isTv: Boolean,
-    viewModel: AnimeRequestsViewModel,
-    onMenu: (DiscoverItem) -> Unit,
-    keep: (AnimeCard) -> Boolean = { true },
-    top: (@Composable () -> Unit)? = null,
-) {
-    val lists by viewModel.lists.collectAsState()
-    val owned by viewModel.owned.collectAsState()
-    val dubs by viewModel.dubs.collectAsState()
-    val opening by viewModel.opening.collectAsState()
-    val state = ask?.let { lists[it.key] }
-    val all = state?.items?.filter(keep)
-    val shown = remember(all, owned) { all?.filterNot { owned.has(it) } }
-    val here = (all?.size ?: 0) - (shown?.size ?: 0)
-    val line = listOfNotNull(note, if (here > 0) "$here already on Glowfin" else null).joinToString(" · ")
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val gap = 12.dp
-        val side = 16.dp
-        val posterWidth = if (isTv) 120.dp else ((maxWidth - side * 2 - gap * 2) / 3)
-        val gridState = rememberLazyGridState()
-        LaunchedEffect(ask?.key) { gridState.scrollToItem(0) }
-        LazyVerticalGrid(
-            columns = if (isTv) GridCells.Adaptive(posterWidth + 4.dp) else GridCells.Fixed(3),
-            state = gridState,
-            horizontalArrangement = Arrangement.spacedBy(gap),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            contentPadding = PaddingValues(start = side, end = side, top = 8.dp, bottom = 48.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item(key = "head", span = { GridItemSpan(maxLineSpan) }) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    top?.invoke()
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(title, fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
-                        if (line.isNotEmpty()) {
-                            Text(
-                                line,
-                                fontSize = BenflixType.small,
-                                color = BenflixColors.Muted,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
-                            )
+                    rows(firstRows)
+                    item(key = "anrow-week") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                            AnimeWeekRow(week, isTv, viewModel, onAsk, onFocus)
                         }
                     }
-                }
-            }
-            when {
-                shown == null -> {
-                    item(key = "loading", span = { GridItemSpan(maxLineSpan) }) {
-                        LoadingPage(Modifier.height(240.dp), focusEnabled = false)
-                    }
-                }
-
-                state?.failed == true && shown.isEmpty() -> {
-                    item(key = "failed", span = { GridItemSpan(maxLineSpan) }) {
-                        LoadFailed("These didn't load. AniList may be busy.", onRetry = { ask?.let { viewModel.load(it, again = true) } })
-                    }
-                }
-
-                shown.isEmpty() -> {
-                    item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            if (here > 0) "You already have all of these on Glowfin." else "Nothing here right now.",
-                            fontSize = BenflixType.lead,
-                            color = BenflixColors.Muted,
-                            modifier = Modifier.padding(vertical = 24.dp),
-                        )
-                    }
-                }
-
-                else -> {
-                    // Glowfin Top 10 rule: the first ten sit in one row, each number fully beside its poster
-                    val top = if (ranked) shown.take(10) else emptyList()
-                    if (top.isNotEmpty()) {
-                        item(key = "top10", span = { GridItemSpan(maxLineSpan) }) {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                items(count = top.size, key = { "an-top-${top[it].id}" }) { index ->
-                                    val card = top[index]
-                                    GlowRanked(rank = index + 1, posterHeight = posterWidth * 1.5f) {
-                                        AnimeCardPoster(
-                                            card = card,
-                                            width = posterWidth,
-                                            rank = null,
-                                            dub = dubWord(card, dubs),
-                                            busy = opening == card.id,
-                                            onClick = { viewModel.open(card) },
-                                            onLongClick = { viewModel.open(card, onMenu) },
-                                        )
+                    val skipTop: (AnimeCard) -> Boolean = { it.id !in topIds }
+                    rows(listOf(trendRows[0].copyKeep(skipTop), trendRows[1]))
+                    if (feels.isNotEmpty()) {
+                        item(key = "anrow-moods") {
+                            CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                                RequestChipRow("Moods") {
+                                    items(feels, key = { "mood-${it.name}" }) { f ->
+                                        RequestsChip(f.name, f.name == feel?.name, { feelName = f.name })
                                     }
                                 }
                             }
                         }
                     }
-                    itemsIndexed(shown.drop(top.size), key = { _, c -> "an-${c.id}" }) { index, card ->
-                        AnimeCardPoster(
-                            card = card,
-                            width = posterWidth,
-                            rank = null,
-                            dub = dubWord(card, dubs),
-                            busy = opening == card.id,
-                            onClick = { viewModel.open(card) },
-                            onLongClick = { viewModel.open(card, onMenu) },
-                        )
+                    feelRow?.let { rows(listOf(it)) }
+                    item(key = "anrow-tags") {
+                        CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+                            RequestChipRow("Mix and match tags") {
+                                item(key = "tags-all") {
+                                    RequestsChip(
+                                        "Every genre and tag ›",
+                                        true,
+                                        { viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList())) },
+                                    )
+                                }
+                                items(quickPicks, key = { "tag-${it.first}" }) { (label, name) ->
+                                    RequestsChip(
+                                        label,
+                                        false,
+                                        { viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name))) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    rows(laterRows)
+                }
+            }
+        }
+    }
+}
+
+/** One anime row: its name (with how many are already on Glowfin) and the covers, loaded when it comes on screen */
+@Composable
+private fun AnimeRow(
+    spec: AnimeRowSpec,
+    isTv: Boolean,
+    viewModel: AnimeRequestsViewModel,
+    onMenu: (DiscoverItem) -> Unit,
+    onFocus: (AnimeCard) -> Unit,
+) {
+    LaunchedEffect(spec.ask.key) { viewModel.load(spec.ask) }
+    val lists by viewModel.lists.collectAsState()
+    val owned by viewModel.owned.collectAsState()
+    val dubs by viewModel.dubs.collectAsState()
+    val opening by viewModel.opening.collectAsState()
+    val state = lists[spec.ask.key]
+    val all = state?.items?.let { l -> spec.keep?.let { l.filter(it) } ?: l }
+    val shown = remember(all, owned) { all?.filterNot { owned.has(it) } }
+    val here = (all?.size ?: 0) - (shown?.size ?: 0)
+    val line = listOfNotNull(spec.note, if (here > 0) "$here already on Glowfin" else null).joinToString(" · ")
+    val width = if (isTv) 120.dp else 104.dp
+    Column(Modifier.fillMaxWidth().scrollAsOneBlock()) {
+        AnimeRowName(spec.title, line)
+        when {
+            shown == null -> {
+                Box(Modifier.fillMaxWidth().height(width * 1.5f + 40.dp)) {
+                    LoadingPage(Modifier.fillMaxSize(), focusEnabled = false)
+                }
+            }
+
+            state?.failed == true && shown.isEmpty() -> {
+                LoadFailed("These didn't load. AniList may be busy.", onRetry = { viewModel.load(spec.ask, again = true) })
+            }
+
+            shown.isEmpty() -> {
+                Text(
+                    if (here > 0) "You already have all of these on Glowfin." else "Nothing here right now.",
+                    fontSize = BenflixType.body,
+                    color = BenflixColors.Muted,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
+
+            else -> {
+                val list = shown.distinctBy { it.id }.let { if (spec.ranked) it.take(10) else it }
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                ) {
+                    itemsIndexed(list, key = { _, c -> "an-${spec.key}-${c.id}" }) { index, card ->
+                        val poster: @Composable () -> Unit = {
+                            AnimeCardPoster(
+                                card = card,
+                                width = width,
+                                rank = null,
+                                dub = dubWord(card, dubs),
+                                busy = opening == card.id,
+                                onClick = { viewModel.open(card) },
+                                onLongClick = { viewModel.open(card, onMenu) },
+                                onFocus = { onFocus(card) },
+                            )
+                        }
+                        // Glowfin Top 10 rule: each number fully beside its poster
+                        if (spec.ranked) GlowRanked(rank = index + 1, posterHeight = width * 1.5f) { poster() } else poster()
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun AnimeRowName(
+    title: String,
+    line: String,
+) {
+    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+        Text(
+            title,
+            fontFamily = GlowfinDisplayFont,
+            fontSize = BenflixType.lead,
+            fontWeight = FontWeight.Bold,
+            color = BenflixColors.Text,
+            maxLines = 1,
+        )
+        if (line.isNotEmpty()) {
+            Text(
+                line,
+                fontSize = BenflixType.small,
+                color = BenflixColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
+            )
+        }
+    }
+}
+
+private val TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+
+/**
+ * This week in anime: the next new episodes for shows not on Glowfin, in the order they air, each cover saying
+ * "Today 9:30 pm · Ep 7". Phones get a small Ask under each.
+ */
+@Composable
+private fun AnimeWeekRow(
+    week: List<AnimeAiringCard>?,
+    isTv: Boolean,
+    viewModel: AnimeRequestsViewModel,
+    onAsk: (DiscoverItem) -> Unit,
+    onFocus: (AnimeCard) -> Unit,
+) {
+    val failed by viewModel.weekFailed.collectAsState()
+    val owned by viewModel.owned.collectAsState()
+    val dubs by viewModel.dubs.collectAsState()
+    val opening by viewModel.opening.collectAsState()
+    val zone = remember { ZoneId.systemDefault() }
+    val today = remember { LocalDate.now(zone) }
+    val now = remember { Instant.now().epochSecond }
+    val list =
+        remember(week, owned) {
+            week
+                .orEmpty()
+                .filterNot { owned.has(it.card) }
+                .filter { it.airingAt >= now - 6 * 3600 }
+                .sortedBy { it.airingAt }
+                .distinctBy { it.card.id }
+        }
+
+    fun whenOf(a: AnimeAiringCard): String {
+        val at = Instant.ofEpochSecond(a.airingAt).atZone(zone)
+        val d = at.toLocalDate()
+        val day =
+            when (d) {
+                today -> "Today"
+                today.plusDays(1) -> "Tomorrow"
+                else -> d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.US)
+            }
+        return "$day ${at.format(TIME).lowercase()} · Ep ${a.episode}"
+    }
+    val width = if (isTv) 120.dp else 104.dp
+    Column(Modifier.fillMaxWidth().scrollAsOneBlock()) {
+        AnimeRowName("This week in anime", "New episodes, for shows you don't have yet")
+        when {
+            week == null -> {
+                Box(Modifier.fillMaxWidth().height(width * 1.5f + 40.dp)) {
+                    LoadingPage(Modifier.fillMaxSize(), focusEnabled = false)
+                }
+            }
+
+            failed -> {
+                LoadFailed("The calendar didn't load. AniList may be busy.", onRetry = { viewModel.loadWeek(again = true) })
+            }
+
+            list.isEmpty() -> {
+                Text(
+                    "Nothing new this week.",
+                    fontSize = BenflixType.body,
+                    color = BenflixColors.Muted,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
+
+            else -> {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                ) {
+                    items(list, key = { "wk-${it.card.id}-${it.episode}" }) { a ->
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            AnimeCardPoster(
+                                card = a.card,
+                                width = width,
+                                rank = null,
+                                dub = dubWord(a.card, dubs),
+                                busy = opening == a.card.id,
+                                onClick = { viewModel.open(a.card) },
+                                onLongClick = { viewModel.open(a.card, onAsk) },
+                                onFocus = { onFocus(a.card) },
+                                caption = whenOf(a),
+                            )
+                            if (!isTv) {
+                                Button(
+                                    onClick = { viewModel.open(a.card, onAsk) },
+                                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                                    colors = ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
+                                    modifier = Modifier.width(width),
+                                ) { Text("Ask", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The TV top area's share of the screen, like Movies and Shows */
+private const val ANIME_TOP_SHARE = 0.52f
+private val ANIME_TOP_MIN = 116.dp
+private val ANIME_ROW_ROOM = 236.dp
+private const val SHOW_DELAY_MS = 450L
 
 /** "Sub" or "Sub+Dub" (English dub), once the dub list is in */
 private fun dubWord(
@@ -688,9 +814,12 @@ private fun AnimeCardPoster(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocus: (() -> Unit)? = null,
+    /** Words under the name in place of the year ("Today 9:30 pm · Ep 7") */
+    caption: String? = null,
 ) {
     val shape = RoundedCornerShape(10.dp)
-    Column(modifier.width(width)) {
+    Column(modifier.width(width).then(if (onFocus != null) Modifier.onFocusChanged { if (it.hasFocus) onFocus() } else Modifier)) {
         Surface(
             onClick = onClick,
             onLongClick = onLongClick,
@@ -764,7 +893,7 @@ private fun AnimeCardPoster(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            (card.airingLine ?: card.year?.toString())?.let {
+            (caption ?: card.airingLine ?: card.year?.toString())?.let {
                 Text(it, color = BenflixColors.Muted, fontSize = BenflixType.tag, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -789,293 +918,4 @@ private fun Badge(
                 .background(if (light) BenflixColors.Text else Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 5.dp, vertical = 1.dp),
     )
-}
-
-/** Find by feel: big colour tiles, one per feel, each with a short plain line */
-@Composable
-private fun FeelWall(
-    feels: List<AnimeFeel>,
-    isTv: Boolean,
-    onPick: (AnimeFeel) -> Unit,
-) {
-    LazyVerticalGrid(
-        columns = if (isTv) GridCells.Fixed(5) else GridCells.Fixed(2),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item(key = "feel-head", span = { GridItemSpan(maxLineSpan) }) {
-            Text("What are you in the mood for?", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
-        }
-        items(feels, key = { "feel-${it.name}" }) { f ->
-            val c = Color(0xFF000000 or f.color)
-            val shape = RoundedCornerShape(12.dp)
-            Surface(
-                onClick = { onPick(f) },
-                shape = ClickableSurfaceDefaults.shape(shape),
-                colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
-                border =
-                    com.github.damontecres.wholphin.ui.door
-                        .doorFocusBorder(shape),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                modifier = Modifier.fillMaxWidth().height(if (isTv) 96.dp else 84.dp),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clip(shape)
-                        .background(Brush.linearGradient(listOf(c, lerpDark(c)))),
-                ) {
-                    Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-                        Text(f.name, color = Color.White, fontSize = BenflixType.lead, fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            f.line,
-                            color = Color.White.copy(alpha = .85f),
-                            fontSize = BenflixType.tag,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun lerpDark(c: Color) =
-    Color(
-        red = c.red * .35f + .04f * .65f,
-        green = c.green * .35f + .05f * .65f,
-        blue =
-            c.blue * .35f + .06f * .65f,
-    )
-
-/** Mix and match tags: the deep search (Must have / Leave out), and quick picks that open it with one tag */
-@Composable
-private fun AnimeTagWall(
-    catalog: List<AniListTagChoice>,
-    viewModel: AnimeRequestsViewModel,
-) {
-    // Each button keeps its everyday name ("Harem") but opens AniList's real tag; ones AniList doesn't have are hidden
-    val picks =
-        remember(catalog) {
-            ANIME_QUICK_PICKS.mapNotNull { label -> AniListService.resolveName(label, catalog)?.let { label to it } }
-        }
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(170.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item(key = "tags-head", span = { GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Mix and match", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
-                Text(
-                    "Pick tags an anime must have, and ones to leave out. Every anime with all of them shows.",
-                    fontSize = BenflixType.small,
-                    color = BenflixColors.Muted,
-                )
-            }
-        }
-        item(key = "tags-open", span = { GridItemSpan(maxLineSpan) }) {
-            RequestsChip(
-                "Open mix and match: every genre and tag",
-                true,
-                { viewModel.navigationManager.navigateTo(Destination.AnimeGenres(emptyList())) },
-            )
-        }
-        items(picks, key = { "tag-${it.first}" }) { (label, name) ->
-            RequestsChip(
-                label,
-                false,
-                { viewModel.navigationManager.navigateTo(Destination.AnimeGenres(listOf(name))) },
-                Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
-
-private val TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
-
-/**
- * This week: new episodes airing each day for shows not on Benflix, so you can ask while it's airing.
- * TV: one column per day. Phone: day chips and a list with Ask buttons.
- */
-@Composable
-private fun AnimeCalendar(
-    isTv: Boolean,
-    viewModel: AnimeRequestsViewModel,
-    onAsk: (DiscoverItem) -> Unit,
-) {
-    val week by viewModel.week.collectAsState()
-    val failed by viewModel.weekFailed.collectAsState()
-    val owned by viewModel.owned.collectAsState()
-    val opening by viewModel.opening.collectAsState()
-    val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
-    val days = remember(today) { (0..6).map { today.plusDays(it.toLong()) } }
-    val byDay =
-        remember(week, owned) {
-            week
-                .orEmpty()
-                .filterNot { owned.has(it.card) }
-                .map { Instant.ofEpochSecond(it.airingAt).atZone(zone).toLocalDate() to it }
-                .filter { it.first in days }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { (_, l) -> l.distinctBy { it.card.id }.sortedBy { it.airingAt } }
-        }
-    val hidden =
-        remember(week, owned) {
-            week
-                .orEmpty()
-                .filter { owned.has(it.card) }
-                .distinctBy { it.card.id }
-                .size
-        }
-
-    fun dayName(d: LocalDate) =
-        when (d) {
-            today -> "Today"
-            today.plusDays(1) -> "Tomorrow"
-            else -> d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.US) + " " + d.dayOfMonth
-        }
-
-    fun timeOf(a: AnimeAiringCard) =
-        Instant
-            .ofEpochSecond(a.airingAt)
-            .atZone(zone)
-            .format(TIME)
-            .lowercase()
-    Column(Modifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text("This week in anime", fontSize = BenflixType.rowName, fontWeight = FontWeight.Bold, color = BenflixColors.Text)
-            Text(
-                listOfNotNull("New episodes by day, for shows you don't have yet", if (hidden > 0) "$hidden already on Glowfin" else null)
-                    .joinToString(" · "),
-                fontSize = BenflixType.small,
-                color = BenflixColors.Muted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
-            )
-        }
-        when {
-            week == null -> {
-                LoadingPage(Modifier.height(240.dp), focusEnabled = false)
-            }
-
-            failed -> {
-                LoadFailed("The calendar didn't load. AniList may be busy.", onRetry = { viewModel.loadWeek(again = true) })
-            }
-
-            isTv -> {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(days, key = { "day-$it" }) { d ->
-                        Column(Modifier.width(176.dp).fillParentMaxHeight()) {
-                            Text(
-                                dayName(d),
-                                fontSize = BenflixType.body,
-                                fontWeight = FontWeight.Bold,
-                                color = if (d == today) BenflixColors.Text else BenflixColors.Soft,
-                                modifier = Modifier.padding(bottom = 6.dp),
-                            )
-                            val list = byDay[d].orEmpty()
-                            if (list.isEmpty()) {
-                                Text("Nothing new", fontSize = BenflixType.small, color = BenflixColors.Muted)
-                            }
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
-                                items(list, key = { "ep-$d-${it.card.id}-${it.episode}" }) { a ->
-                                    CalendarCard(a, timeOf(a), opening == a.card.id, onClick = { viewModel.open(a.card) })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            else -> {
-                var day by rememberSaveable { mutableStateOf(0) }
-                val d = days[day.coerceIn(0, days.lastIndex)]
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                ) {
-                    items(days.size, key = { "dchip-$it" }) { i ->
-                        RequestsChip(dayName(days[i]), i == day, { day = i })
-                    }
-                }
-                val list = byDay[d].orEmpty()
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    if (list.isEmpty()) {
-                        item(key = "none") { Text("Nothing new that day.", fontSize = BenflixType.lead, color = BenflixColors.Muted) }
-                    }
-                    items(list, key = { "pep-${it.card.id}-${it.episode}" }) { a ->
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.weight(1f)) {
-                                CalendarCard(a, timeOf(a), opening == a.card.id, onClick = { viewModel.open(a.card) })
-                            }
-                            Button(
-                                onClick = { viewModel.open(a.card, onAsk) },
-                                scale = ButtonDefaults.scale(focusedScale = 1f),
-                                colors = ButtonDefaults.colors(containerColor = Color.White, contentColor = Color.Black),
-                            ) { Text("Ask", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** One new episode: a small poster, the name, and "Ep 7 · 9:30 pm" */
-@Composable
-private fun CalendarCard(
-    a: AnimeAiringCard,
-    time: String,
-    busy: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = BenflixColors.Panel,
-                focusedContainerColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.FocusFill,
-                contentColor = BenflixColors.Text,
-                focusedContentColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.OnFocusFill,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(6.dp)) {
-            AsyncImage(
-                model = a.card.cover,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(40.dp, 60.dp).clip(RoundedCornerShape(6.dp)).background(BenflixColors.Raised),
-            )
-            Column(Modifier.padding(start = 8.dp)) {
-                Text(a.card.title, fontSize = BenflixType.tag, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    if (busy) "Opening…" else "Ep ${a.episode} · $time",
-                    fontSize = BenflixType.tag,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                a.card.scoreText?.let { Text("AniList $it", fontSize = BenflixType.tag, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            }
-        }
-    }
 }

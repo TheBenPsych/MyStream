@@ -350,13 +350,23 @@ internal fun CoverRow(
     onOpen: (BookCard) -> Unit,
     onAsk: ((BookCard) -> Unit)?,
     edge: Dp = 0.dp,
+    /** TV: tells the page which cover you're on, for its top (Glowfin new look, Manga) */
+    onFocus: ((BookCard) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
         Box(Modifier.padding(start = edge)) { ShelfTitle(title) }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = edge, vertical = 4.dp)) {
             // The index too, so the same book twice in one row (older Tower helpers) can't crash the page
             itemsIndexed(items, key = { i, c -> "$title-$i-" + c.key }) { _, c ->
-                AskCover(c, if (wide) 124.dp else 100.dp, ranked, onClick = { onOpen(c) }, onLongClick = onAsk?.let { { it(c) } })
+                AskCover(
+                    c,
+                    if (wide) 124.dp else 100.dp,
+                    ranked,
+                    onClick = { onOpen(c) },
+                    onLongClick = onAsk?.let { { it(c) } },
+                    modifier = if (onFocus != null) Modifier.onFocusChanged { if (it.hasFocus) onFocus(c) } else Modifier,
+                )
             }
         }
     }
@@ -369,8 +379,9 @@ private fun AskCover(
     ranked: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(width)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.width(width)) {
         Box {
             Surface(
                 onClick = onClick,

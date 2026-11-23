@@ -142,6 +142,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
@@ -219,6 +220,7 @@ class BenflixRequestsViewModel
         private val requestReady: com.github.damontecres.wholphin.ui.main.RequestReadyService,
         private val showArrival: com.github.damontecres.wholphin.services.ShowArrival,
         private val libraryTmdb: com.github.damontecres.wholphin.services.BenflixLibraryTmdb,
+        private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
     ) : ViewModel() {
         val active = seerrService.active
 
@@ -661,7 +663,8 @@ class BenflixRequestsViewModel
                     coroutineScope {
                         val because = async { becauseRows(userId, movies) }
                         val collection = async { if (movies) finishCollectionRow(userId) else null }
-                        because.await() + listOfNotNull(collection.await())
+                        val newSeasons = async { if (movies) null else newSeasonsRow(userId) }
+                        because.await() + listOfNotNull(collection.await(), newSeasons.await())
                     }
                 _special.update { it + (section to rows) }
             }
@@ -735,6 +738,105 @@ class BenflixRequestsViewModel
                 Timber.w(ex, "Because you watched rows failed")
                 emptyList()
             }
+
+        /**
+         * Glowfin new look (Ben approved 2026-11-22): shows you've been watching that have a newer season out than
+         * Glowfin has, and nobody has asked for it yet. Like the "Season 4 is out" button on a show's page.
+         */
+        private suspend fun newSeasonsRow(userId: UUID): FindRow? =
+            try {
+                val seriesIds =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                recursive = true,
+                                isPlayed = true,
+                                sortBy = listOf(ItemSortBy.DATE_PLAYED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                limit = 300,
+                            ),
+                        ).content.items
+                        .mapNotNull { it.seriesId }
+                        .distinct()
+                        .take(NEW_SEASON_SHOWS)
+                if (seriesIds.isEmpty()) {
+                    null
+                } else {
+                    val shows =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(userId = userId, ids = seriesIds, fields = listOf(ItemFields.PROVIDER_IDS)),
+                            ).content.items
+                    val today = LocalDate.now()
+                    val semaphore = Semaphore(4)
+                    val found =
+                        coroutineScope {
+                            shows
+                                .map { dto ->
+                                    async { semaphore.withPermit { newerSeasonOf(dto.id, dto.providerIds?.get("Tmdb"), userId, today) } }
+                                }.mapNotNull { it.await() }
+                        }
+                    if (found.isEmpty()) null else FindRow(NEW_SEASONS_ROW, found)
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "New seasons row failed")
+                null
+            }
+
+        /** The show, with "Season 4 is out" on it, when a season newer than Glowfin's has aired and isn't asked for */
+        private suspend fun newerSeasonOf(
+            seriesId: UUID,
+            tmdb: String?,
+            userId: UUID,
+            today: LocalDate,
+        ): DiscoverItem? {
+            if (tmdb?.toIntOrNull() == null) return null
+            return try {
+                val json = seerrService.api.getRaw("/tv/$tmdb")?.let { Json.parseToJsonElement(it).jsonObject } ?: return null
+                val lastHere =
+                    api.tvShowsApi
+                        .getSeasons(seriesId = seriesId, userId = userId)
+                        .content.items
+                        .mapNotNull { it.indexNumber }
+                        .filter { it > 0 }
+                        .maxOrNull() ?: return null
+                // Seerr status per season: 1 unknown, 2 asked for, 3 on its way, 4 some, 5 here
+                val statusBySeason =
+                    ((json["mediaInfo"] as? JsonObject)?.get("seasons") as? JsonArray)
+                        .orEmpty()
+                        .mapNotNull { it as? JsonObject }
+                        .mapNotNull { o ->
+                            val n = o["seasonNumber"].str()?.toIntOrNull() ?: return@mapNotNull null
+                            n to (o["status"].str()?.toIntOrNull() ?: 1)
+                        }.toMap()
+                val newer =
+                    (json["seasons"] as? JsonArray)
+                        .orEmpty()
+                        .mapNotNull { it as? JsonObject }
+                        .mapNotNull { o ->
+                            val n = o["seasonNumber"].str()?.toIntOrNull() ?: return@mapNotNull null
+                            val aired =
+                                o["airDate"]
+                                    .str()
+                                    ?.take(10)
+                                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                                    ?.let { !it.isAfter(today) } ?: false
+                            if (n > lastHere && aired && (statusBySeason[n] ?: 1) <= 1) n else null
+                        }.sorted()
+                if (newer.isEmpty()) return null
+                val words = if (newer.size == 1) "Season ${newer.first()} is out" else "Seasons ${newer.first()} to ${newer.last()} are out"
+                itemFromJson(json, SeerrItemType.TV)?.copy(type = SeerrItemType.TV, subtitle = words)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't check new seasons of %s", tmdb)
+                null
+            }
+        }
 
         /** Movies missing from collections you partly have, like the one Alien movie you don't have yet */
         private suspend fun finishCollectionRow(userId: UUID): FindRow? =
@@ -1085,6 +1187,8 @@ class BenflixRequestsViewModel
         fun askSeasons(
             item: DiscoverItem,
             seasons: List<Int>,
+            /** Glowfin new look: Tower also asks for every season that comes out later */
+            everyNew: Boolean = false,
         ) {
             _seasonPick.value = null
             if (seasons.isEmpty()) return
@@ -1100,12 +1204,33 @@ class BenflixRequestsViewModel
                         ),
                     )
                     asked(item)
+                    if (everyNew) followNewSeasons(item)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Asking for seasons failed for %s", item.id)
                     showToast(context, "Couldn't ask for that one. Try from its page.")
                 }
+            }
+        }
+
+        /** Every new season from now on: Tower remembers the show and has Sonarr look for each new season */
+        private suspend fun followNewSeasons(item: DiscoverItem) {
+            try {
+                val answer =
+                    helper.postJson(
+                        "/api/follow-show",
+                        org.json
+                            .JSONObject()
+                            .put("tmdb", item.id)
+                            .put("name", item.title.orEmpty()),
+                    )
+                answer.optString("message").takeIf { it.isNotBlank() }?.let { showToast(context, it) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't follow new seasons of %s", item.id)
+                showToast(context, "Asked for it, but Tower couldn't remember to get new seasons. Try again from its page.")
             }
         }
 
@@ -1556,16 +1681,21 @@ private fun RequestTab(
             FindShelf(FindSection.SHOWS, viewModel, top)
         }
 
+        // Glowfin new look: Anime's art fills the page too, up behind the pills
+        2 -> {
+            FindShelf(FindSection.ANIME, viewModel, top)
+        }
+
+        5 -> {
+            MangaShelf(top = top)
+        }
+
         else -> {
             Box(Modifier.fillMaxSize().padding(top = top)) {
                 when (index) {
-                    2 -> FindShelf(FindSection.ANIME, viewModel, 0.dp)
-
                     3 -> MusicShelf()
 
                     4 -> BooksShelf()
-
-                    5 -> MangaShelf()
 
                     // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
                     else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
@@ -1817,6 +1947,7 @@ private fun FindShelf(
             pick = pick,
             onDismiss = viewModel::closeSeasonPick,
             onAsk = { viewModel.askSeasons(pick.item, it) },
+            onAskEvery = { viewModel.askSeasons(pick.item, it, everyNew = true) },
         )
     }
     menuItem?.let { item ->
@@ -1874,6 +2005,7 @@ private fun FindShelf(
                 isTv = true,
                 onAsk = viewModel::ask,
                 onMenu = onMenu,
+                top = top,
             )
         } else {
             Column(Modifier.fillMaxSize()) {
@@ -1927,12 +2059,13 @@ private fun FindShelf(
             ) {
                 val seen = HashSet<String>()
                 val unique = items.filter { seen.add(it.requestKey()) }
-                val shown = visibleWith(unique, ownedOpen == title)
+                // (New seasons for shows you watch: those shows are on Glowfin, so they always stay)
+                val shown = visibleWith(unique, ownedOpen == title || title == NEW_SEASONS_ROW)
                 val owned = visibleWith(unique, true).count { it.availability == SeerrAvailability.AVAILABLE }
                 if (shown.isNotEmpty() ||
                     owned > 0
                 ) {
-                    out += ShownRow(title, shown, comingSoon, ranked, ownedCount = if (hideOwned) owned else 0)
+                    out += ShownRow(title, shown, comingSoon, ranked, ownedCount = if (hideOwned && title != NEW_SEASONS_ROW) owned else 0)
                 }
             }
             base.forEach { row ->
@@ -1978,6 +2111,7 @@ private fun FindShelf(
             // Glowfin R1 order: Top 10 to ask for, Coming soon, Trending, then the rest
             out.sortedBy { r ->
                 when {
+                    r.title == NEW_SEASONS_ROW -> -1
                     r.ranked -> 0
                     r.comingSoon -> 1
                     r.title == "Trending" || r.title == "This season" -> 2
@@ -2134,6 +2268,12 @@ internal fun RequestChipRow(
         )
     }
 }
+
+/** Glowfin new look: the Shows tab's first row */
+internal const val NEW_SEASONS_ROW = "New seasons for shows you watch"
+
+/** How many of the shows you watched last are checked for a newer season */
+private const val NEW_SEASON_SHOWS = 20
 
 /** The TV top area's share of the screen, like Home and Movies (Glowfin new look) */
 private const val TOP_SHARE = 0.52f
@@ -2393,6 +2533,7 @@ private fun RequestList(
             pick = pick,
             onDismiss = viewModel::closeSeasonPick,
             onAsk = { viewModel.askSeasons(pick.item, it) },
+            onAskEvery = { viewModel.askSeasons(pick.item, it, everyNew = true) },
         )
     }
     menuItem?.let { item ->

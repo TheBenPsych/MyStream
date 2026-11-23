@@ -1532,6 +1532,16 @@ class Handler(BaseHTTPRequestHandler):
                 body = self.read_json()
                 for_person = asking_for(token, body)
                 read_json = lambda: body  # noqa: E731
+            if method == "POST" and path == "/api/follow-show":
+                # Glowfin new look: "Every new season from now on" on the season picker (everyone but Kids)
+                if is_kids:
+                    raise HelperError(403, "Ask a grown-up to ask for this.")
+                if tools is None:
+                    raise HelperError(503, "The Server page tools aren't on the server yet. Run the Glowfin setup command again.")
+                try:
+                    return self.send(200, tools.follow_show(self.read_json(), _names.get(user_id, "")))
+                except tools.ToolError as e:
+                    raise HelperError(e.status, e.message)
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
@@ -2556,6 +2566,8 @@ if __name__ == "__main__":
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
         )
+    if tools is not None and hasattr(tools, "start_follow"):
+        tools.start_follow()
     if specials is not None:
         specials.start(
             jellyfin_call,

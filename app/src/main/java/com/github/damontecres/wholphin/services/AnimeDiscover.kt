@@ -48,6 +48,10 @@ data class AnimeCard(
     val genres: List<String> = emptyList(),
     /** A second (third...) season of a show */
     val later: Boolean = false,
+    /** AniList's wide banner picture (Glowfin new look: fills the Requests top) */
+    val banner: String? = null,
+    /** The story, as plain words */
+    val story: String? = null,
 ) {
     val title: String get() = titles.firstOrNull() ?: ""
     val isMovie: Boolean get() = format == "MOVIE"
@@ -212,6 +216,8 @@ class AnimeDiscover
             val keepLater: Boolean = false,
             /** MyAnimeList list to use when AniList doesn't answer (path, extra settings) */
             val backup: Pair<String, Map<String, String>>? = null,
+            /** Only MyAnimeList's list (Trending on MyAnimeList) */
+            val malOnly: Boolean = false,
         )
 
         fun seasonAsk(pick: AnimeSeasonPick) =
@@ -230,6 +236,14 @@ class AnimeDiscover
                 pages = 1,
                 backup = "top/anime" to mapOf("filter" to "airing"),
             )
+
+        /** Glowfin new look (Ben 2026-11-22): what's trending on AniList right now, shows only */
+        val trendingAsk =
+            Ask(key = "trending-anilist", sort = "TRENDING_DESC", formats = SHOW_FORMATS, pages = 2)
+
+        /** Glowfin new look (Ben 2026-11-22): MyAnimeList's top anime airing now */
+        val malTrendingAsk =
+            Ask(key = "trending-mal", malOnly = true, backup = "top/anime" to mapOf("filter" to "airing"))
 
         /** Great scores (80 and up) that few people know (under 50,000 AniList members) */
         val gemsAsk =
@@ -281,21 +295,28 @@ class AnimeDiscover
 
         /** One list, from the device when it was saved in the last few hours */
         suspend fun list(ask: Ask): List<AnimeCard> {
-            val cacheName = "anime-req-${ask.key}"
+            val cacheName = "anime-req2-${ask.key}"
             val serializer = ListSerializer(AnimeCard.serializer())
             diskCache.read(cacheName, serializer, LIST_CACHE_MS)?.let { return it }
             val found =
-                try {
-                    fromAniList(ask)
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "AniList list %s failed, trying MyAnimeList", ask.key)
-                    fromMal(ask) ?: throw ex
+                if (ask.malOnly) {
+                    fromMal(ask) ?: throw IllegalStateException("MyAnimeList had no answer")
+                } else {
+                    fromAniListOrMal(ask)
                 }
             if (found.isNotEmpty()) diskCache.write(cacheName, serializer, found)
             return found
         }
+
+        private suspend fun fromAniListOrMal(ask: Ask): List<AnimeCard> =
+            try {
+                fromAniList(ask)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "AniList list %s failed, trying MyAnimeList", ask.key)
+                fromMal(ask) ?: throw ex
+            }
 
         private suspend fun fromAniList(ask: Ask): List<AnimeCard> {
             val out = mutableListOf<AnimeCard>()
@@ -440,6 +461,14 @@ class AnimeDiscover
                 status = m.str("status"),
                 cover = m.obj("coverImage")?.let { it.str("large") ?: it.str("medium") },
                 genres = genres,
+                banner = m.str("bannerImage"),
+                story =
+                    m
+                        .str("description")
+                        ?.replace(Regex("<[^>]+>"), " ")
+                        ?.replace(Regex("\\s+"), " ")
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() },
                 later =
                     format in SHOW_FORMATS &&
                         m
@@ -479,7 +508,7 @@ class AnimeDiscover
             private const val CARD =
                 "id idMal format status episodes popularity averageScore meanScore isAdult genres seasonYear " +
                     "title { english romaji native } synonyms startDate { year } coverImage { large medium } " +
-                    "nextAiringEpisode { episode } relations { edges { relationType node { id format } } }"
+                    "bannerImage description(asHtml: false) nextAiringEpisode { episode } relations { edges { relationType node { id format } } }"
 
             private val DISCOVER_QUERY =
                 """

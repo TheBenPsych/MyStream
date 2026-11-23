@@ -678,37 +678,41 @@
     if (B.me.kids) return B.go("#/home");
     const rows = $("#rows"), input = $("#rq"), admin = B.me.admin;
     input.placeholder = "Search any manga";
-    rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner("wall")}</div></div>`;
-    let d = null, req = null, picked = null, genreItems = null, t;
+    // Glowfin new look (Ben approved 2026-11-22): Manga lands straight on a row, like Anime. Rows from Tower
+    // (Trending on AniList, Trending on MyAnimeList, ...), Genres pills with the picked genre's row under them, and
+    // Your manga asks. The top describes the manga you point at.
+    rows.innerHTML = `<div id="mfound"></div><div id="msplit">${B.spinner("rows")}</div>`;
+    let d = null, req = null, genre = null, genreItems = null, t, described = false;
     const reqLine = (r, answer) => ({
       title: r.name, sub: [admin ? r.who : "", "manga"].filter(Boolean).join(" · "), cover: r.cover, pill: mangaPill(r), who: answer && admin ? r.who || "" : "",
       acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Read</a>` : ""}${r.canRetry ? `<button class="btn small" data-mretry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-mforget="${esc(r.id)}">${B.I("x")}</button>`,
     });
+    const card = (c) => { B.items["mg:" + c.id] = c; return mangaCard(c).replace('<a class="poster"', `<a class="poster" data-id="mg:${c.id}"`); };
+    const describe = (c) => {
+      if (!c) return "";
+      const tag = c.here ? ["here", "On Glowfin"] : c.asked ? ["wait", c.asked] : ["nyet", "Not on Glowfin yet"];
+      const bits = ["Manga", c.year, c.status, c.chapters ? c.chapters + " chapters" : "", c.score ? "AniList " + c.score.toFixed(1) : ""].filter(Boolean);
+      return `<div class="dt-name"><div class="t">${esc(c.name)}</div></div><div class="meta">${bits.map((x) => `<span>${esc(String(x))}</span>`).join("")}</div>
+        <div class="dt-tag rqtag t-${tag[0]}">${esc(tag[1])}</div><div class="ov">${esc(c.desc || "")}</div><div class="rqhint">${c.here || c.asked ? "Click it to open it" : "Click it to open it and ask for it"}</div>`;
+    };
+    const mineOf = (r) => (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i);
     const draw = () => {
-      const side = $("#mside"), wall = $("#mwall");
-      if (!side || !wall) return;
+      const box = $("#msplit");
+      if (!box) return;
+      if (!d) { box.innerHTML = B.spinner("rows"); return; }
       const r = req || { mine: [], waiting: [], others: [] };
-      const mine = (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i);
-      const ls = (d ? d.rows.map((x, i) => ({ id: "r" + i, title: x.name })) : []).concat([{ id: "genres", title: "Genres" }, { id: "yours", title: `Your requests (${mine.length})` }])
-        .concat(admin ? [{ id: "waiting", title: `Waiting for you (${(r.waiting || []).length})` }] : []);
-      const cur = picked || "r0";
-      side.innerHTML = B.rqSide(ls, cur);
-      if (cur === "yours" || cur === "waiting") {
-        const w = cur === "waiting";
-        wall.innerHTML = `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
-          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), false, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the manga and ask for it.");
-        return;
-      }
-      if (!d) { wall.innerHTML = B.spinner("wall"); return; }
-      if (cur === "genres" || cur.startsWith("g:")) {
-        const g = cur.startsWith("g:") ? cur.slice(2) : "";
-        wall.innerHTML = `<div class="rqhead"><b>Genres</b></div><div class="rqgenres rqchips">${d.genres.map((x) => `<button class="chip ${x === g ? "on" : ""}" data-mgenre="${esc(x)}">${esc(x)}</button>`).join("")}</div>`
-          + (g ? (genreItems ? B.rqGrid(genreItems.map(mangaCard)) : B.spinner("wall")) : "");
-        return;
-      }
-      const row = d.rows[+cur.slice(1)] || d.rows[0];
-      wall.innerHTML = `<div class="rqline" id="mline"> </div>` + B.rqGrid(row.items.map(mangaCard), cur === "r0");
+      box.innerHTML = d.rows.map((x) => B.row(x.name, x.items.map(card))).join("")
+        + `<section class="rowx"><h3>Genres</h3><div class="row" style="padding:0 var(--gutter);gap:8px;flex-wrap:wrap">${d.genres.map((x) => `<button class="chip ${x === genre ? "on" : ""}" data-mgenre="${esc(x)}">${esc(x)}</button>`).join("")}</div></section>`
+        + (genre ? (genreItems ? B.row(genre, genreItems.map(card)) || `<div class="wrap empty">Nothing in ${esc(genre)} right now.</div>` : B.spinner()) : "")
+        + `<section class="rowx"><h3>Your manga asks</h3><div class="row" style="padding:0 var(--gutter);gap:8px"><button class="chip" data-mlist="yours">Asked for (${mineOf(r).length})</button>${admin ? `<button class="chip" data-mlist="waiting">Waiting for you (${(r.waiting || []).length})</button>` : ""}</div></section>`;
+      if (!described && d.rows[0] && d.rows[0].items[0]) { described = true; B.wireDescribe(d.rows[0].items[0], { describe, art: (c) => (c && (c.banner || c.cover)) || "" }); }
+    };
+    const openList = (which) => {
+      const r = req || { mine: [], waiting: [], others: [] }, w = which === "waiting", items = w ? r.waiting || [] : mineOf(r);
+      const p = B.side(`<h3>${w ? "Waiting for you" : "Your manga asks"} (${items.length})</h3>`
+        + B.rqLines(items.map((x) => reqLine(x, w)), false, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the manga and ask for it."));
+      p.onclick = (e) => rows.onclick(e, p, which);
     };
     const lists = async () => {
       try { req = await api("GET", "manga/requests"); } catch (e) { if (!req) B.toast(B.say(e)); }
@@ -724,31 +728,28 @@
       box.innerHTML = res.items.length ? B.row("Manga", res.items.map(mangaCard)) : `<div class="wrap empty">${esc(res.error || "Nothing found. Try the Japanese name, or fewer words.")}</div>`;
     };
     input.oninput = () => { clearTimeout(t); t = setTimeout(() => search(input.value), 450); };
-    rows.onclick = async (e) => {
-      const pick = e.target.closest("#mside [data-rqpick]");
-      if (pick) { picked = pick.dataset.rqpick; return draw(); }
+    rows.onclick = async (e, panel, which) => {
+      const l = e.target.closest("[data-mlist]");
+      if (l) return openList(l.dataset.mlist);
       const g = e.target.closest("[data-mgenre]");
       if (g) {
-        picked = "g:" + g.dataset.mgenre; genreItems = null; draw();
+        genre = g.dataset.mgenre; genreItems = null; draw();
         const r = await api("GET", "manga/genre?g=" + enc(g.dataset.mgenre)).catch(() => ({ items: [] }));
-        if (B.alive(nav) && picked === "g:" + g.dataset.mgenre) { genreItems = r.items; draw(); }
+        if (B.alive(nav) && genre === g.dataset.mgenre) { genreItems = r.items; draw(); }
         return;
       }
       const b = e.target.closest("button");
-      if (!b) return;
+      if (!b || !(b.dataset.myes || b.dataset.mno || b.dataset.mretry || b.dataset.mforget)) return;
       await B.busy(b, async () => {
         if (b.dataset.myes) await api("POST", "manga/answer", { id: b.dataset.myes, yes: true });
         if (b.dataset.mno) await api("POST", "manga/answer", { id: b.dataset.mno, yes: false });
         if (b.dataset.mretry) await api("POST", "manga/requests/" + enc(b.dataset.mretry) + "/retry");
         if (b.dataset.mforget) await api("DELETE", "manga/requests/" + enc(b.dataset.mforget));
-        lists();
+        await lists();
+        if (panel) { B.closeAll(); openList(which); }
       });
     };
-    rows.onmouseover = (e) => {
-      const c = e.target.closest("#mwall .poster"), line = $("#mline");
-      if (c && line) line.textContent = (c.querySelector(".cap") || c).textContent.trim() || " ";
-    };
-    api("GET", "manga/discover").then((x) => { d = x; if (B.alive(nav)) draw(); }).catch((e) => { if (B.alive(nav)) $("#mwall").innerHTML = `<div class="note">Couldn't load the manga lists. ${esc(B.say(e))}</div>`; });
+    api("GET", "manga/discover").then((x) => { d = x; if (B.alive(nav)) draw(); }).catch((e) => { if (B.alive(nav)) $("#msplit").innerHTML = `<div class="wrap note">Couldn't load the manga lists. ${esc(B.say(e))}</div>`; });
     if (input.value.trim()) search(input.value);
     await lists();
   };

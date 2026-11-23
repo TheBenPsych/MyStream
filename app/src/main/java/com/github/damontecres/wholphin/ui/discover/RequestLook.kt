@@ -137,6 +137,11 @@ fun DiscoverItem.rqTag(
             RqTag(RqTagKind.PROBLEM, "Ben couldn't find it yet")
         }
 
+        // New seasons for shows you watch: "Season 4 is out" (the show itself is on Glowfin)
+        newSeasonOut() -> {
+            RqTag(RqTagKind.NOT_YET, subtitle.orEmpty())
+        }
+
         availability == SeerrAvailability.AVAILABLE -> {
             RqTag(RqTagKind.HERE, "On Glowfin")
         }
@@ -167,9 +172,17 @@ fun DiscoverItem.rqTag(
     }
 }
 
+/** A show on the New seasons row whose newer season nobody has asked for yet */
+private fun DiscoverItem.newSeasonOut(): Boolean =
+    type == SeerrItemType.TV &&
+        availability != SeerrAvailability.PENDING &&
+        availability != SeerrAvailability.PROCESSING &&
+        subtitle?.let { it.endsWith(" is out") || it.endsWith(" are out") } == true
+
 /** The coloured dot on a cover already asked for (none for covers nobody asked for) */
 fun DiscoverItem.rqDot(cantFind: Boolean): Color? =
     when {
+        newSeasonOut() -> null
         cantFind && availability != SeerrAvailability.AVAILABLE -> RqTagKind.PROBLEM.dot
         availability == SeerrAvailability.PENDING -> RqTagKind.WAITING.dot
         availability == SeerrAvailability.PROCESSING -> RqTagKind.ON_WAY.dot
@@ -259,12 +272,19 @@ fun rememberShownCover(
 fun RequestArt(
     item: DiscoverItem?,
     modifier: Modifier = Modifier,
+) = RequestArtUrl(item?.backDropUrl, modifier)
+
+/** [RequestArt] for a picture that isn't a Requests item (an AniList banner on the Anime tab) */
+@Composable
+fun RequestArtUrl(
+    url: String?,
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        Crossfade(targetState = item?.backDropUrl, animationSpec = tween(ART_FADE_MS), label = "requestArt") { url ->
-            if (url != null) {
+        Crossfade(targetState = url, animationSpec = tween(ART_FADE_MS), label = "requestArt") { shownUrl ->
+            if (shownUrl != null) {
                 AsyncImage(
-                    model = url,
+                    model = shownUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.TopCenter,
@@ -288,9 +308,47 @@ fun RequestTopWords(
     age: String?,
     modifier: Modifier = Modifier,
 ) {
+    val facts =
+        listOfNotNull(
+            when (item.type) {
+                SeerrItemType.MOVIE -> if (item.isAnime) "Anime movie" else "Movie"
+                SeerrItemType.TV -> if (item.isAnime) "Anime" else "Show"
+                else -> null
+            },
+            item.releaseDate?.year?.toString(),
+            age,
+        ).joinToString(" · ")
+    RequestTopText(
+        title = item.title.orEmpty(),
+        facts = facts,
+        tags = listOf(tag),
+        story = item.overview,
+        hint =
+            if (tag.kind == RqTagKind.NOT_YET || (tag.kind == RqTagKind.OUT_LATER && item.availability == SeerrAvailability.UNKNOWN)) {
+                ASK_HINT
+            } else {
+                "Asked already, so OK just opens it"
+            },
+        modifier = modifier,
+    )
+}
+
+/** What OK does on a cover you can still ask for */
+const val ASK_HINT = "OK opens it · hold OK to ask right away"
+
+/** The top words themselves, for any kind of cover */
+@Composable
+fun RequestTopText(
+    title: String,
+    facts: String,
+    tags: List<RqTag>,
+    story: String?,
+    hint: String?,
+    modifier: Modifier = Modifier,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.widthIn(max = 520.dp)) {
         Text(
-            text = item.title.orEmpty(),
+            text = title,
             color = BenflixColors.Text,
             fontFamily = GlowfinDisplayFont,
             fontSize = BenflixType.pageTitle,
@@ -300,16 +358,6 @@ fun RequestTopWords(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        val facts =
-            listOfNotNull(
-                when (item.type) {
-                    SeerrItemType.MOVIE -> if (item.isAnime) "Anime movie" else "Movie"
-                    SeerrItemType.TV -> if (item.isAnime) "Anime" else "Show"
-                    else -> null
-                },
-                item.releaseDate?.year?.toString(),
-                age,
-            ).joinToString(" · ")
         if (facts.isNotEmpty()) {
             Text(
                 text = facts,
@@ -321,8 +369,9 @@ fun RequestTopWords(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        RqStatusTag(tag)
-        val story = item.overview
+        if (tags.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { tags.forEach { RqStatusTag(it) } }
+        }
         if (!story.isNullOrBlank()) {
             Text(
                 text = story,
@@ -334,19 +383,16 @@ fun RequestTopWords(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(
-            text =
-                if (tag.kind == RqTagKind.NOT_YET || (tag.kind == RqTagKind.OUT_LATER && item.availability == SeerrAvailability.UNKNOWN)) {
-                    "OK opens it · hold OK to ask right away"
-                } else {
-                    "Asked already, so OK just opens it"
-                },
-            color = BenflixColors.Text.copy(alpha = .62f),
-            fontSize = BenflixType.tag,
-            fontWeight = FontWeight.SemiBold,
-            style = TextStyle(shadow = SOFT_EDGE),
-            maxLines = 1,
-        )
+        if (hint != null) {
+            Text(
+                text = hint,
+                color = BenflixColors.Text.copy(alpha = .62f),
+                fontSize = BenflixType.tag,
+                fontWeight = FontWeight.SemiBold,
+                style = TextStyle(shadow = SOFT_EDGE),
+                maxLines = 1,
+            )
+        }
     }
 }
 
