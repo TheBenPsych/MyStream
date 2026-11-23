@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "music-books-games-new-look", "title": "New look for Music, Books and Games: cover of what you are on top right with its colours behind, name, facts and aqua tag on the left, cover art only in the rows, Ember Road has its own tab after For you; phones start right on the rows", "where": "TV, phone and browser · open Music, Books and Games, move along a row and stop, then open the Ember Road tab", "date": "Nov 23"},
     {"id": "movie-surround-384", "title": "Shrunk movies still play surround sound on the soundbar (big 5.1 tracks are now 5.1 at 384 kbps)", "where": "TV with soundbar · play a movie the shrinker did after Nov 23", "date": "Nov 23"},
     {"id": "rows-new-look", "title": "New look for Home, Movies, Shows and Anime: art fills the screen, title box, facts, aqua tag, 2-line story, score pill top right, see-through tab pills; phones start right on the rows", "where": "TV, phone and browser · open Home, Movies, Shows and Anime, move along a row and stop", "date": "Nov 23"},
     {"id": "logo-white-bright-art", "title": "Dark logos drawn in white; very bright pictures turned down a little", "where": "TV, phone and browser · open a title with a dark logo, and one with snowy or sunny art", "date": "Nov 23"},

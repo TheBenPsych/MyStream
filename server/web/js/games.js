@@ -102,7 +102,7 @@ const favs = () => loadJson(favKey(), []);
 // Glowfin G1 (Ben's pick, Nov 2026): the same word tabs as Movies and Music: For you | Consoles | Movie games |
 // Party | Scores. For you = the top area (the game you're on and what it works with), then Continue playing,
 // Movie puzzles, Favourites and Arcade. Each other tab holds one kind of game.
-const GAME_PLACES = ["home", "consoles", "movie", "party", "scores"];
+const GAME_PLACES = ["home", "ember", "movie", "consoles", "party", "scores"];
 const worksWith = (remote) => `<span class="gw-chips">${[remote ? "Remote" : "", "Controller", "Phone"].filter(Boolean).map((x) => `<span class="gw-chip">${x}</span>`).join("")}</span>`;
 const describeGame = (g, kick) => `<div class="kick">${esc(kick || [g.console, g.year || ""].filter(Boolean).join(" · "))}</div><div class="t">${esc(g.name)}</div><div class="ov">Plays in your browser. Use the keyboard or plug in a controller.</div>${worksWith(false)}`;
 
@@ -116,17 +116,58 @@ const powerLine = (consoles) => {
   return `<div class="wrap gpower"><p class="dim" style="max-width:80ch;margin:0 0 10px"><b style="color:var(--ink)">This ${esc(p.kind)}</b>${p.summary ? ": " + esc(p.summary) : ""}<br>${slow.length ? `May be slow: ${esc(slow.join(", "))}. ` : ""}${esc(say)}</p><button class="btn small" id="gPower">Check again</button></div>`;
 };
 
+// The cover of the game you're on stands at the top right of For you and Ember Road (box art keeps its shape)
+const setGameCover = (src) => {
+  const art = $("#gTop .art");
+  if (!art) return;
+  if (!src) { art.classList.remove("on"); return; }
+  if (art.dataset.src === src) return;
+  art.dataset.src = src;
+  art.classList.remove("on");
+  const probe = new Image();
+  probe.onload = () => {
+    if (art.dataset.src !== src) return;
+    art.style.aspectRatio = probe.naturalWidth && probe.naturalHeight ? Math.min(1.5, Math.max(0.5, probe.naturalWidth / probe.naturalHeight)) : "";
+    art.style.backgroundImage = `url('${src.replace(/'/g, "%27")}')`;
+    requestAnimationFrame(() => art.classList.add("on"));
+  };
+  probe.src = src;
+};
+const wireGameCover = () => {
+  let timer;
+  const point = (e) => {
+    const c = e.target.closest("#rows .poster, #rows [data-bg]");
+    const img = c && c.querySelector("img");
+    if (!img) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => setGameCover(img.currentSrc || img.src), 250);
+  };
+  B.page().addEventListener("mouseover", point);
+  B.page().addEventListener("focusin", point);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
+};
+
 B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
   const place = GAME_PLACES.includes(B.q("p")) ? B.q("p") : "home";
   const home = place === "home";
-  B.page().innerHTML = B.top("Games", DOORS.games.color) + (home ? `<section class="door-top gtop" id="gTop"><div class="art"></div><div class="info" id="gInfo"></div></section>` : "") + `<div class="rows gpage" id="rows">${B.spinner("rows")}</div>`;
+  // Glowfin new look (part 3): For you and Ember Road get the top, with the cover of the game you're on top right
+  const withTop = home || place === "ember";
+  B.page().innerHTML = B.top("Games", DOORS.games.color) + (withTop ? `<section class="door-top gtop" id="gTop"><div class="art"></div><div class="info" id="gInfo"></div></section>` : "") + `<div class="rows gpage${withTop ? " ghome" : ""}" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   const rows = $("#rows");
+  if (withTop) wireGameCover();
+  // Ben 2026-11-22: Ember Road has its own tab, right after For you
+  if (place === "ember") {
+    rows.innerHTML = B.row("Ember Road", [`<a class="poster gm" href="#/bgame/EMBER" data-bg="EMBER" title="Ember Road"><div class="im"><img class="art" src="web/img/games/ember.png" alt="" decoding="async"></div><div class="cap"><span class="nm">Ember Road</span><small>Adventure</small></div></a>`]);
+    $("#gInfo").innerHTML = `<div class="t">Ember Road</div><div class="kick">Adventure · Pixel story game</div><div class="ov">Pixel adventure: carry a dragon egg across a wild land, one chapter at a time.</div>${worksWith(true)}`;
+    setGameCover("web/img/games/ember.png");
+    return;
+  }
   // Glowfin's own games (puzzles, party games, arcade, Ember Road) don't need RomM
   if (place === "movie" || place === "party" || place === "scores") {
     if (!B.bgRows) { rows.innerHTML = ""; return; }
     try {
-      rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade", "ember"] : ["party"]);
+      rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade"] : ["party"]);
     } catch (e) { rows.innerHTML = `<div class="wrap empty">${esc(B.say(e))}</div>`; }
     if (place === "party") rows.insertAdjacentHTML("beforeend", `<div class="wrap"><p class="dim" style="max-width:62ch">Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and presses Join a party, then answers on the phone. 3 to 8 players.</p></div>`);
     if (B.bgWire) B.bgWire(rows, null);
@@ -165,7 +206,8 @@ B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
     ].join("");
     if (B.bgWire) B.bgWire(rows, $("#gInfo"));
     const first = cont[0] || fav[0];
-    if (first) $("#gInfo").innerHTML = describeGame(first, "Continue playing · " + first.console);
+    if (first) { $("#gInfo").innerHTML = describeGame(first, "Continue playing · " + first.console); setGameCover(cover(first)); }
+    else { const f = $("#rows .poster img, #rows [data-bg] img"); if (f) setGameCover(f.currentSrc || f.src); }
   } else {
     const arcade = consoles.filter((c) => EJS_CORES[c.slug] === "arcade").flatMap((c) => c.games);
     rows.innerHTML = [

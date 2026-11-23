@@ -6,12 +6,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -23,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,8 +53,12 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleBox
 import com.github.damontecres.wholphin.ui.detail.title.TitleExtras
 import com.github.damontecres.wholphin.ui.detail.title.rememberImageLight
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
+import com.github.damontecres.wholphin.ui.music.CoverGlow
+import com.github.damontecres.wholphin.ui.music.CoverGlowColors
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -176,7 +187,7 @@ internal fun DoorScorePill(
 
 /** The small aqua tag under the facts line: a dot and a few words */
 @Composable
-private fun DoorTag(text: String) {
+internal fun DoorTag(text: String) {
     val shape = RoundedCornerShape(50)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -260,3 +271,145 @@ private val TAG_TEXT = Color(0xFFC9FBFF)
 private const val NEW_DAYS = 7L
 private const val ART_FADE_MS = 400
 private const val ART_GAP_MS = 150L
+
+/*
+ * Glowfin new look, part 3 (Ben approved 2026-11-22): Music, Books and Games land straight on a row too. Their
+ * covers are square or tall, so instead of art filling the screen the cover of the card you're on stands sharp at
+ * the top right, with its own colours glowing softly behind the page. The words on the left are the same as Home and
+ * Movies (part 2): a fixed title box, a "by" line, a short facts line, the aqua tag and a 2-line story.
+ * Made for the TCL TVs: one small cover, two painted colour fades, no blur.
+ */
+
+/** What the cover top says about the card you're on */
+internal data class CoverTopWords(
+    val title: String,
+    /** The artist or author, under the name */
+    val by: String? = null,
+    val facts: String = "",
+    val tag: String? = null,
+    val story: String? = null,
+    /** One more small line (a game's top 3 scores) */
+    val extra: String? = null,
+)
+
+/** How tall the cover top is (counting the header it sits under): about half the screen, like Home and Movies */
+internal fun coverTopHeight(
+    screenHeight: Dp,
+    overlap: Dp,
+): Dp = (screenHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp)
+
+/**
+ * The top of the Music, Books and Games For you tabs on TV and wide screens. [shown] is the card you're on (it should
+ * already wait until you stop moving); [cover] draws its cover, [coverRatio] is the cover's width for its height.
+ */
+@Composable
+internal fun <T> CoverDoorTop(
+    shown: T,
+    words: CoverTopWords,
+    glow: CoverGlowColors,
+    height: Dp,
+    overlap: Dp,
+    coverRatio: Float,
+    modifier: Modifier = Modifier,
+    edge: Dp = BenflixSpace.tvEdge,
+    cover: @Composable (T, Modifier) -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxWidth().height(height)) {
+        // The glow reaches up under the header and tabs, and a little way down behind the first row
+        CoverGlow(
+            glow,
+            Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .height(height * GLOW_REACH),
+        )
+        val coverHeight = (height - overlap - COVER_TOP - COVER_BOTTOM).coerceAtLeast(60.dp)
+        val coverWidth = coverHeight * coverRatio
+        // The cover on the right, whole and sharp, like an album or a book standing on a shelf
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = overlap + COVER_TOP, end = edge)
+                .height(coverHeight)
+                .aspectRatio(coverRatio)
+                .shadow(18.dp, BenflixShapes.Card),
+        ) {
+            Crossfade(targetState = shown, animationSpec = tween(COVER_FADE_MS), label = "coverTop") { t ->
+                cover(t, Modifier.fillMaxSize())
+            }
+        }
+        val room = (maxWidth - coverWidth - edge * 2 - 32.dp).coerceAtLeast(200.dp)
+        CoverWords(
+            words,
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(start = edge, top = overlap + 2.dp)
+                .width(room.coerceAtMost(560.dp)),
+        )
+    }
+}
+
+@Composable
+private fun CoverWords(
+    words: CoverTopWords,
+    modifier: Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
+        CompositionLocalProvider(LocalTitleExtras provides NO_LOGO) {
+            TitleBox(title = words.title, wide = true, height = 60.dp, width = 320.dp)
+        }
+        words.by?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.SemiBold,
+                style = TextStyle(shadow = SOFT_EDGE),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (words.facts.isNotBlank()) {
+            Text(
+                text = words.facts,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.body,
+                fontWeight = FontWeight.SemiBold,
+                style = TextStyle(shadow = SOFT_EDGE),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        words.tag?.takeIf { it.isNotBlank() }?.let { DoorTag(it) }
+        words.story?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                color = BenflixColors.Text.copy(alpha = .92f),
+                fontSize = BenflixType.small,
+                lineHeight = BenflixType.small * 1.35f,
+                style = TextStyle(shadow = SOFT_EDGE),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        words.extra?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(shadow = SOFT_EDGE),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Music, Books and Games covers are never logos, so the title box always shows the name */
+private val NO_LOGO = TitleExtras()
+private const val TOP_SHARE = 0.52f
+private const val GLOW_REACH = 1.7f
+private val COVER_TOP = 4.dp
+private val COVER_BOTTOM = 16.dp
+private const val COVER_FADE_MS = 250
