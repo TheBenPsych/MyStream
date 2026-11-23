@@ -107,7 +107,11 @@ fun MovieHeroContent(
             null
         }
     val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
-    val likes = dto.userData?.likes
+    // Ben 2026-11-22: the Rate button shows the choice you just made right away (likes, and loved = on My List),
+    // instead of waiting for the server copy, which could come back stale and flip it back to "Rate"
+    var ratePick by remember(movie.id) { mutableStateOf<Pair<Boolean?, Boolean>?>(null) }
+    val likes = ratePick.let { if (it != null) it.first else dto.userData?.likes }
+    val loved = ratePick?.second ?: movie.favorite
     val buttons =
         buildList {
             add(
@@ -146,7 +150,7 @@ fun MovieHeroContent(
                     TitleButton(
                         label =
                             when (likes) {
-                                true -> if (movie.favorite) "Loved" else "Liked"
+                                true -> if (loved) "Loved" else "Liked"
                                 false -> "Not for me"
                                 null -> "Rate"
                             },
@@ -295,20 +299,33 @@ fun MovieHeroContent(
             onDismissRequest = { showRate = false },
             choices =
                 listOf(
-                    BenflixChoice("Not for me", { actions.rate(if (likes == false) null else false) }, selected = likes == false),
+                    BenflixChoice(
+                        "Not for me",
+                        {
+                            val v = if (likes == false) null else false
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == false,
+                    ),
                     BenflixChoice(
                         "I like it",
-                        { actions.rate(if (likes == true && !movie.favorite) null else true) },
-                        selected = likes == true && !movie.favorite,
+                        {
+                            val v = if (likes == true && !loved) null else true
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == true && !loved,
                     ),
                     BenflixChoice(
                         "Love it",
                         {
+                            ratePick = true to true
                             actions.rate(true)
                             if (!movie.favorite) actions.setMyList(true)
                         },
                         note = "Also adds it to My List",
-                        selected = likes == true && movie.favorite,
+                        selected = likes == true && loved,
                     ),
                 ),
         )

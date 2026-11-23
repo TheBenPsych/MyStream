@@ -219,7 +219,7 @@ B.rqLines = (lines, grouped, empty) => {
 B.rqSide = (lists, picked) => lists.map((l) => `<button class="chip ${l.id === picked ? "on" : ""}" data-rqpick="${esc(l.id)}" title="${esc(l.title)}">${esc(l.title)}</button>`).join("");
 // Glowfin Top 10 rule on a wall: the first ten sit in one row, each number fully beside its poster; the rest below
 B.rqGrid = (cards, ranked, cls) => (ranked && cards.length
-  ? `<div class="strip rqt10">${cards.slice(0, 10).map((c, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${c}</div>`).join("")}</div>`
+  ? `<div class="strip rqt10">${cards.slice(0, 10).map((c, i) => `<div class="top10">${B.t10num(i + 1)}${c}</div>`).join("")}</div>`
   : "") + `<div class="grid ${cls || ""}">${(ranked ? cards.slice(10) : cards).join("")}</div>`;
 // The end of a list: titles already on Benflix never show in the lists, but can be opened here
 B.rqOwned = (n, open) => (n ? `<p style="margin-top:16px"><button class="chip" data-rqowned>${open ? "Hide the ones already on Glowfin" : `${n} more ${n === 1 ? "is" : "are"} already on Glowfin ›`}</button></p>` : "");
@@ -318,7 +318,7 @@ B.route(/^\/requests/, async (m, nav) => {
       const open = ownedOpen === w.id;
       const shown = open ? w.items.concat(w.owned) : w.items;
       const cards = w.ranked
-        ? shown.slice(0, 10).map((r, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.askCard(r)}</div>`)
+        ? shown.slice(0, 10).map((r, i) => `<div class="top10">${B.t10num(i + 1)}${B.askCard(r)}</div>`)
         : shown.map(B.askCard);
       if (w.owned.length) cards.push(`<button class="poster see rqownedcard" data-rqowned="${esc(w.id)}">${open ? "Hide the ones already on Glowfin" : `${w.owned.length} more ${w.owned.length === 1 ? "is" : "are"} already on Glowfin ›`}</button>`);
       return B.row(w.title, cards);

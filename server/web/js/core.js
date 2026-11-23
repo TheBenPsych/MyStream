@@ -989,8 +989,16 @@ document.addEventListener("scroll", (e) => {
   if (t && t.classList && t.classList.contains("strip") && t.parentElement) t.parentElement.classList.toggle("at0", t.scrollLeft < 8);
 }, true);
 window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 40), { passive: true });
-// Glowfin Top 10 (Ben's T1 pick): tall glowing Anton numbers, each in the same width box fully BESIDE its poster
-B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.posterCard(it)}</div>`);
+// Glowfin Top 10 (Ben 2026-11-22, "Glow outline"): hollow numbers outlined left to right in violet > blue > aqua,
+// as tall as the cover, in the same width box fully BESIDE its poster. Hover or focus fills it (CSS).
+// "10" is drawn slimmer (textLength) so it is as tall and wide as the single numbers.
+B.t10num = (n) => {
+  if (!document.getElementById("gfT10Defs")) {
+    document.body.insertAdjacentHTML("beforeend", '<svg id="gfT10Defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="gfT10" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A55BE0"/><stop offset=".5" stop-color="#1FA8E6"/><stop offset="1" stop-color="#3FE0E8"/></linearGradient></defs></svg>');
+  }
+  return `<span class="num" aria-label="${n}"><svg viewBox="0 0 150 300" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><text x="75" y="294" text-anchor="middle"${n >= 10 ? ' textLength="138" lengthAdjust="spacingAndGlyphs"' : ""}>${n}</text></svg></span>`;
+};
+B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10">${B.t10num(i + 1)}${B.posterCard(it)}</div>`);
 
 // Glowfin (ui-7): the word tabs along the top of every page (Movies, Shows, Anime, Live TV, Music, Games, Books) (the same places as the TV and phones)
 B.PAGE_TABS = {

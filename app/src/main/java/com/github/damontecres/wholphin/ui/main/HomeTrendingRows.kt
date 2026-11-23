@@ -3,6 +3,10 @@ package com.github.damontecres.wholphin.ui.main
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -36,10 +40,13 @@ fun Top10Row(
         modifier = modifier,
         cardContent = { index, item, cardModifier, onClick, onLongClick ->
             // Ben's T1 pick: the glowing number in its own equal-width box, fully beside the poster
-            Row(verticalAlignment = Alignment.Top) {
+            // Ben's Glow outline: the number fills in while its poster has focus
+            var lit by remember { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.Top, modifier = Modifier.onFocusChanged { lit = it.hasFocus }) {
                 com.github.damontecres.wholphin.ui.components.GlowRankNumber(
                     rank = index + 1,
                     posterHeight = Cards.height2x3,
+                    lit = lit,
                     modifier = Modifier.padding(end = com.github.damontecres.wholphin.ui.components.RankGap),
                 )
                 BannerCard(
