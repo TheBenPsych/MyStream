@@ -78,7 +78,8 @@ const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()
 B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   // Kids don't get live channels, like the TV and phone app: live programmes have no age ratings
   if (B.me.kids) return B.go("#/home");
-  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner("rows")}</div>`;
+  // New look (Part 4): what's on now fills the window (big events and sports first), the guide peeks under it
+  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top live-top" id="liveTop"><div class="art" id="liveArt"></div><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   let list, prefs;
   try { [list, prefs] = await Promise.all([B.channels(), chPrefs.read()]); }
@@ -95,14 +96,54 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   const onlyFavs = view === "fav", onlyRecent = view === "recent";
   // Favourites and Recently watched show only those channels; Guide shows everything (favourites first)
   const shown = onlyFavs ? favs : onlyRecent ? recent : [...favs, ...list.filter((c) => !hidden.has(c._type) && !favs.includes(c))];
+  // The show the page opens on (Ben's note: big events and sports on now first), the same points as the TV app
+  const SPORT = [" vs ", " vs. ", " v ", " at ", "football", "basketball", "baseball", "hockey", "soccer", "nfl", "nba", "mlb", "nhl", "mls", "ncaa", "ufc", "boxing", "wrestling", "golf", "tennis", "racing", "nascar", "grand prix", "formula 1", "f1 ", "match", "game ", "playoff", "bowl", "cup", "olympic"];
+  const EVENT = ["live", "premiere", "finale", "special", "awards", "parade", "election", "debate", "breaking", "concert", "championship", "final", "countdown", "ceremony"];
+  const score = (c, p) => {
+    if (!p) return -1000;
+    if (!c._progs.length) return -100 + (prefs.favourites.includes(c.Name) ? 5 : 0);
+    const n = ` ${(p.Name || "").toLowerCase()} `;
+    let s2 = 0;
+    if (p.IsSports || c._type === "Sports" || SPORT.some((w) => n.includes(w))) s2 += 40;
+    if (p.IsLive) s2 += 25;
+    if (p.IsPremiere) s2 += 15;
+    if (EVENT.some((w) => n.includes(w))) s2 += 12;
+    if (prefs.favourites.includes(c.Name)) s2 += 6;
+    const r = prefs.recent.indexOf(c.Name);
+    if (r >= 0) s2 += Math.max(1, 4 - r);
+    if (new Date(p.EndDate) - Date.now() < 5 * 60000) s2 -= 20;
+    return s2;
+  };
+  const pickNow = () => {
+    let best = null, bestS = -Infinity;
+    list.filter((c) => !hidden.has(c._type) || favs.includes(c)).forEach((c) => { const sc = score(c, nowOn(c)); if (sc > bestS) { best = c; bestS = sc; } });
+    return best;
+  };
+  let artFor = "";
+  const setArt = (p, c) => {
+    const el = $("#liveArt"); if (!el) return;
+    const want = p && p.Id && c._progs.length ? B.img(p.Id, "Primary", { w: 1280 }) : "";
+    if (want === artFor) return;
+    artFor = want; el.classList.remove("on");
+    if (!want) return;
+    const im = new Image();
+    im.onload = () => { if (artFor === want && $("#liveArt")) { el.style.backgroundImage = `url("${want}")`; el.classList.add("on"); } };
+    im.src = want;
+  };
   const describe = (c) => {
-    if (!$("#liveInfo")) return; // already left the page
-    const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
-    $("#liveInfo").innerHTML = `<div class="meta">${p ? `<span class="livep">● LIVE</span>` : ""}${esc(c.ChannelNumber || "")} · ${esc(c.Name)} · ${esc(c._type)}</div>
+    if (!$("#liveInfo") || !c) return; // already left the page
+    const p = nowOn(c);
+    const fav = prefs.favourites.includes(c.Name);
+    const pct = p ? Math.round(Math.max(0, Math.min(1, (Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate)))) * 100) : 0;
+    const kind = p && p.IsSports ? "Sports" : p && p.IsNews ? "News" : p && p.IsMovie ? "Movie" : p && p.IsKids ? "Kids" : c._type;
+    const hasGuide = c._progs.length > 0;
+    $("#liveInfo").innerHTML = `<div class="lt-ch">${logo(c, 80) ? `<span class="lt-plate"><img src="${logo(c, 80)}" alt=""></span>` : ""}<b>${esc(c.ChannelNumber || "")} ${esc(c.Name)}</b></div>
       <div class="t">${esc(p ? p.Name : c.Name)}</div>
-      ${p ? `<div class="meta"><span>${B.clock(new Date(p.StartDate))} – ${B.clock(new Date(p.EndDate))}</span><span>${minsLeft(p)} min left</span>${next ? `<span>Next: ${esc(next.Name)} at ${B.clock(new Date(next.StartDate))}</span>` : ""}</div>
-      <div class="livebar"><i style="width:${Math.round(Math.max(0, Math.min(1, (Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate)))) * 100)}%"></i></div>` : ""}
-      <div class="ov">${esc((p && p.Overview) || c.Overview || "Live channel")}</div>`;
+      <div class="meta"><span>Now</span>${p && hasGuide ? `<span>${B.clock(new Date(p.StartDate))} to ${B.clock(new Date(p.EndDate))}</span>` : ""}${kind && kind !== "More channels" ? `<span>${esc(kind)}</span>` : ""}</div>
+      <div class="lt-tags"><span class="lt-live">LIVE</span>${p && hasGuide ? `<span class="dt-tag">Ends ${B.clock(new Date(p.EndDate))}</span>` : ""}</div>
+      <div class="ov">${esc((p && p.Overview) || c.Overview || "")}</div>
+      <div class="lt-btns"><a class="btn white lt-watch" href="#/watch/${c.Id}">${I("play")} Watch live${p && hasGuide ? `<i class="lt-prog"><b style="width:${pct}%"></b></i>` : ""}</a><button class="btn" data-a="guide">${I("list")} Full guide</button><button class="btn" data-a="fav" data-c="${esc(c.Id)}">${I("star")} ${fav ? "Favourite" : "Add to favourites"}</button></div>`;
+    setArt(p, c);
   };
   // the guide: 2 hours across, starting now
   const start = new Date(); start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
@@ -122,7 +163,6 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
     }).join("")}<i class="nowl" style="left:${nowLeft()}%"></i></div></div>`).join("");
   const types = [...new Set(list.map((c) => c._type))];
   $("#rows").innerHTML = [
-    view === "guide" ? B.row("Recently watched", recent.map(chCard)) : "",
     `<section class="rowx"><h3>${onlyFavs ? "Favourites" : onlyRecent ? "Recently watched" : "Guide"}</h3>
       <div class="gridbar" style="--accent:${DOORS.live.color};top:var(--bar)"><input class="search-in" id="chSearch" placeholder="Channel name or number">
       ${view === "guide" ? `${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
@@ -130,12 +170,17 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
       ${!shown.length ? `<div class="wrap empty">${onlyFavs ? "No favourites yet. Click a programme in the Guide and pick Add to favourites." : "No channels watched lately."}</div>` : ""}
       <div class="guide${narrow ? " nn" : ""}"><div class="ghead">${narrow ? `<span>Channel</span><span>Now</span><span>Next</span>` : `<span></span>`}<div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
   ].join("");
-  describe(favs[0] || recent[0] || shown[0] || list[0]);
-  let timer;
-  const point = (e) => { const el = e.target.closest("[data-id],[data-ch]"); if (!el) return; const c = list.find((x) => x.Id === (el.dataset.id || el.dataset.ch)); if (!c) return; clearTimeout(timer); timer = setTimeout(() => describe(c), 250); };
-  B.page().addEventListener("mouseover", point);
-  B.page().addEventListener("focusin", point);
-  B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
+  // Guide tab: what's on now, big. Favourites and Recently watched: their first channel.
+  describe(view === "guide" ? pickNow() || shown[0] || list[0] : shown[0] || list[0]);
+  $("#liveTop").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    if (b.dataset.a === "guide") { const g = $(".guide"); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (b.dataset.a === "fav") {
+      const c = list.find((x) => x.Id === b.dataset.c); if (!c) return;
+      prefs = await B.toggleFav(c, prefs);
+      describe(c);
+    }
+  });
   let filtered = shown;
   const redraw = () => { $("#gRows").innerHTML = guideRows(filtered.slice(0, 300)); };
   $("#chSearch").oninput = (e) => {
