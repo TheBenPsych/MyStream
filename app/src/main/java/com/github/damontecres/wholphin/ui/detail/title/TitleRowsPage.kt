@@ -22,26 +22,38 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.onFocusedBoundsChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -70,6 +82,17 @@ import kotlinx.coroutines.launch
  * story, then the same rows. A slim Play bar shows once Play scrolls away.
  */
 
+/**
+ * Where Down from the buttons should land. Ben 2026-11-22 (TV photo, One Piece): Down from Resume went past
+ * the season buttons straight onto the 1-25 group buttons. The first row can set this (a show's season
+ * buttons do, landing on the season you are on); when nothing is set Down works as before.
+ */
+class TitleDownTarget {
+    var enter: (() -> Boolean)? = null
+}
+
+val LocalTitleDownTarget = staticCompositionLocalOf<TitleDownTarget?> { null }
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun WideRowsTitlePage(
@@ -95,6 +118,7 @@ internal fun WideRowsTitlePage(
     val coroutines = rememberCoroutineScope()
     val firstButton = remember { FocusRequester() }
     var focusedButton by remember { mutableStateOf<Int?>(null) }
+    val downTarget = remember { TitleDownTarget() }
     LaunchedEffect(Unit) {
         if (isTv) {
             delay(60)
@@ -118,7 +142,18 @@ internal fun WideRowsTitlePage(
         // scroll down to it. Now reaching the last row you can press scrolls the page right to the end.
         var focusedRow by remember { mutableStateOf<Int?>(null) }
         val lastPressable = sections.indexOfLast { !it.info }
-        val toEnd = focusedRow != null && focusedRow == lastPressable && lastPressable < sections.lastIndex
+        // Ben 2026-11-22: on anime pages the last row you can press holds three rows (Watch order: movies,
+        // Fan genres, Characters and voices). Jumping to the end as soon as it had the focus pushed the
+        // movies off the top, so the focus sat on something you couldn't see. Now it only jumps to the end
+        // when the thing you're on still fits on screen after the jump; otherwise the page scrolls normally.
+        val sectionHeights = remember { mutableStateMapOf<Int, Int>() }
+        var lastSection by remember { mutableStateOf<LayoutCoordinates?>(null) }
+        var focusedGap by remember { mutableStateOf(0) }
+        val viewport = with(LocalDensity.current) { h.roundToPx() }
+        val bottomPad = with(LocalDensity.current) { 56.dp.roundToPx() }
+        val tail = (lastPressable + 1..sections.lastIndex).sumOf { sectionHeights[it] ?: 0 } + bottomPad
+        val fitsAtEnd = focusedGap <= viewport / 2 && focusedGap + tail <= viewport
+        val toEnd = focusedRow != null && focusedRow == lastPressable && lastPressable < sections.lastIndex && fitsAtEnd
         LaunchedEffect(toEnd) {
             if (toEnd) listState.animateScrollToItem(sections.size)
         }
@@ -127,14 +162,15 @@ internal fun WideRowsTitlePage(
         // request was often still answered with "stay put". It reads what has the focus right now instead.
         val lastRow = rememberUpdatedState(sections.lastIndex)
         val lastPress = rememberUpdatedState(lastPressable)
+        val endFits = rememberUpdatedState(fitsAtEnd)
         val holdOnButtons =
             remember(defaultSpec) {
                 HoldStillSpec(defaultSpec) {
                     val row = focusedRow
-                    focusedButton != null || (row != null && row == lastPress.value && row < lastRow.value)
+                    focusedButton != null || (row != null && row == lastPress.value && row < lastRow.value && endFits.value)
                 }
             }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides holdOnButtons) {
+        CompositionLocalProvider(LocalBringIntoViewSpec provides holdOnButtons, LocalTitleDownTarget provides downTarget) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(bottom = 56.dp),
@@ -176,7 +212,14 @@ internal fun WideRowsTitlePage(
                         Column(Modifier.padding(top = 6.dp)) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.focusRestorer(firstButton),
+                                modifier =
+                                    Modifier
+                                        .focusRestorer(firstButton)
+                                        .onPreviewKeyEvent {
+                                            it.type == KeyEventType.KeyDown &&
+                                                it.key == Key.DirectionDown &&
+                                                downTarget.enter?.invoke() == true
+                                        },
                             ) {
                                 buttons.forEachIndexed { index, b ->
                                     TitleButtonView(
@@ -220,7 +263,21 @@ internal fun WideRowsTitlePage(
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(top = 22.dp)
-                                    .onFocusChanged {
+                                    .onSizeChanged { sectionHeights[index] = it.height }
+                                    .then(
+                                        if (index == lastPressable) {
+                                            Modifier
+                                                .onGloballyPositioned { lastSection = it }
+                                                .onFocusedBoundsChanged { focused ->
+                                                    val box = lastSection
+                                                    if (focused != null && box != null && box.isAttached && focused.isAttached) {
+                                                        focusedGap = (box.size.height - box.localPositionOf(focused, Offset.Zero).y).toInt()
+                                                    }
+                                                }
+                                        } else {
+                                            Modifier
+                                        },
+                                    ).onFocusChanged {
                                         if (it.hasFocus) {
                                             focusedRow = index
                                         } else if (focusedRow == index) {
