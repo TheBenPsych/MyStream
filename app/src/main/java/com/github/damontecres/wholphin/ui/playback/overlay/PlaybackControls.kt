@@ -53,13 +53,16 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -843,11 +846,16 @@ fun SeekBar(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                // Ben 2026-11-23: both times sit in fixed-width slots so the bar never resizes as the seconds tick
+                val timeSlot = rememberTimeSlotWidth(durationMs)
                 Text(
                     text = remember(positionSec) { resources.formatDuration(positionSec.seconds) },
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
                     maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.width(timeSlot),
                 )
                 IntervalSeekBarImpl(
                     chapterMarks = chapterMarks,
@@ -870,10 +878,43 @@ fun SeekBar(
                             if (remainingSec < 0) "" else "−${resources.formatDuration(remainingSec.seconds)}"
                         },
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
                     maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.width(timeSlot),
                 )
             }
+        }
+    }
+}
+
+/** Same-width digits, so "1" and "8" take the same room */
+private val TimeSlotStyle = TextStyle(fontFeatureSettings = "tnum")
+
+/**
+ * How wide each time beside the bar is: room for the longest time this video can show ("−8h 88m 88s",
+ * or "−88m 88s" when it is under an hour), measured once, so the slot never changes size while playing.
+ */
+@Composable
+private fun rememberTimeSlotWidth(durationMs: Long): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val resources = LocalResources.current
+    val style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle)
+    val longest = durationMs >= 3_600_000L
+    return remember(longest, style, density) {
+        val sample =
+            if (longest) {
+                "−" + resources.getString(R.string.duration_hours_minutes_seconds, 8, 88, 88)
+            } else {
+                "−" + resources.getString(R.string.duration_minutes_seconds, 88, 88)
+            }
+        with(density) {
+            measurer
+                .measure(sample, style = style, maxLines = 1)
+                .size.width
+                .toDp() + 2.dp
         }
     }
 }
