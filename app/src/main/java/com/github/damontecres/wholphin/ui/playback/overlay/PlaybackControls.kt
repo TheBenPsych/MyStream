@@ -51,9 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -62,10 +60,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -229,7 +225,7 @@ fun PlaybackControls(
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         if (live != null) {
-            PlayerTitleLine(title = title, subtitle = subtitle, ends = null, modifier = Modifier.fillMaxWidth(.95f))
+            PlayerTitleLine(title = title, subtitle = subtitle, modifier = Modifier.fillMaxWidth(.95f))
             // Live TV: the programme's own line (when it started, when it ends) in place of chapters
             LiveLine(
                 live = live,
@@ -283,10 +279,12 @@ fun PlaybackControls(
 private const val PLAY_HIDE_MS = 600L
 
 /**
- * Glowfin player buttons (clean-up, Ben 2026-11-18): icons only, no words under them. Settings and Episodes on the
- * left, Previous episode, Back 10, Play/Pause, Ahead 10 and Next episode in the exact middle, and Subtitles and
- * Audio on the right. The button the remote is on shows its name in a small bubble above it. The Skip and LIVE
- * pills show on the right when they matter. The same on TV and phones (phones sideways get smaller buttons).
+ * Glowfin new look (Part 4, Ben 2026-11-22): round see-through buttons with their names under them, and Pause
+ * (or Play) solid white like the main button on every page. Every button is kept: Previous, Back 10, Play/Pause,
+ * Ahead 10 and Next on the left, then Subtitles, Audio, Episodes and Settings on the right. The Skip and LIVE
+ * pills show just before Subtitles when they matter. No Volume button here: the TV remote and the phone's own
+ * buttons do volume (Ben: Volume only on the browser and computer apps). Same on TV and phones (phones sideways
+ * get slightly smaller buttons).
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -312,53 +310,25 @@ fun NetflixControlRow(
         BoxWithConstraints(modifier = modifier.focusGroup()) {
             val compact = maxWidth < WIDE_CONTROLS_MIN_WIDTH
             val sizes = if (compact) PlayerButtonSizes.Compact else PlayerButtonSizes.Wide
-            val gap = if (compact) 6.dp else 12.dp
+            val gap = if (compact) 4.dp else 8.dp
             val open = { type: PlaybackDialogType ->
                 onControllerInteraction.invoke()
                 onClickPlaybackDialogType.invoke(type)
             }
-            // Previous and Next show for episodes (and playlists), dimmed when there's none, so the middle never moves
+            // Previous and Next show for episodes (and playlists), dimmed when there's none, so nothing moves
             val showEpisodeArrows = episodesEnabled || previousEnabled || nextEnabled
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                // Left: Settings and Episodes
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(gap, Alignment.Start),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    // Subtitle timing, Quality and the Fix a problem list all live behind the cog
-                    PlayerGlowButton(
-                        icon = GlowfinIcon.SETTINGS,
-                        number = null,
-                        label = null,
-                        tip = "Settings",
-                        sizes = sizes,
-                        onClick = { open(PlaybackDialogType.SETTINGS) },
-                        onControllerInteraction = onControllerInteraction,
-                    )
-                    if (episodesEnabled) {
-                        PlayerGlowButton(
-                            icon = GlowfinIcon.EPISODES,
-                            number = null,
-                            label = null,
-                            tip = "Episodes",
-                            sizes = sizes,
-                            onClick = { open(PlaybackDialogType.EPISODES) },
-                            onControllerInteraction = onControllerInteraction,
-                        )
-                    }
-                }
-                // Middle: Previous, Back 10, Play/Pause, Ahead 10, Next
+                // Left: Previous, Back 10, Play/Pause, Ahead 10, Next
                 if (showEpisodeArrows) {
                     PlayerGlowButton(
                         icon = GlowfinIcon.PREVIOUS,
                         number = null,
-                        label = null,
-                        tip = "Previous episode",
+                        label = "Previous",
+                        contentDescription = "Previous episode",
                         sizes = sizes,
                         enabled = previousEnabled,
                         onClick = {
@@ -371,8 +341,8 @@ fun NetflixControlRow(
                 PlayerGlowButton(
                     icon = GlowfinIcon.BACK,
                     number = seekBack.inWholeSeconds.toString(),
-                    label = null,
-                    tip = "Back ${seekBack.inWholeSeconds} seconds",
+                    label = "Back ${seekBack.inWholeSeconds}",
+                    contentDescription = "Back ${seekBack.inWholeSeconds} seconds",
                     sizes = sizes,
                     onClick = {
                         onControllerInteraction.invoke()
@@ -383,11 +353,10 @@ fun NetflixControlRow(
                 PlayerGlowButton(
                     icon = if (showPlay) GlowfinIcon.PLAY else GlowfinIcon.PAUSE,
                     number = null,
-                    label = null,
-                    // No bubble on Play/Pause: the remote lands here every time the controls show
-                    contentDescription = if (showPlay) "Play" else "Pause",
+                    label = if (showPlay) "Play" else "Pause",
                     sizes = sizes,
                     big = true,
+                    solid = true,
                     onClick = {
                         onControllerInteraction.invoke()
                         if (showPlay) {
@@ -406,8 +375,8 @@ fun NetflixControlRow(
                 PlayerGlowButton(
                     icon = GlowfinIcon.AHEAD,
                     number = seekForward.inWholeSeconds.toString(),
-                    label = null,
-                    tip = "Ahead ${seekForward.inWholeSeconds} seconds",
+                    label = "Ahead ${seekForward.inWholeSeconds}",
+                    contentDescription = "Ahead ${seekForward.inWholeSeconds} seconds",
                     sizes = sizes,
                     onClick = {
                         onControllerInteraction.invoke()
@@ -419,8 +388,8 @@ fun NetflixControlRow(
                     PlayerGlowButton(
                         icon = GlowfinIcon.NEXT,
                         number = null,
-                        label = null,
-                        tip = "Next episode",
+                        label = "Next",
+                        contentDescription = "Next episode",
                         sizes = sizes,
                         enabled = nextEnabled,
                         onClick = {
@@ -430,13 +399,15 @@ fun NetflixControlRow(
                         onControllerInteraction = onControllerInteraction,
                     )
                 }
-                // Right: the pills that only show when they matter, then Subtitles and Audio
+                // Right: the pills that only show when they matter, then Subtitles, Audio, Episodes and Settings
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(gap, Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     modifier = Modifier.weight(1f),
                 ) {
-                    // Live TV (approved pl-family): a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
+                    // The pills sit level with the round buttons' middles
+                    val pillTop = (sizes.big - 42.dp).coerceAtLeast(0.dp) / 2
+                    // Live TV: a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
                     if (live) {
                         PlayerPillButton(
                             text = "● LIVE",
@@ -448,7 +419,10 @@ fun NetflixControlRow(
                                 player.play()
                             },
                             onControllerInteraction = onControllerInteraction,
-                            modifier = Modifier.semantics { contentDescription = "Live. Press to jump to live" },
+                            modifier =
+                                Modifier
+                                    .padding(top = pillTop)
+                                    .semantics { contentDescription = "Live. Press to jump to live" },
                         )
                     }
                     currentSegment?.let { segment ->
@@ -460,13 +434,13 @@ fun NetflixControlRow(
                             },
                             onControllerInteraction = onControllerInteraction,
                             highlighted = true,
+                            modifier = Modifier.padding(top = pillTop),
                         )
                     }
                     PlayerGlowButton(
                         icon = GlowfinIcon.SUBTITLES,
                         number = null,
-                        label = null,
-                        tip = "Subtitles",
+                        label = "Subtitles",
                         sizes = sizes,
                         onClick = { open(PlaybackDialogType.CAPTIONS) },
                         onControllerInteraction = onControllerInteraction,
@@ -474,10 +448,28 @@ fun NetflixControlRow(
                     PlayerGlowButton(
                         icon = GlowfinIcon.AUDIO,
                         number = null,
-                        label = null,
-                        tip = "Audio",
+                        label = "Audio",
                         sizes = sizes,
                         onClick = { open(PlaybackDialogType.AUDIO) },
+                        onControllerInteraction = onControllerInteraction,
+                    )
+                    if (episodesEnabled) {
+                        PlayerGlowButton(
+                            icon = GlowfinIcon.EPISODES,
+                            number = null,
+                            label = "Episodes",
+                            sizes = sizes,
+                            onClick = { open(PlaybackDialogType.EPISODES) },
+                            onControllerInteraction = onControllerInteraction,
+                        )
+                    }
+                    // Subtitle timing, Quality and the Fix a problem list all live behind the cog
+                    PlayerGlowButton(
+                        icon = GlowfinIcon.SETTINGS,
+                        number = null,
+                        label = "Settings",
+                        sizes = sizes,
+                        onClick = { open(PlaybackDialogType.SETTINGS) },
                         onControllerInteraction = onControllerInteraction,
                     )
                 }
@@ -489,22 +481,27 @@ fun NetflixControlRow(
 /** Narrower than this (phones sideways), the player buttons get a little smaller */
 private val WIDE_CONTROLS_MIN_WIDTH = 820.dp
 
-/** How big the player's round buttons are: [normal] ones, the [big] Play/Pause, and the label under them */
+/**
+ * How big the player's round buttons are: [normal] ones, the [big] Play/Pause, the name under them, and the
+ * [slot] each button and its name take (the same for every button, so the row never moves when Pause turns to Play)
+ */
 internal data class PlayerButtonSizes(
     val normal: Dp,
     val big: Dp,
     val labelSize: androidx.compose.ui.unit.TextUnit,
+    val slot: Dp,
 ) {
     companion object {
-        val Wide = PlayerButtonSizes(normal = 48.dp, big = 60.dp, labelSize = 13.sp)
-        val Compact = PlayerButtonSizes(normal = 40.dp, big = 50.dp, labelSize = 11.sp)
+        val Wide = PlayerButtonSizes(normal = 48.dp, big = 56.dp, labelSize = 13.sp, slot = 66.dp)
+        val Compact = PlayerButtonSizes(normal = 40.dp, big = 48.dp, labelSize = 11.sp, slot = 54.dp)
     }
 }
 
 /**
- * One of the player's round buttons (P1): see-through until the remote is on it, then white with the Glowfin
+ * One of the player's round buttons (new look): see-through until the remote is on it, then white with the Glowfin
  * glow ring (a thin dark gap, an aqua ring and a soft violet glow, drawn once, no blur, cheap on older TVs).
- * Every button sits in a box as tall as Play/Pause, so all their middles line up, with its label (if any) below.
+ * A [solid] button (Pause/Play) is always white. Every button sits in a box as tall as Play/Pause, so all their
+ * middles line up, with its name below.
  */
 @Composable
 internal fun PlayerGlowButton(
@@ -516,18 +513,15 @@ internal fun PlayerGlowButton(
     onControllerInteraction: () -> Unit,
     modifier: Modifier = Modifier,
     big: Boolean = false,
-    /** Shown in a small bubble above the button only while the remote is on it (the bar itself has no words) */
-    tip: String? = null,
+    /** Always solid white (Pause/Play, the main button) */
+    solid: Boolean = false,
     enabled: Boolean = true,
-    contentDescription: String? = label ?: tip,
+    contentDescription: String? = label,
 ) {
     val size = if (big) sizes.big else sizes.normal
     var focused by remember { mutableStateOf(false) }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(sizes.slot)) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.height(sizes.big)) {
-            if (tip != null && focused) {
-                PlayerButtonTip(text = tip, above = size / 2 + 12.dp, labelSize = sizes.labelSize)
-            }
             TvButton(
                 onClick = onClick,
                 enabled = enabled,
@@ -535,10 +529,23 @@ internal fun PlayerGlowButton(
                 contentPadding = PaddingValues(0.dp),
                 colors =
                     ButtonDefaults.colors(
-                        containerColor = Color.White.copy(alpha = .12f),
-                        contentColor = Color.White,
+                        containerColor = if (solid) Color.White else Color.White.copy(alpha = .14f),
+                        contentColor = if (solid) Glowfin.Ink else Color.White,
                         focusedContainerColor = Color.White,
                         focusedContentColor = Glowfin.Ink,
+                    ),
+                border =
+                    ButtonDefaults.border(
+                        border =
+                            if (solid) {
+                                androidx.tv.material3.Border.None
+                            } else {
+                                androidx.tv.material3.Border(
+                                    androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .22f)),
+                                    shape = CircleShape,
+                                )
+                            },
+                        focusedBorder = androidx.tv.material3.Border.None,
                     ),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
                 modifier =
@@ -551,7 +558,7 @@ internal fun PlayerGlowButton(
                             onControllerInteraction.invoke()
                         }.semantics { contentDescription?.let { this.contentDescription = it } },
             ) {
-                val tint = if (focused) Glowfin.Ink else Color.White
+                val tint = if (focused || solid) Glowfin.Ink else Color.White
                 val iconSize = size * if (number != null) .62f else .5f
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     GlowfinIconImage(icon = icon, color = tint, size = iconSize)
@@ -575,44 +582,18 @@ internal fun PlayerGlowButton(
                 text = label,
                 color = if (focused) Glowfin.Text else PlayerLabelColor,
                 fontSize = sizes.labelSize,
-                fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
-                modifier = Modifier.padding(top = 4.dp),
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 5.dp),
             )
         }
     }
 }
 
 private val PlayerLabelColor = Color(0xFFD6D9EC)
-
-/**
- * The little white name bubble over the player button the remote is on. It takes no room of its own (so the
- * row never jumps) and is drawn [above] the button's middle.
- */
-@Composable
-private fun PlayerButtonTip(
-    text: String,
-    above: Dp,
-    labelSize: androidx.compose.ui.unit.TextUnit,
-) {
-    Text(
-        text = text,
-        color = Glowfin.Ink,
-        fontSize = labelSize,
-        fontWeight = FontWeight.SemiBold,
-        maxLines = 1,
-        softWrap = false,
-        modifier =
-            Modifier
-                .layout { measurable, _ ->
-                    val placeable = measurable.measure(Constraints())
-                    layout(0, 0) {
-                        placeable.place(-placeable.width / 2, -above.roundToPx() - placeable.height)
-                    }
-                }.background(Color.White, RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-    )
-}
 
 /**
  * The Glowfin glow ring round a round (or pill) player button while [focused] says so: a thin dark gap, an aqua
@@ -791,7 +772,6 @@ fun SeekBar(
     title: String? = null,
     subtitle: String? = null,
 ) {
-    val context = LocalContext.current
     val resources = LocalResources.current
     var bufferedProgress by remember(player) { mutableFloatStateOf(player.bufferedPosition.toFloat() / player.duration) }
     var position by remember(player) { mutableLongStateOf(player.currentPosition) }
@@ -816,62 +796,29 @@ fun SeekBar(
                     .filter { it > 0.005f && it < 0.995f }
             }
         }
-    // Ben (clean-up v4): one line on top (name, episode, "Ends at"), then the times on each side of the bar
-    val speed = player.playbackParameters.speed
+    // New look (Part 4): the logo (or name) and episode bottom left, the two times just above the bar's ends,
+    // then the bar the whole width. "Ends at" sits under the clock at the top right (PlayerEndsAt).
     val positionSec = position / 1000
     val remainingSec = (durationMs - position) / 1000
-    val ends =
-        remember(remainingSec / 30, speed) {
-            if (durationMs <= 0 || remainingSec < 0) {
-                null
-            } else {
-                val realSec = (remainingSec / speed.coerceAtLeast(0.1f)).toLong()
-                "Ends at " +
-                    formatTime(
-                        context,
-                        java.time.LocalTime
-                            .now()
-                            .plusSeconds(realSec),
-                    )
-            }
-        }
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PlayerTitleLine(title = title, subtitle = subtitle, ends = ends, modifier = Modifier.fillMaxWidth())
+        PlayerTitleLine(title = title, subtitle = subtitle, modifier = Modifier.fillMaxWidth())
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             ) {
-                // Ben 2026-11-23: both times sit in fixed-width slots so the bar never resizes as the seconds tick
-                val timeSlot = rememberTimeSlotWidth(durationMs)
                 Text(
                     text = remember(positionSec) { resources.formatDuration(positionSec.seconds) },
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     softWrap = false,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.width(timeSlot),
                 )
-                IntervalSeekBarImpl(
-                    chapterMarks = chapterMarks,
-                    progress = progress,
-                    bufferedProgress = bufferedProgress,
-                    onSeek = {
-                        onSeekProgress(it)
-                    },
-                    controllerViewState = controllerViewState,
-                    modifier = Modifier.weight(1f),
-                    interactionSource = interactionSource,
-                    enabled = isEnabled,
-                    durationMs = player.duration,
-                    seekBack = seekBack,
-                    seekForward = seekForward,
-                )
+                Spacer(Modifier.weight(1f))
                 Text(
                     text =
                         remember(remainingSec) {
@@ -879,13 +826,71 @@ fun SeekBar(
                         },
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     softWrap = false,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.width(timeSlot),
                 )
             }
+            IntervalSeekBarImpl(
+                chapterMarks = chapterMarks,
+                progress = progress,
+                bufferedProgress = bufferedProgress,
+                onSeek = {
+                    onSeekProgress(it)
+                },
+                controllerViewState = controllerViewState,
+                modifier = Modifier.fillMaxWidth(),
+                interactionSource = interactionSource,
+                enabled = isEnabled,
+                durationMs = player.duration,
+                seekBack = seekBack,
+                seekForward = seekForward,
+            )
         }
+    }
+}
+
+/**
+ * "Ends at 10:14 PM" under the player's clock (new look). Worked out from the time left and the play speed,
+ * checked every few seconds (cheap on older TVs). Nothing shows for live TV or before the length is known.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+fun PlayerEndsAt(
+    player: Player,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var ends by remember(player) { mutableStateOf<String?>(null) }
+    LaunchedEffect(player) {
+        while (isActive) {
+            val durationMs = player.duration
+            val remainingSec = (durationMs - player.currentPosition) / 1000
+            ends =
+                if (durationMs <= 0 || remainingSec < 0 || player.isCurrentMediaItemLive) {
+                    null
+                } else {
+                    val speed = player.playbackParameters.speed.coerceAtLeast(0.1f)
+                    "Ends at " +
+                        formatTime(
+                            context,
+                            java.time.LocalTime
+                                .now()
+                                .plusSeconds((remainingSec / speed).toLong()),
+                        )
+                }
+            delay(5_000L)
+        }
+    }
+    ends?.let {
+        Text(
+            text = it,
+            color = Color(0xFFD6D9EC),
+            fontSize = BenflixType.body,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = modifier,
+        )
     }
 }
 
@@ -893,81 +898,36 @@ fun SeekBar(
 private val TimeSlotStyle = TextStyle(fontFeatureSettings = "tnum")
 
 /**
- * How wide each time beside the bar is: room for the longest time this video can show ("−8h 88m 88s",
- * or "−88m 88s" when it is under an hour), measured once, so the slot never changes size while playing.
+ * The player's name block, bottom left (new look): the logo when it's a good shape (else the name, shrinking to
+ * fit), then the small words under it ("S11 · E4 · Name", or the year and rating for a movie).
  */
-@Composable
-private fun rememberTimeSlotWidth(durationMs: Long): Dp {
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    val resources = LocalResources.current
-    val style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle)
-    val longest = durationMs >= 3_600_000L
-    return remember(longest, style, density) {
-        val sample =
-            if (longest) {
-                "−" + resources.getString(R.string.duration_hours_minutes_seconds, 8, 88, 88)
-            } else {
-                "−" + resources.getString(R.string.duration_minutes_seconds, 88, 88)
-            }
-        with(density) {
-            measurer
-                .measure(sample, style = style, maxLines = 1)
-                .size.width
-                .toDp() + 2.dp
-        }
-    }
-}
-
-/** The one line above the player's bar: the name, the small words after it, and "Ends at 10:14 PM" on the right */
 @Composable
 fun PlayerTitleLine(
     title: String?,
     subtitle: String?,
-    ends: String?,
     modifier: Modifier = Modifier,
 ) {
-    if (title.isNullOrBlank() && subtitle.isNullOrBlank() && ends == null) return
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.padding(start = 4.dp, end = 4.dp, bottom = 2.dp),
+    if (title.isNullOrBlank() && subtitle.isNullOrBlank()) return
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f),
-        ) {
-            if (!title.isNullOrBlank()) {
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
-                    fontSize = BenflixType.rowName * 1.1f,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-            }
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    color = Color(0xFFD6D9EC),
-                    fontSize = BenflixType.body,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-            }
+        if (!title.isNullOrBlank()) {
+            com.github.damontecres.wholphin.ui.detail.title.TitleBox(
+                title = title,
+                wide = true,
+                height = 40.dp,
+                width = 300.dp,
+            )
         }
-        ends?.let {
+        if (!subtitle.isNullOrBlank()) {
             Text(
-                text = it,
-                color = Color(0xFFD6D9EC),
+                text = subtitle,
+                color = Color(0xFFE6E8F5),
                 fontSize = BenflixType.body,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -1078,6 +1038,11 @@ data class LiveBarInfo(
     }
 }
 
+/** The live bar fills in the Glowfin colours, like the normal seek bar */
+private val LIVE_BAR_FILL =
+    androidx.compose.ui.graphics.Brush
+        .horizontalGradient(listOf(Glowfin.Violet, Glowfin.Blue, Glowfin.Aqua))
+
 /** The Live TV line: "Started 22 min ago" above it, the programme's start and end times under it */
 @Composable
 fun LiveLine(
@@ -1111,7 +1076,7 @@ fun LiveLine(
                 Modifier
                     .fillMaxWidth(live.progress(now))
                     .height(4.dp)
-                    .background(Color.White, RoundedCornerShape(3.dp)),
+                    .background(LIVE_BAR_FILL, RoundedCornerShape(3.dp)),
             )
         }
         if (live.endMs > live.startMs) {

@@ -2823,3 +2823,63 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 @media (max-width: 760px) {
   .mtop, .bktop, .gtop { display: none; }
 }
+
+/* ---------- Glowfin new look, part 4 (Ben 2026-11-22): Live TV and the player ---------- */
+/* Live TV: what's on now fills the window, the guide peeks under it */
+.live-top { height: min(62vh, 600px); min-height: 360px; display: flex; align-items: flex-end; padding-bottom: 22px; }
+.live-top .art { position: fixed; inset: 0; width: auto; height: auto; z-index: 0; pointer-events: none; background: center top/cover no-repeat; opacity: 0; transition: opacity .6s; }
+.live-top .art.on { opacity: 1; }
+.live-top .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.88) 0%, rgba(var(--trayrgb),.55) 38%, rgba(var(--trayrgb),0) 66%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 45%, rgba(var(--trayrgb),.75) 72%, var(--tray) 100%); }
+.live-top .info { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; max-width: min(640px, 60%); text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.live-top .lt-ch { display: flex; align-items: center; gap: 10px; font: 700 16px "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.live-top .lt-plate { height: 30px; width: 45px; border-radius: 6px; background: #fff; display: grid; place-items: center; padding: 3px; flex: none; }
+.live-top .lt-plate img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.live-top .t { font: 800 clamp(30px, 3.2vw, 52px)/1.08 "Glowfin Sora", "Glowfin Inter", sans-serif; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.live-top .meta { color: var(--ink); font-weight: 600; margin: 0; gap: 0; }
+.live-top .meta span + span::before { content: "·"; margin: 0 10px; color: rgba(236,238,251,.55); }
+.live-top .lt-tags { display: flex; gap: 8px; align-items: center; }
+.live-top .lt-live { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: 999px; background: #E5484D; color: #fff; font-size: 14px; font-weight: 800; letter-spacing: .04em; text-shadow: none; }
+.live-top .lt-live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.live-top .dt-tag { display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.live-top .dt-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; }
+.live-top .ov { color: #e8eafc; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.live-top .lt-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; text-shadow: none; }
+.live-top .lt-btns .btn { border-radius: 999px; }
+.live-top .lt-btns .btn:not(.white) { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); color: #fff; }
+.live-top .lt-btns .btn:not(.white):hover, .live-top .lt-btns .btn:focus-visible { background: rgba(255,255,255,.3); }
+.live-top .lt-watch { position: relative; overflow: hidden; }
+.live-top .lt-prog { position: absolute; left: 18px; right: 18px; bottom: 5px; height: 3px; border-radius: 3px; background: rgba(11,13,26,.18); }
+.live-top .lt-prog b { display: block; height: 100%; border-radius: 3px; background: #0B0D1A; }
+.live-top ~ .rows { position: relative; z-index: 1; }
+.live-top ~ .rows .rowx h3 { text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.live-top ~ .rows .chip { border-radius: 999px; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); color: rgba(236,238,251,.9); }
+.live-top ~ .rows .chip.on { background: rgba(255,255,255,.92); color: #0B0D1A; border-color: transparent; }
+@media (max-width: 700px) {
+  .live-top { display: none; }
+}
+/* Player: round see-through buttons with their names, Pause solid white, logo bottom left, Ends at top right */
+.player .p4 .row2.p1row.nl4 { grid-template-columns: auto minmax(0, 1fr); align-items: flex-start; }
+.player .p4 .nl4 .p1c { justify-content: flex-start; }
+.player .p4 .nl4 .pbtn { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+.player .p4 .nl4 .pbtn.lab + .pbtn.lab { margin-left: 0; }
+.player .p4 .nl4 .pbtn.play { width: 56px; height: 56px; margin-top: -4px; background: #fff; color: #0B0D1A; border-color: transparent; }
+.player .p4 .nl4 .pbtn.play em { top: 62px; color: #fff; font-weight: 600; }
+.player .p4 .nl4 .pbtn:hover, .player .p4 .nl4 .pbtn:focus-visible { background: #fff; color: #0B0D1A; box-shadow: 0 0 0 2.5px #05060D, 0 0 0 5px #3FE0E8; }
+.player .p4 .nl4 .pbtn:disabled:hover { background: rgba(255,255,255,.12); color: inherit; box-shadow: none; }
+.player .p4 .tline { flex-direction: column; align-items: flex-start; gap: 4px; }
+.player .p4 .tline .plogo { max-height: 56px; max-width: min(320px, 40vw); object-fit: contain; object-position: left bottom; filter: drop-shadow(0 2px 8px rgba(0,0,0,.6)); }
+.player .p4 .tline .plogo + .tt { display: none; }
+.player .p4 .tline .st { flex: none; max-width: 100%; color: #E6E8F5; font-weight: 600; }
+.player .p4 .srow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; }
+.player .p4 .srow #pTime { grid-row: 1; grid-column: 1; }
+.player .p4 .srow #pLeft { grid-row: 1; grid-column: 2; justify-self: end; }
+.player .p4 .srow .bar { grid-row: 2; grid-column: 1 / -1; }
+.player .pends { position: absolute; top: 34px; right: 48px; color: #D6D9EC; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0,0,0,.6); opacity: 0; transition: opacity .25s; pointer-events: none; }
+.player.ui .pends { opacity: 1; }
+@media (max-width: 600px) {
+  .player .p4 .row2.p1row.nl4 { grid-template-columns: 1fr; }
+  .player .p4 .nl4 .p1c { justify-content: center; }
+  .player .p4 .nl4 .p1r { justify-content: center; }
+  .player .p4 .nl4 .pbtn.play em { display: none; }
+  .player .pends { top: 22px; right: 16px; font-size: 14px; }
+}

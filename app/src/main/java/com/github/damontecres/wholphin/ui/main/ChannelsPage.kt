@@ -179,7 +179,7 @@ private sealed interface GuideEntry {
 
 private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
-private fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+internal fun clock(ms: Long): String = timeFormat.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /**
  * Live TV (Glowfin L1): the top area tells you what's on the channel you're on, then Recently watched,
@@ -234,32 +234,43 @@ fun ChannelsPage(
     val isTv = rememberIsTv()
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
-    DoorFrame(frame, sections, modifier, tabs = true) { inner ->
+    // New look (Part 4): the art of the show on now (or the one you're on) fills the page behind everything
+    val artPick = remember { mutableStateOf<LivePick?>(null) }
+    val deep = remember { mutableStateOf(false) }
+    DoorFrame(frame, sections, modifier, tabs = true, tabsInHeader = true) { inner ->
         // TV and wide screens: the tabs sit over the top of the page, so the page starts under them.
         // Phones: the usual side margins (the tabs already sit above the page)
         val placed =
             if (wide) {
-                inner.padding(top = LocalTopBarOverlap.current)
+                Modifier.padding(top = LocalTopBarOverlap.current)
             } else {
-                inner.padding(start = BenflixSpace.phoneEdge, end = 8.dp)
+                Modifier.padding(start = BenflixSpace.phoneEdge, end = 8.dp)
             }
-        // Each tab is its own page, so switching starts it at the top
-        androidx.compose.runtime.key(frame.section) {
-            BoxWithConstraints(modifier = placed) {
-                // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
-                val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
-                val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
-                GuideGrid(
-                    all = list,
-                    list = shown,
-                    halfHours = halfHours,
-                    dpm = dpm,
-                    viewModel = viewModel,
-                    frame = frame,
-                    // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
-                    nowNext = maxWidth < 600.dp,
-                    view = frame.section,
-                )
+        BoxWithConstraints(modifier = inner) {
+            val pageHeight = maxHeight
+            if (wide) LiveArt(pick = { artPick.value }, deep = { deep.value }, pageHeight = pageHeight)
+            // Each tab is its own page, so switching starts it at the top
+            androidx.compose.runtime.key(frame.section) {
+                BoxWithConstraints(modifier = placed) {
+                    // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
+                    val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
+                    val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
+                    GuideGrid(
+                        all = list,
+                        list = shown,
+                        halfHours = halfHours,
+                        dpm = dpm,
+                        viewModel = viewModel,
+                        frame = frame,
+                        // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+                        nowNext = maxWidth < 600.dp,
+                        view = frame.section,
+                        wideLook = wide && maxWidth >= 600.dp,
+                        pageHeight = pageHeight,
+                        artPick = artPick,
+                        deep = deep,
+                    )
+                }
             }
         }
     }
@@ -284,6 +295,11 @@ private fun GuideGrid(
     nowNext: Boolean = false,
     /** The tab: Guide (DOOR_HOME, the whole page), Favourites or Recently watched */
     view: String = DOOR_HOME,
+    /** New look (TV and wide screens): what's on now big at the top, the art behind, a one-line top in the guide */
+    wideLook: Boolean = false,
+    pageHeight: Dp = 540.dp,
+    artPick: androidx.compose.runtime.MutableState<LivePick?> = remember { mutableStateOf<LivePick?>(null) },
+    deep: androidx.compose.runtime.MutableState<Boolean> = remember { mutableStateOf(false) },
 ) {
     val onlyFavourites = view == LIVE_FAVOURITES
     val onlyRecent = view == LIVE_RECENT
@@ -377,16 +393,27 @@ private fun GuideGrid(
         remember(recentKeys, favourites, byKey, declinedNow) {
             ChannelPrefs.suggestion(recentKeys)?.takeIf { it !in declinedNow }?.let { byKey[it] }
         }
-    // The Recently watched row only shows on the Guide tab (its own tab lists those channels instead)
-    val showRecent = view == DOOR_HOME && recentChannels.isNotEmpty()
+    // New look: the Guide tab opens on what's on now, big (Ben: big events and sports first). It's worked out
+    // again each minute, and stays put while you're on it.
+    val heroShown = wideLook && view == DOOR_HOME
+    val featured =
+        remember(heroShown, list, favourites, now) {
+            if (heroShown) pickLiveNow(list, favourites, recentKeys, now) else null
+        }
+    val heroFocus = remember { FocusRequester() }
+    val heroIndex = if (heroShown && featured != null) 0 else -1
+    // The Recently watched row only shows on the Guide tab (its own tab lists those channels instead). In the new
+    // look the guide peeks right under what's on now, so it's left to its own tab there.
+    val showRecent = view == DOOR_HOME && recentChannels.isNotEmpty() && heroIndex < 0
     val addFocus = remember { FocusRequester() }
-    val recentIndex = if (showRecent) 0 else -1
+    val recentIndex = if (showRecent) heroIndex + 1 else heroIndex
     // The guide's heading comes after the Recently watched row (when there is one), then its time ruler
     val titleIndex = recentIndex + 1
     val scope = rememberCoroutineScope()
 
     fun focusFirst() {
         when {
+            heroIndex == 0 && heroFocus.tryRequestFocus() -> Unit
             onlyFavourites && favouriteChannels.isEmpty() -> addFocus.tryRequestFocus()
             favouriteChannels.isNotEmpty() || onlyRecent -> firstFocus.tryRequestFocus()
             !rowFocus.tryRequestFocus() -> firstFocus.tryRequestFocus()
@@ -448,12 +475,52 @@ private fun GuideGrid(
         val fallback = {
             (favouriteChannels.firstOrNull() ?: list.firstOrNull())?.let { s -> s.programAt(now)?.let { s to it } }
         }
-        GuideHeader(focused = { (if (isTv) focused else selected ?: focused) ?: fallback() }, now = now)
+        // New look: on what's on now there's no top (the big words are the list's first part); in the full guide the
+        // top is one short line, and the art behind is turned down
+        val atHero by remember(heroIndex) {
+            androidx.compose.runtime.derivedStateOf { heroIndex == 0 && listState.firstVisibleItemIndex == 0 }
+        }
+        LaunchedEffect(wideLook, atHero, featured, focused, selected) {
+            if (!wideLook) return@LaunchedEffect
+            artPick.value = if (atHero) featured else (if (isTv) focused else selected ?: focused) ?: fallback()
+            deep.value = !atHero
+        }
+        if (!wideLook) {
+            GuideHeader(focused = { (if (isTv) focused else selected ?: focused) ?: fallback() }, now = now)
+        } else if (!atHero) {
+            LiveMiniLine(pick = { (if (isTv) focused else selected ?: focused) ?: fallback() }, now = now)
+        }
+        // Down (or Full guide) from what's on now: the full guide, on its first channel
+        val openGuide = {
+            scope.launch {
+                listState.animateScrollToItem(titleIndex)
+                delay(JUMP_SETTLE_MS)
+                if (favouriteChannels.isNotEmpty() || !rowFocus.tryRequestFocus()) firstFocus.tryRequestFocus()
+            }
+            Unit
+        }
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
+            // New look: what's on now, big, with the guide peeking under it
+            if (heroIndex == 0 && featured != null) {
+                item(key = "live-now") {
+                    LiveNowHero(
+                        pick = featured,
+                        now = now,
+                        starred = featured.first.key in favourites,
+                        // Tall enough that the guide's first row or so peeks at the bottom
+                        height = (pageHeight - LocalTopBarOverlap.current) * HERO_SHARE,
+                        onWatch = { viewModel.watch(featured.first) },
+                        onGuide = openGuide,
+                        onFavourite = { ChannelPrefs.toggleFavourite(featured.first.key) },
+                        onFocus = { focused = featured },
+                        watchFocus = heroFocus,
+                    )
+                }
+            }
             // Recently watched, then the full guide (favourites first)
             if (showRecent) {
                 item(key = "row-recent") {
@@ -1348,6 +1415,9 @@ private const val NUMBER_WAIT_MS = 1_500L
 private const val BANNER_MS = 5_000L
 private val CHANNEL_COL = 232.dp
 private val HEADER_HEIGHT = 170.dp
+
+/** New look: how much of the page (under the header) what's on now takes; the guide peeks under it */
+private const val HERO_SHARE = .64f
 
 /** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */
 private val PHONE_HEADER_HEIGHT = 110.dp

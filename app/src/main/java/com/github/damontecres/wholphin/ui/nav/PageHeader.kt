@@ -56,7 +56,8 @@ fun Destination.tabsInHeader(): Boolean =
         this is Destination.AnimeDoor ||
         this is Destination.MusicDoor ||
         this is Destination.BooksDoor ||
-        this is Destination.Games
+        this is Destination.Games ||
+        this is Destination.Channels
 
 fun headerStart(
     destination: Destination,
