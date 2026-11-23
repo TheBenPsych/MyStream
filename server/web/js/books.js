@@ -946,7 +946,7 @@
     const remember = (list) => (list || []).forEach((c) => { BQ.cards[c.key] = c; });
     remember(d.top10);
     if ((d.top10 || []).length) {
-      h += B.row(inGenre ? `Top 10 in ${d.name}` : "Top 10 books right now", d.top10.slice(0, 10).map((c, i) => `<div class="top10 bq-t10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${BQ.card(c)}</div>`));
+      h += B.row(inGenre ? `Top 10 in ${d.name}` : "Top 10 books right now", d.top10.slice(0, 10).map((c, i) => `<div class="top10 bq-t10">${B.t10num(i + 1)}${BQ.card(c)}</div>`));
     }
     (d.rows || []).forEach((r) => {
       if ((r.genres || []).length) {

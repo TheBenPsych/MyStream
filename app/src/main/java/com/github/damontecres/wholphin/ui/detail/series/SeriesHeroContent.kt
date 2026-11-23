@@ -127,7 +127,11 @@ fun SeriesHeroContent(
     var showCatchUp by remember { mutableStateOf(false) }
     val anime = state.subDub != null
     val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
-    val likes = series.data.userData?.likes
+    // Ben 2026-11-22: the Rate button shows the choice you just made right away (likes, and loved = on My List),
+    // instead of waiting for the server copy, which could come back stale and flip it back to "Rate"
+    var ratePick by remember(series.id) { mutableStateOf<Pair<Boolean?, Boolean>?>(null) }
+    val likes = ratePick.let { if (it != null) it.first else series.data.userData?.likes }
+    val loved = ratePick?.second ?: series.favorite
     val trailer = state.trailers.firstOrNull()
     val buttons =
         buildList {
@@ -336,7 +340,7 @@ fun SeriesHeroContent(
                         add(
                             TitleMoreItem(
                                 when (likes) {
-                                    true -> if (series.favorite) "Rate (you loved it)" else "Rate (you liked it)"
+                                    true -> if (loved) "Rate (you loved it)" else "Rate (you liked it)"
                                     false -> "Rate (not for you)"
                                     null -> "Rate"
                                 },
@@ -360,20 +364,33 @@ fun SeriesHeroContent(
             onDismissRequest = { showRate = false },
             choices =
                 listOf(
-                    BenflixChoice("Not for me", { actions.rate(if (likes == false) null else false) }, selected = likes == false),
+                    BenflixChoice(
+                        "Not for me",
+                        {
+                            val v = if (likes == false) null else false
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == false,
+                    ),
                     BenflixChoice(
                         "I like it",
-                        { actions.rate(if (likes == true && !series.favorite) null else true) },
-                        selected = likes == true && !series.favorite,
+                        {
+                            val v = if (likes == true && !loved) null else true
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == true && !loved,
                     ),
                     BenflixChoice(
                         "Love it",
                         {
+                            ratePick = true to true
                             actions.rate(true)
                             if (!series.favorite) actions.setMyList(true)
                         },
                         note = "Also adds it to My List",
-                        selected = likes == true && series.favorite,
+                        selected = likes == true && loved,
                     ),
                 ),
         )

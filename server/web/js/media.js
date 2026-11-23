@@ -536,9 +536,17 @@ B.toggleList = async (it, btn) => {
   if (btn) btn.innerHTML = `${I(on ? "check" : "plus")} My List`;
   B.toast(on ? "Added to My List." : "Taken off My List.");
 };
+// Ben 2026-11-22: the Rate button shows the choice you just made right away (Liked / Loved / Not for me), instead
+// of going back to "Rate". "Loved" lives in the person's saved prefs (benflix.loved), read once.
+const lovedIds = new Set();
+let lovedLoad = null;
+const loadLoved = () => lovedLoad || (lovedLoad = B.prefs().then((p) => { Object.keys(loadJsonStr((p.CustomPrefs || {})["benflix.loved"])).forEach((id) => lovedIds.add(id)); }).catch(() => {}));
+B.rateLabel = (it) => { const l = (it.UserData || {}).Likes; return l === false ? "Not for me" : l === true ? (lovedIds.has(it.Id) ? "Loved" : "Liked") : "Rate"; };
+const showRateLabel = (it) => { const sp = document.querySelector("#bRate span"); if (sp) sp.textContent = B.rateLabel(it); };
+B.rateButton = (it) => { loadLoved().then(() => showRateLabel(it)); return { id: "bRate", label: B.rateLabel(it), icon: "thumb", onClick: () => B.rate(it) }; };
 B.rate = (it) => {
   const ud = it.UserData || {};
-  const cur = ud.Likes === false ? "no" : ud.Likes === true ? (ud.Rating >= 9 ? "love" : "like") : "";
+  const cur = ud.Likes === false ? "no" : ud.Likes === true ? (lovedIds.has(it.Id) || ud.Rating >= 9 ? "love" : "like") : "";
   const p = B.side(`<h3>Rate ${esc(it.Name)}</h3><p class="dim">Glowfin uses this to pick things for you.</p>
     <button class="opt ${cur === "no" ? "on" : ""}" data-r="no">Not for me</button><button class="opt ${cur === "like" ? "on" : ""}" data-r="like">I like it</button><button class="opt ${cur === "love" ? "on" : ""}" data-r="love">Love it</button>
     ${cur ? `<button class="opt" data-r="clear">Take my rating off</button>` : ""}`);
@@ -546,6 +554,10 @@ B.rate = (it) => {
     const b = e.target.closest("[data-r]"); if (!b) return;
     B.closeAll();
     const r = b.dataset.r;
+    // Show the choice on the button straight away; the server catches up behind it
+    it.UserData = Object.assign({}, it.UserData, { Likes: r === "clear" ? null : r !== "no" });
+    if (r === "love") lovedIds.add(it.Id); else lovedIds.delete(it.Id);
+    showRateLabel(it);
     B.busy(null, async () => {
       if (r === "clear") await B.jf("DELETE", `/UserItems/${it.Id}/Rating?userId=${B.uid()}`).catch(() => B.jf("DELETE", `/Users/${B.uid()}/Items/${it.Id}/Rating`));
       else await B.jf("POST", `/UserItems/${it.Id}/Rating?userId=${B.uid()}&likes=${r !== "no"}`).catch(() => B.jf("POST", `/Users/${B.uid()}/Items/${it.Id}/Rating?likes=${r !== "no"}`));
@@ -638,7 +650,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
       { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", left: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", pct: resume ? ud.PlayedPercentage || 0 : 0 },
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
-      B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+      B.me.kids ? null : B.rateButton(it),
       { label: "More", icon: "more", onClick: () => movieMore(it) },
     ].filter(Boolean),
     // Glowfin D1: story + scores up top, then rows: Cast and crew, More like this (+ collection), Ask for similar
