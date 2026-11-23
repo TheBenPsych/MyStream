@@ -911,7 +911,13 @@ internal fun TitleBox(
                     if (h <= 0 || w <= 0 || !logoFits(w.toFloat() / h)) logoBad = true else logoReady = true
                 },
                 onError = { logoBad = true },
-                colorFilter = if (whiteLogo) androidx.compose.ui.graphics.ColorFilter.tint(BenflixColors.Text) else null,
+                colorFilter =
+                    if (whiteLogo) {
+                        androidx.compose.ui.graphics.ColorFilter
+                            .tint(BenflixColors.Text)
+                    } else {
+                        null
+                    },
                 modifier = Modifier.height(height).widthIn(max = width).alpha(if (logoReady) 1f else 0f),
             )
         }
