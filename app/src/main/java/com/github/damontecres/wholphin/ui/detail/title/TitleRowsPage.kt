@@ -46,6 +46,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
@@ -126,6 +128,10 @@ internal fun WideRowsTitlePage(
     var focusedButton by remember { mutableStateOf<Int?>(null) }
     var storyFocused by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
+    // A very bright picture: the words get a faint edge so they stand out
+    var brightArt by remember { mutableStateOf(false) }
+    val baseText = LocalTextStyle.current
+    val headText = remember(brightArt, baseText) { if (brightArt) baseText.copy(shadow = WORD_EDGE) else baseText }
     val downTarget = remember { TitleDownTarget() }
     LaunchedEffect(Unit) {
         if (isTv) {
@@ -140,7 +146,7 @@ internal fun WideRowsTitlePage(
         val h = maxHeight
         val w = maxWidth
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = pictureAlpha }) {
-            TitlePictureView(picture, wide = true, soft = true)
+            TitlePictureView(picture, wide = true, soft = true, onBright = { brightArt = it })
         }
         // Ben 2026-11-18: moving along the buttons (Play, Trailer, My List, More) made the page bob up and down:
         // each button asked the list to scroll it into view, then the "back to the top" scroll pulled it up
@@ -185,80 +191,82 @@ internal fun WideRowsTitlePage(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "head", contentType = "head") {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                // Ben's "fresh" pick: the first row (seasons, or a movie's first row) peeks at the bottom
-                                .heightIn(min = h * .82f)
-                                .padding(start = side, end = side, top = h * .14f),
-                    ) {
-                        // The title box: always the same size and spot, so the page never moves
-                        TitleBox(title = title, wide = true)
-                        Spacer(Modifier.weight(1f))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.widthIn(max = w * .62f),
+                    CompositionLocalProvider(LocalTextStyle provides headText) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    // Ben's "fresh" pick: the first row (seasons, or a movie's first row) peeks at the bottom
+                                    .heightIn(min = h * .82f)
+                                    .padding(start = side, end = side, top = h * .14f),
                         ) {
-                            InfoLine(info, null)
-                            QualityChips()
-                        }
-                        infoExtra?.let { Box(Modifier.widthIn(max = w * .6f)) { it() } }
-                        if (!story.isNullOrBlank() || sections.any { it.info }) {
-                            StoryOpener(
-                                story = story,
-                                wide = true,
-                                onOpen = { showDetails = true },
-                                onFocus = {
-                                    storyFocused = it
-                                    if (it) coroutines.launch { listState.backToTop() }
-                                },
-                                modifier = Modifier.widthIn(max = w * .5f),
-                            )
-                        }
-                        Column(Modifier.padding(top = 4.dp)) {
+                            // The title box: always the same size and spot, so the page never moves
+                            TitleBox(title = title, wide = true)
+                            Spacer(Modifier.weight(1f))
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier =
-                                    Modifier
-                                        .focusRestorer(firstButton)
-                                        .onPreviewKeyEvent {
-                                            it.type == KeyEventType.KeyDown &&
-                                                it.key == Key.DirectionDown &&
-                                                downTarget.enter?.invoke() == true
-                                        },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.widthIn(max = w * .62f),
                             ) {
-                                buttons.forEachIndexed { index, b ->
-                                    TitleButtonView(
-                                        button = b,
-                                        primary = index == 0,
-                                        big = big,
-                                        onFocus = {
-                                            if (it) {
-                                                focusedButton = index
-                                                // Back up on the buttons: show the whole top again
-                                                coroutines.launch { listState.backToTop() }
-                                            } else if (focusedButton == index) {
-                                                focusedButton = null
-                                            }
-                                        },
-                                        modifier = if (index == 0) Modifier.focusRequester(firstButton) else Modifier,
-                                    )
-                                }
+                                InfoLine(info, null)
+                                QualityChips()
                             }
-                            val focused = focusedButton?.let { buttons.getOrNull(it) }
-                            val line = focused?.off ?: focused?.note ?: statusLine
-                            Box(Modifier.height(26.dp).padding(top = 8.dp)) {
-                                if (!line.isNullOrBlank()) {
-                                    Text(
-                                        text = line,
-                                        color = if (focused?.off != null) BenflixColors.Soft else BenflixColors.Muted,
-                                        fontSize = BenflixType.small,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                            infoExtra?.let { Box(Modifier.widthIn(max = w * .6f)) { it() } }
+                            if (!story.isNullOrBlank() || sections.any { it.info }) {
+                                StoryOpener(
+                                    story = story,
+                                    wide = true,
+                                    onOpen = { showDetails = true },
+                                    onFocus = {
+                                        storyFocused = it
+                                        if (it) coroutines.launch { listState.backToTop() }
+                                    },
+                                    modifier = Modifier.widthIn(max = w * .5f),
+                                )
+                            }
+                            Column(Modifier.padding(top = 4.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier =
+                                        Modifier
+                                            .focusRestorer(firstButton)
+                                            .onPreviewKeyEvent {
+                                                it.type == KeyEventType.KeyDown &&
+                                                    it.key == Key.DirectionDown &&
+                                                    downTarget.enter?.invoke() == true
+                                            },
+                                ) {
+                                    buttons.forEachIndexed { index, b ->
+                                        TitleButtonView(
+                                            button = b,
+                                            primary = index == 0,
+                                            big = big,
+                                            onFocus = {
+                                                if (it) {
+                                                    focusedButton = index
+                                                    // Back up on the buttons: show the whole top again
+                                                    coroutines.launch { listState.backToTop() }
+                                                } else if (focusedButton == index) {
+                                                    focusedButton = null
+                                                }
+                                            },
+                                            modifier = if (index == 0) Modifier.focusRequester(firstButton) else Modifier,
+                                        )
+                                    }
+                                }
+                                val focused = focusedButton?.let { buttons.getOrNull(it) }
+                                val line = focused?.off ?: focused?.note ?: statusLine
+                                Box(Modifier.height(26.dp).padding(top = 8.dp)) {
+                                    if (!line.isNullOrBlank()) {
+                                        Text(
+                                            text = line,
+                                            color = if (focused?.off != null) BenflixColors.Soft else BenflixColors.Muted,
+                                            fontSize = BenflixType.small,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -423,6 +431,9 @@ private fun StoryOpener(
         }
     }
 }
+
+/** The faint edge on the words over a very bright picture (a plain text shadow, cheap on weak TVs) */
+private val WORD_EDGE = Shadow(color = Color.Black.copy(alpha = .45f), offset = Offset(0f, 1.5f), blurRadius = 3f)
 
 /** Scrolls like [base], except not at all while [hold] says so */
 @OptIn(ExperimentalFoundationApi::class)

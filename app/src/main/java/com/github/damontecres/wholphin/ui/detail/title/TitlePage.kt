@@ -657,9 +657,12 @@ internal fun BoxScope.TitlePictureView(
     wide: Boolean,
     /** Details pages ("fresh" pick): only a soft shadow at the bottom left, the rest of the art stays bright */
     soft: Boolean = false,
+    /** Details pages: told when the picture is very bright (it is then turned down a little) */
+    onBright: (Boolean) -> Unit = {},
 ) {
     val imageUrlService = LocalImageUrlService.current
     val width = LocalConfiguration.current.screenWidthDp
+    var lightUrl: String? = null
     when (picture) {
         is TitlePicture.Backdrop -> {
             val item = picture.item
@@ -668,6 +671,7 @@ internal fun BoxScope.TitlePictureView(
                 remember(item.id) {
                     imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = (width * 2).coerceAtMost(1920))
                 }
+            lightUrl = url
             if (url != null) {
                 AsyncImage(
                     model = url,
@@ -680,6 +684,7 @@ internal fun BoxScope.TitlePictureView(
         }
 
         is TitlePicture.Wide -> {
+            lightUrl = picture.url
             if (picture.url != null) {
                 AsyncImage(
                     model = picture.url,
@@ -760,6 +765,11 @@ internal fun BoxScope.TitlePictureView(
         }
     }
     if (picture !is TitlePicture.Cover && soft) {
+        // Very bright pictures (snow, beaches, a white sky) are turned down a little so the white words stay clear
+        val light = rememberImageLight(lightUrl)
+        val bright = light != null && light > BRIGHT_ART
+        LaunchedEffect(bright) { onBright(bright) }
+        if (bright) Box(Modifier.fillMaxSize().background(BenflixColors.Tray.copy(alpha = .2f)))
         Box(
             Modifier.fillMaxSize().background(
                 androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -885,6 +895,9 @@ internal fun TitleBox(
     var logoBad by remember(extras.logoUrl) { mutableStateOf(false) }
     var logoReady by remember(extras.logoUrl) { mutableStateOf(false) }
     val logoUrl = extras.logoUrl?.takeIf { !logoBad }
+    // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
+    val logoLight = rememberImageLight(logoUrl)
+    val whiteLogo = logoLight != null && logoLight < DARK_LOGO
     Box(contentAlignment = Alignment.BottomStart, modifier = modifier.height(height).widthIn(max = width)) {
         if (logoUrl != null) {
             AsyncImage(
@@ -898,6 +911,7 @@ internal fun TitleBox(
                     if (h <= 0 || w <= 0 || !logoFits(w.toFloat() / h)) logoBad = true else logoReady = true
                 },
                 onError = { logoBad = true },
+                colorFilter = if (whiteLogo) androidx.compose.ui.graphics.ColorFilter.tint(BenflixColors.Text) else null,
                 modifier = Modifier.height(height).widthIn(max = width).alpha(if (logoReady) 1f else 0f),
             )
         }
