@@ -196,9 +196,13 @@ fun SiteMark(
     val l = label.lowercase()
     val word = (size.value * .62f).sp
     when {
-        l == "imdb" -> MarkWord("IMDb", Color(0xFFF5C518), Color.Black, word, RoundedCornerShape(3.dp))
+        l == "imdb" -> {
+            MarkWord("IMDb", Color(0xFFF5C518), Color.Black, word, RoundedCornerShape(3.dp))
+        }
 
-        l == "mal" || "myanimelist" in l -> MarkWord("MAL", Color(0xFF2E51A2), Color.White, word, RoundedCornerShape(3.dp))
+        l == "mal" || "myanimelist" in l -> {
+            MarkWord("MAL", Color(0xFF2E51A2), Color.White, word, RoundedCornerShape(3.dp))
+        }
 
         "rotten" in l || l == "critics" -> {
             Box(Modifier.size(size)) {
@@ -230,7 +234,7 @@ fun SiteMark(
             ) { Text("A", color = Color(0xFF02A9FF), fontSize = word * 1.2f, fontWeight = FontWeight.Black, maxLines = 1) }
         }
 
-        else ->
+        else -> {
             Text(
                 text = label,
                 color = BenflixColors.Soft,
@@ -238,6 +242,7 @@ fun SiteMark(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
+        }
     }
 }
 
