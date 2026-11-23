@@ -6,6 +6,7 @@
 #                              writes benflix-status.json, does what Harbor asked in harbor/actions.txt
 #                              (put an original back, un-pause, release held files, retry failed ones,
 #                              run the setup again) and re-runs the setup when Harbor saved new settings.
+#   once ("recheck"):          after new size goals, files left alone before go back in the queue.
 #   every hour ("hourly"):     deletes backups older than BACKUP_DAYS, counts the files in Tdarr for Harbor,
 #                              and re-runs the Tdarr setup by itself when the files on GitHub changed.
 # Log: /mnt/user/appdata/tdarr/benflix-watch.log
@@ -193,6 +194,13 @@ if [ "$1" = "harbor" ]; then
   mkdir -p "$HARBOR"
   chown 99:100 "$HARBOR" && chmod 775 "$HARBOR"
   chmod 644 "$APP/benflix-status.json" "$APP/benflix-counts.json" "$APP/benflix-setup.json" 2>/dev/null
+  exit 0
+fi
+
+# After new size goals ("recheck", from the setup): files left alone before are looked at again tonight
+if [ "$1" = "recheck" ]; then
+  note "Looking again at $(tdarr_files requeue 'Not required') files that were left alone before (new size goals)"
+  save_counts
   exit 0
 fi
 
