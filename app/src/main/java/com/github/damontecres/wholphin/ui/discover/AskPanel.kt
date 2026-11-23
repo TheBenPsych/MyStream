@@ -301,11 +301,13 @@ fun BookAskPanel(
     onDismiss: () -> Unit,
     onAsk: (List<String>) -> Unit,
 ) {
+    val forChoice = forMeChoice(admin)
     val choices =
-        listOf(
+        listOfNotNull(
             AskChoice("Ebook and audiobook", { onAsk(listOf("ebook", "audiobook")) }, primary = true),
             AskChoice("Ebook", { onAsk(listOf("ebook")) }),
             AskChoice("Audiobook", { onAsk(listOf("audiobook")) }),
+            forChoice,
         )
     AskForItPanel(
         title = title,
@@ -336,6 +338,7 @@ fun SongAskPanel(
     onAlbum: () -> Unit,
 ) {
     val len = if (seconds > 0) "%d:%02d".format(seconds / 60, seconds % 60) else null
+    val forChoice = forMeChoice(admin)
     AskForItPanel(
         title = title,
         line = listOfNotNull(artist.ifBlank { null }, len, album.ifBlank { null }).joinToString(" · "),
@@ -344,7 +347,11 @@ fun SongAskPanel(
         steps = { AskStepsLine(isAdmin = admin, last = "Ready to play") },
         choices =
             if (admin) {
-                listOf(AskChoice("Ask for this song", onSong, primary = true), AskChoice("Ask for the whole album", onAlbum))
+                listOfNotNull(
+                    AskChoice("Ask for this song", onSong, primary = true),
+                    AskChoice("Ask for the whole album", onAlbum),
+                    forChoice,
+                )
             } else {
                 listOf(AskChoice("Ask Ben for this song", onSong, primary = true), AskChoice("Ask Ben for the whole album", onAlbum))
             },
@@ -361,4 +368,15 @@ fun SongAskPanel(
             }
         },
     )
+}
+
+/**
+ * Glowfin new look (Ben approved 2026-11-22): Ben's For: Me sits on the ask panel itself (songs, albums and books
+ * too, like the title pages), so who it's for is picked right before asking. Only Ben, never on Kids.
+ */
+@Composable
+private fun forMeChoice(admin: Boolean): AskChoice? {
+    if (!rememberCanRequestFor(admin)) return null
+    val forPick = rememberRequestFor()
+    return AskChoice("For: ${forPick.forName}", forPick.open, icon = BenflixIcon.PERSON)
 }

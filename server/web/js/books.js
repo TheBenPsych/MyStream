@@ -789,17 +789,20 @@
     const input = $("#rq");
     const admin = B.me.admin;
     input.placeholder = "Search any book or author";
-    rows.innerHTML = `<div id="bfound"></div><div class="grid-wrap rqsplit" id="bsplit"><nav class="rqside" id="bside"></nav><div class="grid-body" id="bwall">${B.spinner("wall")}</div></div>`;
-    let d = null, req = null, picked = null, ownedOpen = null, results = { books: [] }, t;
+    rows.innerHTML = `<div id="bfound"></div><div id="bsplit">${B.spinner("rows")}</div>`;
+    let d = null, req = null, picked = null, described = null, results = { books: [] }, t;
     const bookLists = () => {
       if (!d) return [];
       const nyt = (d.rows || []).find((r) => (r.items || []).length && /Fiction/.test(r.title) && !/Nonfiction/.test(r.title));
       const out = [];
+      // Glowfin new look: "Series to finish" first, then Book of the week
+      const series = (d.rows || []).find((r) => r.key === "series" && (r.items || []).length);
+      if (series) out.push({ id: "series", title: series.title, items: series.items });
       if (d.hero) out.push({ id: "botw", title: "Book of the week", items: nyt ? nyt.items : d.top10 || [], ranked: true });
       if ((d.top10 || []).length) out.push({ id: "top10", title: "Top 10", items: d.top10, ranked: true });
       (d.rows || []).forEach((r) => {
         if ((r.genres || []).length) out.push({ id: "genres", title: "Genres", genres: r.genres });
-        else if ((r.items || []).length) out.push({ id: r.key, title: r.title, items: r.items, ranked: r.ranked });
+        else if ((r.items || []).length && r.key !== "series") out.push({ id: r.key, title: r.title, items: r.items, ranked: r.ranked });
       });
       return out;
     };
@@ -808,46 +811,54 @@
       acts: answer ? `<button class="btn small white" data-yes="${esc(r.id)}">Yes</button><button class="btn small" data-no="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : ""}${r.canRetry ? `<button class="btn small" data-retry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-forget="${esc(r.id)}">${B.I("x")}</button>`,
     });
+    // Glowfin new look (Ben approved 2026-11-22): Books lands straight on rows of tall covers, the cover you point at
+    // standing at the top right with its colours behind. Series to finish first, then Book of the week, Top 10 and the
+    // other lists, Genres pills, and Your book asks (which open in place of the rows, with a Back pill).
+    const describe = (c) => {
+      const tag = c.have ? "On Glowfin" : c.asked ? (B.bookPill({ state: "", words: c.asked }).w || c.asked) : c.audioOnly ? "Audiobook only" : "Click to see the book and ask for it";
+      return `<h1>${esc(c.name || "")}</h1><p>${esc([c.author, c.year, c.award || c.line].filter(Boolean).join(" · "))}</p><span class="mtop-kick">${esc(tag)}</span>${c.desc ? `<p class="ov">${esc(c.desc)}</p>` : ""}`;
+    };
+    const card = (c, i, ranked) => {
+      BQ.cards[c.key] = c;
+      B.items["bk:" + c.key] = c;
+      const html = BQ.card(c, false).replace('<a class="poster bk"', `<a class="poster bk" data-id="bk:${esc(c.key)}"`);
+      return ranked && i < 10 ? `<div class="top10">${B.t10num(i + 1)}${html}</div>` : html;
+    };
     const draw = () => {
-      const side = $("#bside"), wall = $("#bwall");
-      if (!side || !wall) return;
+      const box = $("#bsplit");
+      if (!box) return;
       const ls = bookLists();
       const r = req || { mine: [], waiting: [], others: [], problems: [] };
       const waitIds = new Set((r.waiting || []).map((x) => x.id));
       const mine = (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i && !waitIds.has(x.id));
-      const cur = picked === "yours" || picked === "waiting" ? null : ls.find((l) => l.id === picked) || ls[0];
-      side.innerHTML = B.rqSide(ls, cur ? cur.id : picked, mine.length, admin ? (r.waiting || []).length : null);
       const notes = ((admin && r.problems) || []).map((p) => `<div class="note">${esc(p)}</div>`).join("")
         + (admin && d && (d.missing || []).length ? `<div class="note">Some lists are hidden until you add the ${d.missing.join(" and ")} key on the Server page. <a href="#/server/tools/booklists">Add it</a></div>` : "");
       if (picked === "yours" || picked === "waiting") {
         const w = picked === "waiting";
-        wall.innerHTML = notes + `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
-          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the book and ask for it.");
+        box.innerHTML = `<div class="wrap"><button class="chip" data-rqpick="">${B.I("left")} Back to books</button>${notes}<div class="rqhead"><b>${w ? "Waiting for you" : "Your book asks"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
+          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the book and ask for it.") + "</div>";
         return;
       }
-      if (!d) { wall.innerHTML = notes + B.spinner("wall"); return; }
-      if (!cur) { wall.innerHTML = notes + `<p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p>`; return; }
-      if (cur.genres) {
-        wall.innerHTML = notes + `<div class="rqhead"><b>Genres</b></div><div class="rqgenres">${cur.genres.map((g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`).join("")}<a class="bq-genre all" href="#/bookgenre/all">All genres</a></div>`;
-        return;
+      if (!d) { box.innerHTML = notes + B.spinner("rows"); return; }
+      if (!ls.length) { box.innerHTML = `<div class="wrap">${notes}<p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p></div>`; return; }
+      const asks = [`<button class="chip" data-rqpick="yours">Asked for <b>${mine.length}</b></button>`].concat(admin ? [`<button class="chip" data-rqpick="waiting">Waiting for you <b>${(r.waiting || []).length}</b></button>`] : []);
+      box.innerHTML = (notes ? `<div class="wrap">${notes}</div>` : "") + ls.map((l) => {
+        if (l.genres) return B.rqPillsRow("Genres", l.genres.map((g) => `<a class="chip" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}">${esc(g.name)}</a>`).concat([`<a class="chip" href="#/bookgenre/all">All genres</a>`]));
+        const items = (l.items || []).filter((c) => !c.have);
+        return B.row(l.title, items.map((c, i) => card(c, i, l.ranked)));
+      }).join("") + B.rqPillsRow("Your book asks", asks);
+      if (!described) {
+        described = B.wireRqCoverTop(describe, (c) => (c.cover ? outPic(c.cover) : ""));
+        const first = $("#bsplit [data-id]");
+        if (first) described(B.items[first.dataset.id]);
       }
-      (cur.items || []).forEach((c) => { BQ.cards[c.key] = c; });
-      const owned = cur.items.filter((c) => c.have).length;
-      const shown = ownedOpen === cur.id ? cur.items : cur.items.filter((c) => !c.have);
-      const hero = cur.id === "botw" && d.hero;
-      if (hero) BQ.cards[hero.key] = hero;
-      const line = hero
-        ? `<div class="rqline bq-line"><a class="cv" href="${aboutHref(hero)}" style="${hero.cover ? `background-image:url('${esc(outPic(hero.cover))}')` : ""}"></a><div class="grow"><div class="kick" style="color:${LIME}">BOOK OF THE WEEK · #1 NYT FICTION</div>
-          <b>${esc([hero.name, hero.author, hero.year, hero.line].filter(Boolean).join(" · "))}</b></div>${hero.have ? "" : hero.asked ? B.rqPillHtml(B.bookPill({ state: "", words: hero.asked })) : `<button class="btn small white" data-bq="${esc(hero.key)}">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`}</div>`
-        : `<div class="rqline" id="bline"> </div>`;
-      wall.innerHTML = notes + line + `${B.rqGrid(shown.map((c) => BQ.card(c, false)), !!cur.ranked)}${B.rqOwned(owned, ownedOpen === cur.id)}`;
     };
     const lists = async () => {
       try { req = await api("GET", "requests"); } catch (e) { if (!req) B.toast(B.say(e)); }
       if (B.alive(nav) && !input.value.trim()) draw();
     };
     const shelves = async () => {
-      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bwall").innerHTML = `<div class="note">Couldn't load the book lists. ${esc(B.say(e))}</div>`; return; }
+      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bsplit").innerHTML = `<div class="wrap"><div class="note">Couldn't load the book lists. ${esc(B.say(e))}</div></div>`; return; }
       if (B.alive(nav)) draw();
     };
     const found = (f) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.score ? "Open Library " + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
@@ -882,13 +893,8 @@
     };
     input.oninput = () => { clearTimeout(t); t = setTimeout(() => search(input.value), 450); };
     rows.onclick = async (e) => {
-      const pick = e.target.closest("#bside [data-rqpick]");
-      if (pick) { picked = pick.dataset.rqpick; return draw(); }
-      if (e.target.closest("[data-rqowned]")) {
-        const cur = bookLists().find((l) => l.id === picked) || bookLists()[0];
-        ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
-        return draw();
-      }
+      const pick = e.target.closest("#bsplit [data-rqpick]");
+      if (pick) { picked = pick.dataset.rqpick || null; return draw(); }
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.bq != null) return BQ.quick(b, () => shelves());
@@ -904,11 +910,6 @@
         if (b.dataset.forget) await api("DELETE", "request/" + enc(b.dataset.forget));
         lists();
       });
-    };
-    // The line above the wall: the book under the mouse
-    rows.onmouseover = (e) => {
-      const c = e.target.closest("#bwall .poster"), line = $("#bline");
-      if (c && line) line.textContent = (c.querySelector(".cap") || c).textContent.trim() || " ";
     };
     shelves();
     if (input.value.trim()) search(input.value);

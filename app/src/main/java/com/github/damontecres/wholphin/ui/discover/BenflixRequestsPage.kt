@@ -1686,6 +1686,15 @@ private fun RequestTab(
             FindShelf(FindSection.ANIME, viewModel, top)
         }
 
+        // Glowfin new look: Music and Books draw their cover glow up behind the pills too
+        3 -> {
+            MusicShelf(top = top)
+        }
+
+        4 -> {
+            BooksShelf(top = top)
+        }
+
         5 -> {
             MangaShelf(top = top)
         }
@@ -1693,10 +1702,6 @@ private fun RequestTab(
         else -> {
             Box(Modifier.fillMaxSize().padding(top = top)) {
                 when (index) {
-                    3 -> MusicShelf()
-
-                    4 -> BooksShelf()
-
                     // Ben: everyone's requests with Approve / Decline. Everyone else: what they asked for.
                     else -> RequestList(viewModel, mineOnly = !admin, arrivedOnly = null)
                 }

@@ -2950,3 +2950,8 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 @media (max-width: 700px) {
   .rqtabs .rqsearch input { width: 130px; }
 }
+/* Glowfin new look: Requests > Music and Books cover top (Books covers are tall) */
+.mtop.rqctop { margin: 0 24px 6px; }
+.mtop.tall .art { aspect-ratio: 2 / 3; }
+.rqpillrow { gap: 10px; align-items: center; }
+@media (max-width: 700px) { .mtop.rqctop { display: none; } }

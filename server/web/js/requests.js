@@ -311,7 +311,7 @@ B.route(/^\/requests/, async (m, nav) => {
       <span class="rqsearch">${I("search")}<input id="rq" placeholder="${tab === "anime" ? "Search anime to ask for" : "Search to ask for anything"}" value="${esc(B.q("q") || "")}"></span>
       ${canFilter ? `<button class="rqround" id="rqfilt" title="Filters" aria-label="Filters">${I("filter")}</button>` : ""}
       ${B.me.admin && tab !== "yours" ? `<a class="rqwaitp" id="rqwait" href="#/requests?tab=yours" hidden><b id="rqwaitn"></b> waiting</a>` : ""}
-    </nav>${canFilter || tab === "anime" || tab === "manga" ? B.doorTop() : ""}
+    </nav>${canFilter || tab === "anime" || tab === "manga" ? B.doorTop() : tab === "music" || tab === "books" ? B.rqCoverTop(tab === "books") : ""}
     <div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   if (B.me.admin && tab !== "yours") B.rqWaitingCount().then((n) => { const el = $("#rqwaitn"); if (el && B.alive(nav)) { el.textContent = n; $("#rqwait").hidden = !(n > 0); } });
@@ -876,14 +876,44 @@ const songCard = (s, n) => `<div class="pvcard">${B.previewBtn(s.id, "on-card")}
   <div class="cap">${n ? n + ". " : ""}${esc(s.title)}<small>${esc(s.asked ? B.musicPill({ words: s.asked }).w : s.have ? "Ready to play" : s.artist)}</small></div></button></div>`;
 const artistCard = (a) => `<button class="poster" data-mopen="artist:${a.id}" title="${esc(a.name)}"><div class="im" style="aspect-ratio:1;border-radius:50%;${a.picture ? `background-image:url('${esc(a.picture)}')` : ""}"></div><div class="cap">${esc(a.name)}</div></button>`;
 
+// Glowfin new look (Requests > Music and Books, Ben approved 2026-11-22): the cover you point at stands at the top
+// right with its own colours glowing behind the page, its name, facts and status on the left (like the Music tab)
+B.rqCoverTop = (tall) => B.coverGlowHtml() + `<section class="mtop rqctop${tall ? " tall" : ""}" id="rqTop"><div class="art"></div><div class="info"></div></section>`;
+B.wireRqCoverTop = (describe, coverOf) => {
+  const top = $("#rqTop");
+  if (!top) return () => {};
+  let timer, shown = null;
+  const show = (it) => {
+    if (!it || it === shown) return;
+    shown = it;
+    $(".info", top).innerHTML = describe(it);
+    const c = coverOf(it), art = $(".art", top);
+    art.classList.remove("on");
+    art.innerHTML = c ? `<span class="one" style="background-image:url('${esc(c)}')"></span>` : "";
+    B.coverGlow(c || null);
+    requestAnimationFrame(() => art.classList.add("on"));
+  };
+  const pointAt = (e) => {
+    const card = e.target.closest("#rows [data-id]");
+    if (!card || !B.items[card.dataset.id]) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => show(B.items[card.dataset.id]), shown ? 350 : 0);
+  };
+  B.page().addEventListener("mouseover", pointAt);
+  B.page().addEventListener("focusin", pointAt);
+  B.onLeave(() => { B.page().removeEventListener("mouseover", pointAt); B.page().removeEventListener("focusin", pointAt); });
+  B.wireCoverGlow();
+  return show;
+};
+B.rqPillsRow = (title, pills) => `<section class="rowx"><h3>${esc(title)}</h3><div class="row rqpillrow">${pills.join("")}</div></section>`;
 // Redesign 2: Music sits on the same side list and wall as the other tabs. Grown-up family profiles can ask
 // too; their song and album asks wait for Ben's Approve before anything downloads.
 B.musicTab = async (nav) => {
   const admin = B.me.admin;
   $("#rq").placeholder = "Search any song, album or artist";
   const rows = $("#rows");
-  rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner("wall")}</div></div>`;
-  let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, ownedOpen = null;
+  rows.innerHTML = `<div id="mfound"></div><div id="msplit">${B.spinner("rows")}</div>`;
+  let searching = false, tidyFolder = null, disc = null, st = null, picked = B.q("mlist") || null, described = null;
   // Ben 2026-11-15: Top 100, then Trending (one list per genre), then a few "Because you have <song>" lists that
   // Tower picks again every time the page opens, then More.
   const lists = () => {
@@ -907,39 +937,59 @@ B.musicTab = async (nav) => {
     acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>`
       : `${r.can_retry && admin ? `<button class="btn small white" data-mretry="${r.id}">Try again</button>` : ""}<button class="btn small" data-mremove="${r.id}">${r.state === "ready" ? "Done" : "Remove"}</button>`,
   });
+  // Glowfin new look (Ben approved 2026-11-22): Music lands straight on rows of square covers. Top 100 songs (the
+  // first ten numbered), Trending in each genre, Because you have, New this week, Editors' picks, Artists (round),
+  // then Genres and Bring in a playlist (Ben) pills, and Your music asks. Your asks and the playlist tools open in
+  // place of the rows, with a Back pill.
+  const tagged = (html, key, it) => { B.items[key] = it; return html.replace('<button class="poster"', `<button class="poster" data-id="${key}"`); };
+  const mSong = (x) => tagged(songCard(x), "mus:" + x.id, Object.assign({ _k: "song" }, x));
+  const mAlbum = (x) => tagged(albumCard(x), "mal:" + x.id, Object.assign({ _k: "album" }, x));
+  const mArtist = (x) => tagged(artistCard(x), "mar:" + x.id, Object.assign({ _k: "artist" }, x));
+  const describe = (it) => {
+    const len = it.seconds ? `${Math.floor(it.seconds / 60)}:${String(it.seconds % 60).padStart(2, "0")}` : "";
+    const facts = it._k === "song" ? [it.artist, it.album, len] : it._k === "album" ? [it.artist, it.year, it.type === "single" ? "Single" : it.type === "ep" ? "EP" : "Album"] : ["Artist"];
+    const tag = it._k === "artist" ? "Click to see their songs and albums" : it.have ? "In your music" : it.asked ? B.musicPill({ words: it.asked }).w : it._k === "song" ? "Click to hear 30 seconds and ask" : "Not in your music yet";
+    return `<h1>${esc(it.title || it.name || "")}</h1><p>${esc(facts.filter(Boolean).join(" · "))}</p><span class="mtop-kick">${esc(tag)}</span>`;
+  };
+  const coverOf = (it) => it.cover || it.picture || "";
   const draw = () => {
-    const side = $("#mside"), wall = $("#mwall");
-    if (!side || !wall) return;
-    const ls = lists();
+    const box = $("#msplit");
+    if (!box) return;
     const reqs = (st && st.requests) || [];
     const waiting = admin ? reqs.filter((r) => r.waiting) : [];
     const mine = reqs.filter((r) => !admin || !r.waiting);
-    const cur = picked === "yours" || picked === "waiting" ? null : ls.find((l) => l.id === picked) || ls[0];
-    side.innerHTML = B.rqSide(ls, cur ? cur.id : picked, mine.length, admin ? waiting.length : null);
     const notes = ((admin && st && st.problems) || []).map((p) => `<div class="note yellow">${esc(p)}</div>`).join("");
+    const back = `<div class="wrap" style="padding-bottom:0"><button class="chip" data-rqpick="">${B.I("left")} Back to music</button></div>`;
     if (picked === "yours" || picked === "waiting") {
       const w = picked === "waiting";
-      wall.innerHTML = notes + `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? waiting.length : mine.length}</span></div>`
+      box.innerHTML = back + `<div class="wrap">${notes}<div class="rqhead"><b>${w ? "Waiting for you" : "Your music asks"}</b><span>${w ? waiting.length : mine.length}</span></div>`
         + (w || admin ? "" : `<p class="dim">Ben says yes before anything downloads.</p>`)
-        + B.rqLines((w ? waiting : mine).map((r) => reqLine(r, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a song or album and ask for it.");
+        + B.rqLines((w ? waiting : mine).map((r) => reqLine(r, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Pick a song or album and ask for it.") + "</div>";
       return;
     }
-    if (!disc) { wall.innerHTML = notes + B.spinner("wall"); return; }
-    if (!cur) { wall.innerHTML = notes + `<div class="empty">Nothing to show right now. Try again in a minute.</div>`; return; }
-    if (cur.id === "playlist") { wall.innerHTML = notes + `<div id="mstatus">${B.spinner()}</div>`; drawTools(); return; }
-    let cards = [], owned = 0;
-    if (cur.songs) {
-      owned = cur.songs.filter((x) => x.have).length;
-      const shown = ownedOpen === cur.id ? cur.songs : cur.songs.filter((x) => !x.have);
-      cards = shown.map((x) => songCard(x));
-    } else if (cur.albums) cards = cur.albums.map(albumCard);
-    else if (cur.genres) cards = cur.genres.map(genreCard);
-    wall.innerHTML = notes + `<div class="rqline" id="mline"> </div>${B.rqGrid(cards, !!(cur.ranked && cur.songs), "sq")}${B.rqOwned(owned, ownedOpen === cur.id)}`;
+    if (picked === "playlist") { box.innerHTML = back + `<div class="wrap">${notes}<div id="mstatus">${B.spinner()}</div></div>`; drawTools(); return; }
+    if (!disc) { box.innerHTML = notes + B.spinner("rows"); return; }
+    const songsRow = (l) => {
+      const left = l.songs.filter((x) => !x.have);
+      return B.row(l.title, l.ranked ? left.map((x, i) => (i < 10 ? `<div class="top10">${B.t10num(i + 1)}${mSong(x)}</div>` : mSong(x))) : left.map(mSong));
+    };
+    const ls = lists();
+    box.innerHTML = notes + ls.filter((l) => l.songs).map(songsRow).join("")
+      + B.row("New this week", (disc.new || []).map(mAlbum)) + B.row("Editors' picks", (disc.picks || []).map(mAlbum))
+      + B.row("Artists", (disc.artists || []).map(mArtist))
+      + ((disc.genres || []).length ? B.rqPillsRow("Genres", disc.genres.map((g) => `<button class="chip" data-mgenre="${g.id}">${esc(g.name)}</button>`)) : "")
+      + (admin ? B.rqPillsRow("Bring in a playlist", [`<button class="chip on" data-rqpick="playlist">Bring in a playlist ›</button>`]) : "")
+      + B.rqPillsRow("Your music asks", [`<button class="chip" data-rqpick="yours">Asked for <b>${mine.length}</b></button>`].concat(admin ? [`<button class="chip" data-rqpick="waiting">Waiting for you <b>${waiting.length}</b></button>`] : []));
+    if (!described) {
+      described = B.wireRqCoverTop(describe, coverOf);
+      const first = $("#msplit [data-id]");
+      if (first) described(B.items[first.dataset.id]);
+    }
   };
   const drawDiscover = async (again) => {
     if (!disc || again) {
       const old = disc;
-      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#mwall").innerHTML = `<p class="dim">Couldn't load what's popular right now. ${esc(B.say(e))}</p>`; return; }
+      try { disc = await music("GET", "/discover"); } catch (e) { if (B.alive(nav) && !disc) $("#msplit").innerHTML = `<div class="wrap"><p class="dim">Couldn't load what's popular right now. ${esc(B.say(e))}</p></div>`; return; }
       // Tower picks new "Because you have" songs on every look: after an ask keep the lists on screen as they were
       // (the list you were in used to change under you), with the song just asked for marked
       if (again && old && old.because) disc.because = old.because;
@@ -1053,13 +1103,8 @@ B.musicTab = async (nav) => {
   // One click handler for the whole page and its side panels
   const onClick = (e) => {
     if (!B.alive(nav)) return document.removeEventListener("click", onClick);
-    const pick = e.target.closest("#mside [data-rqpick]");
-    if (pick) { picked = pick.dataset.rqpick; return draw(); }
-    if (e.target.closest("#mwall [data-rqowned]")) {
-      const cur = lists().find((l) => l.id === picked) || lists()[0];
-      ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
-      return draw();
-    }
+    const pick = e.target.closest("#msplit [data-rqpick]");
+    if (pick) { picked = pick.dataset.rqpick || null; return draw(); }
     const b = e.target.closest("[data-msong],[data-malbumonly],[data-mopen],[data-mback],[data-mgenre],[data-mretry],[data-mremove],[data-myes],[data-mno],[data-mplremove],[data-mfolder],[data-mtidy],#mplaylist");
     if (!b) return;
     const d = b.dataset;
@@ -1104,13 +1149,6 @@ B.musicTab = async (nav) => {
   };
   document.addEventListener("click", onClick);
   B.onLeave(() => document.removeEventListener("click", onClick));
-  // The line above the wall: the song or album under the mouse
-  const onOver = (e) => {
-    const c = e.target.closest("#mwall .poster"), line = $("#mline");
-    if (c && line) line.textContent = c.getAttribute("title") || " ";
-  };
-  document.addEventListener("mouseover", onOver);
-  B.onLeave(() => document.removeEventListener("mouseover", onOver));
   let t;
   $("#rq").oninput = (e) => { clearTimeout(t); t = setTimeout(() => search(e.target.value), 400); };
   B.every(10000, () => { if (!searching) loadStatus(); });
