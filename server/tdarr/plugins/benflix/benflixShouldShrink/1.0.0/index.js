@@ -20,7 +20,7 @@ var details = function () { return ({
     { label: "Top of the episode goal (MB)", name: "episodeMaxMB", type: "number", defaultValue: "800",
       inputUI: { type: "text" }, tooltip: "Episodes this size or smaller are left alone" },
     { label: "Top of the movie goal (MB)", name: "movieMaxMB", type: "number", defaultValue: "1500",
-      inputUI: { type: "text" }, tooltip: "Movies this size or smaller are left alone. A file is a movie when a folder in its path has 'movie' in the name." },
+      inputUI: { type: "text" }, tooltip: "Movies this size or smaller are left alone. A file is a movie when a folder in its path has 'movie' in the name, or it's a Season 00 / Specials file of 40 minutes or more." },
     { label: "HEVC files lose at most (%)", name: "hevcMaxCut", type: "number", defaultValue: "50",
       inputUI: { type: "text" }, tooltip: "0 = never shrink files that are already HEVC" },
     { label: "Keep this much disk free (GB)", name: "minFreeGB", type: "number", defaultValue: "300",
@@ -48,6 +48,15 @@ var shrunkBefore = function (args, file, logPath) {
     var log = fs.readFileSync(String(logPath || "/backup/shrink-log.txt"), "utf8");
     return log.indexOf("  " + file + "\n") !== -1 || log.slice(-file.length - 2) === "  " + file;
   } catch (e) { return false; }
+};
+
+// A movie is a file in a folder named "movie", or a long special: a Season 00 / Specials file of 40 minutes
+// or more, like the Pokemon movies filed with the show (Ben 2026-11-22). Same 40 minutes the app uses.
+var isMovieFile = function (file, secs) {
+  var dir = file.split("/").slice(0, -1).join("/");
+  if (/movie/i.test(dir)) return true;
+  var special = /\/(season 0+|specials?)(\/|$)/i.test(dir) || /\bS00E\d+/i.test(file.split("/").pop());
+  return special && Number(secs) >= 40 * 60;
 };
 
 var plugin = function (args) {
@@ -87,7 +96,8 @@ var plugin = function (args) {
   if (h > 1200 || w > 2600) return leave("it's 4K");
   var bytes = 0;
   try { bytes = fs.statSync(file).size; } catch (e) { bytes = Number(args.inputFileObj.file_size || 0) * 1e6; }
-  var isMovie = /movie/i.test(file.split("/").slice(0, -1).join("/"));
+  var probeFmt = ((args.inputFileObj.ffProbeData || {}).format) || {};
+  var isMovie = isMovieFile(file, Number(probeFmt.duration) || Number(v0.duration) || 0);
   var limitMB = isMovie ? num(inputs.movieMaxMB, 1500) : num(inputs.episodeMaxMB, 800);
   var sizeMB = bytes / 1e6;
   var sizeGB = bytes / 1e9;

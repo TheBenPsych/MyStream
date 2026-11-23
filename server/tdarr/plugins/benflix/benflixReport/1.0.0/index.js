@@ -29,7 +29,7 @@ var plugin = function (args) {
   var d = new Date();
   var pad = function (n) { return (n < 10 ? "0" : "") + n; };
   var when = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
-  var score = u.benflixScore ? ", picture " + u.benflixScore : "";
+  var score = (u.benflixScore ? ", picture " + u.benflixScore : "") + (u.benflixMovie ? ", movie" : "");
   var line = when + "  " + a.toFixed(2) + " GB -> " + b.toFixed(2) + " GB  (saved " + (a - b).toFixed(2) + " GB" + score + ")  "
     + args.originalLibraryFile._id + "\n";
   try { fs.appendFileSync(String((args.inputs && args.inputs.logFile) || "/backup/shrink-log.txt"), line); } catch (e) {
