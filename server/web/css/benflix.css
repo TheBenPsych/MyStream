@@ -298,12 +298,14 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .wide.soon { opacity: .45; cursor: default; }
 .wide .tag { position: absolute; left: 8px; top: 8px; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 99px; letter-spacing: .03em; }
 .top10 { display: flex; align-items: flex-end; flex: none; }
-/* Glowfin Top 10 (T1): tall Anton numbers in the violet > blue > aqua glow, each in the same width box fully
-   BESIDE its poster (never tucked behind), so the thin "1" is as easy to see as "10" */
-.top10 { gap: 6px; }
-.top10 .num { flex: none; width: var(--t10w, 96px); text-align: center; font-family: "Glowfin Anton", Impact, sans-serif; font-weight: 400; font-size: calc(var(--t10w, 96px) * 1.16); line-height: .86; letter-spacing: 0; padding-top: .06em;
-  background: linear-gradient(160deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 0; margin-right: 0; filter: drop-shadow(0 0 6px rgba(165,91,224,.45)); position: static; }
-.top10 .num.ten { letter-spacing: -.03em; margin-right: 0; }
+/* Glowfin Top 10 (Ben 2026-11-22, "Glow outline"): hollow Anton numbers outlined in the Glowfin colours running
+   left to right (violet > blue > aqua), as tall as the cover, each in the same width box fully BESIDE its poster
+   (never tucked behind). The number of the cover you're on (hover or keyboard focus) fills in and glows. */
+.top10 { gap: 6px; --t10p: var(--poster-w); }
+.top10 .num { flex: none; display: block; width: calc(var(--t10p) * .75); height: calc(var(--t10p) * 1.5); position: static; }
+.top10 .num svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.top10 .num text { font-family: "Glowfin Anton", Impact, sans-serif; font-size: 312px; fill: none; stroke: url(#gfT10); stroke-width: 5px; transition: fill .15s; }
+.top10:hover .num text, .top10:focus-within .num text { fill: url(#gfT10); stroke-width: 0; filter: drop-shadow(0 0 10px rgba(63,224,232,.5)); }
 .top10 .poster { z-index: 1; }
 
 .tiles2 { display: flex; gap: 12px; overflow-x: auto; padding: 6px var(--gutter) 10px; scrollbar-width: none; }
@@ -610,7 +612,6 @@ textarea.field { min-height: 90px; resize: vertical; }
   .door-top .ov { -webkit-line-clamp: 2; font-size: 14px; }
   .rowx h3 { font-size: 17px; }
   .poster .cap { display: block; }
-  .top10 { --t10w: 58px; }
   .wide { width: 240px; }
   .details .hero-in { flex-direction: column; align-items: stretch; gap: 18px; padding-bottom: 24px; }
   .details .t { font-size: 32px; }
@@ -887,7 +888,6 @@ body.reading .mbar { display: none; }
 .bq-hero .meta, .bq-top .meta { color: var(--ink2); font-size: 16px; margin-bottom: 6px; }
 .bq-hero .ov { color: var(--ink2); font-size: 16px; max-width: 720px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bq-hero .btns, .bq-top .btns { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
-.bq-t10 .num { font-size: 190px; }
 .bq-genre { flex: none; width: 176px; height: 96px; border-radius: 12px; padding: 12px; display: flex; align-items: flex-end; font-weight: 800; font-size: 16px; color: #0B0C10; text-decoration: none; }
 .bq-genre:hover, .bq-genre:focus-visible { outline: 3px solid var(--ink); outline-offset: 0; }
 .bq-genre.all { background: var(--pg3, #1D2027); color: var(--ink); }
@@ -911,7 +911,6 @@ body.reading .mbar { display: none; }
   .bq-flip { width: 180px; }
   .bq-about { font-size: 17px; }
   .bq-genre { width: 140px; height: 78px; }
-  .bq-t10 .num { font-size: 110px; }
 }
 
 /* ---------- movie and show page extras (extras.js) ---------- */
@@ -2131,7 +2130,8 @@ svg.gi path.gd { stroke-width: 3.6; }
 .rqchips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 var(--gutter); }
 .rqchips .chip { background: var(--raise); border-color: var(--raise); }
 .rqownedcard { display: grid; place-items: center; text-align: center; padding: 12px; color: var(--ink2); font-weight: 700; }
-.rqt10 { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 18px; scrollbar-width: none; --t10w: 80px; }
+.rqt10 { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 18px; scrollbar-width: none; }
+.rqt10 .top10 { --t10p: 140px; }
 .rqt10 .poster { width: 140px; flex: none; }
 .rqt10 .poster .cap { display: block; }
 .rqwho { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--aqua); font-size: 13px; font-weight: 700; }
@@ -2185,7 +2185,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 }
 @media (max-width: 600px) {
   .rqtopr { margin-left: 0; }
-  .rqt10 { --t10w: 52px; }
+  .rqt10 .top10 { --t10p: 104px; }
   .rqt10 .poster { width: 104px; }
 }
 
