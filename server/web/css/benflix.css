@@ -3017,3 +3017,31 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
   .srch .sx-tip { display: none; }
   .srch .sx-box { flex-basis: 100%; }
 }
+
+/* Glowfin new look, Side menu (Ben approved 2026-11-22): ONE menu. The icon strip keeps its own soft fade
+   (ink 70% to 25%, then it melts into the art with no hard edge). Opening it just stretches that same fade wider
+   and fades the names in (no slide); the page behind dims so its words show at about 30%. The place you point at
+   is a solid white pill with the aqua ring, the same width for every place; the page you're on stays aqua. */
+:root { --nopen: 200px; }
+body.nav-kids { --nopen: 236px; }
+.brail, .brail:hover, .brail:focus-within, .brail.always, body.nav-panel .brail,
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) { background: none; box-shadow: none; border-right: 0; transition: none; }
+.brail::before { content: ""; position: fixed; left: 0; top: 0; bottom: 0; z-index: -1; pointer-events: none; width: calc(var(--nrail) + 44px);
+  background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 60%, rgba(11, 13, 26, 0) 100%); transition: width .22s ease-out; }
+.brail:hover::before, .brail:focus-within::before, .brail.always::before, body.nav-panel .brail::before {
+  width: calc(var(--nopen) + 56px); background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 78%, rgba(11, 13, 26, 0) 100%); }
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within)::before { width: calc(var(--nrail) + 44px); background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 60%, rgba(11, 13, 26, 0) 100%); }
+.brail::after { left: 0; z-index: -2; background: rgba(11, 13, 26, .7); transition: opacity .22s ease-out; }
+.rl-t { transition: opacity .22s ease-out; }
+.rl-i { color: rgba(236, 238, 251, .9); font-weight: 600; }
+.rl-i svg.i { color: #9AA0C3; }
+.rl-i:hover, .rl-i:focus-visible, .rl-i.on:hover, .rl-i.on:focus-visible { background: #fff; color: #0B0D1A; box-shadow: inset 0 0 0 3px rgba(63, 224, 232, .6); outline: none; }
+.rl-i:hover svg.i, .rl-i:focus-visible svg.i { color: #0B0D1A; }
+.rl-i.on, .rl-i.on svg.i { color: #3FE0E8; }
+.rl-i.on:hover svg.i, .rl-i.on:focus-visible svg.i { color: #0B0D1A; }
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path { stroke: currentColor; }
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path.gf { fill: currentColor; fill-opacity: .28; stroke: none; }
+.rl-me.on { background: none; box-shadow: none; }
+.rl-me.on:hover, .rl-me.on:focus-visible { background: #fff; box-shadow: inset 0 0 0 3px rgba(63, 224, 232, .6); }
+/* Wide screens that keep the menu open: the page sits beside it, so nothing behind needs dimming */
+.brail.always::after { display: none; }

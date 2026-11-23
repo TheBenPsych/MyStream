@@ -2,7 +2,7 @@ package com.github.damontecres.wholphin.ui.nav
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,7 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
@@ -52,7 +55,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -78,21 +82,19 @@ import com.github.damontecres.wholphin.ui.BenflixIntroState
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixMark
-import com.github.damontecres.wholphin.ui.components.GlowfinBlue
-import com.github.damontecres.wholphin.ui.components.GlowfinCyan
 import com.github.damontecres.wholphin.ui.components.GlowfinIcon
 import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
-import com.github.damontecres.wholphin.ui.components.GlowfinPurple
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorPlaces
 import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.preferences.GlowfinRing
+import com.github.damontecres.wholphin.ui.preferences.OnWhiteText
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
-import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import kotlinx.coroutines.delay
@@ -290,14 +292,14 @@ fun BenflixRail(
     var handoffs by remember { mutableIntStateOf(0) }
     // (it stays drawn open through a short focus blink, see below)
     val open = model.alwaysOpen || opened || panelOpen
-    // Speed check (Ben 2026-11-17): the glide is read only while laying out, so opening the rail no longer
-    // rebuilds every icon and name on each step of it
-    val width =
-        animateDpAsState(
-            if (open) RAIL_OPEN * scale else RAIL_TUCKED * scale,
-            tween(RAIL_MS),
-            label = "benflixRail",
-        )
+    // Glowfin new look (Ben approved 2026-11-22): the strip doesn't slide open any more. Its fade stretches wider
+    // and the names fade in (Right / Back fades them away again). The fade is only read while drawing, so
+    // opening and closing the menu never rebuilds the icons on each step (light on the weak TCL TVs).
+    val fade = animateFloatAsState(if (open) 1f else 0f, tween(FADE_MS), label = "glowfinMenu")
+    val fading by remember { derivedStateOf { fade.value > 0f } }
+    // Names stay drawn while they fade away
+    val wide = open || fading
+    val railWidth = if (wide) RAIL_OPEN * scale else RAIL_TUCKED * scale
     val doorFocus = remember(model.doors) { model.doors.associateWith { FocusRequester() } }
     val spotFocus = remember { Spot.entries.associateWith { FocusRequester() } }
     val current = model.destination.door()
@@ -401,12 +403,13 @@ fun BenflixRail(
     }
 
     Box(modifier.fillMaxSize()) {
-        // The page dims while the rail is open (never on wide touch screens, where it's always open)
-        if (open && !model.alwaysOpen) {
+        // The page's words dim to about 30% while the menu is open (never on wide touch screens, where it's always
+        // open). One painted shade that fades in, no blur.
+        if (wide && !model.alwaysOpen) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Glowfin.Ink.copy(alpha = DIM))
+                    .drawBehind { drawRect(Glowfin.Ink.copy(alpha = DIM * fade.value)) }
                     .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -433,44 +436,42 @@ fun BenflixRail(
                     },
             )
         }
+        // The strip's own soft fade (Ben 2026-11-22): ink 70% to 25% behind the icons, then it melts into the art
+        // with no hard edge. Opening the menu just stretches the very same fade wider, with a soft edge.
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .width(RAIL_OPEN * scale + FADE_EDGE_OPEN * scale)
+                .drawBehind {
+                    val f = fade.value
+                    val solid = (RAIL_TUCKED + (RAIL_OPEN - RAIL_TUCKED) * f).toPx() * scale
+                    val edge = (FADE_EDGE_TUCKED + (FADE_EDGE_OPEN - FADE_EDGE_TUCKED) * f).toPx() * scale
+                    val end = solid + edge
+                    drawRect(
+                        brush =
+                            Brush.horizontalGradient(
+                                0f to Glowfin.Ink.copy(alpha = FADE_FROM),
+                                solid / end to Glowfin.Ink.copy(alpha = FADE_TO),
+                                1f to Color.Transparent,
+                                startX = 0f,
+                                endX = end,
+                            ),
+                        size =
+                            androidx.compose.ui.geometry
+                                .Size(end, size.height),
+                    )
+                },
+        )
         val entryFocus = spotFocus.getValue(Spot.HOME)
         androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxHeight()
                 .layout { measurable, constraints ->
-                    val w = width.value.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+                    val w = railWidth.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
                     val placeable = measurable.measure(constraints.copy(minWidth = w, maxWidth = w))
                     layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                 }.clipToBounds()
-                .background(
-                    if (open) {
-                        // Glowfin: the open menu is one calm deep panel with a thin line on its edge
-                        Brush.horizontalGradient(
-                            0f to Glowfin.Deep,
-                            1f to Glowfin.Deep,
-                        )
-                    } else {
-                        // Ben 2026-11-18: the tucked menu has no background of its own, the icons sit on the page
-                        SolidColor(Color.Transparent)
-                    },
-                ).then(
-                    if (open) {
-                        Modifier.drawBehind {
-                            drawLine(
-                                color = Glowfin.Line,
-                                start =
-                                    androidx.compose.ui.geometry
-                                        .Offset(size.width - 1f, 0f),
-                                end =
-                                    androidx.compose.ui.geometry
-                                        .Offset(size.width - 1f, size.height),
-                                strokeWidth = 1.dp.toPx(),
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
-                ).layout { measurable, constraints ->
+                .layout { measurable, constraints ->
                     // The icons and names are laid out once at the open width and the glide just shows more of
                     // them, so nothing inside has to be measured again on every step
                     val full = (RAIL_OPEN * scale).roundToPx().coerceAtLeast(constraints.maxWidth)
@@ -478,7 +479,7 @@ fun BenflixRail(
                     layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
                 },
         ) {
-            androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides quiet) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalRailQuiet provides quiet, LocalRailNames provides fade) {
                 // Scrolls only when the screen is too short for every icon (Easy's bigger rail, phones turned sideways)
                 Column(
                     // Ben 2026-11-18 (approved music-reach-1): squeezed so your picture fits on a TV screen again
@@ -558,17 +559,19 @@ fun BenflixRail(
                                 .clickable(onClickLabel = "Home", onClick = model.onHome),
                     ) {
                         BenflixMark(size = 26.dp * scale)
-                        if (open) {
+                        if (wide) {
                             Spacer(Modifier.width(12.dp))
-                            com.github.damontecres.wholphin.ui.components
-                                .GlowfinWord(fontSize = 19.sp * scale)
+                            Box(Modifier.graphicsLayer { alpha = fade.value }) {
+                                com.github.damontecres.wholphin.ui.components
+                                    .GlowfinWord(fontSize = 19.sp * scale)
+                            }
                         }
                     }
                     Spacer(Modifier.height(2.dp * scale))
                     // Ben 2026-11-18 (approved music-reach-1): while music or an audiobook plays, its cover sits
                     // right under the logo; OK opens Now playing (or the audiobook player)
                     NowPlayingRailButton(
-                        open = open,
+                        open = wide,
                         scale = scale,
                         destination = model.destination,
                         onGo = { go -> leaveFor(go) },
@@ -579,7 +582,7 @@ fun BenflixRail(
                         RailButton(
                             icon = GlowfinIcon.SEARCH,
                             label = "Search",
-                            open = open,
+                            open = wide,
                             scale = scale,
                             on = currentSpot == Spot.SEARCH,
                             onClick = { leaveFor(model.onSearch) },
@@ -589,7 +592,7 @@ fun BenflixRail(
                     RailButton(
                         icon = GlowfinIcon.HOME,
                         label = "Home",
-                        open = open,
+                        open = wide,
                         scale = scale,
                         on = currentSpot == Spot.HOME,
                         onClick = { leaveFor(model.onHome) },
@@ -599,7 +602,7 @@ fun BenflixRail(
                         RailButton(
                             icon = door.glowIcon(),
                             label = door.title,
-                            open = open,
+                            open = wide,
                             scale = scale,
                             on = door == current,
                             highlighted = panelDoor == door,
@@ -618,7 +621,7 @@ fun BenflixRail(
                             RailButton(
                                 icon = GlowfinIcon.ANIME,
                                 label = "Anime",
-                                open = open,
+                                open = wide,
                                 scale = scale,
                                 on = current == BenflixDoor.ANIME,
                                 onClick = { leaveFor(model.onAnime) },
@@ -630,7 +633,7 @@ fun BenflixRail(
                         RailButton(
                             icon = GlowfinIcon.REQUESTS,
                             label = "Requests",
-                            open = open,
+                            open = wide,
                             scale = scale,
                             on = currentSpot == Spot.REQUESTS,
                             count = model.requestsCount,
@@ -641,14 +644,14 @@ fun BenflixRail(
                     Spacer(Modifier.weight(1f))
                     if (model.updateReady) {
                         UpdateRailButton(
-                            open = open,
+                            open = wide,
                             scale = scale,
                             onClick = { leaveFor(model.onUpdate) },
                         )
                     }
                     ProfileRailButton(
                         model = model,
-                        open = open,
+                        open = wide,
                         scale = scale,
                         highlighted = profileOpen || currentSpot == Spot.PROFILE,
                         onClick = { openProfilePanel() },
@@ -662,7 +665,7 @@ fun BenflixRail(
             visible = panelOpen,
             enter = slideInHorizontally(tween(PANEL_MS)) { -it / 3 } + fadeIn(tween(PANEL_MS)),
             exit = slideOutHorizontally(tween(PANEL_OUT_MS)) { -it / 4 } + fadeOut(tween(PANEL_OUT_MS)),
-            modifier = Modifier.offset { IntOffset(width.value.roundToPx(), 0) },
+            modifier = Modifier.offset { IntOffset(railWidth.roundToPx(), 0) },
         ) {
             val shape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
             Box(
@@ -742,12 +745,11 @@ private fun UpdateRailButton(
                 containerColor = Color.Transparent,
                 contentColor = BenflixColors.Text,
                 focusedContainerColor = Color.Transparent,
-                focusedContentColor = Color.White,
+                focusedContentColor = OnWhiteText,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             Modifier
-                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
                 .onFocusChanged { hasFocus = it.isFocused },
@@ -755,14 +757,14 @@ private fun UpdateRailButton(
         Box(
             Modifier
                 .fillMaxSize()
-                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+                .railLit(focused, shape),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 // Closed: the ring sits exactly in the middle ((34 - 28) / 2 = 3 each side)
                 modifier = Modifier.fillMaxSize().padding(start = 3.dp * scale, end = if (open) 12.dp * scale else 0.dp),
             ) {
-                val tint = if (focused) Color.White else Glowfin.Aqua
+                val tint = if (focused) OnWhiteText else Glowfin.Aqua
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier =
@@ -774,10 +776,10 @@ private fun UpdateRailButton(
                 }
                 if (open) {
                     Spacer(Modifier.width(12.dp * scale))
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).railNameFade()) {
                         Text(
                             text = "Update",
-                            color = if (focused) Color.White else BenflixColors.Text,
+                            color = if (focused) OnWhiteText else BenflixColors.Text,
                             fontSize = BenflixType.body * scale,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -826,12 +828,11 @@ private fun RailButton(
                 containerColor = if (highlighted) BenflixColors.FocusRow else Color.Transparent,
                 contentColor = BenflixColors.Text,
                 focusedContainerColor = Color.Transparent,
-                focusedContentColor = Color.White,
+                focusedContentColor = OnWhiteText,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
-                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
                 .onFocusChanged { hasFocus = it.isFocused },
@@ -839,7 +840,7 @@ private fun RailButton(
         Box(
             Modifier
                 .fillMaxSize()
-                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+                .railLit(focused, shape),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -849,11 +850,15 @@ private fun RailButton(
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
                     GlowfinIconImage(
                         icon,
-                        color = if (focused) Color.White else Glowfin.Dim,
+                        // Glowfin new look (Ben 2026-11-22): the page you're on stays aqua, the lit place is dark
+                        // on its white pill
+                        color =
+                            when {
+                                focused -> OnWhiteText
+                                on -> Glowfin.Aqua
+                                else -> Glowfin.Dim
+                            },
                         size = ICON * scale,
-                        // Ben 2026-11-18: the page you're on is painted in the logo's purple-to-aqua gradient, so it
-                        // stands out from the grey icons (the plain blue looked too close to them)
-                        brush = if (on && !focused) RailOnBrush else null,
                     )
                     if (count > 0 && !open) {
                         CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
@@ -865,17 +870,17 @@ private fun RailButton(
                         text = label,
                         color =
                             when {
-                                focused -> Color.White
-                                on -> BenflixColors.Text
-                                else -> Glowfin.Dim
+                                focused -> OnWhiteText
+                                on -> Glowfin.Aqua
+                                else -> NameColor
                             },
                         fontSize = BenflixType.body * scale,
-                        fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).railNameFade(),
                     )
-                    if (count > 0) CountDot(count, scale)
+                    if (count > 0) CountDot(count, scale, Modifier.railNameFade())
                 }
             }
         }
@@ -934,16 +939,15 @@ private fun ProfileRailButton(
                 containerColor = if (highlighted) BenflixColors.FocusRow else Color.Transparent,
                 contentColor = BenflixColors.Text,
                 focusedContainerColor = Color.Transparent,
-                focusedContentColor = Color.White,
+                focusedContentColor = OnWhiteText,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
-                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
                 .onFocusChanged { hasFocus = it.isFocused }
-                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+                .railLit(focused, shape),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -962,12 +966,12 @@ private fun ProfileRailButton(
                 Spacer(Modifier.width(11.dp * scale))
                 Text(
                     text = name,
-                    color = BenflixColors.Text,
+                    color = if (focused) OnWhiteText else BenflixColors.Text,
                     fontSize = BenflixType.body * scale,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).railNameFade(),
                 )
             }
         }
@@ -1194,13 +1198,12 @@ private fun NowPlayingRailButton(
                 containerColor = Color.Transparent,
                 contentColor = BenflixColors.Text,
                 focusedContainerColor = Color.Transparent,
-                focusedContentColor = Color.White,
+                focusedContentColor = OnWhiteText,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             Modifier
                 .padding(bottom = 3.dp * scale)
-                .then(if (quiet) Modifier else Modifier.glowFocus(shape, spread = 8.dp))
                 .height(ITEM * scale)
                 .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
                 .onFocusChanged { hasFocus = it.isFocused },
@@ -1208,7 +1211,7 @@ private fun NowPlayingRailButton(
         Box(
             Modifier
                 .fillMaxSize()
-                .then(if (focused) Modifier.background(Glowfin.GlowAcross, shape) else Modifier),
+                .railLit(focused, shape),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1224,9 +1227,9 @@ private fun NowPlayingRailButton(
                             .border(
                                 1.5.dp,
                                 if (focused) {
-                                    Color.White
+                                    OnWhiteText
                                 } else if (on) {
-                                    BenflixColors.Shows
+                                    Glowfin.Aqua
                                 } else {
                                     Glowfin.Violet
                                 },
@@ -1259,10 +1262,10 @@ private fun NowPlayingRailButton(
                 }
                 if (open) {
                     Spacer(Modifier.width(12.dp * scale))
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).railNameFade()) {
                         Text(
                             text = title,
-                            color = if (focused) Color.White else BenflixColors.Text,
+                            color = if (focused) OnWhiteText else BenflixColors.Text,
                             fontSize = 13.sp * scale,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -1271,7 +1274,7 @@ private fun NowPlayingRailButton(
                         if (line.isNotBlank()) {
                             Text(
                                 text = line,
-                                color = if (focused) Color.White else Glowfin.Dim,
+                                color = if (focused) OnWhiteDim else Glowfin.Dim,
                                 fontSize = 10.sp * scale,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1305,7 +1308,9 @@ fun railTuckedWidth(big: Boolean): Dp = RAIL_TUCKED * (if (big) BIG_SCALE else 1
 fun railOpenWidth(big: Boolean): Dp = RAIL_OPEN * (if (big) BIG_SCALE else 1f)
 
 private val RAIL_TUCKED = 66.dp
-private val RAIL_OPEN = 228.dp
+
+// Glowfin new look: just wide enough for the longest name, so the open menu covers less of the art
+private val RAIL_OPEN = 200.dp
 
 // Ben 2026-11-18 (approved music-reach-1): 42 -> 34 so every spot and your picture fit on a TV screen
 private val ITEM = 34.dp
@@ -1318,15 +1323,45 @@ private const val NOW_TICK_MS = 1000L
 private const val PANEL_MS = 200
 private const val PANEL_OUT_MS = 140
 private const val PANEL_FOCUS_MS = 40L
-private const val DIM = .66f
 
-/** The logo's gradient, corner to corner across one icon */
-private val RailOnBrush =
-    Brush.linearGradient(
-        0f to GlowfinPurple,
-        0.55f to GlowfinBlue,
-        1f to GlowfinCyan,
-    )
+/** How dark the page gets while the menu is open: its words show at about 30% (Ben 2026-11-22) */
+private const val DIM = .7f
+
+/** The names and the wider fade come in (and go away) this fast */
+private const val FADE_MS = 220
+
+/** The strip's own fade (Ben 2026-11-22): ink 70% at the screen edge to 25% at the end of the strip... */
+private const val FADE_FROM = .7f
+private const val FADE_TO = .25f
+
+/** ...then it melts into the art over this much more, so there's never a hard edge */
+private val FADE_EDGE_TUCKED = 44.dp
+private val FADE_EDGE_OPEN = 56.dp
+
+/** Names that aren't lit (soft white) */
+private val NameColor = Glowfin.Text.copy(alpha = .9f)
+
+/** Small words on the white pill */
+private val OnWhiteDim = Color(0xFF4A4F72)
+
+/** How far the names have faded in (0 = tucked away, 1 = open) */
+private val LocalRailNames = androidx.compose.runtime.compositionLocalOf<State<Float>> { mutableFloatStateOf(1f) }
+
+/** The names fade with the menu (read only while drawing, so nothing is rebuilt as they fade) */
+private fun Modifier.railNameFade(): Modifier =
+    composed {
+        val names = LocalRailNames.current
+        graphicsLayer { alpha = names.value }
+    }
+
+/**
+ * Glowfin new look (Ben 2026-11-22): the place the remote is on is a solid white pill with the soft aqua ring,
+ * the same width for every place, like every other focus in the app. Nothing grows.
+ */
+private fun Modifier.railLit(
+    focused: Boolean,
+    shape: Shape,
+): Modifier = if (focused) background(Color.White, shape).border(3.dp, GlowfinRing, shape) else this
 
 /** The page gets the focus offered every 100 ms for up to 15 s (a slow server on a weak TV) */
 private const val HANDOFF_STEP_MS = 100L
