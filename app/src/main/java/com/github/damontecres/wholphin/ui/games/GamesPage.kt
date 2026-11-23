@@ -413,7 +413,8 @@ fun GamesPage(
             // TV and wide screens: the tabs sit over the top of the page, so the page starts under them (the cover
             // top on For you and Ember Road reaches up behind them itself)
             val top = if (wide) LocalTopBarOverlap.current else 0.dp
-            val showTop = wide && withTop
+            // Glowfin new look: the big cover top is for the TV remote only; tablets land on the rows too
+            val showTop = isTv && withTop
             Column(modifier = inner.fillMaxSize().padding(top = if (showTop) 0.dp else top).onFirstUserMove { userMoved = true }) {
                 if (showTop) {
                     val first =

@@ -301,8 +301,12 @@ private fun BooksForYou(
         topRequest++
     }
     Column(modifier.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
-        if (wide) {
+        if (isTv) {
             BooksTopArea(lit, shownRows.firstOrNull()?.tiles?.firstOrNull(), overlap)
+        } else if (wide) {
+            // Glowfin new look: tablets and sideways phones have no top either, the rows start right under the
+            // header and tabs (which sit over the page there)
+            Spacer(Modifier.height(overlap))
         }
         // Ben 2026-11-18: like Movies and Shows on TV, the row you move to jumps up whole (name and all) right
         // under the top area, and rows sit the same distance apart. The rows inside still slide sideways as before.

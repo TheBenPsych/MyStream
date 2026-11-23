@@ -7,7 +7,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -41,8 +40,6 @@ fun GlowfinHome(
     }
     val state by viewModel.state.collectAsState()
     val isTv = rememberIsTv()
-    val config = LocalConfiguration.current
-    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
     // Home isn't a door, but it keeps the same "at the top" and "back to the top" as one
     val frame = remember { DoorFrameState(BenflixDoor.MOVIES, DOOR_HOME, jumps = false) }
     // Back first goes back to the top of Home
@@ -52,7 +49,9 @@ fun GlowfinHome(
         EmptyDoor("Glowfin", state.offline, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
-    if (wide) {
+    // Glowfin new look (Ben 2026-11-22): the big top is for the TV remote only. Phones and tablets (either way
+    // round) land straight on the rows; a tap opens the title's own page with its big art.
+    if (isTv) {
         WideDoor(state, easy = false, isTv = isTv, viewModel = viewModel, frame = frame, onClick = onClick, onSeeAll = {
         }, modifier = modifier)
     } else {
