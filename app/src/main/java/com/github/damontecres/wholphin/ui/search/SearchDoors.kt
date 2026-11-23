@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -80,10 +81,43 @@ private enum class SearchDoor(
     LIVE_TV("Live TV", BenflixColors.LiveTv),
     GAMES("Games", BenflixColors.Games),
     BOOKS("Books", BenflixColors.Books, forKids = false),
-    ASK("Ask for it: movies and shows", BenflixColors.Text, forKids = false, emptyName = "Ask for it"),
-    ASK_MUSIC("Ask for it: music", BenflixColors.Music, forKids = false, emptyName = null),
+    ASK("Ask for it: movies and shows", ASK_YELLOW, forKids = false, emptyName = "Ask for it"),
+    ASK_MUSIC("Ask for it: music", ASK_YELLOW, forKids = false, emptyName = null),
     PEOPLE("People", BenflixColors.Soft, forKids = false),
 }
+
+/** Glowfin new look (Search): the yellow of "Not on Glowfin yet" (Ask for it rows, tags and marks) */
+private val ASK_YELLOW = Color(0xFFF2B33D)
+private val ASK_YELLOW_TEXT = Color(0xFFFFE3A6)
+
+/** Which kind pill a row belongs to (both Ask for it rows share one pill) */
+private fun SearchDoor.kindKey(): String = if (this == SearchDoor.ASK_MUSIC) SearchDoor.ASK.name else name
+
+private fun SearchDoor.kindName(): String = if (this == SearchDoor.ASK || this == SearchDoor.ASK_MUSIC) "Ask for it" else title
+
+/** One kind pill beside the search box: "Movies 6" */
+data class SearchKind(
+    val key: String,
+    val label: String,
+    val count: Int,
+)
+
+/**
+ * Glowfin new look (Search): what the top of the page says about the result you're on. A library title uses
+ * the same words and art as Home ([item]); anything else (something to ask for, a game, a book) gets these.
+ */
+data class SearchFocus(
+    val key: String,
+    val item: BaseItem? = null,
+    val name: String = "",
+    val facts: String = "",
+    val story: String? = null,
+    val artUrl: String? = null,
+    val logoUrl: String? = null,
+    /** Not on Glowfin yet: a yellow tag */
+    val ask: Boolean = false,
+    val asked: Boolean = false,
+)
 
 /** Something in the Ask for it door: a movie or show (Seerr), or a song or album (Tower's music requests) */
 private sealed interface AskEntry {
@@ -160,6 +194,18 @@ fun SearchDoorResults(
     query: String = "",
     books: List<BookTile> = emptyList(),
     onClickBook: (BookTile) -> Unit = {},
+    /** The kind pill picked (null: Everything) */
+    kind: String? = null,
+    /** The kind pills to show, each time the results change */
+    onKinds: (List<SearchKind>) -> Unit = {},
+    /** The result you're on, for the top of the page */
+    onFocusResult: (SearchFocus) -> Unit = {},
+    /** Back from a title: the result to land on again */
+    restoreKey: String? = null,
+    /** Landed on [restoreKey] again */
+    onRestored: () -> Unit = {},
+    /** A result was opened (so Back can land on it again) */
+    onOpened: (String) -> Unit = {},
 ) {
     val isTv = rememberIsTv()
     val kids = KidsMode.isActive
@@ -229,7 +275,22 @@ fun SearchDoorResults(
                 }
             }
         }
-    val shown = SearchDoor.entries.filter { lines[it].orEmpty().isNotEmpty() }
+    val found = SearchDoor.entries.filter { lines[it].orEmpty().isNotEmpty() }
+    // Glowfin new look: with nothing on Glowfin (people aside), the Ask for it rows come first
+    val askOnly =
+        found.any { it == SearchDoor.ASK || it == SearchDoor.ASK_MUSIC } &&
+            found.none { it != SearchDoor.ASK && it != SearchDoor.ASK_MUSIC && it != SearchDoor.PEOPLE }
+    val ordered = if (askOnly) found.sortedBy { if (it == SearchDoor.ASK || it == SearchDoor.ASK_MUSIC) 0 else 1 } else found
+    // The kind pills beside the box: one per kind found, in the rows' order
+    val kinds =
+        remember(ordered, lines) {
+            ordered
+                .groupBy { it.kindKey() }
+                .map { (key, doors) -> SearchKind(key, doors.first().kindName(), doors.sumOf { lines[it].orEmpty().size }) }
+        }
+    androidx.compose.runtime.LaunchedEffect(kinds) { onKinds(kinds) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onKinds(emptyList()) } }
+    val shown = if (kind == null) ordered else ordered.filter { it.kindKey() == kind }.ifEmpty { ordered }
     val empty =
         SearchDoor.entries.filter {
             lines[it].orEmpty().isEmpty() && it.emptyName != null && (!kids || it.forKids)
@@ -250,6 +311,7 @@ fun SearchDoorResults(
         )
     }
     val open: (ResultLine) -> Unit = { line ->
+        onOpened(line.key)
         when (line) {
             is ResultLine.Item -> {
                 onClickItem(line.item)
@@ -337,8 +399,22 @@ fun SearchDoorResults(
                 }
             }
         }
+        // Glowfin new look: nothing on Glowfin, so Ask for it comes first, and says so
+        if (askOnly && kind == null) {
+            item(key = "askfirst") {
+                Text(
+                    text = "Nothing on Glowfin called \"${query.trim()}\", so Ask for it comes first",
+                    color = BenflixColors.Soft,
+                    fontSize = BenflixType.small,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = edge(isTv), end = 16.dp),
+                )
+            }
+        }
         // Rows with nothing take one small line instead of a whole row
-        if (empty.isNotEmpty() && shown.isNotEmpty()) {
+        if (!askOnly && kind == null && empty.isNotEmpty() && shown.isNotEmpty()) {
             item(key = "nothing") {
                 Text(
                     text = "Nothing in " + empty.joinToString(" · ") { it.emptyName.orEmpty() },
@@ -358,6 +434,9 @@ fun SearchDoorResults(
                 onMore = more,
                 onSeeAll = { seeAll = door },
                 firstFocus = if (door == firstDoor) focusRequester else null,
+                onFocusLine = { onFocusResult(focusOf(it)) },
+                restoreKey = restoreKey,
+                onRestored = onRestored,
             )
         }
     }
@@ -379,8 +458,24 @@ private fun SearchRow(
     onMore: (ResultLine) -> (() -> Unit)?,
     onSeeAll: () -> Unit,
     firstFocus: FocusRequester? = null,
+    onFocusLine: (ResultLine) -> Unit = {},
+    restoreKey: String? = null,
+    onRestored: () -> Unit = {},
 ) {
     val few = remember(lines) { lines.take(ROW_MAX) }
+    // Back from a title: land on the same card again (it waits a moment for the row to be drawn)
+    val restore = remember { FocusRequester() }
+    val restoreHere = restoreKey != null && few.any { it.key == restoreKey }
+    androidx.compose.runtime.LaunchedEffect(restoreHere) {
+        if (!restoreHere) return@LaunchedEffect
+        repeat(RESTORE_TRIES) {
+            kotlinx.coroutines.delay(RESTORE_WAIT_MS)
+            if (restore.tryRequestFocus()) {
+                onRestored()
+                return@LaunchedEffect
+            }
+        }
+    }
     val more = lines.size > ROW_MAX
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
@@ -395,7 +490,7 @@ private fun SearchRow(
             )
             Text(
                 text = door.title,
-                color = BenflixColors.Text,
+                color = if (door.color == ASK_YELLOW) ASK_YELLOW_TEXT else BenflixColors.Text,
                 fontSize = BenflixType.body,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
@@ -418,7 +513,11 @@ private fun SearchRow(
                     isTv = isTv,
                     onClick = { onOpen(line) },
                     onLongClick = onMore(line),
-                    modifier = if (index == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier,
+                    modifier =
+                        Modifier
+                            .then(if (index == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier)
+                            .then(if (line.key == restoreKey) Modifier.focusRequester(restore) else Modifier)
+                            .onFocusChanged { if (it.isFocused) onFocusLine(line) },
                 )
             }
             if (isTv && more) {
@@ -432,6 +531,48 @@ private fun SearchRow(
 
 /** Most cards in one row; the rest are in See all */
 private const val ROW_MAX = 10
+private const val RESTORE_TRIES = 8
+private const val RESTORE_WAIT_MS = 80L
+
+/** What the top of the page says about one result */
+private fun focusOf(line: ResultLine): SearchFocus =
+    when (line) {
+        is ResultLine.Item -> {
+            SearchFocus(key = line.key, item = line.item, name = line.item.name.orEmpty())
+        }
+
+        is ResultLine.Game -> {
+            SearchFocus(key = line.key, name = line.game.title, facts = subLine(line))
+        }
+
+        is ResultLine.Book -> {
+            SearchFocus(key = line.key, name = line.book.name, facts = subLine(line))
+        }
+
+        is ResultLine.Ask -> {
+            when (val e = line.entry) {
+                is AskEntry.Title -> {
+                    SearchFocus(
+                        key = line.key,
+                        name = e.item.title.orEmpty(),
+                        facts = subLine(line),
+                        story = e.item.overview,
+                        artUrl = e.item.backDropUrl,
+                        logoUrl = e.item.logoUrl,
+                        ask = true,
+                        asked =
+                            e.item.availability == SeerrAvailability.PENDING ||
+                                e.item.availability == SeerrAvailability.PROCESSING ||
+                                e.item.availability == SeerrAvailability.PARTIALLY_AVAILABLE,
+                    )
+                }
+
+                is AskEntry.Music -> {
+                    SearchFocus(key = line.key, name = e.item.title, facts = subLine(line), ask = true, asked = e.item.asked != null)
+                }
+            }
+        }
+    }
 
 /** The shape a card's picture takes */
 private enum class CardShape { POSTER, SQUARE, ROUND }
@@ -591,29 +732,32 @@ private fun ResultPosterCard(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(5.dp)
-                                .background(BenflixColors.Text, RoundedCornerShape(50))
+                                .background(if (look.asked) BenflixColors.Text else ASK_YELLOW, RoundedCornerShape(50))
                                 .padding(horizontal = 7.dp, vertical = 1.dp),
                     )
                 }
             }
         }
-        Text(
-            text = look.name,
-            color = BenflixColors.Text,
-            fontSize = BenflixType.small,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val sub = subLine(line)
-        if (sub.isNotBlank()) {
+        // Glowfin new look (Ben: "just cover art"): on TV the top of the page names the card you're on
+        if (!isTv) {
             Text(
-                text = sub,
-                color = BenflixColors.Muted,
-                fontSize = BenflixType.tag,
+                text = look.name,
+                color = BenflixColors.Text,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            val sub = subLine(line)
+            if (sub.isNotBlank()) {
+                Text(
+                    text = sub,
+                    color = BenflixColors.Muted,
+                    fontSize = BenflixType.tag,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

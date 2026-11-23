@@ -58,13 +58,16 @@ fun Destination.tabsInHeader(): Boolean =
         this is Destination.BooksDoor ||
         this is Destination.Games ||
         this is Destination.Channels ||
-        this is Destination.Requests
+        this is Destination.Requests ||
+        this is Destination.Search
 
 fun headerStart(
     destination: Destination,
     stack: List<Destination>,
 ): HeaderStart {
     if (destination is Destination.Home) return HeaderStart.None
+    // Glowfin new look: Search's own box sits where a Back button would go (the remote's Back still goes back)
+    if (destination is Destination.Search) return HeaderStart.Empty
     // A movie, show, album or playlist page already shows its own name in big letters. Opened straight from
     // Home or Search it used to get that name again up here (Ben 2026-11-21: the name showed twice), so it
     // gets the named Back button like any deeper page.

@@ -2987,3 +2987,33 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 /* Glowfin new look: the family's Your asks top says where each ask stands, in its colour */
 .mtop .mtop-kick.rqfam-wait { color: #FFD27A; } .mtop .mtop-kick.rqfam-way { color: #7FEFF4; }
 .mtop .mtop-kick.rqfam-here { color: #8BE7B0; } .mtop .mtop-kick.rqfam-bad { color: #FF9C9C; }
+/* Glowfin new look, Search (Ben picked 2026-11-22): the box as a pill with the kind pills beside it, a tip to type
+   anywhere, recent searches as pills, the top describing the result you point at, cover art only, Ask for it in yellow */
+.srch .sx-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 12px; }
+.srch .sx-box { position: relative; flex: 0 1 460px; min-width: 240px; display: flex; align-items: center; }
+.srch .sx-box svg { position: absolute; left: 16px; width: 18px; height: 18px; opacity: .8; pointer-events: none; }
+.srch .sx-box .field { border-radius: 999px; font-size: 18px; padding: 12px 18px 12px 44px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); }
+.srch .sx-box .field:focus { background: rgba(255,255,255,.92); color: #1b1f3a; border-color: #3FE0E8; box-shadow: 0 0 0 4px rgba(63,224,232,.45); }
+.srch .sx-box:focus-within svg { color: #1b1f3a; }
+.srch .sx-kinds { padding: 0; flex: 0 1 auto; }
+.srch .sx-kinds:empty { display: none; }
+.srch .sx-tip { margin-left: auto; font-size: 14px; }
+.srch .sx-tip kbd { font: 700 13px "Glowfin Sora", sans-serif; padding: 1px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); }
+.srch .sx-recent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 14px; }
+.srch .sx-lab { font-weight: 600; margin-right: 4px; }
+.srch .sx-empty { padding-top: 40px; font-size: 20px; font-weight: 600; }
+.srch .door-top { margin-top: 0; padding-top: 14px; height: min(38vh, 380px); min-height: 250px; }
+.srch .door-top[hidden] { display: none; }
+.srch .sx-none { padding-top: 6px; padding-bottom: 4px; color: #FFE3A6; }
+.srch .sx-askrow h3 { color: #FFE3A6; }
+.srch .dt-tag.sx-ask { background: rgba(242,179,61,.2); border-color: rgba(242,179,61,.65); color: #FFE7B5; }
+.poster.scard .askp { background: #F2B33D; color: #1b1f3a; }
+/* Ben: just cover art, even in the browser (the top names the card you point at); small phones keep the names */
+@media (min-width: 701px) {
+  .srch .poster.scard .cap { display: none; }
+  .srch .sx-tip { display: inline; }
+}
+@media (max-width: 700px) {
+  .srch .sx-tip { display: none; }
+  .srch .sx-box { flex-basis: 100%; }
+}

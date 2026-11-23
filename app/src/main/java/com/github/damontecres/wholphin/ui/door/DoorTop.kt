@@ -91,6 +91,15 @@ internal fun DoorArt(
         remember(item?.id, pageHeight) {
             item?.let { imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() }) }
         }
+    DoorArtUrl(url = url, onBright = onBright)
+}
+
+/** [DoorArt] for a picture that isn't a library title (Search's Ask for it titles) */
+@Composable
+internal fun DoorArtUrl(
+    url: String?,
+    onBright: (Boolean) -> Unit = {},
+) {
     // Another episode of the same show has the same picture, so it just stays. A new picture: the old one
     // fades away, a short wait, then the new one fades in (no flashing while you move along a row).
     var shownUrl by remember { mutableStateOf<String?>(null) }
@@ -187,22 +196,28 @@ internal fun DoorScorePill(
 
 /** The small aqua tag under the facts line: a dot and a few words */
 @Composable
-internal fun DoorTag(text: String) {
+internal fun DoorTag(
+    text: String,
+    /** Search: yellow for "Not on Glowfin yet" (things to ask for) */
+    yellow: Boolean = false,
+) {
     val shape = RoundedCornerShape(50)
+    val dot = if (yellow) TAG_YELLOW else TAG_AQUA
+    val words = if (yellow) TAG_YELLOW_TEXT else TAG_TEXT
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier =
             Modifier
                 .background(BenflixColors.Tray.copy(alpha = .55f), shape)
-                .background(TAG_AQUA.copy(alpha = .16f), shape)
-                .border(1.dp, TAG_AQUA.copy(alpha = .5f), shape)
+                .background(dot.copy(alpha = .16f), shape)
+                .border(1.dp, dot.copy(alpha = .5f), shape)
                 .padding(horizontal = 9.dp, vertical = 2.dp),
     ) {
-        Box(Modifier.size(6.dp).background(TAG_AQUA, CircleShape))
+        Box(Modifier.size(6.dp).background(dot, CircleShape))
         Text(
             text = text,
-            color = TAG_TEXT,
+            color = words,
             fontSize = BenflixType.tag,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -268,6 +283,8 @@ private val WORD_EDGE = Shadow(color = Color.Black.copy(alpha = .7f), offset = O
 
 private val TAG_AQUA = Color(0xFF3FE0E8)
 private val TAG_TEXT = Color(0xFFC9FBFF)
+private val TAG_YELLOW = Color(0xFFF2B33D)
+private val TAG_YELLOW_TEXT = Color(0xFFFFE7B5)
 private const val NEW_DAYS = 7L
 private const val ART_FADE_MS = 400
 private const val ART_GAP_MS = 150L
