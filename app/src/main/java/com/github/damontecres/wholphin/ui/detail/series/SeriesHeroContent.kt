@@ -19,13 +19,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -53,6 +59,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.AskForSimilarRow
 import com.github.damontecres.wholphin.ui.detail.askForSimilarName
+import com.github.damontecres.wholphin.ui.detail.title.LocalTitleDownTarget
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
@@ -70,6 +77,8 @@ import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.tryRequestFocus
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
 
@@ -422,19 +431,55 @@ private fun EpisodesSection(
         } else {
             200.dp
         }
+    // Ben 2026-11-22 (TV photo): Down from Resume skipped the season buttons and landed on 1-25.
+    // Down from the buttons now always lands on the season you are on (scrolling it into view first).
+    val seasonRow = rememberLazyListState()
+    val selectedSeason = remember { FocusRequester() }
+    var selectedShown by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val downTarget = LocalTitleDownTarget.current
+    if (downTarget != null && seasons.size > 1) {
+        val target = rememberUpdatedState(seasonIndex)
+        val shown = rememberUpdatedState(selectedShown)
+        DisposableEffect(downTarget) {
+            val enter = {
+                if (shown.value) {
+                    selectedSeason.tryRequestFocus()
+                } else {
+                    scope.launch {
+                        seasonRow.scrollToItem((target.value - 1).coerceAtLeast(0))
+                        withFrameNanos { }
+                        selectedSeason.tryRequestFocus()
+                    }
+                    true
+                }
+            }
+            downTarget.enter = enter
+            onDispose { if (downTarget.enter === enter) downTarget.enter = null }
+        }
+    }
     Column(Modifier.fillMaxWidth()) {
         if (seasons.size > 1) {
             LazyRow(
+                state = seasonRow,
                 contentPadding = PaddingValues(horizontal = side),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 12.dp),
             ) {
                 itemsIndexed(seasons) { index, season ->
+                    val selected = index == seasonIndex
+                    if (selected) {
+                        DisposableEffect(Unit) {
+                            selectedShown = true
+                            onDispose { selectedShown = false }
+                        }
+                    }
                     SeasonChip(
                         text = season?.name ?: "Season ${index + 1}",
                         seen = remember(season) { season?.let(::seasonSeen) },
-                        selected = index == seasonIndex,
+                        selected = selected,
                         onClick = { onPickSeason(index) },
+                        modifier = if (selected) Modifier.focusRequester(selectedSeason) else Modifier,
                     )
                 }
             }
@@ -515,10 +560,12 @@ private fun SeasonChip(
     seen: Float?,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(50)
     Surface(
         onClick = onClick,
+        modifier = modifier,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
