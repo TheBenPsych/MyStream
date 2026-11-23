@@ -39,7 +39,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Border
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -57,6 +56,7 @@ import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -584,6 +584,9 @@ private fun OrderTabButton(
     Button(
         onClick = onClick,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
         colors =
             ButtonDefaults.colors(

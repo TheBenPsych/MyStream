@@ -290,7 +290,7 @@ private fun KidsButton(
             ClickableSurfaceDefaults.border(
                 focusedBorder = Border(border = BorderStroke(5.dp, Color.White), inset = 0.dp, shape = shape),
             ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.glowFocus(shape = shape, spread = 16.dp),
     ) {
         Row(

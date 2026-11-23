@@ -33,7 +33,8 @@ import androidx.tv.material3.ClickableSurfaceDefaults
  */
 val FocusRingWidth = 3.dp
 
-private fun ring(shape: Shape) = Border(border = BorderStroke(FocusRingWidth, BenflixColors.Focus), inset = 0.dp, shape = shape)
+// New look (Ben 2026-11-22): lit posters and cards get a white outline; lit buttons are white with the aqua ring
+private fun ring(shape: Shape) = Border(border = BorderStroke(FocusRingWidth, BenflixColors.Outline), inset = 0.dp, shape = shape)
 
 /** The ring for a clickable Surface (posters, cards, rows) */
 @Composable
@@ -55,7 +56,7 @@ fun Modifier.benflixOuterFocusRing(
 ): Modifier =
     composed {
         var focused by remember { mutableStateOf(false) }
-        val color = BenflixColors.Focus
+        val color = BenflixColors.Outline
         this
             .onFocusChanged { focused = it.hasFocus }
             .drawWithContent {

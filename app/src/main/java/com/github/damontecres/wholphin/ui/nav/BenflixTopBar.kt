@@ -164,7 +164,19 @@ internal fun BigClock(scale: Float) {
                     blurRadius = 10f,
                 ),
         )
-    Row(verticalAlignment = Alignment.Bottom) {
+    // Glowfin new look "Clock with a soft backing" (Ben 2026-11-22): a faint see-through pill behind the clock so it
+    // reads on bright pictures. A flat colour, no blur, so it costs a slow TV nothing.
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        modifier =
+            Modifier
+                .background(
+                    com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
+                        .copy(alpha = .35f),
+                    androidx.compose.foundation.shape
+                        .RoundedCornerShape(50),
+                ).padding(horizontal = 10.dp * scale, vertical = 1.dp),
+    ) {
         Text(
             text = time,
             style = shadowed,
@@ -195,7 +207,7 @@ fun focusRing(shape: androidx.compose.ui.graphics.Shape) =
     ClickableSurfaceDefaults.border(
         focusedBorder =
             Border(
-                border = BorderStroke(2.5.dp, BenflixColors.Focus),
+                border = BorderStroke(2.5.dp, BenflixColors.Outline),
                 shape = shape,
             ),
     )

@@ -34,10 +34,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -284,7 +284,7 @@ private fun TimelinePlay(
                                     .padding(horizontal = 6.dp)
                                     .size(if (isTv) 40.dp else 36.dp)
                                     .then(if (slot == middle) Modifier.focusRequester(focus) else Modifier),
-                            scale = ButtonDefaults.scale(focusedScale = 1.15f),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
                         ) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)

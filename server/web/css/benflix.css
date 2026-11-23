@@ -3046,3 +3046,32 @@ body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within)::before { wid
 .rl-me.on:hover, .rl-me.on:focus-visible { background: #fff; box-shadow: inset 0 0 0 3px rgba(63, 224, 232, .6); }
 /* Wide screens that keep the menu open: the page sits beside it, so nothing behind needs dimming */
 .brail.always::after { display: none; }
+
+/* Glowfin new look, "One focus look everywhere" + "Clock with a soft backing" (Ben 2026-11-22).
+   Lit buttons, pills and chips go solid white with the aqua ring; lit posters and cards get a white outline with
+   a soft aqua ring just outside. Nothing grows or moves. Kids keeps its own colour. */
+.btn:hover, .pill:hover, .chip:hover, .circle:hover, .opt:hover, .seabtn:hover, .gscore:hover, .gsave:hover, .me-tile:hover,
+.btn:focus-visible, .pill:focus-visible, .chip:focus-visible, .circle:focus-visible, .opt:focus-visible,
+.seabtn:focus-visible, .gscore:focus-visible, .gsave:focus-visible, .me-tile:focus-visible, .anep-open:focus-visible {
+  background: #fff; color: #1B1F3A; border-color: #3FE0E8; box-shadow: 0 0 0 3px #3FE0E8; outline: none; transform: none;
+}
+.btn:hover svg, .btn:focus-visible svg, .pill:hover svg, .pill:focus-visible svg, .circle:hover svg, .circle:focus-visible svg { color: #1B1F3A; }
+.btn.white:hover, .btn.white:focus-visible, .circle.white:hover, .circle.white:focus-visible, .chip.on:hover, .chip.on:focus-visible {
+  background: #fff; color: #1B1F3A; box-shadow: 0 0 0 3px #3FE0E8, 0 0 0 7px rgba(63, 224, 232, .28);
+}
+.poster:hover .im, .poster:focus-visible .im, .wide:hover .im, .wide:focus-visible .im, .mcard:hover .im, .mcard:focus-visible .im,
+.chcard:hover .im, .chcard:focus-visible .im, .mnp-cover:hover, .mnp-cover:focus-visible, .bg-ember:hover, .bg-ember:focus-visible,
+.bg-cell:hover, .bg-cell:focus-visible, .pickt:hover, .pickt:focus-visible {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 7px rgba(63, 224, 232, .45); outline: none;
+}
+.bg-slot:hover, .bg-slot:focus-visible, .mbtile:hover, .mbtile:focus-visible { transform: none; filter: none; }
+html.kids .btn:hover, html.kids .pill:hover, html.kids .chip:hover, html.kids .circle:hover, html.kids .opt:hover,
+html.kids .btn:focus-visible, html.kids .pill:focus-visible, html.kids .chip:focus-visible, html.kids .circle:focus-visible {
+  background: var(--kacc); color: #1B1F3A; box-shadow: 0 0 0 3px #fff;
+}
+html.kids .poster:hover .im, html.kids .poster:focus-visible .im, html.kids .wide:hover .im, html.kids .wide:focus-visible .im,
+html.kids .mcard:hover .im, html.kids .mcard:focus-visible .im {
+  box-shadow: 0 0 0 3px var(--kacc), 0 0 0 7px rgba(255, 255, 255, .3);
+}
+html.kids .door:focus-visible, .kbtn:hover, .kbtn:focus-visible { transform: none; }
+.clock { padding: 1px 12px; border-radius: 30px; background: rgba(11, 13, 26, .35); }

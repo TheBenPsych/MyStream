@@ -49,11 +49,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
@@ -225,6 +225,9 @@ fun EmberButton(
         onClick = onClick,
         enabled = enabled,
         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
         // a small grow only: wide buttons that grow a lot spill past the screen edge
         scale = ButtonDefaults.scale(focusedScale = 1f),
         colors =

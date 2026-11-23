@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -53,6 +52,7 @@ import com.github.damontecres.wholphin.ui.cards.hasOwnPicture
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -207,6 +207,9 @@ fun EpisodesPanel(
                     Button(
                         onClick = { viewModel.pickSeason(seriesId, season.id) },
                         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        border =
+                            com.github.damontecres.wholphin.ui.theme
+                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = if (selected) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
