@@ -69,6 +69,11 @@ fonts/subtitle_atkinson_bolditalic.ttf
 fonts/atkinson_hyperlegible.LICENSE.txt
 img/glowfin-mark.svg
 img/games/actor.png
+img/games/quote.png
+img/games/role.png
+img/games/blitz.png
+img/games/season.png
+img/games/caption.png
 img/games/closest.png
 img/games/draw.png
 img/games/ember.png
@@ -100,3 +105,4 @@ fonts/glowfin_inter_semibold.ttf
 fonts/glowfin_inter_bold.ttf
 fonts/inter.LICENSE.txt
 try-list.json
+movie-quotes.json

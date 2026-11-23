@@ -1,11 +1,11 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "game-covers-new", "title": "Cover art and proper game pages for Quote it, Who played them?, 60-second blitz, Which season? and Caption this", "where": "any TV or phone · Games", "date": "Nov 23"},
     {"id": "top10-outline", "title": "Top 10 numbers are hollow glowing outlines that fill in on the cover you're on (always filled on phones)", "where": "any TV, phone or browser · Movies, Shows, Anime, Home, Books, Requests Top 10 rows", "date": "Nov 23"},
     {"id": "rate-sticks", "title": "Rate button shows Liked / Loved / Not for me right after you pick", "where": "any TV or browser · open a movie, press Rate, pick one", "date": "Nov 23"},
     {"id": "steady-seekbar", "title": "Player seek bar dot stays still while the times tick", "where": "any TV, phone or browser · play anything and watch the dot", "date": "Nov 23"},
-    {"id": "game-quote", "title": "New game: Quote it (lines from a movie's subtitles)", "where": "any TV or phone · Games > Quote it (needs Tower's next hourly update)", "date": "Nov 22"},
-    {"id": "game-closeup", "title": "New game: Close-up (a real scene zooms out)", "where": "any TV or phone · Games > Close-up", "date": "Nov 22"},
+    {"id": "game-quote2", "title": "Quote it uses famous movie and show lines", "where": "any TV or phone · Games > Quote it", "date": "Nov 23"},
     {"id": "game-role", "title": "New game: Who played them? (pick the actor from 4 photos)", "where": "any TV or phone · Games > Who played them?", "date": "Nov 22"},
     {"id": "game-blitz", "title": "New game: 60-second blitz (true or false)", "where": "any TV or phone · Games > 60-second blitz", "date": "Nov 22"},
     {"id": "game-season", "title": "New game: Which season? (a scene from a show)", "where": "any TV or phone · Games > Which season? (needs Tower's next hourly update)", "date": "Nov 22"},
