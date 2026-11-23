@@ -1019,7 +1019,8 @@
       if (!a || a === shown) return;
       shown = a;
       const name = ($(".nm", a) || {}).textContent || "", line = ($(".cap small", a) || {}).textContent || "";
-      $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(a.getAttribute("href") || ""))}</div><h1>${esc(name)}</h1>${line ? `<p>${esc(line)}</p>` : ""}`;
+      // Glowfin new look (part 3): the name, the facts line, then the small aqua tag, like Home and Movies
+      $(".info", top).innerHTML = `<h1>${esc(name)}</h1>${line ? `<p>${esc(line)}</p>` : ""}<span class="mtop-kick">${esc(kickOf(a.getAttribute("href") || ""))}</span>`;
       top.dataset.href = a.getAttribute("href") || "";
       const art = $(".art", top);
       const img = $("img.art", a), spans = $$(".collage span", a);

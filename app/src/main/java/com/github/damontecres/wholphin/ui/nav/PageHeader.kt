@@ -50,7 +50,13 @@ sealed interface HeaderStart {
 }
 
 /** Movies, Shows and Anime: their tabs sit in the TV header's row (Glowfin new look, Ben 2026-11-22) */
-fun Destination.tabsInHeader(): Boolean = this is Destination.MoviesDoor || this is Destination.ShowsDoor || this is Destination.AnimeDoor
+fun Destination.tabsInHeader(): Boolean =
+    this is Destination.MoviesDoor ||
+        this is Destination.ShowsDoor ||
+        this is Destination.AnimeDoor ||
+        this is Destination.MusicDoor ||
+        this is Destination.BooksDoor ||
+        this is Destination.Games
 
 fun headerStart(
     destination: Destination,

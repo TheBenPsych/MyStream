@@ -248,7 +248,7 @@ fun DoorFrame(
         }
         // TV and wide screens (Glowfin new look): the tabs are see-through pills in the header's own row, where the
         // page's name used to be, so the page starts right under the header. The art goes up behind them.
-        val inHeader = tabsInHeader && overlap >= HEADER_ROW_GAP + tabsHeight / 2
+        val inHeader = tabsInHeader && tabsFitInHeader(overlap)
         Box(modifier.fillMaxSize()) {
             androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides if (inHeader) overlap else overlap + tabsHeight) {
                 content(
@@ -595,6 +595,15 @@ private const val PENDING_PICK_MS = 120L
 /** The menu keeps handing a focus that fell on it back to the page while the page is still filling in */
 private const val STRAY_RETRY_MS = 150L
 private const val STRAY_TRIES = 20
+
+/** The tabs fit in the header's own row (true on TVs and wide screens with the normal header) */
+internal fun tabsFitInHeader(overlap: Dp): Boolean = overlap >= HEADER_ROW_GAP + doorTabsHeight(true) / 2
+
+/** Where a wide door's page starts: under the header, and under the tabs too when they can't sit in the header */
+internal fun doorPageTop(
+    overlap: Dp,
+    tabsInHeader: Boolean,
+): Dp = if (tabsInHeader && tabsFitInHeader(overlap)) overlap else overlap + doorTabsHeight(true)
 
 /** The TV header's row: 18dp from the top, with 6dp under it (see BenflixPageHeader) */
 private val HEADER_ROW_TOP = 18.dp

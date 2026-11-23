@@ -2792,3 +2792,34 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
   .ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 12px; }
   #doorTop ~ .rows .poster .cap { display: none; }
 }
+
+/* ---------- Glowfin new look, part 3 (Ben 2026-11-22): Music, Books, Games land straight on a row ---------- */
+/* The cover of the card you're on stands at the top right (square albums, tall books, box art in its own shape),
+   its colours glow behind the page, and the words on the left match Home and Movies: name, facts, aqua tag. */
+.mtop { height: min(42vh, 420px); min-height: 280px; margin: -10px 0 6px; align-items: flex-start; padding-top: 10px; }
+.mtop .art { top: 10px; bottom: 26px; }
+.mtop .info { display: flex; flex-direction: column; gap: 8px; padding-bottom: 0; text-shadow: 0 1px 4px rgba(0,0,0,.5); max-width: min(620px, calc(100% - 340px)); }
+.mtop h1 { font-size: clamp(30px, 3vw, 48px); line-height: 1.08; margin: 0; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mtop p { color: var(--ink); font-weight: 600; }
+.mtop .mtop-kick { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.mtop .mtop-kick::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; flex: none; }
+.mtop .mtop-kick:empty { display: none; }
+.bktop .art { position: absolute; }
+.bktop .bkbar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(0,0,0,.6); }
+.bktop .bkbar b { display: block; height: 100%; background: var(--books, #3FE0E8); }
+@media (min-width: 761px) {
+  .bktop { height: min(42vh, 420px); }
+  .bktop .art { display: grid; }
+  .bktop .info { max-width: min(620px, calc(100% - 300px)); }
+}
+/* Games: the cover top right instead of a wide picture; words in the same order as Home and Movies */
+.gtop .art { left: auto; right: var(--gutter); top: calc(var(--bar) + 10px); bottom: 26px; width: auto; height: auto; aspect-ratio: 2 / 3; border-radius: 10px; background: center/cover no-repeat var(--raise); box-shadow: 0 14px 36px rgba(0,0,0,.55); }
+.gtop .art::after { display: none; }
+.gtop .info { max-width: min(620px, calc(100% - 340px)); }
+.gtop #gInfo .t { font-size: clamp(30px, 3vw, 48px); line-height: 1.08; }
+/* Cover art only in the For you rows (the top says what each one is), on every screen */
+.mhome #mrows .mcard .cap, .bkhome .rowx .poster .cap, .gpage.ghome .poster .cap { display: none; }
+/* Phones and small tablets: no top at all, the rows start right under the tabs */
+@media (max-width: 760px) {
+  .mtop, .bktop, .gtop { display: none; }
+}

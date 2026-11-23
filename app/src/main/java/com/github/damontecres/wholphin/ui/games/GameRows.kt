@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -314,65 +315,59 @@ private fun RowTile(
     }
 }
 
-/** Ember Road as a slim banner under the leaderboards (the spot Ben picked, half as tall) */
+/**
+ * The Ember Road tab (Ben 2026-11-22: Ember Road moves up as its own tab, right after For you): one row holding its
+ * cover, so the remote lands on it and the top describes it. OK opens it.
+ */
 @Composable
-internal fun EmberBanner(
+internal fun EmberRow(
     isTv: Boolean,
     onClick: () -> Unit,
     onFocus: (GamePreview) -> Unit = {},
 ) {
-    val shape = RoundedCornerShape(10.dp)
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = shape)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
-        modifier =
-            Modifier.fillMaxWidth().onFocusChanged {
-                if (it.isFocused) {
-                    onFocus(
-                        GamePreview(
-                            key = "ember",
-                            kicker = "Adventure",
-                            title = "Ember Road",
-                            about = "Pixel adventure: carry a dragon egg across a wild land. Android phones can join in.",
-                            colors = EMBER_COLOURS,
-                            icon = R.string.fa_dragon,
-                            playWith = listOf(PlayWith.REMOTE, PlayWith.CONTROLLER, PlayWith.PHONE),
-                        ),
-                    )
-                }
-            },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = if (isTv) 64.dp else 72.dp)
-                    .background(Brush.linearGradient(EMBER_COLOURS.map { it.copy(alpha = .5f) } + BenflixColors.Raised))
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-        ) {
-            Text(stringResource(R.string.fa_dragon), fontFamily = FontAwesome, fontSize = 22.sp, color = Color.White)
-            if (isTv) {
-                Text("Ember Road", fontSize = BenflixType.rowName, fontWeight = FontWeight.Black, color = Color.White)
-                Text(
-                    "Pixel adventure: carry a dragon egg across a wild land. Android phones can join in.",
-                    fontSize = BenflixType.body,
-                    color = BenflixColors.Text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                Column {
-                    Text("Ember Road", fontSize = BenflixType.lead, fontWeight = FontWeight.Black, color = Color.White)
-                    Text("Pixel adventure. Android phones can join in.", fontSize = BenflixType.small, color = BenflixColors.Text)
-                }
-            }
+    val ember =
+        remember(onClick) {
+            RowGame(
+                key = "EMBER",
+                title = "Ember Road",
+                short = EMBER_ABOUT,
+                colors = EMBER_COLOURS,
+                icon = R.string.fa_dragon,
+                badge = "Adventure",
+                onClick = onClick,
+                kind = "Adventure · Pixel story game",
+                playWith = listOf(PlayWith.REMOTE, PlayWith.CONTROLLER, PlayWith.PHONE),
+            )
         }
+    GameRow("Ember Road", listOf(ember), isTv) { g ->
+        onFocus(
+            GamePreview(
+                key = "EMBER",
+                kicker = g.kind,
+                title = g.title,
+                line = "Android phones can join in",
+                about = g.short,
+                colors = g.colors,
+                icon = g.icon,
+                playWith = g.playWith,
+            ),
+        )
     }
 }
+
+/** The Ember Road preview the top shows before the remote lands on its cover */
+internal fun emberPreview(): GamePreview =
+    GamePreview(
+        key = "EMBER",
+        kicker = "Adventure · Pixel story game",
+        title = "Ember Road",
+        line = "Android phones can join in",
+        about = EMBER_ABOUT,
+        colors = EMBER_COLOURS,
+        icon = R.string.fa_dragon,
+        playWith = listOf(PlayWith.REMOTE, PlayWith.CONTROLLER, PlayWith.PHONE),
+    )
+
+private const val EMBER_ABOUT = "Pixel adventure: carry a dragon egg across a wild land, one chapter at a time."
 
 private val EMBER_COLOURS = listOf(Color(0xFFB8281E), Color(0xFF2B1B4D))

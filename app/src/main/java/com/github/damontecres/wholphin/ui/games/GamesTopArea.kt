@@ -1,12 +1,14 @@
 package com.github.damontecres.wholphin.ui.games
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -19,10 +21,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,14 +41,22 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import coil3.compose.AsyncImage
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.door.CoverDoorTop
+import com.github.damontecres.wholphin.ui.door.CoverTopWords
 import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.CoverGlowColors
 import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
@@ -85,113 +101,106 @@ internal fun topThree(
     }
 
 /**
- * The top part of the Games page on TVs (and wide screens). Ben 2026-11-18 (approved games-books-top-1): words only
- * on a soft glow in the lit game's colours. No big box art on the right any more: every console's boxes have their
- * own shape, and the covers in the rows already show each one whole at its real shape.
+ * The top of the Games For you and Ember Road tabs on TVs and wide screens. Glowfin new look (part 3, Ben approved
+ * 2026-11-22): the cover of the game you're on stands at the top right (box art keeps its own shape), its colours
+ * glow behind the page, and the words on the left say what it is, like Home and Movies.
  */
 @Composable
 internal fun GamesTopArea(
     preview: GamePreview?,
     height: Dp,
+    overlap: Dp,
     modifier: Modifier = Modifier,
-    /** How far the glow reaches up behind the tabs above */
-    glowAbove: Dp = 0.dp,
+    edge: Dp = BenflixSpace.tvEdge,
 ) {
     // Glowfin games have their own two colours; box art gives its colours like the Music and Books tops
     val fromArt = rememberCoverGlow(preview?.picture?.takeIf { preview.colors.isEmpty() }, BenflixColors.Games, preview?.pictureToken)
+    val p =
+        preview ?: run {
+            // Nothing to describe yet (no game played): the space stays, so the rows don't slide up under the tabs
+            Box(modifier.fillMaxWidth().height(height))
+            return
+        }
     val glow =
-        preview
-            ?.colors
-            ?.takeIf { it.isNotEmpty() }
+        p.colors
+            .takeIf { it.isNotEmpty() }
             ?.let { CoverGlowColors(it.first().copy(alpha = .55f), it.last().copy(alpha = .40f)) }
             ?: fromArt
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(height),
-    ) {
-        CoverGlow(
-            glow,
-            Modifier
-                .fillMaxWidth()
-                .offset(y = -glowAbove)
-                .wrapContentHeight(Alignment.Top, unbounded = true)
-                .height((height + glowAbove) * 1.6f),
-        )
-        if (preview != null) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(horizontal = 8.dp)
-                        .widthIn(max = 620.dp),
-            ) {
-                Text(
-                    text = preview.kicker,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.small,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+    val words = remember(p) { gameTopWords(p) }
+    val ratio = p.picture?.let { BoxArt.measured[it] } ?: GAME_COVER_RATIO
+    CoverDoorTop(
+        shown = p,
+        words = words,
+        glow = glow,
+        height = height,
+        overlap = overlap,
+        coverRatio = ratio.coerceIn(0.5f, 1.5f),
+        modifier = modifier,
+        edge = edge,
+    ) { t, m -> GameTopCover(t, m) }
+}
+
+/** "SNES · Plays with controller or phone", "Played yesterday" in the tag, the game's line, its top 3 */
+private fun gameTopWords(p: GamePreview): CoverTopWords {
+    val with =
+        p.playWith
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" or ") { playWithWord(it).lowercase() }
+            ?.let { "Plays with $it" }
+    return CoverTopWords(
+        title = p.title,
+        facts = listOfNotNull(p.kicker.takeIf { it.isNotBlank() }, with).joinToString(" · "),
+        tag = p.line,
+        story = p.about,
+        extra = p.top3.takeIf { it.isNotEmpty() }?.joinToString("   "),
+    )
+}
+
+/** The big cover: Tower's box art, a Glowfin game's own drawn cover, or its colours and icon */
+@Composable
+private fun GameTopCover(
+    p: GamePreview,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+    val shape = RoundedCornerShape(10.dp)
+    val drawn = remember(p.key) { gameCover(p.key) }
+    Box(modifier.clip(shape).background(Glowfin.Raise)) {
+        when {
+            p.picture != null -> {
+                AsyncImage(
+                    model =
+                        remember(p.picture, p.pictureToken) {
+                            ImageRequest
+                                .Builder(context)
+                                .data(p.picture)
+                                .apply { p.pictureToken?.let { httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", it).build()) } }
+                                .build()
+                        },
+                    contentDescription = p.title,
+                    contentScale = if (p.fitPicture) ContentScale.Fit else ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
-                Text(
-                    text = preview.title,
-                    color = BenflixColors.Text,
-                    fontFamily = GlowfinDisplayFont,
-                    fontSize = BenflixType.pageTitle,
-                    lineHeight = BenflixType.pageTitle * 1.15f,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            }
+
+            drawn != null -> {
+                Image(
+                    painter = painterResource(drawn),
+                    contentDescription = p.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    preview.line?.let {
-                        Text(
-                            it,
-                            color = BenflixColors.Muted,
-                            fontSize = BenflixType.body,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                // Glowfin G1: what it works with, as word chips under the name
-                if (preview.playWith.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                        preview.playWith.forEach { Badge(it, playWithWord(it)) }
-                    }
-                }
-                preview.about?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        text = it,
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.small,
-                        lineHeight = BenflixType.small * 1.35f,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-                if (preview.top3.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 4.dp),
-                    ) {
-                        Text(stringResource(R.string.fa_trophy), fontFamily = FontAwesome, fontSize = 13.sp, color = BenflixColors.Soft)
-                        preview.top3.forEach {
-                            Text(
-                                it,
-                                color = BenflixColors.Soft,
-                                fontSize = BenflixType.small,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+            }
+
+            else -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(Brush.linearGradient(p.colors.ifEmpty { listOf(BenflixColors.Raised, BenflixColors.Panel) })),
+                ) {
+                    GameIconSquare(p.colors, p.icon, size = 64.dp)
                 }
             }
         }

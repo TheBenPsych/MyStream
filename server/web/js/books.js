@@ -67,7 +67,7 @@
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
     const place = PLACES.some(([k]) => k === B.q("p")) && !(B.q("p") === "manga" && B.me.kids) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
-    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner("wall")}</div></div>`;
+    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage${place === "home" ? " bkhome" : ""}">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner("wall")}</div></div>`;
     B.wireTop();
     let home;
     try {
@@ -146,12 +146,14 @@
     const show = (t) => {
       if (!t || t === shown) return;
       shown = t;
-      $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(t))}</div><h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p>`;
+      // Glowfin new look (part 3): the name, the facts line, then the small aqua tag (how far you are), like Home
+      $(".info", top).innerHTML = `<h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p><span class="mtop-kick">${esc(kickOf(t))}</span>`;
       top.dataset.href = t.notHere ? "#/requests?tab=books" : "#/book/" + enc(t.id);
       B.coverGlow(t.cover ? pic(t.cover) : null);
       const art = $(".art", top);
       art.classList.remove("on");
-      art.innerHTML = t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "";
+      const pct = t.status === "reading" && t.progress > 0.005 ? Math.round(t.progress * 100) : 0;
+      art.innerHTML = (t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "") + (pct ? `<i class="bkbar"><b style="width:${pct}%"></b></i>` : "");
       requestAnimationFrame(() => art.classList.add("on"));
     };
     const pointAt = (e) => {

@@ -59,14 +59,18 @@ import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BookGroup
 import com.github.damontecres.wholphin.services.BookRow
 import com.github.damontecres.wholphin.services.BookTile
+import com.github.damontecres.wholphin.ui.cards.LocalCardNamesOff
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.discover.RequestsJump
+import com.github.damontecres.wholphin.ui.door.CoverDoorTop
+import com.github.damontecres.wholphin.ui.door.CoverTopWords
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.door.coverTopHeight
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.CoverGlow
@@ -170,7 +174,7 @@ fun BooksDoorPage(
                 )
             }
         }
-    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true) { inner ->
+    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true, tabsInHeader = true) { inner ->
         // TV and wide screens: the tabs sit over the top of the page, so the grids start under them
         val top = if (wide) LocalTopBarOverlap.current else 0.dp
         when {
@@ -304,7 +308,11 @@ private fun BooksForYou(
         // under the top area, and rows sit the same distance apart. The rows inside still slide sideways as before.
         val defaultSpec = LocalBringIntoViewSpec.current
         val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
-        CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec,
+            // Glowfin new look: cover art only in the rows (the top says what the book is)
+            LocalCardNamesOff provides true,
+        ) {
             LazyColumn(
                 state = listState,
                 verticalArrangement =
@@ -320,11 +328,6 @@ private fun BooksForYou(
                 contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) {
-                if (!wide) {
-                    shownRows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
-                        item(key = "phoneTop") { BooksPhoneTop(top) { onTile(top) } }
-                    }
-                }
                 itemsIndexed(shownRows, key = { _, row -> row.key }) { rowIndex, row ->
                     CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
                         // TV: the row name always comes into view with the books
@@ -374,10 +377,10 @@ private fun BooksForYou(
 }
 
 /**
- * Glowfin (B1) top area on TV and wide screens: what the book you're on is ("Keep reading · 64%", its name big,
- * the author, which book of the series, ebook and/or audiobook), with its cover standing sharp on the right and a
- * soft glow in the cover's own colours behind the top of the page (Ben 2026-11-18: no cover picture as the
- * background). It waits half a second after you stop moving, so passing along a row stays smooth on older TVs.
+ * Glowfin new look (part 3, Ben approved 2026-11-22) on TV and wide screens: the tall cover of the book you're on
+ * stands at the top right with its own colours glowing behind the page, and the words on the left say what it is
+ * (name, author, facts, how far you are in the tag), like Home and Movies. It waits half a second after you stop
+ * moving, so passing along a row stays smooth on older TVs. Phones have no top: the rows start under the tabs.
  */
 @Composable
 private fun BooksTopArea(
@@ -394,142 +397,71 @@ private fun BooksTopArea(
         }
     }
     val tile = shown ?: first ?: return
-    val edge = side(true)
     val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    Box(Modifier.fillMaxWidth()) {
-        // Ben 2026-11-18 (approved games-books-top-1): words only, no big cover on the right (the books in the
-        // rows are the pictures). Shorter, so the first row shows whole and the next one peeks in.
-        val height = booksTopHeight(overlap, screenHeight)
-        Box(Modifier.fillMaxWidth().height(height)) {
-            // The glow reaches up under the tabs and a little way down behind the first row
-            CoverGlow(
-                glow,
-                Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(height * 1.6f),
-            )
-            Column(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = edge, end = edge, bottom = 10.dp)
-                        .widthIn(max = 620.dp),
-            ) {
-                BooksTopWords(tile, center = false)
+    val words = remember(tile) { bookTopWords(tile) }
+    CoverDoorTop(
+        shown = tile,
+        words = words,
+        glow = glow,
+        height = booksTopHeight(overlap, screenHeight),
+        overlap = overlap,
+        coverRatio = BOOK_RATIO,
+        edge = side(true),
+    ) { t, m ->
+        Box(m) {
+            BookCoverImage(t.cover, t.name, Modifier.fillMaxSize(), audio = t.isAudio)
+            if (t.status == "reading" && t.progress > 0.005f) {
+                ProgressStrip(t.progress, Modifier.align(Alignment.BottomCenter))
             }
         }
-    }
-}
-
-/**
- * Phones (Ben 2026-11-18): there's no remote moving between books, so the top stays on the first book (the one
- * you're reading): its cover in the middle with the glow behind it, and its name under it. Tapping it opens it.
- */
-@Composable
-private fun BooksPhoneTop(
-    tile: BookTile,
-    onClick: () -> Unit,
-) {
-    val glow = rememberCoverGlow(tile.cover, BenflixColors.Books)
-    Box(Modifier.fillMaxWidth()) {
-        CoverGlow(glow, Modifier.matchParentSize())
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onClick)
-                    .padding(start = side(false), end = side(false), top = 18.dp, bottom = 6.dp),
-        ) {
-            Box(Modifier.width(140.dp).aspectRatio(BOOK_RATIO).shadow(18.dp, BenflixShapes.Card)) {
-                BookCoverImage(tile.cover, tile.name, Modifier.fillMaxSize(), audio = tile.isAudio)
-            }
-            Spacer(Modifier.height(14.dp))
-            BooksTopWords(tile, center = true)
-        }
-    }
-}
-
-/** The kicker, the big name and the line under it, for the top area */
-@Composable
-private fun BooksTopWords(
-    tile: BookTile,
-    center: Boolean,
-) {
-    val align = if (center) TextAlign.Center else TextAlign.Start
-    Text(
-        text = topKicker(tile),
-        color = Glowfin.Dim,
-        fontSize = BenflixType.small,
-        fontWeight = FontWeight.SemiBold,
-        textAlign = align,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-    Text(
-        text = tile.name,
-        color = Glowfin.Text,
-        fontFamily = GlowfinDisplayFont,
-        fontSize = BenflixType.pageTitle,
-        fontWeight = FontWeight.Bold,
-        textAlign = align,
-        maxLines = if (center) 2 else 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 4.dp),
-    )
-    val line = topLine(tile)
-    if (line.isNotBlank()) {
-        Text(
-            text = line,
-            color = BenflixColors.Soft,
-            fontSize = BenflixType.body,
-            textAlign = align,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp),
-        )
     }
 }
 
 private const val TOP_AREA_WAIT_MS = 500L
 
-/** The words in the TV top area (kicker, name, one or two lines) and a little air */
-private val TOP_WORDS_TV = 140.dp
-
-/** How tall the Books top area is on TV and wide screens, counting the header and tabs it sits behind */
+/** How tall the Books top area is on TV and wide screens, counting the header it sits under */
 private fun booksTopHeight(
     overlap: Dp,
     screenHeight: Dp,
-): Dp = (overlap + TOP_WORDS_TV).coerceAtMost(screenHeight * 0.5f)
+): Dp = coverTopHeight(screenHeight, overlap)
 
-/** "Keep reading · 64%" over the name */
-private fun topKicker(t: BookTile): String =
-    when {
-        t.isManga && t.status == "reading" -> "Keep reading"
-        t.status == "reading" -> (if (t.isAudio) "Keep listening" else "Keep reading") + " · ${(t.progress * 100).toInt()}%"
+/** Name, author, "Book · 2019 · Book 2 of The Drift · ebook and audiobook", and how far you are in the tag */
+private fun bookTopWords(t: BookTile): CoverTopWords =
+    CoverTopWords(
+        title = t.name,
+        by = t.author.takeIf { it.isNotBlank() },
+        facts =
+            listOfNotNull(
+                when {
+                    t.isManga -> "Manga"
+                    t.isAudio -> "Audiobook"
+                    else -> "Book"
+                },
+                t.year?.takeIf { it > 0 }?.toString(),
+                t.series.takeIf { it.isNotBlank() }?.let { s ->
+                    t.seriesIndex?.let { "Book " + it.toString().removeSuffix(".0") + " of " + s } ?: s
+                },
+                t.genres.firstOrNull(),
+                if (t.linked != null) "ebook and audiobook" else null,
+            ).joinToString(" · "),
+        tag = bookTag(t),
+    )
+
+/** "64% read" (or listened), "Finished", "+2 new", "New for you" */
+private fun bookTag(t: BookTile): String? {
+    val pct = (t.progress * 100).toInt()
+    return when {
+        t.notHere -> "Not on Glowfin yet"
+        t.newCount > 0 -> "+${t.newCount} new"
+        t.status == "reading" && t.isManga -> listOfNotNull(t.line.takeIf { it.isNotBlank() }, "Keep reading").joinToString(" · ")
+        t.status == "reading" && pct > 0 -> if (t.isAudio) "$pct% listened" else "$pct% read"
+        t.status == "reading" -> if (t.isAudio) "Keep listening" else "Keep reading"
         t.status == "done" -> "Finished"
         t.isNew -> "New for you"
-        t.isAudio -> "Audiobook"
-        t.isManga -> "Manga"
-        else -> "Book"
+        else -> null
     }
-
-/** "R. Vale · Book 2 of The Drift · ebook and audiobook" */
-private fun topLine(t: BookTile): String =
-    listOfNotNull(
-        t.author.takeIf { it.isNotBlank() },
-        t.series.takeIf { it.isNotBlank() }?.let { s ->
-            t.seriesIndex?.let { "Book " + it.toString().removeSuffix(".0") + " of " + s } ?: s
-        },
-        when {
-            t.isManga -> t.line.takeIf { it.isNotBlank() }?.let { "$it · manga" } ?: "manga"
-            t.linked != null -> "ebook and audiobook"
-            t.isAudio -> "audiobook"
-            else -> "ebook"
-        },
-    ).joinToString(" · ")
+}
 
 @Composable
 private fun SectionGrid(

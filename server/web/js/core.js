@@ -1012,7 +1012,7 @@ B.PAGE_TABS = {
   // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
   live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
-  games: [["For you", "#/games"], ["Consoles", "#/games?p=consoles"], ["Movie games", "#/games?p=movie"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
+  games: [["For you", "#/games"], ["Ember Road", "#/games?p=ember"], ["Movie games", "#/games?p=movie"], ["Consoles", "#/games?p=consoles"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {
