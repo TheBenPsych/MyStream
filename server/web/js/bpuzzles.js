@@ -564,7 +564,7 @@
     keyFn = true; draw();
   };
 
-  // ---------- Ben's five new games (2026-11-22): Quote it, Close-up, Who played them?, Which season?, 60-second blitz ----------
+  // ---------- Ben's new games (2026-11-22; Close-up removed 2026-11-23): Quote it, Who played them?, Which season?, 60-second blitz ----------
   // The first four share one engine: answering early is worth more (100 to 500), one wrong answer or
   // running out of time ends the run (the same as the app's RunGames.kt).
   const sid = (t) => t.id.replace(/-/g, "");
@@ -609,45 +609,26 @@
     keyFn = true; await next();
   };
 
+  // Quote it: a famous line from a movie or show (Ben 2026-11-23: well-known quotes, not random subtitle lines).
+  // web/movie-quotes.json is the same list as the app's; only lines from titles on Tower are used.
+  const quoteKey = (n) => n.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().replace(/^the /, "");
   PUZ.QUOTE = async (ctx) => {
-    if (!(await can("quotes"))) return notEnough(ctx, "Quote it reads subtitles on Tower. It arrives with Tower's next hourly update.");
-    const pool = (await titles()).filter((t) => !t.series);
-    if (pool.length < 8) return notEnough(ctx, "Quote it needs at least 8 movies on Tower." + tip());
-    let deck = fresh("QUOTE", pool);
+    const [pool, data] = await Promise.all([titles(), fetch("web/movie-quotes.json").then((r) => r.json())]);
+    const byName = {};
+    pool.forEach((t) => { (byName[quoteKey(t.name)] = byName[quoteKey(t.name)] || []).push(t); });
+    const quotes = (data.quotes || []).map((q) => { const t = (byName[quoteKey(q.t)] || []).find((x) => !x.year || !q.y || Math.abs(x.year - q.y) <= 1); return t ? { t, q } : null; }).filter(Boolean);
+    if (quotes.length < 5) return notEnough(ctx, `Quote it needs a few well-known movies or shows on Tower (it found ${quotes.length} famous lines).` + tip());
+    let deck = fresh("QUOTE", quotes, (x) => x.t.id);
     await runGame(ctx, "Quote it", "QUOTE", async () => {
-      for (let i = 0; i < 8; i++) {
-        if (!deck.length) deck = fresh("QUOTE", pool);
-        const t = deck.shift();
-        const lines = ((await B.call("GET", `api/scenes/${sid(t)}/quotes`).catch(() => null)) || {}).lines || [];
-        if (lines.length < 3) { saw("QUOTE", t.id); continue; }
-        const pick = shuffle(lines.map((_, k) => k)).slice(0, 3).sort((a, b) => a - b).map((k) => `“${hideName(t.name, lines[k])}”`);
-        return {
-          t, ask: "Which movie says this?", answer: t.name, choices: shuffle(otherNames(pool, t, 5).concat(t.name)),
-          html: `<div class="bg-ring"><div class="bgq-clue bg-quote">${pick.map((x, k) => `<p data-k="${k}"${k ? ' hidden' : ""}>${esc(x)}</p>`).join("")}</div></div>`,
-          tick: (q, l, all) => $$(".bg-quote p", q).forEach((p) => { p.hidden = !all && +p.dataset.k > Math.min(2, Math.floor((1 - l) * 3)); }),
-        };
-      }
-      return null;
-    }, 20000);
-  };
-
-  PUZ.CLOSEUP = async (ctx) => {
-    const real = await can("ok");
-    const pool = (await titles()).filter((t) => real || t.stills.length);
-    if (pool.length < 8) return notEnough(ctx, "Close-up needs at least 8 titles with pictures on Tower." + tip());
-    let deck = fresh("CLOSEUP", pool);
-    await runGame(ctx, "Close-up", "CLOSEUP", async () => {
-      if (!deck.length) deck = fresh("CLOSEUP", pool);
-      const t = deck.shift();
-      const src = real ? sceneSrc(t, `${Math.floor(Math.random() * 6)}.jpg`) : t.stills[0];
-      const back = t.stills[0] || t.poster;
+      if (!deck.length) deck = fresh("QUOTE", quotes, (x) => x.t.id);
+      const { t, q } = deck.shift();
       return {
-        t, ask: "What's this close-up from?", answer: t.name, choices: shuffle(otherNames(pool, t, 5).concat(t.name)),
-        html: `<div class="bg-ring"><div class="bgq-pic wide"><img id="bgPic" src="${src}" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='${back}'}" alt="" style="transform-origin:50% 45%"></div></div>`,
-        // Fully zoomed out with 30% of the time left, then it's a last chance
-        tick: (q, l, all) => { const z = all ? 0 : Math.min(1, Math.max(0, (l - 0.3) / 0.7)); $("#bgPic", q).style.transform = `scale(${1 + 5 * z * z})`; },
+        t, ask: "Which movie or show is this line from?", answer: t.name, choices: shuffle(otherNames(pool, t, 5).concat(t.name)),
+        html: `<div class="bg-ring"><div class="bgq-clue bg-quote"><p>“${esc(q.q)}”</p><div class="bg-hints" id="bgWho" hidden><span>Said by ${esc(q.who || "")}</span></div></div></div>`,
+        // Who says it shows once 40% of the time has gone
+        tick: (qq, l, all) => { const w = $("#bgWho", qq); if (w && q.who) w.hidden = !(all || l < 0.6); },
       };
-    });
+    }, 20000);
   };
 
   PUZ.ROLE = async (ctx) => {

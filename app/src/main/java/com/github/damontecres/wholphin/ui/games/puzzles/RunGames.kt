@@ -58,8 +58,8 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /*
- * Ben's five new one-player movie games (picked 2026-11-22): Quote it, Close-up, Who played them?,
- * Which season? and 60-second blitz. The first four share one engine: a round has a clock, answering
+ * Ben's new one-player movie games (picked 2026-11-22; Close-up removed 2026-11-23): Quote it, Who played them?,
+ * Which season? and 60-second blitz. The first three share one engine: a round has a clock, answering
  * early is worth more (100 to 500), and one wrong answer or running out of time ends the run.
  */
 
@@ -76,6 +76,8 @@ data class RunRound(
     val lines: List<String> = emptyList(),
     /** Used when Tower can't take a picture */
     val fallback: String? = null,
+    /** Shown partway through the round (Quote it: who says the line) */
+    val hint: String? = null,
 )
 
 sealed interface RunState {
@@ -289,59 +291,70 @@ internal fun hideName(
 
 // ---------------- Quote it ----------------
 
-/** "Quote it": three lines people say in a movie, from its subtitles. Name the movie. */
+/**
+ * "Quote it": a famous line from a movie or show (Ben 2026-11-23: well-known quotes, not random subtitle
+ * lines). The lines live in res/raw/movie_quotes.json (the same list as the browser's movie-quotes.json);
+ * only lines from titles that are on Tower are used. Who says it shows partway through as a hint.
+ */
 @HiltViewModel
 class QuoteItViewModel
     @Inject
     constructor(
+        @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
         pool: PuzzlePool,
         actions: PuzzleActions,
-        private val helper: GameLibraryClient,
     ) : RunGameViewModel(pool, actions) {
         override val boardKey = BOARD_KEY
         override val roundMs = 20_000L
         private var titles: List<PuzzleTitle> = emptyList()
-        private var deck = ArrayDeque<PuzzleTitle>()
+        private var quotes: List<Pair<PuzzleTitle, org.json.JSONObject>> = emptyList()
+        private var deck = ArrayDeque<Pair<PuzzleTitle, org.json.JSONObject>>()
 
         init {
             start()
         }
 
         override suspend fun setup(): String? {
-            if (!towerCan(helper, "quotes")) return "Quote it reads subtitles on Tower. It arrives with Tower's next hourly update."
-            titles = pool.titles().filter { !it.isSeries }
-            if (titles.size < 8) return notEnough("Not enough movies to play.", pool.mode())
-            deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
+            titles = pool.titles()
+            val all =
+                context.resources
+                    .openRawResource(com.github.damontecres.wholphin.R.raw.movie_quotes)
+                    .bufferedReader()
+                    .use { org.json.JSONObject(it.readText()) }
+                    .getJSONArray("quotes")
+            val byName = titles.groupBy { quoteKey(it.name) }
+            quotes =
+                (0 until all.length()).mapNotNull { i ->
+                    val q = all.getJSONObject(i)
+                    val year = q.optInt("y")
+                    val t =
+                        byName[quoteKey(q.getString("t"))]?.firstOrNull {
+                            it.year == null || year == 0 ||
+                                kotlin.math.abs(it.year - year) <= 1
+                        }
+                    t?.let { it to q }
+                }
+            if (quotes.size < 5) {
+                return notEnough(
+                    "Quote it needs a few well-known movies or shows on Tower (it found ${quotes.size} famous lines).",
+                    pool.mode(),
+                )
+            }
+            deck = ArrayDeque(pool.freshFirst(BOARD_KEY, quotes) { it.first.id })
             return null
         }
 
         override suspend fun nextRound(): RunRound? {
-            repeat(8) {
-                if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
-                val t = deck.removeFirst()
-                val lines =
-                    try {
-                        val arr = helper.getJson("/api/scenes/${t.id.toString().replace("-", "")}/quotes").optJSONArray("lines")
-                        (0 until (arr?.length() ?: 0)).map { arr!!.getString(it) }
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                if (lines.size >= 3) {
-                    // Three lines from across the movie, in order, with the name hidden
-                    val pick =
-                        lines.indices
-                            .shuffled()
-                            .take(3)
-                            .sorted()
-                            .map { "“${hideName(t.name, lines[it])}”" }
-                    return RunRound(t, titleChoices(t, titles), t.name, "Which movie says this?", lines = pick)
-                }
-                // No English text subtitles: don't pick it again soon
-                pool.saw(BOARD_KEY, t.id)
-            }
-            return null
+            if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, quotes) { it.first.id })
+            val (t, q) = deck.removeFirst()
+            return RunRound(
+                t,
+                titleChoices(t, titles),
+                t.name,
+                "Which movie or show is this line from?",
+                lines = listOf("“${q.getString("q")}”"),
+                hint = q.optString("who").takeIf { it.isNotBlank() }?.let { "Said by $it" },
+            )
         }
 
         companion object {
@@ -349,52 +362,15 @@ class QuoteItViewModel
         }
     }
 
-// ---------------- Close-up ----------------
-
-/** "Close-up": a real scene starts zoomed right in and slowly zooms out. Name the movie or show. */
-@HiltViewModel
-class CloseUpViewModel
-    @Inject
-    constructor(
-        pool: PuzzlePool,
-        actions: PuzzleActions,
-        private val helper: GameLibraryClient,
-    ) : RunGameViewModel(pool, actions) {
-        override val boardKey = BOARD_KEY
-        private var titles: List<PuzzleTitle> = emptyList()
-        private var deck = ArrayDeque<PuzzleTitle>()
-        private var real = false
-
-        init {
-            start()
-        }
-
-        override suspend fun setup(): String? {
-            real = towerCan(helper, "ok")
-            titles = pool.titles().filter { real || it.stills.isNotEmpty() }
-            if (titles.size < 8) return notEnough("Not enough movies with pictures to play.", pool.mode())
-            deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
-            return null
-        }
-
-        override suspend fun nextRound(): RunRound? {
-            if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, titles) { it.id })
-            val t = deck.removeFirst()
-            val pic = if (real) sceneUrl(helper, t, "${(0 until 6).random()}.jpg") else t.stills.first()
-            return RunRound(
-                t,
-                titleChoices(t, titles),
-                t.name,
-                "What's this close-up from?",
-                listOf(pic),
-                fallback = t.stills.firstOrNull(),
-            )
-        }
-
-        companion object {
-            const val BOARD_KEY = "CLOSE_UP"
-        }
-    }
+/** A name in a form that matches however Tower spells it ("The Lord of the Rings: The Two Towers" = "lord of the rings the two towers") */
+internal fun quoteKey(name: String): String =
+    name
+        .lowercase()
+        .replace("&", "and")
+        .replace(Regex("[^a-z0-9 ]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .removePrefix("the ")
 
 // ---------------- Who played them? ----------------
 
@@ -529,11 +505,10 @@ class WhichSeasonViewModel
 fun QuoteItScreen(
     modifier: Modifier = Modifier,
     viewModel: QuoteItViewModel = hiltViewModel(),
-) = RunGameScreen("Quote it", "Reading subtitles from Tower…", viewModel, modifier) { s, isTv ->
-    // The lines show one by one as the clock runs
-    val shown = if (s.won != null) 3 else 1 + ((1f - s.left) * 3).toInt().coerceAtMost(2)
+) = RunGameScreen("Quote it", "Finding famous lines from your library…", viewModel, modifier) { s, isTv ->
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier =
             Modifier
                 .widthIn(max = 860.dp)
@@ -541,49 +516,21 @@ fun QuoteItScreen(
                 .clip(RoundedCornerShape(16.dp))
                 .background(PuzzlePanel)
                 .timerRing(s.left, corner = 16.dp)
-                .padding(horizontal = 24.dp, vertical = 18.dp),
+                .padding(horizontal = 28.dp, vertical = 24.dp),
     ) {
-        s.r.lines.take(shown).forEach {
+        s.r.lines.forEach {
             Text(
                 it,
-                fontSize = if (isTv) 21.sp else 17.sp,
-                lineHeight = if (isTv) 29.sp else 24.sp,
+                fontSize = if (isTv) 28.sp else 21.sp,
+                lineHeight = if (isTv) 38.sp else 29.sp,
                 fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.SemiBold,
                 color = Color.White,
+                textAlign = TextAlign.Center,
             )
         }
-    }
-}
-
-@Composable
-fun CloseUpScreen(
-    modifier: Modifier = Modifier,
-    viewModel: CloseUpViewModel = hiltViewModel(),
-) = RunGameScreen("Close-up", "Taking pictures from your library…", viewModel, modifier) { s, isTv ->
-    // Fully zoomed out with 30% of the time left; then it's a last chance
-    val z = ((s.left - .3f) / .7f).coerceIn(0f, 1f)
-    val zoom = if (s.won != null) 1f else 1f + 5f * z * z
-    Box(
-        modifier =
-            (if (isTv) Modifier.width(tvPictureHeight(0.44f) * (16f / 9f)) else Modifier.fillMaxWidth())
-                .timerRing(s.left, corner = 14.dp)
-                .padding(6.dp)
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(PuzzlePanel),
-    ) {
-        AsyncImage(
-            model = if (s.broken) s.r.fallback else s.r.pictures.first(),
-            onError = { viewModel.pictureFailed() },
-            contentDescription = "A close-up",
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier.fillMaxSize().graphicsLayer {
-                    scaleX = zoom
-                    scaleY = zoom
-                    transformOrigin = TransformOrigin(.5f, .45f)
-                },
-        )
+        // Who says it shows once 40% of the time has gone (or once it's answered)
+        if (s.r.hint != null && (s.won != null || s.left < .6f)) HintChips(listOf(s.r.hint))
     }
 }
 

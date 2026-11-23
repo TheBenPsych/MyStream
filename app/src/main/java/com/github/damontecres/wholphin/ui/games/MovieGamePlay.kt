@@ -9,7 +9,6 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.games.party.PartyJoinScreen
 import com.github.damontecres.wholphin.ui.games.puzzles.BlitzScreen
-import com.github.damontecres.wholphin.ui.games.puzzles.CloseUpScreen
 import com.github.damontecres.wholphin.ui.games.puzzles.LocalPuzzleAccent
 import com.github.damontecres.wholphin.ui.games.puzzles.MovieGridScreen
 import com.github.damontecres.wholphin.ui.games.puzzles.PosterPuzzleScreen
@@ -63,10 +62,6 @@ private fun MovieGamePlayContent(
 
         MovieGame.QUOTE -> {
             QuoteItScreen(modifier)
-        }
-
-        MovieGame.CLOSEUP -> {
-            CloseUpScreen(modifier)
         }
 
         MovieGame.ROLE -> {
