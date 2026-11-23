@@ -306,6 +306,8 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .top10 .num svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .top10 .num text { font-family: "Glowfin Anton", Impact, sans-serif; font-size: 312px; fill: none; stroke: url(#gfT10); stroke-width: 5px; transition: fill .15s; }
 .top10:hover .num text, .top10:focus-within .num text { fill: url(#gfT10); stroke-width: 0; filter: drop-shadow(0 0 10px rgba(63,224,232,.5)); }
+/* Phones and tablets have no hover (Ben 2026-11-22): their Top 10 numbers are always filled */
+@media (hover: none) { .top10 .num text { fill: url(#gfT10); stroke-width: 0; } }
 .top10 .poster { z-index: 1; }
 
 .tiles2 { display: flex; gap: 12px; overflow-x: auto; padding: 6px var(--gutter) 10px; scrollbar-width: none; }

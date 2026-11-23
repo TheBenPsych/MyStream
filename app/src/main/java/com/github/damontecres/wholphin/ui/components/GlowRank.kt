@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /** Anton: the tall cinema-poster numbers of the Top 10 rows (Ben's pick T1, ui-8) */
 val GlowfinNumberFont = FontFamily(Font(R.font.glowfin_anton, FontWeight.Normal))
@@ -37,7 +38,8 @@ val GlowfinNumberFont = FontFamily(Font(R.font.glowfin_anton, FontWeight.Normal)
 /**
  * Ben's Top 10 look ("Glow outline", 2026-11-22): a hollow Anton number outlined in the Glowfin colours running
  * left to right (violet > blue > aqua), as tall as the poster. When the poster beside it has focus ([lit]) the
- * number fills in with the same colours and a soft glow. Ben's rule for every Top 10 row: the number sits fully
+ * number fills in with the same colours and a soft glow. On phones and tablets (no focus) it is always filled.
+ * Ben's rule for every Top 10 row: the number sits fully
  * BESIDE its poster (never tucked behind it), and every number gets the same width box. "10" is drawn slimmer so
  * it is as tall as the single numbers and fits the same box. Cheap to draw: one text layout, no blur.
  */
@@ -50,6 +52,8 @@ fun GlowRankNumber(
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 1)
     val density = LocalDensity.current
+    // Ben 2026-11-22: phones and tablets have nothing to focus or hover, so their numbers are always filled
+    val filled = lit || !rememberIsTv()
     val numberHeight = posterHeight * RANK_HEIGHT_SHARE
     val fontSize = with(density) { (numberHeight / ANTON_CAP_HEIGHT).toSp() }
     Spacer(
@@ -80,7 +84,7 @@ fun GlowRankNumber(
                 val outline = Stroke(width = stroke, join = StrokeJoin.Round)
                 onDrawBehind {
                     withTransform({ scale(squeeze, 1f, pivot = Offset(size.width / 2f, 0f)) }) {
-                        if (lit) {
+                        if (filled) {
                             drawText(layout, brush, Offset(x, y), shadow = glow)
                         } else {
                             drawText(layout, brush, Offset(x, y), drawStyle = outline)
