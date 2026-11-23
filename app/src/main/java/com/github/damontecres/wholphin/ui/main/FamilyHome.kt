@@ -22,11 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +76,8 @@ data class FamilyCard(
     val title: String,
     val image: String?,
     val destination: Destination,
+    /** The title itself, so the TV Home can show its art and words at the top (new look) */
+    val item: com.github.damontecres.wholphin.data.model.BaseItem? = null,
 )
 
 /** What the Kids and Guest Homes show, for one profile ([key] says whose) */
@@ -109,6 +113,8 @@ fun KidsHome(
     modifier: Modifier = Modifier,
 ) {
     val scroll = rememberScrollState()
+    val focus = rememberFamilyFocus()
+    FamilyArt(wide = wide, focus = focus)
     Column(
         verticalArrangement = Arrangement.spacedBy(if (wide) 22.dp else 16.dp),
         modifier =
@@ -122,7 +128,9 @@ fun KidsHome(
                     bottom = 24.dp,
                 ),
     ) {
-        FamilyHeader(title = "Hi there!", line = "What do you want to watch?", wide = wide)
+        FamilyTop(wide = wide, focus = focus) {
+            FamilyHeader(title = "Hi there!", line = "What do you want to watch?", wide = wide)
+        }
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
                 KidsDoors.forEachIndexed { i, door ->
@@ -132,6 +140,7 @@ fun KidsHome(
                         onClick = { onDoor(door) },
                         modifier =
                             Modifier
+                                .onFocusChanged { if (it.isFocused) focus.raw = null }
                                 .weight(1f)
                                 .widthIn(max = 300.dp)
                                 .height(112.dp)
@@ -156,7 +165,13 @@ fun KidsHome(
         val pickIds = data.picks.map { it.id }.toSet()
         val rest = data.cards.filter { it.id !in pickIds }
         if (data.picks.isNotEmpty()) {
-            FamilyRow(title = "Picked for you", cards = data.picks, posterHeight = if (wide) 150.dp else 140.dp, onCard = onCard)
+            FamilyRow(
+                title = "Picked for you",
+                cards = data.picks,
+                posterHeight = if (wide) 150.dp else 140.dp,
+                onCard = onCard,
+                onFocus = { focus.raw = it },
+            )
         }
         if (rest.isNotEmpty() || data.picks.isEmpty()) {
             FamilyRow(
@@ -165,6 +180,7 @@ fun KidsHome(
                 empty = if (data.loaded) "Nothing started yet. Pick Movies or Shows to find something fun!" else null,
                 posterHeight = if (wide) 150.dp else 140.dp,
                 onCard = onCard,
+                onFocus = { focus.raw = it },
             )
         }
     }
@@ -179,6 +195,8 @@ fun GuestHome(
     onCard: (FamilyCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focus = rememberFamilyFocus()
+    FamilyArt(wide = wide, focus = focus)
     Column(
         verticalArrangement = Arrangement.spacedBy(if (wide) 22.dp else 16.dp),
         modifier =
@@ -192,12 +210,14 @@ fun GuestHome(
                     bottom = 24.dp,
                 ),
     ) {
-        FamilyHeader(
-            title = "Welcome!",
-            line = "Watch anything here. Nothing you watch is saved.",
-            wide = wide,
-            tag = "Guest",
-        )
+        FamilyTop(wide = wide, focus = focus) {
+            FamilyHeader(
+                title = "Welcome!",
+                line = "Watch anything here. Nothing you watch is saved.",
+                wide = wide,
+                tag = "Guest",
+            )
+        }
         val height = if (wide) 165.dp else 140.dp
         FamilyRow(
             title = "Popular here",
@@ -206,6 +226,7 @@ fun GuestHome(
             posterHeight = height,
             firstFocus = firstFocus,
             onCard = onCard,
+            onFocus = { focus.raw = it },
         )
         if (data.recent.isNotEmpty()) {
             FamilyRow(
@@ -214,6 +235,7 @@ fun GuestHome(
                 posterHeight = height,
                 firstFocus = if (data.cards.isEmpty()) firstFocus else null,
                 onCard = onCard,
+                onFocus = { focus.raw = it },
             )
         }
     }
@@ -273,7 +295,8 @@ private fun KidsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(if (wide) 28.dp else 24.dp)
+    // New look: round buttons, in the Kids colours
+    val shape = RoundedCornerShape(50)
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -322,7 +345,11 @@ private fun FamilyRow(
     onCard: (FamilyCard) -> Unit,
     empty: String? = null,
     firstFocus: FocusRequester? = null,
+    onFocus: (FamilyCard) -> Unit = {},
 ) {
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
     Column {
         Text(
             text = title,
@@ -346,7 +373,20 @@ private fun FamilyRow(
                         height = posterHeight,
                         scale = 1f,
                         onClick = { onCard(card) },
-                        modifier = if (firstFocus != null && card.id == cards.first().id) Modifier.focusRequester(firstFocus) else Modifier,
+                        // New look: cover art only on TV (Ben: "just cover art"); phones keep the names
+                        nameUnder = !isTv,
+                        modifier =
+                            Modifier
+                                .onFocusChanged { if (it.isFocused) onFocus(card) }
+                                .then(
+                                    if (firstFocus != null &&
+                                        card.id == cards.first().id
+                                    ) {
+                                        Modifier.focusRequester(firstFocus)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                     )
                 }
             }
@@ -362,6 +402,7 @@ private fun FamilyPoster(
     scale: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    nameUnder: Boolean = true,
 ) {
     val shape = RoundedCornerShape(10.dp)
     val width = height * 2f / 3f
@@ -376,7 +417,7 @@ private fun FamilyPoster(
                 ),
             border =
                 ClickableSurfaceDefaults.border(
-                    focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
+                    focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Outline), inset = 0.dp, shape = shape),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier = modifier.glowFocus(shape = shape).width(width).height(height),
@@ -406,16 +447,18 @@ private fun FamilyPoster(
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = card.title,
-            color = BenflixColors.Soft,
-            fontSize = BenflixType.small * scale,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = BenflixType.small * scale * 1.2f,
-        )
+        if (nameUnder) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = card.title,
+                color = BenflixColors.Soft,
+                fontSize = BenflixType.small * scale,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = BenflixType.small * scale * 1.2f,
+            )
+        }
     }
 }
 
@@ -462,3 +505,69 @@ fun ProfileBadge(
 
 /** The Kids badge colour (warm amber, as on the sheet) */
 private val KIDS_BADGE = Color(0xFFFFB547)
+
+/** Which card the remote is on, on the Kids and Guest Homes ([shown] waits until you stop moving) */
+@androidx.compose.runtime.Stable
+internal class FamilyFocus {
+    var raw by androidx.compose.runtime.mutableStateOf<FamilyCard?>(null)
+    var shown by androidx.compose.runtime.mutableStateOf<FamilyCard?>(null)
+}
+
+@Composable
+internal fun rememberFamilyFocus(): FamilyFocus {
+    val focus = androidx.compose.runtime.remember { FamilyFocus() }
+    androidx.compose.runtime.LaunchedEffect(focus.raw) {
+        // Like Home: the top only changes once you stop moving, so nothing flashes along a row
+        kotlinx.coroutines.delay(if (focus.raw == null) 0L else FAMILY_SETTLE_MS)
+        focus.shown = focus.raw
+    }
+    return focus
+}
+
+/**
+ * Glowfin new look "Kids pages in the same layout" (Ben 2026-11-22): on a TV the Kids (and Guest) Home gets the
+ * big picture of the card you're on behind everything, like the grown-up Home, in the Kids colours.
+ */
+@Composable
+internal fun FamilyArt(
+    wide: Boolean,
+    focus: FamilyFocus,
+) {
+    if (!wide) return
+    val height = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+    com.github.damontecres.wholphin.ui.door
+        .DoorArt(item = focus.shown?.item, pageHeight = height)
+}
+
+/**
+ * The top of the Kids and Guest Homes on a TV: the greeting, or (once you're on a card) its logo or name and a
+ * few facts, like the grown-up Home's top (the easy version: no story, no scores). The same height either way, so
+ * the buttons and rows never jump.
+ */
+@Composable
+internal fun FamilyTop(
+    wide: Boolean,
+    focus: FamilyFocus,
+    greeting: @Composable () -> Unit,
+) {
+    if (!wide) {
+        greeting()
+        return
+    }
+    Box(contentAlignment = Alignment.BottomStart, modifier = Modifier.fillMaxWidth().height(FAMILY_TOP)) {
+        val item = focus.shown?.item
+        if (item == null) {
+            greeting()
+        } else {
+            com.github.damontecres.wholphin.ui.door.DoorInfo(
+                item = item,
+                easy = true,
+                brightArt = false,
+                modifier = Modifier.widthIn(max = 560.dp),
+            )
+        }
+    }
+}
+
+private const val FAMILY_SETTLE_MS = 350L
+private val FAMILY_TOP = 120.dp
