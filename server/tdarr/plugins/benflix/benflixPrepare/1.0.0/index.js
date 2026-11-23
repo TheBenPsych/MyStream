@@ -5,8 +5,10 @@
 //    anime falls back to Japanese), and never removes the last sound track,
 //  - keeps English subtitles (and untagged ones), removes the rest,
 //  - drops cover pictures and data tracks, keeps fonts and chapters,
-//  - re-encodes the video to HEVC on the Intel Arc card with Quick Sync (10-bit stays 10-bit), at about half
-//    the old bitrate but never below a floor (1080p 2.6 Mbps, about 450 MB for a 24 minute episode).
+//  - re-encodes the video to HEVC on the Intel Arc card with Quick Sync (10-bit stays 10-bit), sized to land
+//    inside Ben's size goal (2026-11-22: episodes 400-800 MB, movies 0.8-1.5 GB, aiming near the top), with
+//    safety floors that always win: never under the bottom of the goal, never under about 12 MB a minute for
+//    1080p, and an HEVC file loses at most half. See sizePlan below.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.plugin = exports.details = void 0;
 var fs = require("fs");
@@ -24,10 +26,15 @@ var details = function () { return ({
   sidebarPosition: -1,
   icon: "faArrowRight",
   inputs: [
-    { label: "Keep this share of the video data", name: "keepPercent", type: "number", defaultValue: "50",
-      inputUI: { type: "text" }, tooltip: "The new video gets this % of the old video's bitrate (never below the minimum below)." },
-    { label: "Lowest 1080p bitrate (kbps)", name: "minKbps1080", type: "number", defaultValue: "2600",
-      inputUI: { type: "text" }, tooltip: "About 450 MB for a 24 minute episode. 720p gets 60% of this, SD 40%, 4K 3x." },
+    { label: "Episode goal from (MB)", name: "episodeMinMB", type: "number", defaultValue: "400", inputUI: { type: "text" }, tooltip: "" },
+    { label: "Episode goal to (MB)", name: "episodeMaxMB", type: "number", defaultValue: "800", inputUI: { type: "text" }, tooltip: "" },
+    { label: "Movie goal from (MB)", name: "movieMinMB", type: "number", defaultValue: "800", inputUI: { type: "text" }, tooltip: "" },
+    { label: "Movie goal to (MB)", name: "movieMaxMB", type: "number", defaultValue: "1500", inputUI: { type: "text" }, tooltip: "" },
+    { label: "Aim", name: "aim", type: "string", defaultValue: "top",
+      inputUI: { type: "dropdown", options: ["top", "middle", "bottom"] }, tooltip: "Where in the goal to aim. Top = best picture." },
+    { label: "Picture floor (MB a minute, 1080p)", name: "floorMBMin", type: "number", defaultValue: "12",
+      inputUI: { type: "text" }, tooltip: "Never smaller than this per minute. 720p gets 60%, SD 40%." },
+    { label: "HEVC files lose at most (%)", name: "hevcMaxCut", type: "number", defaultValue: "50", inputUI: { type: "text" }, tooltip: "" },
     { label: "Encoder", name: "encoder", type: "string", defaultValue: "qsv",
       inputUI: { type: "dropdown", options: ["qsv", "cpu"] }, tooltip: "qsv = Intel GPU (normal). cpu = libx265 (slow, testing only)." },
     { label: "GPU device", name: "device", type: "string", defaultValue: "/dev/dri/renderD128",
@@ -60,6 +67,8 @@ var LANGS = {
   vietnamese: ["vie", "vi"], persian: ["per", "fas", "fa"], ukrainian: ["ukr", "uk"], romanian: ["rum", "ron", "ro"],
 };
 var UNTAGGED = ["", "und", "unk", "unknown", "mis", "zxx", "mul"];
+
+var num = function (v, d) { var n = Number(v); return isFinite(n) && n > 0 ? n : d; };
 
 var langOf = function (s) { return String((s.tags && (s.tags.language || s.tags.LANGUAGE)) || "").toLowerCase().trim(); };
 
@@ -147,6 +156,51 @@ var videoKbps = function (args, v, streams) {
   return Math.max(total - other, total * 0.5) / 1000;
 };
 
+var AIMS = { top: 0.875, middle: 0.5, bottom: 0.125 };
+
+// Works out the size the new file should be, in MB, and why. Pure, so it can be tested on its own.
+//   o: { isMovie, minutes, height, width, sizeMB, codec, srcVideoKbps, audioKbps, goal: {epMin, epMax, mvMin, mvMax},
+//        aim, floorMBMin, hevcMaxCut }
+// Returns { targetMB, videoKbps, why: [...] }
+var sizePlan = function (o) {
+  var why = [];
+  var min = o.isMovie ? o.goal.mvMin : o.goal.epMin;
+  var max = o.isMovie ? o.goal.mvMax : o.goal.epMax;
+  var f = AIMS[o.aim] !== undefined ? AIMS[o.aim] : AIMS.top;
+  var target = min + (max - min) * f;
+  why.push("aim " + Math.round(target) + " MB (goal " + min + "-" + max + " MB)");
+  // Safety 1: never under the bottom of the goal
+  // Safety 2: the picture floor per minute (by size of the picture)
+  var h = o.height || 1080, w = o.width || 1920;
+  var scale = (h > 800 || w > 1400) ? 1 : (h > 500 || w > 1000) ? 0.6 : 0.4;
+  var floor = Math.max(min, (o.floorMBMin || 12) * scale * (o.minutes || 0));
+  if (floor > target) { target = floor; why.push("raised to " + Math.round(floor) + " MB by the picture floor (" + Math.round(o.minutes) + " min)"); }
+  // Safety 3: an HEVC file loses at most hevcMaxCut %
+  if (o.codec === "hevc") {
+    var least = o.sizeMB * (1 - (o.hevcMaxCut || 50) / 100);
+    if (least > target) { target = least; why.push("raised to " + Math.round(least) + " MB: HEVC loses at most " + (o.hevcMaxCut || 50) + "%"); }
+  }
+  // Must be a real saving
+  if (target > o.sizeMB * 0.85) { target = o.sizeMB * 0.85; why.push("capped at 85% of the old size"); }
+  var secs = (o.minutes || 0) * 60;
+  var totalKbps = secs > 0 ? target * 8000 / secs : 0;
+  // Sound and subtitles are copied as they are; the video gets the rest (1% for the container)
+  var videoKbps = Math.round(totalKbps * 0.99 - (o.audioKbps || 0));
+  // The picture itself never gets less than 85% of the floor, however much room the sound takes
+  var lowest = Math.round((o.floorMBMin || 12) * scale * 8000 / 60 * 0.85);
+  if (videoKbps < lowest) {
+    videoKbps = lowest;
+    target = (lowest + (o.audioKbps || 0)) / 0.99 * secs / 8000;
+    why.push("raised to " + Math.round(target) + " MB so the picture keeps " + lowest + " kbps");
+  }
+  if (o.srcVideoKbps > 0 && videoKbps > o.srcVideoKbps * 0.85) {
+    videoKbps = Math.round(o.srcVideoKbps * 0.85);
+    target = Math.max(min, (videoKbps + (o.audioKbps || 0)) / 0.99 * secs / 8000);
+  }
+  return { targetMB: Math.round(target), videoKbps: videoKbps, why: why };
+};
+exports.sizePlan = sizePlan;
+
 var plugin = async function (args) {
   var inputs = args.inputs || {};
   var cmd = args.variables && args.variables.ffmpegCommand;
@@ -199,14 +253,34 @@ var plugin = async function (args) {
   var v = video[0];
   var tenBit = /10|12/.test(String(v.pix_fmt || "")) || Number(v.bits_per_raw_sample) >= 10;
   var srcKbps = videoKbps(args, v, streams);
-  var keep = Number(inputs.keepPercent) > 0 ? Number(inputs.keepPercent) : 50;
-  var min1080 = Number(inputs.minKbps1080) > 0 ? Number(inputs.minKbps1080) : 2600;
-  var h = Number(v.height) || 1080, w = Number(v.width) || 1920;
-  var floor = (h > 1200 || w > 2600) ? min1080 * 3 : (h > 800 || w > 1400) ? min1080 : (h > 500 || w > 1000) ? min1080 * 0.6 : min1080 * 0.4;
-  var target = Math.max(floor, srcKbps * keep / 100);
-  // Never above 80% of the old file's video (the size check after needs a real saving)
-  if (srcKbps > 0) target = Math.min(target, srcKbps * 0.8);
-  target = Math.round(target);
+  var probe = (args.inputFileObj && args.inputFileObj.ffProbeData) || {};
+  var secs = Number((probe.format || {}).duration) || Number(v.duration) || 0;
+  if (!(secs > 0)) throw new Error("Couldn't tell how long the video is");
+  var tagBps = function (s) {
+    var t = s.tags || {};
+    var k = Object.keys(t).filter(function (x) { return /^BPS(-eng)?$/i.test(x); })[0];
+    return k ? Number(t[k]) : 0;
+  };
+  var audioKbps = 0;
+  streams.forEach(function (s) {
+    if (s.removed) return;
+    if (s.codec_type === "audio") audioKbps += (Number(s.bit_rate) || tagBps(s) || 384000) / 1000;
+    if (s.codec_type === "subtitle") audioKbps += (Number(s.bit_rate) || tagBps(s) || 2000) / 1000;
+  });
+  var file = args.originalLibraryFile ? args.originalLibraryFile._id : args.inputFileObj._id;
+  var sizeMB = 0;
+  try { sizeMB = fs.statSync(file).size / 1e6; } catch (e) { sizeMB = Number(args.inputFileObj.file_size || 0); }
+  var plan = sizePlan({
+    isMovie: /movie/i.test(file.split("/").slice(0, -1).join("/")),
+    minutes: secs / 60, height: Number(v.height) || 1080, width: Number(v.width) || 1920, sizeMB: sizeMB,
+    codec: String(v.codec_name || "").toLowerCase(), srcVideoKbps: srcKbps, audioKbps: audioKbps,
+    goal: { epMin: num(inputs.episodeMinMB, 400), epMax: num(inputs.episodeMaxMB, 800), mvMin: num(inputs.movieMinMB, 800), mvMax: num(inputs.movieMaxMB, 1500) },
+    aim: String(inputs.aim || "top"), floorMBMin: num(inputs.floorMBMin, 12), hevcMaxCut: num(inputs.hevcMaxCut, 50),
+  });
+  var target = plan.videoKbps;
+  args.jobLog("Size plan: " + Math.round(sizeMB) + " MB -> about " + plan.targetMB + " MB: " + plan.why.join("; "));
+  args.variables.user = args.variables.user || {};
+  args.variables.user.benflixPlanMB = String(plan.targetMB);
   var maxrate = Math.round(target * 1.5) + "k", bufsize = Math.round(target * 3) + "k";
   if (useCpu) {
     v.outputArgs.push("-c:{outputIndex}", "libx265", "-b:{outputIndex}", target + "k", "-maxrate:{outputIndex}", maxrate,
@@ -221,7 +295,9 @@ var plugin = async function (args) {
   }
   if (cmd.container === "mp4" || cmd.container === "m4v") v.outputArgs.push("-tag:{outputIndex}", "hvc1");
   args.jobLog("Video: " + String(v.codec_name).toUpperCase() + (tenBit ? " 10-bit" : "") + " -> HEVC on "
-    + (useCpu ? "the CPU" : "the GPU") + ", " + Math.round(srcKbps) + " kbps -> " + target + " kbps (lowest " + Math.round(floor) + ")");
+    + (useCpu ? "the CPU" : "the GPU") + ", " + Math.round(srcKbps) + " kbps -> " + target + " kbps");
+  // Marks the file as shrunk, so it is never shrunk twice
+  cmd.overallOuputArguments.push("-metadata", "BENFLIX=shrunk");
   cmd.overallOuputArguments.push("-max_muxing_queue_size", "9999");
   cmd.shouldProcess = true;
   return { outputFileObj: args.inputFileObj, outputNumber: 1, variables: args.variables };

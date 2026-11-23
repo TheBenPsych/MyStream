@@ -2,7 +2,8 @@
 # Benflix: installs Tdarr on Tower and sets it up to shrink big videos by itself (Ben's picks, 2026-11-16).
 #   - Only the anime folders for now (every folder in Media with "anime" in its name)
 #   - Re-encodes to HEVC on the Intel Arc card (Quick Sync), so every TV and phone can still play it
-#   - Episodes over 1 GB and movies over 2 GB, and only files that aren't HEVC or AV1 yet
+#   - Size goals (Ben 2026-11-22): episodes 400-800 MB, movies 800 MB-1.5 GB. Files already in the goal
+#     or smaller are left alone; bigger ones aim near the top of the goal, with safety floors
 #   - Keeps English + the original language for sound (anime keeps Japanese) and English subtitles
 #   - Works 1 AM to 8 AM, and doesn't start anything new while someone is watching Benflix
 #   - Keeps the original in a backup folder for 3 days, and only replaces a file when the new one
@@ -14,10 +15,18 @@
 set -u
 
 # ---- Ben's settings (change here, Tower picks it up within the hour) ----
-EPISODE_GB=${TDARR_EPISODE_GB:-1}
-MOVIE_GB=${TDARR_MOVIE_GB:-2}
-KEEP_PERCENT=50     # new video gets about this % of the old video bitrate
-MIN_KBPS_1080=2600  # never below this for 1080p (about 450 MB per 24 min episode; 720p 60%, SD 40%)
+# Size goals (Ben 2026-11-22, picks on the "Shrinker size goals" page): files at or under the top of the
+# goal are left alone; bigger ones aim inside it. Safety checks always win over the goal:
+EPISODE_MIN_MB=400  # episodes: goal 400 to 800 MB
+EPISODE_MAX_MB=800
+MOVIE_MIN_MB=800    # movies: goal 800 MB to 1.5 GB
+MOVIE_MAX_MB=1500
+AIM=top             # where in the goal to aim: top (best picture), middle, bottom
+FLOOR_MB_MIN=12     # picture floor: never under about this many MB a minute for 1080p (720p 60%, SD 40%)
+HEVC_MAX_CUT=50     # files that are already HEVC lose at most this % (squeezing twice looks blocky)
+PICTURE_CHECK=true  # compare a few short clips after shrinking; keep the original if it looks worse
+DOWNLOAD_SIZES=good # Sonarr/Radarr prefer good-quality copies (about 3 GB an episode, 8 GB a movie)
+RULES_VERSION=2     # bump when the shrink rules change, so files skipped before are looked at again
 BACKUP_DAYS=3
 NIGHT_START=1       # 1 AM
 NIGHT_END=8         # 8 AM
@@ -47,9 +56,13 @@ if [ -f "$SETTINGS_FILE" ]; then
     v=${v%$'\r'}
     case "$k" in
       NIGHT_START | NIGHT_END) num_in "$v" 0 23 && printf -v "$k" '%s' "$v" ;;
-      EPISODE_GB | MOVIE_GB) [[ "$v" =~ ^[0-9]{1,2}(\.[0-9])?$ ]] && [ "$v" != 0 ] && printf -v "$k" '%s' "$v" ;;
-      KEEP_PERCENT) num_in "$v" 20 90 && KEEP_PERCENT=$v ;;
-      MIN_KBPS_1080) num_in "$v" 800 8000 && MIN_KBPS_1080=$v ;;
+      EPISODE_MIN_MB | EPISODE_MAX_MB) num_in "$v" 100 20000 && printf -v "$k" '%s' "$v" ;;
+      MOVIE_MIN_MB | MOVIE_MAX_MB) num_in "$v" 100 50000 && printf -v "$k" '%s' "$v" ;;
+      AIM) case "$v" in top | middle | bottom) AIM=$v ;; esac ;;
+      FLOOR_MB_MIN) num_in "$v" 4 40 && FLOOR_MB_MIN=$v ;;
+      HEVC_MAX_CUT) num_in "$v" 0 80 && HEVC_MAX_CUT=$v ;;
+      PICTURE_CHECK) [ "$v" = true ] || [ "$v" = false ] && PICTURE_CHECK=$v ;;
+      DOWNLOAD_SIZES) case "$v" in good | small | same) DOWNLOAD_SIZES=$v ;; esac ;;
       BACKUP_DAYS) num_in "$v" 1 14 && BACKUP_DAYS=$v ;;
       MIN_FREE_GB) num_in "$v" 0 5000 && MIN_FREE_GB=$v ;;
       TRIM_LANGUAGES) [ "$v" = true ] || [ "$v" = false ] && TRIM_LANGUAGES=$v ;;
@@ -58,6 +71,8 @@ if [ -f "$SETTINGS_FILE" ]; then
   done <"$SETTINGS_FILE"
 fi
 [ "$NIGHT_START" = "$NIGHT_END" ] && NIGHT_END=$(((NIGHT_START + 7) % 24))
+[ "$EPISODE_MIN_MB" -lt "$EPISODE_MAX_MB" ] || EPISODE_MIN_MB=$((EPISODE_MAX_MB / 2))
+[ "$MOVIE_MIN_MB" -lt "$MOVIE_MAX_MB" ] || MOVIE_MIN_MB=$((MOVIE_MAX_MB / 2))
 night_hour() { # is hour $1 inside the working hours? (they may run past midnight, e.g. 22 to 6)
   if [ "$NIGHT_START" -lt "$NIGHT_END" ]; then [ "$1" -ge "$NIGHT_START" ] && [ "$1" -lt "$NIGHT_END" ]
   else [ "$1" -ge "$NIGHT_START" ] || [ "$1" -lt "$NIGHT_END" ]; fi
@@ -203,7 +218,9 @@ post sync-plugins '{"data":{}}' >/dev/null
 echo "  ok  5 Benflix steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
-sed -e "s|__EPISODE_GB__|$EPISODE_GB|" -e "s|__MOVIE_GB__|$MOVIE_GB|" -e "s|__MIN_FREE_GB__|$MIN_FREE_GB|" -e "s|__KEEP_PERCENT__|$KEEP_PERCENT|" -e "s|__MIN_KBPS_1080__|$MIN_KBPS_1080|" -e "s|__TRIM__|$TRIM_LANGUAGES|" \
+sed -e "s|__EPISODE_MIN_MB__|$EPISODE_MIN_MB|" -e "s|__EPISODE_MAX_MB__|$EPISODE_MAX_MB|" -e "s|__MOVIE_MIN_MB__|$MOVIE_MIN_MB|" \
+  -e "s|__MOVIE_MAX_MB__|$MOVIE_MAX_MB|" -e "s|__AIM__|$AIM|" -e "s|__FLOOR_MB_MIN__|$FLOOR_MB_MIN|" -e "s|__HEVC_MAX_CUT__|$HEVC_MAX_CUT|" \
+  -e "s|__PICTURE_CHECK__|$PICTURE_CHECK|" -e "s|__MIN_FREE_GB__|$MIN_FREE_GB|" -e "s|__TRIM__|$TRIM_LANGUAGES|" \
   -e "s|__ENCODER__|$ENCODER|" -e "s|__DEVICE__|${GPU:-/dev/dri/renderD128}|" -e "s|__BACKUP__|/backup|" -e "s|__ARR_ROOT__|$(esc "$arr_root")|" \
   -e "s|__RADARR_URL__|$(esc "$radarr_url")|" -e "s|__RADARR_KEY__|$(esc "$radarr_key")|" \
   -e "s|__SONARR_URL__|$(esc "$sonarr_url")|" -e "s|__SONARR_KEY__|$(esc "$sonarr_key")|" \
@@ -331,15 +348,67 @@ if [ -z "${TDARR_TEST:-}" ]; then
   wget -qO "$APP/benflix-installed/setup-tdarr.sh" "$RAW/setup-tdarr.sh"
   # Which Harbor settings are in use now (the watcher re-runs this when Harbor saves new ones)
   if [ -f "$SETTINGS_FILE" ]; then cp "$SETTINGS_FILE" "$APP/benflix-installed/settings.env"; else rm -f "$APP/benflix-installed/settings.env"; fi
+  # New rules or new size goals: files that were left alone before get looked at again tonight
+  rules_key="$RULES_VERSION $EPISODE_MAX_MB $MOVIE_MAX_MB $HEVC_MAX_CUT"
+  if [ "$(cat "$APP/benflix-installed/rules-key" 2>/dev/null)" != "$rules_key" ]; then
+    echo "  ok  files skipped before will be looked at again tonight (new size goals)"
+    /bin/bash /boot/config/benflix/tdarr-watch.sh recheck </dev/null >/dev/null 2>&1 &
+    echo "$rules_key" >"$APP/benflix-installed/rules-key"
+  fi
 fi
+
+say "Picture check (compares a few short clips after shrinking)"
+PICTURE_WORKS=false
+if docker exec tdarr sh -c 'for f in tdarr-ffmpeg ffmpeg /usr/lib/jellyfin-ffmpeg/ffmpeg; do command -v "$f" >/dev/null 2>&1 && "$f" -hide_banner -filters 2>/dev/null; done' 2>/dev/null | grep -q libvmaf; then
+  PICTURE_WORKS=true
+  if [ "$PICTURE_CHECK" = true ]; then echo "  ok  on"; else echo "  ok  works, but switched off"; fi
+else
+  echo "  note  Tdarr's video tools can't do the picture check, so only the size checks run"
+fi
+
+# Download sizes (Ben 2026-11-22: "good-quality downloads, let the shrinker do the rest"). Only the
+# "preferred size" of the 720p/1080p qualities changes; minimum, maximum and Remux sizes stay as they are.
+say "Download sizes in Sonarr and Radarr"
+DL_DONE=""
+case "$DOWNLOAD_SIZES" in good) pref1080=60 pref720=40 ;; small) pref1080=16 pref720=12 ;; *) pref1080="" ;; esac
+if [ -z "$pref1080" ]; then
+  echo "  ok  left as they are"
+else
+  for kind in sonarr radarr; do
+    url_var="${kind}_url" key_var="${kind}_key"
+    [ -n "${!url_var}" ] && [ -n "${!key_var}" ] || { echo "  note  $kind not found, skipped"; continue; }
+    n=$(docker exec -i tdarr node -e '
+const [base,key,p1080,p720]=process.argv.slice(1);
+const go=(method,path,body)=>new Promise((ok,no)=>{const u=new URL(base.replace(/\/+$/,"")+path);
+  const lib=require(u.protocol==="https:"?"https":"http");
+  const q=lib.request(u,{method,headers:{"X-Api-Key":key,"content-type":"application/json"},timeout:20000},s=>{let d="";
+    s.on("data",c=>d+=c);s.on("end",()=>s.statusCode<300?ok(d?JSON.parse(d):null):no(new Error("HTTP "+s.statusCode)))});
+  q.on("timeout",()=>q.destroy(new Error("timed out")));q.on("error",no);q.end(body?JSON.stringify(body):undefined);});
+(async()=>{const defs=await go("GET","/api/v3/qualitydefinition");const changed=[];
+  for(const d of defs){const q=d.quality||{};if(/remux/i.test(q.name||"")||![720,1080].includes(q.resolution))continue;
+    let want=Number(q.resolution===1080?p1080:p720);if(d.maxSize&&want>d.maxSize)want=d.maxSize;if(d.minSize&&want<d.minSize)want=d.minSize;
+    if(d.preferredSize!==want){d.preferredSize=want;changed.push(d);}}
+  if(changed.length)await go("PUT","/api/v3/qualitydefinition/update",changed);console.log(changed.length);
+})().catch(e=>{console.error(e.message);process.exit(1)});' "${!url_var}" "${!key_var}" "$pref1080" "$pref720" 2>&1)
+    if [[ "$n" =~ ^[0-9]+$ ]]; then
+      echo "  ok  $kind ($n sizes changed)"; DL_DONE="$DL_DONE $kind"
+    else
+      echo "  note  couldn't change $kind's sizes: $n"
+    fi
+  done
+fi
+DL_DONE=${DL_DONE# }
 
 # What Harbor's Shrinker page shows: the settings in use and the folders
 json_list() { local out="" x; for x in "$@"; do out="$out\"$(jesc "$x")\","; done; printf '[%s]' "${out%,}"; }
 {
   printf '{"version":%s,"at":"%s","gpu":"%s","encoder":"%s",' "$SETUP_VERSION" "$(date -Iseconds)" "$(jesc "${GPU:-}")" "$ENCODER"
   printf '"folders":%s,"folders_off":%s,' "$(json_list "${FOLDERS[@]}")" "$(json_list "${OFF_FOUND[@]}")"
-  printf '"settings":{"night_start":%s,"night_end":%s,"episode_gb":%s,"movie_gb":%s,"keep_percent":%s,' "$NIGHT_START" "$NIGHT_END" "$EPISODE_GB" "$MOVIE_GB" "$KEEP_PERCENT"
-  printf '"min_kbps_1080":%s,"backup_days":%s,"min_free_gb":%s,"trim_languages":%s}}\n' "$MIN_KBPS_1080" "$BACKUP_DAYS" "$MIN_FREE_GB" "$TRIM_LANGUAGES"
+  printf '"picture_check_works":%s,"download_sizes_set":"%s",' "$PICTURE_WORKS" "$(jesc "$DL_DONE")"
+  printf '"settings":{"night_start":%s,"night_end":%s,"episode_min_mb":%s,"episode_max_mb":%s,"movie_min_mb":%s,"movie_max_mb":%s,' \
+    "$NIGHT_START" "$NIGHT_END" "$EPISODE_MIN_MB" "$EPISODE_MAX_MB" "$MOVIE_MIN_MB" "$MOVIE_MAX_MB"
+  printf '"aim":"%s","floor_mb_min":%s,"hevc_max_cut":%s,"picture_check":%s,"download_sizes":"%s",' "$AIM" "$FLOOR_MB_MIN" "$HEVC_MAX_CUT" "$PICTURE_CHECK" "$DOWNLOAD_SIZES"
+  printf '"backup_days":%s,"min_free_gb":%s,"trim_languages":%s}}\n' "$BACKUP_DAYS" "$MIN_FREE_GB" "$TRIM_LANGUAGES"
 } >"$APP/benflix-setup.json.tmp" && mv "$APP/benflix-setup.json.tmp" "$APP/benflix-setup.json"
 chmod 644 "$APP/benflix-setup.json" 2>/dev/null
 
