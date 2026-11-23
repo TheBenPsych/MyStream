@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.nav.focusRing
+import com.github.damontecres.wholphin.ui.preferences.glowfinDimmedPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -340,7 +341,11 @@ private fun GlowfinSideListFrame(
 ) {
     val active = remember { FocusRequester() }
     val overlap = LocalTopBarOverlap.current
-    Row(modifier.fillMaxSize()) {
+    // New look: the same as Settings, pills on the left and the page in a tall right-hand panel
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        modifier = modifier.fillMaxSize().glowfinDimmedPage(),
+    ) {
         com.github.damontecres.wholphin.ui.preferences.GlowfinSideListPanel {
             Column(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -364,13 +369,14 @@ private fun GlowfinSideListFrame(
                 }
             }
         }
-        content(
-            Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .focusRequester(state.content)
-                .focusRestorer(),
-        )
+        com.github.damontecres.wholphin.ui.preferences.GlowfinRightPanel(Modifier.weight(1f)) {
+            content(
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(state.content)
+                    .focusRestorer(),
+            )
+        }
     }
 }
 

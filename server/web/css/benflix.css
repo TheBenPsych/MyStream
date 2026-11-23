@@ -2883,3 +2883,32 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
   .player .p4 .nl4 .pbtn.play em { display: none; }
   .player .pends { top: 22px; right: 16px; font-size: 14px; }
 }
+
+/* ---------- Glowfin new look, Settings (Ben approved 2026-11-22): groups as see-through pills on the left (the open
+   one solid white), the settings in a tall right-hand panel; the setting you're on is solid white with the aqua ring.
+   Same for Help and the Server page. Nothing grows, no blur. ---------- */
+.split nav { background: none; border-right: 0; gap: 6px; }
+.split nav .navsearch { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.split nav a { border-radius: 99px; padding: 10px 18px; font-weight: 600; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.split nav a.on { background: rgba(255,255,255,.92); color: var(--dark); }
+.split nav a:hover, .split nav a:focus-visible { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.split nav a.on::before, .split nav a:hover::before, .split nav a:focus-visible::before { display: none; }
+.split nav a.admin.on, .split nav a.admin:hover, .split nav a.admin:focus-visible { color: #8a5a00; }
+.split nav a.on .cnt, .split nav a:hover .cnt { color: #8a5a00; }
+.srv-split main.srv { padding: 22px 28px 40px; }
+.split main { background: rgba(18,21,48,.94); border-left: 1px solid var(--line); border-radius: 18px 0 0 18px; padding: 22px 28px 40px; min-height: calc(100vh - var(--bar) - 10px); max-width: none; }
+.setrow { background: rgba(255,255,255,.05); margin-bottom: 6px; border-radius: 9px; }
+.setrow .t { font-weight: 600; }
+.setrow:hover, .setrow:focus-within { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.setrow:hover::before, .setrow:focus-within::before { display: none; }
+.setrow:hover .s, .setrow:focus-within .s { color: #4a4f72; }
+.setrow:hover .valbtn, .setrow:focus-within .valbtn { color: #0b7d86; }
+.dropdown.sidelist { background: rgba(18,21,48,.97); }
+.dropdown.sidelist button { border-radius: 9px; }
+.dropdown.sidelist button:hover, .dropdown.sidelist button:focus-visible { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.dropdown.sidelist button:hover::before, .dropdown.sidelist button:focus-visible::before { display: none; }
+.dropdown.sidelist button.on:hover::after, .dropdown.sidelist button.on:focus-visible::after { color: #0b7d86; }
+@media (max-width: 900px) {
+  .split nav a { padding: 8px 14px; }
+  .split main { background: none; border-left: 0; border-radius: 0; padding: 0 16px; min-height: 0; }
+}
