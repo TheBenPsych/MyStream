@@ -1,6 +1,9 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "logo-white-bright-art", "title": "Dark logos drawn in white; very bright pictures turned down a little", "where": "TV, phone and browser · open a title with a dark logo, and one with snowy or sunny art", "date": "Nov 23"},
+    {"id": "details-fresh", "title": "New look for movie and show pages: title box, white score pill, see-through round buttons, Story and details panel, small top when you go down", "where": "TV, phone and browser · open any movie or show, press Up from Resume, then Down into the rows", "date": "Nov 23"},
+    {"id": "change-logo", "title": "Change logo and Use the name instead in More", "where": "any TV or phone · a movie or show page, More", "date": "Nov 23"},
     {"id": "game-covers-new", "title": "Cover art and proper game pages for Quote it, Who played them?, 60-second blitz, Which season? and Caption this", "where": "any TV or phone · Games", "date": "Nov 23"},
     {"id": "top10-outline", "title": "Top 10 numbers are hollow glowing outlines that fill in on the cover you're on (always filled on phones)", "where": "any TV, phone or browser · Movies, Shows, Anime, Home, Books, Requests Top 10 rows", "date": "Nov 23"},
     {"id": "rate-sticks", "title": "Rate button shows Liked / Loved / Not for me right after you pick", "where": "any TV or browser · open a movie, press Rate, pick one", "date": "Nov 23"},

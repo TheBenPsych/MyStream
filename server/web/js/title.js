@@ -46,7 +46,8 @@
       return b.href && !b.off ? `<a class="${cls}" ${attrs} href="${b.href}">${inner}</a>` : `<button class="${cls}" ${attrs}>${inner}</button>`;
     };
     const chips = kids ? [] : (opts.chips || []).filter(Boolean);
-    const meta = [opts.rating && !kids ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
+    // Glowfin details pages ("fresh" pick, 2026-11-22): on rows pages the age rating moves into the score pill
+    const meta = [opts.rating && !kids && !rows ? `<span class="rate">${esc(opts.rating)}</span>` : "", ...(opts.info || []).filter(Boolean).map((x) => `<span>${esc(x)}</span>`)].filter(Boolean).join("");
     // Covers (games, books, albums, people): the cover blurred big behind everything (no more tinted box), and
     // the cover itself on the right at its own real shape (never cropped). Title and words stay on the left.
     const coverUrl = opts.cover && opts.cover.url ? String(opts.cover.url).replace(/"/g, "%22") : "";
@@ -58,11 +59,12 @@
       <div class="scores tp-strip">${opts.strip || ""}</div>${opts.overviewExtra || ""}</div><div class="tp-ovr" id="tpOvDetails"></div></div>`;
     B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
+        ${rows && !kids && (opts.rating || opts.scores) ? `<div class="tp-pill">${opts.rating ? `<span class="rate">${esc(opts.rating)}</span>` : ""}${opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}</div>` : ""}
         <div class="main">
           <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}${opts.logo ? `<img class="tp-logo" id="tpLogo" src="${esc(opts.logo)}" alt="${esc(opts.title || "")}" hidden>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : opts.tagline && !kids ? `<div class="t2 tp-tag">${esc(opts.tagline)}</div>` : ""}<i class="tp-line"></i></div>
-          <div class="meta">${meta}${rows && opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}${opts.infoExtra || ""}</div>
+          <div class="meta">${meta}${opts.infoExtra || ""}</div>
           ${chips.length ? `<div class="tp-chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
-          ${rows && opts.story ? `<div class="tp-story">${esc(opts.story)}</div>` : ""}
+          ${rows ? `<button type="button" class="tp-story tp-open" id="tpStory">${opts.story ? `<span class="tp-st">${esc(opts.story)}</span>` : ""}<b>Story and details ›</b></button>` : ""}
           <div class="btns">${buttons.map(btn).join("")}</div>
           <div class="tp-why" id="tpWhy">${esc(opts.status || "")}</div>
           <div class="tp-tabs" role="tablist" ${rows ? "hidden" : ""}>${tabs.map((t) => `<button role="tab" class="tp-tab" data-tab="${t.id}">${esc(t.name)}</button>`).join("")}</div>
@@ -79,11 +81,36 @@
     if (logo) {
       const fit = () => {
         const r = logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 0;
-        if (r < 1.3 || r > 5.5) return logo.remove();
+        // Only logos about 2 to 5 times wider than tall; others show the name as text ("fresh" pick)
+        if (r < 2 || r > 5) return logo.remove();
         logo.hidden = false;
+        // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
+        if (rows) { const l = B.tpLight(logo); if (l != null && l < 0.3) logo.classList.add("tp-logo-white"); }
         const h1 = root.querySelector(".tp-name .t"); if (h1) h1.classList.add("tp-hid");
       };
       if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
+    }
+    // The story you can open: the full story plus the details (About) in a tall panel from the right
+    const storyBtn = $("#tpStory");
+    if (storyBtn) {
+      storyBtn.addEventListener("click", () => {
+        const det = $("#tpOverview");
+        const box = det ? det.cloneNode(true) : null;
+        if (box) { box.removeAttribute("id"); box.hidden = false; box.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id")); const h = box.querySelector(".tp-h"); if (h) h.remove(); }
+        B.side(`<h3>Story and details</h3><p class="dim">${esc(opts.title || "")}</p>${opts.story ? `<p class="tp-full">${esc(opts.story)}</p>` : ""}<div class="tp-sidedet">${box ? box.innerHTML : ""}</div>`);
+      });
+    }
+    // A very bright picture is turned down a little and the words get a faint edge (Ben 2026-11-22)
+    if (rows && opts.picture && !opts.cover) {
+      const im = new Image();
+      im.onload = () => { const l = B.tpLight(im); if (l != null && l > 0.62) root.classList.add("tp-bright"); };
+      im.src = opts.picture;
+    }
+    // Going down the page: the top shrinks to a small title (the art dims with a plain fade)
+    if (rows) {
+      const hero = root.querySelector(".tp-hero");
+      const onScroll = () => { if (!document.body.contains(root)) return removeEventListener("scroll", onScroll); root.classList.toggle("tp-down", scrollY > hero.offsetHeight * .45); };
+      addEventListener("scroll", onScroll, { passive: true });
     }
     // Buttons: greyed-out ones say why; the rest run their action
     const why = $("#tpWhy");
@@ -179,6 +206,17 @@
     };
   };
 
+  // How light a picture is, 0 to 1, from a tiny copy (only the parts you can see). Null when the browser won't say.
+  B.tpLight = (img) => {
+    try {
+      const c = document.createElement("canvas"); c.width = 32; c.height = 32;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, 32, 32);
+      const d = x.getImageData(0, 0, 32, 32).data;
+      let sum = 0, w = 0;
+      for (let i = 0; i < d.length; i += 4) { const a = d[i + 3] / 255; if (a < 0.25) continue; sum += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255 * a; w += a; }
+      return w ? sum / w : null;
+    } catch (e) { return null; }
+  };
   // "Director <b>Denis Villeneuve</b>" style pieces for the slim strip
   // [label, value] puts the value first ("8.5 IMDb"); [label, value, true] puts the label first ("Director Denis Villeneuve")
   B.tpStrip = (parts) => parts.filter((p) => p && (p[0] || p[1])).map(([label, value, labelFirst]) => {
