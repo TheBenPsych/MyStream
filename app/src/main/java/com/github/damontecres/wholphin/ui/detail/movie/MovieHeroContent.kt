@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
+import com.github.damontecres.wholphin.ui.detail.title.logoChoiceItem
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.lengthText
@@ -72,6 +73,8 @@ class MovieHeroActions(
     val openAsk: (DiscoverItem) -> Unit,
     /** Admin only: Change poster */
     val pickPoster: (() -> Unit)? = null,
+    /** Change logo in More (the poster picker on its logo tab) */
+    val pickLogo: (() -> Unit)? = null,
 )
 
 /**
@@ -263,6 +266,10 @@ fun MovieHeroContent(
 
     if (showMore) {
         val aniList = AniListFacts.info.value[movie.id]
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val nameInstead =
+            com.github.damontecres.wholphin.ui.components.LogoChoice
+                .usesName(movie.id)
         TitleMorePanel(
             title = movie.title.orEmpty(),
             onDismiss = { showMore = false },
@@ -281,8 +288,10 @@ fun MovieHeroContent(
                         add(TitleMoreItem("Go to ${collection.name}", BenflixIcon.FILM, { actions.openCollection(collection) }))
                     }
                     if (aniList != null) add(TitleMoreItem("Open on AniList or MAL", BenflixIcon.ARROW, { showLinks = true }))
+                    add(logoChoiceItem(context, movie.id, nameInstead))
                     if (isAdmin) {
                         actions.pickPoster?.let { add(TitleMoreItem("Pick a poster", BenflixIcon.IMAGE, it, youOnly = true)) }
+                        actions.pickLogo?.let { add(TitleMoreItem("Change logo", BenflixIcon.IMAGE, it, youOnly = true)) }
                         add(TitleMoreItem("File details", BenflixIcon.SERVER, actions.fileDetails, youOnly = true))
                     }
                 },

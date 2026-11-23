@@ -94,6 +94,9 @@ fun TitleOrLogo(
 @Composable
 fun rememberLogoUrl(item: BaseItem?): String? {
     val imageUrlService = LocalImageUrlService.current
+    // "Use the name instead" in a title's More list
+    val logoId = if (item?.type == BaseItemKind.EPISODE || item?.type == BaseItemKind.SEASON) item.data.seriesId else item?.id
+    if (LogoChoice.usesName(logoId)) return null
     return remember(item?.id) {
         if ((item?.type == BaseItemKind.EPISODE || item?.type == BaseItemKind.SEASON) &&
             item.data.seriesId != null &&

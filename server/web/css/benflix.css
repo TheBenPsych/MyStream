@@ -2695,3 +2695,59 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .player .p4 .srow #pTime, .player .p4 .srow #pLeft { flex: none; min-width: 8.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .player .p4 .srow #pTime { text-align: left; }
 .player .p4 .srow #pLeft { text-align: right; }
+
+/* ---------- Glowfin details pages, "fresh" pick (Ben 2026-11-22): rows pages only ---------- */
+/* Art fills the screen; only a soft shadow at the bottom left, the rest stays bright */
+.tp.tp-rows .tp-hero { min-height: 82vh; }
+.tp.tp-rows .main { min-height: 82vh; justify-content: flex-start; padding-top: calc(var(--bar) + 6vh); gap: 10px; }
+.tp.tp-rows .tp-hero:not(.covered)::before { background: linear-gradient(90deg, rgba(var(--trayrgb),.8) 0%, rgba(var(--trayrgb),.45) 35%, rgba(var(--trayrgb),0) 62%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb),0) 50%); }
+.tp.tp-rows .tp-hero { transition: none; }
+/* Title box: fixed size and spot, no second name, no colour line */
+.tp.tp-rows .tp-name { height: 144px; width: min(640px, 55%); display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: auto; }
+.tp.tp-rows .tp-name .t2, .tp.tp-rows .tp-name .tp-line { display: none; }
+.tp.tp-rows .tp-name .t { margin: 0; font-size: clamp(30px, 3.4vw, 64px); line-height: 1.05; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tp.tp-rows .tp-name .tp-logo { max-height: 144px; max-width: 100%; object-fit: contain; object-position: left bottom; }
+.tp.tp-rows .tp-chips { margin-top: -4px; }
+/* Score pill, top right under the clock: white outline rating, site marks, white numbers, thin dividers */
+.tp-pill { position: absolute; z-index: 3; right: var(--gutter); top: calc(var(--bar) + 6vh); display: flex; align-items: center; padding: 8px 10px; border-radius: 999px; background: rgba(11,13,26,.5); border: 1px solid rgba(255,255,255,.14); }
+.tp-pill .rate { color: #fff; background: none; border: 1.5px solid rgba(255,255,255,.85); border-radius: 6px; padding: 0 8px; font-weight: 700; margin-right: 12px; }
+.tp-pill .tp-scores { display: flex; align-items: center; gap: 0; }
+.tp-pill .tp-scores > .scores { display: contents; }
+.tp-pill span[data-s] { font-size: 0 !important; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; }
+.tp-pill span[data-s] + span[data-s] { border-left: 1.5px solid rgba(255,255,255,.18); }
+.tp-pill .rate + .tp-scores span[data-s]:first-child { padding-left: 2px; }
+.tp-pill span[data-s] b { font-size: 17px; background: none !important; color: #fff !important; border: 0 !important; padding: 0 !important; margin: 0 !important; font-weight: 700; }
+.tp-pill span[data-s]::before { content: ""; display: inline-grid; place-items: center; font: 900 11px/1 system-ui, sans-serif; flex: none; }
+.tp-pill span[data-s="imdb"]::before { content: "IMDb"; background: #F5C518; color: #000; padding: 3px 4px; border-radius: 3px; }
+.tp-pill span[data-s="mal"]::before { content: "MAL"; background: #2E51A2; color: #fff; padding: 3px 4px; border-radius: 3px; }
+.tp-pill span[data-s="rt"]::before { width: 17px; height: 17px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff6a3d, #e0260a 70%); box-shadow: inset 0 3px 0 -1px #3aa33a; }
+.tp-pill span[data-s="mc"]::before { content: "M"; width: 15px; height: 15px; border-radius: 50%; background: #111; border: 1.5px solid #FFCC34; color: #fff; }
+.tp-pill span[data-s="al"]::before { content: "A"; width: 17px; height: 17px; border-radius: 3px; background: #152232; color: #02A9FF; font-size: 13px; }
+.tp-pill span[data-s="user"]::before { content: "★"; color: #fff; font-size: 13px; }
+/* The story you can open */
+.tp.tp-rows .tp-story.tp-open { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; max-width: min(50%, 760px); margin-left: -8px; padding: 4px 8px; border-radius: 10px; }
+.tp.tp-rows .tp-story.tp-open:hover, .tp.tp-rows .tp-story.tp-open:focus-visible { background: rgba(255,255,255,.1); outline: 2px solid var(--ink); }
+.tp.tp-rows .tp-story .tp-st { color: var(--ink2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tp.tp-rows .tp-story b { color: var(--ink); font-size: 14px; }
+.side .tp-full { color: var(--ink2); line-height: 1.55; }
+.side .tp-sidedet .tp-ov { display: flex; flex-direction: column; gap: 14px; }
+/* See-through round buttons; the main one stays solid white */
+.tp.tp-rows .btns .btn { border-radius: 999px; }
+.tp.tp-rows .btns .btn:not(.white) { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); color: #fff; }
+.tp.tp-rows .btns .btn:not(.white):hover, .tp.tp-rows .btns .btn:not(.white):focus-visible { background: rgba(255,255,255,.3); }
+/* Going down: the art dims (plain fade) and the top bar shows the small title */
+.tp.tp-rows .tp-hero .main, .tp-pill { transition: opacity .25s ease-out; }
+.tp.tp-rows.tp-down .tp-pill { opacity: 0; }
+/* Big covers for music and books on the right */
+.tp.tp-rows .tp-hero.covered .tp-cover { max-height: 66vh; }
+@media (max-width: 700px) {
+  .tp.tp-rows .tp-hero, .tp.tp-rows .main { min-height: 0; }
+  .tp.tp-rows .main { padding-top: 0; }
+  .tp.tp-rows .tp-name { height: 112px; width: calc(100% - 150px); margin-bottom: 0; }
+  .tp.tp-rows .tp-name .t { font-size: 26px; -webkit-line-clamp: 4; }
+  .tp.tp-rows .tp-name .tp-logo { max-height: 112px; }
+  /* Upright phone: the pill sits beside the title, on the right */
+  .tp-pill { top: calc(30vh + 60px); right: 16px; padding: 5px 7px; transform: scale(.85); transform-origin: right center; }
+  .tp.tp-rows .tp-story.tp-open { max-width: none; order: 10; }
+  .tp.tp-rows .tp-story .tp-st { -webkit-line-clamp: 5; }
+}

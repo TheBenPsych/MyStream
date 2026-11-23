@@ -1,6 +1,8 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "details-fresh", "title": "New look for movie and show pages: title box, white score pill, see-through round buttons, Story and details panel, small top when you go down", "where": "TV, phone and browser · open any movie or show, press Up from Resume, then Down into the rows", "date": "Nov 23"},
+    {"id": "change-logo", "title": "Change logo and Use the name instead in More", "where": "any TV or phone · a movie or show page, More", "date": "Nov 23"},
     {"id": "steady-seekbar", "title": "Player seek bar dot stays still while the times tick", "where": "any TV, phone or browser · play anything and watch the dot", "date": "Nov 23"},
     {"id": "game-quote", "title": "New game: Quote it (lines from a movie's subtitles)", "where": "any TV or phone · Games > Quote it (needs Tower's next hourly update)", "date": "Nov 22"},
     {"id": "game-closeup", "title": "New game: Close-up (a real scene zooms out)", "where": "any TV or phone · Games > Close-up", "date": "Nov 22"},
