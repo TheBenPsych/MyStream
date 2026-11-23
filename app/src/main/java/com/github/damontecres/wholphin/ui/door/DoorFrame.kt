@@ -187,6 +187,8 @@ fun DoorFrame(
     ownRail: Boolean = false,
     /** Glowfin (ui-7): the places as word tabs along the page's top (Movies, Shows, Anime) */
     tabs: Boolean = false,
+    /** Glowfin new look (Movies, Shows, Anime on TV): the tabs sit in the header's own row, where the name was */
+    tabsInHeader: Boolean = false,
     /** Glowfin (S1): TV shows [ownRail]'s places as a plain list under this heading, like Settings (Server) */
     sideListTitle: String? = null,
     content: @Composable (Modifier) -> Unit,
@@ -244,9 +246,11 @@ fun DoorFrame(
             }
             return
         }
-        // TV and wide screens: the tabs sit over the top of the page, whose picture goes up behind them
+        // TV and wide screens (Glowfin new look): the tabs are see-through pills in the header's own row, where the
+        // page's name used to be, so the page starts right under the header. The art goes up behind them.
+        val inHeader = tabsInHeader && overlap >= HEADER_ROW_GAP + tabsHeight / 2
         Box(modifier.fillMaxSize()) {
-            androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides overlap + tabsHeight) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides if (inHeader) overlap else overlap + tabsHeight) {
                 content(
                     Modifier
                         .fillMaxSize()
@@ -259,10 +263,17 @@ fun DoorFrame(
                 sections,
                 wide = true,
                 modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = overlap)
-                        .height(tabsHeight),
+                    if (inHeader) {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = HEADER_ROW_TOP)
+                            .height(overlap - HEADER_ROW_GAP)
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = overlap)
+                            .height(tabsHeight)
+                    },
             )
         }
         return
@@ -584,3 +595,7 @@ private const val PENDING_PICK_MS = 120L
 /** The menu keeps handing a focus that fell on it back to the page while the page is still filling in */
 private const val STRAY_RETRY_MS = 150L
 private const val STRAY_TRIES = 20
+
+/** The TV header's row: 18dp from the top, with 6dp under it (see BenflixPageHeader) */
+private val HEADER_ROW_TOP = 18.dp
+private val HEADER_ROW_GAP = 24.dp

@@ -2,29 +2,52 @@
    posters, the movie and show pages, the All movies / All shows grid, collections and people. */
 "use strict";
 
-// ---------- top area: describes the poster you point at, picture fades in from the right ----------
+// ---------- top area: describes the poster you point at ----------
+// Glowfin new look, part 2 (Ben 2026-11-22): Home, Movies, Shows and Anime land straight on a row. The top only
+// describes the poster you're on, like the details pages: a fixed title box (the logo when it's 2 to 5 times wider
+// than tall, else the name), a short facts line, a small aqua tag, a 2-line story and the score pill top right.
 B.describe = (it) => {
   if (!it) return "";
   const ud = it.UserData || {};
   const bits = [];
-  if (it.Type === "Episode") bits.push(`S${it.ParentIndexNumber || 0} E${it.IndexNumber || 0}`);
-  if (it.ProductionYear) bits.push(it.Type === "Series" && it.EndDate && it.Status === "Ended" ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear);
-  if (it.Type === "Series") {
-    if (it.Status === "Ended") bits.push("Ended");
-    else if (it.AirDays && it.AirDays.length) bits.push(`New episodes on ${it.AirDays[0]}s`);
-    if (it.ChildCount) bits.push(`${it.ChildCount} season${it.ChildCount === 1 ? "" : "s"}`);
-  } else if (it.RunTimeTicks) bits.push(B.len(B.minutes(it.RunTimeTicks)));
-  if (it.OfficialRating) bits.push(it.OfficialRating);
-  if (it.Genres && it.Genres.length) bits.push(it.Genres.slice(0, 3).join(", "));
-  let kw = "";
-  if (ud.PlaybackPositionTicks && it.RunTimeTicks) {
-    const left = B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks);
-    kw = `<div class="kwbar">${I("play")}<b>Resume</b><span class="line"><i style="width:${Math.min(100, ud.PlayedPercentage || 0)}%"></i></span>${B.len(left)} left</div>`;
+  if (it.Type === "Episode") {
+    bits.push(`S${it.ParentIndexNumber || 0} E${it.IndexNumber || 0}`);
+    if (it.Name) bits.push(it.Name);
+  } else {
+    if (it.ProductionYear) bits.push(it.ProductionYear);
+    if (it.Type === "Series" && it.ChildCount) bits.push(`${it.ChildCount} season${it.ChildCount === 1 ? "" : "s"}`);
+    else if (it.Type !== "Series" && it.RunTimeTicks) bits.push(B.len(B.minutes(it.RunTimeTicks)));
+    if (it.Genres && it.Genres.length) bits.push(it.Genres[0]);
   }
-  const title = it.Type === "Episode" ? `${it.SeriesName}` : it.Name;
-  return `<div class="t">${esc(title)}</div>${it.Type === "Episode" ? `<div class="meta" style="color:var(--ink)">${esc(it.Name)}</div>` : ""}
-    <div class="meta">${bits.map((b) => `<span>${esc(b)}</span>`).join("")}</div>${B.scores(it)}
-    <div class="ov">${esc(it.Overview || "")}</div>${kw}`;
+  // The tag: time left on something you started, else "New on Glowfin" for things added this week
+  let tag = "";
+  if (ud.PlaybackPositionTicks && it.RunTimeTicks && ud.PlayedPercentage > 1 && ud.PlayedPercentage < 99) {
+    const left = B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks);
+    if (left > 0) tag = `${B.len(left)} left`;
+  }
+  const added = Date.parse(it.DateLastMediaAdded || it.DateCreated || "");
+  if (!tag && !ud.Played && added && Date.now() - added < 7 * 864e5) tag = it.Type === "Series" ? "New episodes on Glowfin" : "New on Glowfin";
+  const title = it.Type === "Episode" ? `${it.SeriesName || ""}` : it.Name;
+  const logo = B.logoUrl(it);
+  const kids = B.me && B.me.kids;
+  const scores = it.Type === "Episode" ? "" : B.scores(it);
+  const pill = !kids && (it.OfficialRating || scores) ? `<div class="tp-pill dt-pill">${it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>` : "";
+  return `${pill}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
+    <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}
+    <div class="ov">${esc(it.Overview || "")}</div>`;
+};
+// The title box shows the logo only when it is a good shape (about 2 to 5 times wider than tall)
+B.fitDoorLogo = (box) => {
+  const logo = box && box.querySelector(".dt-logo");
+  if (!logo) return;
+  const fit = () => {
+    const r = logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 0;
+    if (r < 2 || r > 5) return logo.remove();
+    logo.hidden = false;
+    if (B.tpLight) { const l = B.tpLight(logo); if (l != null && l < 0.3) logo.classList.add("tp-logo-white"); }
+    const t = box.querySelector(".dt-name .t"); if (t) t.hidden = true;
+  };
+  if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
 };
 B.wireDescribe = (first) => {
   const top = $("#doorTop");
@@ -34,6 +57,7 @@ B.wireDescribe = (first) => {
     if (!it || it === shown) return;
     shown = it;
     $(".info", top).innerHTML = B.describe(it);
+    B.fitDoorLogo($(".info", top));
     const src = B.backdrop(it, 1600);
     const art = $(".art", top);
     // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.

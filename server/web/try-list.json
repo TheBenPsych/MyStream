@@ -2,6 +2,7 @@
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
     {"id": "movie-surround-384", "title": "Shrunk movies still play surround sound on the soundbar (big 5.1 tracks are now 5.1 at 384 kbps)", "where": "TV with soundbar · play a movie the shrinker did after Nov 23", "date": "Nov 23"},
+    {"id": "rows-new-look", "title": "New look for Home, Movies, Shows and Anime: art fills the screen, title box, facts, aqua tag, 2-line story, score pill top right, see-through tab pills; phones start right on the rows", "where": "TV, phone and browser · open Home, Movies, Shows and Anime, move along a row and stop", "date": "Nov 23"},
     {"id": "logo-white-bright-art", "title": "Dark logos drawn in white; very bright pictures turned down a little", "where": "TV, phone and browser · open a title with a dark logo, and one with snowy or sunny art", "date": "Nov 23"},
     {"id": "details-fresh", "title": "New look for movie and show pages: title box, white score pill, see-through round buttons, Story and details panel, small top when you go down", "where": "TV, phone and browser · open any movie or show, press Up from Resume, then Down into the rows", "date": "Nov 23"},
     {"id": "change-logo", "title": "Change logo and Use the name instead in More", "where": "any TV or phone · a movie or show page, More", "date": "Nov 23"},
