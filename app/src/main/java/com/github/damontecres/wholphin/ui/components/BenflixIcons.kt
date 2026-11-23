@@ -137,6 +137,11 @@ enum class BenflixIcon(
     // Glowfin new look, Requests: three lines getting shorter (Filters)
     FILTER("M4 7h16M7 12h10M10 17h4"),
     REPEAT("M17 2.5l3 3-3 3", "M4 11.5v-1a5 5 0 0 1 5-5h11", "M7 21.5l-3-3 3-3", "M20 12.5v1a5 5 0 0 1-5 5H4"),
+
+    // Glowfin new look, Search letters: the mic, Space and Delete keys
+    MIC("M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z", "M5 11a7 7 0 0 0 14 0M12 18v3"),
+    SPACE("M4 10v5h16v-5"),
+    BACKSPACE("M9 5h11v14H9l-6-7z", "M12 9l5 6M17 9l-5 6"),
     ;
 
     /** Built once per icon */

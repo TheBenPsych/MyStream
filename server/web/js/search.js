@@ -1,4 +1,9 @@
-/* Benflix web: Search. Typing starts in the box straight away. Before typing: your last 6 searches (each with a ✕,
+/* Glowfin new look (Ben picked 2026-11-22): Search opens nearly empty (the box, your recent searches and a
+   Browse genres and moods pill; nothing else loads). Type anywhere on the page, or press /, and the words go into
+   the box. Kind pills sit beside the box (Everything, Movies 6, ...), the top describes the result you point at
+   (art, name, facts, 2-line story, score pill, like Home) and the cards are just cover art. With nothing on
+   Glowfin, the Ask for it rows come first with a yellow "Not on Glowfin yet" tag.
+   Older notes: Benflix web: Search. Typing starts in the box straight away. Before typing: your last 6 searches (each with a ✕,
    plus Clear all), Popular and Browse. While typing: whole-name suggestions as chips under the box, then rows like
    Home (Ben 2026-11-18): Movies, Shows, Anime, Music, Live TV, Games, Books, Ask for it (movies and shows, then music)
    and People, each a row of poster cards with See all at the end. Rows with nothing are named in one small line.
@@ -8,31 +13,57 @@
 const recentKey = () => "benflix.search." + B.me.id;
 B.route(/^\/search/, async (m, nav) => {
   const kids = B.me.kids;
-  B.page().innerHTML = B.top("Search", null) + `<div class="searchtop"><input class="field" id="sq" placeholder="Search movies, shows, music, channels, games and books" autocomplete="off" value="${esc(B.q("q") || "")}"></div>
-    <div class="schips" id="schips"></div><div class="bestline" id="best"></div><div id="sres"></div>`;
+  B.page().innerHTML = B.top("Search", null) + `<div class="srch"><div class="searchtop sx-top"><label class="sx-box">${I("search")}<input class="field" id="sq" placeholder="Search movies, shows, music, books and people" autocomplete="off" value="${esc(B.q("q") || "")}"></label>
+    <nav class="ptabs sx-kinds" id="skinds" aria-label="Kinds"></nav><span class="sx-tip dim">Just start typing anywhere, or press <kbd>/</kbd></span></div>
+    <div class="schips" id="schips"></div><div class="bestline" id="best"></div>${B.doorTop()}<div class="rows" id="sres"></div></div>`;
   B.wireTop();
   const box = $("#sq");
   box.focus();
+  const dtop = $("#doorTop");
+  dtop.hidden = !box.value.trim();
+  // The top describes the result you point at: library titles like Home, things to ask for like Requests
+  const tmdbArt = (r) => (r && r.backdropPath ? `https://image.tmdb.org/t/p/w1280${r.backdropPath}` : "");
+  const plainDescribe = (x) => `<div class="dt-name"><div class="t">${esc(x.name)}</div></div><div class="meta">${x.sub ? `<span>${esc(x.sub)}</span>` : ""}</div>${x.ask ? `<div class="dt-tag sx-ask">${x.asked ? "Asked for, on its way" : "Not on Glowfin yet · click to ask for it"}</div>` : ""}`;
+  B.wireDescribe(null, {
+    describe: (it) => (it._plain ? plainDescribe(it._plain) : it.mediaType ? B.rqDescribe(it) : B.describe(it)),
+    art: (it) => (it._plain ? "" : it.mediaType ? tmdbArt(it) : B.backdrop(it, 1600)),
+  });
+  // Type anywhere on the page (or press /) and the words go into the box
+  const typeAnywhere = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target, inField = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    if (inField || $(".side, .modal")) return;
+    if (e.key === "/") { e.preventDefault(); box.focus(); box.select(); return; }
+    if (e.key.length === 1 && /\S/.test(e.key)) box.focus();
+  };
+  document.addEventListener("keydown", typeAnywhere);
+  B.onLeave(() => document.removeEventListener("keydown", typeAnywhere));
+  let kind = null;
   const before = async () => {
     const recent = loadJson(recentKey(), []);
     $("#best").innerHTML = "";
     $("#schips").innerHTML = "";
-    $("#sres").innerHTML = `${recent.length ? `<section class="rowx" id="recent"><h3>Recent searches</h3><div class="wrap row" style="padding-bottom:0">${recent.map((r) => `<span class="rchip"><button class="pill" data-recent="${esc(r)}">${esc(r)}</button><button class="pill rx" data-unrecent="${esc(r)}" title="Remove" aria-label="Remove ${esc(r)}">✕</button></span>`).join("")}<button class="pill ghost" data-clearrecent>Clear all</button></div></section>` : ""}
-      <div id="popular">${B.spinner("rows")}</div>
-      <section class="rowx"><h3>Browse</h3><div class="tiles2">
-        <a class="tile2" href="#/browse/movies/genres">Movie genres</a><a class="tile2" href="#/browse/shows/genres">Show genres</a>
-        <a class="tile2" href="#/live">Channel types</a><a class="tile2" href="#/games">Consoles</a></div></section>`;
-    const [mv, tv] = await Promise.all([B.trending("Movie").catch(() => []), B.trending("Series").catch(() => [])]);
-    if (!B.alive(nav) || !$("#popular")) return;
-    const mix = []; for (let i = 0; i < 10; i++) { if (mv[i]) mix.push(mv[i]); if (tv[i]) mix.push(tv[i]); }
-    $("#popular").innerHTML = B.row("Popular in your house", mix.map((it) => B.posterCard(it)));
+    $("#skinds").innerHTML = "";
+    dtop.hidden = true;
+    // Opens nearly empty: recent searches as pills (each with ✕) and the Browse genres and moods pill
+    $("#sres").innerHTML = `<div class="wrap row sx-recent">${recent.length ? `<span class="dim sx-lab">Recent</span>` : ""}${recent.map((r) => `<span class="rchip"><button class="pill" data-recent="${esc(r)}">${esc(r)}</button><button class="pill rx" data-unrecent="${esc(r)}" title="Remove" aria-label="Remove ${esc(r)}">✕</button></span>`).join("")}<button class="pill ghost" data-browse>Browse genres and moods</button></div>
+      <div class="wrap dim sx-empty">Results show here as you type</div>`;
   };
-  let games = null, seq = 0, lastAsk = [], lastDoors = [];
+  // Browse genres and moods: moods, genres, channel types, consoles and Watch in order on their own view
+  const browse = () => {
+    $("#sres").innerHTML = `<section class="rowx"><h3>Browse genres and moods</h3><div class="tiles2">
+        <a class="tile2" href="#/browse/movies/genres">Movie genres</a><a class="tile2" href="#/browse/shows/genres">Show genres</a>
+        <a class="tile2" href="#/live">Channel types</a><a class="tile2" href="#/games">Consoles</a></div></section>
+      <div class="wrap"><button class="pill ghost" data-unbrowse>‹ Back to Search</button></div>`;
+    const f = $("#sres .tile2"); if (f) f.focus();
+  };
+  let games = null, seq = 0, lastAsk = [], lastDoors = [], plainSeq = 0;
   const plain = (x) => (x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[(\[].*?[)\]]/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
   const run = async (text) => {
     const my = ++seq;
     const t = text.trim();
     if (!t) return before();
+    dtop.hidden = false;
     $("#best").innerHTML = `<span class="dim">Looking…</span>`;
     const u = B.uid(), F = B.FIELDS;
     // Search speed (Ben 2026-11-21): everything is asked for at once. What Tower itself knows (movies, shows, music,
@@ -96,6 +127,12 @@ B.route(/^\/search/, async (m, nav) => {
     // Ben 2026-11-18: rows like Home. Each thing is a poster card in its row (squares for music and channels, circles
     // for people) and the same thing as one line in the See all list
     const line = (href, attrs, img, name, sub, square, asked, round) => {
+      // Not a library title: the top still names it when you point at it
+      if (!/data-id=/.test(attrs || "")) {
+        const key = "sx" + (++plainSeq);
+        B.items[key] = { _plain: { name, sub, ask: /data-mask=/.test(attrs || ""), asked } };
+        attrs = `${attrs || ""} data-id="${key}"`;
+      }
       const tag = href ? `a href="${href}"` : "button";
       const end = href ? "a" : "button";
       const isAsk = /data-(m)?ask=/.test(attrs || "");
@@ -117,7 +154,7 @@ B.route(/^\/search/, async (m, nav) => {
     };
     const chLine = (c) => line(`#/watch/${c.Id}`, "", c.ImageTags && c.ImageTags.Primary ? B.img(c.Id, "Primary", { h: 300, tag: c.ImageTags.Primary }) : "", c.Name, [c.ChannelNumber, "Live channel"].filter(Boolean).join(" · "), true);
     const gameLine = (g) => line(`#/game/${g.id}`, "", g.cover ? `${g.cover}?api_key=${enc(B.me.token)}` : "", g.name, g.console);
-    const titleLine = (r) => { B.askCard(r); return line(null, `data-ask="${esc(r.mediaType)}:${esc(r.id)}"`, r.posterPath ? `https://image.tmdb.org/t/p/w342${r.posterPath}` : "", r.title || r.name || "", [r.mediaType === "tv" ? "Show" : "Movie", (r.releaseDate || r.firstAirDate || "").slice(0, 4)].filter(Boolean).join(" · "), false, r.mediaInfo && r.mediaInfo.status > 1); };
+    const titleLine = (r) => { B.askCard(r); return line(null, `data-ask="${esc(r.mediaType)}:${esc(r.id)}" data-id="s${esc(r.mediaType + r.id)}"`, r.posterPath ? `https://image.tmdb.org/t/p/w342${r.posterPath}` : "", r.title || r.name || "", [r.mediaType === "tv" ? "Show" : "Movie", (r.releaseDate || r.firstAirDate || "").slice(0, 4)].filter(Boolean).join(" · "), false, r.mediaInfo && r.mediaInfo.status > 1); };
     const musicAskLine = (x) => line(null, `data-mask="${x.kind}:${x.id}"`, x.cover, x.title, `${x.kind === "album" ? "Album" : "Song"} · ${x.artist}`, true, !!x.asked);
     const bookPic = (u) => (u ? u.replace(/^\//, "") + (u.includes("?") ? "&" : "?") + "api_key=" + enc(B.me.token) : "");
     const bookLine = (b) => line(`#/book/${enc(b.id)}`, "", bookPic(b.cover), b.name, [b.kind === "audiobook" ? "Audiobook" : b.kind === "manga" ? "Manga" : "Book", b.author].filter(Boolean).join(" · "));
@@ -150,16 +187,27 @@ B.route(/^\/search/, async (m, nav) => {
         [{ name: "People", color: "#9AA0AE" }, people.map(personLine)],
       ]),
     ];
-    const full = rows.filter((d) => d[1].length), none = rows.filter((d) => !d[1].length && !d[0].quiet && !d[0].wait);
+    let full = rows.filter((d) => d[1].length);
+    const none = rows.filter((d) => !d[1].length && !d[0].quiet && !d[0].wait);
+    // Nothing on Glowfin (people aside): the Ask for it rows come first, and say so
+    const isAsk = (d) => /^Ask for it/.test(d[0].name);
+    const askOnly = more && full.some(isAsk) && full.every((d) => isAsk(d) || d[0].name === "People");
+    if (askOnly) full = [...full.filter(isAsk), ...full.filter((d) => !isAsk(d))];
+    // The kind pills beside the box (both Ask for it rows share one)
+    const pillOf = (d) => (isAsk(d) ? "Ask for it" : d[0].name);
+    const kinds = [];
+    full.forEach((d) => { const k = kinds.find((x) => x.k === pillOf(d)); if (k) k.n += d[1].length; else kinds.push({ k: pillOf(d), n: d[1].length }); });
+    if (kind && !kinds.some((x) => x.k === kind)) kind = null;
+    $("#skinds").innerHTML = kinds.length > 1 ? [`<a href="#" data-kind="" class="${kind ? "" : "on"}">Everything</a>`, ...kinds.map((x) => `<a href="#" data-kind="${esc(x.k)}" class="${kind === x.k ? "on" : ""}">${esc(x.k)} ${x.n}</a>`)].join("") : "";
     const MAX = 10;
-    const row = ([door, list]) => `<section class="rowx srow" data-n="${esc(door.name)}" style="--c:${door.color}"><h3><i class="bar"></i>${esc(door.name)} <small class="dim">${list.length}</small>${list.length > MAX ? `<button class="more" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h3>
+    const row = ([door, list]) => `<section class="rowx srow${/^Ask for it/.test(door.name) ? " sx-askrow" : ""}" data-n="${esc(door.name)}" data-k="${esc(/^Ask for it/.test(door.name) ? "Ask for it" : door.name)}" style="--c:${/^Ask for it/.test(door.name) ? "#F2B33D" : door.color}"${kind && kind !== (/^Ask for it/.test(door.name) ? "Ask for it" : door.name) ? " hidden" : ""}><h3><i class="bar"></i>${esc(door.name)} <small class="dim">${list.length}</small>${list.length > MAX ? `<button class="more" data-seeall="${esc(door.name)}">See all ›</button>` : ""}</h3>
       <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
       <div class="strip">${list.slice(0, MAX).map((x) => x.c).join("")}${list.length > MAX ? `<button class="poster see" data-seeall="${esc(door.name)}">See all</button>` : ""}</div>
       <button class="arrow r" data-scroll="1" aria-label="Scroll right">${I("right")}</button></section>`;
     // Still waiting and nothing to show yet: what's on screen stays until there is
     if (!more && !full.length) return;
     lastDoors = rows;
-    const html = `${full.length && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].short || d[0].name)).join(" · ")}</div>` : ""}
+    const html = `${askOnly ? `<div class="wrap dim sx-none">Nothing on Glowfin called “${esc(t)}”, so Ask for it comes first</div>` : ""}${!askOnly && full.length && none.length ? `<div class="wrap dim" style="margin:0;padding-top:10px;padding-bottom:10px">Nothing in ${none.map((d) => esc(d[0].short || d[0].name)).join(" · ")}</div>` : ""}
     ${full.map(row).join("")}
     ${!full.length ? `<div class="wrap empty">Nothing found for “${esc(t)}”. Check the spelling${kids ? "" : ", or ask for it on the Requests page"}.</div>` : ""}`;
     lastAsk = mAsk;
@@ -174,6 +222,10 @@ B.route(/^\/search/, async (m, nav) => {
       if (back) back.focus({ preventScroll: true });
     }
     painted = html;
+    // The top describes the first result until you point at another
+    dtop.hidden = !full.length;
+    const first = res.querySelector(".srow:not([hidden]) .strip [data-id]");
+    if (first) first.dispatchEvent(new Event("mouseover", { bubbles: true }));
     };
     // The slower places already answered (usual on a second search): one look, not two
     const ready = await Promise.race([slow, new Promise((r) => setTimeout(r, 0, null))]);
@@ -196,7 +248,17 @@ B.route(/^\/search/, async (m, nav) => {
     if (!c) return;
     box.value = c.dataset.sugg; remember(); history.replaceState(null, "", "#/search?q=" + enc(box.value)); run(box.value);
   });
+  $("#skinds").addEventListener("click", (e) => {
+    const a = e.target.closest("[data-kind]");
+    if (!a) return;
+    e.preventDefault();
+    kind = a.dataset.kind || null;
+    $$("#skinds a").forEach((x) => x.classList.toggle("on", x === a));
+    $$("#sres .srow").forEach((r) => { r.hidden = !!kind && r.dataset.k !== kind; });
+  });
   $("#sres").addEventListener("click", (e) => {
+    if (e.target.closest("[data-browse]")) { browse(); return; }
+    if (e.target.closest("[data-unbrowse]")) { before(); return; }
     const r = e.target.closest("[data-recent]");
     if (r) { box.value = r.dataset.recent; run(box.value); return; }
     const un = e.target.closest("[data-unrecent]");
