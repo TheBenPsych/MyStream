@@ -262,10 +262,16 @@ fun DoorTop10Poster(
         com.github.damontecres.wholphin.ui.cards
             .cardNameHeight(strip = true)
     val posterHeight = width / POSTER_RATIO
-    Row(verticalAlignment = Alignment.Top, modifier = modifier) {
+    // Ben's Glow outline: the number fills in while its poster has focus
+    var lit by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = modifier.onFocusChanged { lit = it.hasFocus },
+    ) {
         com.github.damontecres.wholphin.ui.components.GlowRankNumber(
             rank = rank,
             posterHeight = posterHeight,
+            lit = lit,
             modifier = Modifier.padding(end = com.github.damontecres.wholphin.ui.components.RankGap),
         )
         DoorPoster(

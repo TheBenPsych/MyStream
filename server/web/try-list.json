@@ -1,6 +1,8 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "top10-outline", "title": "Top 10 numbers are hollow glowing outlines that fill in on the cover you're on (always filled on phones)", "where": "any TV, phone or browser · Movies, Shows, Anime, Home, Books, Requests Top 10 rows", "date": "Nov 23"},
+    {"id": "rate-sticks", "title": "Rate button shows Liked / Loved / Not for me right after you pick", "where": "any TV or browser · open a movie, press Rate, pick one", "date": "Nov 23"},
     {"id": "steady-seekbar", "title": "Player seek bar dot stays still while the times tick", "where": "any TV, phone or browser · play anything and watch the dot", "date": "Nov 23"},
     {"id": "game-quote", "title": "New game: Quote it (lines from a movie's subtitles)", "where": "any TV or phone · Games > Quote it (needs Tower's next hourly update)", "date": "Nov 22"},
     {"id": "game-closeup", "title": "New game: Close-up (a real scene zooms out)", "where": "any TV or phone · Games > Close-up", "date": "Nov 22"},
