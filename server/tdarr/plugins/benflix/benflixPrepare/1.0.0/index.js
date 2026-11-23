@@ -201,6 +201,15 @@ var sizePlan = function (o) {
 };
 exports.sizePlan = sizePlan;
 
+// A movie is a file in a folder named "movie", or a long special: a Season 00 / Specials file of 40 minutes
+// or more, like the Pokemon movies filed with the show (Ben 2026-11-22). Same 40 minutes the app uses.
+var isMovieFile = function (file, secs) {
+  var dir = file.split("/").slice(0, -1).join("/");
+  if (/movie/i.test(dir)) return true;
+  var special = /\/(season 0+|specials?)(\/|$)/i.test(dir) || /\bS00E\d+/i.test(file.split("/").pop());
+  return special && Number(secs) >= 40 * 60;
+};
+
 var plugin = async function (args) {
   var inputs = args.inputs || {};
   var cmd = args.variables && args.variables.ffmpegCommand;
@@ -271,7 +280,7 @@ var plugin = async function (args) {
   var sizeMB = 0;
   try { sizeMB = fs.statSync(file).size / 1e6; } catch (e) { sizeMB = Number(args.inputFileObj.file_size || 0); }
   var plan = sizePlan({
-    isMovie: /movie/i.test(file.split("/").slice(0, -1).join("/")),
+    isMovie: isMovieFile(file, secs),
     minutes: secs / 60, height: Number(v.height) || 1080, width: Number(v.width) || 1920, sizeMB: sizeMB,
     codec: String(v.codec_name || "").toLowerCase(), srcVideoKbps: srcKbps, audioKbps: audioKbps,
     goal: { epMin: num(inputs.episodeMinMB, 400), epMax: num(inputs.episodeMaxMB, 800), mvMin: num(inputs.movieMinMB, 800), mvMax: num(inputs.movieMaxMB, 1500) },
@@ -281,6 +290,7 @@ var plugin = async function (args) {
   args.jobLog("Size plan: " + Math.round(sizeMB) + " MB -> about " + plan.targetMB + " MB: " + plan.why.join("; "));
   args.variables.user = args.variables.user || {};
   args.variables.user.benflixPlanMB = String(plan.targetMB);
+  args.variables.user.benflixMovie = isMovieFile(file, secs) ? "1" : "";
   var maxrate = Math.round(target * 1.5) + "k", bufsize = Math.round(target * 3) + "k";
   if (useCpu) {
     v.outputArgs.push("-c:{outputIndex}", "libx265", "-b:{outputIndex}", target + "k", "-maxrate:{outputIndex}", maxrate,
@@ -303,3 +313,4 @@ var plugin = async function (args) {
   return { outputFileObj: args.inputFileObj, outputNumber: 1, variables: args.variables };
 };
 exports.plugin = plugin;
+exports.isMovieFile = isMovieFile;
