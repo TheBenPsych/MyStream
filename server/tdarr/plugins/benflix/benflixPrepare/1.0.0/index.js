@@ -210,6 +210,17 @@ var isMovieFile = function (file, secs) {
   return special && Number(secs) >= 40 * 60;
 };
 
+// A surround track worth making smaller: 6+ channels and over 384 kbps (lossless ones often have no bitrate).
+var SURROUND_KBPS = 384;
+var bigSurround = function (s, tagged) {
+  if (!(Number(s.channels) >= 6)) return false;
+  var codec = String(s.codec_name || "").toLowerCase();
+  if (["truehd", "mlp", "flac", "alac"].indexOf(codec) !== -1 || /^pcm_/.test(codec)) return true;
+  var bps = Number(s.bit_rate) || Number(tagged) || 0;
+  if (!bps) return codec === "dts";
+  return bps > SURROUND_KBPS * 1000 * 1.05;
+};
+
 var plugin = async function (args) {
   var inputs = args.inputs || {};
   var cmd = args.variables && args.variables.ffmpegCommand;
@@ -270,6 +281,18 @@ var plugin = async function (args) {
     var k = Object.keys(t).filter(function (x) { return /^BPS(-eng)?$/i.test(x); })[0];
     return k ? Number(t[k]) : 0;
   };
+  // Movies: big surround tracks become 5.1 EAC3 at 384 kbps, the size streaming services use, so a long
+  // movie with two 5.1 tracks still fits its goal (Ben 2026-11-23). Stereo and small tracks are copied.
+  var file0 = args.originalLibraryFile ? args.originalLibraryFile._id : args.inputFileObj._id;
+  if (isMovieFile(file0, secs)) {
+    streams.forEach(function (s) {
+      if (s.removed || s.codec_type !== "audio" || !bigSurround(s, tagBps(s))) return;
+      s.outputArgs.push("-c:{outputIndex}", "eac3", "-b:{outputIndex}", SURROUND_KBPS + "k", "-ac:{outputIndex}", "6");
+      s.bit_rate = SURROUND_KBPS * 1000;
+      args.jobLog("Sound track " + s.index + " (" + String(s.codec_name).toUpperCase() + " " + s.channels
+        + " channels) -> 5.1 EAC3 at " + SURROUND_KBPS + " kbps");
+    });
+  }
   var audioKbps = 0;
   streams.forEach(function (s) {
     if (s.removed) return;
@@ -314,3 +337,4 @@ var plugin = async function (args) {
 };
 exports.plugin = plugin;
 exports.isMovieFile = isMovieFile;
+exports.bigSurround = bigSurround;
