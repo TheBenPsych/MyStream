@@ -171,10 +171,13 @@ internal fun LazyListScope.bookShelfItems(
     if (d == null) {
         item(key = "bs-loading") {
             if (problem != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Couldn't load the book lists. $problem", color = BenflixColors.Soft, fontSize = BenflixType.body)
-                    MusicButton("Try again", BenflixIcon.REFRESH, onClick = onRetry)
-                }
+                // New look: the soft picture, one sentence and one white button
+                com.github.damontecres.wholphin.ui.components.ProblemPage(
+                    title = "Couldn't load the book lists",
+                    line = problem,
+                    icon = BenflixIcon.BOOK,
+                    onClick = onRetry,
+                )
             } else {
                 Text("Loading the book lists…", color = BenflixColors.Muted, fontSize = BenflixType.body)
             }
@@ -744,8 +747,12 @@ fun BookAboutPage(
         Column(Modifier.fillMaxSize().padding(edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(name, color = BenflixColors.Text, fontSize = BenflixType.hero, fontWeight = FontWeight.ExtraBold)
             if (problem != null) {
-                Text(problem!!, color = BenflixColors.Soft, fontSize = BenflixType.body)
-                MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::reload)
+                com.github.damontecres.wholphin.ui.components.ProblemPage(
+                    title = "Couldn't look this book up",
+                    line = problem!!,
+                    icon = BenflixIcon.BOOK,
+                    onClick = viewModel::reload,
+                )
             } else {
                 Text("Looking it up…", color = BenflixColors.Muted, fontSize = BenflixType.body)
             }

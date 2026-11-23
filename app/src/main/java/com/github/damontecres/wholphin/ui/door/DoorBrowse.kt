@@ -77,7 +77,13 @@ fun DoorBrowsePage(
     val lib = library
     if (lib == null) {
         if (looked) {
-            Text("Nothing here yet", color = BenflixColors.Muted, fontSize = BenflixType.body, modifier = modifier.padding(24.dp))
+            // New look: the soft picture and one plain sentence instead of grey text
+            com.github.damontecres.wholphin.ui.components.EmptyPage(
+                icon = com.github.damontecres.wholphin.ui.components.BenflixIcon.FILM,
+                title = "Nothing here yet",
+                line = "Once Tower has some, they show up here.",
+                modifier = modifier,
+            )
         } else {
             LoadingPage(modifier, shape = LoadingShape.WALL)
         }

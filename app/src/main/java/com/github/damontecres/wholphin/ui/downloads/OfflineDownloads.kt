@@ -322,12 +322,15 @@ fun OfflineScreen(
             com.github.damontecres.wholphin.ui.nav.BenflixLogo(
                 modifier = Modifier.padding(bottom = 24.dp),
             )
-            Text(
-                text = stringResource(R.string.fa_wifi),
-                fontFamily = FontAwesome,
-                fontSize = 44.sp,
-                color = BenflixColors.Muted,
-            )
+            // New look: the soft little picture behind the wifi sign
+            com.github.damontecres.wholphin.ui.components.SoftArtTile {
+                Text(
+                    text = stringResource(R.string.fa_wifi),
+                    fontFamily = FontAwesome,
+                    fontSize = 44.sp,
+                    color = BenflixColors.Text,
+                )
+            }
             Text(
                 text = stringResource(R.string.offline_title),
                 fontSize = BenflixType.pageTitle,
