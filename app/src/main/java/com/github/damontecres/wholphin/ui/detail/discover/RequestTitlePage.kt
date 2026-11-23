@@ -28,6 +28,8 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
 import com.github.damontecres.wholphin.ui.discover.WishList
 import com.github.damontecres.wholphin.ui.discover.WishListViewModel
+import com.github.damontecres.wholphin.ui.discover.rememberCanRequestFor
+import com.github.damontecres.wholphin.ui.discover.rememberRequestFor
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import kotlin.math.roundToInt
 
@@ -116,9 +118,22 @@ fun RequestTitlePage(
             }
         }
     val trailer = trailers.firstOrNull()
+    // Glowfin new look (Ben 2026-11-22): Ben's For: Me picker sits here, next to Ask for it
+    val canFor = rememberCanRequestFor(isAdmin)
+    val forPick = if (canFor) rememberRequestFor() else null
     val buttons =
         buildList {
             add(first)
+            if (forPick != null && availability == SeerrAvailability.UNKNOWN && canRequest && !blocked) {
+                add(
+                    TitleButton(
+                        "For: ${forPick.forName}",
+                        BenflixIcon.PERSON,
+                        forPick.open,
+                        note = "Who this ask is for. It goes on their list and they're told when it's ready",
+                    ),
+                )
+            }
             if (!here && !kids && tmdbId != null) {
                 add(
                     TitleButton(

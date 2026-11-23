@@ -1,26 +1,21 @@
 package com.github.damontecres.wholphin.ui.discover
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,162 +39,20 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.DiscoverItem
-import com.github.damontecres.wholphin.data.model.SeerrAvailability
-import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.CantFindBlocked
 import com.github.damontecres.wholphin.ui.cards.AdultContentBanner
 import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
-import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
-import kotlinx.coroutines.delay
 
 /*
- * Benflix redesign (approved 2026-11-07): the Requests page looks like the Movies door. A top area
- * describes the poster you're on with its picture fading in from the right, and the rows use the
- * same plain posters (TV: just the picture; phone: a dark name strip under it).
+ * Benflix redesign (approved 2026-11-07): the Requests rows use the same plain posters as the doors
+ * (TV: just the picture; phone: a dark name strip under it). The top that describes the poster you're on is in
+ * RequestLook.kt (Glowfin new look).
  */
-
-/** The words on a poster's top-left pill, or null for nothing */
-private fun DiscoverItem.statusWord(): String? =
-    when (availability) {
-        // Redesign 2: the same words as the status pills everywhere else
-        SeerrAvailability.PENDING -> "ASKED"
-
-        SeerrAvailability.PROCESSING -> "GETTING IT"
-
-        SeerrAvailability.PARTIALLY_AVAILABLE -> "PARTLY HERE"
-
-        SeerrAvailability.AVAILABLE -> "READY TO WATCH"
-
-        else -> null
-    }
-
-/** The top area, following [focused] once you've stopped on a poster for half a second */
-@Composable
-fun DelayedRequestPreview(
-    focused: State<DiscoverItem?>,
-    fallback: DiscoverItem?,
-    scores: Map<String, String>,
-    height: Dp,
-) {
-    var shown by remember { mutableStateOf<DiscoverItem?>(null) }
-    val target = focused.value
-    LaunchedEffect(target) {
-        if (target == null) return@LaunchedEffect
-        if (shown != null) delay(PREVIEW_DELAY_MS)
-        shown = target
-    }
-    val item = shown ?: fallback
-    RequestPreview(
-        item = item,
-        score = item?.let { scores[it.requestKey()] ?: it.score?.let { s -> "★ ${"%.1f".format(s)}" } },
-        height = height,
-    )
-}
-
-/** The top area: the focused title's picture on the right, its name, year, score and story on the left */
-@Composable
-fun RequestPreview(
-    item: DiscoverItem?,
-    score: String?,
-    height: Dp,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(height),
-    ) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .fillMaxWidth(PICTURE_WIDTH)
-                .fillMaxHeight(),
-        ) {
-            Crossfade(targetState = item?.backDropUrl, animationSpec = tween(PICTURE_FADE_MS), label = "requestPicture") { url ->
-                if (url != null) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        BenflixShade.topAreaSide,
-                    ),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(BenflixShade.bottom(0.5f)),
-            )
-        }
-        if (item != null) {
-            Column(
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(horizontal = SIDE_ROW)
-                        .widthIn(max = 560.dp),
-            ) {
-                Text(
-                    text = item.title.orEmpty(),
-                    color = BenflixColors.Text,
-                    fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
-                    fontSize = BenflixType.pageTitle,
-                    lineHeight = BenflixType.pageTitle * 1.15f,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val meta =
-                    listOfNotNull(
-                        item.releaseDate?.year?.toString(),
-                        when (item.type) {
-                            SeerrItemType.MOVIE -> "Movie"
-                            SeerrItemType.TV -> "Show"
-                            else -> null
-                        },
-                        score,
-                        item.statusWord()?.lowercase()?.replaceFirstChar { it.uppercase() },
-                    ).joinToString("  ·  ")
-                if (meta.isNotEmpty()) {
-                    Text(
-                        text = meta,
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.body,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-                val story = item.overview
-                if (!story.isNullOrBlank()) {
-                    Text(
-                        text = story,
-                        color = BenflixColors.Soft,
-                        fontSize = BenflixType.small,
-                        lineHeight = BenflixType.small * 1.35f,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-            }
-        }
-    }
-}
 
 /** One row of request posters: a medium white name, then the posters */
 @Composable
@@ -337,8 +190,10 @@ fun RequestPoster(
                                 .padding(10.dp),
                     )
                 }
-                item.statusWord()?.let { word ->
-                    Pill(word, Modifier.align(Alignment.TopStart).padding(6.dp))
+                // Glowfin new look: a small coloured dot on covers already asked for (amber waiting, aqua on its
+                // way, green here, red couldn't find or missing episodes)
+                item.rqDot(cantFind)?.let { dot ->
+                    RqCoverDot(dot, Modifier.align(Alignment.TopEnd).padding(6.dp))
                 }
                 if (adult) {
                     AdultContentBanner(modifier = Modifier.align(Alignment.BottomCenter))
@@ -388,25 +243,6 @@ fun RequestPoster(
     }
 }
 
-@Composable
-private fun Pill(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        color = BenflixColors.Tray,
-        fontSize = BenflixType.tag,
-        fontWeight = FontWeight.ExtraBold,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier =
-            modifier
-                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
-                .padding(horizontal = 5.dp, vertical = 1.dp),
-    )
-}
-
 /** Rows in the approved order; anything else (like Popular) goes after */
 fun orderRequestRows(rows: List<FindRow>): List<FindRow> =
     rows.sortedBy { row ->
@@ -423,6 +259,3 @@ fun orderRequestRows(rows: List<FindRow>): List<FindRow> =
 
 private val POSTER_SHAPE = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
 private val SIDE_ROW = 16.dp
-private const val PICTURE_WIDTH = 0.62f
-private const val PICTURE_FADE_MS = 450
-private const val PREVIEW_DELAY_MS = 500L

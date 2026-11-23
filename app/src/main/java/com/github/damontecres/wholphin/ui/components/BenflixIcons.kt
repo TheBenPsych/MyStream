@@ -134,6 +134,8 @@ enum class BenflixIcon(
     CHAPTERS("M8.5 6h11M8.5 12h11M8.5 18h11", "M4.5 6h.01M4.5 12h.01M4.5 18h.01"),
 
     // Music Repeat: two arrows chasing each other round a loop
+    // Glowfin new look, Requests: three lines getting shorter (Filters)
+    FILTER("M4 7h16M7 12h10M10 17h4"),
     REPEAT("M17 2.5l3 3-3 3", "M4 11.5v-1a5 5 0 0 1 5-5h11", "M7 21.5l-3-3 3-3", "M20 12.5v1a5 5 0 0 1-5 5H4"),
     ;
 

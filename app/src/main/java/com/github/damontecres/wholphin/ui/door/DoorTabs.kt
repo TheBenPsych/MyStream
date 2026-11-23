@@ -74,7 +74,7 @@ fun DoorTabs(
 }
 
 @Composable
-private fun DoorTab(
+internal fun DoorTab(
     label: String,
     selected: Boolean,
     wide: Boolean,
