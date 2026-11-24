@@ -382,14 +382,22 @@ internal fun WideDoor(
         // locked while the rows move, so the page never jumps. About half the screen, like the approved design.
         val topHeight =
             if (topFree && !easy) {
-                FREE_TOP_HEIGHT
+                // Ben 2026-11-24 (idea A, "Rows sit low"): the words stay at the top and the first row sits at the
+                // bottom of the screen, so a band of wallpaper shows between them. The next row no longer peeks in.
+                val firstRow = ROW_NAME_HEIGHT + posterWidth / POSTER_RATIO + LOW_ROW_BOTTOM
+                (maxHeight - firstRow).coerceAtLeast(FREE_TOP_HEIGHT)
             } else {
                 (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp) + (if (easy) 0.dp else SCORE_ROW)
             }
         val wordsTop = if (topFree && !easy) FREE_WORDS_TOP else overlap + 2.dp
         var brightArt by remember { mutableStateOf(false) }
         // The art of the card you're on fills the whole page, behind the tabs and the rows too
-        DoorArt(item = artItem, pageHeight = maxHeight, onBright = { brightArt = it })
+        DoorArt(
+            item = artItem,
+            pageHeight = maxHeight,
+            onBright = { brightArt = it },
+            shadeFrom = if (topFree && !easy) LOW_ROWS_SHADE_FROM else BOTTOM_SHADE_FROM,
+        )
         if (preview != null && !easy) {
             // Ben 2026-11-24: the scores moved under the year and time (DoorInfo), so the top right keeps only the
             // clock and Glowfin "94% for you" (Idea Box 28), laid over the page so nothing moves
@@ -793,6 +801,12 @@ private const val WORDS_DELAY_MS = 100L
 /** Home on TV (Ben 2026-11-24, side menu A): the words start near the top and the first row sits right under them */
 private val FREE_WORDS_TOP = 16.dp
 private val FREE_TOP_HEIGHT = 204.dp
+
+/** A row's name line (lead text + its 8dp gap) above the posters */
+private val ROW_NAME_HEIGHT = 32.dp
+
+/** Room left under the low first row on Home (the focus stripes sit in it) */
+private val LOW_ROW_BOTTOM = 16.dp
 
 /** Room for the row of score icons under the year and time (Ben 2026-11-24) */
 private val SCORE_ROW = 26.dp
