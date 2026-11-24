@@ -3624,14 +3624,16 @@ def _manga_route(method, path, q, user_id, is_admin, is_kids, read_json, user_na
 
 def _kids_blocked(path):
     """Ben 2026-11-21: no manga on Kids profiles at all, so a Kids profile can't open manga by its link either"""
-    m = re.match(r"/api/books/(?:title|next|cover|vol|file|place|opened|marks|send)/(\w+)", path)
+    # Security check 2026-11-24: a Kids profile also can't open a grown-up book by its link (the file, the
+    # EPUB pages or the cover), only the kids' books it can see in its library
+    m = re.match(r"/api/books/(?:title|next|cover|vol|file|epub|x|place|opened|marks|send)/(\w+)", path)
     if not m:
         return False
     key = m.group(1)
     if key in _lib["vols"]:
         return True
     t = _lib["titles"].get(key)
-    return bool(t) and t["kind"] in ("manga", "comic")
+    return bool(t) and not kids_ok(t)
 
 
 def status():
