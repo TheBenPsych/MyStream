@@ -53,7 +53,7 @@ fun GlowfinHome(
     // round) land straight on the rows; a tap opens the title's own page with its big art.
     if (isTv) {
         WideDoor(state, easy = false, isTv = isTv, viewModel = viewModel, frame = frame, onClick = onClick, onSeeAll = {
-        }, modifier = modifier)
+        }, modifier = modifier, topFree = true)
     } else {
         PhoneDoor(
             state,

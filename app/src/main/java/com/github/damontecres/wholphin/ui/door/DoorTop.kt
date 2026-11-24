@@ -47,13 +47,14 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.detail.title.BRIGHT_ART
 import com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras
-import com.github.damontecres.wholphin.ui.detail.title.ScorePill
+import com.github.damontecres.wholphin.ui.detail.title.ScoreIcons
 import com.github.damontecres.wholphin.ui.detail.title.TitleBox
 import com.github.damontecres.wholphin.ui.detail.title.TitleExtras
 import com.github.damontecres.wholphin.ui.detail.title.rememberImageLight
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.CoverGlowColors
+import com.github.damontecres.wholphin.ui.nav.stayPut
 import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
@@ -114,7 +115,8 @@ internal fun DoorArtUrl(
     val light = rememberImageLight(shownUrl)
     val bright = light != null && light > BRIGHT_ART
     LaunchedEffect(bright) { onBright(bright) }
-    Box(Modifier.fillMaxSize().underRail()) {
+    // Side menu A (Ben 2026-11-24): the art stays put while the open menu pushes the words and rows right
+    Box(Modifier.fillMaxSize().underRail().stayPut()) {
         Crossfade(targetState = shownUrl, animationSpec = tween(ART_FADE_MS), label = "doorArt") { picture ->
             if (picture != null) {
                 AsyncImage(
@@ -164,6 +166,8 @@ internal fun DoorInfo(
         }
         val tag = remember(item) { doorTag(item) }
         if (tag != null) DoorTag(tag)
+        // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time
+        if (!easy) DoorScoreIcons(item = item, modifier = Modifier.padding(top = 2.dp))
         val story = item.data.overview
         if (!easy && !story.isNullOrBlank()) {
             Text(
@@ -180,12 +184,9 @@ internal fun DoorInfo(
     }
 }
 
-/**
- * The score pill for the card you're on (age rating and up to 3 scores). Episodes show their whole show's scores
- * (Ben 2026-11-23, shows and anime alike); the episode's own age rating is used when it has one.
- */
+/** The same scores as bare icons in a row, for under the facts line (episodes use their show's scores) */
 @Composable
-internal fun DoorScorePill(
+internal fun DoorScoreIcons(
     item: BaseItem,
     modifier: Modifier = Modifier,
 ) {
@@ -193,12 +194,12 @@ internal fun DoorScorePill(
         val series = rememberSeriesOf(item)
         val rating = item.data.officialRating ?: series?.data?.officialRating
         if (series == null) {
-            ScorePill(rating = rating, scores = emptyList(), modifier = modifier)
+            ScoreIcons(rating = rating, scores = emptyList(), modifier = modifier)
         } else {
-            ScorePill(rating = rating, scores = rememberScoreParts(series), modifier = modifier)
+            ScoreIcons(rating = rating, scores = rememberScoreParts(series), modifier = modifier)
         }
     } else {
-        ScorePill(rating = item.data.officialRating, scores = rememberScoreParts(item), modifier = modifier)
+        ScoreIcons(rating = item.data.officialRating, scores = rememberScoreParts(item), modifier = modifier)
     }
 }
 
