@@ -49,6 +49,7 @@ object PageRows {
             Page.MOVIES -> {
                 listOf(
                     DoorViewModel.TOP_10 to "Top 10 this week",
+                    DoorViewModel.JUST_RELEASED to "Just released",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.LOVED to "Because you loved…",
                     DoorViewModel.NEW to "Recently added",

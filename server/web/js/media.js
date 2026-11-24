@@ -277,7 +277,7 @@ B.route(/^\/movies$/, async (m, nav) => {
   const anime = await B.animeIds("Movie");
   const notAnime = (x) => !anime.has(x.Id);
   const fewer = B.me.kids;
-  const [resume, fresh, top, because, released, best, stand, missing, loved] = await Promise.all([
+  const [resume, fresh, top, because, released, best, stand, missing, loved, justOut] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     fromLibs(main.concat(standLibs), "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
     fewer ? [] : B.trending("Movie").catch(() => []),
@@ -287,12 +287,14 @@ B.route(/^\/movies$/, async (m, nav) => {
     fewer ? [] : fromLibs(standLibs, "Movie", "Random", "&IsPlayed=false"),
     fewer ? [] : B.trendingMissing("movies"),
     fewer ? null : lovedRow("Movie", (id) => !anime.has(id)).catch(() => null),
+    fewer ? [] : B.justReleased({ movies: true, keep: (it) => !anime.has(it.Id) }),
   ]);
   if (!B.alive(nav)) return;
   const keep = resume.filter(notAnime);
   pageRows([
     B.row("Keep watching", keep.map((it) => B.posterCard(it, { progress: true }))),
     B.row("Top 10 movies this week", B.top10(top)),
+    B.row("Just released", justOut),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
     B.row("Recently added", fresh.slice(0, 20).map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?anime=hide&title=All%20movies" }),
