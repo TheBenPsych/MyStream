@@ -131,6 +131,8 @@ class TrackActivityPlaybackListener(
         val alsoFor =
             com.github.damontecres.wholphin.services.AlsoCountsFor.chosen.value
         val durationMs = player.duration
+        com.github.damontecres.wholphin.services.DetailsPrefetch
+            .playbackStopped()
         launch("reportPlaybackStopped") {
             try {
                 getState.invoke()?.let { state ->

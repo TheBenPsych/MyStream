@@ -1394,10 +1394,12 @@ B.animeRequests = (nav, getLists, openList) => {
   const anDescribe = (c) => {
     if (!c) return "";
     const bits = [c.format === "MOVIE" ? "Anime movie" : "Anime", c.year, c.format !== "MOVIE" && c.episodes ? c.episodes + " episodes" : "",
-      dub && dub.size ? (c.idMal && dub.has(c.idMal) ? "Sub+Dub" : "Sub") : "", c.score ? "AniList " + c.score + "%" : ""].filter(Boolean);
+      dub && dub.size ? (c.idMal && dub.has(c.idMal) ? "Sub+Dub" : "Sub") : ""].filter(Boolean);
     const air = airing(c);
+    // Design check (Ben 2026-11-24): the AniList score is a bare icon under the facts line (AL 74), no words or %
+    const score = c.score ? B.scoreIcons("", `<span data-s="al"><b>${+c.score}</b></span>`) : "";
     return `<div class="dt-name"><div class="t">${esc(c.titles[0] || "")}</div></div>
-      <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>
+      <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${score}
       <div class="row" style="gap:8px">${c._missing ? '<div class="dt-tag rqtag t-nyet">Missing episodes</div>' : '<div class="dt-tag rqtag t-nyet">Not on Glowfin yet</div>'}${air ? `<div class="dt-tag rqtag t-way">Airing now · ${esc(air)}</div>` : ""}</div>
       <div class="ov">${esc(c.story || "")}</div><div class="rqhint">Click it to open it and ask for it</div>`;
   };

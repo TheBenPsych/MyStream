@@ -60,7 +60,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
-import com.github.damontecres.wholphin.ui.detail.title.ScorePill
+import com.github.damontecres.wholphin.ui.detail.title.ScoreIcons
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.door.DoorTab
 import com.github.damontecres.wholphin.ui.nav.underRail
@@ -308,7 +308,9 @@ fun RequestTopWords(
     tag: RqTag,
     age: String?,
     modifier: Modifier = Modifier,
+    scores: String? = null,
 ) {
+    val scoreParts = remember(scores) { requestScoreParts(scores) }
     val facts =
         listOfNotNull(
             when (item.type) {
@@ -331,6 +333,7 @@ fun RequestTopWords(
                 "Asked already, so OK just opens it"
             },
         modifier = modifier,
+        scores = scoreParts,
     )
 }
 
@@ -346,6 +349,7 @@ fun RequestTopText(
     story: String?,
     hint: String?,
     modifier: Modifier = Modifier,
+    scores: List<StripPart> = emptyList(),
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.widthIn(max = 520.dp)) {
         Text(
@@ -370,6 +374,9 @@ fun RequestTopText(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        // Design check (Ben 2026-11-24): scores are bare icons under the year line, like title pages; the
+        // top right is the clock only
+        if (scores.isNotEmpty()) ScoreIcons(rating = null, scores = scores)
         if (tags.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { tags.forEach { RqStatusTag(it) } }
         }
@@ -397,27 +404,17 @@ fun RequestTopText(
     }
 }
 
-/** The score pill at the top right: the age rating, then IMDb and the tomato when they're known */
-@Composable
-fun RequestScorePill(
-    age: String?,
-    scores: String?,
-    modifier: Modifier = Modifier,
-) {
-    val parts =
-        remember(scores) {
-            scores
-                ?.split(" · ")
-                ?.mapNotNull { part ->
-                    when {
-                        part.startsWith("IMDb ") -> StripPart("imdb", part.removePrefix("IMDb ").trim())
-                        part.startsWith("🍅 ") -> StripPart("rotten", part.removePrefix("🍅 ").trim())
-                        else -> null
-                    }
-                }.orEmpty()
-        }
-    ScorePill(rating = age, scores = parts, modifier = modifier)
-}
+/** "IMDb 7.4 · 🍅 91%" from Tower, as score parts for [ScoreIcons] */
+fun requestScoreParts(scores: String?): List<StripPart> =
+    scores
+        ?.split(" · ")
+        ?.mapNotNull { part ->
+            when {
+                part.startsWith("IMDb ") -> StripPart("imdb", part.removePrefix("IMDb ").trim())
+                part.startsWith("🍅 ") -> StripPart("rotten", part.removePrefix("🍅 ").trim())
+                else -> null
+            }
+        }.orEmpty()
 
 /*
  * The pills along the top: the tabs, a little gap, then the round Search and Filters pills and Ben's yellow

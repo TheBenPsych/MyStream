@@ -17,7 +17,7 @@
     <!-- Profile colour -->
     <string name="benflix_profile_color">Profile colour</string>
     <string name="benflix_profile_color_summary">Used for progress bars and buttons</string>
-    <string name="benflix_color_red">Benflix red</string>
+    <string name="benflix_color_red">Red</string>
     <string name="benflix_color_blue">Ocean</string>
     <string name="benflix_color_green">Forest</string>
     <string name="benflix_color_gold">Gold</string>
@@ -97,10 +97,10 @@
         <item>Balanced (about 1.4 GB an hour)</item>
         <item>Best (full quality, uses a lot of data)</item>
     </string-array>
-    <string name="benflix_data_saver_toast">On mobile data, so Benflix is using a lower quality to save data</string>
+    <string name="benflix_data_saver_toast">On mobile data, so Glowfin is using a lower quality to save data</string>
 
     <!-- How to -->
-    <string name="benflix_how_to">How to use Benflix</string>
+    <string name="benflix_how_to">How to use Glowfin</string>
     <string name="benflix_how_to_summary">What the remote buttons do, and handy tips</string>
 
     <!-- Server page -->
@@ -108,10 +108,10 @@
     <string name="benflix_server_page_summary">Who\'s watching now and how the server is doing (admin only)</string>
 
     <!-- Settings follow you -->
-    <string name="benflix_settings_restored">Your Benflix settings came with you</string>
+    <string name="benflix_settings_restored">Your Glowfin settings came with you</string>
 
     <!-- Ask for it -->
-    <string name="benflix_not_on_benflix">Not on Benflix yet</string>
+    <string name="benflix_not_on_benflix">Not on Glowfin yet</string>
     <string name="benflix_ask_for_it">Ask for it</string>
     <string name="benflix_cant_find">Couldn\'t find it</string>
     <string name="benflix_connect_requests">Can\'t find it? Turn on requests</string>
@@ -163,13 +163,13 @@
     <string name="benflix_settings_hint_profile_server">Audio and subtitle choices saved on your server</string>
     <string name="benflix_settings_back_hint">Press Back to return to Settings</string>
     <string name="benflix_anilist_tracking">AniList anime tracking</string>
-    <string name="benflix_anilist_tracking_off">Off. Sign in with your own AniList account and every anime episode you finish on Benflix gets ticked off on your AniList list. Everyone signs in with their own account, and your TVs pick it up from your phone.</string>
+    <string name="benflix_anilist_tracking_off">Off. Sign in with your own AniList account and every anime episode you finish on Glowfin gets ticked off on your AniList list. Everyone signs in with their own account, and your TVs pick it up from your phone.</string>
     <string name="benflix_anilist_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your AniList list. Select to sign out.</string>
     <string name="benflix_omdb_key">Scores on the Requests pages (OMDb key)</string>
     <string name="benflix_omdb_key_off">Not set. Add a free OMDb key so every Requests page shows IMDb and Rotten Tomatoes scores. Get one at omdbapi.com/apikey.aspx (pick FREE), then open the link in the email to turn it on.</string>
     <string name="benflix_omdb_key_on">On. Requests pages fill in IMDb and Rotten Tomatoes scores for everyone. Select to change the key.</string>
     <string name="benflix_mal_tracking">MyAnimeList anime tracking</string>
-    <string name="benflix_mal_tracking_off">Off. Sign in with your own MyAnimeList account and every anime episode you finish on Benflix gets ticked off on your MyAnimeList list. Works with or without AniList, and your TVs pick it up from your phone.</string>
+    <string name="benflix_mal_tracking_off">Off. Sign in with your own MyAnimeList account and every anime episode you finish on Glowfin gets ticked off on your MyAnimeList list. Works with or without AniList, and your TVs pick it up from your phone.</string>
     <string name="benflix_mal_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your MyAnimeList list. Select to sign out.</string>
     <!-- Idea Box 29: the name Android Auto shows for Glowfin audiobooks in the car -->
     <string name="car_audiobooks_name" translatable="false">Glowfin audiobooks</string>

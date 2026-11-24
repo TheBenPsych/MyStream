@@ -31,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -338,7 +340,19 @@ fun MusicDoorPage(
                         rows.forEachIndexed { rowIndex, row ->
                             item(key = row.key) {
                                 CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-                                    Column(Modifier.scrollAsOneBlock()) {
+                                    // Design check (Ben 2026-11-24): on TV a row that has scrolled partly up under
+                                    // the top is hidden, so no thin strip of covers shows above the row you're on
+                                    val underTop by remember(row.key) {
+                                        derivedStateOf {
+                                            isTv &&
+                                                (
+                                                    listState.layoutInfo.visibleItemsInfo
+                                                        .firstOrNull { it.key == row.key }
+                                                        ?.let { it.offset < -2 } ?: false
+                                                )
+                                        }
+                                    }
+                                    Column(Modifier.graphicsLayer { alpha = if (underTop) 0f else 1f }.scrollAsOneBlock()) {
                                         MusicRowName(row.title, Modifier.padding(start = side(wide), bottom = 8.dp))
                                         val rowState = rememberLazyListState()
                                         if (rowIndex == 0) {

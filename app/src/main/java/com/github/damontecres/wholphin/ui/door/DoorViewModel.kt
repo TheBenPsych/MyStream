@@ -288,6 +288,16 @@ class DoorViewModel
         private fun List<Library>.ofKind(vararg kinds: LibraryKind) =
             filter { LibraryKind.from(it.name, it.collectionType) in kinds }.map { it.itemId }
 
+        /**
+         * Design check (Ben 2026-11-24): the Shows page uses every TV library that isn't anime, the same way the
+         * browser does, so the app never says "Nothing in Shows yet" while the browser shows a show
+         */
+        private fun List<Library>.showLibraries() =
+            filter {
+                it.collectionType == CollectionType.TVSHOWS &&
+                    LibraryKind.from(it.name, it.collectionType) != LibraryKind.ANIME_SHOWS
+            }.map { it.itemId }
+
         /** Puts a finished row in place, keeping the page's row order */
         private fun put(
             order: List<String>,
@@ -447,7 +457,7 @@ class DoorViewModel
          */
         private suspend fun loadShows(userId: UUID) {
             val libs = libraries()
-            val main = libs.ofKind(LibraryKind.SHOWS)
+            val main = libs.showLibraries()
             val anime = libs.ofKind(LibraryKind.ANIME_SHOWS)
             val easy = KidsMode.isActive
             warmAnimeScores(libs, userId)
@@ -795,7 +805,7 @@ class DoorViewModel
                 when {
                     door == BenflixDoor.ANIME -> libs.ofKind(if (movies) LibraryKind.ANIME_MOVIES else LibraryKind.ANIME_SHOWS)
                     movies -> libs.ofKind(LibraryKind.MOVIES) + libs.ofKind(LibraryKind.STANDUP)
-                    else -> libs.ofKind(LibraryKind.SHOWS)
+                    else -> libs.showLibraries()
                 }
             return data.everything(userId, parents, type)
         }
@@ -822,7 +832,7 @@ class DoorViewModel
             val libs = libraries()
             val movies = door == BenflixDoor.MOVIES
             val type = if (movies) BaseItemKind.MOVIE else BaseItemKind.SERIES
-            val main = libs.ofKind(if (movies) LibraryKind.MOVIES else LibraryKind.SHOWS)
+            val main = if (movies) libs.ofKind(LibraryKind.MOVIES) else libs.showLibraries()
             val anime = libs.ofKind(if (movies) LibraryKind.ANIME_MOVIES else LibraryKind.ANIME_SHOWS)
             val standUp = libs.ofKind(LibraryKind.STANDUP)
             return when (key) {

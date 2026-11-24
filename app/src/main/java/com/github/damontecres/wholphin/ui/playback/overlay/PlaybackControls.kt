@@ -812,9 +812,11 @@ fun SeekBar(
     ) {
         PlayerTitleLine(title = title, subtitle = subtitle, modifier = Modifier.fillMaxWidth())
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            // Design check (Ben 2026-11-24): a little room under the title block, so the time played sits level
+            // with the time left at the bar's ends instead of squeezed under the year
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 10.dp),
             ) {
                 Text(
                     text = remember(positionSec) { resources.formatDuration(positionSec.seconds) },

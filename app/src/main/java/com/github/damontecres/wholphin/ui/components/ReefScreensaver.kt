@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,11 +18,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
@@ -31,7 +33,6 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.LiteMode
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
-import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.util.LocalClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -124,7 +125,7 @@ fun ReefScreensaver(
             drawIntoCanvas { current.draw(it.nativeCanvas, t) }
         }
         if (showClock) {
-            MovingClock()
+            MovingClock(night)
         }
         // The small logo squares in the corner, same as the movie-art screensaver
         BenflixMark(
@@ -141,7 +142,7 @@ private val clockCorners = listOf(Alignment.TopEnd, Alignment.BottomEnd, Alignme
 
 /** The small clock moves to a new corner every 5 minutes so it never burns into the screen */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.MovingClock() {
+private fun androidx.compose.foundation.layout.BoxScope.MovingClock(night: Boolean) {
     val timeString by LocalClock.current.timeString
     var corner by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -153,12 +154,12 @@ private fun androidx.compose.foundation.layout.BoxScope.MovingClock() {
     Text(
         text = timeString,
         fontSize = BenflixType.rowName,
-        color = Color.White.copy(alpha = .9f),
+        // Approved design: no pill, just a soft shadow; dimmer and a little blue in the night tank
+        color = if (night) Color(210, 225, 255).copy(alpha = .7f) else Color.White.copy(alpha = .9f),
+        style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .6f), Offset(0f, 2f), 10f)),
         modifier =
             Modifier
                 .align(clockCorners[corner])
-                .padding(horizontal = BenflixSpace.tvOuterEdge, vertical = 28.dp)
-                .background(Glowfin.Ink.copy(alpha = .35f), RoundedCornerShape(50))
-                .padding(horizontal = 12.dp, vertical = 2.dp),
+                .padding(horizontal = BenflixSpace.tvOuterEdge, vertical = 28.dp),
     )
 }

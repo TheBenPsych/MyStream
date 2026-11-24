@@ -2157,13 +2157,6 @@ private fun FindShelf(
             if (isTv) rememberShownCover(focusedItem, shownRows.firstOrNull()?.items?.firstOrNull()) else null
         if (isTv) {
             RequestArt(shown)
-            if (shown != null) {
-                RequestScorePill(
-                    age = ratings[shown.requestKey()]?.age,
-                    scores = scores[shown.requestKey()],
-                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = top + 2.dp),
-                )
-            }
         }
         Column(Modifier.fillMaxSize()) {
             if (!isTv) RequestsSearchBox(query = query, onQuery = { viewModel.searchQuery.value = it })
@@ -2175,6 +2168,7 @@ private fun FindShelf(
                             tag = shown.rqTag(viewModel.isAdmin, shown.requestKey() in cantFindKeys, askedBy[shown.requestKey()]),
                             age = ratings[shown.requestKey()]?.age,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = top + 2.dp),
+                            scores = scores[shown.requestKey()],
                         )
                     }
                 }

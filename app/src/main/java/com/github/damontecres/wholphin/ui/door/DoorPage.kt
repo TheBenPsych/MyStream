@@ -298,8 +298,18 @@ internal fun WideDoor(
     }
     // Before anything is focused (or on a touch screen), describe the first poster
     val first = state.rows.firstNotNullOfOrNull { it.items.firstOrNull() }
-    val preview = shown ?: first
-    val artItem = shownArt ?: first
+    // Design check (Ben 2026-11-24): when the rows change (back on Home after watching), a title that has left
+    // the rows is never described any more; the top goes to the first poster until you move again
+    val onPage = remember(state.rows) { state.rows.flatMapTo(HashSet()) { r -> r.items.map { it.id } } }
+    LaunchedEffect(onPage) {
+        if (shown != null && shown?.id !in onPage) {
+            focused.value = null
+            shown = null
+            shownArt = null
+        }
+    }
+    val preview = shown?.takeIf { it.id in onPage } ?: first
+    val artItem = shownArt?.takeIf { it.id in onPage } ?: first
 
     val restore = remember { FocusRequester() }
     // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
