@@ -53,7 +53,6 @@ object PageRows {
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.LOVED to "Because you loved…",
                     DoorViewModel.NEW to "Recently added",
-                    DoorViewModel.RELEASED to "Recently released",
                     DoorViewModel.TOP_RATED to "Top rated you haven't seen",
                     DoorViewModel.STAND_UP to "Stand-up",
                     DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
