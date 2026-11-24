@@ -1713,6 +1713,8 @@ val screensaverPreferences =
             preferences =
                 listOf(
                     ScreensaverPreference.Enabled,
+                    ScreensaverPreference.Picture,
+                    ScreensaverPreference.WaterSound,
                     ScreensaverPreference.StartDelay,
                     ScreensaverPreference.Duration,
                     ScreensaverPreference.ShowClock,

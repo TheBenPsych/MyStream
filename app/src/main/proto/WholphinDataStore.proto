@@ -183,6 +183,10 @@ message ScreensaverPreferences{
   bool show_clock = 7;
   bool dim_enabled = 8;
   int32 dim_percent = 9;
+  // Glowfin: "" = the Coral Reef aquarium (the default), "movies" = movie and show art
+  string style = 10;
+  // Glowfin: quiet bubbling water sound with the aquarium
+  bool water_sound = 11;
 }
 
 message SearchPreferences {

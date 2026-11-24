@@ -25,6 +25,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.github.damontecres.wholphin.data.RestoredSession
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.ScreensaverPreference
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.hilt.AuthOkHttpClient
 import com.github.damontecres.wholphin.ui.CoilConfig
@@ -115,6 +116,8 @@ class WholphinDreamService :
                                             duration = screensaverPrefs.duration.milliseconds,
                                             animate = screensaverPrefs.animate,
                                             modifier = Modifier.fillMaxSize(),
+                                            aquarium = screensaverPrefs.style != ScreensaverPreference.STYLE_MOVIES,
+                                            waterSound = screensaverPrefs.waterSound,
                                         )
                                         if (screensaverPrefs.dimEnabled) {
                                             val alpha = screensaverPrefs.dimPercent / 100f
