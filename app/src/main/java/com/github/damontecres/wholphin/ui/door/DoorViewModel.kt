@@ -356,7 +356,7 @@ class DoorViewModel
 
         /**
          * Glowfin Movies, For you (ui-7): Continue watching, Top 10 this week, Because you watched, Recently added,
-         * Recently released, Top rated you haven't seen, Stand-up, Trending not on Glowfin. No anime: that has its own page now.
+         * Top rated you haven't seen, Stand-up, Trending not on Glowfin. No anime: that has its own page now.
          */
         private suspend fun loadMovies(userId: UUID) {
             val libs = libraries()
@@ -411,11 +411,6 @@ class DoorViewModel
                         } else {
                             putOrRemove(order, DoorRowData(LOVED, "Because you loved ${found.first}", found.second))
                         }
-                    }
-                    launch {
-                        val dislikes = disliked.await()
-                        val items = data.recentlyReleased(userId, main + standUp, BaseItemKind.MOVIE).filter { it.id !in dislikes }
-                        putOrRemove(order, DoorRowData(RELEASED, "Recently released", items))
                     }
                     launch {
                         val dislikes = disliked.await()
@@ -885,7 +880,6 @@ class DoorViewModel
             const val ANIME = "anime"
             const val STAND_UP = "standup"
             const val NEXT_UP = "nextup"
-            const val RELEASED = "released"
 
             /** Ben 2026-11-24: this year's releases, newest first, right under Top 10 on Home, Movies, Shows and Anime */
             const val JUST_RELEASED = "justreleased"

@@ -487,28 +487,6 @@ class DoorDataService
                     .distinctBy { it.data.seriesId ?: it.id }
             }
 
-        /** Glowfin "Recently released": newest by release date in these libraries */
-        suspend fun recentlyReleased(
-            userId: UUID,
-            parentIds: List<UUID>,
-            type: BaseItemKind,
-        ): List<BaseItem> =
-            fromLibraries(parentIds) { parentId ->
-                GetItemsRequest(
-                    userId = userId,
-                    parentId = parentId,
-                    includeItemTypes = listOf(type),
-                    recursive = true,
-                    imageTypes = listOf(ImageType.PRIMARY),
-                    sortBy = listOf(ItemSortBy.PREMIERE_DATE),
-                    sortOrder = listOf(SortOrder.DESCENDING),
-                    fields = SlimItemFields,
-                    enableUserData = true,
-                    limit = ROW,
-                )
-            }.sortedByDescending { it.data.premiereDate }
-                .take(ROW)
-
         /**
          * Ben 2026-11-24 "Just released": movies and shows on Glowfin that came out this year, newest first, with the
          * day each came out. A show counts only when it is brand new: the day season 1 episode 1 aired.

@@ -277,12 +277,11 @@ B.route(/^\/movies$/, async (m, nav) => {
   const anime = await B.animeIds("Movie");
   const notAnime = (x) => !anime.has(x.Id);
   const fewer = B.me.kids;
-  const [resume, fresh, top, because, released, best, stand, missing, loved, justOut] = await Promise.all([
+  const [resume, fresh, top, because, best, stand, missing, loved, justOut] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     fromLibs(main.concat(standLibs), "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
     fewer ? [] : B.trending("Movie").catch(() => []),
     fewer ? null : becauseRow("Movie", (id) => !anime.has(id)).catch(() => null),
-    fewer ? [] : fromLibs(main.concat(standLibs), "Movie", "PremiereDate").then((l) => l.sort(newestFirst("PremiereDate"))),
     fewer ? [] : fromLibs(main, "Movie", "CommunityRating", "&IsPlayed=false").then((l) => l.sort((a, b) => (b.CommunityRating || 0) - (a.CommunityRating || 0))),
     fewer ? [] : fromLibs(standLibs, "Movie", "Random", "&IsPlayed=false"),
     fewer ? [] : B.trendingMissing("movies"),
@@ -298,7 +297,6 @@ B.route(/^\/movies$/, async (m, nav) => {
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     loved && !(because && because.name === loved.name) ? B.row(`Because you loved ${loved.name}`, loved.items.map((it) => B.posterCard(it))) : "",
     B.row("Recently added", fresh.slice(0, 20).map((it) => B.posterCard(it, { markNew: true })), { seeAll: "#/grid/movies?anime=hide&title=All%20movies" }),
-    B.row("Recently released", released.slice(0, 20).map((it) => B.posterCard(it))),
     B.row("Top rated you haven't seen", best.slice(0, 20).map((it) => B.posterCard(it))),
     B.row("Stand-up", stand.map((it) => B.posterCard(it))),
     B.row("Trending, not on Glowfin", missingCards(missing)),
