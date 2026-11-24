@@ -556,12 +556,12 @@ class BenflixBooks
                 .objects()
                 .map(::tile)
 
-        /** Saves your place (and how long you read or listened since last time) */
         /** Idea Box 29: the other way of this book (ebook or audiobook) jumps to where you are in this one */
         suspend fun handoff(id: String) {
             helper.postJson("/api/books/handoff/" + Uri.encode(id))
         }
 
+        /** Saves your place (and how long you read or listened since last time) */
         suspend fun savePlace(
             id: String,
             place: JSONObject,
