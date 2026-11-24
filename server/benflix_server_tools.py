@@ -1164,3 +1164,119 @@ def _run_tracks(cmd):
             _tracks["lines"].append(f"Couldn't start the track tool: {e}")
     with _lock:
         _tracks.update(running=False, finished=int(time.time()), result="done" if code == 0 else "failed")
+
+
+# ---------------------------------------------------------------------------
+# Every new season from now on (Glowfin new look, Ben approved 2026-11-22). The season picker on Requests can
+# ask for a show's seasons AND every season that comes out later. Tower remembers the show, and once Sonarr has
+# it (after Ben's yes) it tells Sonarr to watch for new seasons too (Sonarr's "monitor new seasons: all"), so a
+# new season is looked for as soon as it airs. Saved in /tracks/follow-shows.json.
+
+FOLLOW_EVERY = 1800  # seconds between checks
+_follow = {"started": False}
+
+
+def _follow_file():
+    for d in (TRACK_LOGS, "/skips", os.path.dirname(os.path.abspath(__file__))):
+        if os.path.isdir(d) and os.access(d, os.W_OK):
+            return os.path.join(d, "follow-shows.json")
+    return None
+
+
+def _follow_read():
+    path = _follow_file()
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError, TypeError):
+        return []
+
+
+def _follow_write(items):
+    path = _follow_file()
+    if not path:
+        return
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(items, f)
+    os.replace(tmp, path)
+
+
+def _follow_apply(item):
+    """True once Sonarr watches the show for new seasons"""
+    series = _find_series({"tmdb": item.get("tmdb"), "name": item.get("name")})
+    if not series:
+        return False
+    if series.get("monitorNewItems") == "all" and series.get("monitored"):
+        return True
+    series["monitorNewItems"] = "all"
+    series["monitored"] = True
+    _arr("sonarr", "PUT", f"/api/v3/series/{series['id']}", series)
+    _forget()
+    return True
+
+
+def _follow_check():
+    with _lock:
+        items = _follow_read()
+    changed = False
+    for it in items:
+        if it.get("done"):
+            continue
+        try:
+            if _follow_apply(it):
+                it["done"] = int(time.time())
+                changed = True
+        except ToolError:
+            return  # Sonarr isn't reachable right now; try again next time
+        except Exception:  # noqa: BLE001 - one odd show never stops the rest
+            continue
+    if changed:
+        with _lock:
+            fresh = {str(x.get("tmdb")): x for x in _follow_read()}
+            for it in items:
+                if it.get("done") and str(it.get("tmdb")) in fresh:
+                    fresh[str(it.get("tmdb"))]["done"] = it["done"]
+            _follow_write(list(fresh.values()))
+
+
+def _follow_loop():
+    while True:
+        try:
+            _follow_check()
+        except Exception as e:  # noqa: BLE001 - keep looking
+            print(f"follow shows: {e}", flush=True)
+        time.sleep(FOLLOW_EVERY)
+
+
+def follow_show(body, who=""):
+    """Remembers a show for "Every new season from now on" and tells Sonarr straight away if it already has it"""
+    tmdb = str((body or {}).get("tmdb") or "")
+    if not tmdb.isdigit():
+        raise ToolError(400, "Which show?")
+    name = str((body or {}).get("name") or "")[:200]
+    with _lock:
+        items = [x for x in _follow_read() if str(x.get("tmdb")) != tmdb]
+        items.append({"tmdb": int(tmdb), "name": name, "who": who, "at": int(time.time())})
+        _follow_write(items[-500:])
+    if not _follow["started"]:
+        _follow["started"] = True
+        threading.Thread(target=_follow_loop, name="follow-shows", daemon=True).start()
+    try:
+        now = _follow_apply({"tmdb": tmdb, "name": name})
+    except ToolError:
+        now = False
+    return {
+        "ok": True,
+        "message": "Every new season will be asked for too."
+        if now
+        else "Every new season will be asked for too, once Ben says yes.",
+    }
+
+
+def start_follow():
+    """Called when the helper starts, so shows asked for earlier keep being checked"""
+    if not _follow["started"] and _follow_read():
+        _follow["started"] = True
+        threading.Thread(target=_follow_loop, name="follow-shows", daemon=True).start()

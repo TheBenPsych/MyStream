@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -59,6 +58,7 @@ import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -176,6 +176,9 @@ fun NextUpEpisode(
                 Button(
                     onClick = onClick,
                     shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                    border =
+                        com.github.damontecres.wholphin.ui.theme
+                            .glowfinButtonBorder(RoundedCornerShape(6.dp)),
                     contentPadding = PaddingValues(0.dp),
                     colors =
                         ButtonDefaults.colors(
@@ -232,6 +235,9 @@ fun NextUpEpisode(
                     Button(
                         onClick = onWatchCredits,
                         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        border =
+                            com.github.damontecres.wholphin.ui.theme
+                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
@@ -256,6 +262,9 @@ fun NextUpEpisode(
                     Button(
                         onClick = onNotNow,
                         shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        border =
+                            com.github.damontecres.wholphin.ui.theme
+                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),

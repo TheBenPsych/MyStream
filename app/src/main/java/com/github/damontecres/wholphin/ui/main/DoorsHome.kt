@@ -120,6 +120,7 @@ class HomeDoorsViewModel
                 title = item.title ?: item.name.orEmpty(),
                 image = poster(showId ?: item.id),
                 destination = item.destination(),
+                item = item,
             )
         }
 

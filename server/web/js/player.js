@@ -93,28 +93,28 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="shadeT"></div><div class="shadeB"></div>
     <div class="center-msg" id="msg"></div>
     <div class="topline"><button class="pbtn" id="pBack" title="Back">${I("left")}</button></div>
+    <div class="pends" id="pEnds"></div>
     <div class="pcorner"><button class="skip hidden" id="pSkip"></button><div class="upnext hidden" id="pNext"></div></div>
     <div class="eprow hidden" id="pEps"></div>
     <div class="controls p1 p4">
-      <div class="tline"><span class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</span><span class="st">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</span><span class="ends" id="pEnds"></span></div>
+      <div class="tline">${B.logoUrl && B.logoUrl(it) ? `<img class="plogo" src="${esc(B.logoUrl(it))}" alt="${esc(isEp ? it.SeriesName || it.Name : it.Name)}" onerror="this.remove()">` : ""}<span class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</span><span class="st">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</span></div>
       <div class="srow"><span id="pTime">0:00</span>
       <div class="bar" id="pBar"><div class="track"><u id="pBuf"></u><b id="pDone"></b></div><span id="pTicks"></span><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
       <span id="pLeft"></span></div>
-      <div class="row2 p1row">
-        <div class="p1l">
-        <button class="pbtn lab" id="pGear" title="Settings: quality, speed and Fix a problem">${I("gear")}<em>Settings</em></button>
-        ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
-        </div>
+      <div class="row2 p1row nl4">
         <div class="p1c">
-        ${isEp ? `<button class="pbtn" id="pPv" title="Previous episode (P)" disabled>${I("prev")}</button>` : ""}
-        <button class="pbtn" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}</button>
-        <button class="pbtn play" id="pPlay" title="Play / pause (space)">${I("pause")}</button>
-        <button class="pbtn" id="pFw" title="Ahead 10 seconds (right arrow)">${I("fwd10")}</button>
-        ${isEp ? `<button class="pbtn" id="pNx" title="Next episode (N)">${I("next")}</button>` : ""}
+        ${isEp ? `<button class="pbtn lab" id="pPv" title="Previous episode (P)" disabled>${I("prev")}<em>Previous</em></button>` : ""}
+        <button class="pbtn lab" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}<em>Back 10</em></button>
+        <button class="pbtn lab play" id="pPlay" title="Play / pause (space)">${I("pause")}<em>Pause</em></button>
+        <button class="pbtn lab" id="pFw" title="Ahead 10 seconds (right arrow)">${I("fwd10")}<em>Ahead 10</em></button>
+        ${isEp ? `<button class="pbtn lab" id="pNx" title="Next episode (N)">${I("next")}<em>Next</em></button>` : ""}
         </div>
         <div class="p1r">
         <button class="pbtn lab" id="pSub" title="Subtitles (C or S turns them on and off)">${I("sub")}<em>Subtitles</em></button>
-        <button class="pbtn lab" id="pAud" title="Audio and volume (M mutes)">${I("audio")}<em>Audio</em></button>
+        <button class="pbtn lab" id="pAud" title="Audio (M mutes)">${I("audio")}<em>Audio</em></button>
+        <span class="vlab">${B.volume("pVol")}<em>Volume</em></span>
+        ${isEp ? `<button class="pbtn lab" id="pList" title="Episodes (E)">${I("eps")}<em>Episodes</em></button>` : ""}
+        <button class="pbtn lab" id="pGear" title="Settings: quality, speed and Fix a problem">${I("gear")}<em>Settings</em></button>
         <span class="extra">
           <button class="pbtn" id="pKeys" title="Keyboard shortcuts (?)">?</button>
           ${document.pictureInPictureEnabled ? `<button class="pbtn" id="pPip" title="Pop out: keeps playing in a small window on top">${I("pip")}</button>` : ""}
@@ -136,6 +136,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   const away = () => !!(B.kept && B.kept.el.contains(v));
   const here = () => B.alive(myNav) || away();
   v.volume = settings.volume != null ? settings.volume : 1;
+  // New look (Part 4): a Volume button with its slider on the bar (browser and computer apps only; TVs and
+  // phones use their own volume buttons)
+  B.wireVolume($("#pVol").parentNode, v, "volume");
   let hls = null, info = null, source = null, playSession = null, method = "DirectPlay", stopped = false;
   let lastTick = 0, uiTimer, pausedTimer, nextShown = false, skipped = new Set();
 
@@ -380,9 +383,9 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   $("#pGear").onclick = () => openPanel("settings");
   $("#pKeys").onclick = () => showKeys();
   // Ben (clean-up): pressing Play puts the controls away quickly, just long enough to see it switch
-  v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause"); pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(600); report("/Progress"); });
+  v.addEventListener("play", () => { $("#pPlay").innerHTML = I("pause") + "<em>Pause</em>"; pl.classList.remove("paused-long"); clearTimeout(pausedTimer); poke(600); report("/Progress"); });
   v.addEventListener("pause", () => {
-    $("#pPlay").innerHTML = I("play"); pl.classList.add("ui"); report("/Progress");
+    $("#pPlay").innerHTML = I("play") + "<em>Play</em>"; pl.classList.add("ui"); report("/Progress");
     clearTimeout(pausedTimer); pausedTimer = setTimeout(() => { if (v.paused) pl.classList.add("paused-long"); }, 5000);
   });
   v.addEventListener("playing", () => msg(""));
@@ -715,6 +718,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     else if ((k === "n" || k === "N") && $("#pNx")) $("#pNx").click();
     else if ((k === "p" || k === "P") && $("#pPv")) $("#pPv").click();
     else if (k === "e" && $("#pList")) $("#pList").click();
+    // Glowfin new look: I opens the same Story and details panel as the title page (Up stays volume here)
+    else if (k === "i" || k === "I") {
+      const name = isEp ? `${it.SeriesName || ""} · S${it.ParentIndexNumber}:E${it.IndexNumber} · ${it.Name || ""}` : (it.Name || "");
+      const facts = [[isEp ? "Network" : "Studio", (it.Studios || []).slice(0, 2).map((x) => x.Name).join(", ")], ["Genres", (it.Genres || []).join(", ")], ["Year", it.ProductionYear || ""]].filter((f) => f[1]);
+      B.side(`<h3>Story and details</h3><p class="dim">${esc(name)}</p>${it.Overview ? `<p class="tp-full">${esc(it.Overview)}</p>` : ""}<div class="tp-sidedet">${facts.map((f) => `<p><b>${esc(f[0])}</b> ${esc(String(f[1]))}</p>`).join("")}</div>`);
+    }
     else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) { v.currentTime = (total() * +k) / 10; }
     else if (k === "?" || (k === "/" && e.shiftKey)) { e.preventDefault(); showKeys(); return; }
     else if (k === "Escape" && $(".player .keys-help")) { $(".player .keys-help").remove(); return; }

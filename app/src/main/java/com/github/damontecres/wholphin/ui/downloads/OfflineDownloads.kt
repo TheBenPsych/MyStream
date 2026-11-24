@@ -322,12 +322,15 @@ fun OfflineScreen(
             com.github.damontecres.wholphin.ui.nav.BenflixLogo(
                 modifier = Modifier.padding(bottom = 24.dp),
             )
-            Text(
-                text = stringResource(R.string.fa_wifi),
-                fontFamily = FontAwesome,
-                fontSize = 44.sp,
-                color = BenflixColors.Muted,
-            )
+            // New look: the soft little picture behind the wifi sign
+            com.github.damontecres.wholphin.ui.components.SoftArtTile {
+                Text(
+                    text = stringResource(R.string.fa_wifi),
+                    fontFamily = FontAwesome,
+                    fontSize = 44.sp,
+                    color = BenflixColors.Text,
+                )
+            }
             Text(
                 text = stringResource(R.string.offline_title),
                 fontSize = BenflixType.pageTitle,
@@ -443,11 +446,14 @@ private fun OfflineButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    androidx.tv.material3.Button(
+    com.github.damontecres.wholphin.ui.theme.Button(
         onClick = onClick,
         shape =
             androidx.tv.material3.ButtonDefaults
                 .shape(RoundedCornerShape(6.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
         colors =
             androidx.tv.material3.ButtonDefaults.colors(
                 containerColor = if (primary) BENFLIX_RED else Color(0xFF333333),

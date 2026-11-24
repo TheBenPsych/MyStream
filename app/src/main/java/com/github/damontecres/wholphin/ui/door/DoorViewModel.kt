@@ -50,6 +50,10 @@ data class DoorRowData(
     val seeAll: Boolean = false,
     /** [DoorRowStyle.DISCOVER] rows: the titles to ask for */
     val discover: List<com.github.damontecres.wholphin.data.model.DiscoverItem> = emptyList(),
+    /** Small grey words after the row name, like "You have 112 of 250" (Famous lists) */
+    val note: String? = null,
+    /** [DoorRowStyle.DISCOVER] rows: titles not on Glowfin yet say "Ask for it" in the corner (Famous lists) */
+    val askNote: Boolean = false,
 ) {
     val isEmpty: Boolean get() = items.isEmpty() && discover.isEmpty()
 }

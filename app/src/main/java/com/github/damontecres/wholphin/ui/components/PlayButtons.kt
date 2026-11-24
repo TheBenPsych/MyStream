@@ -119,7 +119,7 @@ fun ExpandablePlayButtons(
     // Benflix on phones: a big full-width Play button, like the Netflix phone app
     androidx.compose.foundation.layout.Column(modifier = if (isTv) Modifier else modifier) {
         if (!isTv) {
-            androidx.tv.material3.Button(
+            com.github.damontecres.wholphin.ui.theme.Button(
                 onClick = { playOnClick.invoke(resumePosition) },
                 colors =
                     if (flat) {
@@ -147,6 +147,11 @@ fun ExpandablePlayButtons(
                             androidx.compose.foundation.shape
                                 .RoundedCornerShape(if (flat) 12.dp else 6.dp),
                         ),
+                border =
+                    com.github.damontecres.wholphin.ui.theme.glowfinButtonBorder(
+                        androidx.compose.foundation.shape
+                            .RoundedCornerShape(if (flat) 12.dp else 6.dp),
+                    ),
                 modifier =
                     Modifier
                         .fillMaxWidth()

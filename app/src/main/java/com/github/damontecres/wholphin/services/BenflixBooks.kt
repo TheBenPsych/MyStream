@@ -1004,7 +1004,7 @@ class BenflixBooks
                 audioMinutes = null,
                 asked = j.text("asked"),
                 line = null,
-                desc = null,
+                desc = j.text("desc"),
                 have = j.text("here"),
                 audioOnly = false,
             )

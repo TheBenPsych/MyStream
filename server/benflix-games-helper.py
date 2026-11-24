@@ -75,6 +75,23 @@ try:  # Better copies from Radarr/Sonarr keep their first "date added", so they 
 except ImportError:
     arrivals = None
 
+try:  # Real frames from the movie files for the Scene by scene game (benflix_scenes.py next to this file)
+    import benflix_scenes as scenes
+except ImportError:
+    scenes = None
+
+try:  # "94% for you" match on title pages and the big tops, in benflix_match.py
+    import benflix_match as matcher
+except ImportError:
+    matcher = None
+try:  # Follow your teams on Live TV's Sports tab, in benflix_teams.py
+    import benflix_teams as teams
+except ImportError:
+    teams = None
+try:  # Famous lists tab on Movies and Shows (IMDb Top 250, Oscars, Emmys), in benflix_famous.py
+    import benflix_famous as famous
+except ImportError:
+    famous = None
 try:  # Anime movies go into their show's Specials, plus Missing pieces and filler labels, in benflix_specials.py
     import benflix_specials as specials
 except ImportError:
@@ -1457,6 +1474,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token and method in ("GET", "HEAD") and (
                 (path.startswith("/api/web/jf/") and "/Images/" in path)
                 or path.startswith("/api/web/stream/")
+                or re.fullmatch(r"/api/scenes/[0-9a-fA-F-]+/(?:\d|s\d{1,3}-\d)\.jpg", path)
                 or re.fullmatch(r"/api/(?:cover/\d+|rom/\d+/(?:file|zip)|bios/file)", path)
                 or re.fullmatch(r"/api/books/(?:cover/\w+|vol/\w+/p/\d+|file/\w+(?:/\d+)?|x/\w+/.+)", path)
             ):
@@ -1484,6 +1502,14 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Skip times aren't on the server yet. Run the Glowfin setup command again.")
                 status, answer = skips.route(method, path, query, token, user_id, is_admin, is_kids, self.read_json)
                 return self.send(status, answer)
+            if path.startswith("/api/scenes/"):
+                # Scene by scene pictures taken from the movie itself (anyone signed in who can see the title)
+                if scenes is None:
+                    raise HelperError(503, "Scene pictures aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer, kind = scenes.route(method, path, token, user_id)
+                if kind:
+                    return self.send(status, answer, kind, etag='"' + hashlib.sha1(answer).hexdigest()[:20] + '"')
+                return self.send(status, answer)
             if path.startswith("/api/lobby/"):
                 # The Lobby (everyone signed in; Kids only join lobbies showing something for Kids)
                 if lobby is None:
@@ -1493,9 +1519,35 @@ class Handler(BaseHTTPRequestHandler):
                 except lobby.LobbyError as e:
                     raise HelperError(e.status, e.message)
                 return self.send(status, answer)
+            if path.startswith("/api/posters/"):
+                # A details page with no title logo asks Tower to find one (everyone signed in; only fills missing ones)
+                if posters is None:
+                    raise HelperError(503, "The poster tools aren't on the server yet. They arrive with Tower's next hourly update.")
+                answer = posters.user_route(method, path, query)
+                if answer is None:
+                    return self.send(404, {"error": "Not found"})
+                return self.send(answer[0], answer[1])
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
+            if path.startswith("/api/match/"):
+                # "94% for you": how well a title fits the person asking (everyone signed in; Kids get nothing)
+                if matcher is None:
+                    return self.send(200, {"pct": None})
+                status, answer = matcher.route(method, path, query, token, user_id, is_kids)
+                return self.send(status, answer)
+            if path == "/api/teams" or path.startswith("/api/teams/"):
+                # Follow your teams (everyone signed in; Kids have no Live TV)
+                if teams is None:
+                    raise HelperError(503, "Your teams aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer = teams.route(method, path, user_id, is_kids, self.read_json)
+                return self.send(status, answer)
+            if path.startswith("/api/famous/"):
+                # Movies and Shows, Famous lists tab (everyone signed in except Kids)
+                if famous is None:
+                    raise HelperError(503, "Famous lists aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer = famous.route(method, path, is_kids)
+                return self.send(status, answer)
             if path.startswith("/api/specials/"):
                 # Anime shows: Missing pieces, filler labels, Get (everyone signed in; Kids can't Get)
                 if specials is None:
@@ -1523,6 +1575,16 @@ class Handler(BaseHTTPRequestHandler):
                 body = self.read_json()
                 for_person = asking_for(token, body)
                 read_json = lambda: body  # noqa: E731
+            if method == "POST" and path == "/api/follow-show":
+                # Glowfin new look: "Every new season from now on" on the season picker (everyone but Kids)
+                if is_kids:
+                    raise HelperError(403, "Ask a grown-up to ask for this.")
+                if tools is None:
+                    raise HelperError(503, "The Server page tools aren't on the server yet. Run the Glowfin setup command again.")
+                try:
+                    return self.send(200, tools.follow_show(self.read_json(), _names.get(user_id, "")))
+                except tools.ToolError as e:
+                    raise HelperError(e.status, e.message)
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:
@@ -2522,6 +2584,8 @@ if __name__ == "__main__":
         livetv.start()
     if skips is not None:
         skips.start(jellyfin_call)
+    if scenes is not None:
+        scenes.start(jellyfin_call)
     if web is not None:
         web.start()
     if music is not None:
@@ -2545,12 +2609,28 @@ if __name__ == "__main__":
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
         )
+    if tools is not None and hasattr(tools, "start_follow"):
+        tools.start_follow()
     if specials is not None:
         specials.start(
             jellyfin_call,
             lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
             tools,
             arrivals,
+        )
+    if matcher is not None:
+        matcher.start(jellyfin_call)
+    if teams is not None:
+        teams.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+        )
+    if famous is not None:
+        famous.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            _seerr_link,
+            _seerr,
         )
     if keeper is not None:
         # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
@@ -2567,6 +2647,8 @@ if __name__ == "__main__":
             keeper.job("specials", "Put anime movies into their shows' Specials", "Every 10 minutes", specials, "check", run=specials.check)
             keeper.job("specials-week", "Check every anime show's specials against TheTVDB", "Every week", specials, "weekly", run=specials.weekly)
             keeper.add_card("animemovies", specials.card, specials.card_do)
+        if famous is not None:
+            keeper.job("famous", "Gather the Famous lists (IMDb Top 250, Oscars, Emmys)", "Every week", famous, "gather", run=lambda: famous.gather(True))
         if arrivals is not None:
             keeper.job("arrivals", "Keep first dates when a better copy arrives", "Every few minutes", arrivals, "check")
         keeper.job("doctor", "Fix asks that got stuck", "Every hour")

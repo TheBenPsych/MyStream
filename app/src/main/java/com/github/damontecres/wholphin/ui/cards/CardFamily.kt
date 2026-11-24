@@ -176,6 +176,12 @@ fun CardPicture(
 }
 
 /**
+ * Glowfin new look (Ben 2026-11-22, "just cover art"): the For you rows of Music, Books and Games set this, so their
+ * cards show no name under them on TV, phones and tablets.
+ */
+val LocalCardNamesOff = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
  * The name under a card (approved rc-p-phone): up to 2 lines, then a small grey line (year, artist, episode,
  * what's on). Long anime names get both lines instead of being cut.
  */
@@ -188,6 +194,8 @@ fun CardNameUnder(
     centred: Boolean = false,
     strip: Boolean = false,
 ) {
+    // Glowfin new look (Ben 2026-11-22): browsing rows are cover art only, the top already says what it is
+    if (LocalCardNamesOff.current) return
     Column(
         horizontalAlignment = if (centred) Alignment.CenterHorizontally else Alignment.Start,
         modifier =

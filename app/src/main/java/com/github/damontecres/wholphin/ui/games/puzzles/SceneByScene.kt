@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.games.puzzles
 
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -22,11 +25,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Text
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -57,6 +68,10 @@ sealed interface SceneState {
         val best: Int,
         /** Set once they got it: the points it was worth */
         val won: Int? = null,
+        /** The title's own pictures, used if Tower can't take a frame from the file */
+        val fallback: List<String> = emptyList(),
+        /** The next round's first scene, loaded early so it shows straight away */
+        val upNext: String? = null,
     ) : SceneState
 
     data class Over(
@@ -65,12 +80,18 @@ sealed interface SceneState {
         val best: Int,
         val newBest: Boolean,
         val answer: PuzzleTitle,
+        val run: List<RunPick> = emptyList(),
     ) : SceneState
 }
 
 /**
  * "Scene by scene": guess the movie or show from a still picture taken from it. Each wrong guess
  * shows an easier scene. Endless: running out of scenes ends the run. Board = most points in a run.
+ *
+ * The scenes are real frames Tower takes from the movie file itself (server/benflix_scenes.py), spread
+ * across the movie (or across a show's episodes), so each one is different. Before Ben's 2026-11-22 report
+ * it used background art, which is often the same picture as the poster and only one per title.
+ * Older Towers without that fall back to chapter and background pictures.
  */
 @HiltViewModel
 class SceneBySceneViewModel
@@ -78,11 +99,18 @@ class SceneBySceneViewModel
     constructor(
         private val pool: PuzzlePool,
         val actions: PuzzleActions,
+        private val helper: GameLibraryClient,
     ) : ViewModel() {
         private val _state = MutableStateFlow<SceneState>(SceneState.Loading)
+
+        /** Tower can take real frames from the movie files */
+        private var real = false
         val state: StateFlow<SceneState> = _state
         private var deck = ArrayDeque<PuzzleTitle>()
         private var titles: List<PuzzleTitle> = emptyList()
+
+        /** What they got right this run, for the end screen */
+        private val run = mutableListOf<RunPick>()
 
         init {
             start()
@@ -90,15 +118,26 @@ class SceneBySceneViewModel
 
         fun start() {
             _state.value = SceneState.Loading
+            run.clear()
             viewModelScope.launch {
                 try {
                     titles = pool.titles()
+                    real =
+                        withTimeoutOrNull(4_000) {
+                            try {
+                                helper.getJson("/api/scenes/ok").optBoolean("ok")
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (_: Exception) {
+                                false
+                            }
+                        } == true
                     val playable = playable()
                     if (playable.size < 8) {
                         _state.value = SceneState.NotEnough(notEnough("Not enough movies with pictures to play.", pool.mode()))
                         return@launch
                     }
-                    deck = ArrayDeque(playable.shuffled())
+                    deck = ArrayDeque(pool.freshFirst(BOARD_KEY, playable) { it.id })
                     next(0, 0)
                 } catch (ex: CancellationException) {
                     throw ex
@@ -116,28 +155,60 @@ class SceneBySceneViewModel
          */
         private fun playable(): List<PuzzleTitle> =
             titles
-                .filter { it.stills.size >= 2 }
+                .filter { real || it.stills.size >= 2 }
+                .filter { it.stills.isNotEmpty() }
                 .takeIf { it.size >= 8 }
                 ?: titles.filter { it.stills.isNotEmpty() }
+
+        /** 4 of the 6 frames Tower takes from across the movie, in a random order */
+        private fun frames(t: PuzzleTitle): List<String> {
+            val id = t.id.toString().replace("-", "")
+            val key = Uri.encode(helper.token)
+            return (0 until 6).shuffled().take(POINTS.size).map { "${helper.address}/api/scenes/$id/$it.jpg?api_key=$key" }
+        }
+
+        /** Tower couldn't take a frame from this one: show one of its own pictures instead */
+        fun sceneFailed(url: String) {
+            val p = _state.value as? SceneState.Playing ?: return
+            if (p.scenes.getOrNull(p.shown) != url) return
+            val swap = p.fallback.firstOrNull() ?: return
+            _state.value =
+                p.copy(
+                    scenes = p.scenes.toMutableList().also { it[p.shown] = swap },
+                    fallback = p.fallback.drop(1),
+                )
+        }
 
         private fun next(
             points: Int,
             round: Int,
         ) {
-            if (deck.isEmpty()) deck = ArrayDeque(playable().shuffled())
+            if (deck.isEmpty()) deck = ArrayDeque(pool.freshFirst(BOARD_KEY, playable()) { it.id })
             val answer = deck.removeFirst()
+            pool.saw(BOARD_KEY, answer.id)
             val others =
-                titles
-                    .filter { it.name != answer.name && it.isSeries == answer.isSeries }
-                    .ifEmpty { titles.filter { it.name != answer.name } }
-                    .shuffled()
-                    .take(CHOICES - 1)
-                    .map { it.name }
+                lookAlikes(
+                    answer,
+                    titles,
+                    CHOICES - 1,
+                    { it.name },
+                    { it.genres },
+                    { it.year },
+                    { it.isSeries },
+                    { it.anime },
+                ).map { it.name }
             _state.value =
                 SceneState.Playing(
                     answer = answer,
                     // One picture only: show it twice, so a wrong guess still gets a second try
-                    scenes = answer.stills.take(POINTS.size).let { if (it.size == 1) it + it else it },
+                    scenes =
+                        if (real) {
+                            frames(answer)
+                        } else {
+                            answer.stills.take(POINTS.size).let { if (it.size == 1) it + it else it }
+                        },
+                    fallback = if (real) answer.stills else emptyList(),
+                    upNext = if (real) deck.firstOrNull()?.let { frames(it).first() } else null,
                     shown = 0,
                     choices = (others + answer.name).shuffled(),
                     crossed = emptySet(),
@@ -152,6 +223,7 @@ class SceneBySceneViewModel
             if (p.won != null) return
             if (name == p.answer.name) {
                 val won = POINTS[p.shown]
+                run += RunPick(p.answer, "+$won")
                 _state.value = p.copy(won = won, points = p.points + won)
                 viewModelScope.launch {
                     delay(1_400)
@@ -159,7 +231,7 @@ class SceneBySceneViewModel
                 }
             } else if (p.shown + 1 >= p.scenes.size) {
                 val newBest = pool.submit(BOARD_KEY, p.points)
-                _state.value = SceneState.Over(p.points, p.round - 1, maxOf(p.best, p.points), newBest, p.answer)
+                _state.value = SceneState.Over(p.points, p.round - 1, maxOf(p.best, p.points), newBest, p.answer, run.toList())
             } else {
                 _state.value = p.copy(shown = p.shown + 1, crossed = p.crossed + name)
             }
@@ -197,6 +269,9 @@ fun SceneBySceneScreen(
                     actions = viewModel.actions,
                     isTv = isTv,
                     onAgain = viewModel::start,
+                    run = s.run,
+                    score = s.points,
+                    newBest = s.newBest,
                 )
             }
 
@@ -206,7 +281,7 @@ fun SceneBySceneScreen(
                     verticalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 10.dp),
                     modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
                 ) {
-                    PuzzleHeader("Scene by scene", "Round ${s.round}  ·  ${s.points} points  ·  Your best ${s.best}", isTv)
+                    PuzzleHeader("Scene by scene", "Round ${s.round}  ·  ${s.points} points  ·  Best ${s.best}", isTv)
                     Box(
                         modifier =
                             (if (isTv) Modifier.width(tvPictureHeight(0.46f) * (16f / 9f)) else Modifier.fillMaxWidth())
@@ -214,22 +289,56 @@ fun SceneBySceneScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(PuzzlePanel),
                     ) {
+                        // Load this round's other scenes (and the next round's first) early, so a wrong
+                        // guess shows the next scene straight away
+                        val context = LocalContext.current
+                        LaunchedEffect(s.answer.id) {
+                            val loader = SingletonImageLoader.get(context)
+                            (s.scenes.drop(1) + listOfNotNull(s.upNext)).forEach {
+                                loader.enqueue(ImageRequest.Builder(context).data(it).build())
+                            }
+                        }
+                        val url = s.scenes[s.shown]
                         AsyncImage(
-                            model = s.scenes[s.shown],
+                            model = url,
+                            onError = { viewModel.sceneFailed(url) },
                             contentDescription = "A scene",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    // One dot per scene: filled ones are used up
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        s.scenes.indices.forEach { i ->
+                    // The scenes so far as small pictures, the one showing now ringed in gold, and the
+                    // ones still to come as locked boxes with what each is worth
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        s.scenes.forEachIndexed { i, url ->
                             Box(
-                                Modifier
-                                    .size(12.dp)
-                                    .clip(CircleShape)
-                                    .background(if (i <= s.shown) PuzzleGold else Color.White.copy(alpha = .2f)),
-                            )
+                                contentAlignment = Alignment.Center,
+                                modifier =
+                                    Modifier
+                                        .width(if (isTv) 72.dp else 60.dp)
+                                        .aspectRatio(16f / 9f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color.White.copy(alpha = .08f))
+                                        .then(
+                                            if (i == s.shown) Modifier.border(2.dp, PuzzleGold, RoundedCornerShape(6.dp)) else Modifier,
+                                        ),
+                            ) {
+                                if (i <= s.shown) {
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                } else {
+                                    Text(
+                                        "${POINTS_SHOWN[i]}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = .45f),
+                                    )
+                                }
+                            }
                         }
                     }
                     AnswerLine(
@@ -237,7 +346,7 @@ fun SceneBySceneScreen(
                             when {
                                 s.won != null -> "Right! ${s.answer.label}  +${s.won}"
                                 s.crossed.isNotEmpty() -> "Not that one. Here's an easier scene."
-                                else -> "Which movie or show is this? Worth ${listOf(400, 300, 200, 100)[s.shown]}"
+                                else -> "Which movie or show is this? Worth ${POINTS_SHOWN[s.shown]}"
                             },
                         good =
                             if (s.won != null) {
@@ -262,3 +371,5 @@ fun SceneBySceneScreen(
         }
     }
 }
+
+private val POINTS_SHOWN = listOf(400, 300, 200, 100)

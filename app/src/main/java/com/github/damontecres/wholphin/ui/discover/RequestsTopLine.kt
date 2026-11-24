@@ -1,61 +1,18 @@
 package com.github.damontecres.wholphin.ui.discover
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Glowfin Requests (R1, Ben 2026-11-18): one line under the tabs with Search, For: Me (Ben) and
- * Waiting for you with its number (Ben), sitting on the right like the design sheet. Search opens the
- * search of the tab you're on; Waiting for you opens Your requests, where Ben's waiting asks sit first.
- */
-@Composable
-internal fun RequestsTopLine(
-    showSearch: Boolean,
-    canFor: Boolean,
-    waitingCount: Int?,
-    onWaiting: () -> Unit,
-    modifier: Modifier = Modifier,
-    /** Where Up goes (the tab you're on), so the remote never gets stuck on this line */
-    up: FocusRequester? = null,
-    /**
-     * Ben 2026-11-21 (TV photo): Search sat alone at the far right with a wide empty band beside it. On TV the
-     * line starts at the left, under the tabs and in line with the rows. Phones keep it on the right.
-     */
-    atStart: Boolean = false,
-) {
-    if (!showSearch && !canFor && waitingCount == null) return
-    val upModifier = if (up != null) Modifier.focusProperties { this.up = up } else Modifier
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp, if (atStart) Alignment.Start else Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 4.dp),
-    ) {
-        if (showSearch) RequestsChip("Search", false, RequestsSearch::ask, upModifier)
-        if (canFor) RequestForButton(modifier = upModifier)
-        if (waitingCount != null) {
-            RequestsChip("Waiting for you", waitingCount > 0, onWaiting, upModifier, count = waitingCount)
-        }
-    }
-}
-
-/**
- * The Search chip on the top line asks the tab you're on to open its own search (Movies and Shows search
+ * The round Search pill at the top asks the tab you're on to open its own search (Movies and Shows search
  * Seerr, Anime searches anime, Music and Books search theirs). Each tab only answers presses made while it's open.
  */
 internal object RequestsSearch {

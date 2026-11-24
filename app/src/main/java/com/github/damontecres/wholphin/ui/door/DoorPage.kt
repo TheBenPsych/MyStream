@@ -1,10 +1,7 @@
 package com.github.damontecres.wholphin.ui.door
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,8 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,43 +36,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
-import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.KidsMode
-import com.github.damontecres.wholphin.services.MalFacts
-import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
-import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.EmptyPage
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
+import com.github.damontecres.wholphin.ui.nav.stayPut
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
-import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.FocusStripesRoom
@@ -91,9 +74,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.extensions.ticks
 import kotlin.time.Duration
 
 /**
@@ -158,13 +138,15 @@ fun DoorPage(
         EmptyDoor(door.title, state.offline, viewModel::retry, modifier.padding(top = LocalTopBarOverlap.current))
         return
     }
-    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true) { inner ->
+    DoorFrame(frame, sections, modifier, ready = state.loaded, tabs = true, tabsInHeader = true) { inner ->
         when {
             frame.section != DOOR_HOME -> {
                 DoorSectionPage(door, frame.section, preferences, wide, inner)
             }
 
-            wide -> {
+            // Glowfin new look (Ben 2026-11-22): the big top is for the TV remote only. Phones, tablets and phones
+            // turned sideways all land on the rows, right under the tabs (a tap opens the title's own page anyway).
+            isTv -> {
                 WideDoor(state, easy, isTv, viewModel, frame, onClick, onSeeAll, inner)
             }
 
@@ -180,6 +162,9 @@ private const val SEC_ALL = "all"
 private const val SEC_GENRES = "genres"
 private const val SEC_COLLECTIONS = "collections"
 private const val SEC_MY_LIST = "mylist"
+
+/** Glowfin Famous lists (Idea Box 28): IMDb Top 250, Oscars, Emmys. Not on Kids. */
+private const val SEC_FAMOUS = "famous"
 
 /** The Anime page's Shows and Movies tabs */
 private const val SEC_ANIME_SHOWS = "animeshows"
@@ -211,15 +196,17 @@ internal fun doorSections(
                 DoorSection(SEC_ALL, "All movies", BenflixIcon.FILM),
                 if (easy) null else DoorSection(SEC_COLLECTIONS, "Collections", BenflixIcon.IMAGE),
                 DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                if (easy) null else DoorSection(SEC_FAMOUS, "Famous lists", BenflixIcon.STAR),
                 DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
             )
         }
 
         else -> {
-            listOf(
+            listOfNotNull(
                 forYou,
                 DoorSection(SEC_ALL, "All shows", BenflixIcon.TV),
                 DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                if (easy) null else DoorSection(SEC_FAMOUS, "Famous lists", BenflixIcon.STAR),
                 DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
             )
         }
@@ -255,6 +242,10 @@ private fun DoorSectionPage(
             DoorBrowsePage(browse(DoorViewModel.BROWSE_COLLECTIONS), preferences, inner)
         }
 
+        SEC_FAMOUS -> {
+            FamousListsPage(shows = door != BenflixDoor.MOVIES, modifier = inner)
+        }
+
         SEC_MY_LIST -> {
             DoorRowGridPage(Destination.DoorRowGrid(door.name, DoorViewModel.MY_LIST, "My List"), inner)
         }
@@ -280,27 +271,36 @@ internal fun WideDoor(
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
     modifier: Modifier,
+    /** Home on TV: nothing sits in the header's left side, so the words go right up to the top (Ben 2026-11-24) */
+    topFree: Boolean = false,
 ) {
     val onOpen: (Destination) -> Unit = { viewModel.navigationManager.navigateTo(it) }
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
     // Speed check (Ben 2026-11-18): the poster you're on is only watched here, never read while building the page,
     // so moving along a row no longer rebuilds the whole door on every press. Only the top area changes, once you stop.
+    // Speed fix (Ben 2026-11-24, like Wholphin): the words change almost at once (a tiny settle so racing
+    // along a row stays smooth); only the wallpaper keeps the half-second wait so the screen doesn't flash.
     val focused = remember { mutableStateOf<BaseItem?>(null) }
     var shown by remember { mutableStateOf<BaseItem?>(null) }
+    var shownArt by remember { mutableStateOf<BaseItem?>(null) }
     LaunchedEffect(Unit) {
         snapshotFlow { focused.value }.collectLatest { item ->
             if (item == null) return@collectLatest
             if (shown == null) {
                 shown = item
+                shownArt = item
             } else {
-                delay(PREVIEW_DELAY_MS)
+                delay(WORDS_DELAY_MS)
                 shown = item
+                delay(PREVIEW_DELAY_MS - WORDS_DELAY_MS)
+                shownArt = item
             }
         }
     }
     // Before anything is focused (or on a touch screen), describe the first poster
     val first = state.rows.firstNotNullOfOrNull { it.items.firstOrNull() }
     val preview = shown ?: first
+    val artItem = shownArt ?: first
 
     val restore = remember { FocusRequester() }
     // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
@@ -378,25 +378,46 @@ internal fun WideDoor(
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { viewModel.userMoved = true }) {
         // On TV the top bar sits over this page; the picture goes up behind it (Ben)
         val overlap = LocalTopBarOverlap.current
-        // Ben 2026-11-18: sized like Wholphin's Home header (48 gap + 180 tall + 32 gap); it stays locked while rows move
-        val topGap = maxOf(overlap, WHOLPHIN_TOP_GAP)
+        // Glowfin new look (part 2): the top describes the card you're on, then the first row. The top stays
+        // locked while the rows move, so the page never jumps. About half the screen, like the approved design.
         val topHeight =
-            if (easy) {
-                ((maxHeight - overlap) * 0.40f).coerceIn(170.dp, 300.dp) + overlap
+            if (topFree && !easy) {
+                FREE_TOP_HEIGHT
             } else {
-                (topGap + WHOLPHIN_HEADER + WHOLPHIN_BOTTOM_GAP).coerceAtMost(maxHeight * 0.52f)
+                (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp) + (if (easy) 0.dp else SCORE_ROW)
             }
-        // Ben 2026-11-18 (side menu tightened): like Wholphin, the picture only fills the top right of the page and
-        // fades out to the left and at the bottom (no hard lines). The left side stays plain dark for the menu.
-        PageBackdrop(
-            item = preview,
-            pageHeight = maxHeight,
-            brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.7f),
-            overlap = overlap,
-            portion = true,
-        )
+        val wordsTop = if (topFree && !easy) FREE_WORDS_TOP else overlap + 2.dp
+        var brightArt by remember { mutableStateOf(false) }
+        // The art of the card you're on fills the whole page, behind the tabs and the rows too
+        DoorArt(item = artItem, pageHeight = maxHeight, onBright = { brightArt = it })
+        if (preview != null && !easy) {
+            // Ben 2026-11-24: the scores moved under the year and time (DoorInfo), so the top right keeps only the
+            // clock and Glowfin "94% for you" (Idea Box 28), laid over the page so nothing moves
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp).stayPut(),
+            ) {
+                MatchPill(
+                    itemId =
+                        preview.id.takeIf {
+                            preview.type == org.jellyfin.sdk.model.api.BaseItemKind.MOVIE ||
+                                preview.type == org.jellyfin.sdk.model.api.BaseItemKind.SERIES
+                        },
+                )
+            }
+        }
         Column(Modifier.fillMaxSize()) {
-            PreviewArea(item = preview, easy = easy, height = topHeight, overlap = if (easy) overlap else topGap, topAligned = !easy)
+            Box(Modifier.fillMaxWidth().height(topHeight)) {
+                if (preview != null) {
+                    DoorInfo(
+                        item = preview,
+                        easy = easy,
+                        brightArt = brightArt,
+                        modifier = Modifier.padding(start = SIDE, end = SIDE, top = wordsTop).widthIn(max = 560.dp),
+                    )
+                }
+            }
             // Like Wholphin: the row you move to jumps up whole (name and all) right under the locked top area
             val defaultSpec = LocalBringIntoViewSpec.current
             val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
@@ -528,7 +549,7 @@ private fun WaitingRow(
 
 /** One row: medium white name, then posters, ending in "See all" when there is more */
 @Composable
-private fun DoorRow(
+internal fun DoorRow(
     row: DoorRowData,
     posterWidth: Dp,
     showName: Boolean,
@@ -552,7 +573,23 @@ private fun DoorRow(
     // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
     Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
-            text = row.title,
+            text =
+                if (row.note == null) {
+                    androidx.compose.ui.text
+                        .AnnotatedString(row.title)
+                } else {
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        append(row.title)
+                        // Famous lists: the count in the small grey style, after the same row name every row has
+                        withStyle(
+                            androidx.compose.ui.text.SpanStyle(
+                                color = BenflixColors.Muted,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        ) { append("   ${row.note}") }
+                    }
+                },
             color = BenflixColors.Text,
             fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
@@ -582,6 +619,7 @@ private fun DoorRow(
                         onClick = { onOpen(item.destination) },
                         onLongClick = {},
                         width = posterWidth,
+                        cornerNote = if (row.askNote && item.jellyfinItemId == null) "Ask for it" else null,
                         modifier =
                             if (focusRequester != null && index == focusIndex.coerceAtMost(row.discover.size - 1)) {
                                 Modifier.focusRequester(focusRequester)
@@ -630,310 +668,10 @@ private fun DoorRow(
     }
 }
 
-/**
- * Ben 2026-11-18 "Fade down": the title's wide picture fills the whole page, still, behind the top area AND the rows.
- * Bright at the top, slowly darker going down so the rows stay easy to read, with a dark side on the left for the words.
- * Speed: one picture + three plain gradients, no blur, nothing moving except the swap when the title changes.
- */
-@Composable
-internal fun PageBackdrop(
-    item: BaseItem?,
-    pageHeight: Dp,
-    brightUntil: Float,
-    overlap: Dp = 0.dp,
-    /** Wholphin style: the picture only in the top right of the page, its left and bottom edges faded away */
-    portion: Boolean = false,
-    /**
-     * Upright phones (Ben 2026-11-22): a wide picture stretched over a tall page only showed a zoomed-in slice of it.
-     * Set this to the page's width and the whole picture is shown across the top instead, its bottom melting into the page.
-     */
-    wholeWidth: Dp? = null,
-) {
-    val imageUrlService = LocalImageUrlService.current
-    val density = LocalDensity.current
-    val url =
-        remember(item?.id, pageHeight, wholeWidth) {
-            item?.let {
-                if (wholeWidth != null) {
-                    imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = with(density) { wholeWidth.roundToPx() })
-                } else {
-                    imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() })
-                }
-            }
-        }
-    // Like Wholphin: another episode of the same show has the same picture, so it just stays. A new picture:
-    // the old one fades away, a short wait, then the new one fades in.
-    var shownUrl by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(url) {
-        if (url == shownUrl) return@LaunchedEffect
-        if (shownUrl != null) {
-            shownUrl = null
-            delay(PICTURE_GAP_MS)
-        }
-        shownUrl = url
-    }
-    if (portion) {
-        Box(Modifier.fillMaxSize()) {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .fillMaxWidth(PORTION_WIDTH)
-                    .fillMaxHeight(PORTION_HEIGHT),
-            ) {
-                Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
-                    if (picture != null) {
-                        AsyncImage(
-                            model = picture,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-                // Plain painted fades into the page colour (cheap on older TVs): strong from the left, soft at the bottom
-                Box(Modifier.fillMaxSize().background(BenflixShade.portionSide))
-                Box(Modifier.fillMaxSize().background(BenflixShade.portionBottom))
-            }
-        }
-        return
-    }
-    if (wholeWidth != null) {
-        Box(Modifier.fillMaxSize()) {
-            // Wide pictures are 16:9, so this box shows all of one; an odd-shaped picture is fitted inside, never cut
-            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().aspectRatio(16f / 9f)) {
-                Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
-                    if (picture != null) {
-                        AsyncImage(
-                            model = picture,
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            alignment = Alignment.TopCenter,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-                Box(Modifier.fillMaxSize().background(BenflixShade.portionBottom))
-            }
-        }
-        return
-    }
-    Box(Modifier.fillMaxSize()) {
-        Crossfade(targetState = shownUrl, animationSpec = tween(PICTURE_FADE_MS), label = "pagePicture") { picture ->
-            if (picture != null) {
-                AsyncImage(
-                    model = picture,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-        Box(Modifier.fillMaxSize().background(BenflixShade.topAreaSide))
-        Box(Modifier.fillMaxSize().background(BenflixShade.fadeDown(brightUntil)))
-        // Ben 2026-11-18: no dark shade across the very top; the picture runs right up, the clock has a shadow
-    }
-}
-
-/**
- * The top area: the focused title's words on the left (name, info line, scores, a short story, and Resume
- * for things started). The picture itself is drawn behind the whole page by [PageBackdrop].
- */
-@Composable
-private fun PreviewArea(
-    item: BaseItem?,
-    easy: Boolean,
-    height: Dp,
-    overlap: Dp = 0.dp,
-    /** Wholphin style: words start at the top gap instead of sitting in the middle */
-    topAligned: Boolean = false,
-) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(height),
-    ) {
-        if (item != null) {
-            PreviewWords(
-                item = item,
-                easy = easy,
-                modifier =
-                    Modifier
-                        .align(if (topAligned) Alignment.TopStart else Alignment.CenterStart)
-                        .padding(start = SIDE, end = SIDE, top = overlap)
-                        .widthIn(max = 560.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun PreviewWords(
-    item: BaseItem,
-    easy: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val isEpisode = item.type == BaseItemKind.EPISODE
-    Column(modifier = modifier) {
-        Text(
-            text = item.title.orEmpty(),
-            color = BenflixColors.Text,
-            fontSize = if (easy) BenflixType.hero else BenflixType.pageTitle,
-            lineHeight = if (easy) 40.sp else 34.sp,
-            fontWeight = FontWeight.ExtraBold,
-            // One line on the normal page so the shorter top area always fits the words
-            maxLines = if (easy) 2 else 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val meta = remember(item) { metaLine(item) }
-        if (meta.isNotEmpty()) {
-            Text(
-                text = meta,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-        if (!easy && !isEpisode) ScoreLine(item, Modifier.padding(top = 6.dp))
-        val story = item.data.overview
-        if (!easy && !story.isNullOrBlank()) {
-            Text(
-                text = story,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.small,
-                lineHeight = BenflixType.small * 1.35f,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        val progress = item.progress()
-        if (progress != null || isEpisode) ResumeLine(item, progress, Modifier.padding(top = 10.dp))
-    }
-}
-
-/** "Resume · 40 min left" with a short progress line (episodes: "Play S2 E5" when not started) */
-@Composable
-private fun ResumeLine(
-    item: BaseItem,
-    progress: Float?,
-    modifier: Modifier = Modifier,
-) {
-    val left = remember(item) { minutesLeft(item) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        BenflixIconImage(BenflixIcon.PLAY, color = BenflixColors.Text, size = 16.dp)
-        Text(
-            text = if (progress != null) "Resume" else "Play",
-            color = BenflixColors.Text,
-            fontSize = BenflixType.body,
-            fontWeight = FontWeight.Bold,
-        )
-        if (left != null && progress != null) {
-            Text(text = "· $left", color = BenflixColors.Muted, fontSize = BenflixType.body, fontWeight = FontWeight.SemiBold)
-        }
-        if (progress != null) {
-            Box(
-                Modifier
-                    .width(90.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF2B2E37)),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(progress)
-                        .height(4.dp)
-                        .background(BenflixColors.Text),
-                )
-            }
-        }
-    }
-}
-
-/**
- * Review scores on their own line (approved sc-line): a bold white number and the site in grey.
- * Movies and shows: IMDb and Rotten Tomatoes. Anime: AniList and MyAnimeList, falling back to IMDb.
- * Sites without a score are left out.
- */
-@Composable
-fun ScoreLine(
-    item: BaseItem,
-    modifier: Modifier = Modifier,
-) {
-    val aniList by AniListFacts.cards.collectAsState()
-    val mal by MalFacts.scores.collectAsState()
-    val facts = aniList[item.id]
-    val scores =
-        buildList {
-            if (facts != null) {
-                facts.scoreText?.let { add(it to "AniList") }
-                facts.malId?.let { mal[it] }?.let { add(MalFacts.text(it) to "MAL") }
-            }
-            if (isEmpty()) {
-                item.data.communityRating?.takeIf { it > 0f }?.let {
-                    add(String.format(java.util.Locale.US, "%.1f", it) to "IMDb")
-                }
-                item.data.criticRating
-                    ?.takeIf { it > 0f }
-                    ?.let { add("${it.toInt()}%" to "Rotten Tomatoes") }
-            }
-        }
-    if (scores.isEmpty()) return
-    val text =
-        buildAnnotatedString {
-            scores.forEachIndexed { i, (number, site) ->
-                if (i > 0) append("     ")
-                withStyle(SpanStyle(color = BenflixColors.Text, fontWeight = FontWeight.ExtraBold)) { append(number) }
-                withStyle(SpanStyle(color = BenflixColors.Muted, fontWeight = FontWeight.SemiBold)) { append(" $site") }
-            }
-        }
-    Text(text = text, fontSize = BenflixType.body, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
-}
-
-/** "2023 · 1h 52m · PG-13 · Drama" (episodes: "S2 E5 · Episode name") */
-fun metaLine(item: BaseItem): String {
-    val d = item.data
-    val parts =
-        if (item.type == BaseItemKind.EPISODE) {
-            listOfNotNull(yearText(item), d.name)
-        } else {
-            listOfNotNull(
-                d.productionYear?.toString(),
-                d.runTimeTicks
-                    ?.ticks
-                    ?.takeIf { item.type == BaseItemKind.MOVIE }
-                    ?.let(::lengthText),
-                d.childCount?.takeIf { item.type == BaseItemKind.SERIES && it > 0 }?.let { if (it == 1) "1 season" else "$it seasons" },
-                d.officialRating,
-                d.genres?.firstOrNull(),
-            )
-        }
-    return parts.filter { it.isNotBlank() }.joinToString(" · ")
-}
-
 /** "1h 52m" */
 fun lengthText(length: Duration): String {
     val minutes = length.inWholeMinutes
     return if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
-}
-
-private fun minutesLeft(item: BaseItem): String? {
-    val total = item.data.runTimeTicks?.ticks ?: return null
-    val left = total - item.playbackPosition
-    val minutes = left.inWholeMinutes
-    return when {
-        minutes <= 0 -> null
-        minutes >= 60 -> "${minutes / 60}h ${minutes % 60}m left"
-        else -> "$minutes min left"
-    }
 }
 
 @Composable
@@ -958,26 +696,23 @@ internal fun PhoneDoor(
     LaunchedEffect(Unit) { snapshotFlow { columnState.firstVisibleItemIndex == 0 }.collect { frame.atTop = it } }
     frame.toTop = { scope.launch { columnState.animateScrollToItem(0) } }
     BoxWithConstraints(modifier = modifier.fillMaxSize().onFirstUserMove { touched = true }) {
-        // About 3.5 posters across
-        val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / if (easy) 2.6f else 3.5f).coerceAtLeast(72.dp)
-        // Ben 2026-11-18 (Fade down): the picked title's picture fills the page behind everything,
-        // and its words stay locked at the top while the rows scroll under them
-        // The top used to stay blank when nothing new was there to pick (a small library, or everything watched).
-        // Now it shows the first thing on the page instead, and closes up if the page has nothing at all.
-        val pick = state.pick ?: if (state.loaded) state.rows.firstNotNullOfOrNull { it.items.firstOrNull() } else null
-        val topHeight = if (pick == null && state.loaded) 0.dp else (maxHeight * 0.36f).coerceIn(200.dp, 320.dp)
-        PageBackdrop(
-            item = pick,
-            pageHeight = maxHeight,
-            brightUntil = (topHeight / maxHeight).coerceIn(0.2f, 0.6f),
-            // Held upright, show the whole picture across the top (it was a zoomed-in slice); on its side it fills the page as before
-            wholeWidth = if (maxHeight > maxWidth) maxWidth else null,
-        )
+        // About 3.5 posters across on a phone; tablets and sideways phones fit more across instead of bigger ones
+        val across =
+            if (easy) {
+                maxOf(2.6f, maxWidth / PHONE_EASY_POSTER)
+            } else {
+                maxOf(3.5f, maxWidth / PHONE_POSTER)
+            }
+        val posterWidth = ((maxWidth - PHONE_SIDE - 12.dp * 3) / across).coerceAtLeast(72.dp)
+        // Tablets and sideways phones: the header (and the tabs) sit over the page, so the rows start under them.
+        // 0 on phones held upright, where the tabs are laid out above the page.
+        val underHeader = LocalTopBarOverlap.current
+        // Glowfin new look (Ben 2026-11-22): no picture at the top on phones and tablets held upright. The rows
+        // start right under the tabs (a tap opens the title's own page, with its big art, anyway).
         Column(Modifier.fillMaxSize()) {
-            PhoneTop(pick, easy, onClick = { pick?.let(onClick) }, Modifier.fillMaxWidth().height(topHeight))
             LazyColumn(
                 state = columnState,
-                contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
+                contentPadding = PaddingValues(top = underHeader + 4.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) {
@@ -985,13 +720,14 @@ internal fun PhoneDoor(
                     val row = (entry as? DoorEntry.Real)?.row
                     item(key = entry.key) {
                         if (row == null) {
-                            WaitingRow(posterWidth = posterWidth, showName = true, side = PHONE_SIDE)
+                            WaitingRow(posterWidth = posterWidth, showName = false, side = PHONE_SIDE)
                             return@item
                         }
                         DoorRow(
                             row = row,
                             posterWidth = posterWidth,
-                            showName = true,
+                            // Cover art only, no names under the posters (Ben 2026-11-22)
+                            showName = false,
                             onOpen = onOpen,
                             startIndex = 0,
                             focusRequester = null,
@@ -1004,58 +740,6 @@ internal fun PhoneDoor(
                     }
                 }
             }
-        }
-    }
-}
-
-/** Phones: the locked top area. The picked title's words over its picture (drawn behind the page). Tap opens it. */
-@Composable
-private fun PhoneTop(
-    item: BaseItem?,
-    easy: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.then(if (item != null) Modifier.clickable(onClick = onClick) else Modifier)) {
-        if (item == null) return@Box
-        Column(
-            Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = PHONE_SIDE, vertical = 12.dp),
-        ) {
-            Text(
-                text = item.title.orEmpty(),
-                color = BenflixColors.Text,
-                fontSize = BenflixType.pageTitle,
-                lineHeight = if (easy) 32.sp else 27.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val meta = remember(item) { metaLine(item) }
-            if (meta.isNotEmpty()) {
-                Text(
-                    text = meta,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.tag,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            item.data.overview?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.tag,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-            // Same as the TV: "Resume · 40 min left" with the short line, when there is something to pick up
-            val progress = item.progress()
-            if (progress != null) ResumeLine(item, progress, Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -1095,19 +779,23 @@ internal fun EmptyDoor(
 /** TV side margin. Ben 2026-11-18: the page starts right next to the side menu (was 48dp, a big empty gap) */
 private val SIDE = 16.dp
 
-/** Wholphin-style picture: this much of the page's width and height, in the top right */
-private const val PORTION_WIDTH = 0.72f
-private const val PORTION_HEIGHT = 0.66f
 private val PHONE_SIDE = BenflixSpace.phoneEdge
 
-private const val PICTURE_FADE_MS = 800
-private const val PICTURE_GAP_MS = 500L
+/** About how wide a poster is on a tablet or a phone turned sideways (more fit across, none get huge) */
+private val PHONE_POSTER = 132.dp
+private val PHONE_EASY_POSTER = 170.dp
 
-/** Wholphin's Home header sizes (HeaderUtils): gap above, words area, gap below */
-private val WHOLPHIN_TOP_GAP = 48.dp
-private val WHOLPHIN_HEADER = 180.dp
-private val WHOLPHIN_BOTTOM_GAP = 32.dp
+/** How much of the screen the top (the words about the card you're on) takes, from the very top */
+private const val TOP_SHARE = 0.52f
 private const val PREVIEW_DELAY_MS = 500L
+private const val WORDS_DELAY_MS = 100L
+
+/** Home on TV (Ben 2026-11-24, side menu A): the words start near the top and the first row sits right under them */
+private val FREE_WORDS_TOP = 16.dp
+private val FREE_TOP_HEIGHT = 204.dp
+
+/** Room for the row of score icons under the year and time (Ben 2026-11-24) */
+private val SCORE_ROW = 26.dp
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9

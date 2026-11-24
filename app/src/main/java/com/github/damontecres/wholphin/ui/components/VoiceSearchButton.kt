@@ -80,13 +80,16 @@ private fun VoiceInputState.shouldShowOverlay() =
         this is VoiceInputState.Processing ||
         this is VoiceInputState.Error
 
+/**
+ * Glowfin new look (Search): the voice search without its own button, so the Search letters can have the mic as
+ * their first key. Shows the listening overlay while it listens. Null when this device can't listen.
+ */
 @Composable
-fun VoiceSearchButton(
+fun rememberVoiceSearch(
     onSpeechResult: (String) -> Unit,
     voiceInputManager: VoiceInputManager?,
-    modifier: Modifier = Modifier,
-) {
-    if (voiceInputManager == null || !voiceInputManager.isAvailable) return
+): (() -> Unit)? {
+    if (voiceInputManager == null || !voiceInputManager.isAvailable) return null
 
     val state by voiceInputManager.state.collectAsState()
     val soundLevel by voiceInputManager.soundLevel.collectAsState()
@@ -139,24 +142,34 @@ fun VoiceSearchButton(
         )
     }
 
-    Button(
-        onClick = {
-            when (state) {
-                is VoiceInputState.Starting,
-                is VoiceInputState.Listening,
-                -> {
-                    voiceInputManager.stopListening()
-                }
+    return {
+        when (state) {
+            is VoiceInputState.Starting,
+            is VoiceInputState.Listening,
+            -> {
+                voiceInputManager.stopListening()
+            }
 
-                else -> {
-                    if (voiceInputManager.hasPermission) {
-                        voiceInputManager.startListening()
-                    } else {
-                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    }
+            else -> {
+                if (voiceInputManager.hasPermission) {
+                    voiceInputManager.startListening()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             }
-        },
+        }
+    }
+}
+
+@Composable
+fun VoiceSearchButton(
+    onSpeechResult: (String) -> Unit,
+    voiceInputManager: VoiceInputManager?,
+    modifier: Modifier = Modifier,
+) {
+    val start = rememberVoiceSearch(onSpeechResult, voiceInputManager) ?: return
+    Button(
+        onClick = start,
         modifier =
             modifier.requiredSizeIn(
                 minWidth = MinButtonSize,

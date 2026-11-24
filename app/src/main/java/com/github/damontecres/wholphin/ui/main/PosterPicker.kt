@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -52,6 +51,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -141,15 +141,19 @@ data class PosterPickerState(
 
     /** What the picture is called: "poster", "cover", "picture" */
     val pictureWord: String
+        get() = if (tab != PosterTab.POSTER) tab.kind.label.lowercase() else posterWord
+
+    /**
+     * What the first tab's own picture is called, whichever tab is open. The first tab used to take the open tab's
+     * name, so after pressing "Title logo" there were two "Title logo" tabs and pressing the first one went back
+     * to posters (Ben 2026-11-24).
+     */
+    val posterWord: String
         get() =
-            if (tab != PosterTab.POSTER) {
-                tab.kind.label.lowercase()
-            } else {
-                when (item?.type ?: BaseItemKind.MOVIE) {
-                    in COVERS -> "cover"
-                    in PICTURES -> "picture"
-                    else -> "poster"
-                }
+            when (item?.type ?: BaseItemKind.MOVIE) {
+                in COVERS -> "cover"
+                in PICTURES -> "picture"
+                else -> "poster"
             }
 
     /** The movie, show, season or collection the picture goes on */
@@ -383,13 +387,7 @@ fun PosterPickerPage(
                 overflow = TextOverflow.Ellipsis,
             )
             ChipRow(state.tabs, {
-                if (it ==
-                    PosterTab.POSTER
-                ) {
-                    state.pictureWord.replaceFirstChar { c -> c.uppercase() }
-                } else {
-                    it.label
-                }
+                if (it == PosterTab.POSTER) state.posterWord.replaceFirstChar { c -> c.uppercase() } else it.label
             }, { it == state.tab }, viewModel::pickTab, firstChip)
             if (state.tab == PosterTab.SEASONS) {
                 ChipRow(

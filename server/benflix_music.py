@@ -2256,11 +2256,25 @@ def _jf_song(item_id, token, user_id):
 
 def _deezer_match(title, artist, album, seconds):
     """The same song in the music catalogue, so it can be asked for again"""
-    tries = [f'artist:"{artist}" track:"{title}"', f"{artist} {title}"]
+    # Ben 2026-11-23: "Hey Mama (feat. Nicki Minaj, Bebe Rexha & Afrojack)" found nothing, because the catalogue's
+    # search chokes on the long "(feat. ...)" part. The plain name (no brackets) and the first artist are tried too.
+    base = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]", "", title or "").strip() or title
+    base = re.sub(r"\s+(feat|ft|featuring)\.?\s.*$", "", base, flags=re.I).strip() or base
+    lead = re.split(r"\s*(?:,|\bfeat\.?|\bft\.?|\bfeaturing)\s*", artist or "", flags=re.I)[0].strip() or artist
+    tries = []
+    for q in (
+        f'artist:"{artist}" track:"{title}"',
+        f"{artist} {title}",
+        f'artist:"{lead}" track:"{base}"',
+        f"{lead} {base}",
+    ):
+        if q not in tries:
+            tries.append(q)
     best = None
     for q in tries:
         for t in deezer("/search", q=q, limit=25).get("data") or []:
-            if not same_song(t.get("title"), title) or not same((t.get("artist") or {}).get("name"), artist):
+            name = (t.get("artist") or {}).get("name")
+            if not same_song(t.get("title"), title) or not (same(name, artist) or same(name, lead)):
                 continue
             score = 0
             if seconds and t.get("duration") and abs(t["duration"] - seconds) > 8:
@@ -2346,10 +2360,14 @@ def redo_song(item_id, token, user_id):
     # Found in the catalogue BEFORE anything is deleted, so the song is never just lost
     deezer_id = old.get("deezer") if old else None
     if not deezer_id:
-        t = _deezer_match(title, artist, album, seconds)
-        if not t:
-            raise MusicError(404, "Couldn't find this song in the music catalogue, so it wasn't deleted.")
-        deezer_id = t["id"]
+        try:
+            t = _deezer_match(title, artist, album, seconds)
+        except MusicError as e:
+            log(f"couldn't look {artist} - {title} up in the catalogue: {e.message}")
+            t = None
+        # Ben 2026-11-23: a wrong copy is still deleted when the catalogue can't find the song; he's told to ask
+        # for it from Search instead of the bad copy staying
+        deezer_id = t["id"] if t else None
     track_file, lartist = (None, None)
     try:
         track_file, lartist = _lidarr_file(real)
@@ -2373,7 +2391,7 @@ def redo_song(item_id, token, user_id):
     log(f"deleted a bad copy of {artist} - {title}")
     # Ask for it again
     now = time.time()
-    if old is None:
+    if old is None and deezer_id:
         ask("song", deezer_id, quiet=True)
         with _lock:
             old = next((r for r in _state["requests"] if r["kind"] == "song" and r.get("deezer") == int(deezer_id)), None)
@@ -2394,6 +2412,9 @@ def redo_song(item_id, token, user_id):
             _state["requests"].insert(0, old)
         _save()
     _kick.set()
+    if old is None and not deezer_id:
+        words = f"Deleted {title}. The music catalogue didn't know it, so look it up in Search to ask for it again."
+        return {"ok": True, "words": words, "request": None}
     words = f"Deleted {title}. Tower is finding a new copy"
     words += " (that copy won't be picked again)." if blocked else "."
     return {"ok": True, "words": words, "request": _public(old) if old else None}

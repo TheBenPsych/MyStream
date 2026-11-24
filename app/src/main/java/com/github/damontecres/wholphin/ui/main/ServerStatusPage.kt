@@ -919,14 +919,15 @@ fun ServerStatusPage(
     DoorFrame(
         state = frame,
         sections = if (isAdmin) ServerSection.entries.map { it.railItem(lights[it]) } else emptyList(),
-        modifier = modifier.fillMaxSize().serverLookABackground(),
+        // TV: the frame draws the dimmed picture and the right-hand panel (new look, same as Settings)
+        modifier = if (isTv && isAdmin) modifier.fillMaxSize() else modifier.fillMaxSize().serverLookABackground(),
         ownRail = true,
         sideListTitle = "Server",
     ) { inner ->
         if (isTv) {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(start = 24.dp, end = 40.dp, top = 20.dp, bottom = 48.dp),
+                contentPadding = PaddingValues(start = 4.dp, end = 12.dp, top = 12.dp, bottom = 48.dp),
                 modifier = inner,
                 content = content,
             )

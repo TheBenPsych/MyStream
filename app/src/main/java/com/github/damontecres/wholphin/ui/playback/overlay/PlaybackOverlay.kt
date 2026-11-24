@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -162,13 +163,23 @@ fun PlaybackOverlay(
                             ),
                     )
                 }
-            // Ben (clean-up v4): a short fade, only behind the controls at the bottom
-            Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
+            // New look (Part 4): only a soft shade at the bottom (behind the controls) and the top (behind the
+            // clock), so the picture stays clear. Plain gradients, no blur.
+            Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier =
                         Modifier
+                            .align(Alignment.TopCenter)
                             .fillMaxWidth()
-                            .fillMaxHeight(.36f)
+                            .fillMaxHeight(.2f)
+                            .background(TOP_SHADE),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .fillMaxHeight(.46f)
                             .background(scrimBrush),
                 )
             }
@@ -202,39 +213,51 @@ fun PlaybackOverlay(
                                 (player.currentPosition.toFloat() / player.duration)
                         }
                     }
-                    PlaybackController(
-                        item = item,
-                        player = player,
-                        controllerViewState = controllerViewState,
-                        showPlay = showPlay,
-                        previousEnabled = previousEnabled,
-                        nextEnabled = nextEnabled,
-                        episodesEnabled = episodesEnabled,
-                        seekEnabled = seekEnabled,
-                        seekBack = seekBack,
-                        skipBackOnResume = skipBackOnResume,
-                        seekForward = seekForward,
-                        onPlaybackActionClick = onPlaybackActionClick,
-                        onClickPlaybackDialogType = onClickPlaybackDialogType,
-                        onSeekBarChange = {
-                            onSeekBarChange(it)
-                            seekProgressMs = it
-                        },
-                        currentSegment = currentSegment,
-                        onChangeState = onChangeState,
-                        title = topTitle,
-                        subtitle = topLine,
-                        modifier =
-                            Modifier
-                                .padding(bottom = 8.dp)
-                                .onGloballyPositioned {
-                                    controllerHeight = with(density) { it.size.height.toDp() }
-                                    controllerViewState.controlsHeightPx = it.size.height
-                                },
-                        seekBarInteractionSource = seekBarInteractionSource,
-                        chapters = chapters,
-                        live = live,
-                    )
+                    val logoUrl =
+                        com.github.damontecres.wholphin.ui.components
+                            .rememberLogoUrl(item.takeIf { live == null })
+                    val extras =
+                        remember(logoUrl) {
+                            com.github.damontecres.wholphin.ui.detail.title
+                                .TitleExtras(logoUrl = logoUrl)
+                        }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras provides extras,
+                    ) {
+                        PlaybackController(
+                            item = item,
+                            player = player,
+                            controllerViewState = controllerViewState,
+                            showPlay = showPlay,
+                            previousEnabled = previousEnabled,
+                            nextEnabled = nextEnabled,
+                            episodesEnabled = episodesEnabled,
+                            seekEnabled = seekEnabled,
+                            seekBack = seekBack,
+                            skipBackOnResume = skipBackOnResume,
+                            seekForward = seekForward,
+                            onPlaybackActionClick = onPlaybackActionClick,
+                            onClickPlaybackDialogType = onClickPlaybackDialogType,
+                            onSeekBarChange = {
+                                onSeekBarChange(it)
+                                seekProgressMs = it
+                            },
+                            currentSegment = currentSegment,
+                            onChangeState = onChangeState,
+                            title = topTitle,
+                            subtitle = topLine,
+                            modifier =
+                                Modifier
+                                    .padding(bottom = 8.dp)
+                                    .onGloballyPositioned {
+                                        controllerHeight = with(density) { it.size.height.toDp() }
+                                        controllerViewState.controlsHeightPx = it.size.height
+                                    },
+                            seekBarInteractionSource = seekBarInteractionSource,
+                            chapters = chapters,
+                            live = live,
+                        )
+                    }
                 }
             }
         }
@@ -278,15 +301,29 @@ fun PlaybackOverlay(
             }
         }
 
+        // The clock top right with "Ends at" under it (new look; Ends at shows even when the clock is turned off)
         AnimatedVisibility(
-            visible = !showDebugInfo && showClock && controllerViewState.controlsVisible,
+            visible = !showDebugInfo && controllerViewState.controlsVisible,
             enter = fadeIn(BenflixMotion.enter()),
             exit = fadeOut(BenflixMotion.exit()),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd),
         ) {
-            TimeDisplay()
+            Column(horizontalAlignment = Alignment.End) {
+                if (showClock) {
+                    Box { TimeDisplay() }
+                }
+                if (live == null) {
+                    PlayerEndsAt(
+                        player = player,
+                        modifier =
+                            Modifier
+                                .padding(top = if (showClock) 0.dp else 16.dp, end = 24.dp)
+                                .offset(y = if (showClock) (-10).dp else 0.dp),
+                    )
+                }
+            }
         }
 
         // Debug overlay
@@ -326,6 +363,16 @@ fun PlaybackOverlay(
         }
     }
 }
+
+/** The soft shade at the top of the player, behind the clock and Ends at */
+private val TOP_SHADE =
+    Brush.verticalGradient(
+        listOf(
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
+                .copy(alpha = .7f),
+            Color.Transparent,
+        ),
+    )
 
 /**
  * The view state of the overlay

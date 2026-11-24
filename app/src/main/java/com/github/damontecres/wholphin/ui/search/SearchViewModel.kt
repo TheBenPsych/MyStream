@@ -62,7 +62,6 @@ import org.jellyfin.sdk.api.client.extensions.personsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
-import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -340,44 +339,15 @@ class SearchViewModel
         private var userLibraryTypes: Set<BaseItemKind> = emptySet()
 
         init {
+            // Glowfin new look (Ben 2026-11-22): Search opens nearly empty, so nothing (not even Popular) loads
             init()
-            if (!KidsMode.isActive) {
-                viewModelScope.launch(WholphinDispatchers.IO) {
-                    try {
-                        val userId = serverRepository.currentUser?.id ?: return@launch
-                        val movies = doorData.top10(userId, BaseItemKind.MOVIE, emptySet(), anime = false)
-                        val shows = doorData.top10(userId, BaseItemKind.SERIES, emptySet(), anime = false)
-                        _popular.value =
-                            (0 until maxOf(movies.size, shows.size))
-                                .flatMap { listOfNotNull(movies.getOrNull(it), shows.getOrNull(it)) }
-                                .take(POPULAR_COUNT)
-                        // Then what the household actually watched most this month, worked out on Tower
-                        // (needs the latest helper; until then the Top 10 picks above stay)
-                        val household =
-                            try {
-                                val answer = gameLibrary.getJson("/api/popular").optJSONArray("items")
-                                (0 until (answer?.length() ?: 0)).mapNotNull {
-                                    answer
-                                        ?.optJSONObject(it)
-                                        ?.optString("id")
-                                        ?.toUUIDOrNull()
-                                }
-                            } catch (ex: kotlinx.coroutines.CancellationException) {
-                                throw ex
-                            } catch (ex: Exception) {
-                                Timber.i("Household popular not available: %s", ex.message)
-                                emptyList()
-                            }
-                        val picks = doorData.byIds(userId, household).take(POPULAR_COUNT)
-                        if (picks.size >= POPULAR_MIN) _popular.value = picks
-                    } catch (ex: kotlinx.coroutines.CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Search popular")
-                    }
-                }
-            }
         }
+
+        /** Glowfin new look: the result opened last, so Back from its page lands on it again */
+        var lastOpened: String? = null
+
+        /** Glowfin new look: the letters were tucked away (you were in the results) when you left */
+        var resultsWereFocused = false
 
         private fun init() {
             viewModelScope.launchDefault {
@@ -1203,12 +1173,6 @@ private fun suggestionRank(
         name.startsWith(q) -> 1
         else -> 2
     }
-
-/** How many titles the Popular row shows before you type */
-private const val POPULAR_COUNT = 12
-
-/** Fewer than this many household picks and the Top 10 picks stay */
-private const val POPULAR_MIN = 4
 
 /** A song or album from the music catalogue that can be asked for from search */
 data class SearchMusicAsk(

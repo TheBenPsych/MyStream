@@ -265,6 +265,7 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .rows { padding-bottom: 60px; position: relative; }
 .rowx { margin: 0 0 26px; position: relative; }
 .rowx h3 { font-size: 21px; font-weight: 600; margin: 0 0 10px; padding: 0 var(--gutter); display: flex; align-items: center; gap: 12px; }
+.rowx h3 .rnote { font-size: 14px; font-weight: 500; color: var(--ink3); text-shadow: none; }
 .rowx h3 .more { font-size: 14px; color: var(--ink3); font-weight: 600; cursor: pointer; background: none; border: 0; }
 .rowx h3 .more:hover { color: var(--ink); }
 .strip { display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth; padding: 6px var(--gutter) 10px; scrollbar-width: none; }
@@ -298,12 +299,13 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .wide.soon { opacity: .45; cursor: default; }
 .wide .tag { position: absolute; left: 8px; top: 8px; background: var(--ink); color: var(--dark); font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 99px; letter-spacing: .03em; }
 .top10 { display: flex; align-items: flex-end; flex: none; }
-/* Glowfin Top 10 (T1): tall Anton numbers in the violet > blue > aqua glow, each in the same width box fully
-   BESIDE its poster (never tucked behind), so the thin "1" is as easy to see as "10" */
-.top10 { gap: 6px; }
-.top10 .num { flex: none; width: var(--t10w, 96px); text-align: center; font-family: "Glowfin Anton", Impact, sans-serif; font-weight: 400; font-size: calc(var(--t10w, 96px) * 1.16); line-height: .86; letter-spacing: 0; padding-top: .06em;
-  background: linear-gradient(160deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 0; margin-right: 0; filter: drop-shadow(0 0 6px rgba(165,91,224,.45)); position: static; }
-.top10 .num.ten { letter-spacing: -.03em; margin-right: 0; }
+/* Glowfin Top 10 (Ben 2026-11-22, "Glow outline"): hollow Anton numbers outlined in the Glowfin colours running
+   left to right (violet > blue > aqua), as tall as the cover, each in the same width box fully BESIDE its poster
+   (never tucked behind). Ben 2026-11-23: always hollow, never filled, even on hover/focus and on phones. */
+.top10 { gap: 6px; --t10p: var(--poster-w); }
+.top10 .num { flex: none; display: block; width: calc(var(--t10p) * .75); height: calc(var(--t10p) * 1.5); position: static; }
+.top10 .num svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.top10 .num text { font-family: "Glowfin Anton", Impact, sans-serif; font-size: 312px; fill: none; stroke: url(#gfT10); stroke-width: 5px; }
 .top10 .poster { z-index: 1; }
 
 .tiles2 { display: flex; gap: 12px; overflow-x: auto; padding: 6px var(--gutter) 10px; scrollbar-width: none; }
@@ -610,7 +612,6 @@ textarea.field { min-height: 90px; resize: vertical; }
   .door-top .ov { -webkit-line-clamp: 2; font-size: 14px; }
   .rowx h3 { font-size: 17px; }
   .poster .cap { display: block; }
-  .top10 { --t10w: 58px; }
   .wide { width: 240px; }
   .details .hero-in { flex-direction: column; align-items: stretch; gap: 18px; padding-bottom: 24px; }
   .details .t { font-size: 32px; }
@@ -887,7 +888,6 @@ body.reading .mbar { display: none; }
 .bq-hero .meta, .bq-top .meta { color: var(--ink2); font-size: 16px; margin-bottom: 6px; }
 .bq-hero .ov { color: var(--ink2); font-size: 16px; max-width: 720px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bq-hero .btns, .bq-top .btns { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
-.bq-t10 .num { font-size: 190px; }
 .bq-genre { flex: none; width: 176px; height: 96px; border-radius: 12px; padding: 12px; display: flex; align-items: flex-end; font-weight: 800; font-size: 16px; color: #0B0C10; text-decoration: none; }
 .bq-genre:hover, .bq-genre:focus-visible { outline: 3px solid var(--ink); outline-offset: 0; }
 .bq-genre.all { background: var(--pg3, #1D2027); color: var(--ink); }
@@ -911,7 +911,6 @@ body.reading .mbar { display: none; }
   .bq-flip { width: 180px; }
   .bq-about { font-size: 17px; }
   .bq-genre { width: 140px; height: 78px; }
-  .bq-t10 .num { font-size: 110px; }
 }
 
 /* ---------- movie and show page extras (extras.js) ---------- */
@@ -1722,7 +1721,7 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bgcanvas { display: block; touch-action: none; border-radius: 12px 12px 0 0; }
 .bgstage > .bg-how { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,.7); color: #fff; padding: 8px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); text-align: center; transition: opacity .6s; pointer-events: none; }
 .bgstage > .bg-how.gone { opacity: 0; }
-.bg-over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); padding: 16px; z-index: 3; }
+.bg-over { position: absolute; inset: 0; display: grid; place-items: center; overflow-y: auto; background: rgba(0,0,0,.55); padding: 16px; z-index: 3; }
 .bg-card { background: var(--pg2); border-radius: 16px; padding: 24px 28px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .bg-card h2 { margin: 0 0 10px; font-size: 26px; } .bg-card p { margin: 6px 0; line-height: 1.5; }
 .bg-card .acts { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
@@ -1740,6 +1739,7 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bg-tiles i { background: linear-gradient(135deg, #A16207, #422006); border: 1px solid rgba(0,0,0,.35); transition: transform .35s, opacity .35s; }
 .bg-tiles i.off { transform: rotateY(90deg); opacity: 0; }
 .bgq-say { text-align: center; font-weight: 700; font-size: 17px; min-height: 24px; white-space: pre-line; }
+.bgq-say.bad { color: var(--bad); }
 .bgq-clue { background: var(--pg2); border-radius: 14px; padding: 18px 22px; font-size: 19px; line-height: 1.5; text-align: center; }
 .bgq-clue p { margin: 6px 0; }
 .bgq-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -1754,7 +1754,9 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bg-clock { height: 6px; border-radius: 3px; background: var(--pg3); overflow: hidden; }
 .bg-clock i { display: block; height: 100%; background: linear-gradient(90deg, #C2410C, #6D28D9); transition: width .2s linear; }
 .bg-hls { display: flex; align-items: center; justify-content: center; gap: 16px; }
-.bg-hl { width: min(34vw, 220px); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.bg-hl { min-width: 0; width: min(34vw, 220px); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.bg-hl b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: 17px; line-height: 1.2; min-height: 2.4em; }
+.bg-hl b.l { font-size: 15px; } .bg-hl b.xl { font-size: 13px; }
 .bg-hl img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px; background: var(--pg3); }
 .bg-hl .r { font-size: 24px; font-weight: 800; }
 .bg-hlq { font-weight: 700; text-align: center; max-width: 140px; }
@@ -1774,6 +1776,86 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bg-cell.done img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
 .bg-cell.done b { position: relative; font-size: 13px; padding: 4px; text-shadow: 0 1px 3px #000; }
 .bg-pickcell { position: fixed; inset: 0; z-index: 4; background: rgba(11,12,16,.94); display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px max(16px, calc(50% - 490px)); }
+/* The new game look (Ben's pick 2026-11-22): scoreboard bar, timer ring, scene strip, Timeline line, face-off, end screen */
+.bgq-head { align-items: center; flex-wrap: nowrap; background: rgba(26,30,56,.78); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 10px 14px; }
+.bgq-head s { flex: none; width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--g1), var(--g2)); }
+.bgq-head b { font-size: 20px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bgq-head span { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.bgq-head span i, .bgq-head em i { font-style: normal; font-size: 13px; font-weight: 700; color: #fff; background: rgba(255,255,255,.07); border-radius: 99px; padding: 5px 11px; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.bgq-head span i.best { color: #FFC94D; }
+.bgq-head em { font-style: normal; }
+.bgq-head u { width: 9px; height: 9px; border-radius: 50%; background: #3A3E5C; display: inline-block; }
+.bgq-head u.on { background: #FF7A7A; }
+.bg-hints span { background: #3B2F10; color: #FFD36B; font-weight: 600; }
+.bg-ring { --left: 1; margin: 0 auto; padding: 6px; border-radius: 18px; background: conic-gradient(#3FE0E8 calc(var(--left) * 360deg), rgba(255,255,255,.14) 0); }
+.bg-ring.low { background: conic-gradient(#FF7A7A calc(var(--left) * 360deg), rgba(255,255,255,.14) 0); }
+.bg-thumbs { display: flex; gap: 8px; justify-content: center; }
+.bg-thumbs span { width: 72px; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,.08); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,.45); }
+.bg-thumbs span.now { box-shadow: 0 0 0 2px #FFC94D; }
+.bg-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+.bg-line { gap: 0; align-items: stretch; background: linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28)) center / 100% 3px no-repeat; min-height: 330px; }
+.bg-slot { align-self: center; width: 40px; height: 40px; padding: 0; margin: 0 6px; border-radius: 50%; border: 2px solid rgba(63,224,232,.6); background: #1A1E38; color: #3FE0E8; font-size: 20px; }
+.bg-slot:hover, .bg-slot:focus-visible { background: #FFC94D; color: #000; border-color: #FFC94D; transform: scale(1.12); }
+.bg-tlp { flex: none; width: 96px; display: grid; grid-template-rows: 1fr 18px 1fr; align-items: center; justify-items: center; }
+.bg-tlp em { grid-row: 2; width: 3px; height: 18px; background: rgba(255,255,255,.7); }
+.bg-tlp .bg-tl { width: 84px; }
+.bg-tlp.up .bg-tl { grid-row: 1; align-self: end; }
+.bg-tlp.down .bg-tl { grid-row: 3; align-self: start; flex-direction: column-reverse; }
+.bg-hls { position: relative; align-items: stretch; gap: 10px; }
+.bg-hls > div:not(.bg-vs) { flex: 1; min-width: 0; display: flex; }
+.bg-hl { position: relative; flex: 1; width: auto; overflow: hidden; border-radius: 16px; background: #1C1C1F; padding: 16px; align-items: center; }
+.bg-hl .bk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .45; border-radius: 0; aspect-ratio: auto; }
+.bg-hl::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.8)); }
+.bg-hl > * { position: relative; z-index: 1; }
+.bg-hl .p { width: min(150px, 60%); }
+.bg-hl .w { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; width: 100%; }
+.bg-hl small { color: var(--ink2); }
+.bg-hl .r { background: rgba(0,0,0,.55); border-radius: 10px; padding: 3px 14px; }
+.bg-hl.good .r { background: #2E8B57; } .bg-hl.bad .r { background: #B91C1C; }
+.bg-vs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 20px; background: linear-gradient(135deg, #22C55E, #EF4444); border: 3px solid #0B0C10; }
+.bg-modes { display: flex; flex-direction: column; gap: 10px; max-width: 700px; width: 100%; margin: 0 auto; }
+.bg-mode { justify-content: space-between; text-align: left; padding: 12px 16px; }
+.bg-mode span { display: flex; flex-direction: column; gap: 2px; } .bg-mode small { font-weight: 500; opacity: .8; }
+.bg-mode em { font-style: normal; color: #FFC94D; font-weight: 700; white-space: nowrap; }
+.bg-card.wide { max-width: 920px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 26px; text-align: left; }
+.bg-card.wide .acts { justify-content: flex-start; }
+.bg-newbest { color: #3FE0E8; font-weight: 800; letter-spacing: 1.5px; font-size: 14px; }
+.bg-big { font-size: 52px; font-weight: 800; line-height: 1.1; }
+.bg-gotyou { margin-top: 14px; display: flex; gap: 12px; align-items: center; background: #1A1E38; border-radius: 14px; padding: 12px; text-align: left; }
+.bg-gotyou img { width: 60px; aspect-ratio: 2/3; object-fit: cover; border-radius: 8px; }
+.bg-gotyou div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.bg-gotyou small, .bg-end-r small { color: var(--ink2); }
+.bg-gotyou span { display: flex; gap: 8px; flex-wrap: wrap; }
+.bg-runs { margin-top: 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.bg-runs span { position: relative; aspect-ratio: 2/3; border-radius: 10px; overflow: hidden; background: var(--pg3); display: grid; place-items: center; }
+.bg-runs img { width: 100%; height: 100%; object-fit: cover; }
+.bg-runs i { font-style: normal; font-size: 12px; padding: 6px; text-align: center; }
+.bg-runs em { position: absolute; top: 5px; right: 5px; font-style: normal; font-size: 12px; font-weight: 800; color: #46D37A; background: rgba(0,0,0,.75); border-radius: 99px; padding: 2px 7px; }
+@media (max-width: 700px) {
+  .bgq-head { flex-wrap: wrap; } .bgq-head span { justify-content: flex-start; }
+  .bg-hls { flex-direction: column; }
+  .bg-hl { flex-direction: row; padding: 12px; gap: 12px; }
+  .bg-hl .p { width: 78px; flex: none; }
+  .bg-hl .w { align-items: flex-start; text-align: left; }
+  .bg-vs { width: 46px; height: 46px; font-size: 16px; left: auto; right: 14px; }
+  .bg-card.wide { grid-template-columns: 1fr; }
+  .bg-runs { grid-template-columns: repeat(3, 1fr); }
+  .bg-line { min-height: 270px; } .bg-tlp { width: 76px; } .bg-tlp .bg-tl { width: 64px; }
+  .bg-thumbs span { width: 56px; }
+}
+/* The five new games (2026-11-22) */
+.bg-quote { border-radius: 12px; }
+.bg-quote p { font-style: italic; font-weight: 600; font-size: 26px; line-height: 1.4; }
+.bg-quote .bg-hints[hidden] { display: none; }
+.bg-quote p[hidden] { display: none; }
+.bgq-choices.faces { grid-template-columns: repeat(4, 1fr); }
+.bg-face { flex-direction: column; align-items: stretch; padding: 8px; gap: 6px; text-align: center; }
+.bg-face img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 10px; background: var(--pg3); }
+.bg-face > span { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 14px; }
+.bg-blitz { display: flex; gap: 20px; align-items: center; justify-content: center; min-height: 200px; }
+.bg-blitz img { width: 130px; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px; background: var(--pg3); }
+.bg-blitz b { font-size: 26px; line-height: 1.3; max-width: 560px; }
+@media (max-width: 700px) { .bg-blitz b { font-size: 20px; } .bg-blitz img { width: 90px; } .bgq-choices.faces { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) {
   .bgq-choices { grid-template-columns: repeat(2, 1fr); }
   .bgq-pic.tall { height: 36vh; }
@@ -2050,7 +2132,8 @@ svg.gi path.gd { stroke-width: 3.6; }
 .rqchips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 var(--gutter); }
 .rqchips .chip { background: var(--raise); border-color: var(--raise); }
 .rqownedcard { display: grid; place-items: center; text-align: center; padding: 12px; color: var(--ink2); font-weight: 700; }
-.rqt10 { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 18px; scrollbar-width: none; --t10w: 80px; }
+.rqt10 { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 18px; scrollbar-width: none; }
+.rqt10 .top10 { --t10p: 140px; }
 .rqt10 .poster { width: 140px; flex: none; }
 .rqt10 .poster .cap { display: block; }
 .rqwho { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--aqua); font-size: 13px; font-weight: 700; }
@@ -2104,7 +2187,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 }
 @media (max-width: 600px) {
   .rqtopr { margin-left: 0; }
-  .rqt10 { --t10w: 52px; }
+  .rqt10 .top10 { --t10p: 104px; }
   .rqt10 .poster { width: 104px; }
 }
 
@@ -2608,3 +2691,493 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .scores span[data-s], .tp-scores span[data-s], .tp-strip span[data-s] { white-space: nowrap; }
 .tp-scores { flex-wrap: wrap; row-gap: 6px; }
 @media (max-width: 480px) { .tp-scores { gap: 10px !important; } .tp-scores span[data-s] { font-size: 13px !important; } .tp-scores span[data-s] b { padding: 1px 5px; margin-right: 4px; } }
+
+/* Ben 2026-11-23: the times beside the seek bar get fixed-width slots (room for "−0:00:00"), so the bar
+   never changes size as the seconds tick and the progress dot stays still. */
+.player .p4 .srow #pTime, .player .p4 .srow #pLeft { flex: none; min-width: 8.5ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.player .p4 .srow #pTime { text-align: left; }
+.player .p4 .srow #pLeft { text-align: right; }
+
+/* ---------- Glowfin details pages, "fresh" pick (Ben 2026-11-22): rows pages only ---------- */
+/* Art fills the screen; only a soft shadow at the bottom left, the rest stays bright */
+.tp.tp-rows .tp-hero { min-height: 82vh; }
+.tp.tp-rows .main { min-height: 82vh; justify-content: flex-start; padding-top: calc(var(--bar) + 6vh); gap: 10px; }
+.tp.tp-rows .tp-hero:not(.covered)::before { background: linear-gradient(90deg, rgba(var(--trayrgb),.8) 0%, rgba(var(--trayrgb),.45) 35%, rgba(var(--trayrgb),0) 62%), linear-gradient(0deg, var(--tray) 0%, rgba(var(--trayrgb),0) 50%); }
+.tp.tp-rows .tp-hero { transition: none; }
+/* Title box: fixed size and spot, no second name, no colour line */
+.tp.tp-rows .tp-name { height: 144px; width: min(640px, 55%); display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: auto; }
+.tp.tp-rows .tp-name .t2, .tp.tp-rows .tp-name .tp-line { display: none; }
+.tp.tp-rows .tp-name .t { margin: 0; font-size: clamp(30px, 3.4vw, 64px); line-height: 1.05; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tp.tp-rows .tp-name .tp-logo { max-height: 144px; max-width: 100%; object-fit: contain; object-position: left bottom; }
+.tp.tp-rows .tp-chips { margin-top: -4px; }
+/* Score pill, top right under the clock: white outline rating, site marks, white numbers, thin dividers */
+.tp-pill { position: absolute; z-index: 3; right: var(--gutter); top: calc(var(--bar) + 6vh); display: flex; align-items: center; padding: 8px 10px; border-radius: 999px; background: rgba(11,13,26,.5); border: 1px solid rgba(255,255,255,.14); }
+.tp-pill .rate { color: #fff; background: none; border: 1.5px solid rgba(255,255,255,.85); border-radius: 6px; padding: 0 8px; font-weight: 700; margin-right: 12px; }
+.tp-pill .tp-scores { display: flex; align-items: center; gap: 0; }
+.tp-pill .tp-scores > .scores { display: contents; }
+.tp-pill span[data-s] { font-size: 0 !important; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; }
+.tp-pill span[data-s] + span[data-s] { border-left: 1.5px solid rgba(255,255,255,.18); }
+.tp-pill .rate + .tp-scores span[data-s]:first-child { padding-left: 2px; }
+.tp-pill span[data-s] b { font-size: 17px; background: none !important; color: #fff !important; border: 0 !important; padding: 0 !important; margin: 0 !important; font-weight: 700; }
+.tp-pill span[data-s]::before { content: ""; display: inline-grid; place-items: center; font: 900 11px/1 system-ui, sans-serif; flex: none; }
+.tp-pill span[data-s="imdb"]::before { content: "IMDb"; background: #F5C518; color: #000; padding: 3px 4px; border-radius: 3px; }
+.tp-pill span[data-s="mal"]::before { content: "MAL"; background: #2E51A2; color: #fff; padding: 3px 4px; border-radius: 3px; }
+.tp-pill span[data-s="rt"]::before { width: 17px; height: 17px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff6a3d, #e0260a 70%); box-shadow: inset 0 3px 0 -1px #3aa33a; }
+.tp-pill span[data-s="mc"]::before { content: "M"; width: 15px; height: 15px; border-radius: 50%; background: #111; border: 1.5px solid #FFCC34; color: #fff; }
+.tp-pill span[data-s="al"]::before { content: "A"; width: 17px; height: 17px; border-radius: 3px; background: #152232; color: #02A9FF; font-size: 13px; }
+.tp-pill span[data-s="user"]::before { content: "★"; color: #fff; font-size: 13px; }
+/* The story you can open */
+.tp.tp-rows .tp-story.tp-open { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; max-width: min(50%, 760px); margin-left: -8px; padding: 4px 8px; border-radius: 10px; }
+.tp.tp-rows .tp-story.tp-open:hover, .tp.tp-rows .tp-story.tp-open:focus-visible { background: rgba(255,255,255,.1); outline: 2px solid var(--ink); }
+.tp.tp-rows .tp-story .tp-st { color: var(--ink2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tp.tp-rows .tp-story b { color: var(--ink); font-size: 14px; }
+.side .tp-full { color: var(--ink2); line-height: 1.55; }
+.side .tp-sidedet .tp-ov { display: flex; flex-direction: column; gap: 14px; }
+/* See-through round buttons; the main one stays solid white */
+.tp.tp-rows .btns .btn { border-radius: 999px; }
+.tp.tp-rows .btns .btn:not(.white) { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); color: #fff; }
+.tp.tp-rows .btns .btn:not(.white):hover, .tp.tp-rows .btns .btn:not(.white):focus-visible { background: rgba(255,255,255,.3); }
+/* Going down: the art dims (plain fade) and the top bar shows the small title */
+.tp.tp-rows .tp-hero .main, .tp-pill { transition: opacity .25s ease-out; }
+.tp.tp-rows.tp-down .tp-pill { opacity: 0; }
+/* Big covers for music and books on the right */
+.tp.tp-rows .tp-hero.covered .tp-cover { max-height: 66vh; }
+@media (max-width: 700px) {
+  .tp.tp-rows .tp-hero, .tp.tp-rows .main { min-height: 0; }
+  .tp.tp-rows .main { padding-top: 0; }
+  .tp.tp-rows .tp-name { height: 112px; width: calc(100% - 150px); margin-bottom: 0; }
+  .tp.tp-rows .tp-name .t { font-size: 26px; -webkit-line-clamp: 4; }
+  .tp.tp-rows .tp-name .tp-logo { max-height: 112px; }
+  /* Upright phone: the pill sits beside the title, on the right */
+  .tp-pill { top: calc(30vh + 60px); right: 16px; padding: 5px 7px; transform: scale(.85); transform-origin: right center; }
+  .tp.tp-rows .tp-story.tp-open { max-width: none; order: 10; }
+  .tp.tp-rows .tp-story .tp-st { -webkit-line-clamp: 5; }
+}
+/* Dark logos drawn in white; very bright pictures turned down a little with a faint edge on the words */
+.tp.tp-rows .tp-name .tp-logo.tp-logo-white { filter: brightness(0) invert(1); }
+.tp.tp-rows.tp-bright .tp-hero:not(.covered)::after { content: ""; position: absolute; inset: 0; background: rgba(var(--trayrgb),.2); pointer-events: none; }
+.tp.tp-rows.tp-bright .tp-hero .main { position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.tp.tp-rows.tp-bright .tp-hero .main .btn.white { text-shadow: none; }
+
+/* ---------- Glowfin new look, part 2 (Ben 2026-11-22): Home, Movies, Shows, Anime land straight on a row ---------- */
+/* The art of the poster you're on fills the window; only a soft shade on the left and a fade at the bottom */
+#doorTop .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.8) 0%, rgba(var(--trayrgb),.45) 35%, rgba(var(--trayrgb),0) 62%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 42%, rgba(var(--trayrgb),.75) 70%, var(--tray) 100%); }
+.door-top { height: min(52vh, 520px); padding-top: calc(var(--bar) + 8px); }
+.door-top .info { max-width: none; display: flex; flex-direction: column; gap: 8px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.door-top .info > * { max-width: min(620px, 55%); }
+/* Title box: fixed size and spot, so the rows never move */
+.door-top .dt-name { height: 120px; width: min(600px, 50%); display: flex; flex-direction: column; justify-content: flex-end; }
+.door-top .dt-name .t { margin: 0; font-size: clamp(28px, 3vw, 56px); line-height: 1.05; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.door-top .dt-logo { max-height: 120px; max-width: 100%; object-fit: contain; object-position: left bottom; filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.door-top .dt-logo.tp-logo-white { filter: brightness(0) invert(1) drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.door-top .meta { color: var(--ink); font-weight: 600; margin: 0; gap: 0; }
+.door-top .meta span + span::before { content: "·"; margin: 0 10px; color: rgba(236,238,251,.55); }
+.door-top .dt-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.door-top .dt-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; }
+.door-top .ov { color: #e8eafc; -webkit-line-clamp: 2; max-width: min(620px, 50%); }
+/* The score pill at the top right, under the clock (same as the details pages) */
+.door-top .tp-pill.dt-pill { position: absolute; top: 0; right: 0; max-width: none; text-shadow: none; }
+#doorTop ~ .rows .rowx h3 { text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+/* Tabs as see-through pills over the art; the open one solid white */
+.ptabs { gap: 8px; }
+.ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 16px; color: rgba(236,238,251,.9); font-weight: 700; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.ptabs a.on, #page:has(#doorTop) .ptabs a.on { color: #0B0D1A; background: rgba(255,255,255,.92); border-color: transparent; text-shadow: none; }
+.ptabs a.on::after { display: none; }
+.ptabs a:hover, .ptabs a:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: none; text-shadow: none; }
+/* Phones and small tablets: no picture at the top, the rows start right under the tabs. Cover art only. */
+/* Phones and small tablets (same width as Music, Books and Games): no top, the rows start right under the tabs */
+@media (max-width: 760px) {
+  #doorTop { display: none; }
+  .ptabs a, #page:has(#doorTop) .ptabs a { padding: 6px 12px; }
+  #doorTop ~ .rows .poster .cap { display: none; }
+}
+
+/* ---------- Glowfin new look, part 3 (Ben 2026-11-22): Music, Books, Games land straight on a row ---------- */
+/* The cover of the card you're on stands at the top right (square albums, tall books, box art in its own shape),
+   its colours glow behind the page, and the words on the left match Home and Movies: name, facts, aqua tag. */
+.mtop { height: min(42vh, 420px); min-height: 280px; margin: -10px 0 6px; align-items: flex-start; padding-top: 10px; }
+.mtop .art { top: 10px; bottom: 26px; }
+.mtop .info { display: flex; flex-direction: column; gap: 8px; padding-bottom: 0; text-shadow: 0 1px 4px rgba(0,0,0,.5); max-width: min(620px, calc(100% - 340px)); }
+.mtop h1 { font-size: clamp(30px, 3vw, 48px); line-height: 1.08; margin: 0; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mtop p { color: var(--ink); font-weight: 600; }
+.mtop .mtop-kick { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.mtop .mtop-kick::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; flex: none; }
+.mtop .mtop-kick:empty { display: none; }
+.bktop .art { position: absolute; }
+.bktop .bkbar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(0,0,0,.6); }
+.bktop .bkbar b { display: block; height: 100%; background: var(--books, #3FE0E8); }
+@media (min-width: 761px) {
+  .bktop { height: min(42vh, 420px); }
+  .bktop .art { display: grid; }
+  .bktop .info { max-width: min(620px, calc(100% - 300px)); }
+}
+/* Games: the cover top right instead of a wide picture; words in the same order as Home and Movies */
+.gtop .art { left: auto; right: var(--gutter); top: calc(var(--bar) + 10px); bottom: 26px; width: auto; height: auto; aspect-ratio: 2 / 3; border-radius: 10px; background: center/cover no-repeat var(--raise); box-shadow: 0 14px 36px rgba(0,0,0,.55); }
+.gtop .art::after { display: none; }
+.gtop .info { max-width: min(620px, calc(100% - 340px)); }
+.gtop #gInfo .t { font-size: clamp(30px, 3vw, 48px); line-height: 1.08; }
+/* Cover art only in the For you rows (the top says what each one is), on every screen */
+.mhome #mrows .mcard .cap, .bkhome .rowx .poster .cap, .gpage.ghome .poster .cap { display: none; }
+/* Phones and small tablets: no top at all, the rows start right under the tabs */
+@media (max-width: 760px) {
+  .mtop, .bktop, .gtop { display: none; }
+}
+
+/* ---------- Glowfin new look, part 4 (Ben 2026-11-22): Live TV and the player ---------- */
+/* Live TV: what's on now fills the window, the guide peeks under it */
+.live-top { height: min(62vh, 600px); min-height: 360px; display: flex; align-items: flex-end; padding-bottom: 22px; }
+.live-top .art { position: fixed; inset: 0; width: auto; height: auto; z-index: 0; pointer-events: none; background: center top/cover no-repeat; opacity: 0; transition: opacity .6s; }
+.live-top .art.on { opacity: 1; }
+.live-top .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.88) 0%, rgba(var(--trayrgb),.55) 38%, rgba(var(--trayrgb),0) 66%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 45%, rgba(var(--trayrgb),.75) 72%, var(--tray) 100%); }
+.live-top .info { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; max-width: min(640px, 60%); text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.live-top .lt-ch { display: flex; align-items: center; gap: 10px; font: 700 16px "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.live-top .lt-plate { height: 30px; width: 45px; border-radius: 6px; background: #fff; display: grid; place-items: center; padding: 3px; flex: none; }
+.live-top .lt-plate img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.live-top .t { font: 800 clamp(30px, 3.2vw, 52px)/1.08 "Glowfin Sora", "Glowfin Inter", sans-serif; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.live-top .meta { color: var(--ink); font-weight: 600; margin: 0; gap: 0; }
+.live-top .meta span + span::before { content: "·"; margin: 0 10px; color: rgba(236,238,251,.55); }
+.live-top .lt-tags { display: flex; gap: 8px; align-items: center; }
+.live-top .lt-live { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: 999px; background: #E5484D; color: #fff; font-size: 14px; font-weight: 800; letter-spacing: .04em; text-shadow: none; }
+.live-top .lt-live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.live-top .dt-tag { display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px; border-radius: 999px; background: rgba(63,224,232,.16); border: 1px solid rgba(63,224,232,.5); color: #c9fbff; font-size: 14px; font-weight: 600; text-shadow: none; }
+.live-top .dt-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3FE0E8; }
+.live-top .ov { color: #e8eafc; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.live-top .lt-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; text-shadow: none; }
+.live-top .lt-btns .btn { border-radius: 999px; }
+.live-top .lt-btns .btn:not(.white) { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); color: #fff; }
+.live-top .lt-btns .btn:not(.white):hover, .live-top .lt-btns .btn:focus-visible { background: rgba(255,255,255,.3); }
+.live-top .lt-watch { position: relative; overflow: hidden; }
+.live-top .lt-prog { position: absolute; left: 18px; right: 18px; bottom: 5px; height: 3px; border-radius: 3px; background: rgba(11,13,26,.18); }
+.live-top .lt-prog b { display: block; height: 100%; border-radius: 3px; background: #0B0D1A; }
+.live-top ~ .rows { position: relative; z-index: 1; }
+.live-top ~ .rows .rowx h3 { text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.live-top ~ .rows .chip { border-radius: 999px; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); color: rgba(236,238,251,.9); }
+.live-top ~ .rows .chip.on { background: rgba(255,255,255,.92); color: #0B0D1A; border-color: transparent; }
+@media (max-width: 700px) {
+  .live-top { display: none; }
+}
+/* Player: round see-through buttons with their names, Pause solid white, logo bottom left, Ends at top right */
+.player .p4 .row2.p1row.nl4 { grid-template-columns: auto minmax(0, 1fr); align-items: flex-start; }
+.player .p4 .nl4 .p1c { justify-content: flex-start; }
+.player .p4 .nl4 .pbtn { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+.player .p4 .nl4 .pbtn.lab + .pbtn.lab { margin-left: 0; }
+.player .p4 .nl4 .pbtn.play { width: 56px; height: 56px; margin-top: -4px; background: #fff; color: #0B0D1A; border-color: transparent; }
+.player .p4 .nl4 .pbtn.play em { top: 62px; color: #fff; font-weight: 600; }
+.player .p4 .nl4 .pbtn:hover, .player .p4 .nl4 .pbtn:focus-visible { background: #fff; color: #0B0D1A; box-shadow: 0 0 0 2.5px #05060D, 0 0 0 5px #3FE0E8; }
+.player .p4 .nl4 .pbtn:disabled:hover { background: rgba(255,255,255,.12); color: inherit; box-shadow: none; }
+.player .p4 .tline { flex-direction: column; align-items: flex-start; gap: 4px; }
+.player .p4 .tline .plogo { max-height: 56px; max-width: min(320px, 40vw); object-fit: contain; object-position: left bottom; filter: drop-shadow(0 2px 8px rgba(0,0,0,.6)); }
+.player .p4 .tline .plogo + .tt { display: none; }
+.player .p4 .tline .st { flex: none; max-width: 100%; color: #E6E8F5; font-weight: 600; }
+.player .p4 .srow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; }
+.player .p4 .srow #pTime { grid-row: 1; grid-column: 1; }
+.player .p4 .srow #pLeft { grid-row: 1; grid-column: 2; justify-self: end; }
+.player .p4 .srow .bar { grid-row: 2; grid-column: 1 / -1; }
+.player .pends { position: absolute; top: 34px; right: 48px; color: #D6D9EC; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0,0,0,.6); opacity: 0; transition: opacity .25s; pointer-events: none; }
+.player.ui .pends { opacity: 1; }
+@media (max-width: 600px) {
+  .player .p4 .row2.p1row.nl4 { grid-template-columns: 1fr; }
+  .player .p4 .nl4 .p1c { justify-content: center; }
+  .player .p4 .nl4 .p1r { justify-content: center; }
+  .player .p4 .nl4 .pbtn.play em { display: none; }
+  .player .pends { top: 22px; right: 16px; font-size: 14px; }
+}
+
+/* ---------- Glowfin new look, Settings (Ben approved 2026-11-22): groups as see-through pills on the left (the open
+   one solid white), the settings in a tall right-hand panel; the setting you're on is solid white with the aqua ring.
+   Same for Help and the Server page. Nothing grows, no blur. ---------- */
+.split nav { background: none; border-right: 0; gap: 6px; }
+.split nav .navsearch { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.split nav a { border-radius: 99px; padding: 10px 18px; font-weight: 600; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.split nav a.on { background: rgba(255,255,255,.92); color: var(--dark); }
+.split nav a:hover, .split nav a:focus-visible { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.split nav a.on::before, .split nav a:hover::before, .split nav a:focus-visible::before { display: none; }
+.split nav a.admin.on, .split nav a.admin:hover, .split nav a.admin:focus-visible { color: #8a5a00; }
+.split nav a.on .cnt, .split nav a:hover .cnt { color: #8a5a00; }
+.srv-split main.srv { padding: 22px 28px 40px; }
+.split main { background: rgba(18,21,48,.94); border-left: 1px solid var(--line); border-radius: 18px 0 0 18px; padding: 22px 28px 40px; min-height: calc(100vh - var(--bar) - 10px); max-width: none; }
+.setrow { background: rgba(255,255,255,.05); margin-bottom: 6px; border-radius: 9px; }
+.setrow .t { font-weight: 600; }
+.setrow:hover, .setrow:focus-within { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.setrow:hover::before, .setrow:focus-within::before { display: none; }
+.setrow:hover .s, .setrow:focus-within .s { color: #4a4f72; }
+.setrow:hover .valbtn, .setrow:focus-within .valbtn { color: #0b7d86; }
+.dropdown.sidelist { background: rgba(18,21,48,.97); }
+.dropdown.sidelist button { border-radius: 9px; }
+.dropdown.sidelist button:hover, .dropdown.sidelist button:focus-visible { background: #fff; color: var(--dark); box-shadow: 0 0 0 3px rgba(63,224,232,.6); }
+.dropdown.sidelist button:hover::before, .dropdown.sidelist button:focus-visible::before { display: none; }
+.dropdown.sidelist button.on:hover::after, .dropdown.sidelist button.on:focus-visible::after { color: #0b7d86; }
+@media (max-width: 900px) {
+  .split nav a { padding: 8px 14px; }
+  .split main { background: none; border-left: 0; border-radius: 0; padding: 0 16px; min-height: 0; }
+}
+
+/* ---------- Glowfin new look, Requests (Ben approved 2026-11-22) ---------- */
+/* Tabs as see-through pills, then the search box, a round Filters button and Ben's yellow Waiting pill */
+.rqtabs { align-items: center; }
+.rqtabs .rqsearch { flex: none; display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; padding: 0 14px; height: 38px; border-radius: 999px; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); color: rgba(236,238,251,.9); }
+.rqtabs .rqsearch .i { width: 17px; height: 17px; flex: none; }
+.rqtabs .rqsearch input { width: 220px; background: none; border: 0; outline: 0; color: #ECEEFB; font: inherit; font-size: 15px; }
+.rqtabs .rqsearch:focus-within { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; }
+.rqtabs .rqsearch:focus-within input { color: #0B0D1A; }
+.rqtabs .rqround { flex: none; width: 38px; height: 38px; border-radius: 50%; display: inline-grid; place-items: center; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); color: #ECEEFB; cursor: pointer; }
+.rqtabs .rqround .i { width: 18px; height: 18px; }
+.rqtabs .rqround:hover, .rqtabs .rqround:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; }
+.rqtabs .rqwaitp { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 12px; border-radius: 999px; background: rgba(242,179,61,.2); border: 1px solid rgba(242,179,61,.6); color: #FFE3A6; font-family: "Glowfin Sora", sans-serif; font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.rqtabs .rqwaitp::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #F2B33D; }
+.rqtabs .rqwaitp:hover, .rqtabs .rqwaitp:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; }
+/* The coloured status tag at the top and the small dot on covers already asked for */
+.door-top .dt-tag.rqtag.t-nyet, .door-top .dt-tag.rqtag.t-wait { background: rgba(242,179,61,.18); border-color: rgba(242,179,61,.65); color: #FFE7B5; }
+.door-top .dt-tag.rqtag.t-nyet::before, .door-top .dt-tag.rqtag.t-wait::before { background: #F2B33D; }
+.door-top .dt-tag.rqtag.t-out { background: rgba(165,91,224,.22); border-color: rgba(165,91,224,.7); color: #ECD9FF; }
+.door-top .dt-tag.rqtag.t-out::before { background: #A55BE0; }
+.door-top .dt-tag.rqtag.t-here { background: rgba(87,214,141,.16); border-color: rgba(87,214,141,.6); color: #C9F7DC; }
+.door-top .dt-tag.rqtag.t-here::before { background: #57D68D; }
+.door-top .dt-tag.rqtag.t-bad { background: rgba(255,107,107,.16); border-color: rgba(255,107,107,.6); color: #FFD2D2; }
+.door-top .dt-tag.rqtag.t-bad::before { background: #FF6B6B; }
+.door-top .rqhint { color: rgba(236,238,251,.62); font-size: 13px; font-weight: 600; }
+.poster .rqdot { position: absolute; right: 8px; top: 8px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid rgba(11,13,26,.8); box-sizing: content-box; }
+.poster .rqdot.d-wait { background: #F2B33D; }
+.poster .rqdot.d-way { background: #3FE0E8; }
+.poster .rqdot.d-out { background: #A55BE0; }
+.poster .rqdot.d-here { background: #57D68D; }
+.poster .rqdot.d-bad { background: #FF6B6B; }
+/* Filters panel: switches show On / Off on the right */
+.side .rqsw small { margin-left: auto; }
+.side .rqsw.on { background: #fff; color: #0B0D1A; box-shadow: 0 0 0 3px rgba(63,224,232,.45); }
+.side .rqsw.on small { color: #4A5078; }
+@media (max-width: 700px) {
+  .rqtabs .rqsearch input { width: 130px; }
+}
+/* Glowfin new look: Requests > Music and Books cover top (Books covers are tall) */
+.mtop.rqctop { margin: 0 24px 6px; }
+.mtop.tall .art { aspect-ratio: 2 / 3; }
+.rqpillrow { gap: 10px; align-items: center; }
+@media (max-width: 700px) { .mtop.rqctop { display: none; } }
+/* Glowfin new look: the Manage board. Five see-through pills, slim rows on the left, the one you're on on the right */
+.mg-tile { background: rgba(11, 13, 26, .4); border: 2px solid rgba(255, 255, 255, .14); border-radius: 22px; padding: 12px 20px; }
+.mg-tile:hover { background: rgba(255, 255, 255, .08); }
+.mg-tile.on { background: rgba(255, 255, 255, .92); border-color: transparent; color: #1b1f3a; }
+.mg-tile.on b { color: #1b1f3a !important; }
+.mg-tile.on small { color: #4a5078; }
+.mg-split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.mg-list { background: transparent; }
+.mg-list .item { background: rgba(11, 13, 26, .42); border: 2px solid rgba(255, 255, 255, .08); border-radius: 18px; margin-bottom: 10px; }
+.mg-list .item:hover, .mg-list .item:focus-within { background: rgba(26, 30, 56, .85); border-color: rgba(255, 255, 255, .25); }
+.mg-side { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mg-side .mg-art { aspect-ratio: 16 / 9; border-radius: 16px; background: center/cover no-repeat var(--deep, #12152a); box-shadow: 0 14px 36px rgba(0, 0, 0, .5); margin-bottom: 6px; }
+.mg-side h2 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 30px; margin: 0; }
+.mg-side .mg-facts { color: var(--ink2); margin: 0; }
+.mg-side .rqtag { align-self: flex-start; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; border: 1.5px solid; }
+.mg-side .rqtag.wt { background: rgba(242, 179, 61, .18); border-color: rgba(242, 179, 61, .65); color: #FFE7B5; }
+.mg-side .rqtag.ow { background: rgba(63, 224, 232, .14); border-color: rgba(63, 224, 232, .6); color: #CFFBFD; }
+.mg-side .rqtag.ok { background: rgba(87, 214, 141, .16); border-color: rgba(87, 214, 141, .6); color: #C9F7DC; }
+.mg-side .rqtag.bad { background: rgba(255, 107, 107, .16); border-color: rgba(255, 107, 107, .6); color: #FFD2D2; }
+.mg-side .mg-sidewhy { margin: 2px 0 0; font-weight: 600; }
+.mg-side .mg-story { color: var(--ink2); margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 900px) { .mg-split { grid-template-columns: minmax(0, 1fr); } .mg-side { display: none; } }
+/* Glowfin new look (browser): the small Ask button on the cover under the mouse */
+.askcard .rqqask { position: absolute; left: 50%; bottom: 10px; transform: translate(-50%, 6px); display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #1b1f3a; font-weight: 700; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; white-space: nowrap; }
+.askcard .rqqask svg { width: 14px; height: 14px; }
+@media (hover: hover) {
+  .askcard:hover .rqqask { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .askcard .rqqask:hover { background: #fff; box-shadow: 0 0 0 3px rgba(63, 224, 232, .55); }
+}
+/* Glowfin new look: the family's Your asks top says where each ask stands, in its colour */
+.mtop .mtop-kick.rqfam-wait { color: #FFD27A; } .mtop .mtop-kick.rqfam-way { color: #7FEFF4; }
+.mtop .mtop-kick.rqfam-here { color: #8BE7B0; } .mtop .mtop-kick.rqfam-bad { color: #FF9C9C; }
+/* Glowfin new look, Search (Ben picked 2026-11-22): the box as a pill with the kind pills beside it, a tip to type
+   anywhere, recent searches as pills, the top describing the result you point at, cover art only, Ask for it in yellow */
+.srch .sx-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 12px; }
+.srch .sx-box { position: relative; flex: 0 1 460px; min-width: 240px; display: flex; align-items: center; }
+.srch .sx-box svg { position: absolute; left: 16px; width: 18px; height: 18px; opacity: .8; pointer-events: none; }
+.srch .sx-box .field { border-radius: 999px; font-size: 18px; padding: 12px 18px 12px 44px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); }
+.srch .sx-box .field:focus { background: rgba(255,255,255,.92); color: #1b1f3a; border-color: #3FE0E8; box-shadow: 0 0 0 4px rgba(63,224,232,.45); }
+.srch .sx-box:focus-within svg { color: #1b1f3a; }
+.srch .sx-kinds { padding: 0; flex: 0 1 auto; }
+.srch .sx-kinds:empty { display: none; }
+.srch .sx-tip { margin-left: auto; font-size: 14px; }
+.srch .sx-tip kbd { font: 700 13px "Glowfin Sora", sans-serif; padding: 1px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); }
+.srch .sx-recent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 14px; }
+.srch .sx-lab { font-weight: 600; margin-right: 4px; }
+.srch .sx-empty { padding-top: 40px; font-size: 20px; font-weight: 600; }
+.srch .door-top { margin-top: 0; padding-top: 14px; height: min(38vh, 380px); min-height: 250px; }
+.srch .door-top[hidden] { display: none; }
+.srch .sx-none { padding-top: 6px; padding-bottom: 4px; color: #FFE3A6; }
+.srch .sx-askrow h3 { color: #FFE3A6; }
+.srch .dt-tag.sx-ask { background: rgba(242,179,61,.2); border-color: rgba(242,179,61,.65); color: #FFE7B5; }
+.poster.scard .askp { background: #F2B33D; color: #1b1f3a; }
+/* Ben: just cover art, even in the browser (the top names the card you point at); small phones keep the names */
+@media (min-width: 701px) {
+  .srch .poster.scard .cap { display: none; }
+  .srch .sx-tip { display: inline; }
+}
+@media (max-width: 700px) {
+  .srch .sx-tip { display: none; }
+  .srch .sx-box { flex-basis: 100%; }
+}
+
+/* Glowfin new look, Side menu (Ben approved 2026-11-22): ONE menu. The icon strip keeps its own soft fade
+   (ink 70% to 25%, then it melts into the art with no hard edge). Opening it just stretches that same fade wider
+   and fades the names in (no slide); the page behind dims so its words show at about 30%. The place you point at
+   is a solid white pill with the aqua ring, the same width for every place; the page you're on stays aqua. */
+:root { --nopen: 200px; }
+body.nav-kids { --nopen: 236px; }
+.brail, .brail:hover, .brail:focus-within, .brail.always, body.nav-panel .brail,
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within) { background: none; box-shadow: none; border-right: 0; transition: none; }
+.brail::before { content: ""; position: fixed; left: 0; top: 0; bottom: 0; z-index: -1; pointer-events: none; width: calc(var(--nrail) + 44px);
+  background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 60%, rgba(11, 13, 26, 0) 100%); transition: width .22s ease-out; }
+.brail:hover::before, .brail:focus-within::before, .brail.always::before, body.nav-panel .brail::before {
+  width: calc(var(--nopen) + 56px); background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 78%, rgba(11, 13, 26, 0) 100%); }
+body:not(.nav-panel) .brail.tucked:not(.always):not(:focus-within)::before { width: calc(var(--nrail) + 44px); background: linear-gradient(90deg, rgba(11, 13, 26, .7) 0%, rgba(11, 13, 26, .25) 60%, rgba(11, 13, 26, 0) 100%); }
+.brail::after { left: 0; z-index: -2; background: rgba(11, 13, 26, .7); transition: opacity .22s ease-out; }
+.rl-t { transition: opacity .22s ease-out; }
+.rl-i { color: rgba(236, 238, 251, .9); font-weight: 600; }
+.rl-i svg.i { color: #9AA0C3; }
+.rl-i:hover, .rl-i:focus-visible, .rl-i.on:hover, .rl-i.on:focus-visible { background: #fff; color: #0B0D1A; box-shadow: inset 0 0 0 3px rgba(63, 224, 232, .6); outline: none; }
+.rl-i:hover svg.i, .rl-i:focus-visible svg.i { color: #0B0D1A; }
+.rl-i.on, .rl-i.on svg.i { color: #3FE0E8; }
+.rl-i.on:hover svg.i, .rl-i.on:focus-visible svg.i { color: #0B0D1A; }
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path { stroke: currentColor; }
+.rl-i.on:not(:hover):not(:focus-visible) svg.gi path.gf { fill: currentColor; fill-opacity: .28; stroke: none; }
+.rl-me.on { background: none; box-shadow: none; }
+.rl-me.on:hover, .rl-me.on:focus-visible { background: #fff; box-shadow: inset 0 0 0 3px rgba(63, 224, 232, .6); }
+/* Wide screens that keep the menu open: the page sits beside it, so nothing behind needs dimming */
+.brail.always::after { display: none; }
+
+/* Glowfin new look, "One focus look everywhere" + "Clock with a soft backing" (Ben 2026-11-22).
+   Lit buttons, pills and chips go solid white with the aqua ring; lit posters and cards get a white outline with
+   a soft aqua ring just outside. Nothing grows or moves. Kids keeps its own colour. */
+.btn:hover, .pill:hover, .chip:hover, .circle:hover, .opt:hover, .seabtn:hover, .gscore:hover, .gsave:hover, .me-tile:hover,
+.btn:focus-visible, .pill:focus-visible, .chip:focus-visible, .circle:focus-visible, .opt:focus-visible,
+.seabtn:focus-visible, .gscore:focus-visible, .gsave:focus-visible, .me-tile:focus-visible, .anep-open:focus-visible {
+  background: #fff; color: #1B1F3A; border-color: #3FE0E8; box-shadow: 0 0 0 3px #3FE0E8; outline: none; transform: none;
+}
+.btn:hover svg, .btn:focus-visible svg, .pill:hover svg, .pill:focus-visible svg, .circle:hover svg, .circle:focus-visible svg { color: #1B1F3A; }
+.btn.white:hover, .btn.white:focus-visible, .circle.white:hover, .circle.white:focus-visible, .chip.on:hover, .chip.on:focus-visible {
+  background: #fff; color: #1B1F3A; box-shadow: 0 0 0 3px #3FE0E8, 0 0 0 7px rgba(63, 224, 232, .28);
+}
+.poster:hover .im, .poster:focus-visible .im, .wide:hover .im, .wide:focus-visible .im, .mcard:hover .im, .mcard:focus-visible .im,
+.chcard:hover .im, .chcard:focus-visible .im, .mnp-cover:hover, .mnp-cover:focus-visible, .bg-ember:hover, .bg-ember:focus-visible,
+.bg-cell:hover, .bg-cell:focus-visible, .pickt:hover, .pickt:focus-visible {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 7px rgba(63, 224, 232, .45); outline: none;
+}
+.bg-slot:hover, .bg-slot:focus-visible, .mbtile:hover, .mbtile:focus-visible { transform: none; filter: none; }
+html.kids .btn:hover, html.kids .pill:hover, html.kids .chip:hover, html.kids .circle:hover, html.kids .opt:hover,
+html.kids .btn:focus-visible, html.kids .pill:focus-visible, html.kids .chip:focus-visible, html.kids .circle:focus-visible {
+  background: var(--kacc); color: #1B1F3A; box-shadow: 0 0 0 3px #fff;
+}
+html.kids .poster:hover .im, html.kids .poster:focus-visible .im, html.kids .wide:hover .im, html.kids .wide:focus-visible .im,
+html.kids .mcard:hover .im, html.kids .mcard:focus-visible .im {
+  box-shadow: 0 0 0 3px var(--kacc), 0 0 0 7px rgba(255, 255, 255, .3);
+}
+html.kids .door:focus-visible, .kbtn:hover, .kbtn:focus-visible { transform: none; }
+.clock { padding: 1px 12px; border-radius: 30px; background: rgba(11, 13, 26, .35); }
+
+/* Glowfin new look, "Friendly empty and error pages" (Ben 2026-11-22): the icon sits on a soft little picture
+   (night water, the logo's glow and a fin), drawn from gradients and one tiny inline shape, nothing to load. */
+.empty-page .tile {
+  width: 240px; height: 150px; border-radius: 22px; border: 0; color: #ECEEFB;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 150'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23A55BE0'/%3E%3Cstop offset='.6' stop-color='%231FA8E6'/%3E%3Cstop offset='1' stop-color='%233FE0E8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M130 96Q144 57 168 45Q161 72 178 96Z' fill='url(%23g)' opacity='.85'/%3E%3Cg fill='none' stroke='%233FE0E8' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M20 99q12-4 24 0t24 0 24 0 24 0 24 0 24 0 24 0 24 0' opacity='.55'/%3E%3Cpath d='M34 114q12-4 24 0t24 0 24 0 24 0 24 0 24 0 24 0' opacity='.4'/%3E%3Cpath d='M48 129q12-4 24 0t24 0 24 0 24 0 24 0' opacity='.25'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat,
+    linear-gradient(180deg, transparent 55%, rgba(11, 13, 26, .7)),
+    radial-gradient(85% 120% at 72% 32%, rgba(165, 91, 224, .55), rgba(31, 168, 230, .28) 45%, #12152A);
+}
+.empty-page .tile .i { width: 44px; height: 44px; position: relative; top: -22px; left: -40px; }
+.empty-page .acts .btn:first-child { background: #fff; color: #1B1F3A; }
+html.kids .empty-page .tile { background: radial-gradient(85% 120% at 72% 32%, var(--kacc), #12152A); }
+@media (max-width: 760px) { .empty-page { flex-direction: column; text-align: center; gap: 18px; padding: 40px 20px; } .empty-page .tile { width: 180px; height: 112px; } }
+
+/* Glowfin "94% for you" (Idea Box 28): under the score pill, laid over the page so nothing moves */
+.mt-wrap { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; text-shadow: none; }
+.mt-wrap:empty { display: none; }
+.mt-pill { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 14px; border-radius: 999px; background: rgba(11,13,26,.8); border: 1.5px solid rgba(63,224,232,.7); color: #ECEEFB; font-size: 15px; font-weight: 600; }
+.mt-pill b { color: #3FE0E8; font-size: 19px; font-weight: 800; }
+.mt-why { color: #C6CBE8; font-size: 13px; font-weight: 500; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.door-top .mt-wrap.dt-mt { top: 54px; right: 0; }
+.tp-mt { right: var(--gutter); top: calc(var(--bar) + 6vh + 56px); }
+.tp.tp-rows.tp-down .tp-mt { opacity: 0; }
+@media (max-width: 700px) {
+  /* Upright phone: just above the score pill, beside the title (no "because" line, to keep it small) */
+  .tp-mt { top: calc(30vh + 22px); right: 16px; }
+  .tp-mt .mt-why, .dt-mt .mt-why { display: none; }
+  .mt-pill { font-size: 13px; padding: 2px 10px; }
+  .mt-pill b { font-size: 15px; }
+}
+
+/* Follow your teams (Idea Box 28): Live TV's Sports tab */
+.team-tag { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: 999px; background: rgba(242,179,61,.18); border: 1.5px solid #F2B33D; color: #FCE3B0; font-size: 13px; font-weight: 600; }
+.follow-card { margin: 0 var(--gutter); max-width: 640px; padding: 18px 22px; border-radius: 16px; background: rgba(26,30,56,.92); border: 1px solid #262A45; }
+.follow-card b { font-size: 20px; }
+.follow-card p { color: #C6CBE8; margin: 4px 0 12px; }
+.follow-card .fc-btns { display: flex; gap: 10px; }
+.team-strip { display: flex; gap: 18px; padding: 4px var(--gutter) 8px; overflow-x: auto; }
+.team-badge { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; color: #ECEEFB; cursor: pointer; width: 92px; padding: 4px 0; }
+.team-badge .tb-c { position: relative; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font: 800 15px Sora, Inter, sans-serif; color: #fff; border: 2px solid rgba(255,255,255,.15); }
+.team-badge.add .tb-c { background: rgba(236,238,251,.06); border: 1.5px dashed rgba(236,238,251,.4); font: 300 30px Inter, sans-serif; color: #9AA0C3; }
+.team-badge small { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
+.team-badge:focus-visible .tb-c, .team-badge:hover .tb-c { box-shadow: 0 0 0 3px #ECEEFB, 0 0 0 6px #3FE0E8; outline: none; }
+.team-badge .tb-tick { position: absolute; right: -4px; top: -4px; width: 24px; height: 24px; border-radius: 50%; background: #3FE0E8; color: #0B0D1A; display: grid; place-items: center; font: 900 13px Inter, sans-serif; font-style: normal; border: 2px solid #0B0D1A; }
+.game-card { flex: none; width: 232px; height: 120px; border-radius: 12px; background: #12152A; border: 1px solid #262A45; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: #ECEEFB; text-decoration: none; }
+.game-card.mine { border-color: rgba(242,179,61,.6); }
+.game-card .gc-top { display: flex; gap: 6px; align-items: center; min-height: 20px; }
+.game-card b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; }
+.game-card small { display: block; color: #9AA0C3; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-card:focus-visible, .game-card:hover { box-shadow: 0 0 0 2px #ECEEFB, 0 0 0 5px #3FE0E8; outline: none; }
+.team-pick .tp-leagues { margin: 12px 0; }
+.team-pick .tp-body { display: flex; gap: 18px; align-items: flex-start; }
+.team-pick .tp-grid2 { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 4px; }
+.team-pick .tp-picked { width: 200px; flex: none; padding: 14px; border-radius: 14px; background: rgba(18,21,42,.92); border: 1px solid #262A45; position: sticky; top: 80px; }
+.team-pick .tp-picked small { color: #9AA0C3; font-weight: 600; letter-spacing: .06em; }
+@media (max-width: 700px) {
+  .team-pick .tp-body { flex-direction: column-reverse; }
+  .team-pick .tp-picked { width: 100%; position: static; }
+  .game-card { width: 200px; }
+}
+
+/* ---------- Glowfin Tint (Ben 2026-11-23, option C) ----------
+   The picture's left shade is Glowfin's deep violet melting into navy instead of plain black. When the side menu
+   opens, a deeper violet tint covers the page (almost solid under the names), the page itself doesn't move, and the
+   strip's own fade hands over to it. Painted gradients only, no blur. The clock has no pill any more, and the age
+   rating and scores are separate small chips (IMDb is its own yellow chip). */
+@media (min-width: 901px), (orientation: landscape) {
+  #doorTop .art::after { background: linear-gradient(90deg, rgba(22,10,58,.96) 0%, rgba(20,14,66,.88) 18%, rgba(14,30,78,.62) 38%, rgba(10,34,80,.28) 56%, rgba(10,34,80,0) 72%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 42%, rgba(var(--trayrgb),.75) 70%, var(--tray) 100%); }
+}
+.brail::after { background: linear-gradient(90deg, rgba(22,10,58,.99) 0%, rgba(22,12,62,.97) 30%, rgba(16,24,74,.86) 46%, rgba(12,34,80,.58) 62%, rgba(12,34,80,.42) 100%); }
+.brail:not(.always):hover::before, .brail:not(.always):focus-within::before, body.nav-panel .brail:not(.always)::before { background: none; }
+.clock { padding: 0; border-radius: 0; background: none; }
+.tp-pill { padding: 0; background: none; border: 0; gap: 6px; }
+.tp-pill .rate { margin-right: 0; background: rgba(11,13,26,.5); }
+.tp-pill .tp-scores { gap: 6px; }
+.tp-pill span[data-s], .tp-pill .rate + .tp-scores span[data-s]:first-child { padding: 2px 8px; border-radius: 6px; background: rgba(11,13,26,.5); border: 1px solid rgba(255,255,255,.22); gap: 6px; }
+.tp-pill span[data-s] + span[data-s] { border-left: 1px solid rgba(255,255,255,.22); }
+.tp-pill span[data-s="imdb"] { background: #F5C518; border-color: #F5C518; }
+.tp-pill span[data-s="imdb"]::before { padding: 0; }
+.tp-pill span[data-s="imdb"] b { color: #000 !important; }
+/* ---------- Side menu A, "Tile Rail" (Ben 2026-11-24) ----------
+   Like Wholphin: opening the side menu pushes the page right instead of covering it, and nothing gets darker.
+   The place you point at is a plain white rounded square, the page you're on sits in a soft aqua rounded square,
+   and the open menu is symmetrical (16px from the edge to the highlight, 16px from the highlight to the page). */
+.brail { padding-left: 16px; padding-right: 16px; }
+.brail:not(.always):hover, .brail:not(.always):focus-within, body.nav-panel .brail:not(.always) { padding-right: 0; }
+.brail::after { display: none; }
+.rl-i { border-radius: 10px; }
+.rl-i.on:not(:hover):not(:focus-visible) { background: rgba(63, 224, 232, .13); }
+.rl-i:hover, .rl-i:focus-visible, .rl-i.on:hover, .rl-i.on:focus-visible, .rl-me.on:hover, .rl-me.on:focus-visible { box-shadow: none; }
+#page { transition: transform .22s ease-out; }
+body.nav-on:has(.brail:not(.always):is(:hover, :focus-within)) #page,
+body.nav-on.nav-panel:has(.brail:not(.always)) #page { transform: translateX(calc(var(--nopen) - var(--nrail))); }
+body.nav-on:has(.brail:not(.always)) { overflow-x: hidden; }
+@media (prefers-reduced-motion: reduce) { #page { transition: none; } }
+
+/* Glowfin scores as bare icons under the year and time (Ben 2026-11-24): age rating outline, then each score as a
+   small icon and a white number, no chips and no % signs. Gold star IMDb, red tomato / green splat Rotten Tomatoes. */
+.door-top .dt-icons { display: flex; align-items: center; gap: 14px; margin-top: 2px; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.door-top .dt-icons .scores { display: contents; }
+.door-top .dt-icons .rate { color: #fff; font-size: 13px; font-weight: 800; line-height: 18px; padding: 0 6px; border: 1.5px solid rgba(255,255,255,.9); border-radius: 5px; background: rgba(11,13,26,.45); text-shadow: none; }
+.door-top .dt-icons span[data-s] { font-size: 0; display: inline-flex; align-items: center; gap: 5px; }
+.door-top .dt-icons span[data-s] b { font-size: 15px; font-weight: 800; color: #fff; }
+.door-top .dt-icons span[data-s]::before { content: ""; width: 16px; height: 16px; flex: none; background: center / contain no-repeat; }
+.door-top .dt-icons span[data-s="imdb"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23F5C518' d='M12 1.5l3.2 6.9 7.5.8-5.6 5.1 1.6 7.4L12 17.9l-6.7 3.8 1.6-7.4L1.3 9.2l7.5-.8z'/%3E%3C/svg%3E"); }
+.door-top .dt-icons span[data-s="rt"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='13.5' r='10' fill='%23FA320A'/%3E%3Cellipse cx='12' cy='3.8' rx='5.3' ry='2.4' fill='%2300912D'/%3E%3C/svg%3E"); }
+.door-top .dt-icons span[data-s="rt"].splat::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2365B32E'%3E%3Ccircle cx='12' cy='12' r='7.2'/%3E%3Ccircle cx='20.5' cy='14' r='3.2'/%3E%3Ccircle cx='17' cy='20' r='2.4'/%3E%3Ccircle cx='8' cy='20.8' r='3.2'/%3E%3Ccircle cx='3' cy='13' r='2.4'/%3E%3Ccircle cx='6' cy='4' r='3.2'/%3E%3Ccircle cx='14' cy='2.8' r='2.4'/%3E%3Ccircle cx='20' cy='6.5' r='3'/%3E%3C/svg%3E"); }

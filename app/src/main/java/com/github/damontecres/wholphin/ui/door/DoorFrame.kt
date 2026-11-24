@@ -54,6 +54,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.nav.focusRing
+import com.github.damontecres.wholphin.ui.preferences.glowfinDimmedPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -187,6 +188,8 @@ fun DoorFrame(
     ownRail: Boolean = false,
     /** Glowfin (ui-7): the places as word tabs along the page's top (Movies, Shows, Anime) */
     tabs: Boolean = false,
+    /** Glowfin new look (Movies, Shows, Anime on TV): the tabs sit in the header's own row, where the name was */
+    tabsInHeader: Boolean = false,
     /** Glowfin (S1): TV shows [ownRail]'s places as a plain list under this heading, like Settings (Server) */
     sideListTitle: String? = null,
     content: @Composable (Modifier) -> Unit,
@@ -244,9 +247,11 @@ fun DoorFrame(
             }
             return
         }
-        // TV and wide screens: the tabs sit over the top of the page, whose picture goes up behind them
+        // TV and wide screens (Glowfin new look): the tabs are see-through pills in the header's own row, where the
+        // page's name used to be, so the page starts right under the header. The art goes up behind them.
+        val inHeader = tabsInHeader && tabsFitInHeader(overlap)
         Box(modifier.fillMaxSize()) {
-            androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides overlap + tabsHeight) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalTopBarOverlap provides if (inHeader) overlap else overlap + tabsHeight) {
                 content(
                     Modifier
                         .fillMaxSize()
@@ -259,10 +264,17 @@ fun DoorFrame(
                 sections,
                 wide = true,
                 modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = overlap)
-                        .height(tabsHeight),
+                    if (inHeader) {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = HEADER_ROW_TOP)
+                            .height(overlap - HEADER_ROW_GAP)
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = overlap)
+                            .height(tabsHeight)
+                    },
             )
         }
         return
@@ -329,7 +341,11 @@ private fun GlowfinSideListFrame(
 ) {
     val active = remember { FocusRequester() }
     val overlap = LocalTopBarOverlap.current
-    Row(modifier.fillMaxSize()) {
+    // New look: the same as Settings, pills on the left and the page in a tall right-hand panel
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        modifier = modifier.fillMaxSize().glowfinDimmedPage(),
+    ) {
         com.github.damontecres.wholphin.ui.preferences.GlowfinSideListPanel {
             Column(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -353,13 +369,14 @@ private fun GlowfinSideListFrame(
                 }
             }
         }
-        content(
-            Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .focusRequester(state.content)
-                .focusRestorer(),
-        )
+        com.github.damontecres.wholphin.ui.preferences.GlowfinRightPanel(Modifier.weight(1f)) {
+            content(
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(state.content)
+                    .focusRestorer(),
+            )
+        }
     }
 }
 
@@ -584,3 +601,16 @@ private const val PENDING_PICK_MS = 120L
 /** The menu keeps handing a focus that fell on it back to the page while the page is still filling in */
 private const val STRAY_RETRY_MS = 150L
 private const val STRAY_TRIES = 20
+
+/** The tabs fit in the header's own row (true on TVs and wide screens with the normal header) */
+internal fun tabsFitInHeader(overlap: Dp): Boolean = overlap >= HEADER_ROW_GAP + doorTabsHeight(true) / 2
+
+/** Where a wide door's page starts: under the header, and under the tabs too when they can't sit in the header */
+internal fun doorPageTop(
+    overlap: Dp,
+    tabsInHeader: Boolean,
+): Dp = if (tabsInHeader && tabsFitInHeader(overlap)) overlap else overlap + doorTabsHeight(true)
+
+/** The TV header's row: 18dp from the top, with 6dp under it (see BenflixPageHeader) */
+private val HEADER_ROW_TOP = 18.dp
+private val HEADER_ROW_GAP = 24.dp

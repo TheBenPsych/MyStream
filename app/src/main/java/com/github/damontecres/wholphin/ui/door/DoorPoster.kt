@@ -58,7 +58,7 @@ private val PosterShape = BenflixShapes.Card
 @Composable
 fun doorFocusBorder(shape: androidx.compose.ui.graphics.Shape = PosterShape) =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Focus), inset = 0.dp, shape = shape),
+        focusedBorder = Border(border = BorderStroke(3.dp, BenflixColors.Outline), inset = 0.dp, shape = shape),
     )
 
 /** How far through it is, 0 to 1 (null when not started or finished) */
@@ -262,7 +262,11 @@ fun DoorTop10Poster(
         com.github.damontecres.wholphin.ui.cards
             .cardNameHeight(strip = true)
     val posterHeight = width / POSTER_RATIO
-    Row(verticalAlignment = Alignment.Top, modifier = modifier) {
+    // Ben's Glow outline: always hollow, even on the poster you're on (Ben 2026-11-23)
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = modifier,
+    ) {
         com.github.damontecres.wholphin.ui.components.GlowRankNumber(
             rank = rank,
             posterHeight = posterHeight,

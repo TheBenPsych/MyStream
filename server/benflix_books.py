@@ -3295,6 +3295,8 @@ _MR_FIELDS = """id title { romaji english native } synonyms description(asHtml: 
   staff(perPage: 3) { edges { role node { name { full } } } }"""
 _MR_LIST = ("query ($page: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $q: String) { Page(page: $page, perPage: 24) { "
             "media(type: MANGA, isAdult: false, format_not: NOVEL, sort: $sort, genre: $genre, status: $status, search: $q) { " + _MR_FIELDS + " } } }")
+# Glowfin new look (Ben 2026-11-22): "Trending on MyAnimeList" looks the MyAnimeList numbers up on AniList, so asking works the same
+_MR_BY_MAL = ("query ($ids: [Int]) { Page(page: 1, perPage: 30) { media(type: MANGA, isAdult: false, idMal_in: $ids) { " + _MR_FIELDS + " idMal } } }")
 _MR_ONE = "query ($id: Int) { Media(id: $id, type: MANGA) { " + _MR_FIELDS + " recommendations(perPage: 12, sort: RATING_DESC) { nodes { mediaRecommendation { " + _MR_FIELDS + " } } } } }"
 _mr_cache = {}
 
@@ -3354,6 +3356,9 @@ def _manga_card(m, here=None, asks=None):
         "from": {"JP": "Japan", "KR": "Korea", "CN": "China", "TW": "Taiwan"}.get(m.get("countryOfOrigin") or "", ""),
         "here": shelf,
         "asked": _manga_ask_words(a) if a and not shelf else None,
+        # Glowfin new look: the Requests top describes the manga you're on, with its banner behind (web)
+        "desc": clean_html(m.get("description") or "")[:600],
+        "banner": m.get("bannerImage"),
     }
 
 
@@ -3367,15 +3372,43 @@ def _manga_list(variables):
     return [_manga_card(m, here, asks) for m in media if not m.get("isAdult")]
 
 
+_mal_trend = [0, []]
+
+
+def _mal_trending_manga():
+    """MyAnimeList's most popular manga coming out now (Jikan), as AniList cards in MyAnimeList's order (saved 6 hours)"""
+    if time.time() - _mal_trend[0] < 6 * 3600 and _mal_trend[1]:
+        return _mal_trend[1]
+    try:
+        j = _json("https://api.jikan.moe/v4/top/manga?filter=publishing&limit=25") or {}
+        mal = [x.get("mal_id") for x in (j.get("data") or []) if x.get("mal_id") and x.get("type") not in ("Novel", "Light Novel")]
+    except Exception:
+        mal = []
+    if not mal:
+        return _mal_trend[1]
+    here, asks = _manga_here(), _asks_by_id()
+    media = (_anilist(_MR_BY_MAL, {"ids": mal}).get("Page") or {}).get("media") or []
+    order = {m: i for i, m in enumerate(mal)}
+    media = sorted((m for m in media if not m.get("isAdult")), key=lambda m: order.get(m.get("idMal"), 999))
+    cards = [_manga_card(m, here, asks) for m in media]
+    _mal_trend[0], _mal_trend[1] = time.time(), cards
+    return cards
+
+
 def manga_discover():
     rows = [
-        ("Popular right now", {"sort": ["TRENDING_DESC"], "page": 1}),
+        # Glowfin new look (Ben 2026-11-22): "Trending from MyAnimeList and AniList would be good here too"
+        ("Trending on AniList", {"sort": ["TRENDING_DESC"], "page": 1}),
         ("Most loved of all time", {"sort": ["POPULARITY_DESC"], "page": 1}),
         ("Top rated", {"sort": ["SCORE_DESC"], "page": 1}),
         ("Still coming out", {"sort": ["POPULARITY_DESC"], "status": "RELEASING", "page": 1}),
         ("Finished, read it all", {"sort": ["POPULARITY_DESC"], "status": "FINISHED", "page": 1}),
     ]
-    return {"rows": [{"name": n, "items": _manga_list(v)} for n, v in rows], "genres": MANGA_GENRES}
+    out = [{"name": n, "items": _manga_list(v)} for n, v in rows]
+    mal = _mal_trending_manga()
+    if mal:
+        out.insert(1, {"name": "Trending on MyAnimeList", "items": mal})
+    return {"rows": out, "genres": MANGA_GENRES}
 
 
 def manga_genre(genre, page=1):

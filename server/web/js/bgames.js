@@ -9,10 +9,14 @@
   // The same games, names, words and colours as the app (ui/games/MovieGames.kt and GamesViewModel.kt)
   const PUZZLES = [
     { key: "SCENES", title: "Scene by scene", short: "Guess the movie from a still scene. Each miss shows an easier one.", about: "Guess the movie or show from a still picture taken from it. Each wrong guess shows a new, easier scene.", steps: ["Look at the scene.", "Pick the title from 6 names.", "Wrong? An easier scene shows. Out of scenes ends the run."], minutes: "About 3 min", board: "SCENE_BY_SCENE", ranked: "most points in a run", colors: C("#BE123C", "#4C0519"), icon: "film", kids: true },
-    { key: "POSTER", title: "Poster puzzle", short: "Tiles flip off a poster. Guess early for more points.", about: "A poster hides under 16 tiles that flip away one by one. Guess as soon as you know it.", steps: ["Watch the tiles flip away.", "Pick the title whenever you know it.", "One wrong guess ends the run."], minutes: "About 3 min", board: "POSTER_PUZZLE", ranked: "most points in a run", colors: C("#A16207", "#422006"), icon: "list", kids: true },
+    { key: "POSTER", title: "Poster puzzle", short: "Tiles flip off a poster. Guess early for more points.", about: "A poster hides under 16 tiles that flip away one by one, but never all of them. Guess as soon as you know it.", steps: ["Watch the tiles flip away.", "Pick the title whenever you know it.", "Fewer tiles flip as you go. One wrong guess ends the run."], minutes: "About 3 min", board: "POSTER_PUZZLE", ranked: "most points in a run", colors: C("#A16207", "#422006"), icon: "list", kids: true },
     { key: "GRID", title: "Movie grid", short: "Fill a 3 by 3 board with titles that fit both rules.", about: "Every square needs a movie or show from Tower that fits its row rule and its column rule.", steps: ["Pick a square.", "Pick the title that fits both rules.", "3 lives. A full grid earns a bonus."], minutes: "About 5 min", board: "MOVIE_GRID", ranked: "most points on a grid", colors: C("#4338CA", "#1E1B4B"), icon: "list", kids: false },
     { key: "TIMELINE", title: "Timeline", short: "Put each poster in the right spot by release year.", about: "Posters arrive one at a time. Slot each one into the right place on a growing line of years.", steps: ["Look at the new poster.", "Move along the line and press Here.", "One wrong spot ends the run."], minutes: "About 3 min", board: "TIMELINE", ranked: "longest line", colors: C("#0F766E", "#042F2E"), icon: "swap", kids: true },
     { key: "ACTOR", title: "Who's that actor?", short: "A zoomed-in photo zooms out until you know them.", about: "An actor's photo starts zoomed right in on their eyes and slowly zooms out.", steps: ["Watch the photo zoom out.", "Pick their name from 6.", "Misses add hints. Three misses ends the run."], minutes: "About 3 min", board: "WHOS_THAT_ACTOR", ranked: "most points in a run", colors: C("#9333EA", "#3B0764"), icon: "user", kids: false },
+    { key: "QUOTE", title: "Quote it", short: "A famous line from a movie or show. Where's it from?", about: "A famous line from a movie or show on Tower. Name where it's from. Who says it shows partway through.", steps: ["Read the famous line.", "Who says it shows as the clock runs.", "Pick the title. One wrong guess ends the run."], minutes: "About 3 min", board: "QUOTE_IT", ranked: "most points in a run", colors: C("#0891B2", "#164E63"), icon: "sub", kids: false },
+    { key: "ROLE", title: "Who played them?", short: "A character's name. Pick who played them from 4 photos.", about: "You get a character and the movie they're in. Pick the actor who played them from 4 photos.", steps: ["Read the character's name.", "Pick the actor from 4 photos.", "One wrong pick ends the run."], minutes: "About 3 min", board: "WHO_PLAYED", ranked: "most points in a run", colors: C("#7C3AED", "#2E1065"), icon: "user", kids: false },
+    { key: "BLITZ", title: "60-second blitz", short: "True or false, as many as you can in 60 seconds.", about: "True or false lines about what's on Tower. Answer as many as you can in 60 seconds.", steps: ["Read the line.", "True or false?", "A wrong answer costs 3 seconds."], minutes: "1 min", board: "BLITZ", ranked: "most right in a blitz", colors: C("#EAB308", "#713F12"), icon: "star", kids: false },
+    { key: "SEASON", title: "Which season?", short: "A scene from a show. Which season is it from?", about: "A real scene from one of your shows. Guess which season it's from.", steps: ["Look at the scene.", "Pick the season.", "One wrong guess ends the run."], minutes: "About 3 min", board: "WHICH_SEASON", ranked: "most points in a run", colors: C("#2563EB", "#172554"), icon: "tv", kids: false },
     { key: "GUESS", title: "Guess the movie", short: "A blurry picture gets sharper. Guess it fast!", about: "A blurry picture from a movie gets sharper and sharper. Guess it fast for more points.", steps: ["Watch the picture sharpen.", "Pick the movie.", "Faster answers score more."], minutes: "About 3 min", board: "GUESS_THE_MOVIE", ranked: "most points", colors: C("#0E7490", "#1E3A8A"), icon: "info", kids: false },
     { key: "RIDDLE", title: "Movie riddle", short: "Guess the movie from its clues before time runs out.", about: "Guess the movie from its clues. Clues get easier as the clock runs down, and it keeps going until you miss.", steps: ["Read the clues.", "Pick from 5 movies.", "Fast answers score more. One miss ends the run."], minutes: "About 3 min", board: "MOVIE_RIDDLE_POINTS", ranked: "most points in a run", colors: C("#C2410C", "#6D28D9"), icon: "help", kids: false },
     { key: "HIGHER_LOWER", title: "Higher or Lower", short: "Is the next one rated higher or lower on IMDb?", about: "Two posters. Is the second one rated higher or lower on IMDb? Keep your streak going.", steps: ["Look at the first rating.", "Higher or lower?", "One wrong answer ends the streak."], minutes: "About 2 min", board: "HIGHER_LOWER_STREAK", ranked: "best streak", colors: C("#15803D", "#7F1D1D"), icon: "chart", kids: false },
@@ -30,6 +34,7 @@
     { key: "FAKE_PLOT", title: "Fake plot", short: "Write a fake plot, then spot the real one.", colors: C("#EA580C", "#431407") },
     { key: "DRAW", title: "Draw the movie", short: "Draw a secret movie on your Android phone. Others guess.", colors: C("#0284C7", "#082F49") },
     { key: "CLOSEST", title: "Closest wins", short: "Guess the year, length or score. Closest wins.", colors: C("#65A30D", "#1A2E05"), kids: true },
+    { key: "CAPTION", title: "Caption this", short: "Write a funny caption for a real scene, then vote.", colors: C("#F43F5E", "#4C0519"), kids: true },
   ];
   const kids = () => !!(B.me && B.me.kids);
   const find = (key) => {
@@ -234,16 +239,31 @@
     }
   });
 
-  /** The end-of-run card every game shows */
-  B.bgOver = (ctx, title, body, score) => {
-    const newBest = ctx.submit(score);
-    const best = ctx.best();
+  /**
+   * The end-of-run card every game shows (Ben's pick: the better end screen): the score big, a NEW BEST
+   * label, the posters of the titles you got right with what each earned (opts.run), and "The one that got
+   * you" (opts.answer) with Open and My List. opts.local = { best, newBest } for scores kept off the board.
+   */
+  B.bgOver = (ctx, title, body, score, opts) => {
+    const o = opts || {};
+    const newBest = o.local ? o.local.newBest : ctx.submit(score);
+    const best = o.local ? o.local.best : ctx.best();
     const box = document.createElement("div");
     box.className = "bg-over";
-    box.innerHTML = `<div class="bg-card"><h2>${esc(newBest ? `New best: ${score.toLocaleString()}!` : title)}</h2><p>${esc(body).replace(/\n/g, "<br>")}</p><p class="dim">Your best: ${best.toLocaleString()}</p><div class="acts"><button class="btn white" id="bgAgain">${I("restart")} Play again</button><button class="btn" id="bgDone">Done</button></div></div>`;
+    const run = (o.run || []).slice(-8);
+    const a = o.answer;
+    box.innerHTML = `<div class="bg-card${run.length ? " wide" : ""}"><div class="bg-end-l">${newBest ? `<div class="bg-newbest">NEW BEST!</div>` : ""}<div class="bg-big">${score.toLocaleString()}</div><h2>${esc(newBest ? `New best: ${score.toLocaleString()}!` : title)}</h2><p>${esc(body).replace(/\n/g, "<br>")}</p><p class="dim">Your best: ${best.toLocaleString()}</p><div class="acts"><button class="btn white" id="bgAgain">${I("restart")} Play again</button>${o.other ? `<button class="btn" id="bgOther">${esc(o.other[0])}</button>` : ""}<button class="btn" id="bgDone">Done</button></div>${a ? `<div class="bg-gotyou">${a.poster ? `<img src="${a.poster}" alt="">` : ""}<div><small>The one that got you</small><b>${esc(a.name)}${a.year ? ` (${a.year})` : ""}</b><span><button class="btn small" id="bgOpen">Open ${a.series ? "show" : "movie"}</button><button class="btn small" id="bgList">${I("plus")} My List</button></span></div></div>` : ""}</div>${run.length ? `<div class="bg-end-r"><small>Your run</small><div class="bg-runs">${run.map((x) => `<span>${x.t.poster ? `<img src="${x.t.poster}" alt="${esc(x.t.name)}">` : `<i>${esc(x.t.name)}</i>`}<em>${esc(x.badge)}</em></span>`).join("")}</div></div>` : ""}</div>`;
     ctx.stage.appendChild(box);
-    $("#bgAgain", box).onclick = ctx.again;
+    $("#bgAgain", box).onclick = o.again || ctx.again;
     $("#bgDone", box).onclick = ctx.quit;
+    if (o.other) $("#bgOther", box).onclick = () => { box.remove(); o.other[1](); };
+    if (a) {
+      $("#bgOpen", box).onclick = () => B.go(`#/${a.series ? "show" : "movie"}/${a.id}`);
+      $("#bgList", box).onclick = async (e) => {
+        const b = e.currentTarget;
+        try { await B.jf("POST", `/UserFavoriteItems/${a.id}?userId=${B.uid()}`); b.innerHTML = `${I("check")} On My List`; b.disabled = true; } catch (err) { console.warn(err); }
+      };
+    }
     setTimeout(() => { const b = $("#bgAgain", box); if (b) b.focus(); }, 300);
     return newBest;
   };

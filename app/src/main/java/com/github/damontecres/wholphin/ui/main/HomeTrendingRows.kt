@@ -36,6 +36,7 @@ fun Top10Row(
         modifier = modifier,
         cardContent = { index, item, cardModifier, onClick, onLongClick ->
             // Ben's T1 pick: the glowing number in its own equal-width box, fully beside the poster
+            // Ben's Glow outline: always hollow, even on the poster you're on (Ben 2026-11-23)
             Row(verticalAlignment = Alignment.Top) {
                 com.github.damontecres.wholphin.ui.components.GlowRankNumber(
                     rank = index + 1,

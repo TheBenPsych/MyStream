@@ -55,6 +55,7 @@ import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.ScreensaverPreference
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
@@ -120,6 +121,8 @@ fun AppScreensaver(
         duration = prefs.interfacePreferences.screensaverPreference.duration.milliseconds,
         animate = prefs.interfacePreferences.screensaverPreference.animate,
         modifier = modifier,
+        aquarium = prefs.interfacePreferences.screensaverPreference.style != ScreensaverPreference.STYLE_MOVIES,
+        waterSound = prefs.interfacePreferences.screensaverPreference.waterSound,
     )
 }
 
@@ -131,7 +134,15 @@ fun AppScreensaverContent(
     duration: Duration,
     animate: Boolean,
     modifier: Modifier = Modifier,
+    aquarium: Boolean = false,
+    waterSound: Boolean = false,
 ) {
+    if (aquarium) {
+        // Glowfin: the Coral Reef aquarium (the default). Nothing to jump to with OK.
+        androidx.compose.runtime.SideEffect { ScreensaverJump.item = null }
+        ReefScreensaver(showClock = showClock, waterSound = waterSound, modifier = modifier)
+        return
+    }
     Box(
         modifier
             .background(Color.Black),

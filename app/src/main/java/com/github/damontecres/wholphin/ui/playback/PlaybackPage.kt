@@ -98,7 +98,6 @@ import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberPresentationState
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -135,6 +134,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.touch.swipeDownToClosePlayer
@@ -316,6 +316,10 @@ fun PlaybackPageContent(
             )
         seekBarState.onValueChange(skipPosition)
     }
+    // Glowfin new look "Up in the player shows Story and details" (Ben 2026-11-22): the same right-hand panel as the
+    // details page. The video keeps playing behind it; Back closes it.
+    var showStory by remember { mutableStateOf(false) }
+    val storyOnUp = rememberIsTv()
     val keyHandler =
         remember(preferences) {
             PlaybackKeyHandler(
@@ -344,6 +348,7 @@ fun PlaybackPageContent(
                 onSeekToNext = viewModel::playNextUp,
                 onPSeekToPrevious = viewModel::playPrevious,
                 onDoubleSkipBack = viewModel::whatDidTheySay,
+                onUp = if (storyOnUp) ({ showStory = true }) else null,
             )
         }
 
@@ -1366,6 +1371,19 @@ fun PlaybackPageContent(
                             .heightIn(max = 400.dp),
                 )
             }
+        }
+    }
+
+    if (showStory) {
+        val playing = state.currentPlayback?.item
+        if (playing == null || playing.type == BaseItemKind.TV_CHANNEL) {
+            showStory = false
+        } else {
+            PlayerStoryPanel(
+                item = playing,
+                admin = userDto?.policy?.isAdministrator == true,
+                onDismiss = { showStory = false },
+            )
         }
     }
 

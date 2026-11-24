@@ -54,18 +54,61 @@ import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
 /*
- * Glowfin Settings (Ben's pick S1, Nov 2026): the same plain side-list look everywhere in Settings,
- * Help and the Server page. A list row is just words; the one you're on is lifted with a thin aqua bar
- * on its left. A setting shows its current choice in aqua on the right, and the lit one adds one line
- * explaining it. Choices open in a small list on the right that saves straight away. Nothing animates,
+ * Glowfin Settings (Ben's pick S1, Nov 2026, new look 2026-11-23): the same look everywhere in Settings,
+ * Help and the Server page. A setting shows its current choice in aqua on the right, and the lit one adds one
+ * line explaining it. Choices open in a small list on the right that saves straight away. Nothing grows,
  * so it stays smooth on the weak TCL TVs.
  */
 
 /** Behind the scenes is Ben's only, so its name is yellow */
 val GlowfinAdminYellow: Color get() = BenflixColors.Check
 
-private val RowShape = RoundedCornerShape(10.dp)
 private val BarWidth = 3.dp
+
+/*
+ * Glowfin new look (Ben approved 2026-11-22, Settings part): groups are see-through pills on the left
+ * (the open one solid white), and the settings sit in a tall right-hand panel over a dimmed picture.
+ * The setting you're on is solid white with the aqua ring, like every other focus in the app.
+ * Nothing grows and nothing blurs, so it stays smooth on the weak TCL TVs.
+ */
+private val PillShape = RoundedCornerShape(99.dp)
+private val CardShape = RoundedCornerShape(9.dp)
+
+/** The see-through fill and edge of a pill or setting that isn't lit */
+internal val GlowfinGlass = Color.White.copy(alpha = .06f)
+private val GlassEdge = Color.White.copy(alpha = .08f)
+
+/** The soft aqua ring around whatever the remote is on */
+internal val GlowfinRing = Glowfin.Aqua.copy(alpha = .6f)
+
+/** Words on a solid white pill or row */
+internal val OnWhiteText = Glowfin.Ink
+private val OnWhiteValue = Color(0xFF0B7D86)
+private val OnWhiteDim = Color(0xFF4A4F72)
+private val OnWhiteYellow = Color(0xFF8A5A00)
+
+/** How see-through the page is over the last picture (Settings, Help, Server): the picture shows at about 28% */
+private const val DIM_PAGE_ALPHA = .72f
+
+/** The page behind Settings, Help and the Server page on TV: the last picture, dimmed (no blur) */
+fun Modifier.glowfinDimmedPage(): Modifier = this.background(Glowfin.Ink.copy(alpha = DIM_PAGE_ALPHA))
+
+/** The tall right-hand panel the settings slide into (like the story panel) */
+@Composable
+fun GlowfinRightPanel(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .background(Glowfin.Deep.copy(alpha = .94f))
+            .drawBehind { drawRect(Glowfin.Line, size = Size(1.dp.toPx(), size.height)) }
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp),
+    ) {
+        content()
+    }
+}
 
 /** Draws the aqua bar down the row's left edge */
 private fun Modifier.aquaBar(on: Boolean): Modifier =
@@ -94,19 +137,18 @@ fun GlowfinPageHeading(
     )
 }
 
-/** The left list's panel (TV): a slightly lighter strip, full height */
+/** The left list (TV): the group pills float straight over the dimmed picture, no strip behind them */
 @Composable
 fun GlowfinSideListPanel(
     modifier: Modifier = Modifier,
-    width: Dp = 300.dp,
+    width: Dp = 280.dp,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier
             .width(width)
             .fillMaxHeight()
-            .background(Glowfin.Deep)
-            .padding(start = 14.dp, end = 14.dp, top = 20.dp, bottom = 12.dp),
+            .padding(start = 14.dp, end = 4.dp, top = 20.dp, bottom = 12.dp),
     ) {
         content()
     }
@@ -130,21 +172,37 @@ fun GlowfinListRow(
     onFocused: () -> Unit = {},
 ) {
     var focused by remember { mutableStateOf(false) }
+    // The open group (and the one the remote is on) is a solid white pill with dark words
+    val white = selected || focused
+    val shape = if (supporting == null) PillShape else CardShape
+    val wordColor =
+        when {
+            !white -> labelColor
+            labelColor == GlowfinAdminYellow -> OnWhiteYellow
+            else -> OnWhiteText
+        }
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RowShape),
+        shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (selected) Glowfin.Raise else Color.Transparent,
-                contentColor = labelColor,
-                focusedContainerColor = Glowfin.FocusRow,
-                focusedContentColor = labelColor,
-                pressedContainerColor = Glowfin.FocusRow,
+                containerColor = if (selected) Color.White.copy(alpha = .92f) else GlowfinGlass,
+                contentColor = wordColor,
+                focusedContainerColor = Color.White,
+                focusedContentColor = wordColor,
+                pressedContainerColor = Color.White,
+                pressedContentColor = wordColor,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = androidx.tv.material3.Border(androidx.compose.foundation.BorderStroke(1.dp, GlassEdge), shape = shape),
+                focusedBorder = androidx.tv.material3.Border(androidx.compose.foundation.BorderStroke(3.dp, GlowfinRing), shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
                 .fillMaxWidth()
+                .padding(vertical = 2.dp)
                 .onFocusChanged {
                     focused = it.isFocused
                     if (it.isFocused) onFocused()
@@ -155,22 +213,21 @@ fun GlowfinListRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .aquaBar(selected || focused)
-                    .padding(start = 14.dp, end = 12.dp, top = 11.dp, bottom = 11.dp),
+                    .padding(start = 18.dp, end = 14.dp, top = 9.dp, bottom = 9.dp),
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    color = labelColor,
+                    color = wordColor,
                     fontSize = 16.sp,
-                    fontWeight = if (selected || focused) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 supporting?.let {
                     Text(
                         text = it,
-                        color = Glowfin.Dim,
+                        color = if (white) OnWhiteDim else Glowfin.Dim,
                         fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -180,7 +237,7 @@ fun GlowfinListRow(
             note?.let {
                 Text(
                     text = it,
-                    color = noteColor,
+                    color = if (white) OnWhiteValue else noteColor,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -191,7 +248,7 @@ fun GlowfinListRow(
                 Icon(
                     imageVector = BenflixIcon.CHEVRON.vector,
                     contentDescription = null,
-                    tint = Glowfin.Aqua,
+                    tint = if (white) OnWhiteValue else Glowfin.Aqua,
                     modifier = Modifier.padding(start = 6.dp).size(18.dp),
                 )
             }
@@ -229,46 +286,62 @@ fun GlowfinSettingRow(
 ) {
     val isTv = rememberIsTv()
     val focused by interactionSource.collectIsFocusedAsState()
+    // The setting you're on is solid white with the aqua ring; the rest are see-through cards
+    val white = focused && enabled
+    val nameColor =
+        when {
+            !enabled -> Glowfin.Dim
+            white -> OnWhiteText
+            else -> titleColor
+        }
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
         enabled = enabled,
-        shape = ClickableSurfaceDefaults.shape(RowShape),
+        shape = ClickableSurfaceDefaults.shape(CardShape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                contentColor = titleColor,
-                focusedContainerColor = Glowfin.Raise,
-                focusedContentColor = titleColor,
-                pressedContainerColor = Glowfin.FocusRow,
-                disabledContainerColor = Color.Transparent,
+                containerColor = Color.White.copy(alpha = .05f),
+                contentColor = nameColor,
+                focusedContainerColor = Color.White,
+                focusedContentColor = nameColor,
+                pressedContainerColor = Color.White,
+                pressedContentColor = nameColor,
+                disabledContainerColor = Color.White.copy(alpha = .03f),
                 disabledContentColor = Glowfin.Dim,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(3.dp, GlowfinRing),
+                        shape = CardShape,
+                    ),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         interactionSource = interactionSource,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(vertical = 3.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .aquaBar(focused)
-                    .padding(start = 16.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+                    .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = if (enabled) titleColor else Glowfin.Dim,
+                    color = nameColor,
                     fontSize = 16.sp,
-                    fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (explain != null && (focused || !isTv)) {
                     Text(
                         text = explain,
-                        color = Glowfin.Dim,
+                        color = if (white) OnWhiteDim else Glowfin.Dim,
                         fontSize = 13.sp,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -279,13 +352,13 @@ fun GlowfinSettingRow(
             value?.let {
                 Text(
                     text = it,
-                    color = valueColor,
+                    color = if (white && valueColor == Glowfin.Aqua) OnWhiteValue else valueColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.End,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 16.dp).widthIn(max = 280.dp),
+                    modifier = Modifier.padding(start = 16.dp).widthIn(max = 240.dp),
                 )
             }
         }
@@ -319,7 +392,7 @@ fun GlowfinChoiceSheet(
                         .padding(if (isTv) 28.dp else 12.dp)
                         .fillMaxHeight()
                         .then(if (isTv) Modifier.width(380.dp) else Modifier.fillMaxWidth(.9f))
-                        .background(Glowfin.Deep, shape)
+                        .background(Glowfin.Deep.copy(alpha = .97f), shape)
                         .border(1.dp, Glowfin.Line, shape)
                         .padding(16.dp),
             ) {
@@ -373,21 +446,32 @@ private fun ChoiceRow(
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
+    val words = if (focused) OnWhiteText else Glowfin.Text
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RowShape),
+        shape = ClickableSurfaceDefaults.shape(CardShape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (picked) Glowfin.Raise else Color.Transparent,
-                contentColor = Glowfin.Text,
-                focusedContainerColor = Glowfin.FocusRow,
-                focusedContentColor = Glowfin.Text,
-                pressedContainerColor = Glowfin.FocusRow,
+                containerColor = if (picked) GlowfinGlass else Color.Transparent,
+                contentColor = words,
+                focusedContainerColor = Color.White,
+                focusedContentColor = words,
+                pressedContainerColor = Color.White,
+                pressedContentColor = words,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                focusedBorder =
+                    androidx.tv.material3.Border(
+                        androidx.compose.foundation.BorderStroke(3.dp, GlowfinRing),
+                        shape = CardShape,
+                    ),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
                 .fillMaxWidth()
+                .padding(vertical = 2.dp)
                 .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
@@ -395,27 +479,33 @@ private fun ChoiceRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .aquaBar(focused || picked)
+                    .aquaBar(picked && !focused)
                     .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    color = Glowfin.Text,
+                    color = words,
                     fontSize = 15.sp,
                     fontWeight = if (picked || focused) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 subtitle?.takeIf { it.isNotBlank() }?.let {
-                    Text(text = it, color = Glowfin.Dim, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = it,
+                        color = if (focused) OnWhiteDim else Glowfin.Dim,
+                        fontSize = 12.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             if (picked) {
                 Icon(
                     imageVector = BenflixIcon.CHECK.vector,
                     contentDescription = "Picked",
-                    tint = Glowfin.Aqua,
+                    tint = if (focused) OnWhiteValue else Glowfin.Aqua,
                     modifier = Modifier.padding(start = 8.dp).size(18.dp),
                 )
             }

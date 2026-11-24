@@ -19,13 +19,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -53,6 +59,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.AskForSimilarRow
 import com.github.damontecres.wholphin.ui.detail.askForSimilarName
+import com.github.damontecres.wholphin.ui.detail.title.LocalTitleDownTarget
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleCastRow
@@ -63,6 +70,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePage
 import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
+import com.github.damontecres.wholphin.ui.detail.title.logoChoiceItem
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
@@ -70,6 +78,8 @@ import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.tryRequestFocus
+import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.PersonKind
 
@@ -92,6 +102,8 @@ class SeriesHeroActions(
     val openAsk: (DiscoverItem) -> Unit,
     /** Admin only: Change poster */
     val pickPoster: (() -> Unit)? = null,
+    /** Change logo in More (the poster picker on its logo tab) */
+    val pickLogo: (() -> Unit)? = null,
 )
 
 /**
@@ -115,7 +127,11 @@ fun SeriesHeroContent(
     var showCatchUp by remember { mutableStateOf(false) }
     val anime = state.subDub != null
     val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
-    val likes = series.data.userData?.likes
+    // Ben 2026-11-22: the Rate button shows the choice you just made right away (likes, and loved = on My List),
+    // instead of waiting for the server copy, which could come back stale and flip it back to "Rate"
+    var ratePick by remember(series.id) { mutableStateOf<Pair<Boolean?, Boolean>?>(null) }
+    val likes = ratePick.let { if (it != null) it.first else series.data.userData?.likes }
+    val loved = ratePick?.second ?: series.favorite
     val trailer = state.trailers.firstOrNull()
     val buttons =
         buildList {
@@ -266,6 +282,9 @@ fun SeriesHeroContent(
         logoUrl =
             com.github.damontecres.wholphin.ui.components
                 .rememberLogoUrl(series),
+        findLogo =
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoFinder(series),
         tagline =
             if (easy) {
                 null
@@ -274,6 +293,7 @@ fun SeriesHeroContent(
                     ?.firstOrNull()
                     ?.takeIf { it.isNotBlank() }
             },
+        matchId = if (easy) null else series.id,
         modifier = modifier,
     )
 
@@ -302,6 +322,10 @@ fun SeriesHeroContent(
     }
 
     if (showMore) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val nameInstead =
+            com.github.damontecres.wholphin.ui.components.LogoChoice
+                .usesName(series.id)
         TitleMorePanel(
             title = series.title.orEmpty(),
             onDismiss = { showMore = false },
@@ -320,7 +344,7 @@ fun SeriesHeroContent(
                         add(
                             TitleMoreItem(
                                 when (likes) {
-                                    true -> if (series.favorite) "Rate (you loved it)" else "Rate (you liked it)"
+                                    true -> if (loved) "Rate (you loved it)" else "Rate (you liked it)"
                                     false -> "Rate (not for you)"
                                     null -> "Rate"
                                 },
@@ -330,7 +354,9 @@ fun SeriesHeroContent(
                         )
                     }
                     actions.request?.let { add(TitleMoreItem("Ask for more seasons", BenflixIcon.REQUESTS, it)) }
+                    add(logoChoiceItem(context, series.id, nameInstead))
                     actions.pickPoster?.let { add(TitleMoreItem("Pick a poster", BenflixIcon.IMAGE, it, youOnly = true)) }
+                    actions.pickLogo?.let { add(TitleMoreItem("Change logo", BenflixIcon.IMAGE, it, youOnly = true)) }
                     actions.fixMatch?.let { add(TitleMoreItem("Wrong show? Fix the match", BenflixIcon.FLAG, it, youOnly = true)) }
                 },
         )
@@ -342,20 +368,33 @@ fun SeriesHeroContent(
             onDismissRequest = { showRate = false },
             choices =
                 listOf(
-                    BenflixChoice("Not for me", { actions.rate(if (likes == false) null else false) }, selected = likes == false),
+                    BenflixChoice(
+                        "Not for me",
+                        {
+                            val v = if (likes == false) null else false
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == false,
+                    ),
                     BenflixChoice(
                         "I like it",
-                        { actions.rate(if (likes == true && !series.favorite) null else true) },
-                        selected = likes == true && !series.favorite,
+                        {
+                            val v = if (likes == true && !loved) null else true
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == true && !loved,
                     ),
                     BenflixChoice(
                         "Love it",
                         {
+                            ratePick = true to true
                             actions.rate(true)
                             if (!series.favorite) actions.setMyList(true)
                         },
                         note = "Also adds it to My List",
-                        selected = likes == true && series.favorite,
+                        selected = likes == true && loved,
                     ),
                 ),
         )
@@ -422,19 +461,55 @@ private fun EpisodesSection(
         } else {
             200.dp
         }
+    // Ben 2026-11-22 (TV photo): Down from Resume skipped the season buttons and landed on 1-25.
+    // Down from the buttons now always lands on the season you are on (scrolling it into view first).
+    val seasonRow = rememberLazyListState()
+    val selectedSeason = remember { FocusRequester() }
+    var selectedShown by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val downTarget = LocalTitleDownTarget.current
+    if (downTarget != null && seasons.size > 1) {
+        val target = rememberUpdatedState(seasonIndex)
+        val shown = rememberUpdatedState(selectedShown)
+        DisposableEffect(downTarget) {
+            val enter = {
+                if (shown.value) {
+                    selectedSeason.tryRequestFocus()
+                } else {
+                    scope.launch {
+                        seasonRow.scrollToItem((target.value - 1).coerceAtLeast(0))
+                        withFrameNanos { }
+                        selectedSeason.tryRequestFocus()
+                    }
+                    true
+                }
+            }
+            downTarget.enter = enter
+            onDispose { if (downTarget.enter === enter) downTarget.enter = null }
+        }
+    }
     Column(Modifier.fillMaxWidth()) {
         if (seasons.size > 1) {
             LazyRow(
+                state = seasonRow,
                 contentPadding = PaddingValues(horizontal = side),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 12.dp),
             ) {
                 itemsIndexed(seasons) { index, season ->
+                    val selected = index == seasonIndex
+                    if (selected) {
+                        DisposableEffect(Unit) {
+                            selectedShown = true
+                            onDispose { selectedShown = false }
+                        }
+                    }
                     SeasonChip(
                         text = season?.name ?: "Season ${index + 1}",
                         seen = remember(season) { season?.let(::seasonSeen) },
-                        selected = index == seasonIndex,
+                        selected = selected,
                         onClick = { onPickSeason(index) },
+                        modifier = if (selected) Modifier.focusRequester(selectedSeason) else Modifier,
                     )
                 }
             }
@@ -515,10 +590,12 @@ private fun SeasonChip(
     seen: Float?,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(50)
     Surface(
         onClick = onClick,
+        modifier = modifier,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(

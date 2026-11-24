@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.main
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
@@ -435,9 +435,9 @@ internal fun LiveChip(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
-                contentColor = if (selected) Color.White else Glowfin.Dim,
+                contentColor = if (selected) Glowfin.Ink else Glowfin.Text.copy(alpha = .88f),
                 focusedContainerColor = Color.Transparent,
-                focusedContentColor = Glowfin.Text,
+                focusedContentColor = if (selected) Glowfin.Ink else Glowfin.Text,
                 pressedContainerColor = Color.Transparent,
             ),
         border =
@@ -451,7 +451,9 @@ internal fun LiveChip(
             modifier =
                 Modifier
                     .fillMaxHeight()
-                    .background(if (selected) Glowfin.GlowAcross else SolidColor(Glowfin.Raise), shape)
+                    // New look (Part 4): see-through pills like the page tabs; the picked one is near-white
+                    .background(if (selected) Color.White.copy(alpha = .92f) else Glowfin.Ink.copy(alpha = .35f), shape)
+                    .border(1.dp, Color.White.copy(alpha = if (selected) 0f else .14f), shape)
                     .padding(horizontal = 14.dp),
         ) {
             Text(

@@ -1,14 +1,11 @@
 package com.github.damontecres.wholphin.ui.door
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,20 +21,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.ui.nav.focusRing
+import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
-import com.github.damontecres.wholphin.ui.theme.glowFocus
 
 /**
- * Glowfin (ui-7, Wholphin-like): a page's places as plain word tabs along its top (For you, All movies,
- * Collections, Genres, My List). The tab you're on is white with the glow line under it; the one the remote
- * is on gets the glow ring. OK (or a tap) opens it; moving along the tabs only moves, so nothing loads as you pass.
+ * Glowfin (ui-7, Wholphin-like): a page's places as tabs along its top (For you, All movies,
+ * Collections, Genres, My List). Glowfin new look (Ben 2026-11-22): see-through pills over the art, the tab
+ * you're on solid white; the one the remote is on turns white with the aqua ring (nothing grows). OK (or a tap) opens it; moving along the tabs only moves, so nothing loads as you pass.
  * Phones (Z1): shorter names (For you, All, Genres, My List) that scroll sideways when they don't fit.
  */
 @Composable
@@ -50,8 +47,8 @@ fun DoorTabs(
     val picked = remember(sections) { sections.associate { it.key to FocusRequester() } }
     val on = sections.firstOrNull { it.key == state.section } ?: sections.firstOrNull()
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(if (wide) 6.dp else 2.dp),
-        contentPadding = PaddingValues(horizontal = if (wide) BenflixSpace.tvEdge - TAB_PAD else BenflixSpace.phoneEdge - TAB_PAD),
+        horizontalArrangement = Arrangement.spacedBy(if (wide) 8.dp else 6.dp),
+        contentPadding = PaddingValues(horizontal = if (wide) BenflixSpace.tvEdge else BenflixSpace.phoneEdge),
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
@@ -77,7 +74,7 @@ fun DoorTabs(
 }
 
 @Composable
-private fun DoorTab(
+internal fun DoorTab(
     label: String,
     selected: Boolean,
     wide: Boolean,
@@ -90,43 +87,31 @@ private fun DoorTab(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                contentColor = if (selected) Glowfin.Text else Glowfin.Dim,
-                focusedContainerColor = Glowfin.FocusRow,
-                focusedContentColor = Glowfin.Text,
-                pressedContainerColor = Glowfin.FocusRow,
+                // Glowfin new look: see-through pills over the art, the open one solid white
+                containerColor = if (selected) Color.White.copy(alpha = .92f) else Glowfin.Ink.copy(alpha = .35f),
+                contentColor = if (selected) Glowfin.Ink else Glowfin.Text.copy(alpha = .88f),
+                focusedContainerColor = Color.White,
+                focusedContentColor = Glowfin.Ink,
+                pressedContainerColor = Color.White,
+                pressedContentColor = Glowfin.Ink,
             ),
-        border = focusRing(shape),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = if (selected) 0f else .14f)), shape = shape),
+                focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = shape),
+            ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.glowFocus(shape, spread = 8.dp),
+        modifier = modifier,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = TAB_PAD, vertical = if (wide) 7.dp else 6.dp),
-        ) {
-            Text(
-                text = label,
-                fontFamily = GlowfinDisplayFont,
-                fontSize = if (wide) BenflixType.body else BenflixType.small,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // The glow line under the tab you're on
-            Box(
-                Modifier
-                    .padding(top = 3.dp)
-                    .width(if (wide) 26.dp else 20.dp)
-                    .height(3.dp)
-                    .then(
-                        if (selected) {
-                            Modifier.background(Glowfin.GlowAcross, RoundedCornerShape(2.dp))
-                        } else {
-                            Modifier
-                        },
-                    ),
-            )
-        }
+        Text(
+            text = label,
+            fontFamily = GlowfinDisplayFont,
+            fontSize = if (wide) BenflixType.body else BenflixType.small,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = TAB_PAD, vertical = if (wide) 6.dp else 5.dp),
+        )
     }
 }
 

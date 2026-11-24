@@ -4,8 +4,12 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,8 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.OmdbScores
@@ -111,6 +117,163 @@ fun ScoreBadges(
             }
         }
     }
+}
+
+/**
+ * The age rating and scores at the top right (Home tops and details pages). Ben 2026-11-23: separate small chips
+ * instead of one shared pill. The age rating is a white outline, IMDb is its own yellow chip ("IMDb 7.4"), and the
+ * other scores are dark see-through chips with the site's small mark and a white number. At most 3 scores.
+ */
+@Composable
+fun ScorePill(
+    rating: String?,
+    scores: List<StripPart>,
+    modifier: Modifier = Modifier,
+    small: Boolean = false,
+) {
+    val shown = scores.filter { it.value != null }.take(3)
+    if (rating.isNullOrBlank() && shown.isEmpty()) return
+    val font = if (small) BenflixType.tag else BenflixType.body
+    val mark = if (small) 12.dp else 14.dp
+    val chip = RoundedCornerShape(6.dp)
+    val padX = if (small) 6.dp else 8.dp
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(if (small) 5.dp else 6.dp),
+        modifier = modifier,
+    ) {
+        if (!rating.isNullOrBlank()) {
+            Text(
+                text = rating,
+                color = Color.White,
+                fontSize = font,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier =
+                    Modifier
+                        .background(CHIP_BACK, chip)
+                        .border(1.5.dp, Color.White.copy(alpha = .85f), chip)
+                        .padding(horizontal = padX - 1.dp),
+            )
+        }
+        shown.forEach { p ->
+            val imdb = p.label.lowercase() == "imdb"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                modifier =
+                    if (imdb) {
+                        Modifier
+                            .background(IMDB_YELLOW, chip)
+                            .padding(horizontal = padX)
+                    } else {
+                        Modifier
+                            .background(CHIP_BACK, chip)
+                            .border(1.dp, Color.White.copy(alpha = .22f), chip)
+                            .padding(horizontal = padX)
+                    },
+            ) {
+                if (imdb) {
+                    Text(
+                        text = "IMDb",
+                        color = Color.Black,
+                        fontSize = (mark.value * .7f).sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                    )
+                } else {
+                    SiteMark(p.label, mark)
+                }
+                Text(
+                    text = p.value.orEmpty(),
+                    color = if (imdb) Color.Black else Color.White,
+                    fontSize = font,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+private val CHIP_BACK = Color(0x800B0D1A)
+private val IMDB_YELLOW = Color(0xFFF5C518)
+
+/** A score site's small mark (IMDb, the tomato, Metacritic's M, AniList's A, MAL), drawn without pictures */
+@Composable
+fun SiteMark(
+    label: String,
+    size: Dp,
+) {
+    val l = label.lowercase()
+    val word = (size.value * .62f).sp
+    when {
+        l == "imdb" -> {
+            MarkWord("IMDb", Color(0xFFF5C518), Color.Black, word, RoundedCornerShape(3.dp))
+        }
+
+        l == "mal" || "myanimelist" in l -> {
+            MarkWord("MAL", Color(0xFF2E51A2), Color.White, word, RoundedCornerShape(3.dp))
+        }
+
+        "rotten" in l || l == "critics" -> {
+            Box(Modifier.size(size)) {
+                Box(Modifier.size(size).background(Color(0xFFE8340F), CircleShape))
+                Box(
+                    Modifier
+                        .offset(x = size * .3f, y = -size * .12f)
+                        .size(width = size * .42f, height = size * .26f)
+                        .background(Color(0xFF3AA33A), RoundedCornerShape(50)),
+                )
+            }
+        }
+
+        "metacritic" in l -> {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(size)
+                        .background(Color(0xFF111111), CircleShape)
+                        .border(1.5.dp, Color(0xFFFFCC34), CircleShape),
+            ) { Text("M", color = Color.White, fontSize = word, fontWeight = FontWeight.Black, maxLines = 1) }
+        }
+
+        l == "anilist" -> {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(size).background(Color(0xFF152232), RoundedCornerShape(3.dp)),
+            ) { Text("A", color = Color(0xFF02A9FF), fontSize = word * 1.2f, fontWeight = FontWeight.Black, maxLines = 1) }
+        }
+
+        else -> {
+            Text(
+                text = label,
+                color = BenflixColors.Soft,
+                fontSize = word * 1.3f,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MarkWord(
+    text: String,
+    box: Color,
+    ink: Color,
+    size: TextUnit,
+    shape: RoundedCornerShape,
+) {
+    Text(
+        text = text,
+        color = ink,
+        fontSize = size,
+        fontWeight = FontWeight.Black,
+        maxLines = 1,
+        modifier = Modifier.background(box, shape).padding(horizontal = 3.dp, vertical = 1.dp),
+    )
 }
 
 @EntryPoint

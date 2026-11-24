@@ -171,10 +171,13 @@ internal fun LazyListScope.bookShelfItems(
     if (d == null) {
         item(key = "bs-loading") {
             if (problem != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Couldn't load the book lists. $problem", color = BenflixColors.Soft, fontSize = BenflixType.body)
-                    MusicButton("Try again", BenflixIcon.REFRESH, onClick = onRetry)
-                }
+                // New look: the soft picture, one sentence and one white button
+                com.github.damontecres.wholphin.ui.components.ProblemPage(
+                    title = "Couldn't load the book lists",
+                    line = problem,
+                    icon = BenflixIcon.BOOK,
+                    onClick = onRetry,
+                )
             } else {
                 Text("Loading the book lists…", color = BenflixColors.Muted, fontSize = BenflixType.body)
             }
@@ -350,13 +353,23 @@ internal fun CoverRow(
     onOpen: (BookCard) -> Unit,
     onAsk: ((BookCard) -> Unit)?,
     edge: Dp = 0.dp,
+    /** TV: tells the page which cover you're on, for its top (Glowfin new look, Manga) */
+    onFocus: ((BookCard) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
         Box(Modifier.padding(start = edge)) { ShelfTitle(title) }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = edge, vertical = 4.dp)) {
             // The index too, so the same book twice in one row (older Tower helpers) can't crash the page
             itemsIndexed(items, key = { i, c -> "$title-$i-" + c.key }) { _, c ->
-                AskCover(c, if (wide) 124.dp else 100.dp, ranked, onClick = { onOpen(c) }, onLongClick = onAsk?.let { { it(c) } })
+                AskCover(
+                    c,
+                    if (wide) 124.dp else 100.dp,
+                    ranked,
+                    onClick = { onOpen(c) },
+                    onLongClick = onAsk?.let { { it(c) } },
+                    modifier = if (onFocus != null) Modifier.onFocusChanged { if (it.hasFocus) onFocus(c) } else Modifier,
+                )
             }
         }
     }
@@ -369,8 +382,9 @@ private fun AskCover(
     ranked: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(width)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.width(width)) {
         Box {
             Surface(
                 onClick = onClick,
@@ -733,8 +747,12 @@ fun BookAboutPage(
         Column(Modifier.fillMaxSize().padding(edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(name, color = BenflixColors.Text, fontSize = BenflixType.hero, fontWeight = FontWeight.ExtraBold)
             if (problem != null) {
-                Text(problem!!, color = BenflixColors.Soft, fontSize = BenflixType.body)
-                MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::reload)
+                com.github.damontecres.wholphin.ui.components.ProblemPage(
+                    title = "Couldn't look this book up",
+                    line = problem!!,
+                    icon = BenflixIcon.BOOK,
+                    onClick = viewModel::reload,
+                )
             } else {
                 Text("Looking it up…", color = BenflixColors.Muted, fontSize = BenflixType.body)
             }

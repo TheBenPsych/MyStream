@@ -164,6 +164,7 @@ internal fun BigClock(scale: Float) {
                     blurRadius = 10f,
                 ),
         )
+    // Ben 2026-11-23: the clock is nicer with no pill behind it, just the soft shadow
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = time,
@@ -195,7 +196,7 @@ fun focusRing(shape: androidx.compose.ui.graphics.Shape) =
     ClickableSurfaceDefaults.border(
         focusedBorder =
             Border(
-                border = BorderStroke(2.5.dp, BenflixColors.Focus),
+                border = BorderStroke(2.5.dp, BenflixColors.Outline),
                 shape = shape,
             ),
     )

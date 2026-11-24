@@ -10,7 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -20,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 
@@ -28,10 +29,12 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 val GlowfinNumberFont = FontFamily(Font(R.font.glowfin_anton, FontWeight.Normal))
 
 /**
- * Ben's Top 10 look (T1, 2026-11-18): a tall Anton number filled with the Glowfin violet > blue > aqua glow.
- * Ben's rule for every Top 10 row: the number sits fully BESIDE its poster (never tucked behind it), and every
- * number gets the same width box, so the thin "1" is as easy to see as "10". Drawn once, it never moves.
- * Used by Movies, Shows, Anime, Home, and later the Requests "Top 10 to ask for" row.
+ * Ben's Top 10 look ("Glow outline", 2026-11-22): a hollow Anton number outlined in the Glowfin colours running
+ * left to right (violet > blue > aqua), as tall as the poster. Ben 2026-11-23: always hollow, on TVs, phones and
+ * the browser, even when the poster beside it has the focus (it never fills in).
+ * Ben's rule for every Top 10 row: the number sits fully
+ * BESIDE its poster (never tucked behind it), and every number gets the same width box. "10" is drawn slimmer so
+ * it is as tall as the single numbers and fits the same box. Cheap to draw: one text layout, no blur.
  */
 @Composable
 fun GlowRankNumber(
@@ -50,43 +53,47 @@ fun GlowRankNumber(
                 val layout =
                     measurer.measure(
                         text = rank.toString(),
-                        style =
-                            TextStyle(
-                                fontFamily = GlowfinNumberFont,
-                                fontSize = fontSize,
-                                // "10" squeezes in a touch so it fits the same box as the single numbers
-                                letterSpacing = if (rank >= 10) (-0.03).em else 0.em,
-                            ),
+                        style = TextStyle(fontFamily = GlowfinNumberFont, fontSize = fontSize),
                     )
-                val x = (size.width - layout.size.width) / 2f
-                val top = size.height - numberHeight.toPx()
-                // Baseline on the poster's bottom edge
-                val y = size.height - layout.firstBaseline
+                val stroke = (posterHeight * OUTLINE_SHARE).toPx().coerceAtLeast(1.5f)
+                val textWidth = layout.size.width.toFloat()
+                // Squeeze wide numbers ("10") sideways so every number fills the same box at the same height
+                val squeeze = ((size.width - stroke) / textWidth).coerceAtMost(1f)
+                val x = (size.width - textWidth) / 2f
+                // Baseline on the poster's bottom edge (less half the outline, so nothing is cut off)
+                val y = size.height - layout.firstBaseline - stroke / 2f
                 val brush =
-                    Brush.linearGradient(
+                    Brush.horizontalGradient(
                         0f to Glowfin.Violet,
-                        0.6f to Glowfin.Blue,
+                        0.5f to Glowfin.Blue,
                         1f to Glowfin.Aqua,
-                        start = Offset(x, top),
-                        end = Offset(x + layout.size.width * 0.5f, size.height),
+                        startX = x,
+                        endX = x + textWidth,
                     )
-                val shadow = Shadow(Glowfin.Violet.copy(alpha = 0.45f), Offset.Zero, 6.dp.toPx())
-                onDrawBehind { drawText(layout, brush, Offset(x, y), shadow = shadow) }
+                val outline = Stroke(width = stroke, join = StrokeJoin.Round)
+                onDrawBehind {
+                    withTransform({ scale(squeeze, 1f, pivot = Offset(size.width / 2f, 0f)) }) {
+                        drawText(layout, brush, Offset(x, y), drawStyle = outline)
+                    }
+                }
             },
     )
 }
 
-/** The same width for every number's box (wide enough for "10"), from the poster's height */
-fun rankBoxWidth(posterHeight: Dp): Dp = posterHeight * RANK_HEIGHT_SHARE * RANK_BOX_SHARE
+/** The same width for every number's box (wide enough for "10" once squeezed), from the poster's height */
+fun rankBoxWidth(posterHeight: Dp): Dp = posterHeight * RANK_BOX_SHARE
 
-/** The number stands about half the poster's height */
-private const val RANK_HEIGHT_SHARE = 0.52f
+/** The number stands nearly the poster's full height */
+private const val RANK_HEIGHT_SHARE = 0.92f
 
 /** Anton's capital (and number) height, as a share of its size */
 private const val ANTON_CAP_HEIGHT = 0.86f
 
-/** "10" in Anton is a little less wide than tall: the box is just wider than that */
-private const val RANK_BOX_SHARE = 1.0f
+/** Box width as a share of the poster's height (about the same room the old half-height numbers took) */
+private const val RANK_BOX_SHARE = 0.5f
+
+/** The outline's thickness as a share of the poster's height (about 2.5 dp on a TV poster) */
+private const val OUTLINE_SHARE = 0.017f
 
 /** The gap between a number and its poster */
 val RankGap = 6.dp

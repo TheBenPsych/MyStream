@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -770,8 +771,8 @@ fun NavDrawer(
                             .weight(1f)
                             .fillMaxWidth()
                             .padding(
-                                start = if (destination.fullBleed()) 0.dp else 16.dp,
-                                end = if (destination.fullBleed()) 0.dp else 8.dp,
+                                start = if (destination.fullBleed() && destination !is Destination.Requests) 0.dp else 16.dp,
+                                end = if (destination.fullBleed() && destination !is Destination.Requests) 0.dp else 8.dp,
                             ),
                 )
                 // Benflix music: a slim bar along the bottom while music plays
@@ -934,6 +935,11 @@ fun NavDrawer(
             onUpdate = { nav.navigateTo(Destination.UpdateApp) },
             isTop = { nav.backStack.lastOrNull() == destination },
         )
+    val pushPx = with(androidx.compose.ui.platform.LocalDensity.current) { railPush(easy).toPx() }
+    val railPushNow: () -> Float =
+        remember(railControl, pushPx, alwaysOpen) {
+            { if (alwaysOpen) 0f else (railControl.fade?.value ?: 0f) * pushPx }
+        }
     val header: @Composable () -> Unit = {
         BenflixPageHeader(
             destination = destination,
@@ -944,6 +950,7 @@ fun NavDrawer(
             big = easy,
             overPicture = underBar,
             downTarget = if (underBar) LocalTopBarDown.current else null,
+            showBack = !isTv,
             modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
         )
     }
@@ -985,56 +992,64 @@ fun NavDrawer(
             Modifier
                 .fillMaxSize()
                 .padding(start = railWidth)
+                // Side menu A (Ben 2026-11-24, like Wholphin): the open menu pushes the page right. Only the layer
+                // moves (read while drawing), so the page is never measured again during the slide.
+                .graphicsLayer { translationX = railPushNow() }
                 .onFocusChanged { railControl.contentFocused = it.hasFocus }
                 .focusRequester(contentFocus)
                 .focusRestorer(),
         ) {
-            if (downloadsOpen) {
-                com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
-                    onClose = { downloadsOpen = false },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (underBar) {
-                // Door pages: the picture goes up behind the header, so the header sits on top of the page
-                val topBarDown = remember(destination) { TopBarDown() }
-                Box(Modifier.fillMaxSize()) {
-                    CompositionLocalProvider(LocalTopBarOverlap provides barHeight, LocalTopBarDown provides topBarDown) {
-                        Column(Modifier.fillMaxSize()) {
-                            DestinationContent(
-                                destination = destination,
-                                preferences = preferences,
-                                onClearBackdrop = onClearBackdrop,
-                                me = meModel,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                        .padding(
-                                            start = pageStart(destination),
-                                            end = if (destination.fullBleed()) 0.dp else 16.dp,
-                                        ),
-                            )
-                        }
-                        header()
-                    }
-                }
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    header()
-                    DestinationContent(
-                        destination = destination,
-                        preferences = preferences,
-                        onClearBackdrop = onClearBackdrop,
-                        me = meModel,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(
-                                    start = pageStart(destination),
-                                    end = if (destination.fullBleed()) 0.dp else 16.dp,
-                                ),
+            CompositionLocalProvider(
+                LocalRailBleed provides if (alwaysOpen) 0.dp else railWidth,
+                LocalRailPush provides railPushNow,
+            ) {
+                if (downloadsOpen) {
+                    com.github.damontecres.wholphin.ui.downloads.DownloadsPage(
+                        onClose = { downloadsOpen = false },
+                        modifier = Modifier.fillMaxSize(),
                     )
+                } else if (underBar) {
+                    // Door pages: the picture goes up behind the header, so the header sits on top of the page
+                    val topBarDown = remember(destination) { TopBarDown() }
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(LocalTopBarOverlap provides barHeight, LocalTopBarDown provides topBarDown) {
+                            Column(Modifier.fillMaxSize()) {
+                                DestinationContent(
+                                    destination = destination,
+                                    preferences = preferences,
+                                    onClearBackdrop = onClearBackdrop,
+                                    me = meModel,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .padding(
+                                                start = pageStart(destination),
+                                                end = if (destination.fullBleed()) 0.dp else 16.dp,
+                                            ),
+                                )
+                            }
+                            header()
+                        }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        header()
+                        DestinationContent(
+                            destination = destination,
+                            preferences = preferences,
+                            onClearBackdrop = onClearBackdrop,
+                            me = meModel,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(
+                                        start = pageStart(destination),
+                                        end = if (destination.fullBleed()) 0.dp else 16.dp,
+                                    ),
+                        )
+                    }
                 }
             }
         }

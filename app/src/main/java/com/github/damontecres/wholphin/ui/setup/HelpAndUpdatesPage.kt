@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,7 +31,9 @@ import com.github.damontecres.wholphin.ui.main.HowToPage
 import com.github.damontecres.wholphin.ui.nav.APP_PROBLEMS
 import com.github.damontecres.wholphin.ui.preferences.GlowfinListRow
 import com.github.damontecres.wholphin.ui.preferences.GlowfinPageHeading
+import com.github.damontecres.wholphin.ui.preferences.GlowfinRightPanel
 import com.github.damontecres.wholphin.ui.preferences.GlowfinSideListPanel
+import com.github.damontecres.wholphin.ui.preferences.glowfinDimmedPage
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -101,9 +102,10 @@ fun HelpAndUpdatesPage(
         }
     }
     if (isTv) {
-        Row(horizontalArrangement = Arrangement.spacedBy(28.dp), modifier = modifier.fillMaxSize().background(Glowfin.Ink)) {
+        // New look: same as Settings, pills on the left and the page in a tall right-hand panel
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier.fillMaxSize().glowfinDimmedPage()) {
             GlowfinSideListPanel { list(Modifier.fillMaxSize()) }
-            open?.let { page(it, Modifier.weight(1f).fillMaxHeight().padding(end = 32.dp)) }
+            GlowfinRightPanel(Modifier.weight(1f)) { open?.let { page(it, Modifier.fillMaxSize()) } }
         }
     } else {
         val section = open

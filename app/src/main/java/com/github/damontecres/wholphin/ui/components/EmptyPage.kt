@@ -1,17 +1,12 @@
 package com.github.damontecres.wholphin.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,8 +20,8 @@ import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /**
- * One look for every page that has nothing to show (Ben 2026-11-20): the page's icon in a soft tile, a plain
- * heading, one or two lines saying why, and buttons for what to do next. On a TV the icon sits beside the
+ * One look for every page that has nothing to show (Ben 2026-11-20): a soft picture with the page's icon, a plain
+ * heading, one or two lines saying why, and buttons for what to do next (the first one solid white). On a TV the icon sits beside the
  * words; on a phone everything is stacked in the middle.
  */
 @Composable
@@ -39,17 +34,10 @@ fun EmptyPage(
     buttons: (@Composable () -> Unit)? = null,
 ) {
     val isTv = rememberIsTv()
+    // New look (Ben 2026-11-22): a soft little picture instead of a plain grey tile
     val tile: @Composable () -> Unit = {
-        val shape = RoundedCornerShape(if (isTv) 30.dp else 22.dp)
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(if (isTv) 112.dp else 80.dp)
-                    .background(BenflixColors.Panel, shape)
-                    .border(1.dp, BenflixColors.Line, shape),
-        ) {
-            BenflixIconImage(icon, BenflixColors.Focus, if (isTv) 52.dp else 38.dp)
+        SoftArtTile {
+            BenflixIconImage(icon, BenflixColors.Text, if (isTv) 44.dp else 34.dp)
         }
     }
     val words: @Composable (TextAlign) -> Unit = { align ->
@@ -109,4 +97,36 @@ fun EmptyPage(
             }
         }
     }
+}
+
+/**
+ * Glowfin new look "Friendly empty and error pages" (Ben 2026-11-22): a page that couldn't load gets the soft
+ * picture, one plain sentence and one clear white button, instead of grey text.
+ */
+@Composable
+fun ProblemPage(
+    title: String,
+    line: String,
+    modifier: Modifier = Modifier,
+    buttonLabel: String = "Try again",
+    icon: BenflixIcon = BenflixIcon.WARNING,
+    onClick: (() -> Unit)? = null,
+) {
+    EmptyPage(
+        icon = icon,
+        title = title,
+        line = line,
+        modifier = modifier,
+        buttons =
+            onClick?.let {
+                {
+                    com.github.damontecres.wholphin.ui.music.MusicButton(
+                        label = buttonLabel,
+                        icon = BenflixIcon.REFRESH,
+                        onClick = it,
+                        primary = true,
+                    )
+                }
+            },
+    )
 }

@@ -171,6 +171,21 @@ class TitleMoreItem(
     val youOnly: Boolean = false,
 )
 
+/** "Use the name instead" / "Use the logo again" in More (Ben's "fresh" pick, item 12). Kept on this device. */
+fun logoChoiceItem(
+    context: android.content.Context,
+    id: java.util.UUID,
+    nameInstead: Boolean,
+): TitleMoreItem =
+    TitleMoreItem(
+        if (nameInstead) "Use the logo again" else "Use the name instead",
+        BenflixIcon.IMAGE,
+        {
+            com.github.damontecres.wholphin.ui.components.LogoChoice
+                .set(context, id, !nameInstead)
+        },
+    )
+
 /** True when the page should use the fixed TV layout (TVs, and phones or tablets turned on their side) */
 @Composable
 fun rememberTitleWide(): Boolean {
@@ -213,8 +228,13 @@ fun TitlePage(
     tagline: String? = null,
     /** Small picture and sound tags after the info line: "4K", "Dolby Vision", "Atmos", "CC" */
     chips: List<String> = emptyList(),
+    /** Movies and shows on Glowfin: "94% for you" under the score pill (Idea Box 28) */
+    matchId: java.util.UUID? = null,
+    /** Details pages: asks Tower for a logo when there's none or it won't load (Ben 2026-11-24) */
+    findLogo: (suspend () -> String?)? = null,
 ) {
-    val extras = remember(logoUrl, tagline, chips) { TitleExtras(logoUrl, tagline, chips) }
+    val extras =
+        remember(logoUrl, tagline, chips, matchId, findLogo) { TitleExtras(logoUrl, tagline, chips, matchId, findLogo) }
     CompositionLocalProvider(LocalTitleExtras provides extras) {
         TitlePageBody(
             title,
@@ -242,6 +262,8 @@ internal data class TitleExtras(
     val logoUrl: String? = null,
     val tagline: String? = null,
     val chips: List<String> = emptyList(),
+    val matchId: java.util.UUID? = null,
+    val findLogo: (suspend () -> String?)? = null,
 )
 
 internal val LocalTitleExtras = compositionLocalOf { TitleExtras() }
@@ -640,9 +662,14 @@ private fun PhoneTitlePage(
 internal fun BoxScope.TitlePictureView(
     picture: TitlePicture,
     wide: Boolean,
+    /** Details pages ("fresh" pick): only a soft shadow at the bottom left, the rest of the art stays bright */
+    soft: Boolean = false,
+    /** Details pages: told when the picture is very bright (it is then turned down a little) */
+    onBright: (Boolean) -> Unit = {},
 ) {
     val imageUrlService = LocalImageUrlService.current
     val width = LocalConfiguration.current.screenWidthDp
+    var lightUrl: String? = null
     when (picture) {
         is TitlePicture.Backdrop -> {
             val item = picture.item
@@ -651,6 +678,7 @@ internal fun BoxScope.TitlePictureView(
                 remember(item.id) {
                     imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = (width * 2).coerceAtMost(1920))
                 }
+            lightUrl = url
             if (url != null) {
                 AsyncImage(
                     model = url,
@@ -663,6 +691,7 @@ internal fun BoxScope.TitlePictureView(
         }
 
         is TitlePicture.Wide -> {
+            lightUrl = picture.url
             if (picture.url != null) {
                 AsyncImage(
                     model = picture.url,
@@ -717,7 +746,15 @@ internal fun BoxScope.TitlePictureView(
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier =
-                        if (wide) {
+                        if (wide && soft) {
+                            // Big covers for music and books, on the right, with their colours behind
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 92.dp, end = 72.dp)
+                                .fillMaxHeight(if (picture.ratio >= 1f) .56f else .66f)
+                                .aspectRatio(picture.ratio)
+                                .clip(RoundedCornerShape(10.dp))
+                        } else if (wide) {
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(top = 48.dp, end = 64.dp)
@@ -734,7 +771,25 @@ internal fun BoxScope.TitlePictureView(
             }
         }
     }
-    if (picture !is TitlePicture.Cover) {
+    if (picture !is TitlePicture.Cover && soft) {
+        // Very bright pictures (snow, beaches, a white sky) are turned down a little so the white words stay clear
+        val light = rememberImageLight(lightUrl)
+        val bright = light != null && light > BRIGHT_ART
+        LaunchedEffect(bright) { onBright(bright) }
+        if (bright) Box(Modifier.fillMaxSize().background(BenflixColors.Tray.copy(alpha = .2f)))
+        Box(
+            Modifier.fillMaxSize().background(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    // Ben 2026-11-23: deeper, from the screen's edge under the side menu
+                    0f to BenflixColors.Tray.copy(alpha = .92f),
+                    .15f to BenflixColors.Tray.copy(alpha = .78f),
+                    .4f to BenflixColors.Tray.copy(alpha = .42f),
+                    .68f to Color.Transparent,
+                ),
+            ),
+        )
+        Box(Modifier.fillMaxSize().background(BenflixShade.bottom(if (wide) .5f else .55f)))
+    } else if (picture !is TitlePicture.Cover) {
         Box(Modifier.fillMaxSize().background(BenflixShade.heroSide))
         Box(Modifier.fillMaxSize().background(BenflixShade.bottom(if (wide) .35f else .55f)))
     }
@@ -829,7 +884,122 @@ internal fun TitleWords(
  * Does a logo this shape (width / height) read well in the title's spot? Very wide ones (long anime
  * names) shrink to a thin strip, and tall or square ones turn into a small busy stamp.
  */
-internal fun logoFits(ratio: Float): Boolean = ratio in 1.3f..5.5f
+internal fun logoFits(ratio: Float): Boolean = ratio in 2f..5f
+
+/**
+ * Glowfin details pages (Ben's "fresh" pick): the title box. Always the same size and spot, so the page never
+ * moves. The logo shows only when it's about 2 to 5 times wider than tall; otherwise (stacked, square, very
+ * thin, or no logo) the name shows as text, getting smaller for long names: up to 3 lines on TV, 4 on phones.
+ * No original name and no colour line under it.
+ */
+@Composable
+internal fun TitleBox(
+    title: String,
+    wide: Boolean,
+    modifier: Modifier = Modifier,
+    height: Dp = if (wide) 72.dp else 64.dp,
+    width: Dp = if (wide) 320.dp else 260.dp,
+    /**
+     * Ben 2026-11-23 (logo plan): details pages show the full logo in any shape (stacked, square, very wide), shrunk
+     * to fit this fixed box. The name shows only when there's no logo or it won't load.
+     */
+    anyShape: Boolean = false,
+) {
+    val extras = LocalTitleExtras.current
+    // The logo being shown: the title's own, or (details pages) one Tower found when it had none or it broke
+    var logoUrl by remember(extras.logoUrl) { mutableStateOf(extras.logoUrl) }
+    var asked by remember(extras.logoUrl) { mutableStateOf(false) }
+    var logoReady by remember(logoUrl) { mutableStateOf(false) }
+    val findLogo = extras.findLogo
+    LaunchedEffect(logoUrl, asked) {
+        if (logoUrl == null && !asked && anyShape && findLogo != null) {
+            asked = true
+            val found = findLogo()
+            if (found != null && found != extras.logoUrl) logoUrl = found
+        }
+    }
+    // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
+    val logoLight = rememberImageLight(logoUrl)
+    val whiteLogo = logoLight != null && logoLight < DARK_LOGO
+    Box(contentAlignment = Alignment.BottomStart, modifier = modifier.height(height).widthIn(max = width)) {
+        val shown = logoUrl
+        if (shown != null) {
+            AsyncImage(
+                model = shown,
+                contentDescription = title,
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.BottomStart,
+                onSuccess = {
+                    val w = it.result.image.width
+                    val h = it.result.image.height
+                    if (h <= 0 || w <= 0 || (!anyShape && !logoFits(w.toFloat() / h))) logoUrl = null else logoReady = true
+                },
+                onError = { logoUrl = null },
+                colorFilter =
+                    if (whiteLogo) {
+                        androidx.compose.ui.graphics.ColorFilter
+                            .tint(BenflixColors.Text)
+                    } else {
+                        null
+                    },
+                modifier = Modifier.height(height).widthIn(max = width).alpha(if (logoReady) 1f else 0f),
+            )
+        }
+        // (any-shape logos: nothing shows while the logo loads, so the name never flashes up first)
+        if (logoUrl == null || (!logoReady && !anyShape)) {
+            val lines = if (wide) 3 else 4
+            val start =
+                when {
+                    title.length <= 16 -> if (wide) 36.sp else 30.sp
+                    title.length <= 30 -> if (wide) 28.sp else 24.sp
+                    else -> if (wide) 22.sp else 20.sp
+                }
+            // Long names shrink until they fit the box (never cut off unless they are very, very long)
+            var size by remember(title, wide) { mutableStateOf(start) }
+            Text(
+                text = title,
+                color = BenflixColors.Text,
+                fontSize = size,
+                lineHeight = size * 1.08f,
+                fontFamily = com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = lines,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (it.hasVisualOverflow && size.value > 15f) size = (size.value - 2f).sp },
+            )
+        }
+    }
+}
+
+/**
+ * The story you can open (Ben's "fresh" pick): the full story plus the details (studio, first aired,
+ * country, genres, and the file and size for the admin) in one tall panel from the right. Back closes it.
+ */
+@Composable
+internal fun TitleDetailsPanel(
+    title: String,
+    story: String?,
+    details: List<TitleTab>,
+    onDismiss: () -> Unit,
+) {
+    BenflixPanelDialog(onDismissRequest = onDismiss) {
+        val close = remember { FocusRequester() }
+        LaunchedEffect(Unit) { close.tryRequestFocus() }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+        ) {
+            Text("Story and details", color = BenflixColors.Text, fontSize = BenflixType.rowName, fontWeight = FontWeight.ExtraBold)
+            Text(title, color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold)
+            if (!story.isNullOrBlank()) {
+                Text(story, color = BenflixColors.Soft, fontSize = BenflixType.body, lineHeight = BenflixType.body * 1.5f)
+            }
+            val scope = remember { TitleTabScope(side = 0.dp, wide = false) }
+            details.forEach { it.content(scope) }
+            TitleTextLink("Close", onClick = onDismiss, modifier = Modifier.focusRequester(close))
+        }
+    }
+}
 
 /** "4K" "Dolby Vision" "Atmos" "CC": small quiet tags saying what you're about to get */
 @Composable
@@ -902,9 +1072,11 @@ internal fun TitleButtonView(
     fill: Boolean = false,
     onOffTap: (String) -> Unit = {},
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    // Glowfin "fresh" pick: round buttons. The main one is solid white; the rest are see-through so the art
+    // shows through them (a plain see-through fill, no blur, so it stays smooth on weak TVs).
+    val shape = RoundedCornerShape(50)
     val primaryFill = BenflixColors.Text
-    val container = if (primary) primaryFill else BenflixColors.FocusRow.copy(alpha = .92f)
+    val container = if (primary) primaryFill else Color.White.copy(alpha = .14f)
     val content =
         if (primary) {
             BenflixColors.Tray
@@ -919,7 +1091,7 @@ internal fun TitleButtonView(
             ClickableSurfaceDefaults.colors(
                 containerColor = container,
                 contentColor = content,
-                focusedContainerColor = if (primary) primaryFill else BenflixColors.PanelHigh,
+                focusedContainerColor = if (primary) primaryFill else Color.White.copy(alpha = .3f),
                 focusedContentColor = content,
                 pressedContainerColor = container,
                 pressedContentColor = content,
@@ -928,6 +1100,7 @@ internal fun TitleButtonView(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
+                .then(if (primary) Modifier else Modifier.border(1.dp, Color.White.copy(alpha = .22f), shape))
                 .alpha(if (off != null) .45f else 1f)
                 .onFocusChanged { onFocus(it.isFocused) },
     ) {
@@ -968,7 +1141,7 @@ internal fun TitleButtonView(
             Box(
                 Modifier
                     .matchParentSize()
-                    .padding(start = 14.dp, end = 14.dp, bottom = 6.dp),
+                    .padding(start = 18.dp, end = 18.dp, bottom = 5.dp),
             ) {
                 Box(
                     Modifier

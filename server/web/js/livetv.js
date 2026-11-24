@@ -78,7 +78,8 @@ const minsLeft = (p) => Math.max(0, Math.round((new Date(p.EndDate) - Date.now()
 B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   // Kids don't get live channels, like the TV and phone app: live programmes have no age ratings
   if (B.me.kids) return B.go("#/home");
-  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top" id="liveTop" style="height:auto;min-height:250px;padding-bottom:20px"><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner("rows")}</div>`;
+  // New look (Part 4): what's on now fills the window (big events and sports first), the guide peeks under it
+  B.page().innerHTML = B.top("Live TV", DOORS.live.color) + `<section class="door-top live-top" id="liveTop"><div class="art" id="liveArt"></div><div class="info" id="liveInfo"></div></section><div class="rows" id="rows">${B.spinner("rows")}</div>`;
   B.wireTop();
   let list, prefs;
   try { [list, prefs] = await Promise.all([B.channels(), chPrefs.read()]); }
@@ -92,17 +93,59 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
   // Ben (2026-11-16): no separate Favourites row; favourites are the first channels in the guide
   // (and the "★ Favourites" chip shows just them)
   const view = new URLSearchParams(m[1] || "").get("v") || "guide";
+  if (view === "sports") return B.sportsTab(list, nav);
+  const myTeams = await B.teamsMine().catch(() => null);
   const onlyFavs = view === "fav", onlyRecent = view === "recent";
   // Favourites and Recently watched show only those channels; Guide shows everything (favourites first)
   const shown = onlyFavs ? favs : onlyRecent ? recent : [...favs, ...list.filter((c) => !hidden.has(c._type) && !favs.includes(c))];
+  // The show the page opens on (Ben's note: big events and sports on now first), the same points as the TV app
+  const SPORT = [" vs ", " vs. ", " v ", " at ", "football", "basketball", "baseball", "hockey", "soccer", "nfl", "nba", "mlb", "nhl", "mls", "ncaa", "ufc", "boxing", "wrestling", "golf", "tennis", "racing", "nascar", "grand prix", "formula 1", "f1 ", "match", "game ", "playoff", "bowl", "cup", "olympic"];
+  const EVENT = ["live", "premiere", "finale", "special", "awards", "parade", "election", "debate", "breaking", "concert", "championship", "final", "countdown", "ceremony"];
+  const score = (c, p) => {
+    if (!p) return -1000;
+    if (!c._progs.length) return -100 + (prefs.favourites.includes(c.Name) ? 5 : 0);
+    const n = ` ${(p.Name || "").toLowerCase()} `;
+    let s2 = 0;
+    if (p.IsSports || c._type === "Sports" || SPORT.some((w) => n.includes(w))) s2 += 40;
+    if (p.IsLive) s2 += 25;
+    if (p.IsPremiere) s2 += 15;
+    if (EVENT.some((w) => n.includes(w))) s2 += 12;
+    if (prefs.favourites.includes(c.Name)) s2 += 6;
+    const r = prefs.recent.indexOf(c.Name);
+    if (r >= 0) s2 += Math.max(1, 4 - r);
+    if (new Date(p.EndDate) - Date.now() < 5 * 60000) s2 -= 20;
+    return s2;
+  };
+  const pickNow = () => {
+    let best = null, bestS = -Infinity;
+    list.filter((c) => !hidden.has(c._type) || favs.includes(c)).forEach((c) => { const sc = score(c, nowOn(c)); if (sc > bestS) { best = c; bestS = sc; } });
+    return best;
+  };
+  let artFor = "";
+  const setArt = (p, c) => {
+    const el = $("#liveArt"); if (!el) return;
+    const want = p && p.Id && c._progs.length ? B.img(p.Id, "Primary", { w: 1280 }) : "";
+    if (want === artFor) return;
+    artFor = want; el.classList.remove("on");
+    if (!want) return;
+    const im = new Image();
+    im.onload = () => { if (artFor === want && $("#liveArt")) { el.style.backgroundImage = `url("${want}")`; el.classList.add("on"); } };
+    im.src = want;
+  };
   const describe = (c) => {
-    if (!$("#liveInfo")) return; // already left the page
-    const p = nowOn(c), next = c._progs.find((x) => new Date(x.StartDate) > Date.now());
-    $("#liveInfo").innerHTML = `<div class="meta">${p ? `<span class="livep">● LIVE</span>` : ""}${esc(c.ChannelNumber || "")} · ${esc(c.Name)} · ${esc(c._type)}</div>
+    if (!$("#liveInfo") || !c) return; // already left the page
+    const p = nowOn(c);
+    const fav = prefs.favourites.includes(c.Name);
+    const pct = p ? Math.round(Math.max(0, Math.min(1, (Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate)))) * 100) : 0;
+    const kind = p && p.IsSports ? "Sports" : p && p.IsNews ? "News" : p && p.IsMovie ? "Movie" : p && p.IsKids ? "Kids" : c._type;
+    const hasGuide = c._progs.length > 0;
+    $("#liveInfo").innerHTML = `<div class="lt-ch">${logo(c, 80) ? `<span class="lt-plate"><img src="${logo(c, 80)}" alt=""></span>` : ""}<b>${esc(c.ChannelNumber || "")} ${esc(c.Name)}</b></div>
       <div class="t">${esc(p ? p.Name : c.Name)}</div>
-      ${p ? `<div class="meta"><span>${B.clock(new Date(p.StartDate))} – ${B.clock(new Date(p.EndDate))}</span><span>${minsLeft(p)} min left</span>${next ? `<span>Next: ${esc(next.Name)} at ${B.clock(new Date(next.StartDate))}</span>` : ""}</div>
-      <div class="livebar"><i style="width:${Math.round(Math.max(0, Math.min(1, (Date.now() - new Date(p.StartDate)) / (new Date(p.EndDate) - new Date(p.StartDate)))) * 100)}%"></i></div>` : ""}
-      <div class="ov">${esc((p && p.Overview) || c.Overview || "Live channel")}</div>`;
+      <div class="meta"><span>Now</span>${p && hasGuide ? `<span>${B.clock(new Date(p.StartDate))} to ${B.clock(new Date(p.EndDate))}</span>` : ""}${kind && kind !== "More channels" ? `<span>${esc(kind)}</span>` : ""}</div>
+      <div class="lt-tags"><span class="lt-live">LIVE</span>${p && B.isMyTeam(myTeams, p.Name + " " + (p.EpisodeTitle || "")) ? '<span class="team-tag">Your team</span>' : ""}${p && hasGuide ? `<span class="dt-tag">Ends ${B.clock(new Date(p.EndDate))}</span>` : ""}</div>
+      <div class="ov">${esc((p && p.Overview) || c.Overview || "")}</div>
+      <div class="lt-btns"><a class="btn white lt-watch" href="#/watch/${c.Id}">${I("play")} Watch live${p && hasGuide ? `<i class="lt-prog"><b style="width:${pct}%"></b></i>` : ""}</a><button class="btn" data-a="guide">${I("list")} Full guide</button><button class="btn" data-a="fav" data-c="${esc(c.Id)}">${I("star")} ${fav ? "Favourite" : "Add to favourites"}</button></div>`;
+    setArt(p, c);
   };
   // the guide: 2 hours across, starting now
   const start = new Date(); start.setMinutes(start.getMinutes() < 30 ? 0 : 30, 0, 0);
@@ -122,7 +165,6 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
     }).join("")}<i class="nowl" style="left:${nowLeft()}%"></i></div></div>`).join("");
   const types = [...new Set(list.map((c) => c._type))];
   $("#rows").innerHTML = [
-    view === "guide" ? B.row("Recently watched", recent.map(chCard)) : "",
     `<section class="rowx"><h3>${onlyFavs ? "Favourites" : onlyRecent ? "Recently watched" : "Guide"}</h3>
       <div class="gridbar" style="--accent:${DOORS.live.color};top:var(--bar)"><input class="search-in" id="chSearch" placeholder="Channel name or number">
       ${view === "guide" ? `${favs.length ? `<button class="chip" data-type="__fav">★ Favourites</button>` : ""}${types.map((t) => `<button class="chip" data-type="${esc(t)}">${esc(t)}</button>`).join("")}
@@ -130,12 +172,17 @@ B.route(/^\/live(?:\?(.*))?$/, async (m, nav) => {
       ${!shown.length ? `<div class="wrap empty">${onlyFavs ? "No favourites yet. Click a programme in the Guide and pick Add to favourites." : "No channels watched lately."}</div>` : ""}
       <div class="guide${narrow ? " nn" : ""}"><div class="ghead">${narrow ? `<span>Channel</span><span>Now</span><span>Next</span>` : `<span></span>`}<div class="times">${[0, 30, 60, 90].map((mm) => `<span style="left:${(mm / 120) * 100}%">${B.clock(new Date(t0 + mm * 60000))}</span>`).join("")}</div></div><div id="gRows">${guideRows(shown.slice(0, 120))}</div></div></section>`,
   ].join("");
-  describe(favs[0] || recent[0] || shown[0] || list[0]);
-  let timer;
-  const point = (e) => { const el = e.target.closest("[data-id],[data-ch]"); if (!el) return; const c = list.find((x) => x.Id === (el.dataset.id || el.dataset.ch)); if (!c) return; clearTimeout(timer); timer = setTimeout(() => describe(c), 250); };
-  B.page().addEventListener("mouseover", point);
-  B.page().addEventListener("focusin", point);
-  B.onLeave(() => { B.page().removeEventListener("mouseover", point); B.page().removeEventListener("focusin", point); });
+  // Guide tab: what's on now, big. Favourites and Recently watched: their first channel.
+  describe(view === "guide" ? pickNow() || shown[0] || list[0] : shown[0] || list[0]);
+  $("#liveTop").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    if (b.dataset.a === "guide") { const g = $(".guide"); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (b.dataset.a === "fav") {
+      const c = list.find((x) => x.Id === b.dataset.c); if (!c) return;
+      prefs = await B.toggleFav(c, prefs);
+      describe(c);
+    }
+  });
   let filtered = shown;
   const redraw = () => { $("#gRows").innerHTML = guideRows(filtered.slice(0, 300)); };
   $("#chSearch").oninput = (e) => {
@@ -364,3 +411,64 @@ B.route(/^\/watch\/([\w-]+)/, async (m, nav) => {
     if (info) B.jf("DELETE", `/Videos/ActiveEncodings?deviceId=${enc("benflix-web-" + B.me.device)}&playSessionId=${enc(info.PlaySessionId || "")}`).catch(() => {});
   });
 });
+
+// ---------- Follow your teams (Idea Box 28, Ben 2026-11-24): Live TV's Sports tab ----------
+// Your teams first (a card to pick them the first time, or your teams with Change), then Your team games from the
+// guide for the next 7 days, then what's on the sports channels now. Tower keeps each person's picks.
+B.teamsInfo = () => B.cached("teams-" + ((B.me && B.me.id) || ""), 300000, () => B.call("GET", "api/teams"));
+B.teamsMine = async () => {
+  const t = await B.teamsInfo();
+  const words = [...new Set((t.mine || []).flatMap((x) => x.words || []))].sort((a, b) => b.length - a.length);
+  return words.length ? new RegExp("(?<![\\w])(" + words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?![\\w])(?!\\s+State\\b)", "i") : null;
+};
+B.isMyTeam = (re, text) => !!(re && text && re.test(text));
+const teamBadge = (t, opts) => `<button class="team-badge${opts && opts.on ? " on" : ""}" ${opts && opts.attr ? opts.attr : ""} title="${esc(t.name)}"><span class="tb-c" style="background:${esc(t.colour)}">${esc(t.short)}${opts && opts.on ? '<i class="tb-tick">✓</i>' : ""}</span><small>${esc(t.nick)}</small></button>`;
+const gameWhen = (g) => {
+  const s = new Date(g.start), e = new Date(g.end), now = Date.now();
+  if (s <= now && e > now) return "on now";
+  const today = new Date().toDateString() === s.toDateString();
+  return (today ? "Today" : s.toLocaleDateString(undefined, { weekday: "long" })) + " " + B.clock(s);
+};
+const teamGameCard = (title, line, live, mine, href) => `<a class="game-card${mine ? " mine" : ""}" href="${esc(href)}"><div class="gc-top">${live ? '<span class="lt-live">LIVE</span>' : ""}${mine ? '<span class="team-tag">Your team</span>' : ""}</div><div><b>${esc(title)}</b><small>${esc(line)}</small></div></a>`;
+B.sportsTab = async (list, nav) => {
+  $("#liveTop") && $("#liveTop").remove();
+  const rows = $("#rows");
+  let info;
+  try { info = await B.call("GET", "api/teams"); } catch (e) { rows.innerHTML = '<div class="wrap"><div class="empty">Could not reach Tower for your teams. Try again in a minute.</div></div>'; return; }
+  if (!B.alive(nav)) return;
+  if (B.cache) delete B.cache["teams-" + B.me.id];
+  const mine = info.mine || [];
+  const re = await B.teamsMine().catch(() => null);
+  const games = mine.length ? ((await B.call("GET", "api/teams/games").catch(() => ({}))).games || []) : [];
+  if (!B.alive(nav)) return;
+  const sports = list.filter((c) => c._type === "Sports");
+  const teamsBlock = !mine.length && !info.notNow
+    ? `<div class="follow-card"><div><b>Follow your teams</b><p>Pick them once. Their games come first here, get a gold Your team tag, and Glowfin tells you when one starts.</p><div class="fc-btns"><button class="btn white" id="pickTeams">Pick teams</button><button class="btn" id="notNow">Not now</button></div></div></div>`
+    : `<div class="strip team-strip">${mine.map((t) => teamBadge(t, { attr: 'data-pick="1"' })).join("")}<button class="team-badge add" data-pick="1"><span class="tb-c">+</span><small>${mine.length ? "Change" : "Pick teams"}</small></button></div>`;
+  rows.innerHTML = `<section class="rowx at0"><h3>Your teams</h3>${teamsBlock}</section>
+    ${mine.length ? B.row("Your team games", games.map((g) => teamGameCard(g.title, `${g.channel} · ${gameWhen(g)}`, gameWhen(g) === "on now", true, `#/watch/${g.channelId}`))) || '<section class="rowx at0"><h3>Your team games</h3><div class="empty sm" style="padding:0 var(--gutter)">None of your teams are in the guide this week. Glowfin keeps looking, and tells you when one is on.</div></section>' : ""}
+    ${B.row("On now", sports.map((c) => { const p = nowOn(c); const name = p ? p.Name : "Live"; return teamGameCard(name, c.Name, true, B.isMyTeam(re, name), `#/watch/${c.Id}`); }))}`;
+  const pick = () => teamPicker(info, nav);
+  $$("[data-pick]", rows).forEach((b) => b.addEventListener("click", pick));
+  const pt = $("#pickTeams"); if (pt) pt.addEventListener("click", pick);
+  const nn = $("#notNow"); if (nn) nn.addEventListener("click", async () => { await B.call("POST", "api/teams", { notNow: true }).catch(() => null); B.sportsTab(list, nav); });
+};
+const teamPicker = (info, nav) => {
+  const chosen = new Set((info.mine || []).map((t) => t.id));
+  const all = {}; (info.leagues || []).forEach((lg) => lg.teams.forEach((t) => { all[t.id] = t; }));
+  let league = (info.leagues[0] || {}).key;
+  const draw = () => {
+    const lg = info.leagues.find((x) => x.key === league) || { teams: [] };
+    $("#rows").innerHTML = `<div class="wrap team-pick"><div class="h1">Your teams</div><p class="dim">Pick as many as you like. Each person picks their own.</p>
+      <nav class="ptabs tp-leagues">${info.leagues.map((x) => `<a href="javascript:void 0" class="${x.key === league ? "on" : ""}" data-lg="${esc(x.key)}">${esc(x.name)}</a>`).join("")}</nav>
+      <div class="tp-body"><div class="tp-grid2">${lg.teams.map((t) => teamBadge(t, { on: chosen.has(t.id), attr: `data-t="${esc(t.id)}"` })).join("")}</div>
+      <aside class="tp-picked"><small>PICKED</small><p>${chosen.size ? [...chosen].map((id) => esc((all[id] || {}).nick || id)).join(", ") : "No teams yet"}</p><button class="btn white" id="teamsDone">Done</button></aside></div></div>`;
+    $$("[data-lg]").forEach((a) => a.addEventListener("click", () => { league = a.dataset.lg; draw(); }));
+    $$("[data-t]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.t; if (chosen.has(id)) chosen.delete(id); else chosen.add(id); draw(); const again = $(`[data-t="${id}"]`); if (again) again.focus(); }));
+    $("#teamsDone").addEventListener("click", async () => {
+      await B.call("POST", "api/teams", { teams: [...chosen] }).catch(() => B.toast && B.toast("Could not save your teams. Is Tower on?"));
+      if (B.alive(nav)) B.sportsTab(await B.channels(), nav);
+    });
+  };
+  draw();
+};

@@ -45,6 +45,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitlePicture
 import com.github.damontecres.wholphin.ui.detail.title.TitlePosterRow
 import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTextLink
+import com.github.damontecres.wholphin.ui.detail.title.logoChoiceItem
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.detail.title.titleDetails
 import com.github.damontecres.wholphin.ui.door.lengthText
@@ -72,6 +73,8 @@ class MovieHeroActions(
     val openAsk: (DiscoverItem) -> Unit,
     /** Admin only: Change poster */
     val pickPoster: (() -> Unit)? = null,
+    /** Change logo in More (the poster picker on its logo tab) */
+    val pickLogo: (() -> Unit)? = null,
 )
 
 /**
@@ -107,7 +110,11 @@ fun MovieHeroContent(
             null
         }
     val guest = com.github.damontecres.wholphin.services.GuestMode.isActive
-    val likes = dto.userData?.likes
+    // Ben 2026-11-22: the Rate button shows the choice you just made right away (likes, and loved = on My List),
+    // instead of waiting for the server copy, which could come back stale and flip it back to "Rate"
+    var ratePick by remember(movie.id) { mutableStateOf<Pair<Boolean?, Boolean>?>(null) }
+    val likes = ratePick.let { if (it != null) it.first else dto.userData?.likes }
+    val loved = ratePick?.second ?: movie.favorite
     val buttons =
         buildList {
             add(
@@ -146,7 +153,7 @@ fun MovieHeroContent(
                     TitleButton(
                         label =
                             when (likes) {
-                                true -> if (movie.favorite) "Loved" else "Liked"
+                                true -> if (loved) "Loved" else "Liked"
                                 false -> "Not for me"
                                 null -> "Rate"
                             },
@@ -248,6 +255,9 @@ fun MovieHeroContent(
         logoUrl =
             com.github.damontecres.wholphin.ui.components
                 .rememberLogoUrl(movie),
+        findLogo =
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoFinder(movie),
         tagline = if (easy) null else dto.taglines?.firstOrNull()?.takeIf { it.isNotBlank() },
         chips =
             if (easy) {
@@ -258,11 +268,16 @@ fun MovieHeroContent(
                         .qualityChips(movie)
                 }
             },
+        matchId = if (easy) null else movie.id,
         modifier = modifier,
     )
 
     if (showMore) {
         val aniList = AniListFacts.info.value[movie.id]
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val nameInstead =
+            com.github.damontecres.wholphin.ui.components.LogoChoice
+                .usesName(movie.id)
         TitleMorePanel(
             title = movie.title.orEmpty(),
             onDismiss = { showMore = false },
@@ -281,8 +296,10 @@ fun MovieHeroContent(
                         add(TitleMoreItem("Go to ${collection.name}", BenflixIcon.FILM, { actions.openCollection(collection) }))
                     }
                     if (aniList != null) add(TitleMoreItem("Open on AniList or MAL", BenflixIcon.ARROW, { showLinks = true }))
+                    add(logoChoiceItem(context, movie.id, nameInstead))
                     if (isAdmin) {
                         actions.pickPoster?.let { add(TitleMoreItem("Pick a poster", BenflixIcon.IMAGE, it, youOnly = true)) }
+                        actions.pickLogo?.let { add(TitleMoreItem("Change logo", BenflixIcon.IMAGE, it, youOnly = true)) }
                         add(TitleMoreItem("File details", BenflixIcon.SERVER, actions.fileDetails, youOnly = true))
                     }
                 },
@@ -295,20 +312,33 @@ fun MovieHeroContent(
             onDismissRequest = { showRate = false },
             choices =
                 listOf(
-                    BenflixChoice("Not for me", { actions.rate(if (likes == false) null else false) }, selected = likes == false),
+                    BenflixChoice(
+                        "Not for me",
+                        {
+                            val v = if (likes == false) null else false
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == false,
+                    ),
                     BenflixChoice(
                         "I like it",
-                        { actions.rate(if (likes == true && !movie.favorite) null else true) },
-                        selected = likes == true && !movie.favorite,
+                        {
+                            val v = if (likes == true && !loved) null else true
+                            ratePick = v to loved
+                            actions.rate(v)
+                        },
+                        selected = likes == true && !loved,
                     ),
                     BenflixChoice(
                         "Love it",
                         {
+                            ratePick = true to true
                             actions.rate(true)
                             if (!movie.favorite) actions.setMyList(true)
                         },
                         note = "Also adds it to My List",
-                        selected = likes == true && movie.favorite,
+                        selected = likes == true && loved,
                     ),
                 ),
         )

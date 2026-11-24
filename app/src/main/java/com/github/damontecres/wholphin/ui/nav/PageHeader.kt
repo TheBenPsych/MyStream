@@ -40,17 +40,34 @@ sealed interface HeaderStart {
         val color: androidx.compose.ui.graphics.Color,
     ) : HeaderStart
 
+    /** Movies, Shows and Anime on TV: nothing here, the page's own tabs sit in this spot */
+    data object Empty : HeaderStart
+
     /** Deeper pages: the named Back button ("‹ Action") and the where-am-I line */
     data class Back(
         val name: String,
     ) : HeaderStart
 }
 
+/** Movies, Shows and Anime: their tabs sit in the TV header's row (Glowfin new look, Ben 2026-11-22) */
+fun Destination.tabsInHeader(): Boolean =
+    this is Destination.MoviesDoor ||
+        this is Destination.ShowsDoor ||
+        this is Destination.AnimeDoor ||
+        this is Destination.MusicDoor ||
+        this is Destination.BooksDoor ||
+        this is Destination.Games ||
+        this is Destination.Channels ||
+        this is Destination.Requests ||
+        this is Destination.Search
+
 fun headerStart(
     destination: Destination,
     stack: List<Destination>,
 ): HeaderStart {
     if (destination is Destination.Home) return HeaderStart.None
+    // Glowfin new look: Search's own box sits where a Back button would go (the remote's Back still goes back)
+    if (destination is Destination.Search) return HeaderStart.Empty
     // A movie, show, album or playlist page already shows its own name in big letters. Opened straight from
     // Home or Search it used to get that name again up here (Ben 2026-11-21: the name showed twice), so it
     // gets the named Back button like any deeper page.
@@ -83,13 +100,28 @@ fun BenflixPageHeader(
     overPicture: Boolean = false,
     /** Pages under the header can name where Down goes (see [TopBarDown]) */
     downTarget: TopBarDown? = null,
+    /**
+     * Ben 2026-11-23: TVs have no Back pill or where-am-I line any more (the remote's Back does it). They sat on
+     * top of the tabs on Requests and made the details pages' top bar thick. Touch screens keep them.
+     */
+    showBack: Boolean = true,
 ) {
     val scale = if (big) 1.2f else 1f
     val down =
         Modifier.focusProperties {
             downTarget?.target?.let { down = it }
         }
-    val start = headerStart(destination, stack)
+    val start =
+        headerStart(destination, stack).let {
+            // Glowfin new look: Movies, Shows and Anime put their see-through tab pills in this row instead of the name
+            if (it is HeaderStart.Title && destination.tabsInHeader()) {
+                HeaderStart.Empty
+            } else if (it is HeaderStart.Back && !showBack) {
+                HeaderStart.Empty
+            } else {
+                it
+            }
+        }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -105,9 +137,14 @@ fun BenflixPageHeader(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             // Home's left side is empty (Home draws its own greeting there), so no shadow: it showed as a wide
             // black oval across the top of Home that hid the greeting (Ben 2026-11-17)
-            modifier = Modifier.weight(1f).then(if (overPicture && start !is HeaderStart.None) Modifier.softShadow() else Modifier),
+            modifier =
+                Modifier.weight(1f).then(
+                    if (overPicture && start !is HeaderStart.None && start !is HeaderStart.Empty) Modifier.softShadow() else Modifier,
+                ),
         ) {
             when (start) {
+                is HeaderStart.Empty -> {}
+
                 is HeaderStart.None -> {
                     com.github.damontecres.wholphin.ui.main
                         .ProfileBadge(scale = scale, showGuestLine = true)
@@ -141,7 +178,8 @@ fun BenflixPageHeader(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = if (overPicture) Modifier.softShadow() else Modifier,
+            // Side menu A (Ben 2026-11-24): the clock stays put while the open menu pushes the page right
+            modifier = (if (overPicture) Modifier.softShadow() else Modifier).stayPut(),
         ) {
             // Benflix music: while music plays, a pill left of the clock on every page, Music too (OK opens
             // Now playing; Ben 2026-11-18 approved music-reach-1, the old strip at the bottom of Music pages is gone)

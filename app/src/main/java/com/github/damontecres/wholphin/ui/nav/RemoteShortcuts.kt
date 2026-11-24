@@ -22,6 +22,9 @@ object RemoteShortcuts {
     /** The poster or episode the remote is on now (set by the cards themselves) */
     @Volatile var focused: BaseItem? = null
 
+    /** Glowfin new look: what the remote's search button does while Search is open (starts the mic) */
+    @Volatile var onSearchKeyHere: (() -> Unit)? = null
+
     /** After "hold Back" went Home, the rest of that press (more repeats, letting go) is ignored */
     @Volatile private var swallowBack = false
 
@@ -63,7 +66,10 @@ object RemoteShortcuts {
         return when (native.keyCode) {
             KeyEvent.KEYCODE_SEARCH -> {
                 if (kids) return false
-                if (native.repeatCount == 0 && destination !is Destination.Search) openSearch()
+                if (native.repeatCount == 0) {
+                    // Glowfin new look: on Search itself, the remote's search/mic button starts talking
+                    if (destination is Destination.Search) onSearchKeyHere?.invoke() else openSearch()
+                }
                 true
             }
 

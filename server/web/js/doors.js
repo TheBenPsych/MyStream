@@ -58,8 +58,9 @@
     // Glowfin G1: the same places as the Games tabs
     const games = [
       ["For you", "home", "#/games", () => location.hash === "#/games"],
-      ["Consoles", "pad", "#/games?p=consoles", () => has("p") === "consoles" || location.hash.startsWith("#/console/")],
+      ["Ember Road", "pad", "#/games?p=ember", () => has("p") === "ember"],
       ["Movie games", "film", "#/games?p=movie", () => has("p") === "movie"],
+      ["Consoles", "pad", "#/games?p=consoles", () => has("p") === "consoles" || location.hash.startsWith("#/console/")],
       ["Party", "phone", "#/games?p=party", () => has("p") === "party"],
       ["Scores", "chart", "#/games?p=scores", () => has("p") === "scores"],
     ];

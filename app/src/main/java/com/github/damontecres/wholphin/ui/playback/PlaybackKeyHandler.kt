@@ -36,6 +36,8 @@ class PlaybackKeyHandler(
     private val onSeekToNext: () -> Unit,
     private val onPSeekToPrevious: () -> Unit,
     private val onDoubleSkipBack: () -> Unit = {},
+    /** Glowfin new look (Ben 2026-11-22): Up while the controls are hidden opens Story and details. Null = show the controls. */
+    private val onUp: (() -> Unit)? = null,
 ) {
     private var lastSkipBackAt = 0L
 
@@ -72,6 +74,8 @@ class PlaybackKeyHandler(
                     noteSkipBack()
                 } else if (skipWithLeftRight && isSkipForward(it)) {
                     seekBy(seekForward)
+                } else if (onUp != null && isUp(it)) {
+                    onUp.invoke()
                 } else if (isEnterKey(it) && isDpadSeekVisible()) {
                     // If d-pad seek bar is visible, hide it
                     clearSkipIndicator.invoke()

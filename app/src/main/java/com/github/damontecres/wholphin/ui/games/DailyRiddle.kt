@@ -33,17 +33,18 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.GuestMode
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LibraryKind
+import com.github.damontecres.wholphin.ui.games.puzzles.lookAlikes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -138,6 +139,9 @@ class DailyRiddleViewModel
         )
 
         private var names: List<Pair<java.util.UUID, String>> = emptyList()
+
+        /** Each movie's genres and year, for wrong answers that look just as likely */
+        private var about: Map<java.util.UUID, Pair<List<String>, Int?>> = emptyMap()
         private var deck: ArrayDeque<Pair<java.util.UUID, String>> = ArrayDeque()
         private var upcoming: Deferred<Riddle?>? = null
         private var timer: Job? = null
@@ -179,7 +183,7 @@ class DailyRiddleViewModel
                         _state.value = RiddleState.Problem("You need at least $CHOICES movies on the server to play.")
                         return@launch
                     }
-                    deck = ArrayDeque(names.shuffled())
+                    deck = ArrayDeque(puzzlePool.freshFirst(BOARD_KEY, names) { it.first })
                     upcoming?.cancel()
                     upcoming = null
                     val riddle = nextRiddle()
@@ -204,8 +208,9 @@ class DailyRiddleViewModel
             viewModelScope.async(WholphinDispatchers.IO) {
                 // Try a few movies, since some don't have enough details for clues
                 repeat(TRIES) {
-                    if (deck.isEmpty()) deck = ArrayDeque(names.shuffled())
+                    if (deck.isEmpty()) deck = ArrayDeque(puzzlePool.freshFirst(BOARD_KEY, names) { it.first })
                     val (id, name) = deck.removeFirst()
+                    puzzlePool.saw(BOARD_KEY, id)
                     val clues =
                         try {
                             clues(details(id))
@@ -219,11 +224,14 @@ class DailyRiddleViewModel
                         // Wrong choices never come from the same collection as the answer, so
                         // clues like the cast can't fit two of the choices
                         val others =
-                            names
-                                .map { it.second }
-                                .filter { it != name && !sameSeries(it, name) }
-                                .shuffled()
-                                .take(CHOICES - 1)
+                            lookAlikes(
+                                id to name,
+                                names.filter { !sameSeries(it.second, name) },
+                                CHOICES - 1,
+                                { it.second },
+                                { about[it.first]?.first.orEmpty() },
+                                { about[it.first]?.second },
+                            ).map { it.second }
                         return@async Riddle(name, clues, (others + name).shuffled())
                     }
                 }
@@ -359,6 +367,7 @@ class DailyRiddleViewModel
                                 includeItemTypes = listOf(BaseItemKind.MOVIE),
                                 recursive = true,
                                 sortBy = listOf(ItemSortBy.SORT_NAME),
+                                fields = listOf(ItemFields.GENRES),
                                 enableImages = false,
                                 enableUserData = false,
                             ),
@@ -366,7 +375,10 @@ class DailyRiddleViewModel
                 }.let { items ->
                     // The anime switch on the game's page
                     val keep = puzzlePool.animeKeeper()
-                    items.filter { keep(it.id) }
+                    items.filter { keep(it.id) }.also { list ->
+                        about =
+                            list.associate { it.id to (it.genres.orEmpty() to it.productionYear) }
+                    }
                 }.mapNotNull { item -> item.name?.takeIf { it.isNotBlank() }?.let { item.id to it } }
                 .filterNot { (_, name) -> BUNDLE_WORDS.containsMatchIn(name) }
                 .distinctBy { it.second }

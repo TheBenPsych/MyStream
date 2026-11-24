@@ -21,6 +21,7 @@ const P = {
   pad: '<path d="M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"/><path d="M7 9.4v4M5 11.4h4M12 8.3h.01M16.6 10h.01M18.2 12.6h.01"/>',
   home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  filter: '<path d="M4 7h16M7 12h10M10 17h4"/>',
   down: '<path d="m6 9 6 6 6-6"/>', up: '<path d="m18 15-6-6-6 6"/>',
   left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>',
   play: '<path d="M6 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/>', stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/>', pause: '<path d="M8 5v14M16 5v14" stroke-width="3.2"/>',
@@ -521,7 +522,8 @@ B.say = (e) => {
 };
 B.fail = (e) => {
   console.error(e);
-  B.page().innerHTML = B.top("") + `<div class="center"><div><div class="h1">Something went wrong</div><p class="sub" style="overflow-wrap:anywhere;max-width:560px">${esc(B.say(e))}</p><button class="btn white" onclick="B.render()">Try again</button></div></div>`;
+  // New look: the soft picture, one plain sentence and one white button
+  B.page().innerHTML = B.top("") + B.emptyPage("info", "Something went wrong", B.say(e), `<button class="btn white" onclick="B.render()">Try again</button>`);
   B.wireTop();
 };
 window.addEventListener("hashchange", B.render);
@@ -971,7 +973,7 @@ B.row = (title, cards, opts) => {
   opts = opts || {};
   if (!cards || !cards.length) return "";
   return `<section class="rowx at0" ${opts.id ? `id="${opts.id}"` : ""}>
-    <h3>${esc(title)}${opts.more ? `<a class="more" href="${opts.more}">See all</a>` : ""}</h3>
+    <h3>${esc(title)}${opts.note ? `<small class="rnote">${esc(opts.note)}</small>` : ""}${opts.more ? `<a class="more" href="${opts.more}">See all</a>` : ""}</h3>
     <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
     <div class="strip">${cards.join("")}${opts.seeAll ? `<a class="poster see" href="${opts.seeAll}">See all</a>` : ""}</div>
     <button class="arrow r" data-scroll="1" aria-label="Scroll right">${I("right")}</button>
@@ -990,22 +992,30 @@ document.addEventListener("scroll", (e) => {
   if (t && t.classList && t.classList.contains("strip") && t.parentElement) t.parentElement.classList.toggle("at0", t.scrollLeft < 8);
 }, true);
 window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 40), { passive: true });
-// Glowfin Top 10 (Ben's T1 pick): tall glowing Anton numbers, each in the same width box fully BESIDE its poster
-B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${B.posterCard(it)}</div>`);
+// Glowfin Top 10 (Ben 2026-11-22, "Glow outline"): hollow numbers outlined left to right in violet > blue > aqua,
+// as tall as the cover, in the same width box fully BESIDE its poster. Hover or focus fills it (CSS).
+// "10" is drawn slimmer (textLength) so it is as tall and wide as the single numbers.
+B.t10num = (n) => {
+  if (!document.getElementById("gfT10Defs")) {
+    document.body.insertAdjacentHTML("beforeend", '<svg id="gfT10Defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="gfT10" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A55BE0"/><stop offset=".5" stop-color="#1FA8E6"/><stop offset="1" stop-color="#3FE0E8"/></linearGradient></defs></svg>');
+  }
+  return `<span class="num" aria-label="${n}"><svg viewBox="0 0 150 300" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><text x="75" y="294" text-anchor="middle"${n >= 10 ? ' textLength="138" lengthAdjust="spacingAndGlyphs"' : ""}>${n}</text></svg></span>`;
+};
+B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10">${B.t10num(i + 1)}${B.posterCard(it)}</div>`);
 
 // Glowfin (ui-7): the word tabs along the top of every page (Movies, Shows, Anime, Live TV, Music, Games, Books) (the same places as the TV and phones)
 B.PAGE_TABS = {
-  movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
-  shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
+  movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["Famous lists", "#/famous/movies"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
+  shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["Famous lists", "#/famous/shows"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
   anime: [["For you", "#/anime"], ["Shows", "#/grid/shows?anime=only&title=Anime%20shows"], ["Movies", "#/grid/movies?anime=only&title=Anime%20movies"], ["Genres and tags", "#/browse/anime/genres"]],
   // Glowfin Music (M1)
   music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
   // Glowfin Books (B1)
   books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Manga", "#/books?p=manga"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
   // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
-  live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Recently watched", "#/live?v=recent"]],
+  live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Sports", "#/live?v=sports"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
-  games: [["For you", "#/games"], ["Consoles", "#/games?p=consoles"], ["Movie games", "#/games?p=movie"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
+  games: [["For you", "#/games"], ["Ember Road", "#/games?p=ember"], ["Movie games", "#/games?p=movie"], ["Consoles", "#/games?p=consoles"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {
@@ -1021,14 +1031,14 @@ B.tabsFor = (hash) => {
   if (/^#\/grid\/(movies|shows)\?(.*&)?anime=only/.test(hash)) return { page: "anime", on: /movies/.test(hash) ? 2 : 1 };
   if (/^#\/browse\/anime/.test(hash)) return { page: "anime", on: 3 };
   const m = hash.match(/^#\/(?:grid|browse)\/(movies|shows)/);
-  if (m) return { page: m[1], on: /genre/.test(hash) ? (m[1] === "movies" ? 3 : 2) : /mine=1/.test(hash) ? (m[1] === "movies" ? 4 : 3) : /BoxSet/.test(hash) ? 2 : 1 };
+  if (m) return { page: m[1], on: /genre/.test(hash) ? (m[1] === "movies" ? 3 : 2) : /mine=1/.test(hash) ? (m[1] === "movies" ? 5 : 4) : /BoxSet/.test(hash) ? 2 : 1 };
   return null;
 };
 B.pageTabs = (hash) => {
   const t = B.tabsFor(hash);
   if (!t) return "";
   const kids = B.me && B.me.kids;
-  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && (label === "Collections" || label === "Manga")));
+  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && (label === "Collections" || label === "Manga" || label === "Famous lists")));
   const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l === "Recently watched" ? "Recent" : l);
   return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
 };
@@ -1344,4 +1354,24 @@ document.addEventListener("keydown", (e) => {
       return said;
     });
   });
+})();
+
+// Glowfin "94% for you" (Idea Box 28, Ben 2026-11-24): any [data-match] box on the page asks Tower how well that
+// movie or show fits the person watching, and shows "94% for you" with "Because you loved Arrival" under it.
+// Nothing shows for Kids, or until the person has watched or liked enough.
+(() => {
+  const known = new Map();
+  const ask = (id) => {
+    const key = ((B.me && B.me.id) || "") + "/" + id;
+    if (!known.has(key)) known.set(key, B.call("GET", `api/match/${encodeURIComponent(id)}`).catch(() => ({ pct: null })));
+    return known.get(key);
+  };
+  const fill = async (box) => {
+    box.dataset.done = "1";
+    if (B.me && B.me.kids) return;
+    const r = await ask(box.dataset.match);
+    if (!r || !r.pct || !box.isConnected) return;
+    box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>${r.why ? `<span class="mt-why">${esc(r.why)}</span>` : ""}`;
+  };
+  new MutationObserver(() => document.querySelectorAll("[data-match]:not([data-done])").forEach(fill)).observe(document.body, { childList: true, subtree: true });
 })();

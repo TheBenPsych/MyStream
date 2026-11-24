@@ -58,7 +58,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -77,6 +76,7 @@ import com.github.damontecres.wholphin.ui.setup.SeaFriendImage
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -239,6 +239,21 @@ private fun Live(
     )
     when (ui.phase) {
         PartyPhase.VOTE -> {
+            // Caption this: the scene stays up while everyone votes
+            if (ui.kind == PartyKind.CAPTION) {
+                ui.image?.let { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .width(if (isTv) tvPictureHeight(0.26f) * (16f / 9f) else 260.dp)
+                                .aspectRatio(16f / 9f)
+                                .background(PuzzlePanel, RoundedCornerShape(10.dp)),
+                    )
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 ui.plots.forEachIndexed { i, p ->
                     Panel { Text("${i + 1}.  ${p.text}", fontSize = 18.sp, lineHeight = 25.sp, color = Color.White) }

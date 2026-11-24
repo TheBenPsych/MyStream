@@ -67,7 +67,7 @@
 
   B.route(/^\/books(?:\?.*)?$/, async (m, nav) => {
     const place = PLACES.some(([k]) => k === B.q("p")) && !(B.q("p") === "manga" && B.me.kids) ? B.q("p") : "home", chip = B.q("c") || "all", sort = B.q("s") || "added", group = B.q("g");
-    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner("wall")}</div></div>`;
+    B.page().innerHTML = B.top("Books", LIME) + (place === "home" ? B.coverGlowHtml() : "") + `<div class="mpage bkpage${place === "home" ? " bkhome" : ""}">${place === "home" ? '<section class="mtop bktop" id="bkTop"><div class="art"></div><div class="info"></div></section>' : ""}<div class="bk-main" id="bkMain">${B.spinner("wall")}</div></div>`;
     B.wireTop();
     let home;
     try {
@@ -146,12 +146,14 @@
     const show = (t) => {
       if (!t || t === shown) return;
       shown = t;
-      $(".info", top).innerHTML = `<div class="mtop-kick">${esc(kickOf(t))}</div><h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p>`;
+      // Glowfin new look (part 3): the name, the facts line, then the small aqua tag (how far you are), like Home
+      $(".info", top).innerHTML = `<h1>${esc(t.name)}</h1><p>${esc(topLine(t))}</p><span class="mtop-kick">${esc(kickOf(t))}</span>`;
       top.dataset.href = t.notHere ? "#/requests?tab=books" : "#/book/" + enc(t.id);
       B.coverGlow(t.cover ? pic(t.cover) : null);
       const art = $(".art", top);
       art.classList.remove("on");
-      art.innerHTML = t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "";
+      const pct = t.status === "reading" && t.progress > 0.005 ? Math.round(t.progress * 100) : 0;
+      art.innerHTML = (t.cover ? `<span class="one" style="background-image:url('${esc(pic(t.cover))}')"></span>` : "") + (pct ? `<i class="bkbar"><b style="width:${pct}%"></b></i>` : "");
       requestAnimationFrame(() => art.classList.add("on"));
     };
     const pointAt = (e) => {
@@ -676,37 +678,41 @@
     if (B.me.kids) return B.go("#/home");
     const rows = $("#rows"), input = $("#rq"), admin = B.me.admin;
     input.placeholder = "Search any manga";
-    rows.innerHTML = `<div id="mfound"></div><div class="grid-wrap rqsplit" id="msplit"><nav class="rqside" id="mside"></nav><div class="grid-body" id="mwall">${B.spinner("wall")}</div></div>`;
-    let d = null, req = null, picked = null, genreItems = null, t;
+    // Glowfin new look (Ben approved 2026-11-22): Manga lands straight on a row, like Anime. Rows from Tower
+    // (Trending on AniList, Trending on MyAnimeList, ...), Genres pills with the picked genre's row under them, and
+    // Your manga asks. The top describes the manga you point at.
+    rows.innerHTML = `<div id="mfound"></div><div id="msplit">${B.spinner("rows")}</div>`;
+    let d = null, req = null, genre = null, genreItems = null, t, described = false;
     const reqLine = (r, answer) => ({
       title: r.name, sub: [admin ? r.who : "", "manga"].filter(Boolean).join(" · "), cover: r.cover, pill: mangaPill(r), who: answer && admin ? r.who || "" : "",
       acts: answer ? `<button class="btn small white" data-myes="${esc(r.id)}">Yes</button><button class="btn small" data-mno="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Read</a>` : ""}${r.canRetry ? `<button class="btn small" data-mretry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-mforget="${esc(r.id)}">${B.I("x")}</button>`,
     });
+    const card = (c) => { B.items["mg:" + c.id] = c; return mangaCard(c).replace('<a class="poster"', `<a class="poster" data-id="mg:${c.id}"`); };
+    const describe = (c) => {
+      if (!c) return "";
+      const tag = c.here ? ["here", "On Glowfin"] : c.asked ? ["wait", c.asked] : ["nyet", "Not on Glowfin yet"];
+      const bits = ["Manga", c.year, c.status, c.chapters ? c.chapters + " chapters" : "", c.score ? "AniList " + c.score.toFixed(1) : ""].filter(Boolean);
+      return `<div class="dt-name"><div class="t">${esc(c.name)}</div></div><div class="meta">${bits.map((x) => `<span>${esc(String(x))}</span>`).join("")}</div>
+        <div class="dt-tag rqtag t-${tag[0]}">${esc(tag[1])}</div><div class="ov">${esc(c.desc || "")}</div><div class="rqhint">${c.here || c.asked ? "Click it to open it" : "Click it to open it and ask for it"}</div>`;
+    };
+    const mineOf = (r) => (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i);
     const draw = () => {
-      const side = $("#mside"), wall = $("#mwall");
-      if (!side || !wall) return;
+      const box = $("#msplit");
+      if (!box) return;
+      if (!d) { box.innerHTML = B.spinner("rows"); return; }
       const r = req || { mine: [], waiting: [], others: [] };
-      const mine = (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i);
-      const ls = (d ? d.rows.map((x, i) => ({ id: "r" + i, title: x.name })) : []).concat([{ id: "genres", title: "Genres" }, { id: "yours", title: `Your requests (${mine.length})` }])
-        .concat(admin ? [{ id: "waiting", title: `Waiting for you (${(r.waiting || []).length})` }] : []);
-      const cur = picked || "r0";
-      side.innerHTML = B.rqSide(ls, cur);
-      if (cur === "yours" || cur === "waiting") {
-        const w = cur === "waiting";
-        wall.innerHTML = `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
-          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), false, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the manga and ask for it.");
-        return;
-      }
-      if (!d) { wall.innerHTML = B.spinner("wall"); return; }
-      if (cur === "genres" || cur.startsWith("g:")) {
-        const g = cur.startsWith("g:") ? cur.slice(2) : "";
-        wall.innerHTML = `<div class="rqhead"><b>Genres</b></div><div class="rqgenres rqchips">${d.genres.map((x) => `<button class="chip ${x === g ? "on" : ""}" data-mgenre="${esc(x)}">${esc(x)}</button>`).join("")}</div>`
-          + (g ? (genreItems ? B.rqGrid(genreItems.map(mangaCard)) : B.spinner("wall")) : "");
-        return;
-      }
-      const row = d.rows[+cur.slice(1)] || d.rows[0];
-      wall.innerHTML = `<div class="rqline" id="mline"> </div>` + B.rqGrid(row.items.map(mangaCard), cur === "r0");
+      box.innerHTML = d.rows.map((x) => B.row(x.name, x.items.map(card))).join("")
+        + `<section class="rowx"><h3>Genres</h3><div class="row" style="padding:0 var(--gutter);gap:8px;flex-wrap:wrap">${d.genres.map((x) => `<button class="chip ${x === genre ? "on" : ""}" data-mgenre="${esc(x)}">${esc(x)}</button>`).join("")}</div></section>`
+        + (genre ? (genreItems ? B.row(genre, genreItems.map(card)) || `<div class="wrap empty">Nothing in ${esc(genre)} right now.</div>` : B.spinner()) : "")
+        + `<section class="rowx"><h3>Your manga asks</h3><div class="row" style="padding:0 var(--gutter);gap:8px"><button class="chip" data-mlist="yours">Asked for (${mineOf(r).length})</button>${admin ? `<button class="chip" data-mlist="waiting">Waiting for you (${(r.waiting || []).length})</button>` : ""}</div></section>`;
+      if (!described && d.rows[0] && d.rows[0].items[0]) { described = true; B.wireDescribe(d.rows[0].items[0], { describe, art: (c) => (c && (c.banner || c.cover)) || "" }); }
+    };
+    const openList = (which) => {
+      const r = req || { mine: [], waiting: [], others: [] }, w = which === "waiting", items = w ? r.waiting || [] : mineOf(r);
+      const p = B.side(`<h3>${w ? "Waiting for you" : "Your manga asks"} (${items.length})</h3>`
+        + B.rqLines(items.map((x) => reqLine(x, w)), false, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the manga and ask for it."));
+      p.onclick = (e) => rows.onclick(e, p, which);
     };
     const lists = async () => {
       try { req = await api("GET", "manga/requests"); } catch (e) { if (!req) B.toast(B.say(e)); }
@@ -722,31 +728,28 @@
       box.innerHTML = res.items.length ? B.row("Manga", res.items.map(mangaCard)) : `<div class="wrap empty">${esc(res.error || "Nothing found. Try the Japanese name, or fewer words.")}</div>`;
     };
     input.oninput = () => { clearTimeout(t); t = setTimeout(() => search(input.value), 450); };
-    rows.onclick = async (e) => {
-      const pick = e.target.closest("#mside [data-rqpick]");
-      if (pick) { picked = pick.dataset.rqpick; return draw(); }
+    rows.onclick = async (e, panel, which) => {
+      const l = e.target.closest("[data-mlist]");
+      if (l) return openList(l.dataset.mlist);
       const g = e.target.closest("[data-mgenre]");
       if (g) {
-        picked = "g:" + g.dataset.mgenre; genreItems = null; draw();
+        genre = g.dataset.mgenre; genreItems = null; draw();
         const r = await api("GET", "manga/genre?g=" + enc(g.dataset.mgenre)).catch(() => ({ items: [] }));
-        if (B.alive(nav) && picked === "g:" + g.dataset.mgenre) { genreItems = r.items; draw(); }
+        if (B.alive(nav) && genre === g.dataset.mgenre) { genreItems = r.items; draw(); }
         return;
       }
       const b = e.target.closest("button");
-      if (!b) return;
+      if (!b || !(b.dataset.myes || b.dataset.mno || b.dataset.mretry || b.dataset.mforget)) return;
       await B.busy(b, async () => {
         if (b.dataset.myes) await api("POST", "manga/answer", { id: b.dataset.myes, yes: true });
         if (b.dataset.mno) await api("POST", "manga/answer", { id: b.dataset.mno, yes: false });
         if (b.dataset.mretry) await api("POST", "manga/requests/" + enc(b.dataset.mretry) + "/retry");
         if (b.dataset.mforget) await api("DELETE", "manga/requests/" + enc(b.dataset.mforget));
-        lists();
+        await lists();
+        if (panel) { B.closeAll(); openList(which); }
       });
     };
-    rows.onmouseover = (e) => {
-      const c = e.target.closest("#mwall .poster"), line = $("#mline");
-      if (c && line) line.textContent = (c.querySelector(".cap") || c).textContent.trim() || " ";
-    };
-    api("GET", "manga/discover").then((x) => { d = x; if (B.alive(nav)) draw(); }).catch((e) => { if (B.alive(nav)) $("#mwall").innerHTML = `<div class="note">Couldn't load the manga lists. ${esc(B.say(e))}</div>`; });
+    api("GET", "manga/discover").then((x) => { d = x; if (B.alive(nav)) draw(); }).catch((e) => { if (B.alive(nav)) $("#msplit").innerHTML = `<div class="wrap note">Couldn't load the manga lists. ${esc(B.say(e))}</div>`; });
     if (input.value.trim()) search(input.value);
     await lists();
   };
@@ -786,17 +789,20 @@
     const input = $("#rq");
     const admin = B.me.admin;
     input.placeholder = "Search any book or author";
-    rows.innerHTML = `<div id="bfound"></div><div class="grid-wrap rqsplit" id="bsplit"><nav class="rqside" id="bside"></nav><div class="grid-body" id="bwall">${B.spinner("wall")}</div></div>`;
-    let d = null, req = null, picked = null, ownedOpen = null, results = { books: [] }, t;
+    rows.innerHTML = `<div id="bfound"></div><div id="bsplit">${B.spinner("rows")}</div>`;
+    let d = null, req = null, picked = null, described = null, results = { books: [] }, t;
     const bookLists = () => {
       if (!d) return [];
       const nyt = (d.rows || []).find((r) => (r.items || []).length && /Fiction/.test(r.title) && !/Nonfiction/.test(r.title));
       const out = [];
+      // Glowfin new look: "Series to finish" first, then Book of the week
+      const series = (d.rows || []).find((r) => r.key === "series" && (r.items || []).length);
+      if (series) out.push({ id: "series", title: series.title, items: series.items });
       if (d.hero) out.push({ id: "botw", title: "Book of the week", items: nyt ? nyt.items : d.top10 || [], ranked: true });
       if ((d.top10 || []).length) out.push({ id: "top10", title: "Top 10", items: d.top10, ranked: true });
       (d.rows || []).forEach((r) => {
         if ((r.genres || []).length) out.push({ id: "genres", title: "Genres", genres: r.genres });
-        else if ((r.items || []).length) out.push({ id: r.key, title: r.title, items: r.items, ranked: r.ranked });
+        else if ((r.items || []).length && r.key !== "series") out.push({ id: r.key, title: r.title, items: r.items, ranked: r.ranked });
       });
       return out;
     };
@@ -805,46 +811,54 @@
       acts: answer ? `<button class="btn small white" data-yes="${esc(r.id)}">Yes</button><button class="btn small" data-no="${esc(r.id)}">No</button>`
         : `${r.state === "ready" && r.title ? `<a class="btn small" href="#/book/${enc(r.title)}">Open</a>` : ""}${r.canRetry ? `<button class="btn small" data-retry="${esc(r.id)}">Look again</button>` : ""}<button class="btn small ghost" data-forget="${esc(r.id)}">${B.I("x")}</button>`,
     });
+    // Glowfin new look (Ben approved 2026-11-22): Books lands straight on rows of tall covers, the cover you point at
+    // standing at the top right with its colours behind. Series to finish first, then Book of the week, Top 10 and the
+    // other lists, Genres pills, and Your book asks (which open in place of the rows, with a Back pill).
+    const describe = (c) => {
+      const tag = c.have ? "On Glowfin" : c.asked ? (B.bookPill({ state: "", words: c.asked }).w || c.asked) : c.audioOnly ? "Audiobook only" : "Click to see the book and ask for it";
+      return `<h1>${esc(c.name || "")}</h1><p>${esc([c.author, c.year, c.award || c.line].filter(Boolean).join(" · "))}</p><span class="mtop-kick">${esc(tag)}</span>${c.desc ? `<p class="ov">${esc(c.desc)}</p>` : ""}`;
+    };
+    const card = (c, i, ranked) => {
+      BQ.cards[c.key] = c;
+      B.items["bk:" + c.key] = c;
+      const html = BQ.card(c, false).replace('<a class="poster bk"', `<a class="poster bk" data-id="bk:${esc(c.key)}"`);
+      return ranked && i < 10 ? `<div class="top10">${B.t10num(i + 1)}${html}</div>` : html;
+    };
     const draw = () => {
-      const side = $("#bside"), wall = $("#bwall");
-      if (!side || !wall) return;
+      const box = $("#bsplit");
+      if (!box) return;
       const ls = bookLists();
       const r = req || { mine: [], waiting: [], others: [], problems: [] };
       const waitIds = new Set((r.waiting || []).map((x) => x.id));
       const mine = (admin ? [].concat(r.mine || [], r.others || []) : r.mine || []).filter((x, i, a) => a.findIndex((y) => y.id === x.id) === i && !waitIds.has(x.id));
-      const cur = picked === "yours" || picked === "waiting" ? null : ls.find((l) => l.id === picked) || ls[0];
-      side.innerHTML = B.rqSide(ls, cur ? cur.id : picked, mine.length, admin ? (r.waiting || []).length : null);
       const notes = ((admin && r.problems) || []).map((p) => `<div class="note">${esc(p)}</div>`).join("")
         + (admin && d && (d.missing || []).length ? `<div class="note">Some lists are hidden until you add the ${d.missing.join(" and ")} key on the Server page. <a href="#/server/tools/booklists">Add it</a></div>` : "");
       if (picked === "yours" || picked === "waiting") {
         const w = picked === "waiting";
-        wall.innerHTML = notes + `<div class="rqhead"><b>${w ? "Waiting for you" : "Your requests"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
-          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the book and ask for it.");
+        box.innerHTML = `<div class="wrap"><button class="chip" data-rqpick="">${B.I("left")} Back to books</button>${notes}<div class="rqhead"><b>${w ? "Waiting for you" : "Your book asks"}</b><span>${w ? r.waiting.length : mine.length}</span></div>`
+          + B.rqLines((w ? r.waiting : mine).map((x) => reqLine(x, w)), !w, w ? "Nobody is waiting on you right now." : "Nothing asked for yet. Click a cover to see the book and ask for it.") + "</div>";
         return;
       }
-      if (!d) { wall.innerHTML = notes + B.spinner("wall"); return; }
-      if (!cur) { wall.innerHTML = notes + `<p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p>`; return; }
-      if (cur.genres) {
-        wall.innerHTML = notes + `<div class="rqhead"><b>Genres</b></div><div class="rqgenres">${cur.genres.map((g) => `<a class="bq-genre" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}" style="background:${esc(g.color)}">${esc(g.name)}</a>`).join("")}<a class="bq-genre all" href="#/bookgenre/all">All genres</a></div>`;
-        return;
+      if (!d) { box.innerHTML = notes + B.spinner("rows"); return; }
+      if (!ls.length) { box.innerHTML = `<div class="wrap">${notes}<p class="sub">Tower is gathering the book lists. Try again in a few minutes.</p></div>`; return; }
+      const asks = [`<button class="chip" data-rqpick="yours">Asked for <b>${mine.length}</b></button>`].concat(admin ? [`<button class="chip" data-rqpick="waiting">Waiting for you <b>${(r.waiting || []).length}</b></button>`] : []);
+      box.innerHTML = (notes ? `<div class="wrap">${notes}</div>` : "") + ls.map((l) => {
+        if (l.genres) return B.rqPillsRow("Genres", l.genres.map((g) => `<a class="chip" href="#/bookgenre/${enc(g.slug)}?name=${enc(g.name)}">${esc(g.name)}</a>`).concat([`<a class="chip" href="#/bookgenre/all">All genres</a>`]));
+        const items = (l.items || []).filter((c) => !c.have);
+        return B.row(l.title, items.map((c, i) => card(c, i, l.ranked)));
+      }).join("") + B.rqPillsRow("Your book asks", asks);
+      if (!described) {
+        described = B.wireRqCoverTop(describe, (c) => (c.cover ? outPic(c.cover) : ""));
+        const first = $("#bsplit [data-id]");
+        if (first) described(B.items[first.dataset.id]);
       }
-      (cur.items || []).forEach((c) => { BQ.cards[c.key] = c; });
-      const owned = cur.items.filter((c) => c.have).length;
-      const shown = ownedOpen === cur.id ? cur.items : cur.items.filter((c) => !c.have);
-      const hero = cur.id === "botw" && d.hero;
-      if (hero) BQ.cards[hero.key] = hero;
-      const line = hero
-        ? `<div class="rqline bq-line"><a class="cv" href="${aboutHref(hero)}" style="${hero.cover ? `background-image:url('${esc(outPic(hero.cover))}')` : ""}"></a><div class="grow"><div class="kick" style="color:${LIME}">BOOK OF THE WEEK · #1 NYT FICTION</div>
-          <b>${esc([hero.name, hero.author, hero.year, hero.line].filter(Boolean).join(" · "))}</b></div>${hero.have ? "" : hero.asked ? B.rqPillHtml(B.bookPill({ state: "", words: hero.asked })) : `<button class="btn small white" data-bq="${esc(hero.key)}">${B.I("plus")} ${admin ? "Ask for it" : "Ask Ben"}</button>`}</div>`
-        : `<div class="rqline" id="bline"> </div>`;
-      wall.innerHTML = notes + line + `${B.rqGrid(shown.map((c) => BQ.card(c, false)), !!cur.ranked)}${B.rqOwned(owned, ownedOpen === cur.id)}`;
     };
     const lists = async () => {
       try { req = await api("GET", "requests"); } catch (e) { if (!req) B.toast(B.say(e)); }
       if (B.alive(nav) && !input.value.trim()) draw();
     };
     const shelves = async () => {
-      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bwall").innerHTML = `<div class="note">Couldn't load the book lists. ${esc(B.say(e))}</div>`; return; }
+      try { d = await api("GET", "discover"); } catch (e) { if (B.alive(nav)) $("#bsplit").innerHTML = `<div class="wrap"><div class="note">Couldn't load the book lists. ${esc(B.say(e))}</div></div>`; return; }
       if (B.alive(nav)) draw();
     };
     const found = (f) => `<div class="item"><span class="bk-mini" style="${f.cover ? `background-image:url('${esc(f.cover)}')` : ""}"></span><div class="grow"><div class="t">${esc(f.name)}</div><div class="s">${esc([f.author, f.year, f.score ? "Open Library " + (+f.score).toFixed(1) : ""].filter(Boolean).join(" · "))}</div></div>
@@ -879,13 +893,8 @@
     };
     input.oninput = () => { clearTimeout(t); t = setTimeout(() => search(input.value), 450); };
     rows.onclick = async (e) => {
-      const pick = e.target.closest("#bside [data-rqpick]");
-      if (pick) { picked = pick.dataset.rqpick; return draw(); }
-      if (e.target.closest("[data-rqowned]")) {
-        const cur = bookLists().find((l) => l.id === picked) || bookLists()[0];
-        ownedOpen = cur && ownedOpen !== cur.id ? cur.id : null;
-        return draw();
-      }
+      const pick = e.target.closest("#bsplit [data-rqpick]");
+      if (pick) { picked = pick.dataset.rqpick || null; return draw(); }
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.bq != null) return BQ.quick(b, () => shelves());
@@ -901,11 +910,6 @@
         if (b.dataset.forget) await api("DELETE", "request/" + enc(b.dataset.forget));
         lists();
       });
-    };
-    // The line above the wall: the book under the mouse
-    rows.onmouseover = (e) => {
-      const c = e.target.closest("#bwall .poster"), line = $("#bline");
-      if (c && line) line.textContent = (c.querySelector(".cap") || c).textContent.trim() || " ";
     };
     shelves();
     if (input.value.trim()) search(input.value);
@@ -946,7 +950,7 @@
     const remember = (list) => (list || []).forEach((c) => { BQ.cards[c.key] = c; });
     remember(d.top10);
     if ((d.top10 || []).length) {
-      h += B.row(inGenre ? `Top 10 in ${d.name}` : "Top 10 books right now", d.top10.slice(0, 10).map((c, i) => `<div class="top10 bq-t10"><span class="num ${i === 9 ? "ten" : ""}">${i + 1}</span>${BQ.card(c)}</div>`));
+      h += B.row(inGenre ? `Top 10 in ${d.name}` : "Top 10 books right now", d.top10.slice(0, 10).map((c, i) => `<div class="top10 bq-t10">${B.t10num(i + 1)}${BQ.card(c)}</div>`));
     }
     (d.rows || []).forEach((r) => {
       if ((r.genres || []).length) {

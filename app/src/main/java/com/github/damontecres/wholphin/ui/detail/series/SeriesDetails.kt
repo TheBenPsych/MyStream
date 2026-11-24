@@ -178,6 +178,7 @@ fun SeriesDetails(
                         request = state.discoverSeries?.let { d -> { viewModel.navigateTo(Destination.DiscoveredItem(d)) } },
                         openAsk = { viewModel.navigateTo(it.destination) },
                         pickPoster = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id)) }) else null,
+                        pickLogo = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id, "LOGO")) }) else null,
                     ),
             )
             firstAsk?.let { (episode, fromStart, movie) ->

@@ -2,39 +2,89 @@
    posters, the movie and show pages, the All movies / All shows grid, collections and people. */
 "use strict";
 
-// ---------- top area: describes the poster you point at, picture fades in from the right ----------
+// ---------- top area: describes the poster you point at ----------
+// Glowfin new look, part 2 (Ben 2026-11-22): Home, Movies, Shows and Anime land straight on a row. The top only
+// describes the poster you're on, like the details pages: a fixed title box (the logo when it's 2 to 5 times wider
+// than tall, else the name), a short facts line, a small aqua tag, a 2-line story and the score pill top right.
 B.describe = (it) => {
   if (!it) return "";
   const ud = it.UserData || {};
   const bits = [];
-  if (it.Type === "Episode") bits.push(`S${it.ParentIndexNumber || 0} E${it.IndexNumber || 0}`);
-  if (it.ProductionYear) bits.push(it.Type === "Series" && it.EndDate && it.Status === "Ended" ? `${it.ProductionYear}–${new Date(it.EndDate).getFullYear()}` : it.ProductionYear);
-  if (it.Type === "Series") {
-    if (it.Status === "Ended") bits.push("Ended");
-    else if (it.AirDays && it.AirDays.length) bits.push(`New episodes on ${it.AirDays[0]}s`);
-    if (it.ChildCount) bits.push(`${it.ChildCount} season${it.ChildCount === 1 ? "" : "s"}`);
-  } else if (it.RunTimeTicks) bits.push(B.len(B.minutes(it.RunTimeTicks)));
-  if (it.OfficialRating) bits.push(it.OfficialRating);
-  if (it.Genres && it.Genres.length) bits.push(it.Genres.slice(0, 3).join(", "));
-  let kw = "";
-  if (ud.PlaybackPositionTicks && it.RunTimeTicks) {
-    const left = B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks);
-    kw = `<div class="kwbar">${I("play")}<b>Resume</b><span class="line"><i style="width:${Math.min(100, ud.PlayedPercentage || 0)}%"></i></span>${B.len(left)} left</div>`;
+  if (it.Type === "Episode") {
+    bits.push(`S${it.ParentIndexNumber || 0} E${it.IndexNumber || 0}`);
+    if (it.Name) bits.push(it.Name);
+  } else {
+    if (it.ProductionYear) bits.push(it.ProductionYear);
+    if (it.Type === "Series" && it.ChildCount) bits.push(`${it.ChildCount} season${it.ChildCount === 1 ? "" : "s"}`);
+    else if (it.Type !== "Series" && it.RunTimeTicks) bits.push(B.len(B.minutes(it.RunTimeTicks)));
+    if (it.Genres && it.Genres.length) bits.push(it.Genres[0]);
   }
-  const title = it.Type === "Episode" ? `${it.SeriesName}` : it.Name;
-  return `<div class="t">${esc(title)}</div>${it.Type === "Episode" ? `<div class="meta" style="color:var(--ink)">${esc(it.Name)}</div>` : ""}
-    <div class="meta">${bits.map((b) => `<span>${esc(b)}</span>`).join("")}</div>${B.scores(it)}
-    <div class="ov">${esc(it.Overview || "")}</div>${kw}`;
+  // The tag: time left on something you started, else "New on Glowfin" for things added this week
+  let tag = "";
+  if (ud.PlaybackPositionTicks && it.RunTimeTicks && ud.PlayedPercentage > 1 && ud.PlayedPercentage < 99) {
+    const left = B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks);
+    if (left > 0) tag = `${B.len(left)} left`;
+  }
+  const added = Date.parse(it.DateLastMediaAdded || it.DateCreated || "");
+  if (!tag && !ud.Played && added && Date.now() - added < 7 * 864e5) tag = it.Type === "Series" ? "New episodes on Glowfin" : "New on Glowfin";
+  const title = it.Type === "Episode" ? `${it.SeriesName || ""}` : it.Name;
+  // Ben 2026-11-23 (logo plan): browsing pages always show the name in white text, never a logo (no flicker)
+  const logo = null;
+  const kids = B.me && B.me.kids;
+  const scores = it.Type === "Episode" ? "" : B.scores(it);
+  // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time (no % signs)
+  const pill = !kids && (it.OfficialRating || scores) ? B.scoreIcons(it.OfficialRating, scores) : "";
+  // Glowfin "94% for you" (Idea Box 28): under the score pill, laid over the top so nothing moves
+  const match = !kids && (it.Type === "Movie" || it.Type === "Series") ? `<div class="mt-wrap dt-mt" data-match="${esc(it.Id)}"></div>` : "";
+  return `${match}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
+    <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}${pill}
+    <div class="ov">${esc(it.Overview || "")}</div>`;
 };
-B.wireDescribe = (first) => {
+// The bare score icons row (age rating outline, then icon + white number, no % signs). Rotten Tomatoes under 60
+// shows the green splat instead of the red tomato.
+B.scoreIcons = (rate, scores) => {
+  const nums = String(scores || "").replace(/%<\/b>/g, "</b>").replace(/<span data-s="rt"><b>(\d+)<\/b>/g, (m, n) => (+n < 60 ? `<span data-s="rt" class="splat"><b>${n}</b>` : m));
+  return `<div class="dt-icons">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${nums}</div>`;
+};
+// (Browsing tops have no logo any more, Ben 2026-11-23; kept for any caller that still passes one)
+B.fitDoorLogo = (box) => {
+  const logo = box && box.querySelector(".dt-logo");
+  if (!logo) return;
+  const fit = () => {
+    const r = logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 0;
+    if (r < 2 || r > 5) return logo.remove();
+    logo.hidden = false;
+    if (B.tpLight) { const l = B.tpLight(logo); if (l != null && l < 0.3) logo.classList.add("tp-logo-white"); }
+    const t = box.querySelector(".dt-name .t"); if (t) t.hidden = true;
+  };
+  if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
+};
+// (Requests passes its own describe and art, for Seerr titles that aren't on Glowfin yet)
+B.wireDescribe = (first, opts) => {
+  opts = opts || {};
+  const describe = opts.describe || B.describe, artOf = opts.art || ((it) => B.backdrop(it, 1600));
   const top = $("#doorTop");
   if (!top) return;
   let timer, shown = null;
   const show = (it) => {
     if (!it || it === shown) return;
     shown = it;
-    $(".info", top).innerHTML = B.describe(it);
-    const src = B.backdrop(it, 1600);
+    $(".info", top).innerHTML = describe(it);
+    B.fitDoorLogo($(".info", top));
+    // Ben 2026-11-23: an episode shows its whole show's scores (shows and anime alike)
+    if (it.Type === "Episode" && it.SeriesId && !(B.me && B.me.kids)) {
+      B.cached(`series:${it.SeriesId}`, 600000, () => B.get(`/Users/${B.uid()}/Items/${it.SeriesId}`)).then((show) => {
+        if (shown !== it || !show) return;
+        const scores = B.scores(show);
+        const rate = it.OfficialRating || show.OfficialRating;
+        if (!scores && !rate) return;
+        const old = $(".info .dt-icons", top);
+        const html = B.scoreIcons(rate, scores);
+        if (old) old.outerHTML = html;
+        else { const ov = $(".info .ov", top); if (ov) ov.insertAdjacentHTML("beforebegin", html); }
+      }).catch(() => {});
+    }
+    const src = artOf(it);
     const art = $(".art", top);
     // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.
     // A new picture: the old one fades away, a short wait, then the new one fades in.
@@ -373,6 +423,27 @@ B.route(/^\/browse\/(movies|shows)\/(genres|studios)$/, async (m, nav) => {
   $("#t").innerHTML = `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${(r.Items || []).map((g) => `<a class="tile2" style="width:auto" href="#/grid/${m[1]}?${key}=${enc(g.Name)}&title=${enc(g.Name)}">${esc(g.Name)}</a>`).join("") || '<div class="empty">Nothing here yet.</div>'}</div>`;
 });
 
+// Glowfin Famous lists (Idea Box 28, Ben 2026-11-24): IMDb Top 250, Oscars, Palme d'Or, Emmys. Tower gathers them
+// weekly (benflix_famous.py). Titles on Glowfin say so; the rest get the Ask button. Not on Kids.
+B.route(/^\/famous\/(movies|shows)$/, async (m, nav) => {
+  const door = DOORS[m[1]];
+  B.page().innerHTML = B.top(door.name, door.color) + `<div class="rows" id="rows" style="padding-top:8px">${B.spinner("rows")}</div>`;
+  B.wireTop();
+  if (B.me && B.me.kids) { $("#rows").innerHTML = '<div class="wrap"><div class="empty">Famous lists are not on Kids.</div></div>'; return; }
+  let r = null;
+  for (let tries = 0; tries < 12; tries++) {
+    r = await B.call("GET", `api/famous/${m[1]}`).catch(() => null);
+    if (!B.alive(nav)) return;
+    if (!r || (r.rows || []).length) break;
+    $("#rows").innerHTML = '<div class="wrap"><div class="empty">Tower is gathering the famous lists. This takes a few minutes the first time.</div></div>';
+    await new Promise((ok) => setTimeout(ok, 20000));
+    if (!B.alive(nav)) return;
+  }
+  if (!r) { $("#rows").innerHTML = '<div class="wrap"><div class="empty">Could not reach Tower for the famous lists. Try again in a minute.</div></div>'; return; }
+  const card = (it) => B.askCard({ mediaType: it.mediaType, id: it.id, title: it.title, posterPath: it.posterPath, releaseDate: it.year ? it.year + "-01-01" : "", mediaInfo: it.jellyfinId ? { status: 5, jellyfinMediaId: it.jellyfinId } : null });
+  pageRows((r.rows || []).map((row) => B.row(row.title, row.items.map(card), { note: `You have ${row.have} of ${row.total}` })));
+});
+
 // ---------- the All movies / All shows grid ----------
 const SORTS = {
   movies: [["added", "Newest added"], ["az", "A to Z"], ["year", "Release year"], ["score", "Score"], ["length", "Length"]],
@@ -536,9 +607,17 @@ B.toggleList = async (it, btn) => {
   if (btn) btn.innerHTML = `${I(on ? "check" : "plus")} My List`;
   B.toast(on ? "Added to My List." : "Taken off My List.");
 };
+// Ben 2026-11-22: the Rate button shows the choice you just made right away (Liked / Loved / Not for me), instead
+// of going back to "Rate". "Loved" lives in the person's saved prefs (benflix.loved), read once.
+const lovedIds = new Set();
+let lovedLoad = null;
+const loadLoved = () => lovedLoad || (lovedLoad = B.prefs().then((p) => { Object.keys(loadJsonStr((p.CustomPrefs || {})["benflix.loved"])).forEach((id) => lovedIds.add(id)); }).catch(() => {}));
+B.rateLabel = (it) => { const l = (it.UserData || {}).Likes; return l === false ? "Not for me" : l === true ? (lovedIds.has(it.Id) ? "Loved" : "Liked") : "Rate"; };
+const showRateLabel = (it) => { const sp = document.querySelector("#bRate span"); if (sp) sp.textContent = B.rateLabel(it); };
+B.rateButton = (it) => { loadLoved().then(() => showRateLabel(it)); return { id: "bRate", label: B.rateLabel(it), icon: "thumb", onClick: () => B.rate(it) }; };
 B.rate = (it) => {
   const ud = it.UserData || {};
-  const cur = ud.Likes === false ? "no" : ud.Likes === true ? (ud.Rating >= 9 ? "love" : "like") : "";
+  const cur = ud.Likes === false ? "no" : ud.Likes === true ? (lovedIds.has(it.Id) || ud.Rating >= 9 ? "love" : "like") : "";
   const p = B.side(`<h3>Rate ${esc(it.Name)}</h3><p class="dim">Glowfin uses this to pick things for you.</p>
     <button class="opt ${cur === "no" ? "on" : ""}" data-r="no">Not for me</button><button class="opt ${cur === "like" ? "on" : ""}" data-r="like">I like it</button><button class="opt ${cur === "love" ? "on" : ""}" data-r="love">Love it</button>
     ${cur ? `<button class="opt" data-r="clear">Take my rating off</button>` : ""}`);
@@ -546,6 +625,10 @@ B.rate = (it) => {
     const b = e.target.closest("[data-r]"); if (!b) return;
     B.closeAll();
     const r = b.dataset.r;
+    // Show the choice on the button straight away; the server catches up behind it
+    it.UserData = Object.assign({}, it.UserData, { Likes: r === "clear" ? null : r !== "no" });
+    if (r === "love") lovedIds.add(it.Id); else lovedIds.delete(it.Id);
+    showRateLabel(it);
     B.busy(null, async () => {
       if (r === "clear") await B.jf("DELETE", `/UserItems/${it.Id}/Rating?userId=${B.uid()}`).catch(() => B.jf("DELETE", `/Users/${B.uid()}/Items/${it.Id}/Rating`));
       else await B.jf("POST", `/UserItems/${it.Id}/Rating?userId=${B.uid()}&likes=${r !== "no"}`).catch(() => B.jf("POST", `/Users/${B.uid()}/Items/${it.Id}/Rating?likes=${r !== "no"}`));
@@ -628,7 +711,9 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
     title: it.Name,
     original: it.OriginalTitle,
     color: DOORS.movies.color,
+    matchId: it.Id,
     logo: B.logoUrl(it),
+    logoId: it.Id,
     tagline: (it.Taglines || [])[0],
     chips: B.qualityChips(it),
     picture: B.backdrop(it, 1920),
@@ -638,7 +723,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
       { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", left: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", pct: resume ? ud.PlayedPercentage || 0 : 0 },
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
-      B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+      B.me.kids ? null : B.rateButton(it),
       { label: "More", icon: "more", onClick: () => movieMore(it) },
     ].filter(Boolean),
     // Glowfin D1: story + scores up top, then rows: Cast and crew, More like this (+ collection), Ask for similar
@@ -783,7 +868,9 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     title: it.Name,
     original: it.OriginalTitle,
     color: DOORS.shows.color,
+    matchId: it.Id,
     logo: B.logoUrl(it),
+    logoId: it.Id,
     tagline: (it.Taglines || [])[0],
     picture: B.backdrop(it, 1920),
     rating: it.OfficialRating,

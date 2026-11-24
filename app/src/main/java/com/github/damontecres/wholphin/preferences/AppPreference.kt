@@ -609,6 +609,13 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, _ -> prefs },
             )
 
+        /** Glowfin Follow your teams (Idea Box 28): opens Live TV's Sports tab, where the teams are picked */
+        val YourTeams =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.benflix_your_teams,
+                summary = R.string.benflix_your_teams_summary,
+            )
+
         val Update =
             AppClickablePreference<AppPreferences>(
                 title = R.string.check_for_updates,
@@ -1450,6 +1457,7 @@ val basicPreferences =
                     AppPreference.SkipBack,
                     AppPreference.SkipBackOnResume,
                     AppPreference.TrailerAppPref,
+                    AppPreference.YourTeams,
                 ),
         ),
         PreferenceGroup(
@@ -1705,6 +1713,8 @@ val screensaverPreferences =
             preferences =
                 listOf(
                     ScreensaverPreference.Enabled,
+                    ScreensaverPreference.Picture,
+                    ScreensaverPreference.WaterSound,
                     ScreensaverPreference.StartDelay,
                     ScreensaverPreference.Duration,
                     ScreensaverPreference.ShowClock,

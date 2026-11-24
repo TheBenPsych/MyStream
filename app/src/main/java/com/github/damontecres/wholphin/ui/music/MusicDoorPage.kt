@@ -56,11 +56,16 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.cards.LocalCardNamesOff
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
+import com.github.damontecres.wholphin.ui.door.CoverDoorTop
+import com.github.damontecres.wholphin.ui.door.CoverTopWords
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.door.coverTopHeight
+import com.github.damontecres.wholphin.ui.door.doorTag
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -79,6 +84,7 @@ import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.extensions.ticks
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 
 /**
@@ -177,44 +183,37 @@ fun MusicDoorPage(
     val sections = remember { musicSections() }
 
     if (state.loaded && state.rows.isEmpty()) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = modifier.fillMaxSize().padding(start = side(wide), end = side(wide), top = overlap + 40.dp),
-        ) {
-            Text(
-                text =
-                    when {
-                        state.noMusic -> "No music on Glowfin yet"
-                        else -> "Couldn't reach Glowfin"
-                    },
-                color = BenflixColors.Text,
-                fontFamily = GlowfinDisplayFont,
-                fontSize = BenflixType.pageTitle,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text =
-                    if (state.noMusic) {
-                        "Once Tower has a Music library, your songs and playlists show up here."
-                    } else {
-                        "Check the TV is online, then try again."
-                    },
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-            )
-            if (!state.noMusic) {
-                val retry = remember { FocusRequester() }
-                MusicButton(
-                    "Try again",
-                    BenflixIcon.REFRESH,
-                    onClick = viewModel::retry,
-                    primary = true,
-                    modifier = Modifier.focusRequester(retry),
-                )
-                LaunchedEffect(Unit) {
-                    delay(80)
-                    if (isTv) retry.tryRequestFocus()
-                }
+        // New look: the soft picture, one sentence and one white button
+        val retry = remember { FocusRequester() }
+        com.github.damontecres.wholphin.ui.components.EmptyPage(
+            icon = if (state.noMusic) BenflixIcon.NOTE else BenflixIcon.WARNING,
+            title = if (state.noMusic) "No music on Glowfin yet" else "Couldn't reach Glowfin",
+            line =
+                if (state.noMusic) {
+                    "Once Tower has a Music library, your songs and playlists show up here."
+                } else {
+                    "Check the TV is online, then try again."
+                },
+            modifier = modifier.padding(top = overlap),
+            buttons =
+                if (state.noMusic) {
+                    null
+                } else {
+                    {
+                        MusicButton(
+                            "Try again",
+                            BenflixIcon.REFRESH,
+                            onClick = viewModel::retry,
+                            primary = true,
+                            modifier = Modifier.focusRequester(retry),
+                        )
+                    }
+                },
+        )
+        if (!state.noMusic) {
+            LaunchedEffect(Unit) {
+                delay(80)
+                if (isTv) retry.tryRequestFocus()
             }
         }
         return
@@ -305,34 +304,37 @@ fun MusicDoorPage(
     }
     // The card the remote is on: only the top area reads it, so moving along a row doesn't rebuild the page
     val lit = remember { mutableStateOf<MusicTile?>(null) }
-    DoorFrame(frame, sections, modifier, ready = state.loaded || ready, tabs = true) { inner ->
+    DoorFrame(frame, sections, modifier, ready = state.loaded || ready, tabs = true, tabsInHeader = true) { inner ->
         if (frame.section != DOOR_HOME) {
             MusicSectionPage(frame.section, wide, preferences, inner)
         } else {
             Column(inner.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
-                if (wide) {
+                if (isTv) {
                     MusicTopArea(
                         lit = lit,
                         first = rows.firstOrNull()?.tiles?.firstOrNull(),
                         overlap = LocalTopBarOverlap.current,
                     )
+                } else if (wide) {
+                    // Glowfin new look: tablets and sideways phones have no top either, the rows start right under
+                    // the header and tabs (which sit over the page there)
+                    Spacer(Modifier.height(LocalTopBarOverlap.current))
                 }
                 // Ben 2026-11-21: like Movies, Shows and Books on TV, the row you move to jumps up whole (name and
                 // all) right under the top area, so its name is never cut off. Rows still slide sideways as before.
                 val defaultSpec = LocalBringIntoViewSpec.current
                 val toTop = remember { ScrollToTopBringIntoViewSpec(0f) }
-                CompositionLocalProvider(LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec) {
+                CompositionLocalProvider(
+                    LocalBringIntoViewSpec provides if (isTv) toTop else defaultSpec,
+                    // Glowfin new look: cover art only in the rows (the top says what the card is)
+                    LocalCardNamesOff provides true,
+                ) {
                     LazyColumn(
                         state = listState,
                         contentPadding = PaddingValues(top = if (wide) 4.dp else 10.dp, bottom = 48.dp),
                         verticalArrangement = Arrangement.spacedBy(if (wide) 26.dp else 20.dp),
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     ) {
-                        if (!wide) {
-                            rows.firstOrNull()?.tiles?.firstOrNull()?.let { top ->
-                                item(key = "phoneTop") { MusicPhoneTop(top) { onTile(top) } }
-                            }
-                        }
                         rows.forEachIndexed { rowIndex, row ->
                             item(key = row.key) {
                                 CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
@@ -431,10 +433,10 @@ private fun MusicSectionPage(
 }
 
 /**
- * Glowfin (M1) top area on TV and wide screens: what the card you're on is (a mix: "Made for you · new every
- * morning", its name big, who's in it), with its cover sharp on the right and a soft glow in the cover's own
- * colours behind the top of the page (Ben 2026-11-18: no cover picture as the background). It waits half a second
- * after you stop moving, so passing along a row stays smooth on older TVs.
+ * Glowfin new look (part 3, Ben approved 2026-11-22) on TV and wide screens: the cover of the card you're on stands
+ * at the top right with its own colours glowing behind the page, and the words on the left say what it is (name,
+ * artist, facts, a small tag), like Home and Movies. It waits half a second after you stop moving, so passing along
+ * a row stays smooth on older TVs. Phones have no top: the rows start right under the tabs.
  */
 @Composable
 private fun MusicTopArea(
@@ -452,110 +454,58 @@ private fun MusicTopArea(
     }
     val tile = shown ?: first ?: return
     val glow = rememberCoverGlow(rememberTileGlowUrl(tile), BenflixColors.Music)
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val height = (maxWidth * 0.18f).coerceIn(140.dp, 210.dp) + overlap
-        Box(Modifier.fillMaxWidth().height(height)) {
-            // The glow reaches up under the tabs and a little way down behind the first row
-            CoverGlow(
-                glow,
-                Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(height * 1.6f),
-            )
-            // The cover on the right, whole and sharp, like an album sitting on a shelf
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = overlap + 6.dp, end = side(true), bottom = 8.dp)
-                    .fillMaxHeight()
-                    .aspectRatio(1f)
-                    .shadow(18.dp, BenflixShapes.Card),
-            ) {
-                Crossfade(targetState = tile, animationSpec = tween(250), label = "musicTopArt") { t ->
-                    TileCover(t, height, Modifier.fillMaxSize())
-                }
+    val height = coverTopHeight(LocalConfiguration.current.screenHeightDp.dp, overlap)
+    val words = remember(tile) { musicTopWords(tile) }
+    CoverDoorTop(
+        shown = tile,
+        words = words,
+        glow = glow,
+        height = height,
+        overlap = overlap,
+        coverRatio = 1f,
+        edge = side(true),
+    ) { t, m -> TileCover(t, height, m) }
+}
+
+/** What the top says: a mix's name and who's in it, an album's name, artist, year, songs and length */
+private fun musicTopWords(tile: MusicTile): CoverTopWords {
+    if (tile is MusicTile.Item) {
+        val item = tile.item
+        val d = item.data
+        return when (item.type) {
+            BaseItemKind.MUSIC_ALBUM -> {
+                CoverTopWords(
+                    title = tileName(tile),
+                    by = d.albumArtist ?: d.artists?.firstOrNull(),
+                    facts =
+                        listOfNotNull(
+                            "Album",
+                            d.productionYear?.toString(),
+                            d.childCount?.let { songCount(it) },
+                            d.runTimeTicks
+                                ?.ticks
+                                ?.inWholeMinutes
+                                ?.takeIf { it > 0 }
+                                ?.let { if (it >= 60) "${it / 60} h ${it % 60} min" else "$it min" },
+                        ).joinToString(" · "),
+                    tag = doorTag(item),
+                )
             }
-            Column(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = side(true), end = side(true), bottom = 10.dp)
-                        .widthIn(max = 620.dp),
-            ) {
-                MusicTopWords(tile, center = false)
+
+            else -> {
+                CoverTopWords(
+                    title = tileName(tile),
+                    facts = listOfNotNull(topKicker(tile), musicCardLine(item)).joinToString(" · "),
+                    tag = doorTag(item),
+                )
             }
         }
     }
-}
-
-/**
- * Phones (Ben 2026-11-18): there's no remote moving between cards, so the top stays on the first card (today's
- * daylist): its cover in the middle with the glow behind it, and its name under it. Tapping it opens it.
- */
-@Composable
-private fun MusicPhoneTop(
-    tile: MusicTile,
-    onClick: () -> Unit,
-) {
-    val glow = rememberCoverGlow(rememberTileGlowUrl(tile), BenflixColors.Music)
-    Box(Modifier.fillMaxWidth()) {
-        CoverGlow(glow, Modifier.matchParentSize())
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onClick)
-                    .padding(start = side(false), end = side(false), top = 18.dp, bottom = 6.dp),
-        ) {
-            Box(Modifier.size(190.dp).shadow(18.dp, BenflixShapes.Card)) {
-                TileCover(tile, 190.dp, Modifier.fillMaxSize())
-            }
-            Spacer(Modifier.height(14.dp))
-            MusicTopWords(tile, center = true)
-        }
-    }
-}
-
-/** The kicker, the big name and the line under it, for the top area */
-@Composable
-private fun MusicTopWords(
-    tile: MusicTile,
-    center: Boolean,
-) {
-    val align = if (center) TextAlign.Center else TextAlign.Start
-    Text(
-        text = topKicker(tile),
-        color = Glowfin.Dim,
-        fontSize = BenflixType.small,
-        fontWeight = FontWeight.SemiBold,
-        textAlign = align,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+    return CoverTopWords(
+        title = tileName(tile),
+        facts = topLine(tile).orEmpty(),
+        tag = topKicker(tile),
     )
-    Text(
-        text = tileName(tile),
-        color = Glowfin.Text,
-        fontFamily = GlowfinDisplayFont,
-        fontSize = BenflixType.pageTitle,
-        fontWeight = FontWeight.Bold,
-        textAlign = align,
-        maxLines = if (center) 2 else 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 4.dp),
-    )
-    topLine(tile)?.takeIf { it.isNotBlank() }?.let { line ->
-        Text(
-            text = line,
-            color = BenflixColors.Soft,
-            fontSize = BenflixType.body,
-            textAlign = align,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-    }
 }
 
 /** A small copy of the tile's cover to take the glow colours from (a mix uses its first album) */

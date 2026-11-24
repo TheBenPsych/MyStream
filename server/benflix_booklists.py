@@ -822,7 +822,7 @@ def page(user_id):
         if items:
             rows.append(dict({"key": key, "title": title, "items": items}, **kw))
 
-    add("series", "Next in your series", _next_in_series(user_id, have))
+    add("series", "Series to finish", _next_in_series(user_id, have))
     add("authors", "New from authors you read", _new_from_authors(user_id, have))
     add("nytf", "NYT best sellers · Fiction", _row(_lists.get("nyt_fiction"), have), ranked=True)
     add("nytn", "NYT best sellers · Nonfiction", _row(_lists.get("nyt_nonfiction"), have), ranked=True)
@@ -949,7 +949,7 @@ def genre_page(slug, user_id):
         if items:
             rows.append(dict({"key": key, "title": title, "items": items}, **kw))
 
-    add("series", "Next in your series", _next_in_series(user_id, have, words))
+    add("series", "Series to finish", _next_in_series(user_id, have, words))
     add("authors", "New from authors you read", _new_from_authors(user_id, have, words))
     add("trending", f"Trending in {g[1]}", _row((lists.get("trending") or []) + (lists.get("top") or [])[10:], have, seen=seen))
     add("awards", "Award winners", _row([a for a in _lists.get("awards") or [] if slug in (a.get("genreSlugs") or [])], have))

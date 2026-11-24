@@ -33,11 +33,17 @@ object BenflixColors {
     /** The "you are here" ring around whatever the remote is on: Glowfin aqua, or sunny yellow on Kids */
     val Focus: Color get() = KidsLook.palette?.accent ?: Glowfin.Aqua
 
-    /** A button the remote is on fills with this: the middle of the Glowfin glow (violet-blue), or sunny yellow on Kids */
-    val FocusFill: Color get() = KidsLook.palette?.accent ?: Glowfin.FillMid
+    /**
+     * A button the remote is on fills with this. Glowfin new look "One focus look everywhere" (Ben 2026-11-22):
+     * solid white with the aqua ring ([Focus]), or sunny yellow on Kids
+     */
+    val FocusFill: Color get() = KidsLook.palette?.accent ?: Color.White
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: Color.White
+    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: OnWhite
+
+    /** The outline round a lit poster or card: white (new look), or the Kids colour on Kids */
+    val Outline: Color get() = KidsLook.palette?.accent ?: Color.White
 
     /** Thin lines and panel edges */
     val Line: Color get() = KidsLook.palette?.line ?: Glowfin.Line

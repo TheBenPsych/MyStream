@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.discover
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Button
+import androidx.tv.material3.Border
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.RequestStatus
@@ -37,7 +40,9 @@ import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.Glowfin
+import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -118,7 +123,7 @@ internal fun ManageTiles(
     onLane: (ManageLane) -> Unit,
 ) {
     val isTv = rememberIsTv()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(if (isTv) 22.dp else 16.dp)
     val row =
         if (isTv) {
             Modifier.fillMaxWidth()
@@ -134,15 +139,23 @@ internal fun ManageTiles(
             Button(
                 onClick = { onLane(l) },
                 shape = ButtonDefaults.shape(shape = shape),
+                // Glowfin new look: see-through pills, the picked box solid white
                 colors =
                     ButtonDefaults.colors(
-                        containerColor = if (on) Glowfin.FocusRow else Glowfin.Deep,
-                        contentColor = Glowfin.Text,
+                        containerColor = if (on) MANAGE_PICKED else MANAGE_GLASS,
+                        contentColor = if (on) Glowfin.Ink else Glowfin.Text,
                         focusedContainerColor = Glowfin.Text,
                         focusedContentColor = Glowfin.Ink,
                     ),
+                border =
+                    ButtonDefaults.border(
+                        border = Border(BorderStroke(1.5.dp, if (on) Color.Transparent else MANAGE_EDGE), shape = shape),
+                        focusedBorder = Border(BorderStroke(2.dp, Glowfin.Aqua), shape = shape),
+                    ),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                // Ben 2026-11-23 (TV photo): the names were cut off ("Need...", "On its..."). Less padding, and the
+                // small line can take two lines
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                 modifier = if (isTv) Modifier.weight(1f) else Modifier.width(118.dp),
             ) {
                 Column(Modifier.fillMaxWidth()) {
@@ -156,12 +169,13 @@ internal fun ManageTiles(
                         Text(
                             text = (counts[l] ?: 0).toString(),
                             fontSize = 26.sp,
+                            fontFamily = GlowfinDisplayFont,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                         )
                     }
                     Text(
-                        text = if (on) "${l.title} ✓" else l.title,
+                        text = l.title,
                         fontSize = BenflixType.small,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -171,12 +185,85 @@ internal fun ManageTiles(
                         Text(
                             text = l.sub,
                             fontSize = 11.sp,
-                            maxLines = 1,
+                            lineHeight = 13.sp,
+                            maxLines = 2,
+                            minLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+private val MANAGE_GLASS = Color(0x660B0D1A)
+private val MANAGE_PICKED = Color(0xEBFFFFFF)
+private val MANAGE_EDGE = Color(0x24FFFFFF)
+
+/**
+ * Glowfin new look (Ben approved 2026-11-22): on a TV the board's rows sit on the left and the request you're on
+ * fills the right side, its art behind the page and its details beside the rows: who asked and when, their note,
+ * and why it's stuck. On phones the rows keep the whole width, like before.
+ */
+@Composable
+internal fun ManageFrame(
+    on: Boolean,
+    art: String?,
+    side: @Composable () -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    if (!on) {
+        content(Modifier.fillMaxSize())
+        return
+    }
+    Box(Modifier.fillMaxSize()) {
+        RequestArtUrl(art)
+        Row(Modifier.fillMaxSize()) {
+            // Ben 2026-11-23: more room for the board (its names were cut off), the details still fit on the right
+            Box(Modifier.weight(0.68f).fillMaxHeight()) { content(Modifier.fillMaxSize()) }
+            Box(
+                Modifier
+                    .weight(0.32f)
+                    .fillMaxHeight()
+                    .padding(start = 18.dp, end = 32.dp, top = 112.dp),
+            ) { side() }
+        }
+    }
+}
+
+/** What the right side says about the request you're on */
+internal class ManageShown(
+    val key: String,
+    val art: String?,
+    val title: String,
+    val facts: String,
+    val tag: RqTag,
+    val story: String?,
+    /** "Why: no copies found yet", "Mia asked on Nov 17 · you said yes", the note they left */
+    val lines: List<String>,
+)
+
+@Composable
+internal fun ManageSide(shown: ManageShown?) {
+    if (shown == null) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RequestTopText(
+            title = shown.title,
+            facts = shown.facts,
+            tags = listOf(shown.tag),
+            story = shown.story,
+            hint = null,
+        )
+        shown.lines.forEach {
+            Text(
+                text = it,
+                fontSize = BenflixType.small,
+                fontWeight = FontWeight.SemiBold,
+                color = Glowfin.Text.copy(alpha = 0.8f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -259,6 +346,9 @@ internal fun ManageTick(
     Button(
         onClick = onClick,
         shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
+        border =
+            com.github.damontecres.wholphin.ui.theme
+                .glowfinButtonBorder(RoundedCornerShape(8.dp)),
         colors =
             ButtonDefaults.colors(
                 containerColor = if (on) Glowfin.Text else Glowfin.Raise,

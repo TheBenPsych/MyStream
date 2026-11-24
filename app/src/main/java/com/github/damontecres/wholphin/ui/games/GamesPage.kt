@@ -83,7 +83,8 @@ import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorMemory
 import com.github.damontecres.wholphin.ui.door.DoorSection
-import com.github.damontecres.wholphin.ui.door.doorTabsHeight
+import com.github.damontecres.wholphin.ui.door.coverTopHeight
+import com.github.damontecres.wholphin.ui.door.doorPageTop
 import com.github.damontecres.wholphin.ui.door.rememberDoorFrameState
 import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
@@ -256,8 +257,10 @@ fun GamesPage(
         remember(library) {
             buildList {
                 add(DoorSection(DOOR_HOME, "For you", BenflixIcon.HOME))
-                if (library != LibraryState.Hidden) add(DoorSection(TAB_CONSOLES, "Consoles", BenflixIcon.PAD))
+                // Ben 2026-11-22: Ember Road moves up as its own tab, right after For you
+                add(DoorSection(TAB_EMBER, "Ember Road", BenflixIcon.PAD))
                 add(DoorSection(TAB_MOVIE, "Movie games", BenflixIcon.FILM))
+                if (library != LibraryState.Hidden) add(DoorSection(TAB_CONSOLES, "Consoles", BenflixIcon.PAD))
                 add(DoorSection(TAB_PARTY, "Party", BenflixIcon.PHONE))
                 add(DoorSection(TAB_SCORES, "Scores", BenflixIcon.STATS))
             }
@@ -275,12 +278,15 @@ fun GamesPage(
     // Ben 2026-11-18: on TV the same height as Movies and Shows posters (180), so a whole row fits under the top area
     // Ben 2026-11-20: smaller TVs have less room, so on TV the cards get only as tall as the room under the top
     // area allows (the row you're on always shows whole, and the next one peeks in). Big TVs stay at 160.
-    val tvTop = LocalTopBarOverlap.current + doorTabsHeight(true)
-    val topAreaHeight = gamesTopHeight(config.screenHeightDp.dp, tvTop)
+    // Glowfin new look (part 3): the tabs sit in the header's own row, and For you and Ember Road get the cover top
+    val headerTop = LocalTopBarOverlap.current
+    val tvTop = doorPageTop(headerTop, tabsInHeader = true)
+    val withTop = forYou || tab == TAB_EMBER
+    val topAreaHeight = coverTopHeight(config.screenHeightDp.dp, tvTop)
     val rowFit =
         if (isTv) {
             tvRowCardFit(
-                rowsHeight = config.screenHeightDp.dp - tvTop - (if (forYou) topAreaHeight else 0.dp) - 4.dp,
+                rowsHeight = config.screenHeightDp.dp - (if (withTop) topAreaHeight else tvTop) - 4.dp,
                 rowName = BenflixType.rowName,
                 around = 16.dp,
             )
@@ -290,7 +296,8 @@ fun GamesPage(
     val cardHeight = if (isTv) 160.dp.fitTo(rowFit) else 154.dp
     // TV For you: the top area already says the game's name and console, so the cards have none under them
     // (like Movies and Shows), which keeps each row short enough to show whole
-    val namesUnder = !(isTv && forYou)
+    // Glowfin new look (Ben 2026-11-22, "just cover art"): For you has no names under the cards on phones either
+    val namesUnder = !forYou
     // Rows on TV sit like Movies and Shows: row name, then the cards just under it
     val rowNameGap = if (isTv) 8.dp else 16.dp
     val rowPad = if (isTv) 4.dp else 8.dp
@@ -401,25 +408,24 @@ fun GamesPage(
                 .focusRequester(pageFocus)
                 .focusRestorer(),
             tabs = true,
+            tabsInHeader = true,
         ) { inner ->
-            // TV and wide screens: the tabs sit over the top of the page, so the page starts under them
+            // TV and wide screens: the tabs sit over the top of the page, so the page starts under them (the cover
+            // top on For you and Ember Road reaches up behind them itself)
             val top = if (wide) LocalTopBarOverlap.current else 0.dp
-            Column(modifier = inner.fillMaxSize().padding(top = top).onFirstUserMove { userMoved = true }) {
-                if (wide && forYou) {
+            // Glowfin new look: the big cover top is for the TV remote only; tablets land on the rows too
+            val showTop = isTv && withTop
+            Column(modifier = inner.fillMaxSize().padding(top = if (showTop) 0.dp else top).onFirstUserMove { userMoved = true }) {
+                if (showTop) {
                     val first =
-                        recent.firstOrNull()?.let { refPreview(it.first, it.second) }
-                    // Ben 2026-11-18 (approved games-books-top-1): just the words, so the first row shows whole
-                    // under it and the next one peeks in
+                        if (forYou) recent.firstOrNull()?.let { refPreview(it.first, it.second) } else emberPreview()
+                    // Glowfin new look: the cover of the game you're on top right, the words about it on the left
                     GamesTopArea(
-                        preview = shown ?: first,
-                        height = gamesTopHeight(config.screenHeightDp.dp, top),
-                        glowAbove = top,
+                        preview = (shown?.takeIf { forYou || it.key == "EMBER" }) ?: first,
+                        height = coverTopHeight(config.screenHeightDp.dp, top),
+                        overlap = top,
                         // (lines up with the tiles under it: the page edge plus the rows' own 8)
-                        modifier =
-                            Modifier.padding(
-                                start = if (isTv) BenflixSpace.tvEdge + 8.dp else 16.dp,
-                                end = if (isTv) BenflixSpace.tvEdge else 8.dp,
-                            ),
+                        edge = if (isTv) BenflixSpace.tvEdge + 8.dp else 16.dp,
                     )
                 }
                 // Ben 2026-11-18: like Movies and Shows on TV, the row you move to jumps up whole (name and all) right
@@ -446,25 +452,16 @@ fun GamesPage(
                                 ),
                     ) {
                         CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-                            // For you (G1): Continue playing, Movie puzzles, Favourites, Arcade.
-                            // Phones: the last game played is one big "Keep playing" card first (like Keep watching)
-                            val keep = if (!wide && forYou) recent.firstOrNull() else null
-                            if (keep != null) {
-                                val (ref, time) = keep
-                                KeepPlayingCard(
-                                    ref = ref,
-                                    line = "${ref.consoleName} · Played ${playedAgo(time)}",
-                                    token = viewModel.gamesToken,
-                                    status =
-                                        when {
-                                            prep?.gameId == ref.id -> prep?.text
-                                            starting == ref.id -> "Starting…"
-                                            else -> null
-                                        },
-                                    onPlay = { viewModel.playHere(context, ref, resume = true) },
-                                    onOpen = { viewModel.choose(ref) },
+                            if (tab == TAB_EMBER) {
+                                EmberRow(
+                                    isTv = isTv,
+                                    onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) },
+                                    onFocus = onFocus,
                                 )
                             }
+                            // For you (G1): Continue playing, Movie puzzles, Favourites, Arcade.
+                            // Glowfin new look (Ben 2026-11-22): phones have no big card at the top either, the rows
+                            // start right under the tabs
                             if (forYou && recent.isEmpty() && waitingRecent) {
                                 RowName("Continue playing", isTv)
                                 Row(
@@ -479,14 +476,7 @@ fun GamesPage(
                                     }
                                 }
                             }
-                            val rowRecent =
-                                if (!forYou) {
-                                    emptyList()
-                                } else if (keep != null) {
-                                    recent.drop(1)
-                                } else {
-                                    recent
-                                }
+                            val rowRecent = if (forYou) recent else emptyList()
                             if (rowRecent.isNotEmpty()) {
                                 // TV: the row name comes into view with the row
                                 Column(verticalArrangement = Arrangement.spacedBy(rowNameGap), modifier = Modifier.scrollAsOneBlock()) {
@@ -503,7 +493,7 @@ fun GamesPage(
                                                     nameUnder = namesUnder,
                                                     onClick = { viewModel.playHere(context, ref, resume = true) },
                                                 )
-                                                if (!wide) {
+                                                if (!wide && namesUnder) {
                                                     Text(
                                                         text = "${ref.consoleName} · ${playedAgo(time)}",
                                                         style = MaterialTheme.typography.bodySmall,
@@ -524,13 +514,6 @@ fun GamesPage(
                             if (forYou) FavouritesRow()
                             if (forYou || tab == TAB_MOVIE) {
                                 GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
-                            }
-                            if (tab == TAB_MOVIE) {
-                                EmberBanner(
-                                    isTv = isTv,
-                                    onClick = { viewModel.navigationManager.navigateTo(Destination.EmberRoad) },
-                                    onFocus = onFocus,
-                                )
                             }
                             if (tab == TAB_PARTY) {
                                 GameRows(viewModel = viewModel, isTv = isTv, only = setOf("party"), board = board, onFocus = onFocus)
@@ -964,113 +947,6 @@ internal fun ActionTile(
     }
 }
 
-/**
- * Phones: the last game played as one big card at the top of Games (approved "Keep playing"), with its
- * box art, name, console and a pink Play button. Play carries on where you left off; the card opens the
- * game's page.
- */
-@Composable
-private fun KeepPlayingCard(
-    ref: GameRef,
-    line: String,
-    token: String,
-    status: String?,
-    onPlay: () -> Unit,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(16.dp)
-    val context = LocalContext.current
-    Surface(
-        border =
-            com.github.damontecres.wholphin.ui.theme
-                .benflixFocusBorder(shape),
-        onClick = onOpen,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors = ClickableSurfaceDefaults.colors(containerColor = BenflixColors.Raised, focusedContainerColor = BenflixColors.Raised),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = modifier.glowFocus(shape).fillMaxWidth(),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(12.dp),
-        ) {
-            Box(
-                Modifier
-                    .size(width = 100.dp, height = 140.dp)
-                    .background(Glowfin.Raise, RoundedCornerShape(10.dp)),
-            ) {
-                if (ref.coverUrl != null) {
-                    AsyncImage(
-                        model =
-                            remember(ref.coverUrl) {
-                                ImageRequest
-                                    .Builder(context)
-                                    .data(ref.coverUrl)
-                                    .httpHeaders(NetworkHeaders.Builder().set("X-Benflix-Token", token).build())
-                                    .build()
-                            },
-                        contentDescription = ref.name,
-                        contentScale = ContentScale.Fit,
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(10.dp)),
-                    )
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "KEEP PLAYING",
-                    color = BenflixColors.Games,
-                    fontSize = BenflixType.tag,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
-                )
-                Text(
-                    text = ref.name,
-                    color = BenflixColors.Text,
-                    fontSize = BenflixType.rowName,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = status ?: line,
-                    color = BenflixColors.Soft,
-                    fontSize = BenflixType.small,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Surface(
-                    border =
-                        com.github.damontecres.wholphin.ui.theme
-                            .benflixFocusBorder(RoundedCornerShape(50)),
-                    onClick = onPlay,
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
-                    colors =
-                        ClickableSurfaceDefaults.colors(
-                            containerColor = BenflixColors.Games,
-                            contentColor = BenflixColors.OnGames,
-                            focusedContainerColor = BenflixColors.Games,
-                            focusedContentColor = BenflixColors.OnGames,
-                        ),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-                    modifier = Modifier.padding(top = 6.dp),
-                ) {
-                    Text(
-                        text = "▶  Play",
-                        fontSize = BenflixType.body,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 9.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
 /** A box art card for one of your own games */
 @Composable
 internal fun ServerGameCard(
@@ -1199,6 +1075,7 @@ internal fun playedAgo(time: Long): String {
 
 /** Glowfin G1 tab keys (For you is the frame's own Home) */
 private const val TAB_CONSOLES = "consoles"
+private const val TAB_EMBER = "ember"
 private const val TAB_MOVIE = "movie"
 private const val TAB_PARTY = "party"
 private const val TAB_SCORES = "scores"
@@ -1261,19 +1138,3 @@ internal fun PlayersTag(
                 ).padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
-
-/** The words in the TV top area (kicker, name, chips, one line about it) and a little air */
-private val GAMES_TOP_WORDS = 150.dp
-
-/**
- * How tall the Games top area is: 150 on most TVs, a little shorter on TVs with less room (so the rows under it
- * keep enough space), never shorter than 96.
- */
-private fun gamesTopHeight(
-    screenHeight: Dp,
-    top: Dp,
-): Dp =
-    GAMES_TOP_WORDS
-        .coerceAtMost(screenHeight * 0.5f - top)
-        .coerceAtMost((screenHeight - top) * 0.36f)
-        .coerceAtLeast(96.dp)
