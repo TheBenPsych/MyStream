@@ -80,9 +80,8 @@
     const logo = $("#tpLogo");
     if (logo) {
       const fit = () => {
-        const r = logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 0;
-        // Only logos about 2 to 5 times wider than tall; others show the name as text ("fresh" pick)
-        if (r < 2 || r > 5) return logo.remove();
+        // Ben 2026-11-23 (logo plan): details pages show the full logo in any shape, shrunk to fit the fixed box
+        if (!logo.naturalWidth || !logo.naturalHeight) return logo.remove();
         logo.hidden = false;
         // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
         if (rows) { const l = B.tpLight(logo); if (l != null && l < 0.3) logo.classList.add("tp-logo-white"); }

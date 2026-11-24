@@ -45,7 +45,6 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
 import com.github.damontecres.wholphin.ui.detail.title.BRIGHT_ART
 import com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras
 import com.github.damontecres.wholphin.ui.detail.title.ScorePill
@@ -144,11 +143,11 @@ internal fun DoorInfo(
     brightArt: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val logoUrl = rememberLogoUrl(item)
-    val extras = remember(logoUrl) { TitleExtras(logoUrl = logoUrl) }
+    // Ben 2026-11-23 (logo plan): browsing tops always show the name in white text, never the logo (it flickered
+    // while the app decided if the logo was a good shape); the details pages show the full logo
     val edge = if (brightArt) WORD_EDGE else null
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
-        CompositionLocalProvider(LocalTitleExtras provides extras) {
+        CompositionLocalProvider(LocalTitleExtras provides NO_LOGO) {
             TitleBox(title = item.title.orEmpty(), wide = true, height = if (easy) 72.dp else 60.dp, width = 300.dp)
         }
         val facts = remember(item) { doorFacts(item) }

@@ -212,7 +212,8 @@ internal fun WideRowsTitlePage(
                                     .padding(start = side, end = side, top = TITLE_TOP),
                         ) {
                             // The title box: always the same size and spot, so the page never moves
-                            TitleBox(title = title, wide = true)
+                            // Ben 2026-11-23 (logo plan): the full logo, any shape, in a slightly bigger fixed box
+                            TitleBox(title = title, wide = true, height = 100.dp, width = 340.dp, anyShape = true)
                             Spacer(Modifier.weight(1f))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -505,7 +506,7 @@ internal fun PhoneRowsTitlePage(
                     ) {
                         // Upright phones: the title box with the score pill beside it on the right
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            TitleBox(title = title, wide = false, width = 220.dp, modifier = Modifier.weight(1f))
+                            TitleBox(title = title, wide = false, width = 220.dp, anyShape = true, modifier = Modifier.weight(1f))
                             ScorePill(rating = rating, scores = scores, small = true)
                         }
                         InfoLine(info, null)

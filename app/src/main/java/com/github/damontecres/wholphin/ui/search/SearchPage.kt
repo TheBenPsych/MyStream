@@ -734,7 +734,8 @@ private fun SearchTopWords(
     focus: SearchFocus,
     modifier: Modifier = Modifier,
 ) {
-    val extras = remember(focus.logoUrl) { TitleExtras(logoUrl = focus.logoUrl) }
+    // Ben 2026-11-23 (logo plan): browsing tops show the name in white text, never the logo
+    val extras = remember { TitleExtras() }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
         CompositionLocalProvider(LocalTitleExtras provides extras) {
             TitleBox(title = focus.name, wide = true, height = 60.dp, width = 300.dp)
