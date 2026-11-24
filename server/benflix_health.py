@@ -73,7 +73,6 @@ NOTES = {
 
 _lock = threading.Lock()
 _tools = None  # benflix_server_tools (drive health from Scrutiny)
-_cache = {"at": 0.0, "samples": []}
 
 
 def log(text):
@@ -163,59 +162,108 @@ def _span(secs):
     return f"{m} minute{'' if m == 1 else 's'}"
 
 
-def _samples(hours=26):
-    """The black box's readings from the last [hours] hours (read again at most every 20 seconds)"""
-    now = time.time()
-    with _lock:
-        if now - _cache["at"] < 20 and _cache.get("hours", 0) >= hours:
-            return _cache["samples"]
-    since = now - hours * 3600
-    out = []
+# Speed (Ben 2026-11-24, "Server pages take a lot longer to load"): the black box gets a reading every 10 seconds,
+# so each day's file grows to about 8,600 lines. Every Server page visit used to read the last 3 days again (and all 7
+# days once per crash), several times at once because the Health dot, Overview and each card asked separately, which
+# kept the helper busy and made every Server page wait. Now each file is read once and only its new lines after that,
+# one reader at a time, and the crash list is worked out again only when boots.jsonl changes.
+_read_lock = threading.Lock()
+_files = {}  # file name -> {"ino", "pos" (bytes read so far), "rows"}
+KEEP_FILES = 3  # the newest day files kept in memory (enough for 26 hours)
+
+
+def _day_names():
     try:
-        names = sorted(n for n in os.listdir(DIR) if n.startswith("blackbox-") and n.endswith(".jsonl"))
+        return sorted(n for n in os.listdir(DIR) if n.startswith("blackbox-") and n.endswith(".jsonl"))
     except OSError:
-        names = []
-    for n in names[-3:]:
-        out.extend(s for s in _lines(os.path.join(DIR, n)) if isinstance(s, dict) and (s.get("t") or 0) >= since)
-    out.sort(key=lambda s: s.get("t") or 0)
-    with _lock:
-        _cache.update(at=now, samples=out, hours=hours)
+        return []
+
+
+def _read_new(name, keep=True):
+    """Every reading in one day file. Only the lines added since the last look are read. Call with _read_lock held."""
+    path = os.path.join(DIR, name)
+    try:
+        info = os.stat(path)
+    except OSError:
+        _files.pop(name, None)
+        return []
+    f = _files.get(name)
+    if f is None or f["ino"] != info.st_ino or info.st_size < f["pos"]:
+        f = {"ino": info.st_ino, "pos": 0, "rows": []}
+    if info.st_size > f["pos"]:
+        try:
+            with open(path, "rb") as fh:
+                fh.seek(f["pos"])
+                data = fh.read()
+        except OSError:
+            data = b""
+        whole = data.rfind(b"\n") + 1  # a line Tower is still writing waits for the next look
+        for line in data[:whole].splitlines():
+            try:
+                s = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(s, dict) and isinstance(s.get("t"), (int, float)):
+                f["rows"].append(s)
+        f["pos"] += whole
+    if keep:
+        _files[name] = f
+    return f["rows"]
+
+
+def _samples(hours=26):
+    """The black box's readings from the last [hours] hours, oldest first"""
+    since = time.time() - hours * 3600
+    with _read_lock:
+        names = _day_names()[-KEEP_FILES:]
+        for old in [n for n in _files if n not in names]:
+            del _files[old]
+        out = []
+        for n in names:
+            out.extend(s for s in _read_new(n) if s["t"] >= since)
+    out.sort(key=lambda s: s["t"])
     return out
 
 
-def _samples_around(t, before=90):
-    """Readings in the [before] seconds up to t, from whichever day's file has them"""
+def _samples_around(t, before=90, st=None):
+    """Readings in the [before] seconds up to t, from only the day files that can have them"""
+    off = _offset(st)
+    days = {time.strftime("%Y-%m-%d", time.gmtime(x + off)) for x in (t - before - DAY, t - before, t, t + DAY)}
     out = []
-    try:
-        names = sorted(n for n in os.listdir(DIR) if n.startswith("blackbox-") and n.endswith(".jsonl"))
-    except OSError:
-        return out
-    for n in names:
-        rows = _lines(os.path.join(DIR, n))
-        out.extend(s for s in rows if isinstance(s, dict) and t - before <= (s.get("t") or 0) < t)
-    return sorted(out, key=lambda s: s.get("t") or 0)
+    with _read_lock:
+        for n in _day_names():
+            if n[len("blackbox-"):-len(".jsonl")] in days:
+                rows = _files[n]["rows"] if n in _files else _read_new(n, keep=False)
+                out.extend(s for s in rows if t - before <= s["t"] < t)
+    return sorted(out, key=lambda s: s["t"])
 
 
-_crash_cache = {"at": 0.0, "data": []}
+_crash_cache = {"sig": None, "data": []}
+_crash_lock = threading.Lock()
 
 
 def _crashes(st=None):
     """Every crash Tower noticed since this page started, newest first. Each knows its last black box minute."""
-    with _lock:
-        if time.time() - _crash_cache["at"] < 30:
+    path = os.path.join(DIR, "boots.jsonl")
+    with _crash_lock:  # one at a time: the others wait and get the saved answer
+        try:
+            info = os.stat(path)
+            sig = (info.st_ino, info.st_size, info.st_mtime)
+        except OSError:
+            sig = None
+        if sig is not None and sig == _crash_cache["sig"]:
             return _crash_cache["data"]
-    out = []
-    for b in _lines(os.path.join(DIR, "boots.jsonl")):
-        if not isinstance(b, dict) or b.get("clean"):
-            continue
-        boot = int(b.get("boot") or 0)
-        last = _samples_around(boot, before=3 * 3600)
-        died = (last[-1].get("t") if last else None) or b.get("log_end") or b.get("prev_boot") or boot
-        out.append({"at": int(died), "boot": boot, "bert": bool(b.get("bert")), "last": [s for s in last if s.get("t", 0) >= died - 60]})
-    out.sort(key=lambda c: c["at"], reverse=True)
-    with _lock:
-        _crash_cache.update(at=time.time(), data=out)
-    return out
+        out = []
+        for b in _lines(path):
+            if not isinstance(b, dict) or b.get("clean"):
+                continue
+            boot = int(b.get("boot") or 0)
+            last = _samples_around(boot, before=3 * 3600, st=st)
+            died = (last[-1].get("t") if last else None) or b.get("log_end") or b.get("prev_boot") or boot
+            out.append({"at": int(died), "boot": boot, "bert": bool(b.get("bert")), "last": [s for s in last if s.get("t", 0) >= died - 60]})
+        out.sort(key=lambda c: c["at"], reverse=True)
+        _crash_cache.update(sig=sig, data=out)
+        return out
 
 
 def _incidents(st=None):
@@ -383,7 +431,7 @@ def _not_yet():
     }
 
 
-def health_card():
+def health_card(copy=True):
     st = _status()
     if not st:
         return _not_yet()
@@ -424,7 +472,7 @@ def health_card():
     wd = st.get("wd") or ""
     if (st.get("settings") or {}).get("watchdog") == "on" and wd == "unavailable":
         rows.append({"light": "warn", "t": "The freeze timer can't switch on", "s": "This board's BIOS keeps its safety timer locked, so a hard freeze still needs the power button."})
-    return {"title": "Health", "intro": "How Tower's parts are doing, and what happened before a crash.", "level": level, "headline": headline, "reason": reason, "rows": rows, "copy": report(), "copy_label": "Copy report for Claude"}
+    return {"title": "Health", "intro": "How Tower's parts are doing, and what happened before a crash.", "level": level, "headline": headline, "reason": reason, "rows": rows, "copy": report() if copy else "", "copy_label": "Copy report for Claude"}
 
 
 def parts_card():
@@ -629,7 +677,7 @@ def report():
 def summary():
     """For the Server page's rail dot and Overview: {"level", "headline"}"""
     try:
-        c = health_card()
+        c = health_card(copy=False)
         return {"level": c.get("level"), "headline": c.get("headline")}
     except Exception:  # noqa: BLE001
         return None
