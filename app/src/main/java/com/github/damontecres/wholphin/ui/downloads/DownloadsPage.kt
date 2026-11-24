@@ -249,8 +249,9 @@ fun DownloadsPage(
             }
         }
     val items = remember(visible) { visible.filterNot { it.music } }
-    // Benflix music: saved songs, oldest first so an album plays in order
-    val songs = remember(visible) { visible.filter { it.music }.sortedBy { it.addedAt } }
+    // Benflix music: saved songs, oldest first so an album plays in order (a song saved twice shows once; two
+    // with the same id crashed the list)
+    val songs = remember(visible) { visible.filter { it.music }.sortedBy { it.addedAt }.distinctBy { it.itemId } }
     var playing by remember { mutableStateOf<DownloadedItem?>(null) }
     var confirmDelete by remember { mutableStateOf<DownloadedItem?>(null) }
     // Manga chapters saved on this phone (Ben 2026-11-21): tap a series to read it, even with no internet
