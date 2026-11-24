@@ -99,9 +99,13 @@ def _rows_for(user, token):
 _building = set()  # users whose taste is being worked out right now (only one at a time per person)
 
 
+_one_build = threading.Lock()  # one person's taste at a time, so several profiles never pile onto Jellyfin together
+
+
 def _build(user, token):
     try:
-        got = {"at": time.time(), "items": _rows_for(user, token)}
+        with _one_build:
+            got = {"at": time.time(), "items": _rows_for(user, token)}
         with _lock:
             _taste[user] = got
     except (OSError, ValueError):

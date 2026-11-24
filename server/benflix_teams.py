@@ -157,7 +157,10 @@ _nick_count = {}
 for _id, (_lg, _t) in TEAMS.items():
     _nick_count[_t[2].lower()] = _nick_count.get(_t[2].lower(), 0) + 1
 
-GUIDE_EVERY = 600
+# Speed check 2026-11-24: reading a week of the guide is a big ask for Jellyfin, so it's done in the background
+# (one at a time) every 30 minutes, never while a page waits
+GUIDE_EVERY = 1800
+GUIDE_RETRY = 300  # after a failed read, wait this long before trying again
 DAYS = 7
 
 _jf = None
@@ -166,6 +169,8 @@ _dir = None
 _lock = threading.RLock()
 _picks = {}  # user id -> {"teams": [...], "notNow": bool}
 _guide = {"at": 0, "programs": []}
+_guide_busy = threading.Event()
+_guide_done = threading.Event()  # set once the first read has finished (worked or not)
 
 
 def _pick_dir():
@@ -238,11 +243,33 @@ def _team_view(team_id):
 
 
 def _refresh_guide():
+    """Starts a fresh read of the guide in the background when it's old. Only the very first read is waited for
+    (a few seconds at most), so the Sports tab isn't empty the first time it opens."""
     if time.time() - _guide["at"] < GUIDE_EVERY:
         return
+    with _lock:
+        if not _guide_busy.is_set():
+            _guide_busy.set()
+            threading.Thread(target=_read_guide, daemon=True, name="teams-guide").start()
+    if not _guide_done.is_set():
+        _guide_done.wait(15)
+
+
+def _read_guide():
+    try:
+        _read_guide_now()
+    finally:
+        _guide_done.set()
+        _guide_busy.clear()
+
+
+def _read_guide_now():
     token, user = _admin() if _admin else (None, None)
     if not token or not _jf:
         return
+    # Failed or not, the next try waits a while (a failing Jellyfin isn't asked again on every poll)
+    with _lock:
+        _guide["at"] = time.time() - GUIDE_EVERY + GUIDE_RETRY
     now = time.time()
     q = urllib.parse.urlencode(
         {
@@ -251,6 +278,7 @@ def _refresh_guide():
             "MaxStartDate": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + DAYS * 86400)),
             "Fields": "Overview",
             "EnableImages": "false",
+            "EnableUserData": "false",
             "EnableTotalRecordCount": "false",
             "Limit": "60000",
         }
