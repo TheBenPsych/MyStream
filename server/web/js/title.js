@@ -60,6 +60,7 @@
     B.page().innerHTML = B.top("") + `<div class="details tp ${rows ? "tp-rows" : ""}" style="--door:${opts.color || "var(--ink)"}">
       <div class="tp-hero ${opts.cover ? "covered" : ""}" style="${opts.picture ? `background-image:url('${opts.picture}')` : ""}">${pic}
         ${rows && !kids && (opts.rating || opts.scores) ? `<div class="tp-pill">${opts.rating ? `<span class="rate">${esc(opts.rating)}</span>` : ""}${opts.scores ? `<span class="tp-scores">${opts.scores}</span>` : ""}</div>` : ""}
+        ${rows && !kids && opts.matchId ? `<div class="mt-wrap tp-mt" data-match="${esc(opts.matchId)}"></div>` : ""}
         <div class="main">
           <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}${opts.logo ? `<img class="tp-logo" id="tpLogo" src="${esc(opts.logo)}" alt="${esc(opts.title || "")}" hidden>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : opts.tagline && !kids ? `<div class="t2 tp-tag">${esc(opts.tagline)}</div>` : ""}<i class="tp-line"></i></div>
           <div class="meta">${meta}${opts.infoExtra || ""}</div>

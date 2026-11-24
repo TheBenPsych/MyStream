@@ -3,6 +3,8 @@
     <!-- Settings sections -->
     <string name="benflix_settings_profile">You</string>
     <string name="benflix_settings_watching">Watching</string>
+    <string name="benflix_your_teams">Your teams</string>
+    <string name="benflix_your_teams_summary">Follow your sports teams on the Live TV Sports tab</string>
     <string name="benflix_settings_look">Look</string>
     <string name="benflix_settings_phone">Phones and TVs</string>
     <string name="benflix_settings_picture">Picture and sound</string>

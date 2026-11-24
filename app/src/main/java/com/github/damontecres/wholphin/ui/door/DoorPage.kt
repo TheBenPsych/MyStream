@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -161,6 +162,9 @@ private const val SEC_GENRES = "genres"
 private const val SEC_COLLECTIONS = "collections"
 private const val SEC_MY_LIST = "mylist"
 
+/** Glowfin Famous lists (Idea Box 28): IMDb Top 250, Oscars, Emmys. Not on Kids. */
+private const val SEC_FAMOUS = "famous"
+
 /** The Anime page's Shows and Movies tabs */
 private const val SEC_ANIME_SHOWS = "animeshows"
 private const val SEC_ANIME_MOVIES = "animemovies"
@@ -191,15 +195,17 @@ internal fun doorSections(
                 DoorSection(SEC_ALL, "All movies", BenflixIcon.FILM),
                 if (easy) null else DoorSection(SEC_COLLECTIONS, "Collections", BenflixIcon.IMAGE),
                 DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                if (easy) null else DoorSection(SEC_FAMOUS, "Famous lists", BenflixIcon.STAR),
                 DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
             )
         }
 
         else -> {
-            listOf(
+            listOfNotNull(
                 forYou,
                 DoorSection(SEC_ALL, "All shows", BenflixIcon.TV),
                 DoorSection(SEC_GENRES, "Genres", BenflixIcon.LIST),
+                if (easy) null else DoorSection(SEC_FAMOUS, "Famous lists", BenflixIcon.STAR),
                 DoorSection(SEC_MY_LIST, "My List", BenflixIcon.PLUS),
             )
         }
@@ -233,6 +239,10 @@ private fun DoorSectionPage(
 
         SEC_COLLECTIONS -> {
             DoorBrowsePage(browse(DoorViewModel.BROWSE_COLLECTIONS), preferences, inner)
+        }
+
+        SEC_FAMOUS -> {
+            FamousListsPage(shows = door != BenflixDoor.MOVIES, modifier = inner)
         }
 
         SEC_MY_LIST -> {
@@ -366,10 +376,22 @@ internal fun WideDoor(
         DoorArt(item = preview, pageHeight = maxHeight, onBright = { brightArt = it })
         if (preview != null && !easy) {
             // The score pill at the top right, under the clock (same spot as on the details pages)
-            DoorScorePill(
-                item = preview,
+            // Glowfin "94% for you" (Idea Box 28) sits under it in the empty space, laid over the page so
+            // nothing moves
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp),
-            )
+            ) {
+                DoorScorePill(item = preview)
+                MatchPill(
+                    itemId =
+                        preview.id.takeIf {
+                            preview.type == org.jellyfin.sdk.model.api.BaseItemKind.MOVIE ||
+                                preview.type == org.jellyfin.sdk.model.api.BaseItemKind.SERIES
+                        },
+                )
+            }
         }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().height(topHeight)) {
@@ -513,7 +535,7 @@ private fun WaitingRow(
 
 /** One row: medium white name, then posters, ending in "See all" when there is more */
 @Composable
-private fun DoorRow(
+internal fun DoorRow(
     row: DoorRowData,
     posterWidth: Dp,
     showName: Boolean,
@@ -537,7 +559,23 @@ private fun DoorRow(
     // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
     Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
         Text(
-            text = row.title,
+            text =
+                if (row.note == null) {
+                    androidx.compose.ui.text
+                        .AnnotatedString(row.title)
+                } else {
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        append(row.title)
+                        // Famous lists: the count in the small grey style, after the same row name every row has
+                        withStyle(
+                            androidx.compose.ui.text.SpanStyle(
+                                color = BenflixColors.Muted,
+                                fontSize = BenflixType.small,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        ) { append("   ${row.note}") }
+                    }
+                },
             color = BenflixColors.Text,
             fontSize = BenflixType.lead,
             fontWeight = FontWeight.Bold,
@@ -567,6 +605,7 @@ private fun DoorRow(
                         onClick = { onOpen(item.destination) },
                         onLongClick = {},
                         width = posterWidth,
+                        cornerNote = if (row.askNote && item.jellyfinItemId == null) "Ask for it" else null,
                         modifier =
                             if (focusRequester != null && index == focusIndex.coerceAtMost(row.discover.size - 1)) {
                                 Modifier.focusRequester(focusRequester)

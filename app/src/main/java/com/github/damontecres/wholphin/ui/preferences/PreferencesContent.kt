@@ -472,6 +472,25 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.YourTeams -> {
+                                        ClickPreference(
+                                            title = stringResource(R.string.benflix_your_teams),
+                                            summary = stringResource(R.string.benflix_your_teams_summary),
+                                            onClick = {
+                                                // Live TV opens straight on its Sports tab
+                                                com.github.damontecres.wholphin.ui.door.DoorMemory.keep(
+                                                    com.github.damontecres.wholphin.ui.theme.BenflixDoor.LIVE_TV,
+                                                    com.github.damontecres.wholphin.ui.door.DoorMemory.Spot(
+                                                        section = com.github.damontecres.wholphin.ui.main.LIVE_SPORTS,
+                                                    ),
+                                                )
+                                                viewModel.navigationManager.navigateTo(Destination.Channels)
+                                            },
+                                            interactionSource = interactionSource,
+                                            modifier = focusModifier,
+                                        )
+                                    }
+
                                     AppPreference.Update -> {
                                         ClickPreference(
                                             title =
