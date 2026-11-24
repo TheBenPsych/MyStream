@@ -1527,6 +1527,13 @@ class Handler(BaseHTTPRequestHandler):
                 if answer is None:
                     return self.send(404, {"error": "Not found"})
                 return self.send(answer[0], answer[1])
+            if path == "/api/anime/scores":
+                # Shared anime scores (Ben 2026-11-24): AniList and MyAnimeList scores looked up once and kept
+                # on Tower for every TV, phone and browser, so each device doesn't ask AniList again (rate limits)
+                if method == "GET":
+                    return self.send(200, anime_scores_get())
+                if method == "POST":
+                    return self.send(200, anime_scores_add(self.read_json()))
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
@@ -1940,6 +1947,79 @@ def _anime_ids_load():
             if saved and saved.get("al"):
                 _anime_ids.update(saved)
         return _anime_ids
+
+
+# Shared anime scores (Ben 2026-11-24, "AniList rate limits quickly"): the first device that looks a title up
+# hands its AniList match and score (and the MyAnimeList score) to Tower, and every other device reads them from
+# here instead of asking AniList and Jikan itself. Kept 30 days, then looked up again by whichever device is first.
+ANIME_SCORES_FILE = os.path.join(SAVES, ".benflix", "anime-scores.json")
+ANIME_SCORES_KEEP_S = 30 * 86400
+_anime_scores = None
+_anime_scores_lock = threading.Lock()
+
+
+def _anime_scores_table():
+    global _anime_scores
+    if _anime_scores is None:
+        try:
+            with open(ANIME_SCORES_FILE) as f:
+                saved = json.load(f)
+            _anime_scores = {"jf": dict(saved.get("jf") or {}), "mal": dict(saved.get("mal") or {})}
+        except (OSError, ValueError, AttributeError):
+            _anime_scores = {"jf": {}, "mal": {}}
+    return _anime_scores
+
+
+def anime_scores_get():
+    """GET /api/anime/scores -> {"jf": {jellyfinId: {"al", "s", "mal", "t", "at"}}, "mal": {malId: {"s", "at"}}}"""
+    with _anime_scores_lock:
+        table = _anime_scores_table()
+        old = time.time() - ANIME_SCORES_KEEP_S
+        return {
+            "jf": {k: v for k, v in table["jf"].items() if v.get("at", 0) > old},
+            "mal": {k: v for k, v in table["mal"].items() if v.get("at", 0) > old},
+        }
+
+
+def _num(x, lo, hi):
+    return x if isinstance(x, (int, float)) and not isinstance(x, bool) and lo <= x <= hi else None
+
+
+def anime_scores_add(body):
+    """POST /api/anime/scores with the same shape as GET: only numbers and short tags are kept"""
+    jf = body.get("jf") if isinstance(body, dict) else None
+    mal = body.get("mal") if isinstance(body, dict) else None
+    now = time.time()
+    added = 0
+    with _anime_scores_lock:
+        table = _anime_scores_table()
+        for k, v in list((jf or {}).items())[:500] if isinstance(jf, dict) else []:
+            key = str(k).replace("-", "").lower()
+            if not re.fullmatch(r"[0-9a-f]{32}", key) or not isinstance(v, dict):
+                continue
+            al = _num(v.get("al"), 1, 10**9)
+            if not al:
+                continue
+            tags = [t[:40] for t in (v.get("t") or []) if isinstance(t, str)][:8] if isinstance(v.get("t"), list) else []
+            table["jf"][key] = {"al": int(al), "s": _num(v.get("s"), 0, 100), "mal": _num(v.get("mal"), 0, 10**9), "t": tags, "at": now}
+            added += 1
+        for k, v in list((mal or {}).items())[:500] if isinstance(mal, dict) else []:
+            if not str(k).isdigit() or not isinstance(v, dict):
+                continue
+            table["mal"][str(int(k))] = {"s": _num(v.get("s"), 0, 10), "at": now}
+            added += 1
+        if added:
+            old = now - ANIME_SCORES_KEEP_S
+            for part in ("jf", "mal"):
+                table[part] = {k: v for k, v in table[part].items() if v.get("at", 0) > old}
+            try:
+                os.makedirs(os.path.dirname(ANIME_SCORES_FILE), exist_ok=True)
+                with open(ANIME_SCORES_FILE + ".tmp", "w") as f:
+                    json.dump(table, f)
+                os.replace(ANIME_SCORES_FILE + ".tmp", ANIME_SCORES_FILE)
+            except OSError:
+                pass
+    return {"added": added}
 
 
 def anime_tmdb(query):

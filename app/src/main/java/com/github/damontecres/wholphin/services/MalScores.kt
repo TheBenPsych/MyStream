@@ -49,7 +49,7 @@ object MalFacts {
  * no account. AniList already tells us each show's MyAnimeList number, so no matching is needed.
  *
  * Jikan allows about 60 requests a minute, so requests go one at a time, a little over a second
- * apart. Scores are saved on the device and looked up again after a week.
+ * apart. Scores are saved on the device (and shared through Tower) and looked up again after a month.
  */
 @Singleton
 class MalScores
@@ -74,7 +74,7 @@ class MalScores
             gate.withLock {
                 withContext(WholphinDispatchers.IO) {
                     val now = System.currentTimeMillis()
-                    val todo = ids.filter { id -> saved[id]?.let { now - it.at > WEEK_MS } ?: true }
+                    val todo = ids.filter { id -> saved[id]?.let { now - it.at > KEEP_MS } ?: true }
                     var sinceSave = 0
                     for (id in todo) {
                         val entry = lookUp(id) ?: continue
@@ -90,6 +90,20 @@ class MalScores
                 }
             }
         }
+
+        /** Scores other devices shared through Tower: kept like our own, so Jikan isn't asked for them */
+        suspend fun addShared(found: Map<Int, MalScoreEntry>) {
+            if (found.isEmpty()) return
+            withContext(WholphinDispatchers.IO) { load() }
+            found.forEach { (id, e) -> if (id > 0 && e.at > (saved[id]?.at ?: 0L)) saved[id] = e }
+            MalFacts.add(found.mapNotNull { (id, e) -> e.score?.let { id to it } }.toMap())
+        }
+
+        /** The saved scores of [ids] (to share with other devices through Tower) */
+        fun savedFor(ids: Collection<Int>): Map<Int, MalScoreEntry> = ids.mapNotNull { id -> saved[id]?.let { id to it } }.toMap()
+
+        /** Shows every MyAnimeList score saved on the device, without asking Jikan */
+        suspend fun publishSaved() = withContext(WholphinDispatchers.IO) { load() }
 
         @Synchronized
         private fun load() {
@@ -163,6 +177,8 @@ class MalScores
             private const val SLOW_DOWN_MS = 5_000L
             private const val MAX_TRIES = 3
             private const val SAVE_EVERY = 20
-            private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+
+            /** Looked up again after a month (scores barely move; Ben 2026-11-24: rate limits) */
+            private const val KEEP_MS = 30L * 24 * 60 * 60 * 1000
         }
     }

@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "anime-scores-saved", "title": "Anime shows its AniList and MyAnimeList scores (not IMDb) on every page, right after the app opens, on title pages, episode pages and browsing tops; the scores are saved on Tower and shared by every TV, phone and browser, so AniList and MyAnimeList are asked far less (no rate limits)", "where": "TV, phone and browser · open an anime from Home or Search without visiting Anime first", "date": "Nov 24"},
     {"id": "bad-copy", "title": "This copy is bad: in the player, Settings > Fix a problem. Tower throws the file away, never picks that copy again, and finds a new one (not on Kids)", "where": "TV, phone and browser · play a movie or episode, open Settings", "date": "Nov 24"},
     {"id": "read-listen-here", "title": "Listen from here / Read from here on books you have as both ebook and audiobook: the other one starts where you are", "where": "TV, phone and browser · Books, open a book you have both ways and have started", "date": "Nov 24"},
     {"id": "car-audiobooks", "title": "Glowfin audiobooks in the car: a second Glowfin app on the car screen with Keep listening and All audiobooks", "where": "Android phone in a car with Android Auto", "date": "Nov 24"},

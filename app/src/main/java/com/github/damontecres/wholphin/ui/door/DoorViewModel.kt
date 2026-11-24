@@ -364,6 +364,7 @@ class DoorViewModel
             val anime = libs.ofKind(LibraryKind.ANIME_MOVIES)
             val standUp = libs.ofKind(LibraryKind.STANDUP)
             val easy = KidsMode.isActive
+            warmAnimeScores(libs, userId)
             val order = if (easy) listOf(KEEP, NEW) else picked(userId, PageRows.Page.MOVIES, listOf(KEEP))
             startRows(order)
             var newPick: BaseItem? = null
@@ -449,6 +450,7 @@ class DoorViewModel
             val main = libs.ofKind(LibraryKind.SHOWS)
             val anime = libs.ofKind(LibraryKind.ANIME_SHOWS)
             val easy = KidsMode.isActive
+            warmAnimeScores(libs, userId)
             val order =
                 if (easy) listOf(KEEP, NEXT_UP, NEW) else picked(userId, PageRows.Page.SHOWS, listOf(KEEP, NEXT_UP))
             startRows(order)
@@ -536,6 +538,15 @@ class DoorViewModel
             nextPick = becausePick ?: newPick
             _state.update { st -> st.copy(pick = st.pick ?: nextPick) }
         }
+
+        /**
+         * Ben 2026-11-24: anime showed only IMDb after the app was opened, until the Anime tab had been visited,
+         * because only that tab matched the anime to AniList. Every main page does it now (saved scores first).
+         */
+        private fun warmAnimeScores(
+            libs: List<Library>,
+            userId: UUID,
+        ) = aniListLibraries.warm(libs.ofKind(LibraryKind.ANIME_SHOWS) + libs.ofKind(LibraryKind.ANIME_MOVIES), userId)
 
         /**
          * Glowfin Anime, For you (ui-7, Ben's pick A): Continue watching, Airing this season, Top 10 anime,
@@ -636,6 +647,7 @@ class DoorViewModel
             val animeShows = libs.ofKind(LibraryKind.ANIME_SHOWS)
             val animeMovies = libs.ofKind(LibraryKind.ANIME_MOVIES)
             val easy = KidsMode.isActive
+            aniListLibraries.warm(animeShows + animeMovies, userId)
             val order =
                 if (easy) {
                     listOf(KEEP, NEXT_UP, NEW)
