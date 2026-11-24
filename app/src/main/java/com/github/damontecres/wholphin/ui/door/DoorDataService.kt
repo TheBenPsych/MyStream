@@ -511,7 +511,7 @@ class DoorDataService
 
         /**
          * Ben 2026-11-24 "Just released": movies and shows on Glowfin that came out this year, newest first, with the
-         * day each came out. A show counts the day its episode 1 aired (a new show, or a new season starting).
+         * day each came out. A show counts only when it is brand new: the day season 1 episode 1 aired.
          */
         suspend fun justReleased(
             userId: UUID,
@@ -542,8 +542,8 @@ class DoorDataService
                     }
                 val shows =
                     async {
-                        // Ben 2026-11-24: a show counts only when it (or a new season) starts, the day episode 1
-                        // aired, not every new episode. Jellyfin dates each season by its first episode.
+                        // Ben 2026-11-24: only brand new shows count, on the day season 1 episode 1 aired (not new
+                        // seasons or weekly episodes). Jellyfin dates each season by its first episode.
                         val newest =
                             fromLibraries(showLibs) { parentId ->
                                 GetItemsRequest(
@@ -558,7 +558,7 @@ class DoorDataService
                                     limit = JUST_RELEASED_EPISODES,
                                 )
                             }.filter { s ->
-                                (s.data.indexNumber ?: 1) > 0 && s.data.locationType != LocationType.VIRTUAL
+                                s.data.indexNumber == 1 && s.data.locationType != LocationType.VIRTUAL
                             }.mapNotNull { e -> e.data.seriesId?.let { id -> e.data.premiereDate?.let { id to it.toLocalDate() } } }
                                 .sortedByDescending { it.second }
                                 .distinctBy { it.first }
