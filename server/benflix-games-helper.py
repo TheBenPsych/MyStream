@@ -80,6 +80,10 @@ try:  # Real frames from the movie files for the Scene by scene game (benflix_sc
 except ImportError:
     scenes = None
 
+try:  # Famous lists tab on Movies and Shows (IMDb Top 250, Oscars, Emmys), in benflix_famous.py
+    import benflix_famous as famous
+except ImportError:
+    famous = None
 try:  # Anime movies go into their show's Specials, plus Missing pieces and filler labels, in benflix_specials.py
     import benflix_specials as specials
 except ImportError:
@@ -1505,6 +1509,12 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
+            if path.startswith("/api/famous/"):
+                # Movies and Shows, Famous lists tab (everyone signed in except Kids)
+                if famous is None:
+                    raise HelperError(503, "Famous lists aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer = famous.route(method, path, is_kids)
+                return self.send(status, answer)
             if path.startswith("/api/specials/"):
                 # Anime shows: Missing pieces, filler labels, Get (everyone signed in; Kids can't Get)
                 if specials is None:
@@ -2575,6 +2585,13 @@ if __name__ == "__main__":
             tools,
             arrivals,
         )
+    if famous is not None:
+        famous.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            _seerr_link,
+            _seerr,
+        )
     if keeper is not None:
         # Every job below is noted each time it runs (keeper wraps the function), and listed on Server > Tools > Tower > Jobs
         keeper.start(tower_addresses, tools._docker if tools is not None else None, jellyfin_call)
@@ -2590,6 +2607,8 @@ if __name__ == "__main__":
             keeper.job("specials", "Put anime movies into their shows' Specials", "Every 10 minutes", specials, "check", run=specials.check)
             keeper.job("specials-week", "Check every anime show's specials against TheTVDB", "Every week", specials, "weekly", run=specials.weekly)
             keeper.add_card("animemovies", specials.card, specials.card_do)
+        if famous is not None:
+            keeper.job("famous", "Gather the Famous lists (IMDb Top 250, Oscars, Emmys)", "Every week", famous, "gather", run=lambda: famous.gather(True))
         if arrivals is not None:
             keeper.job("arrivals", "Keep first dates when a better copy arrives", "Every few minutes", arrivals, "check")
         keeper.job("doctor", "Fix asks that got stuck", "Every hour")

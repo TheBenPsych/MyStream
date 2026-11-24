@@ -972,7 +972,7 @@ B.row = (title, cards, opts) => {
   opts = opts || {};
   if (!cards || !cards.length) return "";
   return `<section class="rowx at0" ${opts.id ? `id="${opts.id}"` : ""}>
-    <h3>${esc(title)}${opts.more ? `<a class="more" href="${opts.more}">See all</a>` : ""}</h3>
+    <h3>${esc(title)}${opts.note ? `<small class="rnote">${esc(opts.note)}</small>` : ""}${opts.more ? `<a class="more" href="${opts.more}">See all</a>` : ""}</h3>
     <button class="arrow l" data-scroll="-1" aria-label="Scroll left">${I("left")}</button>
     <div class="strip">${cards.join("")}${opts.seeAll ? `<a class="poster see" href="${opts.seeAll}">See all</a>` : ""}</div>
     <button class="arrow r" data-scroll="1" aria-label="Scroll right">${I("right")}</button>
@@ -1004,8 +1004,8 @@ B.top10 = (items) => items.slice(0, 10).map((it, i) => `<div class="top10">${B.t
 
 // Glowfin (ui-7): the word tabs along the top of every page (Movies, Shows, Anime, Live TV, Music, Games, Books) (the same places as the TV and phones)
 B.PAGE_TABS = {
-  movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
-  shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
+  movies: [["For you", "#/movies"], ["All movies", "#/grid/movies?anime=hide&title=All%20movies"], ["Collections", "#/grid/movies?type=BoxSet&title=Collections"], ["Genres", "#/browse/movies/genres"], ["Famous lists", "#/famous/movies"], ["My List", "#/grid/movies?mine=1&title=My%20List"]],
+  shows: [["For you", "#/shows"], ["All shows", "#/grid/shows?anime=hide&title=All%20shows"], ["Genres", "#/browse/shows/genres"], ["Famous lists", "#/famous/shows"], ["My List", "#/grid/shows?mine=1&title=My%20List"]],
   anime: [["For you", "#/anime"], ["Shows", "#/grid/shows?anime=only&title=Anime%20shows"], ["Movies", "#/grid/movies?anime=only&title=Anime%20movies"], ["Genres and tags", "#/browse/anime/genres"]],
   // Glowfin Music (M1)
   music: [["For you", "#/music"], ["Albums", "#/mlibrary?c=albums"], ["Artists", "#/mlibrary?c=artists"], ["Playlists", "#/mlibrary?c=playlists"], ["Songs", "#/songs"]],
@@ -1030,14 +1030,14 @@ B.tabsFor = (hash) => {
   if (/^#\/grid\/(movies|shows)\?(.*&)?anime=only/.test(hash)) return { page: "anime", on: /movies/.test(hash) ? 2 : 1 };
   if (/^#\/browse\/anime/.test(hash)) return { page: "anime", on: 3 };
   const m = hash.match(/^#\/(?:grid|browse)\/(movies|shows)/);
-  if (m) return { page: m[1], on: /genre/.test(hash) ? (m[1] === "movies" ? 3 : 2) : /mine=1/.test(hash) ? (m[1] === "movies" ? 4 : 3) : /BoxSet/.test(hash) ? 2 : 1 };
+  if (m) return { page: m[1], on: /genre/.test(hash) ? (m[1] === "movies" ? 3 : 2) : /mine=1/.test(hash) ? (m[1] === "movies" ? 5 : 4) : /BoxSet/.test(hash) ? 2 : 1 };
   return null;
 };
 B.pageTabs = (hash) => {
   const t = B.tabsFor(hash);
   if (!t) return "";
   const kids = B.me && B.me.kids;
-  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && (label === "Collections" || label === "Manga")));
+  const list = B.PAGE_TABS[t.page].filter(([label]) => !(kids && (label === "Collections" || label === "Manga" || label === "Famous lists")));
   const short = (l) => (l.startsWith("All ") ? "All" : l.startsWith("Genres") ? "Genres" : l === "Recently watched" ? "Recent" : l);
   return `<nav class="ptabs" aria-label="${esc(t.page)} places">${list.map(([label, link]) => `<a class="${B.PAGE_TABS[t.page][t.on] && B.PAGE_TABS[t.page][t.on][0] === label ? "on" : ""}" href="${esc(link)}"><span class="lg">${esc(label)}</span><span class="sm">${esc(short(label))}</span></a>`).join("")}</nav>`;
 };

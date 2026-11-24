@@ -400,6 +400,27 @@ B.route(/^\/browse\/(movies|shows)\/(genres|studios)$/, async (m, nav) => {
   $("#t").innerHTML = `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${(r.Items || []).map((g) => `<a class="tile2" style="width:auto" href="#/grid/${m[1]}?${key}=${enc(g.Name)}&title=${enc(g.Name)}">${esc(g.Name)}</a>`).join("") || '<div class="empty">Nothing here yet.</div>'}</div>`;
 });
 
+// Glowfin Famous lists (Idea Box 28, Ben 2026-11-24): IMDb Top 250, Oscars, Palme d'Or, Emmys. Tower gathers them
+// weekly (benflix_famous.py). Titles on Glowfin say so; the rest get the Ask button. Not on Kids.
+B.route(/^\/famous\/(movies|shows)$/, async (m, nav) => {
+  const door = DOORS[m[1]];
+  B.page().innerHTML = B.top(door.name, door.color) + `<div class="rows" id="rows" style="padding-top:8px">${B.spinner("rows")}</div>`;
+  B.wireTop();
+  if (B.me && B.me.kids) { $("#rows").innerHTML = '<div class="wrap"><div class="empty">Famous lists are not on Kids.</div></div>'; return; }
+  let r = null;
+  for (let tries = 0; tries < 12; tries++) {
+    r = await B.call("GET", `api/famous/${m[1]}`).catch(() => null);
+    if (!B.alive(nav)) return;
+    if (!r || (r.rows || []).length) break;
+    $("#rows").innerHTML = '<div class="wrap"><div class="empty">Tower is gathering the famous lists. This takes a few minutes the first time.</div></div>';
+    await new Promise((ok) => setTimeout(ok, 20000));
+    if (!B.alive(nav)) return;
+  }
+  if (!r) { $("#rows").innerHTML = '<div class="wrap"><div class="empty">Could not reach Tower for the famous lists. Try again in a minute.</div></div>'; return; }
+  const card = (it) => B.askCard({ mediaType: it.mediaType, id: it.id, title: it.title, posterPath: it.posterPath, releaseDate: it.year ? it.year + "-01-01" : "", mediaInfo: it.jellyfinId ? { status: 5, jellyfinMediaId: it.jellyfinId } : null });
+  pageRows((r.rows || []).map((row) => B.row(row.title, row.items.map(card), { note: `You have ${row.have} of ${row.total}` })));
+});
+
 // ---------- the All movies / All shows grid ----------
 const SORTS = {
   movies: [["added", "Newest added"], ["az", "A to Z"], ["year", "Release year"], ["score", "Score"], ["length", "Length"]],
