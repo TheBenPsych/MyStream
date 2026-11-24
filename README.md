@@ -275,6 +275,7 @@ Thanks also to:
 - The [Jellyfin](https://jellyfin.org/) team for the media server
 - The official [Jellyfin Android TV](https://github.com/jellyfin/jellyfin-androidtv) app, which some of Wholphin's playback code is adapted from
 - The [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin), [RomM](https://github.com/rommapp/romm), [Seerr](https://github.com/seerr-team/seerr), [Lidarr](https://lidarr.audio/), [Open Library](https://openlibrary.org/), [AniList](https://anilist.co/), [iptv-org](https://github.com/iptv-org/iptv) and all the other open-source projects this app uses
+- The aquarium screensaver's water sound is made from free (CC0) [Freesound](https://freesound.org/) recordings by CHallSmith and SMKoski02
 
 Glowfin is not connected to, or endorsed by, Netflix, Jellyfin or Wholphin.
 
