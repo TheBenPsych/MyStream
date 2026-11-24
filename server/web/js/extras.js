@@ -152,10 +152,25 @@
     characters(sort: [ROLE, RELEVANCE, ID], perPage: 16) { edges { role node { name { full } image { medium } }
       japanese: voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) { name { full } }
       english: voiceActors(language: ENGLISH, sort: [RELEVANCE, ID]) { name { full } } } }`;
-  const aniAsk = async (query, variables) => {
+  // AniList allows about 90 questions a minute (sometimes 30): one at a time, a second apart, and when it says
+  // "slow down" (429) wait as long as it asks, then try once more
+  let aniLine = Promise.resolve();
+  const aniOnce = async (query, variables) => {
     const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
+    if (r.status === 429) {
+      const wait = Math.min(90, Math.max(1, +r.headers.get("Retry-After") || 60));
+      await new Promise((ok) => setTimeout(ok, wait * 1000));
+      const again = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
+      if (!again.ok) throw new Error("AniList " + again.status);
+      return (await again.json()).data;
+    }
     if (!r.ok) throw new Error("AniList " + r.status);
     return (await r.json()).data;
+  };
+  const aniAsk = (query, variables) => {
+    const run = aniLine.then(() => aniOnce(query, variables));
+    aniLine = run.catch(() => {}).then(() => new Promise((ok) => setTimeout(ok, 1000)));
+    return run;
   };
   const clean = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const aniInfo = (it) => B.cached("anilist-" + it.Id, 86400000, async () => {
@@ -177,7 +192,7 @@
     return m;
   });
   // ---------- Anime scores (Ben 2026-11-24): AniList + MyAnimeList instead of IMDb, like the TV and phone ----------
-  // Saved in this browser (a week; a title AniList doesn't know is looked for again the next day), so opening
+  // Saved on Tower and in this browser (a month; a title AniList doesn't know is looked for again the next day), so opening
   // Glowfin again doesn't ask again.
   const kept = (k, ms) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v && Date.now() - v.at < ms ? v : null; } catch (e) { return null; } };
   const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, v))); } catch (e) {} };
@@ -189,7 +204,7 @@
     return run;
   };
   const malScore = (idMal) => B.cached("mal-" + idMal, 3600000, async () => {
-    const saved = kept("benflix.mal." + idMal, 7 * 86400000);
+    const saved = kept("benflix.mal." + idMal, 30 * 86400000);
     if (saved) return saved.s;
     const d = await jikan(idMal);
     const sc = (d && d.data && d.data.score) || null;
@@ -198,16 +213,31 @@
   });
   const tenth = (x) => (x ? (+x).toFixed(1) : null);
   // { al: "7.4", mal: "7.1" } for an anime movie or show (either can be null), or null when AniList doesn't know it
+  // Tower keeps the scores every device looked up (30 days), so AniList and Jikan are asked as little as possible
+  const tower = () => B.cached("tower-anime-scores", 600000, () => B.call("GET", "api/anime/scores").catch(() => ({ jf: {}, mal: {} })));
+  const share = (body) => B.call("POST", "api/anime/scores", body).then(() => { B.cache["tower-anime-scores"] = null; }).catch(() => {});
   B.animeScores = (it) => B.cached("anis-" + it.Id, 3600000, async () => {
-    let s = kept("benflix.aniscore." + it.Id, 7 * 86400000);
+    const t = await tower();
+    const key = String(it.Id).replace(/-/g, "").toLowerCase();
+    const theirs = t && t.jf && t.jf[key];
+    let s = theirs ? { found: true, score: theirs.s, idMal: theirs.mal } : kept("benflix.aniscore." + it.Id, 30 * 86400000);
     if (s && !s.found && Date.now() - s.at > 86400000) s = null;
     if (!s) {
       const m = await aniInfo(it);
       s = { found: !!m, score: m ? m.averageScore || m.meanScore || null : null, idMal: m ? m.idMal || null : null };
       keep("benflix.aniscore." + it.Id, s);
+      if (m && m.id) share({ jf: { [key]: { al: m.id, s: s.score, mal: s.idMal } } });
     }
     if (!s.found) return null;
-    const mal = s.idMal ? await malScore(s.idMal).catch(() => null) : null;
+    let mal = null;
+    if (s.idMal) {
+      const tm = t && t.mal && t.mal[String(s.idMal)];
+      if (tm) mal = tm.s;
+      else {
+        mal = await malScore(s.idMal).catch(() => undefined);
+        if (mal !== undefined) share({ mal: { [s.idMal]: { s: mal } } });
+      }
+    }
     return { al: s.score ? tenth(s.score / 10) : null, mal: tenth(mal) };
   });
   // Puts the anime scores in the score icons row inside [scope] (made under the year line when there's none),

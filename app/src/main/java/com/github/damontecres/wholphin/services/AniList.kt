@@ -428,6 +428,14 @@ class AniListService
                 saved.values.mapNotNull { it.malId?.takeIf { m -> m > 0 } }
             }
 
+        /** Shows the matches other devices shared through Tower right away (a title's own page still wins) */
+        fun addShared(entries: Map<UUID, AniListIndexEntry>) {
+            val found = entries.filter { (id, e) -> e.id > 0 && (matches[id]?.id ?: 0) <= 0 }
+            if (found.isEmpty()) return
+            matches.putAll(found)
+            AniListFacts.addIndex(found)
+        }
+
         /**
          * Matches every show (or movie) in an anime library to AniList, 10 per request, and keeps
          * each one's fan genres. Saved for a week; only new titles are looked up after that.
@@ -435,25 +443,34 @@ class AniListService
         suspend fun index(
             parentId: UUID,
             items: List<BaseItemDto>,
+            shared: Map<UUID, AniListIndexEntry> = emptyMap(),
         ): Map<UUID, AniListIndexEntry> =
             indexLock.withLock {
                 val cacheName = "anilist-index-$parentId"
                 val saved =
                     indexes[parentId]
                         ?: diskCache
-                            .read(cacheName, MapSerializer(String.serializer(), AniListIndexEntry.serializer()), WEEK_MS)
+                            .read(cacheName, MapSerializer(String.serializer(), AniListIndexEntry.serializer()), INDEX_KEEP_MS)
                             ?.mapNotNull { (k, v) -> runCatching { UUID.fromString(k) }.getOrNull()?.let { it to v } }
                             ?.toMap()
                             .orEmpty()
                 val now = System.currentTimeMillis()
                 val out = saved.toMutableMap()
+                // Titles another device already matched (shared through Tower): nothing to ask AniList
+                var changed = false
+                items.forEach { item ->
+                    val theirs = shared[item.id] ?: return@forEach
+                    if ((out[item.id]?.id ?: 0) <= 0 && theirs.id > 0) {
+                        out[item.id] = theirs.copy(checkedAt = now)
+                        changed = true
+                    }
+                }
                 // New titles, plus ones not found before (tried again once a day: names and AniList change)
                 val todo =
                     items.filter { item ->
                         val had = out[item.id]
                         had == null || (had.id <= 0 && now - had.checkedAt > DAY_MS)
                     }
-                var changed = false
                 try {
                     // 1. Shows Jellyfin already knows the AniList or MyAnimeList number of: asked for by number
                     val byAniList = todo.mapNotNull { dto -> providerId(dto, "AniList")?.let { dto to it } }
@@ -996,6 +1013,9 @@ class AniListService
             /** Deep search: a tag counts when AniList fans rate it at least this much for the show (out of 100) */
             private const val BROWSE_TAG_RANK = 50
             private const val MAX_WEEK_PAGES = 6
+
+            /** Matches don't change, so a library's matches are kept a month (Ben 2026-11-24: AniList rate limits) */
+            private const val INDEX_KEEP_MS = 30L * 24 * 60 * 60 * 1000
             private const val DAY_MS = 24L * 60 * 60 * 1000
             private const val WEEK_MS = 7 * DAY_MS
             private const val WEEK_CACHE_MS = 3L * 60 * 60 * 1000

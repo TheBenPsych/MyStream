@@ -34,6 +34,7 @@ class AniListLibraries
         private val api: ApiClient,
         private val aniList: AniListService,
         private val malScores: MalScores,
+        private val sharedScores: SharedAnimeScores,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + WholphinDispatchers.IO)
         private val lastRun = ConcurrentHashMap<UUID, Long>()
@@ -63,11 +64,19 @@ class AniListLibraries
                     }
                     // Then the new titles, a little later so the page's own rows load first on slower TVs
                     delay(SETTLE_MS)
+                    // What other devices already looked up, shared through Tower (so AniList is asked far less)
+                    val shared = sharedScores.get()
+                    if (shared != null) {
+                        aniList.addShared(shared.matches)
+                        malScores.addShared(shared.mal)
+                    }
                     val malIds = mutableListOf<Int>()
+                    val newMatches = mutableMapOf<UUID, AniListIndexEntry>()
                     due.forEach { id ->
                         try {
-                            val index = aniList.index(id, titlesIn(id, userId))
+                            val index = aniList.index(id, titlesIn(id, userId), shared?.matches.orEmpty())
                             malIds += index.values.mapNotNull { it.malId?.takeIf { m -> m > 0 } }
+                            index.forEach { (k, e) -> if (e.id > 0 && shared?.matches?.get(k)?.id != e.id) newMatches[k] = e }
                             lastRun[id] = System.currentTimeMillis()
                         } catch (ex: CancellationException) {
                             throw ex
@@ -75,13 +84,18 @@ class AniListLibraries
                             Timber.w(ex, "Could not match anime library %s to AniList", id)
                         }
                     }
-                    // Then their MyAnimeList scores (slower: one show at a time)
+                    // Then their MyAnimeList scores (slower: one show at a time, only ones nobody has yet)
                     try {
                         malScores.fetch(malIds)
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
                         Timber.w(ex, "Could not get MyAnimeList scores")
+                    }
+                    // Hand Tower what it didn't have, for the other TVs, phones and browsers
+                    if (shared != null) {
+                        val newMal = malScores.savedFor(malIds).filterKeys { it !in shared.mal }
+                        sharedScores.add(newMatches, newMal)
                     }
                 }
         }
