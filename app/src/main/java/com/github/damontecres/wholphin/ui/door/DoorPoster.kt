@@ -99,6 +99,30 @@ fun BaseItem.newLabel(): String? {
 
 private const val NEW_DAYS = 7L
 
+const val RELEASED_TODAY = "Today"
+
+/** Just released date chip: "Today", "Yesterday", or "Nov 21" for a release day like "2026-11-21" */
+fun releasedChip(day: String?): String? {
+    val date = day?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() } ?: return null
+    val today = java.time.LocalDate.now()
+    return when (date) {
+        today -> {
+            RELEASED_TODAY
+        }
+
+        today.minusDays(1) -> {
+            "Yesterday"
+        }
+
+        else -> {
+            date.format(
+                java.time.format.DateTimeFormatter
+                    .ofPattern("MMM d", java.util.Locale.US),
+            )
+        }
+    }
+}
+
 /**
  * One poster (approved pc-clean + bd-few): on TV just the picture, nothing drawn over it except a
  * progress line, a small white tick when watched, and a white NEW pill. Phones add a dark strip
@@ -115,6 +139,8 @@ fun DoorPoster(
     onFocus: (() -> Unit)? = null,
     /** The logo stripes under the poster while the remote is on it (only where the row keeps room for them) */
     stripes: Boolean = false,
+    /** Just released: "Today", "Yesterday" or "Nov 21" in a small chip at the bottom left of the cover */
+    dateChip: String? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val height = width / POSTER_RATIO
@@ -193,6 +219,25 @@ fun DoorPoster(
                     ) {
                         BenflixIconImage(BenflixIcon.CHECK, color = BenflixColors.Tray, size = 13.dp)
                     }
+                }
+                if (dateChip != null) {
+                    val today = dateChip == RELEASED_TODAY
+                    Text(
+                        text = dateChip,
+                        color = if (today) BenflixColors.Tray else BenflixColors.Text,
+                        fontSize = BenflixType.tag,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 6.dp, end = 6.dp, bottom = if (progress != null) 16.dp else 6.dp)
+                                .background(
+                                    if (today) com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua else Color(0xE00B0D1A),
+                                    RoundedCornerShape(6.dp),
+                                ).padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
                 }
                 if (progress != null) {
                     Box(

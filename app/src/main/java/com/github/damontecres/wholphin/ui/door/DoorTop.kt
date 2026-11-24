@@ -84,6 +84,7 @@ internal fun DoorArt(
     item: BaseItem?,
     pageHeight: Dp,
     onBright: (Boolean) -> Unit = {},
+    shadeFrom: Float = BOTTOM_SHADE_FROM,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -92,7 +93,7 @@ internal fun DoorArt(
         remember(item?.id, pageHeight) {
             item?.let { imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillHeight = with(density) { pageHeight.roundToPx() }) }
         }
-    DoorArtUrl(url = url, onBright = onBright)
+    DoorArtUrl(url = url, onBright = onBright, shadeFrom = shadeFrom)
 }
 
 /** [DoorArt] for a picture that isn't a library title (Search's Ask for it titles) */
@@ -100,6 +101,7 @@ internal fun DoorArt(
 internal fun DoorArtUrl(
     url: String?,
     onBright: (Boolean) -> Unit = {},
+    shadeFrom: Float = BOTTOM_SHADE_FROM,
 ) {
     // Another episode of the same show has the same picture, so it just stays. A new picture: the old one
     // fades away, a short wait, then the new one fades in (no flashing while you move along a row).
@@ -130,7 +132,7 @@ internal fun DoorArtUrl(
         }
         if (bright) Box(Modifier.fillMaxSize().background(BenflixColors.Tray.copy(alpha = .2f)))
         Box(Modifier.fillMaxSize().background(LEFT_SHADE))
-        Box(Modifier.fillMaxSize().background(BenflixShade.bottom(.42f)))
+        Box(Modifier.fillMaxSize().background(BenflixShade.bottom(shadeFrom)))
     }
 }
 
@@ -449,4 +451,10 @@ private const val TOP_SHARE = 0.52f
 private const val GLOW_REACH = 1.7f
 private val COVER_TOP = 4.dp
 private val COVER_BOTTOM = 16.dp
+
+/** Where the dark fade at the bottom of the art starts (share of the screen from the top) */
+internal const val BOTTOM_SHADE_FROM = .42f
+
+/** Home on TV (Ben 2026-11-24, idea A): the rows sit low, so the bottom fade starts lower and more art shows */
+internal const val LOW_ROWS_SHADE_FROM = .54f
 private const val COVER_FADE_MS = 250

@@ -38,6 +38,7 @@ object PageRows {
                 listOf(
                     DoorViewModel.NEW to "Recently added",
                     DoorViewModel.TOP_10 to "Top 10 this week",
+                    DoorViewModel.JUST_RELEASED to "Just released",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.TRENDING_MISSING to "Trending, not on Glowfin",
                     DoorViewModel.AIRING to "Anime airing this season",
@@ -61,6 +62,7 @@ object PageRows {
             Page.SHOWS -> {
                 listOf(
                     DoorViewModel.TOP_10 to "Top 10 this week",
+                    DoorViewModel.JUST_RELEASED to "Just released",
                     DoorViewModel.NEW_EPISODES to "New episodes",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.LOVED to "Because you loved…",
@@ -73,6 +75,7 @@ object PageRows {
             Page.ANIME -> {
                 listOf(
                     DoorViewModel.TOP_10_ANIME to "Top 10 anime",
+                    DoorViewModel.JUST_RELEASED to "Just released",
                     DoorViewModel.AIRING to "Airing this season",
                     DoorViewModel.BECAUSE to "Because you watched…",
                     DoorViewModel.GEMS to "Hidden gem anime",
@@ -83,7 +86,7 @@ object PageRows {
             }
         }
 
-    /** This person's rows for [page]: their order, with on/off. New rows (added in an update) join at the end, on. */
+    /** This person's rows for [page]: their order, with on/off. New rows (added in an update) join after the row they follow, on. */
     fun choices(
         context: Context,
         userId: UUID,
@@ -104,8 +107,16 @@ object PageRows {
                 val k = part.removePrefix("-")
                 labels[k]?.let { Choice(k, it, !part.startsWith("-")) }
             }
-        val missing = all.filter { (k, _) -> mine.none { it.key == k } }.map { (k, label) -> Choice(k, label, true) }
-        return (mine + missing).distinctBy { it.key }
+        // New rows (added in an update) join right after the row they follow in the usual order, on
+        val result = mine.toMutableList()
+        all.forEachIndexed { index, (k, label) ->
+            if (result.none { it.key == k }) {
+                val before = all.take(index).map { it.first }
+                val at = result.indexOfLast { it.key in before } + 1
+                result.add(at, Choice(k, label, true))
+            }
+        }
+        return result.distinctBy { it.key }
     }
 
     /** The row keys that are switched on, in order */
