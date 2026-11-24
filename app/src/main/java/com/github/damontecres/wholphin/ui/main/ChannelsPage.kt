@@ -66,6 +66,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.services.BenflixTeams
 import com.github.damontecres.wholphin.services.ChannelPrefs
 import com.github.damontecres.wholphin.services.ChannelProgram
 import com.github.damontecres.wholphin.services.ChannelReminder
@@ -228,6 +229,8 @@ fun ChannelsPage(
             listOfNotNull(
                 DoorSection(DOOR_HOME, "Guide", BenflixIcon.CALENDAR),
                 DoorSection(LIVE_FAVOURITES, "Favourites", BenflixIcon.STAR),
+                // Idea Box 28 (Ben 2026-11-24): follow your teams, then what's on the sports channels now
+                DoorSection(LIVE_SPORTS, "Sports", BenflixIcon.FLAG),
                 if (hasRecent) DoorSection(LIVE_RECENT, "Recently watched", BenflixIcon.REFRESH) else null,
             )
         }
@@ -251,25 +254,34 @@ fun ChannelsPage(
             if (wide) LiveArt(pick = { artPick.value }, deep = { deep.value }, pageHeight = pageHeight)
             // Each tab is its own page, so switching starts it at the top
             androidx.compose.runtime.key(frame.section) {
-                BoxWithConstraints(modifier = placed) {
-                    // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
-                    val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
-                    val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
-                    GuideGrid(
-                        all = list,
-                        list = shown,
-                        halfHours = halfHours,
-                        dpm = dpm,
-                        viewModel = viewModel,
-                        frame = frame,
-                        // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
-                        nowNext = maxWidth < 600.dp,
-                        view = frame.section,
-                        wideLook = wide && maxWidth >= 600.dp,
-                        pageHeight = pageHeight,
-                        artPick = artPick,
-                        deep = deep,
+                if (frame.section == LIVE_SPORTS) {
+                    SportsTab(
+                        channels = list,
+                        onWatch = { viewModel.watch(it) },
+                        navigationManager = viewModel.navigationManager,
+                        modifier = placed.padding(start = if (wide) liveEdges(isTv) else 0.dp),
                     )
+                } else {
+                    BoxWithConstraints(modifier = placed) {
+                        // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
+                        val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
+                        val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
+                        GuideGrid(
+                            all = list,
+                            list = shown,
+                            halfHours = halfHours,
+                            dpm = dpm,
+                            viewModel = viewModel,
+                            frame = frame,
+                            // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+                            nowNext = maxWidth < 600.dp,
+                            view = frame.section,
+                            wideLook = wide && maxWidth >= 600.dp,
+                            pageHeight = pageHeight,
+                            artPick = artPick,
+                            deep = deep,
+                        )
+                    }
                 }
             }
         }
@@ -279,6 +291,7 @@ fun ChannelsPage(
 /** Live TV's tabs besides Guide (the frame's own Home) */
 private const val LIVE_FAVOURITES = "favourites"
 private const val LIVE_RECENT = "recent"
+internal const val LIVE_SPORTS = "sports"
 
 /** The page's own left and right margins inside the door frame (TV: right next to the side menu, like Movies) */
 private fun liveEdges(isTv: Boolean): Dp = if (isTv) BenflixSpace.tvEdge + 16.dp else 8.dp
@@ -769,6 +782,9 @@ private fun GuideGrid(
                                         border =
                                             if (isSelected) {
                                                 Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp))
+                                            } else if (BenflixTeams.isMine(program.name())) {
+                                                // Follow your teams: a game with one of your teams gets a gold edge
+                                                Border(BorderStroke(1.5.dp, TEAM_GOLD), shape = RoundedCornerShape(6.dp))
                                             } else {
                                                 Border.None
                                             },
@@ -1130,6 +1146,7 @@ private fun GuideHeader(
             val live = now >= program.startMs && now < program.endMs
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (live) LivePill()
+                if (BenflixTeams.isMine(program.name())) YourTeamTag()
                 Text(
                     text = "${schedule.number}  ·  ${schedule.title}",
                     fontSize = BenflixType.tag,

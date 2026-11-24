@@ -313,15 +313,20 @@ internal fun WideRowsTitlePage(
         // The score pill at the top right, under the clock. It grows to the left; its gap from the right edge
         // matches the title's gap from the left.
         val topAlpha by animateFloatAsState(if (scrolled) 0f else 1f, tween(250), label = "titleTop")
-        ScorePill(
-            rating = rating,
-            scores = scores,
+        // Glowfin "94% for you" (Idea Box 28) under it, in the empty space, so nothing moves
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = side, top = h * .14f)
                     .graphicsLayer { alpha = topAlpha },
-        )
+        ) {
+            ScorePill(rating = rating, scores = scores)
+            com.github.damontecres.wholphin.ui.door
+                .MatchPill(itemId = LocalTitleExtras.current.matchId)
+        }
         // Down into the rows: the top shrinks to a small title and the facts (a plain fade, no blur)
         if (scrolled || topAlpha < 1f) {
             MiniTop(
@@ -495,7 +500,15 @@ internal fun PhoneRowsTitlePage(
                         // Upright phones: the title box with the score pill beside it on the right
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             TitleBox(title = title, wide = false, width = 220.dp, modifier = Modifier.weight(1f))
-                            ScorePill(rating = rating, scores = scores, small = true)
+                            // Glowfin "94% for you" (Idea Box 28) just above the score pill, beside the title
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                com.github.damontecres.wholphin.ui.door.MatchPill(
+                                    itemId = LocalTitleExtras.current.matchId,
+                                    small = true,
+                                    showWhy = false,
+                                )
+                                ScorePill(rating = rating, scores = scores, small = true)
+                            }
                         }
                         InfoLine(info, null)
                         QualityChips()
