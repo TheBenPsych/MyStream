@@ -278,15 +278,17 @@ private fun doorTimeLeft(item: BaseItem): String? {
 }
 
 /**
- * The shade on the left, only as wide as the words (the right side of the art stays bright). Ben 2026-11-23: deeper,
- * and it starts under the side menu at the screen's edge, so the menu needs no dark bar of its own.
+ * The shade on the left, only as wide as the words (the right side of the art stays bright). It starts under the side
+ * menu at the screen's edge, so the menu needs no dark bar of its own. Glowfin Tint (Ben 2026-11-23, option C):
+ * Glowfin's deep violet melting into navy instead of plain black, deep behind the menu and the words.
  */
 private val LEFT_SHADE =
     Brush.horizontalGradient(
-        0f to BenflixColors.Tray.copy(alpha = .92f),
-        .15f to BenflixColors.Tray.copy(alpha = .78f),
-        .4f to BenflixColors.Tray.copy(alpha = .42f),
-        .68f to Color.Transparent,
+        0f to Color(22, 10, 58).copy(alpha = .96f),
+        .18f to Color(20, 14, 66).copy(alpha = .88f),
+        .38f to Color(14, 30, 78).copy(alpha = .62f),
+        .56f to Color(10, 34, 80).copy(alpha = .28f),
+        .72f to Color.Transparent,
     )
 
 /** A faint edge under the words so they stay clear on any art (stronger on very bright art) */

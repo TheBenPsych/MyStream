@@ -403,13 +403,14 @@ fun BenflixRail(
     }
 
     Box(modifier.fillMaxSize()) {
-        // The page's words dim to about 30% while the menu is open (never on wide touch screens, where it's always
-        // open). One painted shade that fades in, no blur.
+        // Glowfin Tint (Ben 2026-11-23, option C): while the menu is open a deep violet-to-navy tint covers the page
+        // (never on wide touch screens, where it's always open), almost solid under the names so they never sit on the
+        // page's words. The page doesn't move. One painted gradient that fades in, no blur.
         if (wide && !model.alwaysOpen) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .drawBehind { drawRect(Glowfin.Ink.copy(alpha = DIM * fade.value)) }
+                    .drawBehind { drawRect(brush = OPEN_TINT, alpha = fade.value) }
                     .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -444,14 +445,16 @@ fun BenflixRail(
                 .width(RAIL_OPEN * scale + FADE_EDGE_OPEN * scale)
                 .drawBehind {
                     val f = fade.value
+                    // Opening the menu hands over to the open tint, so the strip's own fade goes away as it comes in
+                    val keep = if (model.alwaysOpen) 1f else 1f - f
                     val solid = (RAIL_TUCKED + (RAIL_OPEN - RAIL_TUCKED) * f).toPx() * scale
                     val edge = (FADE_EDGE_TUCKED + (FADE_EDGE_OPEN - FADE_EDGE_TUCKED) * f).toPx() * scale
                     val end = solid + edge
                     drawRect(
                         brush =
                             Brush.horizontalGradient(
-                                0f to Glowfin.Ink.copy(alpha = FADE_FROM_TUCKED + (FADE_FROM - FADE_FROM_TUCKED) * f),
-                                solid / end to Glowfin.Ink.copy(alpha = FADE_TO_TUCKED + (FADE_TO - FADE_TO_TUCKED) * f),
+                                0f to Glowfin.Ink.copy(alpha = (FADE_FROM_TUCKED + (FADE_FROM - FADE_FROM_TUCKED) * f) * keep),
+                                solid / end to Glowfin.Ink.copy(alpha = (FADE_TO_TUCKED + (FADE_TO - FADE_TO_TUCKED) * f) * keep),
                                 1f to Color.Transparent,
                                 startX = 0f,
                                 endX = end,
@@ -1355,6 +1358,19 @@ private const val PANEL_FOCUS_MS = 40L
 
 /** How dark the page gets while the menu is open: its words show at about 30% (Ben 2026-11-22) */
 private const val DIM = .7f
+
+/**
+ * Glowfin Tint (Ben 2026-11-23, option C): what covers the page while the menu is open. Deep violet almost solid
+ * under the names, easing to navy and leaving the right side of the picture softly tinted.
+ */
+private val OPEN_TINT =
+    Brush.horizontalGradient(
+        0f to Color(22, 10, 58).copy(alpha = .99f),
+        .3f to Color(22, 12, 62).copy(alpha = .97f),
+        .46f to Color(16, 24, 74).copy(alpha = .86f),
+        .62f to Color(12, 34, 80).copy(alpha = .58f),
+        1f to Color(12, 34, 80).copy(alpha = .42f),
+    )
 
 /** The names and the wider fade come in (and go away) this fast */
 private const val FADE_MS = 220

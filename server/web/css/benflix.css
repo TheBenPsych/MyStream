@@ -3134,3 +3134,23 @@ html.kids .empty-page .tile { background: radial-gradient(85% 120% at 72% 32%, v
   .team-pick .tp-picked { width: 100%; position: static; }
   .game-card { width: 200px; }
 }
+
+/* ---------- Glowfin Tint (Ben 2026-11-23, option C) ----------
+   The picture's left shade is Glowfin's deep violet melting into navy instead of plain black. When the side menu
+   opens, a deeper violet tint covers the page (almost solid under the names), the page itself doesn't move, and the
+   strip's own fade hands over to it. Painted gradients only, no blur. The clock has no pill any more, and the age
+   rating and scores are separate small chips (IMDb is its own yellow chip). */
+@media (min-width: 901px), (orientation: landscape) {
+  #doorTop .art::after { background: linear-gradient(90deg, rgba(22,10,58,.96) 0%, rgba(20,14,66,.88) 18%, rgba(14,30,78,.62) 38%, rgba(10,34,80,.28) 56%, rgba(10,34,80,0) 72%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 42%, rgba(var(--trayrgb),.75) 70%, var(--tray) 100%); }
+}
+.brail::after { background: linear-gradient(90deg, rgba(22,10,58,.99) 0%, rgba(22,12,62,.97) 30%, rgba(16,24,74,.86) 46%, rgba(12,34,80,.58) 62%, rgba(12,34,80,.42) 100%); }
+.brail:not(.always):hover::before, .brail:not(.always):focus-within::before, body.nav-panel .brail:not(.always)::before { background: none; }
+.clock { padding: 0; border-radius: 0; background: none; }
+.tp-pill { padding: 0; background: none; border: 0; gap: 6px; }
+.tp-pill .rate { margin-right: 0; background: rgba(11,13,26,.5); }
+.tp-pill .tp-scores { gap: 6px; }
+.tp-pill span[data-s], .tp-pill .rate + .tp-scores span[data-s]:first-child { padding: 2px 8px; border-radius: 6px; background: rgba(11,13,26,.5); border: 1px solid rgba(255,255,255,.22); gap: 6px; }
+.tp-pill span[data-s] + span[data-s] { border-left: 1px solid rgba(255,255,255,.22); }
+.tp-pill span[data-s="imdb"] { background: #F5C518; border-color: #F5C518; }
+.tp-pill span[data-s="imdb"]::before { padding: 0; }
+.tp-pill span[data-s="imdb"] b { color: #000 !important; }

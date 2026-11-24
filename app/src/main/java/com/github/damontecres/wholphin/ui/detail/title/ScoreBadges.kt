@@ -6,11 +6,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -122,9 +120,9 @@ fun ScoreBadges(
 }
 
 /**
- * Glowfin details pages (Ben's "fresh" pick, 2026-11-22): the score pill at the top right. A see-through
- * rounded pill with the age rating as a plain white outline, then each score as its site's small mark and
- * a WHITE number, with thin lines between them. At most the rating and 3 scores.
+ * The age rating and scores at the top right (Home tops and details pages). Ben 2026-11-23: separate small chips
+ * instead of one shared pill. The age rating is a white outline, IMDb is its own yellow chip ("IMDb 7.4"), and the
+ * other scores are dark see-through chips with the site's small mark and a white number. At most 3 scores.
  */
 @Composable
 fun ScorePill(
@@ -137,13 +135,12 @@ fun ScorePill(
     if (rating.isNullOrBlank() && shown.isEmpty()) return
     val font = if (small) BenflixType.tag else BenflixType.body
     val mark = if (small) 12.dp else 14.dp
+    val chip = RoundedCornerShape(6.dp)
+    val padX = if (small) 6.dp else 8.dp
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            modifier
-                .background(Color(0x800B0D1A), RoundedCornerShape(50))
-                .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(50))
-                .padding(horizontal = if (small) 6.dp else 8.dp, vertical = if (small) 4.dp else 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (small) 5.dp else 6.dp),
+        modifier = modifier,
     ) {
         if (!rating.isNullOrBlank()) {
             Text(
@@ -154,30 +151,42 @@ fun ScorePill(
                 maxLines = 1,
                 modifier =
                     Modifier
-                        .padding(start = 2.dp, end = if (shown.isEmpty()) 2.dp else 8.dp)
-                        .border(1.dp, Color.White.copy(alpha = .85f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp),
+                        .background(CHIP_BACK, chip)
+                        .border(1.5.dp, Color.White.copy(alpha = .85f), chip)
+                        .padding(horizontal = padX - 1.dp),
             )
         }
-        shown.forEachIndexed { i, p ->
-            if (i > 0) {
-                Box(
-                    Modifier
-                        .padding(horizontal = if (small) 6.dp else 8.dp)
-                        .width(1.dp)
-                        .height(if (small) 14.dp else 16.dp)
-                        .background(Color.White.copy(alpha = .18f)),
-                )
-            }
+        shown.forEach { p ->
+            val imdb = p.label.lowercase() == "imdb"
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
-                modifier = Modifier.padding(horizontal = 2.dp),
+                modifier =
+                    if (imdb) {
+                        Modifier
+                            .background(IMDB_YELLOW, chip)
+                            .padding(horizontal = padX)
+                    } else {
+                        Modifier
+                            .background(CHIP_BACK, chip)
+                            .border(1.dp, Color.White.copy(alpha = .22f), chip)
+                            .padding(horizontal = padX)
+                    },
             ) {
-                SiteMark(p.label, mark)
+                if (imdb) {
+                    Text(
+                        text = "IMDb",
+                        color = Color.Black,
+                        fontSize = (mark.value * .7f).sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                    )
+                } else {
+                    SiteMark(p.label, mark)
+                }
                 Text(
                     text = p.value.orEmpty(),
-                    color = Color.White,
+                    color = if (imdb) Color.Black else Color.White,
                     fontSize = font,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -186,6 +195,9 @@ fun ScorePill(
         }
     }
 }
+
+private val CHIP_BACK = Color(0x800B0D1A)
+private val IMDB_YELLOW = Color(0xFFF5C518)
 
 /** A score site's small mark (IMDb, the tomato, Metacritic's M, AniList's A, MAL), drawn without pictures */
 @Composable

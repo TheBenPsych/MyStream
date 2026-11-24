@@ -164,19 +164,8 @@ internal fun BigClock(scale: Float) {
                     blurRadius = 10f,
                 ),
         )
-    // Glowfin new look "Clock with a soft backing" (Ben 2026-11-22): a faint see-through pill behind the clock so it
-    // reads on bright pictures. A flat colour, no blur, so it costs a slow TV nothing.
-    Row(
-        verticalAlignment = Alignment.Bottom,
-        modifier =
-            Modifier
-                .background(
-                    com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
-                        .copy(alpha = .35f),
-                    androidx.compose.foundation.shape
-                        .RoundedCornerShape(50),
-                ).padding(horizontal = 10.dp * scale, vertical = 1.dp),
-    ) {
+    // Ben 2026-11-23: the clock is nicer with no pill behind it, just the soft shadow
+    Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = time,
             style = shadowed,
