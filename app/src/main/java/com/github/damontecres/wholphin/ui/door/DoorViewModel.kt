@@ -342,10 +342,11 @@ class DoorViewModel
         ): List<String> {
             val shown = PageRows.shown(context, userId, page).filter { it !in fixed }
             // Ben 2026-11-18: Top 10 sits right under Continue watching on Movies, Shows and Anime (when it's on)
-            val top = shown.filter { it == TOP_10 || it == TOP_10_ANIME }.let { t ->
-                // Ben 2026-11-24: Just released stays right under Top 10
-                if (t.isNotEmpty() && JUST_RELEASED in shown) t + JUST_RELEASED else t
-            }
+            val top =
+                shown.filter { it == TOP_10 || it == TOP_10_ANIME }.let { t ->
+                    // Ben 2026-11-24: Just released stays right under Top 10
+                    if (t.isNotEmpty() && JUST_RELEASED in shown) t + JUST_RELEASED else t
+                }
             return if (page == PageRows.Page.HOME || top.isEmpty()) {
                 fixed + shown
             } else {

@@ -106,9 +106,20 @@ fun releasedChip(day: String?): String? {
     val date = day?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() } ?: return null
     val today = java.time.LocalDate.now()
     return when (date) {
-        today -> RELEASED_TODAY
-        today.minusDays(1) -> "Yesterday"
-        else -> date.format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US))
+        today -> {
+            RELEASED_TODAY
+        }
+
+        today.minusDays(1) -> {
+            "Yesterday"
+        }
+
+        else -> {
+            date.format(
+                java.time.format.DateTimeFormatter
+                    .ofPattern("MMM d", java.util.Locale.US),
+            )
+        }
     }
 }
 
