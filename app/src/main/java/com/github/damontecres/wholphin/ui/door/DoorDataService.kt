@@ -522,8 +522,14 @@ class DoorDataService
                     async {
                         // Ben 2026-11-24: only brand new shows count, on the day season 1 episode 1 aired (not new
                         // seasons or weekly episodes). Jellyfin dates each season by its first episode.
-                        val newest =
-                            fromLibraries(showLibs) { parentId ->
+                        // Speed check 2026-11-24: the seasons are only needed for their show and date, so Jellyfin
+                        // isn't asked to work out watched counts and pictures for 300 seasons (that took seconds on
+                        // every Home, Shows and Anime visit). The list is kept for 10 minutes.
+                        val cacheKey = "$userId/${showLibs.joinToString(",")}"
+                        val kept =
+                            newSeasonsCache[cacheKey]?.takeIf { System.currentTimeMillis() - it.first < JUST_RELEASED_CACHE_MS }
+                        val seasons =
+                            kept?.second ?: fromLibraries(showLibs) { parentId ->
                                 GetItemsRequest(
                                     userId = userId,
                                     parentId = parentId,
@@ -533,11 +539,19 @@ class DoorDataService
                                     maxPremiereDate = until,
                                     sortBy = listOf(ItemSortBy.PREMIERE_DATE),
                                     sortOrder = listOf(SortOrder.DESCENDING),
+                                    enableUserData = false,
+                                    enableImages = false,
+                                    enableTotalRecordCount = false,
                                     limit = JUST_RELEASED_EPISODES,
                                 )
-                            }.filter { s ->
-                                s.data.indexNumber == 1 && s.data.locationType != LocationType.VIRTUAL
-                            }.mapNotNull { e -> e.data.seriesId?.let { id -> e.data.premiereDate?.let { id to it.toLocalDate() } } }
+                            }
+                        if (kept == null && seasons.isNotEmpty()) {
+                            newSeasonsCache[cacheKey] = System.currentTimeMillis() to seasons
+                        }
+                        val newest =
+                            seasons
+                                .filter { s -> s.data.indexNumber == 1 && s.data.locationType != LocationType.VIRTUAL }
+                                .mapNotNull { e -> e.data.seriesId?.let { id -> e.data.premiereDate?.let { id to it.toLocalDate() } } }
                                 .sortedByDescending { it.second }
                                 .distinctBy { it.first }
                                 .take(ROW)
@@ -929,6 +943,7 @@ class DoorDataService
 
             /** Just released: enough of this year's newest seasons to find 20 different shows */
             private const val JUST_RELEASED_EPISODES = 300
+            private const val JUST_RELEASED_CACHE_MS = 10L * 60 * 1000
             private const val EVERYTHING_LIMIT = 5000
             private const val BECAUSE_TRIES = 4
             private const val HISTORY_MAX = 120
@@ -950,6 +965,9 @@ class DoorDataService
             val rowLimit: Int get() = if (KidsMode.isActive) 15 else ROW
         }
     }
+
+/** Just released: this year's newest seasons per person and libraries, and when they were fetched */
+private val newSeasonsCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<BaseItem>>>()
 
 /** Benflix: Seerr's trending list and when it was fetched */
 @Volatile private var trendingCache: Pair<Long, List<DiscoverItem>>? = null

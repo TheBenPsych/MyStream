@@ -295,8 +295,24 @@ def _refresh_owned():
 # ---------------------------------------------------------------- the page
 
 
+_owned_busy = threading.Event()
+
+
+def _refresh_owned_bg():
+    try:
+        _refresh_owned()
+    finally:
+        _owned_busy.clear()
+
+
 def page(which):
-    _refresh_owned()
+    # Speed check 2026-11-24: the first time, the page waits for the list of what's on Glowfin; after that a
+    # fresh list is fetched in the background (one at a time) and the page uses the one it has
+    if not _owned["at"]:
+        _refresh_owned()
+    elif time.time() - _owned["at"] >= 600 and not _owned_busy.is_set():
+        _owned_busy.set()
+        threading.Thread(target=_refresh_owned_bg, daemon=True, name="famous-owned").start()
     rows = []
     with _lock:
         for key, name, _source, kind in LISTS.get(which, []):

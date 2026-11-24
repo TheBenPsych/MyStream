@@ -893,7 +893,13 @@ B.justReleased = async (o) => {
   const [movies, eps] = await Promise.all([
     o.movies ? get(`/Items?userId=${u}&IncludeItemTypes=Movie${range}&Limit=40&Fields=${F}`) : [],
     // Only brand new shows count: Jellyfin dates season 1 by its episode 1
-    o.shows ? get(`/Items?userId=${u}&IncludeItemTypes=Season${range}&Limit=300&Fields=SeriesId`).then((l) => l.filter((s) => s.IndexNumber === 1 && s.LocationType !== "Virtual")) : [],
+    // Speed check 2026-11-24: only each season's show and date are needed, so Jellyfin isn't asked to work out
+    // watched counts and pictures for 300 seasons (seconds on every Home, Shows and Anime visit). Kept 10 minutes.
+    o.shows ? B.cached(`new-seasons:${u}`, 600000, () => B.get(`/Items?userId=${u}&IncludeItemTypes=Season${range}&Limit=300&Fields=SeriesId&EnableUserData=false&EnableImages=false&EnableTotalRecordCount=false`).then((r) => {
+      // An empty answer (Tower busy) isn't kept
+      if (!(r.Items || []).length) throw new Error("none");
+      return r.Items;
+    })).then((l) => l.filter((s) => s.IndexNumber === 1 && s.LocationType !== "Virtual")).catch(() => []) : [],
   ]);
   const seen = new Set(), newest = [];
   eps.forEach((e) => { if (e.SeriesId && !seen.has(e.SeriesId)) { seen.add(e.SeriesId); newest.push({ id: e.SeriesId, day: dayOf(e.PremiereDate) }); } });
