@@ -1,0 +1,9 @@
+  [222,878][859,1028] Glowfin
+  [407,881][706,1026] Glow
+  [706,881][859,1026] fin
+  [63,1060][1017,1167] The server is taking a nap, or being worked on
+  [63,1199][1017,1350] Nothing is wrong with your TV. Glowfin will keep checking and bring you back as soon as it's up.
+  [243,1382][837,1429] Checking again in 1 seconds…
+  [488,1514][842,1555] Watch my downloads
+* [196,1472][414,1598] 
+  [238,1514][372,1555] Try now

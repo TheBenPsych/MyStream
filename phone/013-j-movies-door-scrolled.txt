@@ -1,0 +1,20 @@
+  [39,153][237,218] Movies
+  [73,270][199,310] For you
+  [282,270][331,310] All
+  [414,270][614,310] Collections
+  [697,270][820,310] Genres
+  [903,270][1080,310] Famous lists
+  [39,356][339,403] Keep watching
+  [39,423][311,831] King Lear
+  [340,423][612,831] Jungle Book
+  [641,423][913,831] The Great St. Louis Bank Robbery
+  [39,875][530,922] Top 10 movies this week
+  [258,942][530,1350] Caminandes: Llama Drama
+  [39,1394][355,1441] Recently added
+  [39,1461][311,1869] Caminandes: Llama Drama
+  [413,1685][539,1730] See all
+  [69,2279][148,2312] Home
+  [274,2279][375,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [937,2279][1008,2312] More

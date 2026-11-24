@@ -1,0 +1,22 @@
+  [164,169][640,260] Jungle Book
+  [164,272][369,310] 1942 · 1h 44m
+  [206,326][353,360] 12 min left
+  [176,382][217,416] NR
+  [299,380][344,418] 6.3
+  [414,380][450,418] 54
+  [164,430][1044,506] Mowgli, lost in the jungle when a toddler, raised by wolves, years later happens upon his human village and reconnects with its inhabitants, including his widowed mother. Continuing to maintain a relationship with the jungle, adventures follow.
+  [164,614][439,658] Keep watching
+  [164,674][404,1034] King Lear
+* [428,674][668,1034] 
+  [428,674][668,1034] Jungle Book
+  [692,674][932,1034] The Great St. Louis Bank Robbery
+  [164,1062][616,1080] Top 10 movies this week
+  [192,60][320,100] For you
+  [392,60][575,100] All movies
+  [647,60][852,100] Collections
+  [924,60][1049,100] Genres
+  [1121,60][1340,100] Famous lists
+  [1412,60][1536,100] My List
+  [1663,50][1773,110] 11:11
+  [1781,73][1824,104] PM
+  [38,1002][94,1058] demo

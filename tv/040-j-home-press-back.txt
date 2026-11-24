@@ -1,0 +1,19 @@
+* [109,217][357,398] Add app to favorites
+  [109,357][357,398] Add app to favorites
+  [108,182][758,220] Favorite Apps
+  [109,448][518,678] The Boy in the Plastic Bubble
+  [626,485][1174,527] Play Next
+  [574,535][1174,641] Movies and TV shows will automatically appear here so you can easily resume watching. Directly add programs by long-pressing the center button on your remote.
+  [1230,448][1639,678] The Great St. Louis Bank Robbery
+  [108,408][798,446] Play Next
+  [109,744][518,974] The Great St. Louis Bank Robbery
+  [542,744][951,974] King Lear
+  [108,704][758,742] Glowfin: Recently added
+  [108,64][148,104] Click to speak
+  [168,60][296,107] Search
+  [296,60][439,107] Home
+  [439,60][569,107] Apps
+  [1502,36][1606,140] There is 1 system notification, button
+  [1534,68][1574,108] 1
+  [1598,36][1702,140] Settings, button
+  [1714,64][1812,118] 11:28

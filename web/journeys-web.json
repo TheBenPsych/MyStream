@@ -1,0 +1,571 @@
+{
+ "started": "2026-11-24T23:05:14.806Z",
+ "steps": [
+  {
+   "size": "computer",
+   "step": "home",
+   "file": "001-computer-home.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-1",
+   "file": "002-computer-home-scroll-1.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "Dracula under section.door-top",
+    "Sahara under section.door-top",
+    "Caminandes: Llama Drama under section.door-top",
+    "Caminandes: Llamigos under section.door-top",
+    "Caminandes: Gran Dillama under section.door-top",
+    "Pioneer One under section.door-top",
+    "The Boy in the Plastic Bubble under section.door-top",
+    "Jungle Book under section.door-top"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-2",
+   "file": "003-computer-home-scroll-2.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "King Lear under div.dt-icons",
+    "Pioneer One under div.dt-icons",
+    "Night of the Living Dead under div.info",
+    "Caminandes: Gran Dillama under div.info"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "home-scroll-3",
+   "file": "004-computer-home-scroll-3.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [
+    "King Lear under div.dt-icons",
+    "Pioneer One under div.dt-icons",
+    "Night of the Living Dead under div.info",
+    "Caminandes: Gran Dillama under div.info"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-door",
+   "file": "005-computer-movies-door.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "movies-door-scrolled",
+   "file": "006-computer-movies-door-scrolled.jpg",
+   "hash": "#/movies",
+   "scrollY": 461,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "shows-door",
+   "file": "007-computer-shows-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "shows-door-scrolled",
+   "file": "008-computer-shows-door-scrolled.jpg",
+   "hash": "#/shows",
+   "scrollY": 461,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "search-empty",
+   "file": "009-computer-search-empty.jpg",
+   "hash": "#/search",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "search-typed",
+   "file": "010-computer-search-typed.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "live-door",
+   "file": "011-computer-live-door.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "live-door-scrolled",
+   "file": "012-computer-live-door-scrolled.jpg",
+   "hash": "#/live",
+   "scrollY": 538,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "music-door",
+   "file": "013-computer-music-door.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "music-door-scrolled",
+   "file": "014-computer-music-door-scrolled.jpg",
+   "hash": "#/music",
+   "scrollY": 538,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "games-door",
+   "file": "015-computer-games-door.jpg",
+   "hash": "#/games",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "games-door-scrolled",
+   "file": "016-computer-games-door-scrolled.jpg",
+   "hash": "#/games",
+   "scrollY": 538,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "books-door",
+   "file": "017-computer-books-door.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "books-door-scrolled",
+   "file": "018-computer-books-door-scrolled.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "requests-door",
+   "file": "019-computer-requests-door.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "requests-door-scrolled",
+   "file": "020-computer-requests-door-scrolled.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 134
+  },
+  {
+   "size": "computer",
+   "step": "profile-menu",
+   "file": "021-computer-profile-menu.jpg",
+   "hash": "#/me",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "computer",
+   "step": "keyboard-tab-6",
+   "file": "022-computer-keyboard-tab-6.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0,
+   "focus": {
+    "label": "Anime",
+    "ring": false
+   }
+  },
+  {
+   "size": "phone",
+   "step": "home",
+   "file": "023-phone-home.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-1",
+   "file": "024-phone-home-scroll-1.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-2",
+   "file": "025-phone-home-scroll-2.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "home-scroll-3",
+   "file": "026-phone-home-scroll-3.jpg",
+   "hash": "#/home",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "movies-door",
+   "file": "027-phone-movies-door.jpg",
+   "hash": "#/movies",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "movies-door-scrolled",
+   "file": "028-phone-movies-door-scrolled.jpg",
+   "hash": "#/movies",
+   "scrollY": 109,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-door",
+   "file": "029-phone-shows-door.jpg",
+   "hash": "#/shows",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "shows-door-scrolled",
+   "file": "030-phone-shows-door-scrolled.jpg",
+   "hash": "#/shows",
+   "scrollY": 109,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-empty",
+   "file": "031-phone-search-empty.jpg",
+   "hash": "#/search",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Browse genres and moods (225x37)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "search-typed",
+   "file": "032-phone-search-typed.jpg",
+   "hash": "#/search?q=the",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [
+    "Browse genres and moods (225x37)"
+   ],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "live-door",
+   "file": "033-phone-live-door.jpg",
+   "hash": "#/live",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "live-door-scrolled",
+   "file": "034-phone-live-door-scrolled.jpg",
+   "hash": "#/live",
+   "scrollY": 63,
+   "cut": [],
+   "covered": [
+    "Guide under span.place",
+    "Favourites under div.hstart",
+    "Sports under div.hstart",
+    "Recent under div.hstart"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "music-door",
+   "file": "035-phone-music-door.jpg",
+   "hash": "#/music",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "music-door-scrolled",
+   "file": "036-phone-music-door-scrolled.jpg",
+   "hash": "#/music",
+   "scrollY": 73,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "games-door",
+   "file": "037-phone-games-door.jpg",
+   "hash": "#/games",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "games-door-scrolled",
+   "file": "038-phone-games-door-scrolled.jpg",
+   "hash": "#/games",
+   "scrollY": 63,
+   "cut": [],
+   "covered": [
+    "For you under span.place",
+    "Ember Road under div.hstart",
+    "Movie games under div.hstart",
+    "Consoles under header.top"
+   ],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "books-door",
+   "file": "039-phone-books-door.jpg",
+   "hash": "#/books",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "books-door-scrolled",
+   "file": "040-phone-books-door-scrolled.jpg",
+   "hash": "#/books",
+   "scrollY": 591,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "requests-door",
+   "file": "041-phone-requests-door.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  },
+  {
+   "size": "phone",
+   "step": "requests-door-scrolled",
+   "file": "042-phone-requests-door-scrolled.jpg",
+   "hash": "#/requests",
+   "scrollY": 0,
+   "cut": [],
+   "covered": [],
+   "small": [],
+   "wide": 0
+  }
+ ],
+ "problems": [
+  {
+   "size": "computer",
+   "type": "no posters",
+   "text": "movies"
+  },
+  {
+   "size": "computer",
+   "type": "no posters",
+   "text": "shows"
+  },
+  {
+   "size": "computer",
+   "type": "keyboard focus hard to see",
+   "text": "{\"label\":\"Anime\",\"ring\":false}"
+  },
+  {
+   "size": "computer",
+   "type": "sideways scrolling",
+   "text": "shows-door (134px), shows-door-scrolled (134px), search-empty (134px), search-typed (134px), live-door (134px), live-door-scrolled (134px), music-door (134px), music-door-scrolled (134px), games-door (134px), games-door-scrolled (134px), books-door (134px), books-door-scrolled (134px), requests-door (134px), requests-door-scrolled (134px)"
+  },
+  {
+   "size": "phone",
+   "type": "no posters",
+   "text": "movies"
+  },
+  {
+   "size": "phone",
+   "type": "no posters",
+   "text": "shows"
+  },
+  {
+   "size": "phone",
+   "type": "robot",
+   "text": "could not find the profile picture button"
+  }
+ ],
+ "computer-cut": [],
+ "computer-covered": [
+  "Dracula under section.door-top",
+  "Sahara under section.door-top",
+  "Caminandes: Llama Drama under section.door-top",
+  "Caminandes: Llamigos under section.door-top",
+  "Caminandes: Gran Dillama under section.door-top",
+  "Pioneer One under section.door-top",
+  "The Boy in the Plastic Bubble under section.door-top",
+  "Jungle Book under section.door-top",
+  "King Lear under div.dt-icons",
+  "Pioneer One under div.dt-icons",
+  "Night of the Living Dead under div.info",
+  "Caminandes: Gran Dillama under div.info"
+ ],
+ "computer-small": [],
+ "phone-cut": [],
+ "phone-covered": [
+  "Guide under span.place",
+  "Favourites under div.hstart",
+  "Sports under div.hstart",
+  "Recent under div.hstart",
+  "For you under span.place",
+  "Ember Road under div.hstart",
+  "Movie games under div.hstart",
+  "Consoles under header.top"
+ ],
+ "phone-small": [
+  "Browse genres and moods (225x37)"
+ ]
+}

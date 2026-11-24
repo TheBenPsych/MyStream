@@ -1,0 +1,5 @@
+  [230,1238][851,1309] Tower had a problem
+  [139,1334][941,1379] Give it a minute, then go back and try again.
+  [200,1466][354,1511] Go back
+  [448,1459][740,1498] Send details to Ben
+  [805,1459][910,1498] Details

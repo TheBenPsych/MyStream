@@ -1,0 +1,33 @@
+  [59,175][103,217] Back
+  [113,176][246,219] Movies
+  [47,217][165,305] Movies
+  [178,256][193,295] ›
+  [208,256][638,295] Caminandes: Llama Drama
+  [531,341][613,386] Play
+  [67,515][168,551] Trailer
+  [344,515][455,551] My List
+  [639,515][722,551] Liked
+  [923,515][1003,551] More
+  [39,601][893,646] Koro wants to get to the other side of the road.
+  [39,656][336,695] Story and details ›
+  [39,754][340,803] Cast and crew
+  [59,854][235,1018] 
+  [39,1069][255,1147] Pablo Vazquez
+  [87,1147][207,1183] Director
+  [300,854][476,1018] 
+  [280,1069][496,1147] Francesco Siddi
+  [319,1147][457,1183] Producer
+  [39,1232][575,1281] More from Pablo Vazquez
+  [39,1306][357,1782] Caminandes: Llamigos
+  [54,1802][342,1880] Caminandes: Llamigos
+  [54,1880][126,1916] 2016
+  [382,1306][700,1782] Caminandes: Gran Dillama
+  [397,1802][685,1880] Caminandes: Gran Dillama
+  [397,1880][469,1916] 2013
+  [39,2024][174,2073] About
+  [39,2098][417,2137] Director Pablo Vazquez
+  [69,2279][148,2312] Home
+  [275,2279][374,2312] Movies
+  [494,2279][586,2312] Shows
+  [713,2279][799,2312] Anime
+  [936,2279][1008,2312] More

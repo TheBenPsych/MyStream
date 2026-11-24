@@ -1,0 +1,43 @@
+  [164,0][364,31] Sabu
+  [225,109][304,181] Sabu
+  [214,181][315,215] Mowgli
+  [392,0][592,89] Joseph Calleia
+  [392,109][592,181] Joseph Calleia
+  [443,181][541,215] Buldeo
+  [620,0][820,89] John Qualen
+  [622,109][818,181] John Qualen
+  [641,181][800,215] The Barber
+  [848,0][1048,89] Frank Puglia
+  [852,109][1044,181] Frank Puglia
+  [871,181][1025,215] The Pundit
+  [1092,0][1260,56] 
+  [1076,109][1276,181] Rosemary DeCamp
+  [1121,181][1231,215] Messua
+  [1320,0][1488,56] 
+  [1304,109][1504,181] Patricia O'Rourke
+  [1353,181][1456,215] Mahala
+  [1548,0][1716,56] 
+  [1548,109][1717,181] Ralph Byrd
+  [1589,181][1675,215] Durga
+  [1760,0][1920,89] Faith Brook
+  [1773,109][1920,181] Faith Brook
+  [1760,181][1920,215] English Woman
+  [164,259][627,304] More from Zoltan Korda
+* [164,324][356,612] 
+  [164,324][356,612] Sahara
+  [164,688][286,733] About
+  [164,753][497,789] Director Zoltan Korda
+  [1148,753][1265,792] Details
+  [1148,800][1340,836] Studio
+  [1340,800][1675,836] Alexander Korda Films
+  [1148,844][1340,880] Released
+  [1340,844][1529,880] April 3, 1942
+  [1148,888][1340,924] Genres
+  [1340,888][1749,924] Adventure, Fantasy, Family
+  [1148,932][1340,968] Country
+  [1340,932][1715,968] United States of America
+  [164,31][486,92] Jungle Book
+  [514,42][1072,78] 1942 · 1h 44m · Adventure · Fantasy
+  [1663,50][1773,110] 11:11
+  [1781,73][1824,104] PM
+  [38,1002][94,1058] demo
