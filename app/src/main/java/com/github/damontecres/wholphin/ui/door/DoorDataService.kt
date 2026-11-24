@@ -508,6 +508,76 @@ class DoorDataService
             }.sortedByDescending { it.data.premiereDate }
                 .take(ROW)
 
+        /**
+         * Ben 2026-11-24 "Just released": movies and shows on Glowfin that came out this year, newest first, with the
+         * day each came out. A show counts the day its newest episode aired, so a new episode today puts it at the front.
+         */
+        suspend fun justReleased(
+            userId: UUID,
+            movieLibs: List<UUID>,
+            showLibs: List<UUID>,
+        ): List<Pair<BaseItem, LocalDate>> =
+            coroutineScope {
+                val today = LocalDate.now()
+                val from = today.withDayOfYear(1).atStartOfDay()
+                val until = today.atTime(23, 59, 59)
+                val movies =
+                    async {
+                        fromLibraries(movieLibs) { parentId ->
+                            GetItemsRequest(
+                                userId = userId,
+                                parentId = parentId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                minPremiereDate = from,
+                                maxPremiereDate = until,
+                                sortBy = listOf(ItemSortBy.PREMIERE_DATE),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                fields = SlimItemFields,
+                                enableUserData = true,
+                                limit = ROW,
+                            )
+                        }.mapNotNull { m -> m.data.premiereDate?.let { m to it.toLocalDate() } }
+                    }
+                val shows =
+                    async {
+                        // The newest episodes first, one per show, then the shows themselves in that order
+                        val newest =
+                            fromLibraries(showLibs) { parentId ->
+                                GetItemsRequest(
+                                    userId = userId,
+                                    parentId = parentId,
+                                    includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                    recursive = true,
+                                    isMissing = false,
+                                    minPremiereDate = from,
+                                    maxPremiereDate = until,
+                                    sortBy = listOf(ItemSortBy.PREMIERE_DATE),
+                                    sortOrder = listOf(SortOrder.DESCENDING),
+                                    limit = JUST_RELEASED_EPISODES,
+                                )
+                            }.mapNotNull { e -> e.data.seriesId?.let { id -> e.data.premiereDate?.let { id to it.toLocalDate() } } }
+                                .sortedByDescending { it.second }
+                                .distinctBy { it.first }
+                                .take(ROW)
+                        if (newest.isEmpty()) return@async emptyList<Pair<BaseItem, LocalDate>>()
+                        val byId =
+                            items(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    ids = newest.map { it.first },
+                                    fields = SlimItemFields,
+                                    enableUserData = true,
+                                ),
+                            ).associateBy { it.id }
+                        newest.mapNotNull { (id, day) -> byId[id]?.let { it to day } }
+                    }
+                (movies.await() + shows.await())
+                    .distinctBy { it.first.id }
+                    .sortedByDescending { it.second }
+                    .take(ROW)
+            }
+
         /** Glowfin "Top rated you haven't seen": the best scores, unwatched, in these libraries */
         suspend fun topRatedUnseen(
             userId: UUID,
@@ -875,6 +945,9 @@ class DoorDataService
         companion object {
             const val ROW = 20
             const val TOP = 10
+
+            /** Just released: enough of this year's newest episodes to find 20 different shows */
+            private const val JUST_RELEASED_EPISODES = 300
             private const val EVERYTHING_LIMIT = 5000
             private const val BECAUSE_TRIES = 4
             private const val HISTORY_MAX = 120

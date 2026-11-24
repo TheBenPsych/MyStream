@@ -54,6 +54,8 @@ data class DoorRowData(
     val note: String? = null,
     /** [DoorRowStyle.DISCOVER] rows: titles not on Glowfin yet say "Ask for it" in the corner (Famous lists) */
     val askNote: Boolean = false,
+    /** Just released: each title's release day ("2026-11-24"), keyed by its id, drawn as a date chip on its cover */
+    val dates: Map<String, String> = emptyMap(),
 ) {
     val isEmpty: Boolean get() = items.isEmpty() && discover.isEmpty()
 }
@@ -340,7 +342,10 @@ class DoorViewModel
         ): List<String> {
             val shown = PageRows.shown(context, userId, page).filter { it !in fixed }
             // Ben 2026-11-18: Top 10 sits right under Continue watching on Movies, Shows and Anime (when it's on)
-            val top = shown.filter { it == TOP_10 || it == TOP_10_ANIME }
+            val top = shown.filter { it == TOP_10 || it == TOP_10_ANIME }.let { t ->
+                // Ben 2026-11-24: Just released stays right under Top 10
+                if (t.isNotEmpty() && JUST_RELEASED in shown) t + JUST_RELEASED else t
+            }
             return if (page == PageRows.Page.HOME || top.isEmpty()) {
                 fixed + shown
             } else {
@@ -475,6 +480,10 @@ class DoorViewModel
                         val items = data.top10(userId, BaseItemKind.SERIES, animeIds.await(), anime = false, exclude = dislikes)
                         putOrRemove(order, DoorRowData(TOP_10, "Top 10 shows this week", items, style = DoorRowStyle.TOP10))
                     }
+                    launch {
+                        val skip = animeIds.await()
+                        justReleasedRow(order, userId, emptyList(), main, disliked.await()) { it.id !in skip }
+                    }
                 }
                 launch {
                     val dislikes = disliked.await()
@@ -565,6 +574,7 @@ class DoorViewModel
                     val items = data.top10(userId, BaseItemKind.SERIES, showIds.await(), anime = true)
                     putOrRemove(order, DoorRowData(TOP_10_ANIME, "Top 10 anime", items, style = DoorRowStyle.TOP10))
                 }
+                launch { justReleasedRow(order, userId, movies, shows, disliked.await()) }
                 launch {
                     val dislikes = disliked.await()
                     val series = showIds.await()
@@ -671,6 +681,7 @@ class DoorViewModel
                                 .take(DoorDataService.TOP)
                         putOrRemove(order, DoorRowData(TOP_10, "Top 10 this week", items, style = DoorRowStyle.TOP10))
                     }
+                    launch { justReleasedRow(order, userId, allIds(libs), allIds(libs), disliked.await()) }
                     launch {
                         val dislikes = disliked.await()
                         val found =
@@ -712,6 +723,27 @@ class DoorViewModel
         }
 
         private fun allIds(libs: List<Library>): List<UUID> = libs.map { it.itemId }
+
+        /** Just released: this year's movies and shows on Glowfin, newest release (or newest episode) first */
+        private suspend fun justReleasedRow(
+            order: List<String>,
+            userId: UUID,
+            movieLibs: List<UUID>,
+            showLibs: List<UUID>,
+            dislikes: Set<UUID>,
+            keep: (BaseItem) -> Boolean = { true },
+        ) {
+            val found = data.justReleased(userId, movieLibs, showLibs).filter { (item, _) -> item.id !in dislikes && keep(item) }
+            putOrRemove(
+                order,
+                DoorRowData(
+                    JUST_RELEASED,
+                    "Just released",
+                    found.map { it.first },
+                    dates = found.associate { (item, day) -> item.id.toString() to day.toString() },
+                ),
+            )
+        }
 
         /** Something unwatched with a wide picture, for the phone's "Picked for you" card */
         private fun pickFrom(items: List<BaseItem>): BaseItem? =
@@ -849,6 +881,9 @@ class DoorViewModel
             const val STAND_UP = "standup"
             const val NEXT_UP = "nextup"
             const val RELEASED = "released"
+
+            /** Ben 2026-11-24: this year's releases, newest first, right under Top 10 on Home, Shows and Anime */
+            const val JUST_RELEASED = "justreleased"
             const val TOP_RATED = "toprated"
             const val TRENDING_MISSING = "trendingmissing"
             const val AIRING = "airing"

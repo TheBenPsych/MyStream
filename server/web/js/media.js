@@ -314,7 +314,7 @@ B.route(/^\/shows$/, async (m, nav) => {
   const anime = await B.animeIds("Series");
   const notAnime = (ep) => !anime.has(ep.SeriesId || ep.Id);
   const fewer = B.me.kids;
-  const [resume, next, latestEps, fresh, because, best, missing, top, loved] = await Promise.all([
+  const [resume, next, latestEps, fresh, because, best, missing, top, loved, released] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
     q(`/Items?userId=${u}&IncludeItemTypes=Episode&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=80&Fields=DateCreated,SeriesId,UserData&Filters=IsUnplayed`).catch(() => []),
@@ -324,6 +324,7 @@ B.route(/^\/shows$/, async (m, nav) => {
     fewer ? [] : B.trendingMissing("tv"),
     fewer ? [] : B.trending("Series").catch(() => []),
     fewer ? null : lovedRow("Series", (id) => !anime.has(id)).catch(() => null),
+    fewer ? [] : B.justReleased({ shows: true, keep: (it) => !anime.has(it.Id) }),
   ]);
   if (!B.alive(nav)) return;
   const one = (list) => { const seen = new Set(); return list.filter((e) => notAnime(e) && !seen.has(e.SeriesId) && seen.add(e.SeriesId)); };
@@ -344,6 +345,7 @@ B.route(/^\/shows$/, async (m, nav) => {
   pageRows([
     B.row("Keep watching", cont.map(epCard)),
     B.row("Top 10 shows this week", B.top10(top)),
+    B.row("Just released", released),
     B.row("Up next", nextUp.map(epCard)),
     fewer ? "" : B.row("New episodes", Object.keys(newCount).map((id) => sById[id]).filter(Boolean).map((sh) => B.posterCard(sh, { newCount: newCount[sh.Id] }))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
@@ -363,7 +365,7 @@ B.route(/^\/anime$/, async (m, nav) => {
   const u = B.uid(), F = B.FIELDS;
   const showLibs = (await B.libs("shows")).filter(B.isAnimeLib), movieLibs = (await B.libs("movies")).filter(B.isAnimeLib);
   const [showIds, movieIds] = await Promise.all([B.animeIds("Series"), B.animeIds("Movie")]);
-  const [resumeM, resumeE, next, airing, top, because, gems, films, freshShows, missing] = await Promise.all([
+  const [resumeM, resumeE, next, airing, top, because, gems, films, freshShows, missing, released] = await Promise.all([
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`).catch(() => []),
     q(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))).catch(() => []),
     q(`/Shows/NextUp?userId=${u}&Limit=40&Fields=${F}&enableResumable=false&enableRewatching=false`).then((l) => B.fixNextUp(l, F)).then(B.keep).catch(() => []),
@@ -374,6 +376,7 @@ B.route(/^\/anime$/, async (m, nav) => {
     fromLibs(movieLibs, "Movie", "DateCreated").then((l) => l.sort(newestFirst("DateCreated"))),
     fromLibs(showLibs, "Series", "DateCreated"),
     B.me.kids ? [] : B.trendingMissing("anime"),
+    B.justReleased({ movies: true, shows: true, keep: (it) => showIds.has(it.Id) || movieIds.has(it.Id) }),
   ]);
   if (!B.alive(nav)) return;
   const seen = new Set();
@@ -386,6 +389,7 @@ B.route(/^\/anime$/, async (m, nav) => {
   pageRows([
     B.row("Keep watching", cont.map(card)),
     top.length >= 3 ? B.row("Top 10 anime", B.top10(top)) : "",
+    B.row("Just released", released),
     B.row("Airing this season", airing.map((it) => B.posterCard(it))),
     because ? B.row(`Because you watched ${because.name}`, because.items.map((it) => B.posterCard(it))) : "",
     B.row("Hidden gem anime", gems.map((it) => B.posterCard(it))),

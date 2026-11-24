@@ -864,10 +864,46 @@ B.posterCard = (it, opts) => {
     <div class="im">${src ? `<img class="art" src="${src}" alt="" loading="lazy" decoding="async">` : `<div class="noart" style="--door:${B.doorOf(it)}"><span class="nt">${esc(it.SeriesName || it.Name)}</span></div>`}
       ${pct ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
       ${ud.Played && !opts.noTick ? `<span class="tick">${I("check")}</span>` : ""}
+      ${opts.chip ? `<span class="relchip${opts.chip === "Today" ? " today" : ""}">${esc(opts.chip)}</span>` : ""}
       ${newCount ? `<span class="newp">${newCount > 9 ? "9+ NEW" : newCount > 1 ? newCount + " NEW" : "NEW"}</span>` : opts.markNew && B.isNew(it) && !ud.Played ? `<span class="newp">NEW</span>` : ""}
     </div>
     <div class="cap"><span class="nm">${esc(it.Type === "Episode" ? it.SeriesName : it.Name)}</span><small>${esc(opts.sub || year)}</small></div>
   </a>`;
+};
+// Ben 2026-11-24 "Just released": this year's movies and shows, newest first. A show counts the day its newest
+// episode aired. keep(item) picks which ones belong on this page. Gives poster cards with a date chip.
+B.releasedChip = (day) => {
+  const d = new Date(day), now = new Date();
+  const ymd = (x) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (ymd(d) === ymd(now)) return "Today";
+  if (ymd(d) === ymd(y)) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+B.justReleased = async (o) => {
+  const u = B.uid(), F = B.FIELDS, now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const from = `${now.getFullYear()}-01-01T00:00:00`;
+  const until = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T23:59:59`;
+  const keep = o.keep || (() => true);
+  const range = `&Recursive=true&MinPremiereDate=${from}&MaxPremiereDate=${until}&SortBy=PremiereDate&SortOrder=Descending`;
+  const get = (path) => B.get(path).then((r) => r.Items || []).catch(() => []);
+  // Shown in local time: the date part of PremiereDate is the release day
+  const dayOf = (iso) => { const t = String(iso || "").slice(0, 10).split("-"); return t.length === 3 ? new Date(+t[0], +t[1] - 1, +t[2]) : null; };
+  const [movies, eps] = await Promise.all([
+    o.movies ? get(`/Items?userId=${u}&IncludeItemTypes=Movie${range}&Limit=40&Fields=${F}`) : [],
+    o.shows ? get(`/Items?userId=${u}&IncludeItemTypes=Episode${range}&IsMissing=false&Limit=300&Fields=SeriesId`) : [],
+  ]);
+  const seen = new Set(), newest = [];
+  eps.forEach((e) => { if (e.SeriesId && !seen.has(e.SeriesId)) { seen.add(e.SeriesId); newest.push({ id: e.SeriesId, day: dayOf(e.PremiereDate) }); } });
+  const ids = newest.slice(0, 60).map((x) => x.id);
+  const series = ids.length ? await get(`/Items?userId=${u}&Ids=${ids.join(",")}&Fields=${F}`) : [];
+  const byId = {}; series.forEach((x) => { byId[x.Id] = x; });
+  const all = movies.map((m) => ({ it: m, day: dayOf(m.PremiereDate) }))
+    .concat(newest.map((x) => ({ it: byId[x.id], day: x.day })))
+    .filter((x) => x.it && x.day && keep(x.it));
+  all.sort((a, b) => b.day - a.day);
+  return B.keep(all.map((x) => x.it)).slice(0, 20).map((it) => B.posterCard(it, { chip: B.releasedChip(all.find((x) => x.it === it).day) }));
 };
 B.wideCard = (it, opts) => {
   opts = opts || {};
