@@ -75,7 +75,6 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleExtras
 import com.github.damontecres.wholphin.ui.door.DoorArt
 import com.github.damontecres.wholphin.ui.door.DoorArtUrl
 import com.github.damontecres.wholphin.ui.door.DoorInfo
-import com.github.damontecres.wholphin.ui.door.DoorScorePill
 import com.github.damontecres.wholphin.ui.door.DoorTab
 import com.github.damontecres.wholphin.ui.door.DoorTag
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -507,7 +506,8 @@ fun SearchPage(
             BackHandler(tucked) { untuck() }
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val overlap = LocalTopBarOverlap.current
-                val topHeight = (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp)
+                // + 26dp for the score icons under the year and time (Ben 2026-11-24)
+                val topHeight = (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp) + 26.dp
                 val linesTop = BOX_TOP + PILL_HEIGHT + 10.dp
                 val resultsTop = if (tucked) topHeight else linesTop + KEY_HEIGHT + 8.dp + LINE_HEIGHT + 14.dp
                 var brightArt by remember { mutableStateOf(false) }
@@ -516,10 +516,6 @@ fun SearchPage(
                     // The result you're on fills the screen, like Home
                     if (top.item != null) {
                         DoorArt(item = top.item, pageHeight = maxHeight, onBright = { brightArt = it })
-                        DoorScorePill(
-                            item = top.item,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(end = BenflixSpace.tvEdge, top = overlap + 2.dp),
-                        )
                         DoorInfo(
                             item = top.item,
                             easy = false,

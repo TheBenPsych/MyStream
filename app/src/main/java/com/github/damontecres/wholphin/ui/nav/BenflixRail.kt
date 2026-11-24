@@ -87,7 +87,6 @@ import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorPlaces
 import com.github.damontecres.wholphin.ui.door.DoorSection
-import com.github.damontecres.wholphin.ui.preferences.GlowfinRing
 import com.github.damontecres.wholphin.ui.preferences.OnWhiteText
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -207,6 +206,12 @@ class RailControl {
     /** The page next to the rail has the focus (set by the page's box) */
     var contentFocused by mutableStateOf(false)
 
+    /**
+     * Side menu A (Ben 2026-11-24, the Wholphin way): how far the menu is open, 0 to 1. The page next to it slides
+     * right by the same amount; it's only read while drawing, so the slide never rebuilds the page.
+     */
+    var fade by mutableStateOf<State<Float>?>(null)
+
     fun open() {
         openRequests++
     }
@@ -297,6 +302,7 @@ fun BenflixRail(
     // opening and closing the menu never rebuilds the icons on each step (light on the weak TCL TVs).
     val fade = animateFloatAsState(if (open) 1f else 0f, tween(FADE_MS), label = "glowfinMenu")
     val fading by remember { derivedStateOf { fade.value > 0f } }
+    androidx.compose.runtime.SideEffect { if (!model.alwaysOpen) control.fade = fade }
     // Names stay drawn while they fade away
     val wide = open || fading
     val railWidth = if (wide) RAIL_OPEN * scale else RAIL_TUCKED * scale
@@ -403,14 +409,13 @@ fun BenflixRail(
     }
 
     Box(modifier.fillMaxSize()) {
-        // Glowfin Tint (Ben 2026-11-23, option C): while the menu is open a deep violet-to-navy tint covers the page
-        // (never on wide touch screens, where it's always open), almost solid under the names so they never sit on the
-        // page's words. The page doesn't move. One painted gradient that fades in, no blur.
+        // Side menu A (Ben 2026-11-24): opening the menu pushes the page right instead of covering it, and nothing
+        // gets darker ("We don't need to darken the background further on open"). This clear layer only lets a tap
+        // beside the open menu close it.
         if (wide && !model.alwaysOpen) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .drawBehind { drawRect(brush = OPEN_TINT, alpha = fade.value) }
                     .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -444,9 +449,9 @@ fun BenflixRail(
                 .fillMaxHeight()
                 .width(RAIL_OPEN * scale + FADE_EDGE_OPEN * scale)
                 .drawBehind {
-                    val f = fade.value
-                    // Opening the menu hands over to the open tint, so the strip's own fade goes away as it comes in
-                    val keep = if (model.alwaysOpen) 1f else 1f - f
+                    // Side menu A: the whisper of a fade stays the same open or closed (the page slides away from it)
+                    val f = if (model.alwaysOpen) fade.value else 0f
+                    val keep = 1f
                     val solid = (RAIL_TUCKED + (RAIL_OPEN - RAIL_TUCKED) * f).toPx() * scale
                     val edge = (FADE_EDGE_TUCKED + (FADE_EDGE_OPEN - FADE_EDGE_TUCKED) * f).toPx() * scale
                     val end = solid + edge
@@ -491,7 +496,9 @@ fun BenflixRail(
                         Modifier
                             .verticalScroll(rememberScrollState())
                             .heightIn(min = maxHeight)
-                            .padding(horizontal = 14.dp * scale, vertical = 8.dp * scale)
+                            // Side menu A (Ben 2026-11-24): 16 from the screen edge to the highlight, and the open
+                            // highlight ends exactly 16 before the pushed page, so the open menu is symmetrical
+                            .padding(start = RAIL_INSET * scale, end = 0.dp, top = 8.dp * scale, bottom = 8.dp * scale)
                             .onFocusChanged {
                                 val came = it.hasFocus && !railFocused
                                 railFocused = it.hasFocus
@@ -736,7 +743,7 @@ private fun UpdateRailButton(
     scale: Float,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = RAIL_TILE
     val quiet = LocalRailQuiet.current
     var hasFocus by remember { mutableStateOf(false) }
     val focused = hasFocus && !quiet
@@ -818,7 +825,8 @@ private fun RailButton(
     count: Int = 0,
     highlighted: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(percent = 50)
+    // Side menu A (Ben 2026-11-24): rounded squares, like Wholphin
+    val shape = RAIL_TILE
     // Ben 2026-11-18: no glow on the tucked-away menu while it only holds the focus for a page that's loading
     val quiet = LocalRailQuiet.current
     var hasFocus by remember { mutableStateOf(false) }
@@ -828,7 +836,13 @@ private fun RailButton(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors =
             ClickableSurfaceDefaults.colors(
-                containerColor = if (highlighted) BenflixColors.FocusRow else Color.Transparent,
+                // The page you're on sits in a soft aqua rounded square (side menu A)
+                containerColor =
+                    when {
+                        highlighted -> BenflixColors.FocusRow
+                        on -> CURRENT_TILE
+                        else -> Color.Transparent
+                    },
                 contentColor = BenflixColors.Text,
                 focusedContainerColor = Color.Transparent,
                 focusedContentColor = OnWhiteText,
@@ -923,7 +937,7 @@ private fun ProfileRailButton(
 ) {
     val kids by KidsMode.active.collectAsState()
     val guest by GuestMode.active.collectAsState()
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = RAIL_TILE
     val name =
         when {
             kids -> KidsMode.displayName
@@ -1189,7 +1203,7 @@ private fun NowPlayingRailButton(
             delay(NOW_TICK_MS)
         }
     }
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = RAIL_TILE
     val quiet = LocalRailQuiet.current
     var hasFocus by remember { mutableStateOf(false) }
     val focused = hasFocus && !quiet
@@ -1341,6 +1355,31 @@ fun railOpenWidth(big: Boolean): Dp = RAIL_OPEN * (if (big) BIG_SCALE else 1f)
 
 private val RAIL_TUCKED = 66.dp
 
+/** Side menu A: the gap left of the highlight, and between the open highlight and the pushed page */
+private val RAIL_INSET = 16.dp
+
+/** Side menu A: rounded squares for the menu's spots */
+private val RAIL_TILE = RoundedCornerShape(10.dp)
+
+/** Side menu A: the soft aqua square behind the page you're on */
+private val CURRENT_TILE = Glowfin.Aqua.copy(alpha = .13f)
+
+/** How far the page slides right while the menu is open */
+fun railPush(big: Boolean): Dp = (RAIL_OPEN - RAIL_TUCKED) * (if (big) BIG_SCALE else 1f)
+
+/**
+ * Side menu A: how far the page has slid right right now, in pixels. The art, the clock and the score chips use it
+ * to stay where they are while the words and rows slide (like Wholphin).
+ */
+val LocalRailPush = androidx.compose.runtime.staticCompositionLocalOf<() -> Float> { { 0f } }
+
+/** Stays put while the page slides right for the open menu (art behind the page, the clock, the score chips) */
+fun Modifier.stayPut(): Modifier =
+    composed {
+        val push = LocalRailPush.current
+        graphicsLayer { translationX = -push() }
+    }
+
 // Glowfin new look: just wide enough for the longest name, so the open menu covers less of the art
 private val RAIL_OPEN = 200.dp
 
@@ -1358,19 +1397,6 @@ private const val PANEL_FOCUS_MS = 40L
 
 /** How dark the page gets while the menu is open: its words show at about 30% (Ben 2026-11-22) */
 private const val DIM = .7f
-
-/**
- * Glowfin Tint (Ben 2026-11-23, option C): what covers the page while the menu is open. Deep violet almost solid
- * under the names, easing to navy and leaving the right side of the picture softly tinted.
- */
-private val OPEN_TINT =
-    Brush.horizontalGradient(
-        0f to Color(22, 10, 58).copy(alpha = .99f),
-        .3f to Color(22, 12, 62).copy(alpha = .97f),
-        .46f to Color(16, 24, 74).copy(alpha = .86f),
-        .62f to Color(12, 34, 80).copy(alpha = .58f),
-        1f to Color(12, 34, 80).copy(alpha = .42f),
-    )
 
 /** The names and the wider fade come in (and go away) this fast */
 private const val FADE_MS = 220
@@ -1407,13 +1433,13 @@ private fun Modifier.railNameFade(): Modifier =
     }
 
 /**
- * Glowfin new look (Ben 2026-11-22): the place the remote is on is a solid white pill with the soft aqua ring,
- * the same width for every place, like every other focus in the app. Nothing grows.
+ * Side menu A (Ben 2026-11-24): the place the remote is on is a plain white rounded square (no ring, as in the
+ * approved picture), the same width for every place. Nothing grows.
  */
 private fun Modifier.railLit(
     focused: Boolean,
     shape: Shape,
-): Modifier = if (focused) background(Color.White, shape).border(3.dp, GlowfinRing, shape) else this
+): Modifier = if (focused) background(Color.White, shape) else this
 
 /** The page gets the focus offered every 100 ms for up to 15 s (a slow server on a weak TV) */
 private const val HANDOFF_STEP_MS = 100L
