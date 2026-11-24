@@ -664,6 +664,7 @@ internal fun DoorRow(
                         onFocus = { onFocus(index, item) },
                         modifier = mod,
                         stripes = stripes,
+                        dateChip = if (row.dates.isEmpty()) null else releasedChip(row.dates[item.id.toString()]),
                     )
                 }
             }

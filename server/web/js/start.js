@@ -223,7 +223,7 @@ B.loadHomeRows = async (nav) => {
   const u = B.uid(), F = B.FIELDS;
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
   const animeShows = (await B.libs("shows")).filter(B.isAnimeLib);
-  const [movies, eps, next, freshM, freshS, topM, topS, again, missing] = await Promise.all([
+  const [movies, eps, next, freshM, freshS, topM, topS, again, missing, released] = await Promise.all([
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`),
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))),
     get(`/Shows/NextUp?userId=${u}&Limit=24&Fields=${F}&enableResumable=false&enableRewatching=false`),
@@ -233,6 +233,7 @@ B.loadHomeRows = async (nav) => {
     B.trending ? B.trending("Series").catch(() => []) : [],
     get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&Filters=IsPlayed&MinCommunityRating=7&SortBy=Random&Limit=20&ImageTypes=Primary&Fields=${F}`),
     B.trendingMissing ? B.trendingMissing() : [],
+    B.justReleased ? B.justReleased({ movies: true, shows: true }) : [],
   ]);
   const airing = [];
   for (const l of animeShows) airing.push(...(await get(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SeriesStatus=Continuing&SortBy=DateLastContentAdded&SortOrder=Descending&Limit=20&ImageTypes=Primary&Fields=${F}`)));
@@ -254,6 +255,7 @@ B.loadHomeRows = async (nav) => {
     B.row("Up next", next.map(card)),
     B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
     B.row("Top 10 this week", B.top10(top.slice(0, 10))),
+    B.row("Just released", released),
     played[0] && because.length >= 5 ? B.row(`Because you watched ${played[0].Name}`, because.map((it) => B.posterCard(it))) : "",
     B.row("Trending, not on Glowfin", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
     B.row("Anime airing this season", airing.slice(0, 20).map((it) => B.posterCard(it))),
