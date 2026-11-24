@@ -1514,6 +1514,14 @@ class Handler(BaseHTTPRequestHandler):
                 except lobby.LobbyError as e:
                     raise HelperError(e.status, e.message)
                 return self.send(status, answer)
+            if path.startswith("/api/posters/"):
+                # A details page with no title logo asks Tower to find one (everyone signed in; only fills missing ones)
+                if posters is None:
+                    raise HelperError(503, "The poster tools aren't on the server yet. They arrive with Tower's next hourly update.")
+                answer = posters.user_route(method, path, query)
+                if answer is None:
+                    return self.send(404, {"error": "Not found"})
+                return self.send(answer[0], answer[1])
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
