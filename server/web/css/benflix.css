@@ -3186,3 +3186,9 @@ body.nav-on:has(.brail:not(.always)) { overflow-x: hidden; }
 .poster .relchip { position: absolute; left: 6px; bottom: 6px; background: rgba(11,13,26,.88); color: #ECEEFB; font-size: 12px; font-weight: 800; line-height: 1.3; padding: 1px 7px; border-radius: 6px; }
 .poster .relchip.today { background: #3FE0E8; color: #0B0D1A; }
 .poster .prog ~ .relchip { bottom: 16px; }
+/* Home rows sit low (Ben 2026-11-24, idea A): on Home the words stay at the top and the first row sits near the
+   bottom, so more of the wallpaper shows between them. Phones hide #doorTop, so this is wide screens only. */
+@media (min-width: 901px), (orientation: landscape) {
+  .ghome .door-top { height: min(60vh, 640px); }
+  .ghome #doorTop .art::after { background: linear-gradient(90deg, rgba(22,10,58,.96) 0%, rgba(20,14,66,.88) 18%, rgba(14,30,78,.62) 38%, rgba(10,34,80,.28) 56%, rgba(10,34,80,0) 72%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 54%, rgba(var(--trayrgb),.75) 78%, var(--tray) 100%); }
+}
