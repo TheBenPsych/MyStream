@@ -1354,3 +1354,23 @@ document.addEventListener("keydown", (e) => {
     });
   });
 })();
+
+// Glowfin "94% for you" (Idea Box 28, Ben 2026-11-24): any [data-match] box on the page asks Tower how well that
+// movie or show fits the person watching, and shows "94% for you" with "Because you loved Arrival" under it.
+// Nothing shows for Kids, or until the person has watched or liked enough.
+(() => {
+  const known = new Map();
+  const ask = (id) => {
+    const key = ((B.me && B.me.id) || "") + "/" + id;
+    if (!known.has(key)) known.set(key, B.call("GET", `api/match/${encodeURIComponent(id)}`).catch(() => ({ pct: null })));
+    return known.get(key);
+  };
+  const fill = async (box) => {
+    box.dataset.done = "1";
+    if (B.me && B.me.kids) return;
+    const r = await ask(box.dataset.match);
+    if (!r || !r.pct || !box.isConnected) return;
+    box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>${r.why ? `<span class="mt-why">${esc(r.why)}</span>` : ""}`;
+  };
+  new MutationObserver(() => document.querySelectorAll("[data-match]:not([data-done])").forEach(fill)).observe(document.body, { childList: true, subtree: true });
+})();

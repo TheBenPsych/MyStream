@@ -80,6 +80,10 @@ try:  # Real frames from the movie files for the Scene by scene game (benflix_sc
 except ImportError:
     scenes = None
 
+try:  # "94% for you" match on title pages and the big tops, in benflix_match.py
+    import benflix_match as matcher
+except ImportError:
+    matcher = None
 try:  # Famous lists tab on Movies and Shows (IMDb Top 250, Oscars, Emmys), in benflix_famous.py
     import benflix_famous as famous
 except ImportError:
@@ -1509,6 +1513,12 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/api/anime/tmdb":
                 # AniList / MyAnimeList numbers -> TMDB numbers, so the Anime tab opens exactly the right title
                 return self.send(200, anime_tmdb(query))
+            if path.startswith("/api/match/"):
+                # "94% for you": how well a title fits the person asking (everyone signed in; Kids get nothing)
+                if matcher is None:
+                    return self.send(200, {"pct": None})
+                status, answer = matcher.route(method, path, query, token, user_id, is_kids)
+                return self.send(status, answer)
             if path.startswith("/api/famous/"):
                 # Movies and Shows, Famous lists tab (everyone signed in except Kids)
                 if famous is None:
@@ -2585,6 +2595,8 @@ if __name__ == "__main__":
             tools,
             arrivals,
         )
+    if matcher is not None:
+        matcher.start(jellyfin_call)
     if famous is not None:
         famous.start(
             jellyfin_call,

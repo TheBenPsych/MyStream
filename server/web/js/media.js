@@ -32,7 +32,9 @@ B.describe = (it) => {
   const kids = B.me && B.me.kids;
   const scores = it.Type === "Episode" ? "" : B.scores(it);
   const pill = !kids && (it.OfficialRating || scores) ? `<div class="tp-pill dt-pill">${it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>` : "";
-  return `${pill}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
+  // Glowfin "94% for you" (Idea Box 28): under the score pill, laid over the top so nothing moves
+  const match = !kids && (it.Type === "Movie" || it.Type === "Series") ? `<div class="mt-wrap dt-mt" data-match="${esc(it.Id)}"></div>` : "";
+  return `${pill}${match}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
     <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}
     <div class="ov">${esc(it.Overview || "")}</div>`;
 };
@@ -688,6 +690,7 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
     title: it.Name,
     original: it.OriginalTitle,
     color: DOORS.movies.color,
+    matchId: it.Id,
     logo: B.logoUrl(it),
     tagline: (it.Taglines || [])[0],
     chips: B.qualityChips(it),
@@ -843,6 +846,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     title: it.Name,
     original: it.OriginalTitle,
     color: DOORS.shows.color,
+    matchId: it.Id,
     logo: B.logoUrl(it),
     tagline: (it.Taglines || [])[0],
     picture: B.backdrop(it, 1920),

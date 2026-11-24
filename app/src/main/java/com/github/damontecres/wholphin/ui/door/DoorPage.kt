@@ -376,10 +376,22 @@ internal fun WideDoor(
         DoorArt(item = preview, pageHeight = maxHeight, onBright = { brightArt = it })
         if (preview != null && !easy) {
             // The score pill at the top right, under the clock (same spot as on the details pages)
-            DoorScorePill(
-                item = preview,
+            // Glowfin "94% for you" (Idea Box 28) sits under it in the empty space, laid over the page so
+            // nothing moves
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp),
-            )
+            ) {
+                DoorScorePill(item = preview)
+                MatchPill(
+                    itemId =
+                        preview.id.takeIf {
+                            preview.type == org.jellyfin.sdk.model.api.BaseItemKind.MOVIE ||
+                                preview.type == org.jellyfin.sdk.model.api.BaseItemKind.SERIES
+                        },
+                )
+            }
         }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().height(topHeight)) {
