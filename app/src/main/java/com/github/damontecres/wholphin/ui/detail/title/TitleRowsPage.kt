@@ -67,6 +67,8 @@ import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
+import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -145,7 +147,14 @@ internal fun WideRowsTitlePage(
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(BenflixColors.Tray)) {
         val h = maxHeight
         val w = maxWidth
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = pictureAlpha }) {
+        // (under the side menu too, Ben 2026-11-23: no hard line where the menu ends)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .underRail()
+                .background(BenflixColors.Tray)
+                .graphicsLayer { alpha = pictureAlpha },
+        ) {
             TitlePictureView(picture, wide = true, soft = true, onBright = { brightArt = it })
         }
         // Ben 2026-11-18: moving along the buttons (Play, Trailer, My List, More) made the page bob up and down:
@@ -198,11 +207,13 @@ internal fun WideRowsTitlePage(
                                 Modifier
                                     .fillMaxWidth()
                                     // Ben's "fresh" pick: the first row (seasons, or a movie's first row) peeks at the bottom
-                                    .heightIn(min = h * .82f)
-                                    .padding(start = side, end = side, top = h * .14f),
+                                    .heightIn(min = h * .84f)
+                                    // Ben 2026-11-23: the title sits up in the top left corner, level with the clock
+                                    .padding(start = side, end = side, top = TITLE_TOP),
                         ) {
                             // The title box: always the same size and spot, so the page never moves
-                            TitleBox(title = title, wide = true)
+                            // Ben 2026-11-23 (logo plan): the full logo, any shape, in a slightly bigger fixed box
+                            TitleBox(title = title, wide = true, height = 100.dp, width = 340.dp, anyShape = true)
                             Spacer(Modifier.weight(1f))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -320,7 +331,8 @@ internal fun WideRowsTitlePage(
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(end = side, top = h * .14f)
+                    // Ben 2026-11-23: right up in the corner, just under the clock
+                    .padding(end = side, top = LocalTopBarOverlap.current + 2.dp)
                     .graphicsLayer { alpha = topAlpha },
         ) {
             ScorePill(rating = rating, scores = scores)
@@ -499,7 +511,7 @@ internal fun PhoneRowsTitlePage(
                     ) {
                         // Upright phones: the title box with the score pill beside it on the right
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            TitleBox(title = title, wide = false, width = 220.dp, modifier = Modifier.weight(1f))
+                            TitleBox(title = title, wide = false, width = 220.dp, anyShape = true, modifier = Modifier.weight(1f))
                             // Glowfin "94% for you" (Idea Box 28) just above the score pill, beside the title
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 com.github.damontecres.wholphin.ui.door.MatchPill(
@@ -631,3 +643,6 @@ private fun RowHeading(
         }
     }
 }
+
+/** How far down the title box starts on TV: level with the clock (the page goes up behind the header) */
+private val TITLE_TOP = 18.dp

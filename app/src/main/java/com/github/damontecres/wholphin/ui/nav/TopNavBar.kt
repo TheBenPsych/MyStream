@@ -65,11 +65,27 @@ fun Destination.underTopBar(): Boolean =
         this is Destination.ShowsDoor ||
         this is Destination.AnimeDoor ||
         this is Destination.MusicDoor ||
+        // Ben 2026-11-23 (TV photos): Games and Books work out their rows from the whole screen's height like
+        // Music, but sat under the header instead of behind it, so their tabs sat below the clock and their rows
+        // ran off the bottom of the screen
+        this is Destination.Games ||
+        this is Destination.BooksDoor ||
         // Glowfin new look (Requests): the tabs sit in the header row and the art goes up behind them
         this is Destination.Requests ||
         // Glowfin new look (Search): the box sits in the header row and the result's art goes up behind it
         this is Destination.Search ||
+        // Ben 2026-11-23: movie, show and episode pages too. The art fills the screen up behind the clock, with no
+        // bar of its own, and the title and scores sit up in the corners
+        isRowsTitlePage() ||
         isMusicHero()
+
+/** The details pages drawn by WideRowsTitlePage (movies, shows and episodes) */
+fun Destination.isRowsTitlePage(): Boolean =
+    (
+        this is Destination.MediaItem &&
+            (type == BaseItemKind.MOVIE || type == BaseItemKind.SERIES || type == BaseItemKind.EPISODE)
+    ) ||
+        this is Destination.SeriesOverview
 
 /** Album, artist and playlist pages: the cover sits top right, up behind the bar (like a movie page) */
 fun Destination.isMusicHero(): Boolean =

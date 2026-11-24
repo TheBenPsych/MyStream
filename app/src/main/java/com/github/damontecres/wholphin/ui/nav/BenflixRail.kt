@@ -450,8 +450,8 @@ fun BenflixRail(
                     drawRect(
                         brush =
                             Brush.horizontalGradient(
-                                0f to Glowfin.Ink.copy(alpha = FADE_FROM),
-                                solid / end to Glowfin.Ink.copy(alpha = FADE_TO),
+                                0f to Glowfin.Ink.copy(alpha = FADE_FROM_TUCKED + (FADE_FROM - FADE_FROM_TUCKED) * f),
+                                solid / end to Glowfin.Ink.copy(alpha = FADE_TO_TUCKED + (FADE_TO - FADE_TO_TUCKED) * f),
                                 1f to Color.Transparent,
                                 startX = 0f,
                                 endX = end,
@@ -1301,6 +1301,35 @@ private fun NowPlayingRailButton(
     }
 }
 
+/**
+ * Ben 2026-11-23 (TV photos): the page starts right of the tucked menu, so its art began there with a hard line.
+ * Pages that draw art behind everything use [underRail] on that art: it reaches left under the menu to the screen
+ * edge (the menu is drawn on top). 0 on phones and wide touch screens, where nothing sits there.
+ */
+val LocalRailBleed = androidx.compose.runtime.staticCompositionLocalOf { 0.dp }
+
+/** Art and page colours that should fill the whole screen, under the tucked menu too (see [LocalRailBleed]) */
+fun Modifier.underRail(): Modifier =
+    composed {
+        val bleed = LocalRailBleed.current
+        if (bleed <= 0.dp) {
+            this
+        } else {
+            layout { measurable, constraints ->
+                val px = bleed.roundToPx()
+                if (!constraints.hasBoundedWidth) {
+                    val p = measurable.measure(constraints)
+                    return@layout layout(p.width, p.height) { p.place(0, 0) }
+                }
+                val placeable =
+                    measurable.measure(
+                        constraints.copy(minWidth = constraints.minWidth + px, maxWidth = constraints.maxWidth + px),
+                    )
+                layout((placeable.width - px).coerceAtLeast(0), placeable.height) { placeable.place(-px, 0) }
+            }
+        }
+    }
+
 /** How wide the tucked rail is (the page starts right of it) */
 fun railTuckedWidth(big: Boolean): Dp = RAIL_TUCKED * (if (big) BIG_SCALE else 1f)
 
@@ -1333,6 +1362,13 @@ private const val FADE_MS = 220
 /** The strip's own fade (Ben 2026-11-22): ink 70% at the screen edge to 25% at the end of the strip... */
 private const val FADE_FROM = .7f
 private const val FADE_TO = .25f
+
+/**
+ * Ben 2026-11-23: the tucked menu needs no dark bar of its own; the art runs under it with its own deep left
+ * shade, so only a whisper of a fade stays (for pages with no art)
+ */
+private const val FADE_FROM_TUCKED = .3f
+private const val FADE_TO_TUCKED = .08f
 
 /** ...then it melts into the art over this much more, so there's never a hard edge */
 private val FADE_EDGE_TUCKED = 44.dp

@@ -28,7 +28,8 @@ B.describe = (it) => {
   const added = Date.parse(it.DateLastMediaAdded || it.DateCreated || "");
   if (!tag && !ud.Played && added && Date.now() - added < 7 * 864e5) tag = it.Type === "Series" ? "New episodes on Glowfin" : "New on Glowfin";
   const title = it.Type === "Episode" ? `${it.SeriesName || ""}` : it.Name;
-  const logo = B.logoUrl(it);
+  // Ben 2026-11-23 (logo plan): browsing pages always show the name in white text, never a logo (no flicker)
+  const logo = null;
   const kids = B.me && B.me.kids;
   const scores = it.Type === "Episode" ? "" : B.scores(it);
   const pill = !kids && (it.OfficialRating || scores) ? `<div class="tp-pill dt-pill">${it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>` : "";
@@ -38,7 +39,7 @@ B.describe = (it) => {
     <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}
     <div class="ov">${esc(it.Overview || "")}</div>`;
 };
-// The title box shows the logo only when it is a good shape (about 2 to 5 times wider than tall)
+// (Browsing tops have no logo any more, Ben 2026-11-23; kept for any caller that still passes one)
 B.fitDoorLogo = (box) => {
   const logo = box && box.querySelector(".dt-logo");
   if (!logo) return;
@@ -63,6 +64,18 @@ B.wireDescribe = (first, opts) => {
     shown = it;
     $(".info", top).innerHTML = describe(it);
     B.fitDoorLogo($(".info", top));
+    // Ben 2026-11-23: an episode shows its whole show's scores (shows and anime alike)
+    if (it.Type === "Episode" && it.SeriesId && !(B.me && B.me.kids)) {
+      B.cached(`series:${it.SeriesId}`, 600000, () => B.get(`/Users/${B.uid()}/Items/${it.SeriesId}`)).then((show) => {
+        if (shown !== it || !show) return;
+        const scores = B.scores(show);
+        const rate = it.OfficialRating || show.OfficialRating;
+        if (!scores && !rate) return;
+        const old = $(".info .dt-pill", top);
+        const html = `<div class="tp-pill dt-pill">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>`;
+        if (old) old.outerHTML = html; else $(".info", top).insertAdjacentHTML("afterbegin", html);
+      }).catch(() => {});
+    }
     const src = artOf(it);
     const art = $(".art", top);
     // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.

@@ -776,9 +776,11 @@ internal fun BoxScope.TitlePictureView(
         Box(
             Modifier.fillMaxSize().background(
                 androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    0f to BenflixColors.Tray.copy(alpha = .8f),
-                    .35f to BenflixColors.Tray.copy(alpha = .45f),
-                    .62f to Color.Transparent,
+                    // Ben 2026-11-23: deeper, from the screen's edge under the side menu
+                    0f to BenflixColors.Tray.copy(alpha = .92f),
+                    .15f to BenflixColors.Tray.copy(alpha = .78f),
+                    .4f to BenflixColors.Tray.copy(alpha = .42f),
+                    .68f to Color.Transparent,
                 ),
             ),
         )
@@ -893,6 +895,11 @@ internal fun TitleBox(
     modifier: Modifier = Modifier,
     height: Dp = if (wide) 72.dp else 64.dp,
     width: Dp = if (wide) 320.dp else 260.dp,
+    /**
+     * Ben 2026-11-23 (logo plan): details pages show the full logo in any shape (stacked, square, very wide), shrunk
+     * to fit this fixed box. The name shows only when there's no logo or it won't load.
+     */
+    anyShape: Boolean = false,
 ) {
     val extras = LocalTitleExtras.current
     var logoBad by remember(extras.logoUrl) { mutableStateOf(false) }
@@ -911,7 +918,7 @@ internal fun TitleBox(
                 onSuccess = {
                     val w = it.result.image.width
                     val h = it.result.image.height
-                    if (h <= 0 || w <= 0 || !logoFits(w.toFloat() / h)) logoBad = true else logoReady = true
+                    if (h <= 0 || w <= 0 || (!anyShape && !logoFits(w.toFloat() / h))) logoBad = true else logoReady = true
                 },
                 onError = { logoBad = true },
                 colorFilter =
@@ -924,7 +931,8 @@ internal fun TitleBox(
                 modifier = Modifier.height(height).widthIn(max = width).alpha(if (logoReady) 1f else 0f),
             )
         }
-        if (logoUrl == null || !logoReady) {
+        // (any-shape logos: nothing shows while the logo loads, so the name never flashes up first)
+        if (logoUrl == null || (!logoReady && !anyShape)) {
             val lines = if (wide) 3 else 4
             val start =
                 when {

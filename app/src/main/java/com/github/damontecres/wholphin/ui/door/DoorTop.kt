@@ -45,7 +45,6 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
 import com.github.damontecres.wholphin.ui.detail.title.BRIGHT_ART
 import com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras
 import com.github.damontecres.wholphin.ui.detail.title.ScorePill
@@ -55,6 +54,7 @@ import com.github.damontecres.wholphin.ui.detail.title.rememberImageLight
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.CoverGlowColors
+import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -114,7 +114,7 @@ internal fun DoorArtUrl(
     val light = rememberImageLight(shownUrl)
     val bright = light != null && light > BRIGHT_ART
     LaunchedEffect(bright) { onBright(bright) }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().underRail()) {
         Crossfade(targetState = shownUrl, animationSpec = tween(ART_FADE_MS), label = "doorArt") { picture ->
             if (picture != null) {
                 AsyncImage(
@@ -143,11 +143,11 @@ internal fun DoorInfo(
     brightArt: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val logoUrl = rememberLogoUrl(item)
-    val extras = remember(logoUrl) { TitleExtras(logoUrl = logoUrl) }
+    // Ben 2026-11-23 (logo plan): browsing tops always show the name in white text, never the logo (it flickered
+    // while the app decided if the logo was a good shape); the details pages show the full logo
     val edge = if (brightArt) WORD_EDGE else null
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
-        CompositionLocalProvider(LocalTitleExtras provides extras) {
+        CompositionLocalProvider(LocalTitleExtras provides NO_LOGO) {
             TitleBox(title = item.title.orEmpty(), wide = true, height = if (easy) 72.dp else 60.dp, width = 300.dp)
         }
         val facts = remember(item) { doorFacts(item) }
@@ -180,17 +180,25 @@ internal fun DoorInfo(
     }
 }
 
-/** The score pill for the card you're on (age rating and up to 3 scores). Episodes just show the rating. */
+/**
+ * The score pill for the card you're on (age rating and up to 3 scores). Episodes show their whole show's scores
+ * (Ben 2026-11-23, shows and anime alike); the episode's own age rating is used when it has one.
+ */
 @Composable
 internal fun DoorScorePill(
     item: BaseItem,
     modifier: Modifier = Modifier,
 ) {
-    val rating = item.data.officialRating
     if (item.type == BaseItemKind.EPISODE) {
-        ScorePill(rating = rating, scores = emptyList(), modifier = modifier)
+        val series = rememberSeriesOf(item)
+        val rating = item.data.officialRating ?: series?.data?.officialRating
+        if (series == null) {
+            ScorePill(rating = rating, scores = emptyList(), modifier = modifier)
+        } else {
+            ScorePill(rating = rating, scores = rememberScoreParts(series), modifier = modifier)
+        }
     } else {
-        ScorePill(rating = rating, scores = rememberScoreParts(item), modifier = modifier)
+        ScorePill(rating = item.data.officialRating, scores = rememberScoreParts(item), modifier = modifier)
     }
 }
 
@@ -269,12 +277,16 @@ private fun doorTimeLeft(item: BaseItem): String? {
     }
 }
 
-/** The soft shade on the left, only as wide as the words (the right side of the art stays bright) */
+/**
+ * The shade on the left, only as wide as the words (the right side of the art stays bright). Ben 2026-11-23: deeper,
+ * and it starts under the side menu at the screen's edge, so the menu needs no dark bar of its own.
+ */
 private val LEFT_SHADE =
     Brush.horizontalGradient(
-        0f to BenflixColors.Tray.copy(alpha = .8f),
-        .35f to BenflixColors.Tray.copy(alpha = .45f),
-        .62f to Color.Transparent,
+        0f to BenflixColors.Tray.copy(alpha = .92f),
+        .15f to BenflixColors.Tray.copy(alpha = .78f),
+        .4f to BenflixColors.Tray.copy(alpha = .42f),
+        .68f to Color.Transparent,
     )
 
 /** A faint edge under the words so they stay clear on any art (stronger on very bright art) */
@@ -329,6 +341,8 @@ internal fun <T> CoverDoorTop(
     coverRatio: Float,
     modifier: Modifier = Modifier,
     edge: Dp = BenflixSpace.tvEdge,
+    /** Ben 2026-11-23: Books shows no cover at the top right (the same book is right there in the row) */
+    showCover: Boolean = true,
     cover: @Composable (T, Modifier) -> Unit,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth().height(height)) {
@@ -337,22 +351,25 @@ internal fun <T> CoverDoorTop(
             glow,
             Modifier
                 .fillMaxWidth()
+                .underRail()
                 .wrapContentHeight(Alignment.Top, unbounded = true)
                 .height(height * GLOW_REACH),
         )
         val coverHeight = (height - overlap - COVER_TOP - COVER_BOTTOM).coerceAtLeast(60.dp)
-        val coverWidth = coverHeight * coverRatio
-        // The cover on the right, whole and sharp, like an album or a book standing on a shelf
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = overlap + COVER_TOP, end = edge)
-                .height(coverHeight)
-                .aspectRatio(coverRatio)
-                .shadow(18.dp, BenflixShapes.Card),
-        ) {
-            Crossfade(targetState = shown, animationSpec = tween(COVER_FADE_MS), label = "coverTop") { t ->
-                cover(t, Modifier.fillMaxSize())
+        val coverWidth = if (showCover) coverHeight * coverRatio else 0.dp
+        // The cover on the right, whole and sharp, like an album standing on a shelf
+        if (showCover) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = overlap + COVER_TOP, end = edge)
+                    .height(coverHeight)
+                    .aspectRatio(coverRatio)
+                    .shadow(18.dp, BenflixShapes.Card),
+            ) {
+                Crossfade(targetState = shown, animationSpec = tween(COVER_FADE_MS), label = "coverTop") { t ->
+                    cover(t, Modifier.fillMaxSize())
+                }
             }
         }
         val room = (maxWidth - coverWidth - edge * 2 - 32.dp).coerceAtLeast(200.dp)
