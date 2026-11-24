@@ -58,6 +58,7 @@ import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
+import com.github.damontecres.wholphin.ui.nav.stayPut
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
@@ -270,6 +271,8 @@ internal fun WideDoor(
     onClick: (BaseItem) -> Unit,
     onSeeAll: (DoorRowData) -> Unit,
     modifier: Modifier,
+    /** Home on TV: nothing sits in the header's left side, so the words go right up to the top (Ben 2026-11-24) */
+    topFree: Boolean = false,
 ) {
     val onOpen: (Destination) -> Unit = { viewModel.navigationManager.navigateTo(it) }
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
@@ -377,20 +380,24 @@ internal fun WideDoor(
         val overlap = LocalTopBarOverlap.current
         // Glowfin new look (part 2): the top describes the card you're on, then the first row. The top stays
         // locked while the rows move, so the page never jumps. About half the screen, like the approved design.
-        val topHeight = (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp)
+        val topHeight =
+            if (topFree && !easy) {
+                FREE_TOP_HEIGHT
+            } else {
+                (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp) + (if (easy) 0.dp else SCORE_ROW)
+            }
+        val wordsTop = if (topFree && !easy) FREE_WORDS_TOP else overlap + 2.dp
         var brightArt by remember { mutableStateOf(false) }
         // The art of the card you're on fills the whole page, behind the tabs and the rows too
         DoorArt(item = artItem, pageHeight = maxHeight, onBright = { brightArt = it })
         if (preview != null && !easy) {
-            // The score pill at the top right, under the clock (same spot as on the details pages)
-            // Glowfin "94% for you" (Idea Box 28) sits under it in the empty space, laid over the page so
-            // nothing moves
+            // Ben 2026-11-24: the scores moved under the year and time (DoorInfo), so the top right keeps only the
+            // clock and Glowfin "94% for you" (Idea Box 28), laid over the page so nothing moves
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp).stayPut(),
             ) {
-                DoorScorePill(item = preview)
                 MatchPill(
                     itemId =
                         preview.id.takeIf {
@@ -407,7 +414,7 @@ internal fun WideDoor(
                         item = preview,
                         easy = easy,
                         brightArt = brightArt,
-                        modifier = Modifier.padding(start = SIDE, end = SIDE, top = overlap + 2.dp).widthIn(max = 560.dp),
+                        modifier = Modifier.padding(start = SIDE, end = SIDE, top = wordsTop).widthIn(max = 560.dp),
                     )
                 }
             }
@@ -781,6 +788,13 @@ private val PHONE_EASY_POSTER = 170.dp
 private const val TOP_SHARE = 0.52f
 private const val PREVIEW_DELAY_MS = 500L
 private const val WORDS_DELAY_MS = 100L
+
+/** Home on TV (Ben 2026-11-24, side menu A): the words start near the top and the first row sits right under them */
+private val FREE_WORDS_TOP = 16.dp
+private val FREE_TOP_HEIGHT = 204.dp
+
+/** Room for the row of score icons under the year and time (Ben 2026-11-24) */
+private val SCORE_ROW = 26.dp
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9

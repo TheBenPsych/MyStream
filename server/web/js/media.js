@@ -32,12 +32,19 @@ B.describe = (it) => {
   const logo = null;
   const kids = B.me && B.me.kids;
   const scores = it.Type === "Episode" ? "" : B.scores(it);
-  const pill = !kids && (it.OfficialRating || scores) ? `<div class="tp-pill dt-pill">${it.OfficialRating ? `<span class="rate">${esc(it.OfficialRating)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>` : "";
+  // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time (no % signs)
+  const pill = !kids && (it.OfficialRating || scores) ? B.scoreIcons(it.OfficialRating, scores) : "";
   // Glowfin "94% for you" (Idea Box 28): under the score pill, laid over the top so nothing moves
   const match = !kids && (it.Type === "Movie" || it.Type === "Series") ? `<div class="mt-wrap dt-mt" data-match="${esc(it.Id)}"></div>` : "";
-  return `${pill}${match}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
-    <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}
+  return `${match}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
+    <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}${pill}
     <div class="ov">${esc(it.Overview || "")}</div>`;
+};
+// The bare score icons row (age rating outline, then icon + white number, no % signs). Rotten Tomatoes under 60
+// shows the green splat instead of the red tomato.
+B.scoreIcons = (rate, scores) => {
+  const nums = String(scores || "").replace(/%<\/b>/g, "</b>").replace(/<span data-s="rt"><b>(\d+)<\/b>/g, (m, n) => (+n < 60 ? `<span data-s="rt" class="splat"><b>${n}</b>` : m));
+  return `<div class="dt-icons">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${nums}</div>`;
 };
 // (Browsing tops have no logo any more, Ben 2026-11-23; kept for any caller that still passes one)
 B.fitDoorLogo = (box) => {
@@ -71,9 +78,10 @@ B.wireDescribe = (first, opts) => {
         const scores = B.scores(show);
         const rate = it.OfficialRating || show.OfficialRating;
         if (!scores && !rate) return;
-        const old = $(".info .dt-pill", top);
-        const html = `<div class="tp-pill dt-pill">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>`;
-        if (old) old.outerHTML = html; else $(".info", top).insertAdjacentHTML("afterbegin", html);
+        const old = $(".info .dt-icons", top);
+        const html = B.scoreIcons(rate, scores);
+        if (old) old.outerHTML = html;
+        else { const ov = $(".info .ov", top); if (ov) ov.insertAdjacentHTML("beforebegin", html); }
       }).catch(() => {});
     }
     const src = artOf(it);
