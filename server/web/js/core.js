@@ -1431,3 +1431,14 @@ document.addEventListener("keydown", (e) => {
   const scan = () => { queued = false; document.querySelectorAll("[data-match]:not([data-done])").forEach((b) => fill(b, 0)); };
   new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(scan); } }).observe(document.body, { childList: true, subtree: true });
 })();
+// Design check (Ben 2026-11-24): on a computer the title pages match the TV, with no Back pill or where-am-I line
+// (CSS hides them). Esc or Backspace goes back instead, like the remote's Back. Typing, pop-ups and menus are left alone.
+document.addEventListener("keydown", (e) => {
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || (e.key !== "Escape" && e.key !== "Backspace")) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (!document.getElementById("nback") || document.querySelector(".shade") || document.body.classList.contains("rail-push")) return;
+  if (!matchMedia("(hover: hover) and (pointer: fine) and (min-width: 761px)").matches) return;
+  e.preventDefault();
+  B.back();
+});

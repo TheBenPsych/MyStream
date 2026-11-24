@@ -3206,3 +3206,24 @@ body.nav-on { overflow-x: hidden; }
   .ghome .door-top { height: min(60vh, 640px); }
   .ghome #doorTop .art::after { background: linear-gradient(90deg, rgba(22,10,58,.96) 0%, rgba(20,14,66,.88) 18%, rgba(14,30,78,.62) 38%, rgba(10,34,80,.28) 56%, rgba(10,34,80,0) 72%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 54%, rgba(var(--trayrgb),.75) 78%, var(--tray) 100%); }
 }
+
+/* ---------- Design check (Ben 2026-11-24): browser and desktop app match the approved TV look ---------- */
+/* The clock stays in the top right corner while the open side menu pushes the page */
+body.nav-on.rail-push #page .top .clock { transform: translateX(calc(var(--nrail) - var(--nopen))); transition: transform .22s ease-out; }
+/* Cover art only in every row, on every screen size (the top names the card you're on) */
+.rowx .poster .cap { display: none; }
+/* Title pages: bare score icons, no "IMDb" written after the number (a title-page rule had brought the words back) */
+.tp.tp-rows .dt-icons .tp-scores span[data-s] { font-size: 0; }
+/* Browsing tops: the name, facts, scores and story start at the top left, like the TV (no tall empty name box) */
+@media (min-width: 761px) {
+  .door-top .dt-name { height: auto; justify-content: flex-start; }
+}
+/* On a computer the title pages have no Back pill or where-am-I line, like the TV (Esc or Backspace goes back).
+   Phones and tablets keep them for touch. */
+@media (hover: hover) and (pointer: fine) and (min-width: 761px) {
+  .top .nback, .top .place.where { display: none; }
+}
+/* Design check (Ben 2026-11-24): the player buttons (Play/Pause most) overlapped the seek bar when hovered,
+   because the button row sat 4px under the bar and Play was pulled up 4px with a 5px ring round it. */
+.player .p4 .row2.p1row.nl4 { margin-top: 16px; }
+.player .p4 .nl4 .pbtn.play { margin-top: 0; }

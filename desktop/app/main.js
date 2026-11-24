@@ -96,7 +96,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: Math.min(b.width || 1280, area.width), height: Math.min(b.height || 800, area.height),
     x: b.x, y: b.y, minWidth: 640, minHeight: 400,
-    backgroundColor: "#0B0C10", show: false, autoHideMenuBar: true, title: "Glowfin",
+    backgroundColor: "#0B0D1A", show: false, autoHideMenuBar: true, title: "Glowfin",
     fullscreen: WANT_FULL || !!config.fullscreen,
     icon: path.join(__dirname, "icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
@@ -116,7 +116,7 @@ function createWindow() {
   const outside = (url) => { if (/^https?:\/\//i.test(url)) shell.openExternal(url); };
   win.webContents.on("will-navigate", (e, url) => { if (!isOurs(url) && !isLocalPage(url)) { e.preventDefault(); outside(url); } });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (isOurs(url)) return { action: "allow", overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: "#0B0C10", webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true } } };
+    if (isOurs(url)) return { action: "allow", overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: "#0B0D1A", webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true } } };
     outside(url);
     return { action: "deny" };
   });

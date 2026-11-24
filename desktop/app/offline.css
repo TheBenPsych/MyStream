@@ -1,7 +1,7 @@
 /* Glowfin desktop: the offline library and player. Same colours as Glowfin itself. */
-:root { --tray: #0B0C10; --pg2: #16181E; --pg3: #1D2027; --pg4: #262932; --line: #2A2D35; --ink: #F1F2F5; --ink2: #A7A9B0; --ink3: #7B7E86; --dark: #0B0C10; --r: 12px; color-scheme: dark; }
+:root { --tray: #0B0D1A; --pg2: #12152A; --pg3: #1A1E38; --pg4: #222645; --line: #262A45; --ink: #ECEEFB; --ink2: #9AA0C3; --ink3: #7A80A8; --dark: #0B0D1A; --r: 12px; color-scheme: dark; }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 "Inter", "Segoe UI Variable", system-ui, -apple-system, "Segoe UI", sans-serif; }
 button { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
 :focus { outline: none; }
