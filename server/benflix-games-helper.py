@@ -1592,6 +1592,30 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, tools.follow_show(self.read_json(), _names.get(user_id, "")))
                 except tools.ToolError as e:
                     raise HelperError(e.status, e.message)
+            if method == "POST" and path == "/api/bad-copy":
+                # Player > Fix a problem > This copy is bad (everyone but Kids): Radarr / Sonarr throw the file away,
+                # never take that download again, and look for a new copy (Idea Box 29)
+                if is_kids:
+                    raise HelperError(403, "Ask a grown-up to fix this one.")
+                if tools is None:
+                    raise HelperError(503, "The Server page tools aren't on the server yet. Run the Glowfin setup command again.")
+                item_id = str(self.read_json().get("id") or "")
+                if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", item_id):
+                    raise HelperError(400, "Which movie or episode?")
+                status, raw, _ = jellyfin_call("GET", f"/Users/{user_id}/Items/{item_id}?Fields=ProviderIds", token)
+                if status != 200:
+                    raise HelperError(404, "That isn't on Glowfin any more.")
+                item = json.loads(raw or b"{}")
+                info = {"type": item.get("Type"), "tmdb": (item.get("ProviderIds") or {}).get("Tmdb"), "name": item.get("Name")}
+                if item.get("Type") == "Episode":
+                    info.update({"season": item.get("ParentIndexNumber"), "episode": item.get("IndexNumber"), "name": item.get("SeriesName")})
+                    status, raw, _ = jellyfin_call("GET", f"/Users/{user_id}/Items/{item.get('SeriesId')}?Fields=ProviderIds", token)
+                    ids = (json.loads(raw or b"{}").get("ProviderIds") or {}) if status == 200 else {}
+                    info.update({"tvdb": ids.get("Tvdb"), "tmdb": ids.get("Tmdb")})
+                try:
+                    return self.send(200, tools.bad_copy(info, _names.get(user_id, "") or user_id))
+                except tools.ToolError as e:
+                    raise HelperError(e.status, e.message)
             if path.startswith("/api/music/"):
                 # Music requests, playlists and the music tidy-up (only the admin, Ben, can use them)
                 if music is None:

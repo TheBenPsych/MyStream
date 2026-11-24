@@ -986,6 +986,107 @@ def holdup_copies(tmdb):
 
 
 # ---------------------------------------------------------------------------
+# "This copy is bad" in the player's Fix a problem list (Idea Box 29, Ben 2026-11-24): anyone but Kids can
+# throw away a broken movie or episode file. Radarr / Sonarr mark the download it came from as failed (so
+# that copy is never picked again), the file is deleted, and they look for a new one straight away.
+# ---------------------------------------------------------------------------
+
+_bad_copy_uses = {}  # person -> times they used it in the last day (so one person can't empty Tower)
+BAD_COPY_PER_DAY = 5
+
+
+def _bad_copy_allowed(who):
+    now = time.time()
+    with _lock:
+        times = [t for t in _bad_copy_uses.get(who, []) if now - t < 86400]
+        if len(times) >= BAD_COPY_PER_DAY:
+            _bad_copy_uses[who] = times
+            return False
+        times.append(now)
+        _bad_copy_uses[who] = times
+        return True
+
+
+def _grab_for(app, history, file_id_key, file_id):
+    """The "grabbed" history line of the download a file came from (newest import of that file first)"""
+    history = sorted(history or [], key=lambda h: str(h.get("date") or ""), reverse=True)
+    download = None
+    for h in history:
+        kind = (h.get("eventType") or "").lower()
+        if kind in ("downloadfolderimported", "episodefileimported", "moviefileimported") and h.get("downloadId"):
+            data = h.get("data") or {}
+            if not file_id or str(data.get(file_id_key) or "") in ("", str(file_id)):
+                download = h["downloadId"]
+                break
+    grabs = [h for h in history if (h.get("eventType") or "").lower() == "grabbed"]
+    if download:
+        return next((h for h in grabs if h.get("downloadId") == download), None)
+    return None
+
+
+def _mark_failed(app, grab):
+    if not grab:
+        return False
+    try:
+        _arr(app, "POST", f"/api/v3/history/failed/{grab['id']}")
+        return True
+    except ToolError:
+        return False
+
+
+def bad_copy(info, who):
+    """info: {"type": "Movie"|"Episode", "tmdb", "tvdb", "name", "season", "episode"}. Returns {"message"}."""
+    kind = info.get("type")
+    if kind not in ("Movie", "Episode"):
+        raise ToolError(400, "Only movies and episodes can be swapped for a new copy.")
+    app = "radarr" if kind == "Movie" else "sonarr"
+    if not arr_ready(app):
+        raise ToolError(503, f"{'Radarr' if app == 'radarr' else 'Sonarr'} isn't connected to the helper yet.")
+    if not _bad_copy_allowed(who):
+        raise ToolError(429, "That's a lot of bad copies today. Report a problem instead and Ben will look.")
+    if kind == "Movie":
+        movie = _find_movie(info.get("tmdb")) if str(info.get("tmdb") or "").isdigit() else None
+        if not movie:
+            raise ToolError(404, "Radarr doesn't know this movie, so Ben has to swap it by hand. Report a problem instead.")
+        file = movie.get("movieFile") or {}
+        if not movie.get("hasFile") or not file.get("id"):
+            raise ToolError(404, "Radarr has no file for this movie. Report a problem instead.")
+        history = _arr("radarr", "GET", f"/api/v3/history/movie?movieId={movie['id']}") or []
+        blocked = _mark_failed("radarr", _grab_for("radarr", history, "movieFileId", file["id"]))
+        _arr("radarr", "DELETE", f"/api/v3/moviefile/{file['id']}")
+        _arr("radarr", "POST", "/api/v3/command", {"name": "MoviesSearch", "movieIds": [movie["id"]]})
+        name = movie.get("title") or "this movie"
+    else:
+        series = _find_series(info)
+        if not series:
+            raise ToolError(404, "Sonarr doesn't know this show, so Ben has to swap it by hand. Report a problem instead.")
+        try:
+            season, number = int(info.get("season")), int(info.get("episode"))
+        except (TypeError, ValueError):
+            raise ToolError(400, "Which episode?")
+        episodes = _arr("sonarr", "GET", f"/api/v3/episode?seriesId={series['id']}&seasonNumber={season}") or []
+        ep = next((e for e in episodes if e.get("episodeNumber") == number and e.get("seasonNumber") == season), None)
+        if not ep or not ep.get("hasFile") or not ep.get("episodeFileId"):
+            raise ToolError(404, "Sonarr has no file for this episode. Report a problem instead.")
+        history = _arr("sonarr", "GET", f"/api/v3/history/series?seriesId={series['id']}&seasonNumber={season}") or []
+        if isinstance(history, dict):
+            history = history.get("records") or []
+        history = [h for h in history if h.get("episodeId") in (None, ep["id"]) or (h.get("eventType") or "").lower() == "grabbed"]
+        blocked = _mark_failed("sonarr", _grab_for("sonarr", history, "episodeFileId", ep["episodeFileId"]))
+        _arr("sonarr", "DELETE", f"/api/v3/episodefile/{ep['episodeFileId']}")
+        _arr("sonarr", "POST", "/api/v3/command", {"name": "EpisodeSearch", "episodeIds": [ep["id"]]})
+        name = f"{series.get('title') or 'this show'} S{season} E{number}"
+    _forget()
+    print(f"bad copy: {who or 'someone'} threw away {name} (blocked: {blocked})", flush=True)
+    return {
+        "message": f"Tower threw away this copy of {name} and is finding a new one."
+        + (" It won't pick that copy again." if blocked else "")
+        + " It's usually back within an hour.",
+        "blocked": blocked,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Everything on the Server page in one answer (saved for 20 seconds)
 # ---------------------------------------------------------------------------
 

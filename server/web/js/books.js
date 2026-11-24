@@ -211,7 +211,11 @@
       status: t.placeLine || "",
       buttons: [
         main,
-        t.other ? (t.other.kind === "audiobook" ? { label: "Listen", icon: "ears", onClick: async () => BK.play(await api("GET", "title/" + enc(t.other.id))) } : { label: "Read", icon: "book", href: `#/books/read/${enc(t.other.id)}` }) : null,
+        // Idea Box 29: "Listen from here" / "Read from here" carries your place over to the other way of the book
+        t.other && t.handoff ? (t.other.kind === "audiobook"
+          ? { label: "Listen from here", icon: "ears", note: `Starts ${t.handoff}, where you are in the book`, onClick: async () => { await api("POST", "handoff/" + enc(t.id)); B.cache = {}; BK.play(await api("GET", "title/" + enc(t.other.id))); } }
+          : { label: "Read from here", icon: "book", note: `Opens at ${t.handoff}, where you are in the audiobook`, onClick: async () => { await api("POST", "handoff/" + enc(t.id)); B.cache = {}; B.go(`#/books/read/${enc(t.other.id)}`); } })
+        : t.other ? (t.other.kind === "audiobook" ? { label: "Listen", icon: "ears", onClick: async () => BK.play(await api("GET", "title/" + enc(t.other.id))) } : { label: "Read", icon: "book", href: `#/books/read/${enc(t.other.id)}` }) : null,
         { label: t.want ? "On Want to read" : "Want to read", icon: t.want ? "check" : "plus", onClick: async () => { await api("POST", "want", { id: t.id, want: !t.want }); B.cache = {}; B.render(); } },
         { label: "More", icon: "more", onClick: () => B.tpMore(t.name, [
           { label: t.status === "done" ? "Mark not finished" : "Mark finished", icon: "check", onClick: async () => { await api("POST", "mark", { id: t.id, done: t.status !== "done" }); B.cache = {}; B.render(); } },

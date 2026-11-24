@@ -79,6 +79,7 @@ class AudiobookService
         @param:DefaultCoroutineScope private val scope: CoroutineScope,
         private val books: BenflixBooks,
         private val musicService: dagger.Lazy<MusicService>,
+        private val carLibrary: dagger.Lazy<BooksCarLibrary>,
     ) {
         private val _now = MutableStateFlow<AudiobookNow?>(null)
         val now: StateFlow<AudiobookNow?> = _now
@@ -155,6 +156,80 @@ class AudiobookService
                 Timber.w(ex, "Couldn't stop music")
             }
             stop()
+            val (items, file, cposMs) = begin(page, chapter)
+            onMain {
+                val p = player ?: newPlayer().also { player = it }
+                p.setMediaItems(items, file, cposMs)
+                p.playbackParameters = PlaybackParameters(_now.value?.speed ?: 1f)
+                p.skipSilenceEnabled = _skipPauses.value
+                p.volume = 1f
+                p.prepare()
+                p.play()
+                if (mediaSession == null) mediaSession = newSession(p)
+                BenflixAudiobookPlaybackService.start(context)
+            }
+            afterStart(page)
+        }
+
+        /** The phone's lock screen and the car (Android Auto) both use this session; the car can browse it too */
+        private fun newSession(p: ExoPlayer): MediaSession =
+            androidx.media3.session.MediaLibraryService.MediaLibrarySession
+                .Builder(context, p, BooksCarCallback(carLibrary.get(), ::startFromCar))
+                .setId("benflix-books")
+                .build()
+
+        /**
+         * Idea Box 29 "Audiobooks in the car": the session for [BenflixAudiobookPlaybackService], made even when
+         * nothing plays yet, so Android Auto can show your audiobooks. Main thread only.
+         */
+        fun ensureSession(): MediaSession {
+            mediaSession?.let { return it }
+            val p = player ?: newPlayer().also { player = it }
+            return newSession(p).also { mediaSession = it }
+        }
+
+        /**
+         * A book picked on the car's screen: the same start as the phone (your place, a few seconds back), but the
+         * car's session puts the files in the player itself, so the player and session stay as they are.
+         */
+        suspend fun startFromCar(page: BookPage): MediaSession.MediaItemsWithStartPosition {
+            try {
+                musicService.get().stop()
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't stop music")
+            }
+            if (_now.value != null) {
+                ticker?.cancel()
+                save()
+            }
+            val (items, file, cposMs) = begin(page, null)
+            onMain {
+                player?.let { p ->
+                    p.playbackParameters = PlaybackParameters(_now.value?.speed ?: 1f)
+                    p.skipSilenceEnabled = _skipPauses.value
+                    p.volume = 1f
+                }
+            }
+            afterStart(page)
+            return MediaSession.MediaItemsWithStartPosition(items, file, cposMs)
+        }
+
+        private suspend fun afterStart(page: BookPage) {
+            lastSaveAt = System.currentTimeMillis()
+            listenedSinceSave = 0.0
+            startTicker()
+            try {
+                books.opened(page.tile.id)
+            } catch (ex: Exception) {
+                Timber.d(ex, "opened")
+            }
+        }
+
+        /** Sets what's playing and works out the files and where to start: (files, which file, ms into it) */
+        private fun begin(
+            page: BookPage,
+            chapter: Int?,
+        ): Triple<List<MediaItem>, Int, Long> {
             val files = page.fileSeconds.ifEmpty { listOf(page.seconds.toDouble()) }
             val starts = files.runningFold(0.0) { a, b -> a + b }.dropLast(1)
             val now =
@@ -191,43 +266,24 @@ class AudiobookService
                 } else {
                     0 to 0.0
                 }
-            onMain {
-                val p = player ?: newPlayer().also { player = it }
-                val items =
-                    files.indices.map { i ->
-                        MediaItem
-                            .Builder()
-                            .setUri(books.fileUrl(page.tile.id, i))
-                            .setMediaId("${page.tile.id}#$i")
-                            .setMediaMetadata(
-                                MediaMetadata
-                                    .Builder()
-                                    .setTitle(page.chapters.firstOrNull { it.file == i }?.title ?: page.tile.name)
-                                    .setArtist(page.tile.author)
-                                    .setAlbumTitle(page.tile.name)
-                                    .setArtworkUri(page.tile.cover?.let { Uri.parse(it) })
-                                    .build(),
-                            ).build()
-                    }
-                p.setMediaItems(items, file, (cpos * 1000).toLong())
-                p.playbackParameters = PlaybackParameters(now.speed)
-                p.skipSilenceEnabled = _skipPauses.value
-                p.volume = 1f
-                p.prepare()
-                p.play()
-                if (mediaSession == null) {
-                    mediaSession = MediaSession.Builder(context, p).setId("benflix-books").build()
+            val items =
+                files.indices.map { i ->
+                    MediaItem
+                        .Builder()
+                        .setUri(books.fileUrl(page.tile.id, i))
+                        .setMediaId("${page.tile.id}#$i")
+                        .setMediaMetadata(
+                            MediaMetadata
+                                .Builder()
+                                .setTitle(page.chapters.firstOrNull { it.file == i }?.title ?: page.tile.name)
+                                .setArtist(page.tile.author)
+                                .setAlbumTitle(page.tile.name)
+                                .setArtworkUri(page.tile.cover?.let { Uri.parse(it) })
+                                .setMediaType(MediaMetadata.MEDIA_TYPE_AUDIO_BOOK_CHAPTER)
+                                .build(),
+                        ).build()
                 }
-                BenflixAudiobookPlaybackService.start(context)
-            }
-            lastSaveAt = System.currentTimeMillis()
-            listenedSinceSave = 0.0
-            startTicker()
-            try {
-                books.opened(page.tile.id)
-            } catch (ex: Exception) {
-                Timber.d(ex, "opened")
-            }
+            return Triple(items, file, (cpos * 1000).toLong())
         }
 
         private fun startTicker() {
@@ -457,11 +513,19 @@ class AudiobookService
             save()
             _now.value = null
             onMain {
-                BenflixAudiobookPlaybackService.stop(context)
-                mediaSession?.release()
-                mediaSession = null
-                player?.release()
-                player = null
+                // Idea Box 29: while a car (Android Auto) is connected, the session stays so the car keeps its list
+                val carOn =
+                    mediaSession?.connectedControllers?.any { it.packageName.contains("gearhead") } == true
+                if (carOn) {
+                    player?.stop()
+                    player?.clearMediaItems()
+                } else {
+                    BenflixAudiobookPlaybackService.stop(context)
+                    mediaSession?.release()
+                    mediaSession = null
+                    player?.release()
+                    player = null
+                }
             }
         }
 
