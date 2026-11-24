@@ -1394,7 +1394,7 @@ document.addEventListener("keydown", (e) => {
 })();
 
 // Glowfin "94% for you" (Idea Box 28, Ben 2026-11-24): any [data-match] box on the page asks Tower how well that
-// movie or show fits the person watching, and shows "94% for you" with "Because you loved Arrival" under it.
+// movie or show fits the person watching, and shows "94% for you" (Ben 2026-11-24: no "Because you loved" line).
 // Nothing shows for Kids, or until the person has watched or liked enough.
 (() => {
   // Speed check (Ben 2026-11-24): only ask once the pointer rests on a title (not for every poster passed on the
@@ -1418,7 +1418,7 @@ document.addEventListener("keydown", (e) => {
       if (!box.isConnected) return;
       if (r && r.later && (tries || 0) < 3) return fill(box, (tries || 0) + 1);
       if (!r || !r.pct) return;
-      box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>${r.why ? `<span class="mt-why">${esc(r.why)}</span>` : ""}`;
+      box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>`;
     }, tries ? 4000 : 350);
   };
   let queued = false;

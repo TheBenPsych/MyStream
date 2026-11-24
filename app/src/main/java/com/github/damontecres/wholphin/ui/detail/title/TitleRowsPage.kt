@@ -67,7 +67,6 @@ import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
-import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
@@ -223,6 +222,9 @@ internal fun WideRowsTitlePage(
                                 InfoLine(info, null)
                                 QualityChips()
                             }
+                            // Ben 2026-11-24: the age rating, scores and "94% for you" sit in one row under the year line
+                            // (they were in the top right, under the clock)
+                            TitleScoreRow(rating = rating, scores = scores)
                             infoExtra?.let { Box(Modifier.widthIn(max = w * .6f)) { it() } }
                             if (!story.isNullOrBlank() || sections.any { it.info }) {
                                 StoryOpener(
@@ -321,24 +323,7 @@ internal fun WideRowsTitlePage(
                 }
             }
         }
-        // The score pill at the top right, under the clock. It grows to the left; its gap from the right edge
-        // matches the title's gap from the left.
         val topAlpha by animateFloatAsState(if (scrolled) 0f else 1f, tween(250), label = "titleTop")
-        // Glowfin "94% for you" (Idea Box 28) under it, in the empty space, so nothing moves
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    // Ben 2026-11-23: right up in the corner, just under the clock
-                    .padding(end = side, top = LocalTopBarOverlap.current + 2.dp)
-                    .graphicsLayer { alpha = topAlpha },
-        ) {
-            ScorePill(rating = rating, scores = scores)
-            com.github.damontecres.wholphin.ui.door
-                .MatchPill(itemId = LocalTitleExtras.current.matchId)
-        }
         // Down into the rows: the top shrinks to a small title and the facts (a plain fade, no blur)
         if (scrolled || topAlpha < 1f) {
             MiniTop(
@@ -356,6 +341,28 @@ internal fun WideRowsTitlePage(
             details = sections.filter { it.info },
             onDismiss = { showDetails = false },
         )
+    }
+}
+
+/**
+ * The age rating and scores as bare icons, then Glowfin's "94% for you" pill at the end (Ben 2026-11-24): one row
+ * under the year line, the same as on Home, Movies, Shows and Anime.
+ */
+@Composable
+private fun TitleScoreRow(
+    rating: String?,
+    scores: List<StripPart>,
+    small: Boolean = false,
+) {
+    val matchId = LocalTitleExtras.current.matchId
+    if (rating.isNullOrBlank() && scores.none { !it.value.isNullOrBlank() } && matchId == null) return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        ScoreIcons(rating = rating, scores = scores)
+        com.github.damontecres.wholphin.ui.door
+            .MatchPill(itemId = matchId, small = small)
     }
 }
 
@@ -509,20 +516,11 @@ internal fun PhoneRowsTitlePage(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.padding(start = side, end = side),
                     ) {
-                        // Upright phones: the title box with the score pill beside it on the right
-                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            TitleBox(title = title, wide = false, width = 220.dp, anyShape = true, modifier = Modifier.weight(1f))
-                            // Glowfin "94% for you" (Idea Box 28) just above the score pill, beside the title
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                com.github.damontecres.wholphin.ui.door.MatchPill(
-                                    itemId = LocalTitleExtras.current.matchId,
-                                    small = true,
-                                    showWhy = false,
-                                )
-                                ScorePill(rating = rating, scores = scores, small = true)
-                            }
-                        }
+                        // Upright phones: the title box gets the full width (Ben 2026-11-24: the score box beside it moved
+                        // under the year line)
+                        TitleBox(title = title, wide = false, width = 220.dp, anyShape = true)
                         InfoLine(info, null)
+                        TitleScoreRow(rating = rating, scores = scores, small = true)
                         QualityChips()
                         infoExtra?.invoke()
                         buttons.firstOrNull()?.let { b ->
