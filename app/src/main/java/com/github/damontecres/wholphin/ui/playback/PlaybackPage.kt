@@ -442,6 +442,10 @@ fun PlaybackPageContent(
                 viewModel.reportProblem(it.problem)
             }
 
+            PlaybackAction.BadCopy -> {
+                viewModel.swapBadCopy()
+            }
+
             PlaybackAction.TogetherStart -> {
                 state.currentPlayback?.item?.let { item ->
                     scope.launch { WatchTogether.start(togetherContext, item, player.currentPosition, player.playWhenReady) }
@@ -1442,6 +1446,12 @@ fun PlaybackPageContent(
                     // Not for Kids profiles, like the Lobby (Ben, 2026-11-15)
                     canAlsoCount =
                         canAlsoCount &&
+                            state.currentPlayback
+                                ?.item
+                                ?.type
+                                .let { it == BaseItemKind.MOVIE || it == BaseItemKind.EPISODE },
+                    canSwapCopy =
+                        !com.github.damontecres.wholphin.services.KidsMode.isActive &&
                             state.currentPlayback
                                 ?.item
                                 ?.type

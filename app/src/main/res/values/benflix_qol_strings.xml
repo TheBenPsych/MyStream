@@ -171,4 +171,6 @@
     <string name="benflix_mal_tracking">MyAnimeList anime tracking</string>
     <string name="benflix_mal_tracking_off">Off. Sign in with your own MyAnimeList account and every anime episode you finish on Benflix gets ticked off on your MyAnimeList list. Works with or without AniList, and your TVs pick it up from your phone.</string>
     <string name="benflix_mal_tracking_on">On, as %1$s. Anime episodes you finish are ticked off on your MyAnimeList list. Select to sign out.</string>
+    <!-- Idea Box 29: the name Android Auto shows for Glowfin audiobooks in the car -->
+    <string name="car_audiobooks_name" translatable="false">Glowfin audiobooks</string>
 </resources>

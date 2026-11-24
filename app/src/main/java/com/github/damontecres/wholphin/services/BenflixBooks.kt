@@ -122,6 +122,8 @@ data class BookPage(
     val otherId: String?,
     val otherKind: String?,
     val placeLine: String,
+    /** Idea Box 29: "6 h 12 m in" / "64%", where Listen from here / Read from here starts (null when places match) */
+    val handoff: String? = null,
     val moreBy: List<BookTile>,
     val moreLike: List<BookTile>,
     val canPickCover: Boolean,
@@ -458,6 +460,7 @@ class BenflixBooks
                 otherId = j.optJSONObject("other")?.text("id"),
                 otherKind = j.optJSONObject("other")?.text("kind"),
                 placeLine = j.optString("placeLine"),
+                handoff = j.optString("handoff").takeIf { it.isNotBlank() && it != "null" },
                 moreBy = j.optJSONArray("moreBy").objects().map(::tile),
                 moreLike = j.optJSONArray("moreLike").objects().map(::tile),
                 canPickCover = j.optBoolean("canPickCover"),
@@ -554,6 +557,11 @@ class BenflixBooks
                 .map(::tile)
 
         /** Saves your place (and how long you read or listened since last time) */
+        /** Idea Box 29: the other way of this book (ebook or audiobook) jumps to where you are in this one */
+        suspend fun handoff(id: String) {
+            helper.postJson("/api/books/handoff/" + Uri.encode(id))
+        }
+
         suspend fun savePlace(
             id: String,
             place: JSONObject,

@@ -122,10 +122,15 @@ class BookTitleViewModel
         }
 
         /** The same book the other way: the audiobook of this ebook, or the other way round */
-        fun openOther(p: BookPage) {
+        fun openOther(
+            p: BookPage,
+            fromHere: Boolean = false,
+        ) {
             val other = p.otherId ?: return
             viewModelScope.launchIO {
                 try {
+                    // Idea Box 29: Listen from here / Read from here carries this book's place over first
+                    if (fromHere) books.handoff(p.tile.id)
                     val o = books.title(other)
                     if (o.tile.isAudio) {
                         listen(o, null)

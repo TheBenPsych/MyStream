@@ -202,12 +202,23 @@ private fun BookOnTitleFrame(
             )
             if (p.otherId != null) {
                 val audio = p.otherKind == "audiobook"
+                val here = p.handoff
                 add(
-                    TitleButton(
-                        if (audio) "Listen" else "Read",
-                        if (audio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
-                        { viewModel.openOther(p) },
-                    ),
+                    if (here != null) {
+                        // Idea Box 29: start the other way of the book where you are in this one
+                        TitleButton(
+                            if (audio) "Listen from here" else "Read from here",
+                            if (audio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
+                            { viewModel.openOther(p, fromHere = true) },
+                            note = if (audio) "Starts $here" else "Opens at $here",
+                        )
+                    } else {
+                        TitleButton(
+                            if (audio) "Listen" else "Read",
+                            if (audio) BenflixIcon.HEADPHONES else BenflixIcon.BOOK,
+                            { viewModel.openOther(p) },
+                        )
+                    },
                 )
             }
             add(
