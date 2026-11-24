@@ -4,10 +4,8 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,8 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -107,15 +103,15 @@ private fun matchEntry(context: Context): MatchHelperEntryPoint =
 private val MATCH_AQUA = Color(0xFF3FE0E8)
 
 /**
- * "94% for you" under the score pill, with "Because you loved Arrival" under it. It sits in the empty space at
- * the top right, laid over the page, so nothing else moves (Ben 2026-11-24). Movies and shows only.
+ * "94% for you": a small aqua pill at the end of the score icons row, under the year line (Ben 2026-11-24,
+ * moved from the top right). Movies and shows only. The "Because you loved..." words under it are gone (Ben
+ * 2026-11-24: hard to read and not worth showing).
  */
 @Composable
 fun MatchPill(
     itemId: UUID?,
     modifier: Modifier = Modifier,
     small: Boolean = false,
-    showWhy: Boolean = true,
 ) {
     val context = LocalContext.current
     val kids by KidsMode.active.collectAsState()
@@ -143,42 +139,28 @@ fun MatchPill(
     val m = match ?: return
     if (kids) return
     val shape = RoundedCornerShape(50)
-    Column(horizontalAlignment = Alignment.End, modifier = modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            modifier =
-                Modifier
-                    .background(BenflixColors.Tray.copy(alpha = .8f), shape)
-                    .border(1.5.dp, MATCH_AQUA.copy(alpha = .7f), shape)
-                    .padding(horizontal = if (small) 8.dp else 12.dp, vertical = if (small) 2.dp else 4.dp),
-        ) {
-            Text(
-                text = "${m.percent}%",
-                color = MATCH_AQUA,
-                fontSize = if (small) BenflixType.small else BenflixType.lead,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-            )
-            Text(
-                text = "for you",
-                color = BenflixColors.Text,
-                fontSize = if (small) BenflixType.tag else BenflixType.body,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-        }
-        if (showWhy && m.why != null) {
-            Text(
-                text = m.why,
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.tag,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                modifier = Modifier.padding(top = 4.dp, end = 4.dp).widthIn(max = 260.dp),
-            )
-        }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier =
+            modifier
+                .background(BenflixColors.Tray.copy(alpha = .8f), shape)
+                .border(1.5.dp, MATCH_AQUA.copy(alpha = .7f), shape)
+                .padding(horizontal = if (small) 8.dp else 9.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = "${m.percent}%",
+            color = MATCH_AQUA,
+            fontSize = if (small) BenflixType.small else BenflixType.body,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+        )
+        Text(
+            text = "for you",
+            color = BenflixColors.Text,
+            fontSize = BenflixType.tag,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
