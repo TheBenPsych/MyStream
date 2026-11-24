@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "speed-match-rail", "title": "Pages load fast again (\"for you\" match no longer holds Tower up), and side menu icons sit in the middle of their square", "where": "browser on the PC · Home, move along a row, then point at the side menu", "date": "Nov 24"},
     {"id": "health-page", "title": "Server > Health: parts, black box, Last 24 hours graphs, crash notebook and changes diary", "where": "any screen · Server > Health (after Tower's next hourly update)", "date": "Nov 22"},
     {"id": "health-copy", "title": "Copy report for Claude on the Health page", "where": "phone or browser · Server > Health, top card", "date": "Nov 22"},
     {"id": "health-restarting", "title": "\"Tower is restarting or offline\" instead of \"Can't reach Tower\"", "where": "any screen · only shows while Tower is off or restarting", "date": "Nov 22"},

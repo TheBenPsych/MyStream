@@ -117,6 +117,15 @@
       rail.id = "brail"; rail.className = "brail"; rail.setAttribute("aria-label", "Glowfin menu");
       document.body.appendChild(rail);
       rail.addEventListener("click", onRail);
+      // Speed check (Ben 2026-11-24): the page slides right while the menu is open. A plain class on <body>, set
+      // here, instead of a CSS :has(:hover) rule that made the browser re-check the whole page on every mouse move.
+      const pushed = () => {
+        const open = !rail.hidden && !rail.classList.contains("always") && !rail.classList.contains("tucked")
+          && (rail.matches(":hover") || rail.contains(document.activeElement));
+        document.body.classList.toggle("rail-push", open);
+      };
+      ["mouseenter", "mouseleave", "focusin", "focusout"].forEach((t) => rail.addEventListener(t, () => setTimeout(pushed, 0)));
+      new MutationObserver(pushed).observe(rail, { attributes: true, attributeFilter: ["class", "hidden"] });
       rail.addEventListener("keydown", (e) => {
         // Arrow keys move up and down the rail; Right opens a door's panel
         const items = $$(".rl-i, .rl-logo", rail);

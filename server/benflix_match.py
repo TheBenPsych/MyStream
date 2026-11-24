@@ -53,44 +53,74 @@ def _features(it):
     return out
 
 
+def _rows_for(user, token):
+    """What the person watched, loved, started or gave a thumbs down. Asked as four small lists (only the titles
+    that count) instead of every movie and show with its cast, which kept Jellyfin busy for many seconds and made
+    every page slower while it ran (Ben 2026-11-24 speed check)."""
+    base = {
+        "Recursive": "true",
+        "IncludeItemTypes": "Movie,Series",
+        "Fields": "Genres,People,Studios",
+        "EnableImages": "false",
+        "EnableUserData": "true",
+    }
+    lists = (
+        ("IsPlayed", "DatePlayed", 450),
+        ("IsFavoriteOrLikes", "DatePlayed", 200),
+        ("IsResumable", "DatePlayed", 80),
+        ("Dislikes", "DatePlayed", 120),
+    )
+    seen = set()
+    rows = []
+    for flt, sort, limit in lists:
+        q = urllib.parse.urlencode(dict(base, Filters=flt, SortBy=sort, SortOrder="Descending", Limit=str(limit)))
+        for it in _get(f"/Users/{user}/Items?{q}", token).get("Items") or []:
+            if it.get("Id") in seen:
+                continue
+            seen.add(it.get("Id"))
+            ud = it.get("UserData") or {}
+            likes = ud.get("Likes")
+            loved = bool(ud.get("IsFavorite")) or likes is True
+            watched = bool(ud.get("Played")) or (ud.get("PlayCount") or 0) > 0 or (ud.get("PlayedPercentage") or 0) > 20
+            if likes is False:
+                weight = -1.5
+            elif loved:
+                weight = 1.6
+            elif watched:
+                weight = 1.0
+            else:
+                continue
+            f = _features(it)
+            if f:
+                rows.append((f, weight, it.get("Name") or "", loved, it.get("Id")))
+    return rows[:600]
+
+
+_building = set()  # users whose taste is being worked out right now (only one at a time per person)
+
+
+def _build(user, token):
+    try:
+        got = {"at": time.time(), "items": _rows_for(user, token)}
+        with _lock:
+            _taste[user] = got
+    except (OSError, ValueError):
+        pass
+    finally:
+        with _lock:
+            _building.discard(user)
+
+
 def _taste_for(user, token):
+    """The person's taste, or None while Tower is still working it out. Never makes a page wait: the first ask
+    starts the work in the background (once, however many titles ask at the same time), and an hour-old taste
+    keeps being used while a fresh one is worked out."""
     with _lock:
         got = _taste.get(user)
-        if got and time.time() - got["at"] < TASTE_AGE:
-            return got
-    q = urllib.parse.urlencode(
-        {
-            "Recursive": "true",
-            "IncludeItemTypes": "Movie,Series",
-            "Fields": "Genres,People,Studios",
-            "EnableImages": "false",
-            "EnableUserData": "true",
-            "SortBy": "DatePlayed",
-            "SortOrder": "Descending",
-            "Limit": "4000",
-        }
-    )
-    items = _get(f"/Users/{user}/Items?{q}", token).get("Items") or []
-    rows = []
-    for it in items:
-        ud = it.get("UserData") or {}
-        likes = ud.get("Likes")
-        loved = bool(ud.get("IsFavorite")) or likes is True
-        watched = bool(ud.get("Played")) or (ud.get("PlayCount") or 0) > 0 or (ud.get("PlayedPercentage") or 0) > 20
-        if likes is False:
-            weight = -1.5
-        elif loved:
-            weight = 1.6
-        elif watched:
-            weight = 1.0
-        else:
-            continue
-        f = _features(it)
-        if f:
-            rows.append((f, weight, it.get("Name") or "", loved, it.get("Id")))
-    got = {"at": time.time(), "items": rows[:600]}
-    with _lock:
-        _taste[user] = got
+        fresh = got is not None and time.time() - got["at"] < TASTE_AGE
+        if not fresh and user not in _building:
+            _building.add(user)
+            threading.Thread(target=_build, args=(user, token), name="match-taste", daemon=True).start()
     return got
 
 
@@ -109,6 +139,9 @@ def match(user, token, item_id):
         if got and time.time() - got[0] < TASTE_AGE:
             return got[1]
     taste = _taste_for(user, token)
+    if taste is None:
+        # Still working out this person's taste (a few seconds, once an hour): ask again in a moment
+        return {"pct": None, "later": True}
     positives = [r for r in taste["items"] if r[1] > 0]
     answer = {"pct": None}
     if len(positives) >= MIN_SIGNALS:

@@ -1360,18 +1360,31 @@ document.addEventListener("keydown", (e) => {
 // movie or show fits the person watching, and shows "94% for you" with "Because you loved Arrival" under it.
 // Nothing shows for Kids, or until the person has watched or liked enough.
 (() => {
+  // Speed check (Ben 2026-11-24): only ask once the pointer rests on a title (not for every poster passed on the
+  // way), and never keep a "still working it out" answer, so the number shows on the next look.
   const known = new Map();
   const ask = (id) => {
     const key = ((B.me && B.me.id) || "") + "/" + id;
-    if (!known.has(key)) known.set(key, B.call("GET", `api/match/${encodeURIComponent(id)}`).catch(() => ({ pct: null })));
+    if (!known.has(key)) {
+      const p = B.call("GET", `api/match/${encodeURIComponent(id)}`).catch(() => ({ pct: null, later: true }));
+      known.set(key, p);
+      p.then((r) => { if (!r || r.later) known.delete(key); });
+    }
     return known.get(key);
   };
-  const fill = async (box) => {
+  const fill = (box, tries) => {
     box.dataset.done = "1";
     if (B.me && B.me.kids) return;
-    const r = await ask(box.dataset.match);
-    if (!r || !r.pct || !box.isConnected) return;
-    box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>${r.why ? `<span class="mt-why">${esc(r.why)}</span>` : ""}`;
+    setTimeout(async () => {
+      if (!box.isConnected) return;
+      const r = await ask(box.dataset.match);
+      if (!box.isConnected) return;
+      if (r && r.later && (tries || 0) < 3) return fill(box, (tries || 0) + 1);
+      if (!r || !r.pct) return;
+      box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>${r.why ? `<span class="mt-why">${esc(r.why)}</span>` : ""}`;
+    }, tries ? 4000 : 350);
   };
-  new MutationObserver(() => document.querySelectorAll("[data-match]:not([data-done])").forEach(fill)).observe(document.body, { childList: true, subtree: true });
+  let queued = false;
+  const scan = () => { queued = false; document.querySelectorAll("[data-match]:not([data-done])").forEach((b) => fill(b, 0)); };
+  new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(scan); } }).observe(document.body, { childList: true, subtree: true });
 })();

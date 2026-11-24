@@ -3158,16 +3158,20 @@ html.kids .empty-page .tile { background: radial-gradient(85% 120% at 72% 32%, v
    Like Wholphin: opening the side menu pushes the page right instead of covering it, and nothing gets darker.
    The place you point at is a plain white rounded square, the page you're on sits in a soft aqua rounded square,
    and the open menu is symmetrical (16px from the edge to the highlight, 16px from the highlight to the page). */
-.brail { padding-left: 16px; padding-right: 16px; }
+/* Ben 2026-11-24: every icon sits exactly in the middle of its square, like the TV. The tucked menu is
+   13 + 40 + 13 = 66px (the icon has 9px each side), and the open menu keeps 13px from the edge to the highlight
+   and 13px from the highlight to the page. Kids: 13 + 54 + 13 = 80px. */
+.brail { padding-left: 13px; padding-right: 13px; }
 .brail:not(.always):hover, .brail:not(.always):focus-within, body.nav-panel .brail:not(.always) { padding-right: 0; }
 .brail::after { display: none; }
-.rl-i { border-radius: 10px; }
+.rl-i { border-radius: 10px; height: 40px; padding: 0 9px; }
+.rl-logo { height: 40px; padding: 0 9px; }
+.brail.kids .rl-i { height: 54px; padding: 0 13px; }
 .rl-i.on:not(:hover):not(:focus-visible) { background: rgba(63, 224, 232, .13); }
 .rl-i:hover, .rl-i:focus-visible, .rl-i.on:hover, .rl-i.on:focus-visible, .rl-me.on:hover, .rl-me.on:focus-visible { box-shadow: none; }
 #page { transition: transform .22s ease-out; }
-body.nav-on:has(.brail:not(.always):is(:hover, :focus-within)) #page,
-body.nav-on.nav-panel:has(.brail:not(.always)) #page { transform: translateX(calc(var(--nopen) - var(--nrail))); }
-body.nav-on:has(.brail:not(.always)) { overflow-x: hidden; }
+body.nav-on.rail-push #page { transform: translateX(calc(var(--nopen) - var(--nrail))); }
+body.nav-on { overflow-x: hidden; }
 @media (prefers-reduced-motion: reduce) { #page { transition: none; } }
 
 /* Glowfin scores as bare icons under the year and time (Ben 2026-11-24): age rating outline, then each score as a

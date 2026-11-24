@@ -59,6 +59,12 @@ object MatchScores {
         id: UUID,
     ) = "$user/$id"
 
+    /** True when Tower hasn't given a final answer for this title yet */
+    fun waiting(
+        user: UUID?,
+        id: UUID,
+    ): Boolean = !known.containsKey(key(user, id))
+
     fun cached(
         user: UUID?,
         id: UUID,
@@ -74,6 +80,8 @@ object MatchScores {
             try {
                 val json = helper.getJson("/api/match/${id.toString().replace("-", "")}")
                 val pct = json.optInt("pct", 0)
+                // Tower is still working out this person's taste (speed check 2026-11-24): ask again in a moment
+                if (json.optBoolean("later", false)) return null
                 if (pct > 0) TitleMatch(pct, json.optString("why").ifBlank { null }) else none
             } catch (ex: CancellationException) {
                 throw ex
@@ -123,6 +131,13 @@ fun MatchPill(
             // Moving quickly along a row: only ask once you stop on a title
             delay(350)
             match = MatchScores.get(entry.helper(), user, itemId)
+            // Tower answers right away while it works out someone's taste, so look again a few times
+            var tries = 0
+            while (match == null && tries < 3 && MatchScores.waiting(user, itemId)) {
+                tries++
+                delay(4000)
+                match = MatchScores.get(entry.helper(), user, itemId)
+            }
         }
     }
     val m = match ?: return
