@@ -870,8 +870,8 @@ B.posterCard = (it, opts) => {
     <div class="cap"><span class="nm">${esc(it.Type === "Episode" ? it.SeriesName : it.Name)}</span><small>${esc(opts.sub || year)}</small></div>
   </a>`;
 };
-// Ben 2026-11-24 "Just released": this year's movies and shows, newest first. A show counts the day its newest
-// episode aired. keep(item) picks which ones belong on this page. Gives poster cards with a date chip.
+// Ben 2026-11-24 "Just released": this year's movies and shows, newest first. A show counts the day its episode 1
+// aired (a new show or a new season). keep(item) picks which ones belong on this page. Gives poster cards with a date chip.
 B.releasedChip = (day) => {
   const d = new Date(day), now = new Date();
   const ymd = (x) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
@@ -892,7 +892,8 @@ B.justReleased = async (o) => {
   const dayOf = (iso) => { const t = String(iso || "").slice(0, 10).split("-"); return t.length === 3 ? new Date(+t[0], +t[1] - 1, +t[2]) : null; };
   const [movies, eps] = await Promise.all([
     o.movies ? get(`/Items?userId=${u}&IncludeItemTypes=Movie${range}&Limit=40&Fields=${F}`) : [],
-    o.shows ? get(`/Items?userId=${u}&IncludeItemTypes=Episode${range}&IsMissing=false&Limit=300&Fields=SeriesId`) : [],
+    // Shows count only when they (or a new season) start: Jellyfin dates each season by its episode 1
+    o.shows ? get(`/Items?userId=${u}&IncludeItemTypes=Season${range}&Limit=300&Fields=SeriesId`).then((l) => l.filter((s) => (s.IndexNumber == null || s.IndexNumber > 0) && s.LocationType !== "Virtual")) : [],
   ]);
   const seen = new Set(), newest = [];
   eps.forEach((e) => { if (e.SeriesId && !seen.has(e.SeriesId)) { seen.add(e.SeriesId); newest.push({ id: e.SeriesId, day: dayOf(e.PremiereDate) }); } });

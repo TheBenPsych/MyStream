@@ -388,6 +388,10 @@ class DoorViewModel
                         putOrRemove(order, DoorRowData(TOP_10, "Top 10 movies this week", items, style = DoorRowStyle.TOP10))
                     }
                     launch {
+                        val skip = animeIds.await()
+                        justReleasedRow(order, userId, main + standUp, emptyList(), disliked.await()) { it.id !in skip }
+                    }
+                    launch {
                         val dislikes = disliked.await()
                         val skip = animeIds.await()
                         val found = data.because(userId, BaseItemKind.MOVIE, dislikes) { it !in skip }
@@ -883,7 +887,7 @@ class DoorViewModel
             const val NEXT_UP = "nextup"
             const val RELEASED = "released"
 
-            /** Ben 2026-11-24: this year's releases, newest first, right under Top 10 on Home, Shows and Anime */
+            /** Ben 2026-11-24: this year's releases, newest first, right under Top 10 on Home, Movies, Shows and Anime */
             const val JUST_RELEASED = "justreleased"
             const val TOP_RATED = "toprated"
             const val TRENDING_MISSING = "trendingmissing"

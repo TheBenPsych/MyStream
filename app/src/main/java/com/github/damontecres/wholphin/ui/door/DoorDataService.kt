@@ -24,6 +24,7 @@ import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemFilter
 import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.LocationType
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
@@ -510,7 +511,7 @@ class DoorDataService
 
         /**
          * Ben 2026-11-24 "Just released": movies and shows on Glowfin that came out this year, newest first, with the
-         * day each came out. A show counts the day its newest episode aired, so a new episode today puts it at the front.
+         * day each came out. A show counts the day its episode 1 aired (a new show, or a new season starting).
          */
         suspend fun justReleased(
             userId: UUID,
@@ -541,21 +542,23 @@ class DoorDataService
                     }
                 val shows =
                     async {
-                        // The newest episodes first, one per show, then the shows themselves in that order
+                        // Ben 2026-11-24: a show counts only when it (or a new season) starts, the day episode 1
+                        // aired, not every new episode. Jellyfin dates each season by its first episode.
                         val newest =
                             fromLibraries(showLibs) { parentId ->
                                 GetItemsRequest(
                                     userId = userId,
                                     parentId = parentId,
-                                    includeItemTypes = listOf(BaseItemKind.EPISODE),
+                                    includeItemTypes = listOf(BaseItemKind.SEASON),
                                     recursive = true,
-                                    isMissing = false,
                                     minPremiereDate = from,
                                     maxPremiereDate = until,
                                     sortBy = listOf(ItemSortBy.PREMIERE_DATE),
                                     sortOrder = listOf(SortOrder.DESCENDING),
                                     limit = JUST_RELEASED_EPISODES,
                                 )
+                            }.filter { s ->
+                                (s.data.indexNumber ?: 1) > 0 && s.data.locationType != LocationType.VIRTUAL
                             }.mapNotNull { e -> e.data.seriesId?.let { id -> e.data.premiereDate?.let { id to it.toLocalDate() } } }
                                 .sortedByDescending { it.second }
                                 .distinctBy { it.first }
@@ -946,7 +949,7 @@ class DoorDataService
             const val ROW = 20
             const val TOP = 10
 
-            /** Just released: enough of this year's newest episodes to find 20 different shows */
+            /** Just released: enough of this year's newest seasons to find 20 different shows */
             private const val JUST_RELEASED_EPISODES = 300
             private const val EVERYTHING_LIMIT = 5000
             private const val BECAUSE_TRIES = 4
