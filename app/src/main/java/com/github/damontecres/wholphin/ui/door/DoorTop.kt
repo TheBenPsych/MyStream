@@ -47,10 +47,10 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.detail.title.BRIGHT_ART
 import com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras
+import com.github.damontecres.wholphin.ui.detail.title.ScoreIcons
 import com.github.damontecres.wholphin.ui.detail.title.TitleBox
 import com.github.damontecres.wholphin.ui.detail.title.TitleExtras
 import com.github.damontecres.wholphin.ui.detail.title.rememberImageLight
-import com.github.damontecres.wholphin.ui.detail.title.ScoreIcons
 import com.github.damontecres.wholphin.ui.detail.title.rememberScoreParts
 import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.CoverGlowColors

@@ -68,7 +68,11 @@ fun ScoreIcons(
             )
         }
         shown.forEach { part ->
-            val number = part.value.orEmpty().removeSuffix("%").trim()
+            val number =
+                part.value
+                    .orEmpty()
+                    .removeSuffix("%")
+                    .trim()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -112,8 +116,14 @@ fun ScoreIcon(
         l == "anilist" -> {
             LetterBox(size = size, back = Color(0xFF152232)) {
                 buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append("A") }
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = Color(0xFF02A9FF))) { append("L") }
+                    withStyle(
+                        androidx.compose.ui.text
+                            .SpanStyle(color = Color.White),
+                    ) { append("A") }
+                    withStyle(
+                        androidx.compose.ui.text
+                            .SpanStyle(color = Color(0xFF02A9FF)),
+                    ) { append("L") }
                 }
             }
         }
@@ -121,7 +131,10 @@ fun ScoreIcon(
         l == "mal" || "myanimelist" in l -> {
             LetterBox(size = size, back = Color(0xFF2E51A2), wide = true) {
                 buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append("MAL") }
+                    withStyle(
+                        androidx.compose.ui.text
+                            .SpanStyle(color = Color.White),
+                    ) { append("MAL") }
                 }
             }
         }
