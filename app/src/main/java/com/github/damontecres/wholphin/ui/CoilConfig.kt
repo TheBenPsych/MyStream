@@ -2,9 +2,11 @@ package com.github.damontecres.wholphin.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalInspectionMode
 import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
 import coil3.annotation.ExperimentalCoilApi
-import coil3.compose.setSingletonImageLoaderFactory
 import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
@@ -71,7 +73,7 @@ fun CoilConfig(
                 okHttpClient
             }
         }
-    setSingletonImageLoaderFactory { ctx ->
+    ImageLoaderSetup { ctx ->
         Timber.i("Image diskCacheSizeBytes=$diskCacheSizeBytes")
         ImageLoader
             .Builder(ctx)
@@ -131,4 +133,25 @@ private class WholphinCacheStrategy(
         networkResponse: NetworkResponse,
         options: Options,
     ): CacheStrategy.WriteResult = delegate.write(cacheResponse, networkRequest, networkResponse, options)
+}
+
+/**
+ * Glowfin (Ben's TCL crash, 2026-11-24): Coil's own setSingletonImageLoaderFactory crashes the app with "The singleton
+ * image loader has already been created" when the image loader was made before this screen was drawn (the screen
+ * being rebuilt after the TV woke it, the screensaver, or a memory warning asking for it first). Here the setup is
+ * tried once per screen and, when a loader already exists, the new one simply replaces it instead of crashing.
+ */
+@Composable
+private fun ImageLoaderSetup(factory: (PlatformContext) -> ImageLoader) {
+    if (LocalInspectionMode.current) return
+    remember {
+        val f = SingletonImageLoader.Factory { ctx -> factory(ctx) }
+        try {
+            SingletonImageLoader.setSafe(f)
+        } catch (ex: IllegalStateException) {
+            Timber.w(ex, "Image loader already made, replacing it")
+            SingletonImageLoader.setUnsafe(f)
+        }
+        true
+    }
 }
