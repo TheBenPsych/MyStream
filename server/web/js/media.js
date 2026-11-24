@@ -33,19 +33,18 @@ B.describe = (it) => {
   const kids = B.me && B.me.kids;
   const scores = it.Type === "Episode" ? "" : B.scores(it);
   // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time (no % signs)
-  const pill = !kids && (it.OfficialRating || scores) ? B.scoreIcons(it.OfficialRating, scores) : "";
-  // Glowfin "94% for you" (Idea Box 28): under the score pill, laid over the top so nothing moves
-  const match = !kids && (it.Type === "Movie" || it.Type === "Series") ? `<div class="mt-wrap dt-mt" data-match="${esc(it.Id)}"></div>` : "";
-  return `${match}<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
+  // Glowfin "94% for you" (Idea Box 28): a small pill at the end of the score row (Ben 2026-11-24, was top right)
+  const matchId = !kids && (it.Type === "Movie" || it.Type === "Series") ? it.Id : "";
+  const pill = !kids && (it.OfficialRating || scores || matchId) ? B.scoreIcons(it.OfficialRating, scores, matchId) : "";
+  return `<div class="dt-name">${logo ? `<img class="dt-logo" src="${esc(logo)}" alt="${esc(title)}" hidden>` : ""}<div class="t">${esc(title)}</div></div>
     <div class="meta">${bits.map((b) => `<span>${esc(String(b))}</span>`).join("")}</div>${tag ? `<div class="dt-tag">${esc(tag)}</div>` : ""}${pill}
     <div class="ov">${esc(it.Overview || "")}</div>`;
 };
 // The bare score icons row (age rating outline, then icon + white number, no % signs). Rotten Tomatoes under 60
 // shows the green splat instead of the red tomato.
-B.scoreIcons = (rate, scores) => {
-  const nums = String(scores || "").replace(/%<\/b>/g, "</b>").replace(/<span data-s="rt"><b>(\d+)<\/b>/g, (m, n) => (+n < 60 ? `<span data-s="rt" class="splat"><b>${n}</b>` : m));
-  return `<div class="dt-icons">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${nums}</div>`;
-};
+// Then Glowfin's "94% for you" pill at the end of the row when a movie or show id is given (Ben 2026-11-24).
+B.iconNums = (scores) => String(scores || "").replace(/%<\/b>/g, "</b>").replace(/<span data-s="rt"><b>(\d+)<\/b>/g, (m, n) => (+n < 60 ? `<span data-s="rt" class="splat"><b>${n}</b>` : m));
+B.scoreIcons = (rate, scores, matchId, cls) => `<div class="dt-icons ${cls || ""}">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}<span class="tp-scores">${B.iconNums(scores)}</span>${matchId ? `<span class="mt-wrap" data-match="${esc(matchId)}"></span>` : ""}</div>`;
 // (Browsing tops have no logo any more, Ben 2026-11-23; kept for any caller that still passes one)
 B.fitDoorLogo = (box) => {
   const logo = box && box.querySelector(".dt-logo");

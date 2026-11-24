@@ -58,7 +58,6 @@ import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
-import com.github.damontecres.wholphin.ui.nav.stayPut
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
@@ -398,23 +397,6 @@ internal fun WideDoor(
             onBright = { brightArt = it },
             shadeFrom = if (topFree && !easy) LOW_ROWS_SHADE_FROM else BOTTOM_SHADE_FROM,
         )
-        if (preview != null && !easy) {
-            // Ben 2026-11-24: the scores moved under the year and time (DoorInfo), so the top right keeps only the
-            // clock and Glowfin "94% for you" (Idea Box 28), laid over the page so nothing moves
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = SIDE, top = overlap + 2.dp).stayPut(),
-            ) {
-                MatchPill(
-                    itemId =
-                        preview.id.takeIf {
-                            preview.type == org.jellyfin.sdk.model.api.BaseItemKind.MOVIE ||
-                                preview.type == org.jellyfin.sdk.model.api.BaseItemKind.SERIES
-                        },
-                )
-            }
-        }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().height(topHeight)) {
                 if (preview != null) {
