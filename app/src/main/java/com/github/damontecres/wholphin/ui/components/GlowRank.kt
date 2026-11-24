@@ -5,17 +5,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -30,15 +24,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.theme.Glowfin
-import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 
 /** Anton: the tall cinema-poster numbers of the Top 10 rows (Ben's pick T1, ui-8) */
 val GlowfinNumberFont = FontFamily(Font(R.font.glowfin_anton, FontWeight.Normal))
 
 /**
  * Ben's Top 10 look ("Glow outline", 2026-11-22): a hollow Anton number outlined in the Glowfin colours running
- * left to right (violet > blue > aqua), as tall as the poster. When the poster beside it has focus ([lit]) the
- * number fills in with the same colours and a soft glow. On phones and tablets (no focus) it is always filled.
+ * left to right (violet > blue > aqua), as tall as the poster. Ben 2026-11-23: always hollow, on TVs, phones and
+ * the browser, even when the poster beside it has the focus (it never fills in).
  * Ben's rule for every Top 10 row: the number sits fully
  * BESIDE its poster (never tucked behind it), and every number gets the same width box. "10" is drawn slimmer so
  * it is as tall as the single numbers and fits the same box. Cheap to draw: one text layout, no blur.
@@ -48,12 +41,9 @@ fun GlowRankNumber(
     rank: Int,
     posterHeight: Dp,
     modifier: Modifier = Modifier,
-    lit: Boolean = false,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 1)
     val density = LocalDensity.current
-    // Ben 2026-11-22: phones and tablets have nothing to focus or hover, so their numbers are always filled
-    val filled = lit || !rememberIsTv()
     val numberHeight = posterHeight * RANK_HEIGHT_SHARE
     val fontSize = with(density) { (numberHeight / ANTON_CAP_HEIGHT).toSp() }
     Spacer(
@@ -80,15 +70,10 @@ fun GlowRankNumber(
                         startX = x,
                         endX = x + textWidth,
                     )
-                val glow = Shadow(Glowfin.Aqua.copy(alpha = 0.5f), Offset.Zero, 10.dp.toPx())
                 val outline = Stroke(width = stroke, join = StrokeJoin.Round)
                 onDrawBehind {
                     withTransform({ scale(squeeze, 1f, pivot = Offset(size.width / 2f, 0f)) }) {
-                        if (filled) {
-                            drawText(layout, brush, Offset(x, y), shadow = glow)
-                        } else {
-                            drawText(layout, brush, Offset(x, y), drawStyle = outline)
-                        }
+                        drawText(layout, brush, Offset(x, y), drawStyle = outline)
                     }
                 }
             },
@@ -125,9 +110,8 @@ fun GlowRanked(
     modifier: Modifier = Modifier,
     poster: @Composable () -> Unit,
 ) {
-    var lit by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.Top, modifier = modifier.onFocusChanged { lit = it.hasFocus }) {
-        GlowRankNumber(rank = rank, posterHeight = posterHeight, lit = lit)
+    Row(verticalAlignment = Alignment.Top, modifier = modifier) {
+        GlowRankNumber(rank = rank, posterHeight = posterHeight)
         Spacer(Modifier.width(RankGap))
         poster()
     }

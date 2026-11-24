@@ -61,6 +61,18 @@ B.wireDescribe = (first, opts) => {
     shown = it;
     $(".info", top).innerHTML = describe(it);
     B.fitDoorLogo($(".info", top));
+    // Ben 2026-11-23: an episode shows its whole show's scores (shows and anime alike)
+    if (it.Type === "Episode" && it.SeriesId && !(B.me && B.me.kids)) {
+      B.cached(`series:${it.SeriesId}`, 600000, () => B.get(`/Users/${B.uid()}/Items/${it.SeriesId}`)).then((show) => {
+        if (shown !== it || !show) return;
+        const scores = B.scores(show);
+        const rate = it.OfficialRating || show.OfficialRating;
+        if (!scores && !rate) return;
+        const old = $(".info .dt-pill", top);
+        const html = `<div class="tp-pill dt-pill">${rate ? `<span class="rate">${esc(rate)}</span>` : ""}${scores ? `<span class="tp-scores">${scores}</span>` : ""}</div>`;
+        if (old) old.outerHTML = html; else $(".info", top).insertAdjacentHTML("afterbegin", html);
+      }).catch(() => {});
+    }
     const src = artOf(it);
     const art = $(".art", top);
     // Like Wholphin (Ben 2026-11-18): another episode of the same show has the same picture, so it just stays.

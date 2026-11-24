@@ -412,6 +412,7 @@ private fun BooksTopArea(
         overlap = overlap,
         coverRatio = BOOK_RATIO,
         edge = side(true),
+        showCover = false,
     ) { t, m ->
         Box(m) {
             BookCoverImage(t.cover, t.name, Modifier.fillMaxSize(), audio = t.isAudio)

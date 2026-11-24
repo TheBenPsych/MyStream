@@ -391,6 +391,16 @@ class BenflixRequestsViewModel
             val genre = filters.genre
             val failed = AtomicBoolean(false)
 
+            // Benflix: Japanese anime belongs on the Anime tab, not mixed into Movies and Shows
+            fun clean(row: FindRow): FindRow =
+                if (section ==
+                    FindSection.ANIME
+                ) {
+                    row
+                } else {
+                    row.copy(items = row.items.filterNot { it.isAnime })
+                }
+
             fun done(rows: List<FindRow>) {
                 _rows.update { it + (key to rows) }
                 _failedRows.update { if (failed.get()) it + key else it - key }
@@ -564,17 +574,30 @@ class BenflixRequestsViewModel
                                         },
                                     )
                                 }
+                            }.also { jobs ->
+                                // Ben 2026-11-23: Requests loaded very slowly, because nothing showed until the
+                                // slowest row had come back. Each row shows as soon as it and the rows above it
+                                // are in (rows only ever add at the bottom, so nothing jumps under the remote).
+                                val ready = arrayOfNulls<FindRow>(jobs.size)
+                                jobs.forEachIndexed { i, job ->
+                                    launch {
+                                        val row = clean(job.await())
+                                        val shown =
+                                            synchronized(ready) {
+                                                ready[i] = row
+                                                ready.takeWhile { it != null }.filterNotNull()
+                                            }
+                                        if (shown.isNotEmpty() && shown.size < jobs.size) _rows.update { it + (key to shown) }
+                                    }
+                                }
                             }.awaitAll()
-                        }.let { all ->
-                            // Benflix: Japanese anime belongs on the Anime tab, not mixed into Movies and Shows
-                            if (section == FindSection.ANIME) {
-                                all
-                            } else {
-                                all.map { row -> row.copy(items = row.items.filterNot { it.isAnime }) }
-                            }
-                        }
+                        }.map { clean(it) }
                     done(rows)
-                }.invokeOnCompletion { loadingRows.remove(key) }
+                }.invokeOnCompletion {
+                    loadingRows.remove(key)
+                    // Stopped part way: the half-loaded shelf is loaded again next time
+                    if (it != null) _rows.update { rows -> rows - key }
+                }
         }
 
         private val _failedRows = MutableStateFlow<Set<String>>(emptySet())

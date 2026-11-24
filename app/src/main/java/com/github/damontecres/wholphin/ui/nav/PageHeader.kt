@@ -100,6 +100,11 @@ fun BenflixPageHeader(
     overPicture: Boolean = false,
     /** Pages under the header can name where Down goes (see [TopBarDown]) */
     downTarget: TopBarDown? = null,
+    /**
+     * Ben 2026-11-23: TVs have no Back pill or where-am-I line any more (the remote's Back does it). They sat on
+     * top of the tabs on Requests and made the details pages' top bar thick. Touch screens keep them.
+     */
+    showBack: Boolean = true,
 ) {
     val scale = if (big) 1.2f else 1f
     val down =
@@ -109,7 +114,13 @@ fun BenflixPageHeader(
     val start =
         headerStart(destination, stack).let {
             // Glowfin new look: Movies, Shows and Anime put their see-through tab pills in this row instead of the name
-            if (it is HeaderStart.Title && destination.tabsInHeader()) HeaderStart.Empty else it
+            if (it is HeaderStart.Title && destination.tabsInHeader()) {
+                HeaderStart.Empty
+            } else if (it is HeaderStart.Back && !showBack) {
+                HeaderStart.Empty
+            } else {
+                it
+            }
         }
     Row(
         verticalAlignment = Alignment.CenterVertically,

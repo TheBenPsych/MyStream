@@ -773,9 +773,11 @@ internal fun BoxScope.TitlePictureView(
         Box(
             Modifier.fillMaxSize().background(
                 androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    0f to BenflixColors.Tray.copy(alpha = .8f),
-                    .35f to BenflixColors.Tray.copy(alpha = .45f),
-                    .62f to Color.Transparent,
+                    // Ben 2026-11-23: deeper, from the screen's edge under the side menu
+                    0f to BenflixColors.Tray.copy(alpha = .92f),
+                    .15f to BenflixColors.Tray.copy(alpha = .78f),
+                    .4f to BenflixColors.Tray.copy(alpha = .42f),
+                    .68f to Color.Transparent,
                 ),
             ),
         )

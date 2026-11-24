@@ -63,6 +63,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.detail.title.ScorePill
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.door.DoorTab
+import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.preferences.GlowfinSettingRow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
@@ -280,7 +281,7 @@ fun RequestArtUrl(
     url: String?,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().underRail()) {
         Crossfade(targetState = url, animationSpec = tween(ART_FADE_MS), label = "requestArt") { shownUrl ->
             if (shownUrl != null) {
                 AsyncImage(
@@ -773,9 +774,10 @@ private val PANEL_FADE =
 /** The soft shade on the left of the art, only as wide as the words */
 private val ART_LEFT =
     Brush.horizontalGradient(
-        0f to BenflixColors.Tray.copy(alpha = .82f),
-        .38f to BenflixColors.Tray.copy(alpha = .5f),
-        .65f to Color.Transparent,
+        0f to BenflixColors.Tray.copy(alpha = .92f),
+        .15f to BenflixColors.Tray.copy(alpha = .78f),
+        .4f to BenflixColors.Tray.copy(alpha = .42f),
+        .68f to Color.Transparent,
     )
 
 private val SOFT_EDGE = Shadow(color = Color.Black.copy(alpha = .6f), offset = Offset(0f, 1.5f), blurRadius = 4f)

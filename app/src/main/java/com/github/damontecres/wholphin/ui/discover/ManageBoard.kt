@@ -153,7 +153,9 @@ internal fun ManageTiles(
                         focusedBorder = Border(BorderStroke(2.dp, Glowfin.Aqua), shape = shape),
                     ),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                // Ben 2026-11-23 (TV photo): the names were cut off ("Need...", "On its..."). Less padding, and the
+                // small line can take two lines
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                 modifier = if (isTv) Modifier.weight(1f) else Modifier.width(118.dp),
             ) {
                 Column(Modifier.fillMaxWidth()) {
@@ -183,7 +185,9 @@ internal fun ManageTiles(
                         Text(
                             text = l.sub,
                             fontSize = 11.sp,
-                            maxLines = 1,
+                            lineHeight = 13.sp,
+                            maxLines = 2,
+                            minLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -216,10 +220,11 @@ internal fun ManageFrame(
     Box(Modifier.fillMaxSize()) {
         RequestArtUrl(art)
         Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(0.6f).fillMaxHeight()) { content(Modifier.fillMaxSize()) }
+            // Ben 2026-11-23: more room for the board (its names were cut off), the details still fit on the right
+            Box(Modifier.weight(0.68f).fillMaxHeight()) { content(Modifier.fillMaxSize()) }
             Box(
                 Modifier
-                    .weight(0.4f)
+                    .weight(0.32f)
                     .fillMaxHeight()
                     .padding(start = 18.dp, end = 32.dp, top = 112.dp),
             ) { side() }
