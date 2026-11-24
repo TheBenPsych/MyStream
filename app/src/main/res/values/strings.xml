@@ -929,6 +929,13 @@
         <item>@string/subtitle_mode_none</item>
     </string-array>
 
+    <string name="screensaver_picture">Screensaver picture</string>
+    <string name="screensaver_water_sound">Water sound</string>
+    <string name="screensaver_water_sound_summary">Quiet bubbling with the aquarium</string>
+    <string-array name="screensaver_picture_options">
+        <item>Aquarium</item>
+        <item>Movie and show art</item>
+    </string-array>
     <string-array name="home_click_to_play_options">
         <item>@string/continue_watching_click_summary_off</item>
         <item>@string/continue_watching_click_summary_on</item>

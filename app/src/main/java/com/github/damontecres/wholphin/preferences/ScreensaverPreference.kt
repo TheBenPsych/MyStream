@@ -18,6 +18,34 @@ object ScreensaverPreference {
             summaryOff = R.string.no,
         )
 
+    /** Glowfin: the Coral Reef aquarium is the default; true = aquarium, false = movie and show art */
+    val Picture =
+        AppChoicePreference<AppPreferences, Boolean>(
+            title = R.string.screensaver_picture,
+            defaultValue = true,
+            getter = { it.interfacePreferences.screensaverPreference.style != STYLE_MOVIES },
+            setter = { prefs, value ->
+                prefs.updateScreensaverPreferences { style = if (value) "" else STYLE_MOVIES }
+            },
+            displayValues = R.array.screensaver_picture_options,
+            indexToValue = { it == 0 },
+            valueToIndex = { if (it) 0 else 1 },
+        )
+
+    const val STYLE_MOVIES = "movies"
+
+    val WaterSound =
+        AppSwitchPreference<AppPreferences>(
+            title = R.string.screensaver_water_sound,
+            defaultValue = false,
+            getter = { it.interfacePreferences.screensaverPreference.waterSound },
+            setter = { prefs, value ->
+                prefs.updateScreensaverPreferences { waterSound = value }
+            },
+            summaryOn = R.string.screensaver_water_sound_summary,
+            summaryOff = R.string.no,
+        )
+
     const val DEFAULT_START_DELAY = 15 * 60_000L
     private val startDelayValues =
         listOf(

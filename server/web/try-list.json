@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "reef-screensaver", "title": "New Coral Reef aquarium screensaver (now the default): detailed fish that swim side to side, a night version from 10 PM to 7 AM, a small clock that moves corners, and an optional water sound. Check it runs smoothly on the 85-inch TCL", "where": "TV \u00b7 Settings > Screensaver > Start screensaver", "date": "Nov 24"},
     {"id": "side-menu-tile-rail", "title": "New side menu: rounded square tiles, and opening it slides the page over (the wallpaper, clock and scores stay put) with no extra darkening", "where": "TV and browser · any page, press Left", "date": "Nov 24"},
     {"id": "score-icons-row", "title": "Scores as small icons under the year and time (gold star, tomato or splat, no % signs); the top right shows just the clock", "where": "TV and browser · Home, Movies, Shows, Anime and Search", "date": "Nov 24"},
     {"id": "home-words-fast", "title": "Speed: the name, episode and story at the top change almost at once when you stop on a poster (the wallpaper still waits half a second); brightness checks use a tiny copy so scrolling feels lighter", "where": "TV · Home, move along a row", "date": "Nov 24"},
