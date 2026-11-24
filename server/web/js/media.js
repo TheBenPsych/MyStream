@@ -920,9 +920,11 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   });
   B.facts(it).then((html) => tp.setStoryExtra(html));
   B.catchUp(it, target, nav);
+  loadLoved();
   $("#bMore").onclick = () => B.tpMore(it.Name, [
     { label: ud.Played ? "Mark the whole show as not watched" : "Mark the whole show as watched", icon: "check", onClick: () => B.busy(null, async () => { await B.markWatched(it, !ud.Played); B.render(); return "Done."; }) },
-    B.me.kids ? null : { label: "Rate", icon: "thumb", onClick: () => B.rate(it) },
+    // Design check (Ben 2026-11-24): shows your choice (Liked / Loved / Not for me) like the movie page
+    B.me.kids ? null : { label: B.rateLabel(it), icon: "thumb", onClick: () => B.rate(it) },
     // Glowfin app for computers: the season showing now, saved to watch with no connection
     B.offline && B.offline.can() ? { label: "Download this season", icon: "dl", onClick: () => { const on = $("#seasons .chip.on"); B.offline.season(it, on ? on.dataset.season : "", on ? on.textContent.trim() : "").catch((err) => B.toast(B.say(err))); } } : null,
     B.me.kids || !target ? null : { label: `Play S${target.ParentIndexNumber} E${target.IndexNumber} on TV`, icon: "tv", onClick: () => B.playOnTv(target) },

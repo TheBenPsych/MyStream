@@ -11,6 +11,9 @@
 "use strict";
 
 const recentKey = () => "benflix.search." + B.me.id;
+// Design check (Ben 2026-11-24): Back from a result lands on the same results and the same card straight away,
+// instead of "Looking…" while everything is asked for again. The last results are kept for 10 minutes.
+let lastShown = null;
 B.route(/^\/search/, async (m, nav) => {
   const kids = B.me.kids;
   B.page().innerHTML = B.top("Search", null) + `<div class="srch"><div class="searchtop sx-top"><label class="sx-box">${I("search")}<input class="field" id="sq" placeholder="Search movies, shows, music, books and people" autocomplete="off" value="${esc(B.q("q") || "")}"></label>
@@ -290,6 +293,19 @@ B.route(/^\/search/, async (m, nav) => {
       return;
     }
     if (e.target.closest("a,[data-ask]")) remember();
+    const link = e.target.closest("#sres a[href]");
+    if (link) lastShown = { q: box.value, rows: $("#sres").innerHTML, best: $("#best").innerHTML, kinds: $("#skinds").innerHTML, href: link.getAttribute("href"), at: Date.now() };
   });
+  const kept = lastShown;
+  lastShown = null;
+  if (kept && kept.q === box.value && box.value.trim() && Date.now() - kept.at < 600000) {
+    dtop.hidden = false;
+    $("#sres").innerHTML = kept.rows;
+    $("#best").innerHTML = kept.best;
+    $("#skinds").innerHTML = kept.kinds;
+    const back = Array.from(document.querySelectorAll("#sres a[href]")).find((a) => a.getAttribute("href") === kept.href);
+    if (back) back.focus();
+    return;
+  }
   run(box.value);
 });
