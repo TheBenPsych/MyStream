@@ -261,27 +261,27 @@ fun ChannelsPage(
                         navigationManager = viewModel.navigationManager,
                         modifier = placed.padding(start = if (wide) liveEdges(isTv) else 0.dp),
                     )
-                    return@key
-                }
-                BoxWithConstraints(modifier = placed) {
-                    // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
-                    val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
-                    val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
-                    GuideGrid(
-                        all = list,
-                        list = shown,
-                        halfHours = halfHours,
-                        dpm = dpm,
-                        viewModel = viewModel,
-                        frame = frame,
-                        // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
-                        nowNext = maxWidth < 600.dp,
-                        view = frame.section,
-                        wideLook = wide && maxWidth >= 600.dp,
-                        pageHeight = pageHeight,
-                        artPick = artPick,
-                        deep = deep,
-                    )
+                } else {
+                    BoxWithConstraints(modifier = placed) {
+                        // Two hours across on a TV, an hour and a half on a phone (less the page's own side margins)
+                        val halfHours = if (maxWidth < 600.dp) 3L else GUIDE_HOURS * 2
+                        val dpm = ((maxWidth - CHANNEL_COL - 24.dp - liveEdges(isTv)).value / (halfHours * 30f)).coerceAtLeast(1f)
+                        GuideGrid(
+                            all = list,
+                            list = shown,
+                            halfHours = halfHours,
+                            dpm = dpm,
+                            viewModel = viewModel,
+                            frame = frame,
+                            // Glowfin L1: an upright phone gets a simple Now / Next list instead of the grid
+                            nowNext = maxWidth < 600.dp,
+                            view = frame.section,
+                            wideLook = wide && maxWidth >= 600.dp,
+                            pageHeight = pageHeight,
+                            artPick = artPick,
+                            deep = deep,
+                        )
+                    }
                 }
             }
         }
