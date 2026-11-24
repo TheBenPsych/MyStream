@@ -123,7 +123,10 @@ fun ErrorMessage(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.widthIn(max = 520.dp),
         ) {
-            BenflixMark(size = 40.dp, modifier = Modifier.padding(bottom = 8.dp))
+            // New look (Ben 2026-11-22): a soft little picture, one plain sentence and one clear white button
+            SoftArtTile(modifier = Modifier.padding(bottom = 8.dp)) {
+                BenflixIconImage(BenflixIcon.WARNING, BenflixColors.Text, 40.dp)
+            }
             Text(
                 text = friendly.title,
                 fontSize = BenflixType.pageTitle,
@@ -142,9 +145,12 @@ fun ErrorMessage(
                 modifier = Modifier.padding(top = 10.dp),
             ) {
                 if (back != null) {
-                    TextButton(
+                    com.github.damontecres.wholphin.ui.music.MusicButton(
+                        label = "Go back",
+                        icon = null,
                         onClick = { back.onBackPressedDispatcher.onBackPressed() },
-                    ) { Text("Go back") }
+                        primary = true,
+                    )
                 }
                 TextButton(
                     onClick = {

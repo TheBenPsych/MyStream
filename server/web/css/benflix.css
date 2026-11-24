@@ -3075,3 +3075,17 @@ html.kids .mcard:hover .im, html.kids .mcard:focus-visible .im {
 }
 html.kids .door:focus-visible, .kbtn:hover, .kbtn:focus-visible { transform: none; }
 .clock { padding: 1px 12px; border-radius: 30px; background: rgba(11, 13, 26, .35); }
+
+/* Glowfin new look, "Friendly empty and error pages" (Ben 2026-11-22): the icon sits on a soft little picture
+   (night water, the logo's glow and a fin), drawn from gradients and one tiny inline shape, nothing to load. */
+.empty-page .tile {
+  width: 240px; height: 150px; border-radius: 22px; border: 0; color: #ECEEFB;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 150'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23A55BE0'/%3E%3Cstop offset='.6' stop-color='%231FA8E6'/%3E%3Cstop offset='1' stop-color='%233FE0E8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M130 96Q144 57 168 45Q161 72 178 96Z' fill='url(%23g)' opacity='.85'/%3E%3Cg fill='none' stroke='%233FE0E8' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M20 99q12-4 24 0t24 0 24 0 24 0 24 0 24 0 24 0 24 0' opacity='.55'/%3E%3Cpath d='M34 114q12-4 24 0t24 0 24 0 24 0 24 0 24 0 24 0' opacity='.4'/%3E%3Cpath d='M48 129q12-4 24 0t24 0 24 0 24 0 24 0' opacity='.25'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat,
+    linear-gradient(180deg, transparent 55%, rgba(11, 13, 26, .7)),
+    radial-gradient(85% 120% at 72% 32%, rgba(165, 91, 224, .55), rgba(31, 168, 230, .28) 45%, #12152A);
+}
+.empty-page .tile .i { width: 44px; height: 44px; position: relative; top: -22px; left: -40px; }
+.empty-page .acts .btn:first-child { background: #fff; color: #1B1F3A; }
+html.kids .empty-page .tile { background: radial-gradient(85% 120% at 72% 32%, var(--kacc), #12152A); }
+@media (max-width: 760px) { .empty-page { flex-direction: column; text-align: center; gap: 18px; padding: 40px 20px; } .empty-page .tile { width: 180px; height: 112px; } }

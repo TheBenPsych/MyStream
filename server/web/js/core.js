@@ -521,7 +521,8 @@ B.say = (e) => {
 };
 B.fail = (e) => {
   console.error(e);
-  B.page().innerHTML = B.top("") + `<div class="center"><div><div class="h1">Something went wrong</div><p class="sub" style="overflow-wrap:anywhere;max-width:560px">${esc(B.say(e))}</p><button class="btn white" onclick="B.render()">Try again</button></div></div>`;
+  // New look: the soft picture, one plain sentence and one white button
+  B.page().innerHTML = B.top("") + B.emptyPage("info", "Something went wrong", B.say(e), `<button class="btn white" onclick="B.render()">Try again</button>`);
   B.wireTop();
 };
 window.addEventListener("hashchange", B.render);

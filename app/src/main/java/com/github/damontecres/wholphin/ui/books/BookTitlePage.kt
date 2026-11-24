@@ -110,8 +110,13 @@ fun BookTitlePage(
     if (p == null) {
         Column(Modifier.fillMaxSize().padding(edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (problem != null) {
-                Text(problem!!, color = BenflixColors.Soft, fontSize = BenflixType.body)
-                MusicButton("Try again", BenflixIcon.REFRESH, onClick = viewModel::reload)
+                // New look: the soft picture, one sentence and one white button
+                com.github.damontecres.wholphin.ui.components.ProblemPage(
+                    title = "Couldn't open this book",
+                    line = problem!!,
+                    icon = BenflixIcon.BOOK,
+                    onClick = viewModel::reload,
+                )
             }
         }
         return

@@ -183,44 +183,37 @@ fun MusicDoorPage(
     val sections = remember { musicSections() }
 
     if (state.loaded && state.rows.isEmpty()) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = modifier.fillMaxSize().padding(start = side(wide), end = side(wide), top = overlap + 40.dp),
-        ) {
-            Text(
-                text =
-                    when {
-                        state.noMusic -> "No music on Glowfin yet"
-                        else -> "Couldn't reach Glowfin"
-                    },
-                color = BenflixColors.Text,
-                fontFamily = GlowfinDisplayFont,
-                fontSize = BenflixType.pageTitle,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                text =
-                    if (state.noMusic) {
-                        "Once Tower has a Music library, your songs and playlists show up here."
-                    } else {
-                        "Check the TV is online, then try again."
-                    },
-                color = BenflixColors.Soft,
-                fontSize = BenflixType.body,
-            )
-            if (!state.noMusic) {
-                val retry = remember { FocusRequester() }
-                MusicButton(
-                    "Try again",
-                    BenflixIcon.REFRESH,
-                    onClick = viewModel::retry,
-                    primary = true,
-                    modifier = Modifier.focusRequester(retry),
-                )
-                LaunchedEffect(Unit) {
-                    delay(80)
-                    if (isTv) retry.tryRequestFocus()
-                }
+        // New look: the soft picture, one sentence and one white button
+        val retry = remember { FocusRequester() }
+        com.github.damontecres.wholphin.ui.components.EmptyPage(
+            icon = if (state.noMusic) BenflixIcon.NOTE else BenflixIcon.WARNING,
+            title = if (state.noMusic) "No music on Glowfin yet" else "Couldn't reach Glowfin",
+            line =
+                if (state.noMusic) {
+                    "Once Tower has a Music library, your songs and playlists show up here."
+                } else {
+                    "Check the TV is online, then try again."
+                },
+            modifier = modifier.padding(top = overlap),
+            buttons =
+                if (state.noMusic) {
+                    null
+                } else {
+                    {
+                        MusicButton(
+                            "Try again",
+                            BenflixIcon.REFRESH,
+                            onClick = viewModel::retry,
+                            primary = true,
+                            modifier = Modifier.focusRequester(retry),
+                        )
+                    }
+                },
+        )
+        if (!state.noMusic) {
+            LaunchedEffect(Unit) {
+                delay(80)
+                if (isTv) retry.tryRequestFocus()
             }
         }
         return
