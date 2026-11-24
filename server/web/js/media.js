@@ -78,10 +78,26 @@ B.wireDescribe = (first, opts) => {
         const rate = it.OfficialRating || show.OfficialRating;
         if (!scores && !rate) return;
         const old = $(".info .dt-icons", top);
+        // An anime's AniList and MyAnimeList scores are already there: keep them
+        if ($(".info", top).dataset.anime === it.SeriesId) return;
         const html = B.scoreIcons(rate, scores);
         if (old) old.outerHTML = html;
         else { const ov = $(".info .ov", top); if (ov) ov.insertAdjacentHTML("beforebegin", html); }
       }).catch(() => {});
+    }
+    // Anime: AniList and MyAnimeList scores in place of IMDb, like the TV and phone (Ben 2026-11-24)
+    const info = $(".info", top);
+    delete info.dataset.anime;
+    const showId = it.Type === "Episode" ? it.SeriesId : /^(Movie|Series)$/.test(it.Type || "") ? it.Id : "";
+    if (showId && B.animeScores && !(B.me && B.me.kids)) {
+      B.animeIds(it.Type === "Movie" ? "Movie" : "Series")
+        .then((ids) => (ids.has(showId) ? B.animeScores(it.Type === "Episode" ? { Id: showId, Name: it.SeriesName, Type: "Series", ProviderIds: {} } : it) : null))
+        .then((sc) => {
+          if (shown !== it || !sc || (!sc.al && !sc.mal)) return;
+          B.putAnimeScores(info, sc);
+          info.dataset.anime = showId;
+        })
+        .catch(() => {});
     }
     const src = artOf(it);
     const art = $(".art", top);

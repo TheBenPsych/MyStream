@@ -5,6 +5,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -23,7 +24,7 @@ import javax.inject.Singleton
  * so the AniList and MyAnimeList scores and fan genres (Isekai, Shounen...) show on cards and
  * info lines everywhere, not only after a show's own page has been opened.
  *
- * Runs when Home loads, at most once every few hours per library. The matches are saved on the
+ * Runs when Home, Movies, Shows or Anime loads, at most once every few hours per library. The matches are saved on the
  * device for a week, so after the first run only new titles are looked up.
  */
 @Singleton
@@ -50,6 +51,18 @@ class AniListLibraries
             if (due.isEmpty()) return
             job =
                 scope.launch {
+                    // First the scores already saved on the device, so anime shows AniList and MyAnimeList
+                    // right away on every page (no waiting on the server, nothing asked again)
+                    try {
+                        malScores.publishSaved()
+                        due.forEach { aniList.publishSaved(it) }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not read the saved AniList matches")
+                    }
+                    // Then the new titles, a little later so the page's own rows load first on slower TVs
+                    delay(SETTLE_MS)
                     val malIds = mutableListOf<Int>()
                     due.forEach { id ->
                         try {
@@ -106,5 +119,6 @@ class AniListLibraries
         companion object {
             private const val PAGE = 500
             private const val AGAIN_MS = 6L * 60 * 60 * 1000
+            private const val SETTLE_MS = 8_000L
         }
     }

@@ -176,6 +176,56 @@
     try { localStorage.setItem("benflix.anilist." + it.Id, JSON.stringify({ at: Date.now(), m })); } catch (e) {}
     return m;
   });
+  // ---------- Anime scores (Ben 2026-11-24): AniList + MyAnimeList instead of IMDb, like the TV and phone ----------
+  // Saved in this browser (a week; a title AniList doesn't know is looked for again the next day), so opening
+  // Glowfin again doesn't ask again.
+  const kept = (k, ms) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v && Date.now() - v.at < ms ? v : null; } catch (e) { return null; } };
+  const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(Object.assign({ at: Date.now() }, v))); } catch (e) {} };
+  // Jikan (a free MyAnimeList reader) allows about one question a second, so they wait their turn
+  let jikanLine = Promise.resolve();
+  const jikan = (idMal) => {
+    const run = jikanLine.then(() => fetch(`https://api.jikan.moe/v4/anime/${idMal}`).then((r) => (r.ok ? r.json() : r.status === 404 ? {} : Promise.reject(new Error("Jikan " + r.status)))));
+    jikanLine = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 1200)));
+    return run;
+  };
+  const malScore = (idMal) => B.cached("mal-" + idMal, 3600000, async () => {
+    const saved = kept("benflix.mal." + idMal, 7 * 86400000);
+    if (saved) return saved.s;
+    const d = await jikan(idMal);
+    const sc = (d && d.data && d.data.score) || null;
+    keep("benflix.mal." + idMal, { s: sc });
+    return sc;
+  });
+  const tenth = (x) => (x ? (+x).toFixed(1) : null);
+  // { al: "7.4", mal: "7.1" } for an anime movie or show (either can be null), or null when AniList doesn't know it
+  B.animeScores = (it) => B.cached("anis-" + it.Id, 3600000, async () => {
+    let s = kept("benflix.aniscore." + it.Id, 7 * 86400000);
+    if (s && !s.found && Date.now() - s.at > 86400000) s = null;
+    if (!s) {
+      const m = await aniInfo(it);
+      s = { found: !!m, score: m ? m.averageScore || m.meanScore || null : null, idMal: m ? m.idMal || null : null };
+      keep("benflix.aniscore." + it.Id, s);
+    }
+    if (!s.found) return null;
+    const mal = s.idMal ? await malScore(s.idMal).catch(() => null) : null;
+    return { al: s.score ? tenth(s.score / 10) : null, mal: tenth(mal) };
+  });
+  // Puts the anime scores in the score icons row inside [scope] (made under the year line when there's none),
+  // in place of IMDb, Rotten Tomatoes and Metacritic
+  B.putAnimeScores = (scope, s) => {
+    if (!scope || !s || (!s.al && !s.mal)) return;
+    const html = [s.al && `<span data-s="al"><b>${esc(s.al)}</b>AniList</span>`, s.mal && `<span data-s="mal"><b>${esc(s.mal)}</b>MAL</span>`].filter(Boolean).join("");
+    let line = scope.querySelector(".tp-scores");
+    if (!line) {
+      const meta = scope.querySelector(".meta");
+      if (!meta) return;
+      meta.insertAdjacentHTML("afterend", B.scoreIcons("", "", "", scope.classList.contains("tp") ? "tp-icons" : ""));
+      line = scope.querySelector(".tp-scores");
+      if (!line) return;
+    }
+    scope.dataset.anime = "1";
+    line.innerHTML = html;
+  };
   X.anime = async (it, nav, box, charBox) => {
     const ids = await B.animeIds(it.Type === "Movie" ? "Movie" : "Series").catch(() => new Set());
     if (!ids.has(it.Id)) return;
@@ -185,13 +235,9 @@
     const t = $(".details h1.t");
     const romaji = m.title && m.title.romaji;
     if (t && romaji && clean(romaji) !== clean(it.Name) && !$(".details .t2")) t.insertAdjacentHTML("afterend", `<div class="t2">${esc(romaji)}</div>`);
-    // AniList score on the scores line
-    const score = m.averageScore || m.meanScore;
-    if (score && !B.me.kids) {
-      const s = $(".details .scores");
-      const html = `<span data-s="al"><b>${score}%</b>AniList</span>${m.idMal ? `<a href="https://myanimelist.net/anime/${m.idMal}" target="_blank" rel="noopener" class="dim" style="align-self:center">MyAnimeList ↗</a>` : ""}`;
-      if (s) s.insertAdjacentHTML("beforeend", html);
-      else { const meta = $(".details .meta"); if (meta) meta.insertAdjacentHTML("afterend", `<div class="scores">${html}</div>`); }
+    // AniList and MyAnimeList scores in the score icons row, in place of IMDb (Ben 2026-11-24)
+    if (!B.me.kids) {
+      B.animeScores(it).then((sc) => { if (B.alive(nav)) B.putAnimeScores($(".details"), sc); }).catch(() => {});
     }
     // Episode 9 out Saturday 5:30 PM · in 2 days
     const na = m.nextAiringEpisode;
@@ -234,7 +280,8 @@
       const m = r && r.Metascore;
       return m && /^\d+$/.test(m) ? m : "";
     }).catch(() => "");
-    if (!score || !B.alive(nav)) return;
+    // Anime shows AniList and MyAnimeList instead
+    if (!score || !B.alive(nav) || ($(".details") && $(".details").dataset.anime)) return;
     const html = `<span data-s="mc"><b>${esc(score)}</b>Metacritic</span>`;
     const line = $(".tp-scores") || $(".details .scores") || $(".tp-strip");
     if (line && !line.querySelector('[data-s="mc"]')) line.insertAdjacentHTML("beforeend", html);

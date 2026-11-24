@@ -91,6 +91,9 @@ class MalScores
             }
         }
 
+        /** Shows every MyAnimeList score saved on the device, without asking Jikan */
+        suspend fun publishSaved() = withContext(WholphinDispatchers.IO) { load() }
+
         @Synchronized
         private fun load() {
             if (loaded) return
