@@ -222,23 +222,26 @@ B.route(/^\/home$/, async (m, nav) => {
 B.loadHomeRows = async (nav) => {
   const u = B.uid(), F = B.FIELDS;
   const get = (path) => B.get(path).then((r) => B.keep(r.Items || [])).catch(() => []);
-  const animeShows = (await B.libs("shows")).filter(B.isAnimeLib);
-  const [movies, eps, next, freshM, freshS, topM, topS, again, missing, released] = await Promise.all([
+  // Speed check 2026-11-24: the first three rows draw as soon as they're ready, and the slower rows (Top 10,
+  // Just released, trending, anime) join below them when they arrive, so Home never waits for its slowest row.
+  // Everything is asked for at the same time (anime airing and Because you watched used to wait their turn).
+  const later = Promise.all([
+    B.trending ? B.trending("Movie").catch(() => []) : [],
+    B.trending ? B.trending("Series").catch(() => []) : [],
+    get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&Filters=IsPlayed&MinCommunityRating=7&SortBy=Random&Limit=20&ImageTypes=Primary&Fields=${F}`),
+    B.trendingMissing ? B.trendingMissing().catch(() => []) : [],
+    B.justReleased ? B.justReleased({ movies: true, shows: true }).catch(() => []) : [],
+    B.libs("shows").then((libs) => Promise.all(libs.filter(B.isAnimeLib).map((l) => get(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SeriesStatus=Continuing&SortBy=DateLastContentAdded&SortOrder=Descending&Limit=20&ImageTypes=Primary&Fields=${F}`)))).then((ls) => ls.flat()).catch(() => []),
+    get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=1&Fields=${F}`)
+      .then(async (played) => ({ played: played[0], because: played[0] ? await get(`/Items/${played[0].Id}/Similar?userId=${u}&Limit=20&Fields=${F}`) : [] })),
+  ]);
+  const [movies, eps, next, freshM, freshS] = await Promise.all([
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Movie&Limit=20&Fields=${F}`),
     get(`/UserItems/Resume?userId=${u}&IncludeItemTypes=Episode&Limit=20&Fields=${F}`).then((l) => l.filter((e) => !B.watchedEp(e))),
     get(`/Shows/NextUp?userId=${u}&Limit=24&Fields=${F}&enableResumable=false&enableRewatching=false`),
     get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=20&Fields=${F}`),
     get(`/Items?userId=${u}&IncludeItemTypes=Series&Recursive=true&SortBy=DateCreated&SortOrder=Descending&Limit=20&Fields=${F}`),
-    B.trending ? B.trending("Movie").catch(() => []) : [],
-    B.trending ? B.trending("Series").catch(() => []) : [],
-    get(`/Items?userId=${u}&IncludeItemTypes=Movie,Series&Recursive=true&Filters=IsPlayed&MinCommunityRating=7&SortBy=Random&Limit=20&ImageTypes=Primary&Fields=${F}`),
-    B.trendingMissing ? B.trendingMissing() : [],
-    B.justReleased ? B.justReleased({ movies: true, shows: true }) : [],
   ]);
-  const airing = [];
-  for (const l of animeShows) airing.push(...(await get(`/Items?userId=${u}&ParentId=${l.Id}&IncludeItemTypes=Series&Recursive=true&SeriesStatus=Continuing&SortBy=DateLastContentAdded&SortOrder=Descending&Limit=20&ImageTypes=Primary&Fields=${F}`)));
-  const played = await get(`/Items?userId=${u}&IncludeItemTypes=Movie&Recursive=true&Filters=IsPlayed&SortBy=DatePlayed&SortOrder=Descending&Limit=1&Fields=${F}`);
-  const because = played[0] ? await get(`/Items/${played[0].Id}/Similar?userId=${u}&Limit=20&Fields=${F}`) : [];
   if (!B.alive(nav) || !$("#rows")) return;
   const seen = new Set();
   const cont = movies.concat(eps)
@@ -247,23 +250,30 @@ B.loadHomeRows = async (nav) => {
   const card = (it) => (it.Type === "Episode"
     ? B.posterCard(Object.assign({}, it, { Name: it.SeriesName }), { href: B.hrefOf(it), sub: `S${it.ParentIndexNumber} E${it.IndexNumber}`, noTick: true, progress: true })
     : B.posterCard(it, { progress: true }));
-  const top = [];
-  for (let i = 0; i < 10 && top.length < 10; i++) { if (topM[i]) top.push(topM[i]); if (topS[i]) top.push(topS[i]); }
   const fresh = freshM.concat(freshS).sort((a, b) => String(b.DateCreated || "").localeCompare(String(a.DateCreated || ""))).slice(0, 20);
   $("#rows").innerHTML = [
     B.row("Keep watching", cont.slice(0, 20).map(card)),
     B.row("Up next", next.map(card)),
     B.row("Recently added", fresh.map((it) => B.posterCard(it, { markNew: true }))),
-    B.row("Top 10 this week", B.top10(top.slice(0, 10))),
-    B.row("Just released", released),
-    played[0] && because.length >= 5 ? B.row(`Because you watched ${played[0].Name}`, because.map((it) => B.posterCard(it))) : "",
-    B.row("Trending, not on Glowfin", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
-    B.row("Anime airing this season", airing.slice(0, 20).map((it) => B.posterCard(it))),
-    B.row("Watch it again", again.map((it) => B.posterCard(it))),
   ].join("");
   B.wireDescribe(cont[0] || next[0] || fresh[0]);
   const f = $("#rows .poster"); if (f) f.focus({ preventScroll: true });
   B.loadHomeNotices(nav);
+  const [topM, topS, again, missing, released, airing, bec] = await later;
+  const rows = $("#rows");
+  if (!B.alive(nav) || !rows) return;
+  const top = [];
+  for (let i = 0; i < 10 && top.length < 10; i++) { if (topM[i]) top.push(topM[i]); if (topS[i]) top.push(topS[i]); }
+  rows.insertAdjacentHTML("beforeend", [
+    B.row("Top 10 this week", B.top10(top.slice(0, 10))),
+    B.row("Just released", released),
+    bec.played && bec.because.length >= 5 ? B.row(`Because you watched ${bec.played.Name}`, bec.because.map((it) => B.posterCard(it))) : "",
+    B.row("Trending, not on Glowfin", missing.map(({ r, kind }) => (B.askCard ? B.askCard(Object.assign({ mediaType: kind === "movies" ? "movie" : "tv" }, r)) : ""))),
+    B.row("Anime airing this season", airing.slice(0, 20).map((it) => B.posterCard(it))),
+    B.row("Watch it again", again.map((it) => B.posterCard(it))),
+  ].join(""));
+  // Nothing in the first three rows (a brand new profile): the highlight goes to the first row that arrived later
+  if (!$("#rows .poster:focus") && !cont.length && !next.length && !fresh.length) { const g = $("#rows .poster"); if (g) g.focus({ preventScroll: true }); }
 };
 
 // Kids: Picked for you (Ben's picks), then one Keep watching row with names under the pictures
