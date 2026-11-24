@@ -238,6 +238,7 @@ fun <T> ComposablePreference(
                 value = value as Long,
                 onChange = { onValueChange(it as T) },
                 summaryBelow = false,
+                explain = preference.explain?.let { stringResource(it) },
                 interactionSource = interactionSource,
                 modifier = modifier,
             )
