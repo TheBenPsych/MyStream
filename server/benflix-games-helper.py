@@ -107,6 +107,11 @@ try:  # Tower's jobs list, nightly safety copy, away check and the "Try these" l
 except ImportError:
     keeper = None
 
+try:  # Server > Health: the black box, crash notebook, parts and changes diary, in benflix_health.py
+    import benflix_health as health
+except ImportError:
+    health = None
+
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
@@ -224,7 +229,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 17
+SETUP_VERSION = 18
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 # 2026-11-21: autosetup now also keeps Harbor on its newest build
@@ -2647,6 +2652,11 @@ if __name__ == "__main__":
         if arrivals is not None:
             keeper.job("arrivals", "Keep first dates when a better copy arrives", "Every few minutes", arrivals, "check")
         keeper.job("doctor", "Fix asks that got stuck", "Every hour")
+        if health is not None:
+            health.start(tools)
+            health.register(keeper)
+            if tools is not None:
+                tools.HEALTH = health.summary  # the Server page's Health dot and Overview line
         if books is not None:
             keeper.job("books", "Look for new books and audiobooks", "Every 10 minutes", books, "scan", run=lambda: books.scan())
     threading.Thread(

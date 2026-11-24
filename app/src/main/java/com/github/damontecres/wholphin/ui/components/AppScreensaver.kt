@@ -171,7 +171,7 @@ fun AppScreensaverContent(
 
             is ScreensaverItem.Error -> {
                 ScreensaverPlaceholder(
-                    text = "Can't reach Tower right now.",
+                    text = "Tower is restarting or offline. It's usually back in a few minutes.",
                     duration = duration,
                     modifier = Modifier.fillMaxSize(),
                 )

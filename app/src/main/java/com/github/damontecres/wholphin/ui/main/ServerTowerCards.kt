@@ -4,11 +4,15 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -44,6 +48,8 @@ data class TowerCardRow(
     val actions: List<TowerCardAction>,
     /** A page inside Jellyfin's own dashboard (like "#/dashboard/logs") this row can open, on phones */
     val link: String? = null,
+    /** Server > Health's "Last 24 hours": readings oldest first, null where there's none, drawn as a small line */
+    val spark: List<Float?>? = null,
 )
 
 /**
@@ -59,6 +65,9 @@ data class TowerCard(
     /** What Tower said after the last button press, like "Safety copy made: 412 MB." */
     val said: String? = null,
     val failed: String? = null,
+    /** Text to copy for Claude (phones only), and the button's words */
+    val copy: String? = null,
+    val copyLabel: String? = null,
 )
 
 private fun JSONArray?.cardActions(): List<TowerCardAction> =
@@ -86,8 +95,13 @@ private fun cardOf(j: JSONObject): TowerCard =
                         it.optString("s"),
                         it.optJSONArray("acts").cardActions(),
                         it.optString("link").takeIf { link -> link.startsWith("#/") },
+                        it.optJSONArray("spark")?.let { a ->
+                            (0 until a.length()).map { i -> if (a.isNull(i)) null else a.optDouble(i).toFloat() }
+                        },
                     )
                 },
+        copy = j.optString("copy").takeIf { it.isNotBlank() },
+        copyLabel = j.optString("copy_label").takeIf { it.isNotBlank() },
     )
 
 private fun lightOf(word: String): Light =
@@ -207,12 +221,24 @@ private fun TowerCardRows(
                             card.reason.takeIf { it.isNotBlank() },
                         ).joinToString(" · ").takeIf { it.isNotBlank() },
                     leading = { Dot(lightOf(card.level)) },
-                    actions = card.actions.map { a -> a.label to { viewModel.press(name, a) } },
+                    actions =
+                        card.actions.map { a -> a.label to { viewModel.press(name, a) } } +
+                            // A report to paste to Claude: phones only (a TV has nowhere to paste it)
+                            listOfNotNull(
+                                card.copy?.takeIf { !isTv }?.let { text ->
+                                    (card.copyLabel ?: "Copy for Claude") to {
+                                        val clip = context.getSystemService(android.content.ClipboardManager::class.java)
+                                        clip?.setPrimaryClip(android.content.ClipData.newPlainText("Glowfin report", text))
+                                        Toast.makeText(context, "Copied. Paste it to Claude.", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            ),
                 )
                 card.rows.take(max).forEach { r ->
                     ServerActionRow(
                         headline = r.title,
                         supporting = r.sub.takeIf { it.isNotBlank() },
+                        extra = r.spark?.let { points -> @Composable { SparkLine(points) } },
                         leading = { Dot(lightOf(r.light)) },
                         actions =
                             r.actions.map { a -> a.label to { viewModel.press(name, a) } } +
@@ -240,5 +266,46 @@ private fun TowerCardRows(
                 }
             }
         }
+    }
+}
+
+/** A small line graph (Server > Health's "Last 24 hours"): oldest on the left, gaps where Tower had no reading */
+@Composable
+private fun SparkLine(points: List<Float?>) {
+    val have = points.filterNotNull()
+    if (have.size < 2) return
+    val lo = have.min()
+    val span = (have.max() - lo).takeIf { it > 0f } ?: 1f
+    val color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Shows
+    androidx.compose.foundation.Canvas(
+        modifier =
+            androidx.compose.ui.Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth(0.9f)
+                .height(40.dp),
+    ) {
+        val step = size.width / (points.size - 1).coerceAtLeast(1)
+        val path = Path()
+        var pen = false
+        points.forEachIndexed { i, v ->
+            if (v == null) {
+                pen = false
+                return@forEachIndexed
+            }
+            val x = i * step
+            val y = size.height - 2f - (v - lo) / span * (size.height - 4f)
+            if (pen) path.lineTo(x, y) else path.moveTo(x, y)
+            pen = true
+        }
+        drawPath(
+            path,
+            color = color,
+            style =
+                androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 2.dp.toPx(),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                ),
+        )
     }
 }

@@ -35,11 +35,24 @@ function jellyfinPage(c) {
   const home = /^[\d.]+$/.test(host) || !host.includes(".") || host.includes(":");
   return (home || !c.internet ? `http://${host.includes(":") ? `[${host}]` : host}:${port}` : String(c.internet).replace(/\/+$/, "")) + "/web/";
 }
+// Server > Health "Last 24 hours" (Ben 2026-11-22): a small line from a row's "spark" numbers (null = no reading)
+function sparkSvg(points) {
+  const have = points.filter((v) => typeof v === "number");
+  if (have.length < 2) return "";
+  const lo = Math.min(...have), hi = Math.max(...have), span = hi - lo || 1, n = points.length - 1 || 1;
+  let d = "", pen = false;
+  points.forEach((v, i) => {
+    if (typeof v !== "number") { pen = false; return; }
+    d += `${pen ? "L" : "M"}${(i * 100 / n).toFixed(1)} ${(32 - (v - lo) * 28 / span).toFixed(1)} `;
+    pen = true;
+  });
+  return `<svg class="spark" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="Graph of the last 24 hours, from ${lo} to ${hi}" style="display:block;width:100%;max-width:560px;height:40px;margin-top:6px"><path d="${d.trim()}" fill="none" stroke="var(--blue,#7AA7FF)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
 function cardHtml(name, c, opts) {
   opts = opts || {};
   const rows = (c.rows || []).slice(0, opts.max || 999);
-  const list = rows.map((r) => `<div class="item"><span class="dot ${cardLight(r.light)}"></span><div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s || "")}</div></div><div class="acts">${cardActs(name, r.acts, true)}${r.link ? `<a class="btn small" target="_blank" rel="noopener" href="${esc(jellyfinPage(c) + r.link)}">Open in Jellyfin</a>` : ""}</div></div>`).join("");
-  const copy = c.copy ? `<button class="btn small" data-copy="${esc(c.copy)}">Copy the list for Claude</button>` : "";
+  const list = rows.map((r) => `<div class="item"><span class="dot ${cardLight(r.light)}"></span><div class="grow"><div class="t">${esc(r.t)}</div><div class="s">${esc(r.s || "")}</div>${r.spark ? sparkSvg(r.spark) : ""}</div><div class="acts">${cardActs(name, r.acts, true)}${r.link ? `<a class="btn small" target="_blank" rel="noopener" href="${esc(jellyfinPage(c) + r.link)}">Open in Jellyfin</a>` : ""}</div></div>`).join("");
+  const copy = c.copy ? `<button class="btn small" data-copy="${esc(c.copy)}">${esc(c.copy_label || "Copy the list for Claude")}</button>` : "";
   const banner = opts.plain ? "" : `<div class="srv-banner ${c.level === "ok" ? "" : c.level === "bad" ? "bad" : "warn"}"${c.level === "off" ? ' style="background:var(--pg2);border-color:var(--line);--c:#5A5E6B"' : ""}><div class="h"><span class="big-dot"></span>${esc(c.headline || "")}</div>${c.reason ? `<div class="r">${esc(c.reason)}</div>` : ""}${(c.acts || []).length || copy ? `<div class="pills">${cardActs(name, c.acts, true)}${copy}</div>` : ""}</div>`;
   return banner + (list ? `<div class="list">${list}</div>` : "");
 }
@@ -71,6 +84,13 @@ PAGES.addons = (el) => cardPage("addons", el);
 PAGES.animemovies = (el) => cardPage("animemovies", el);
 PAGES.convert = (el) => cardPage("convert", el);
 PAGES.jellyfin = (el) => cardPage("jellyfin", el);
+// Server > Health (Ben's picks, 2026-11-22, benflix_health.py): Tower's parts, the black box, the crash notebook and
+// the changes diary, all as Tower cards on one page
+const HEALTH_CARDS = [["health", ""], ["healthparts", "Parts"], ["health24", "Last 24 hours"], ["healthfix", "Warn me and fix it"], ["crashes", "Crash notebook"], ["diary", "Changes diary"]];
+PAGES.health = (el) => {
+  el.innerHTML = `<p class="sub">How Tower's parts are doing, and what happened just before a crash.</p>` + HEALTH_CARDS.map(([n, t]) => `${t ? `<h3 class="section-title">${esc(t)}</h3>` : ""}<div id="hc-${n}"></div>`).join("");
+  HEALTH_CARDS.forEach(([n]) => cardPage(n, el, el.querySelector(`#hc-${n}`)));
+};
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
 // (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
 const TOOL_GROUPS = [
@@ -85,6 +105,7 @@ const SECTIONS = [
   { id: "watching", label: "Watching", subs: [["now", "Right now"], ["activity", "Activity"]] },
   { id: "library", label: "Library", subs: [["library", "Library"]] },
   { id: "people", label: "People", subs: [["people", "People"]] },
+  { id: "health", label: "Health", subs: [["health", "Health"]] },
   { id: "tools", label: "Tools", subs: TOOL_GROUPS.flatMap((t) => t.subs) },
 ];
 const SUB_HOME = {};
@@ -98,7 +119,7 @@ function toolTiles(on) {
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
-const SETUP_NEEDED = 17;
+const SETUP_NEEDED = 18;
 const SETUP_WAITING = {
   1: ["Glowfin can tell you when Tower needs this command (this card)", "Anything from the last few updates that said it needs the setup command again"],
   2: ["Safer ebook reading: book pages can't run hidden code", "Other websites can't show Glowfin inside their pages"],
@@ -116,6 +137,7 @@ const SETUP_WAITING = {
   15: ["When Radarr or Sonarr swap in a better copy, the movie or episode keeps its first date and doesn't show as new again"],
   16: ["What's the hold-up? on request pages: why something you said yes to hasn't arrived yet"],
   17: ["Anime movies go into their show's Specials, in story order, and anime shows get Missing pieces"],
+  18: ["Server > Health: Tower's black box, crash check, freeze timer and changes diary"],
 };
 const SETUP_COMMAND = "true; curl -fsSL https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/benflix-games-helper-setup.sh | bash ; true";
 const setupNeed = async () => {
@@ -159,6 +181,12 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   current = sub;
   B.onLeave(() => { current = null; });
   PAGES[sub]($("#main"));
+  // Health gets a dot when a part needs a look or Tower just crashed
+  tower(false).then((t) => {
+    const l = t && t.health && t.health.level;
+    const a = document.querySelector('.srv-split nav a[href="#/server/health"]');
+    if (a && (l === "warn" || l === "bad") && !a.querySelector(".dot")) a.insertAdjacentHTML("beforeend", ` <span class="dot ${l}" aria-label="needs a look"></span>`);
+  }).catch(() => {});
 });
 
 // ---------- Tools > Tower > Setup command ----------
@@ -220,6 +248,7 @@ PAGES.overview = (el) => {
       const newSigns = ((signs && signs.items) || []).map((n) => ["warn", `New sign-in on ${n.user}'s account`, [n.device, n.away === true ? "away from home" : n.away === false ? "at home" : "", ago(n.at)].filter(Boolean).join(" · "), `<button class="btn small white" data-sign="${esc(n.id)}">That's fine</button><button class="btn small" data-sign="${esc(n.id)}" data-out="1" data-dev="${esc(n.device)}">Sign it out</button>`]);
       // Safety copy and away check only speak up here when one has a problem
       (t.notes || []).forEach((n) => health.push([n.light === "bad" ? "bad" : "warn", n.t, n.s, `<a class="btn small white" href="#/server/tools/${esc(n.go)}">Go</a>`]));
+      if (t.health && (t.health.level === "warn" || t.health.level === "bad")) health.push([t.health.level, t.health.headline, "Server > Health has the details", `<a class="btn small white" href="#/server/health/health">Go</a>`]);
       const bad = health.some((h) => h[0] === "bad");
       const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
       const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";

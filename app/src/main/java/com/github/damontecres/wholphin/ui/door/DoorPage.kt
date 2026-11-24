@@ -756,10 +756,11 @@ internal fun EmptyDoor(
     LaunchedEffect(offline) { if (offline) retryFocus.tryRequestFocus() }
     EmptyPage(
         icon = if (offline) BenflixIcon.WARNING else BenflixIcon.FILM,
-        title = if (offline) "Can't reach Tower right now" else "Nothing in $name yet",
+        // Ben 2026-11-22: Tower may just be restarting (Server > Health starts it again by itself after a crash)
+        title = if (offline) "Tower is restarting or offline" else "Nothing in $name yet",
         line =
             if (offline) {
-                "Check the internet or that Tower is on, then try again."
+                "If it's restarting, it's back in a few minutes. Away from home? Check the internet too."
             } else {
                 "Once Tower has some, they show up here."
             },

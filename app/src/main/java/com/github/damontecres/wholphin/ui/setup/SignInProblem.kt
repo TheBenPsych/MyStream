@@ -54,8 +54,8 @@ fun signInProblemFor(
         (status != null && status >= 500) || (status == null && offline) -> {
             SignInProblem(
                 kind = SignInProblemKind.CANT_REACH,
-                title = "Can't reach the Tower (is it on?)",
-                line = "Check the Tower is switched on, then try again in a minute.",
+                title = "Tower is restarting or offline",
+                line = "If it's restarting, it's back in a few minutes. Try again then.",
                 button = "Try again",
             )
         }
