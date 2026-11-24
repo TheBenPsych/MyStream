@@ -43,7 +43,7 @@ internal fun rememberImageLight(url: String?): Float? {
                     val request =
                         ImageRequest
                             .Builder(context)
-                            .data(url)
+                            .data(tinyCopyUrl(url))
                             .size(48)
                             .allowHardware(false)
                             .bitmapConfig(Bitmap.Config.ARGB_8888)
@@ -66,6 +66,30 @@ internal fun rememberImageLight(url: String?): Float? {
     }
     return light
 }
+
+/**
+ * Speed fix (Ben 2026-11-24): ask the server for a tiny copy to measure, instead of downloading and unpacking
+ * the full wallpaper or logo a second time on the TV. Only Jellyfin picture links are changed; anything else
+ * is measured as before.
+ */
+internal fun tinyCopyUrl(url: String): String {
+    if (!url.contains("/Images/", ignoreCase = true)) return url
+    val q = url.indexOf('?')
+    val base = if (q < 0) url else url.substring(0, q)
+    val kept =
+        if (q < 0) {
+            emptyList()
+        } else {
+            url
+                .substring(q + 1)
+                .split('&')
+                .filter { it.isNotEmpty() && it.substringBefore('=').lowercase() !in SIZE_KEYS }
+        }
+    return base + "?" + (kept + TINY_PARAMS).joinToString("&")
+}
+
+private val SIZE_KEYS = setOf("fillheight", "fillwidth", "maxheight", "maxwidth", "width", "height", "quality")
+private val TINY_PARAMS = listOf("maxWidth=48", "maxHeight=48", "quality=60")
 
 private fun averageLight(bitmap: Bitmap): Float? {
     val w = bitmap.width

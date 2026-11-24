@@ -275,22 +275,29 @@ internal fun WideDoor(
     // The poster you're on, and the one the top area shows (it waits half a second after you stop)
     // Speed check (Ben 2026-11-18): the poster you're on is only watched here, never read while building the page,
     // so moving along a row no longer rebuilds the whole door on every press. Only the top area changes, once you stop.
+    // Speed fix (Ben 2026-11-24, like Wholphin): the words change almost at once (a tiny settle so racing
+    // along a row stays smooth); only the wallpaper keeps the half-second wait so the screen doesn't flash.
     val focused = remember { mutableStateOf<BaseItem?>(null) }
     var shown by remember { mutableStateOf<BaseItem?>(null) }
+    var shownArt by remember { mutableStateOf<BaseItem?>(null) }
     LaunchedEffect(Unit) {
         snapshotFlow { focused.value }.collectLatest { item ->
             if (item == null) return@collectLatest
             if (shown == null) {
                 shown = item
+                shownArt = item
             } else {
-                delay(PREVIEW_DELAY_MS)
+                delay(WORDS_DELAY_MS)
                 shown = item
+                delay(PREVIEW_DELAY_MS - WORDS_DELAY_MS)
+                shownArt = item
             }
         }
     }
     // Before anything is focused (or on a touch screen), describe the first poster
     val first = state.rows.firstNotNullOfOrNull { it.items.firstOrNull() }
     val preview = shown ?: first
+    val artItem = shownArt ?: first
 
     val restore = remember { FocusRequester() }
     // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
@@ -373,7 +380,7 @@ internal fun WideDoor(
         val topHeight = (maxHeight * TOP_SHARE).coerceIn(overlap + 180.dp, overlap + 230.dp)
         var brightArt by remember { mutableStateOf(false) }
         // The art of the card you're on fills the whole page, behind the tabs and the rows too
-        DoorArt(item = preview, pageHeight = maxHeight, onBright = { brightArt = it })
+        DoorArt(item = artItem, pageHeight = maxHeight, onBright = { brightArt = it })
         if (preview != null && !easy) {
             // The score pill at the top right, under the clock (same spot as on the details pages)
             // Glowfin "94% for you" (Idea Box 28) sits under it in the empty space, laid over the page so
@@ -773,6 +780,7 @@ private val PHONE_EASY_POSTER = 170.dp
 /** How much of the screen the top (the words about the card you're on) takes, from the very top */
 private const val TOP_SHARE = 0.52f
 private const val PREVIEW_DELAY_MS = 500L
+private const val WORDS_DELAY_MS = 100L
 private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9
