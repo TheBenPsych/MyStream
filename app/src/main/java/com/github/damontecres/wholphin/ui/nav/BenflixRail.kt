@@ -831,75 +831,79 @@ private fun RailButton(
     val quiet = LocalRailQuiet.current
     var hasFocus by remember { mutableStateOf(false) }
     val focused = hasFocus && !quiet
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                // The page you're on sits in a soft aqua rounded square (side menu A)
-                containerColor =
-                    when {
-                        highlighted -> BenflixColors.FocusRow
-                        on -> CURRENT_TILE
-                        else -> Color.Transparent
-                    },
-                contentColor = BenflixColors.Text,
-                focusedContainerColor = Color.Transparent,
-                focusedContentColor = OnWhiteText,
-            ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier =
-            modifier
-                .height(ITEM * scale)
-                .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
-                .onFocusChanged { hasFocus = it.isFocused },
-    ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .railLit(focused, shape),
+    // Ben 2026-11-24: the Requests number sits on a box around the rounded square, not inside it, so the square's
+    // rounded corner no longer cuts the number's circle off (the tucked rail has 16dp spare on the right)
+    Box(if (open) Modifier.fillMaxWidth() else Modifier) {
+        Surface(
+            onClick = onClick,
+            shape = ClickableSurfaceDefaults.shape(shape),
+            colors =
+                ClickableSurfaceDefaults.colors(
+                    // The page you're on sits in a soft aqua rounded square (side menu A)
+                    containerColor =
+                        when {
+                            highlighted -> BenflixColors.FocusRow
+                            on -> CURRENT_TILE
+                            else -> Color.Transparent
+                        },
+                    contentColor = BenflixColors.Text,
+                    focusedContainerColor = Color.Transparent,
+                    focusedContentColor = OnWhiteText,
+                ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            modifier =
+                modifier
+                    .height(ITEM * scale)
+                    .then(if (open) Modifier.fillMaxWidth() else Modifier.width(ITEM * scale))
+                    .onFocusChanged { hasFocus = it.isFocused },
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                // Closed: the icon sits exactly in the middle of the round glow ((34 - 22) / 2 = 6 each side)
-                modifier = Modifier.fillMaxSize().padding(start = 6.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .railLit(focused, shape),
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
-                    GlowfinIconImage(
-                        icon,
-                        // Glowfin new look (Ben 2026-11-22): the page you're on stays aqua, the lit place is dark
-                        // on its white pill
-                        color =
-                            when {
-                                focused -> OnWhiteText
-                                on -> Glowfin.Aqua
-                                else -> Glowfin.Dim
-                            },
-                        size = ICON * scale,
-                    )
-                    if (count > 0 && !open) {
-                        CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 7.dp * scale, y = (-6).dp * scale))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    // Closed: the icon sits exactly in the middle of the round glow ((34 - 22) / 2 = 6 each side)
+                    modifier = Modifier.fillMaxSize().padding(start = 6.dp * scale, end = if (open) 12.dp * scale else 0.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ICON * scale)) {
+                        GlowfinIconImage(
+                            icon,
+                            // Glowfin new look (Ben 2026-11-22): the page you're on stays aqua, the lit place is dark
+                            // on its white pill
+                            color =
+                                when {
+                                    focused -> OnWhiteText
+                                    on -> Glowfin.Aqua
+                                    else -> Glowfin.Dim
+                                },
+                            size = ICON * scale,
+                        )
+                    }
+                    if (open) {
+                        Spacer(Modifier.width(13.dp * scale))
+                        Text(
+                            text = label,
+                            color =
+                                when {
+                                    focused -> OnWhiteText
+                                    on -> Glowfin.Aqua
+                                    else -> NameColor
+                                },
+                            fontSize = BenflixType.body * scale,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).railNameFade(),
+                        )
+                        if (count > 0) CountDot(count, scale, Modifier.railNameFade())
                     }
                 }
-                if (open) {
-                    Spacer(Modifier.width(13.dp * scale))
-                    Text(
-                        text = label,
-                        color =
-                            when {
-                                focused -> OnWhiteText
-                                on -> Glowfin.Aqua
-                                else -> NameColor
-                            },
-                        fontSize = BenflixType.body * scale,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).railNameFade(),
-                    )
-                    if (count > 0) CountDot(count, scale, Modifier.railNameFade())
-                }
             }
+        }
+        if (count > 0 && !open) {
+            CountDot(count, scale, Modifier.align(Alignment.TopEnd).offset(x = 6.dp * scale, y = (-4).dp * scale))
         }
     }
 }
