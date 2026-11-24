@@ -14,8 +14,7 @@ object ScreensaverPreference {
             setter = { prefs, value ->
                 prefs.updateScreensaverPreferences { enabled = value }
             },
-            summaryOn = R.string.yes,
-            summaryOff = R.string.no,
+            summary = R.string.screensaver_on_explain,
         )
 
     /** Glowfin: the Coral Reef aquarium is the default; true = aquarium, false = movie and show art */
@@ -42,8 +41,7 @@ object ScreensaverPreference {
             setter = { prefs, value ->
                 prefs.updateScreensaverPreferences { waterSound = value }
             },
-            summaryOn = R.string.screensaver_water_sound_summary,
-            summaryOff = R.string.no,
+            summary = R.string.screensaver_water_sound_summary,
         )
 
     const val DEFAULT_START_DELAY = 15 * 60_000L
@@ -61,6 +59,7 @@ object ScreensaverPreference {
     val StartDelay =
         AppSliderPreference<AppPreferences>(
             title = R.string.start_after,
+            explain = R.string.screensaver_start_after_explain,
             defaultValue = startDelayValues.indexOf(DEFAULT_START_DELAY).toLong(),
             min = 0,
             max = startDelayValues.size - 1L,
@@ -93,7 +92,8 @@ object ScreensaverPreference {
         )
     val Duration =
         AppSliderPreference<AppPreferences>(
-            title = R.string.duration,
+            title = R.string.screensaver_picture_stays,
+            explain = R.string.screensaver_picture_stays_explain,
             defaultValue = durationValues.indexOf(DEFAULT_DURATION).toLong(),
             min = 0,
             max = durationValues.size - 1L,
@@ -124,20 +124,18 @@ object ScreensaverPreference {
             setter = { prefs, value ->
                 prefs.updateScreensaverPreferences { showClock = value }
             },
-            summaryOn = R.string.yes,
-            summaryOff = R.string.no,
+            summary = R.string.screensaver_clock_explain,
         )
 
     val Animate =
         AppSwitchPreference<AppPreferences>(
-            title = R.string.animate,
+            title = R.string.screensaver_slow_zoom,
             defaultValue = true,
             getter = { it.interfacePreferences.screensaverPreference.animate },
             setter = { prefs, value ->
                 prefs.updateScreensaverPreferences { animate = value }
             },
-            summaryOn = R.string.enabled,
-            summaryOff = R.string.disabled,
+            summary = R.string.screensaver_slow_zoom_explain,
         )
 
     const val DEFAULT_MAX_AGE = 16
@@ -145,6 +143,7 @@ object ScreensaverPreference {
     val MaxAge =
         AppSliderPreference<AppPreferences>(
             title = R.string.max_age_rating,
+            explain = R.string.screensaver_max_age_explain,
             defaultValue = maxAgeValues.indexOf(DEFAULT_MAX_AGE).toLong(),
             min = 0,
             max = maxAgeValues.size - 1L,
@@ -187,7 +186,7 @@ object ScreensaverPreference {
     val ItemTypes =
         AppMultiChoicePreference<AppPreferences, BaseItemKind>(
             title = R.string.include_types,
-            summary = R.string.include_types_summary,
+            summary = R.string.screensaver_include_types_explain,
             defaultValue = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
             allValues = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.PHOTO),
             displayValues = R.array.screensaver_item_types,
@@ -206,19 +205,19 @@ object ScreensaverPreference {
 
     val DimToggle =
         AppSwitchPreference<AppPreferences>(
-            title = R.string.dim_after_delay,
+            title = R.string.screensaver_dim,
             defaultValue = AppPreference.ShowClock.defaultValue,
             getter = { it.interfacePreferences.screensaverPreference.dimEnabled },
             setter = { prefs, value ->
                 prefs.updateScreensaverPreferences { dimEnabled = value }
             },
-            summaryOn = R.string.yes,
-            summaryOff = R.string.no,
+            summary = R.string.screensaver_dim_explain,
         )
 
     val DimPercentage =
         AppSliderPreference<AppPreferences>(
-            title = R.string.dim_percentage,
+            title = R.string.screensaver_dim_amount,
+            explain = R.string.screensaver_dim_amount_explain,
             defaultValue = 75,
             min = 0,
             max = 95,

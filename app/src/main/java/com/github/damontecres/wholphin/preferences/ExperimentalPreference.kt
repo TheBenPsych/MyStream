@@ -15,8 +15,7 @@ object ExperimentalPreference {
             setter = { prefs, value ->
                 prefs.updateExperimentalPreferences { enabled = value }
             },
-            summaryOn = R.string.enabled,
-            summaryOff = R.string.disabled,
+            summary = R.string.experimental_settings_explain,
         )
 
     val ExperimentalSettings =
@@ -33,8 +32,7 @@ object ExperimentalPreference {
             setter = { prefs, value ->
                 prefs.updateExperimentalPreferences { videoTunnelingEnabled = value }
             },
-            summaryOn = R.string.enabled,
-            summaryOff = R.string.disabled,
+            summary = R.string.video_tunneling_explain,
         )
 
     val PreferDolbyVisionOverHdr10Plus =

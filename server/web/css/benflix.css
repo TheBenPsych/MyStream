@@ -437,7 +437,11 @@ body.has-mbar #doorTop ~ .rows::after { height: 124px; }
 .setrow button.valbtn { background: var(--pg4); border: 0; padding: 8px 14px; border-radius: 8px; color: var(--ink); font-weight: 700; cursor: pointer; min-width: 80px; }
 .setrow button.valbtn:hover { background: #31343e; }
 .stepper { display: flex; align-items: center; gap: 4px; }
-.stepper button { width: 34px; height: 34px; border-radius: 8px; border: 0; background: var(--pg4); color: var(--ink); font-weight: 800; cursor: pointer; font-size: 18px; }
+/* Glowfin: plain outline buttons; the one you hover or Tab to turns solid aqua with a white ring and grows a little */
+.stepper button { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(241,242,245,.35); background: transparent; color: var(--ink); font-weight: 800; cursor: pointer; font-size: 18px; line-height: 1; transition: transform .12s, background-color .12s; }
+.stepper button:hover, .stepper button:focus-visible { background: #3FE0E8; color: #0B0D1A; border: 3px solid #fff; transform: scale(1.15); outline: none; }
+.stepper button:disabled { opacity: .3; cursor: default; transform: none; background: transparent; color: var(--ink); border: 2px solid rgba(241,242,245,.35); }
+.stepper:focus-within span, .stepper:hover span { color: #3FE0E8; }
 .stepper span { min-width: 64px; text-align: center; font-weight: 700; }
 .group-line { color: var(--ink3); font-size: 14px; margin: -10px 0 16px; }
 .warnbox { border: 1px solid var(--check); color: var(--check); background: #1f1c0b; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }

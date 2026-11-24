@@ -1,6 +1,7 @@
 {
   "about": "Things that went in without being tried on a real screen. Whoever ships something untested adds a line here (newest first) and it shows on Server > Overview as 'Try these on a real screen'. Remove a line once it is old news.",
   "items": [
+    {"id": "settings-focus", "title": "Settings: the − or + you're on turns solid aqua with a white ring (the row stays dark). Plain names with a short line under each setting (Animate is now Slow zoom, Duration is Each picture stays). Slow zoom is back On, and movie-only screensaver settings show only when Movie and show art is picked", "where": "TV · Settings > Screensaver settings, move onto Start after and press Left/Right; browser · Me > Text size", "date": "Nov 24"},
     {"id": "rail-count-dot", "title": "The number on Requests in the tucked side menu shows its whole circle (no more cut-off edge)", "where": "TV and phone · close the side menu while you have new requests", "date": "Nov 24"},
     {"id": "just-released", "title": "Just released row: this year's movies and shows, newest first, with a Today / Yesterday / date chip on each cover", "where": "TV, phone and browser · Home, Movies, Shows and Anime, right under Top 10 (shows only when a brand new show's episode 1 comes out)", "date": "Nov 24"},
     {"id": "speed-match-rail", "title": "Pages load fast again (\"for you\" match no longer holds Tower up), and side menu icons sit in the middle of their square", "where": "browser on the PC · Home, move along a row, then point at the side menu", "date": "Nov 24"},
