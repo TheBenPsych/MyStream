@@ -378,6 +378,9 @@ class MainActivity : AppCompatActivity() {
                                                 com.github.damontecres.wholphin.ui.main.RequestArrivedLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),
                                                 )
+                                                // Glowfin: "Your team is on" (Idea Box 28)
+                                                com.github.damontecres.wholphin.ui.main
+                                                    .TeamsLayer(navigationManager)
                                                 // Benflix notices: the 7-second corner card and the white pill
                                                 BenflixNoticeLayer(
                                                     currentDestination = navigationManager.backStack.lastOrNull(),

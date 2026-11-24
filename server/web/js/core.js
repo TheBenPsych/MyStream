@@ -1012,7 +1012,7 @@ B.PAGE_TABS = {
   // Glowfin Books (B1)
   books: [["For you", "#/books"], ["Books", "#/books?p=book"], ["Audiobooks", "#/books?p=audiobook"], ["Manga", "#/books?p=manga"], ["Series", "#/books?p=series"], ["Want to read", "#/books?p=want"]],
   // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
-  live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Recently watched", "#/live?v=recent"]],
+  live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Sports", "#/live?v=sports"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
   games: [["For you", "#/games"], ["Ember Road", "#/games?p=ember"], ["Movie games", "#/games?p=movie"], ["Consoles", "#/games?p=consoles"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
 };

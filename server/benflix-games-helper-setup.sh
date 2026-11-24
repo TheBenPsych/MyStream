@@ -46,7 +46,7 @@ say "Downloading the helper"
 NEW=$APP/.new
 GOOD=$APP/.last-good
 rm -rf "$NEW"; mkdir -p "$NEW"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_famous.py benflix_match.py benflix_scenes.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_famous.py benflix_match.py benflix_teams.py benflix_scenes.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix-fix-tracks.py benflix-web.html; do
   if curl -fsSL "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     rm -rf "$NEW"

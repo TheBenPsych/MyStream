@@ -84,6 +84,10 @@ try:  # "94% for you" match on title pages and the big tops, in benflix_match.py
     import benflix_match as matcher
 except ImportError:
     matcher = None
+try:  # Follow your teams on Live TV's Sports tab, in benflix_teams.py
+    import benflix_teams as teams
+except ImportError:
+    teams = None
 try:  # Famous lists tab on Movies and Shows (IMDb Top 250, Oscars, Emmys), in benflix_famous.py
     import benflix_famous as famous
 except ImportError:
@@ -1519,6 +1523,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, {"pct": None})
                 status, answer = matcher.route(method, path, query, token, user_id, is_kids)
                 return self.send(status, answer)
+            if path == "/api/teams" or path.startswith("/api/teams/"):
+                # Follow your teams (everyone signed in; Kids have no Live TV)
+                if teams is None:
+                    raise HelperError(503, "Your teams aren't on the server yet. They arrive with Tower's next hourly update.")
+                status, answer = teams.route(method, path, user_id, is_kids, self.read_json)
+                return self.send(status, answer)
             if path.startswith("/api/famous/"):
                 # Movies and Shows, Famous lists tab (everyone signed in except Kids)
                 if famous is None:
@@ -2597,6 +2607,11 @@ if __name__ == "__main__":
         )
     if matcher is not None:
         matcher.start(jellyfin_call)
+    if teams is not None:
+        teams.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+        )
     if famous is not None:
         famous.start(
             jellyfin_call,
