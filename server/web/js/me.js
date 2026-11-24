@@ -235,7 +235,7 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
   if (g.id === "look") {
     const size = ws.textSize || 100;
-    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10">−</button><span>${size}%</span><button data-step="10">+</button></div>`);
+    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10"${size <= 80 ? " disabled" : ""}>−</button><span>${size}%</span><button data-step="10"${size >= 150 ? " disabled" : ""}>+</button></div>`);
     sp.onclick = (e) => {
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };

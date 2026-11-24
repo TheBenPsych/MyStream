@@ -97,7 +97,7 @@ data class DeviceChoices(
 /**
  * Benflix device check: looks at this TV or phone (memory, cores, Android version, screen, which
  * video it can play) and sets the per-device performance settings to suit it: Lite mode (no trailer
- * previews or clip preloading, still backgrounds) and the screensaver's slow motion.
+ * previews or clip preloading, still backgrounds). The screensaver's slow zoom stays On everywhere.
  *
  * It runs the first time Glowfin opens on a device, and again quietly after every app update. A setting the person changed
  * themselves is never changed back: Lite mode remembers whether it was set by this check or by hand, and
@@ -108,6 +108,7 @@ object BenflixDeviceCheck {
     private const val PREFS = "benflix_device_check"
     private const val AUTO_MOTION = "auto_screensaver_animate"
     private const val USER_MOTION = "user_screensaver_animate"
+    private const val MOTION_BACK_ON = "screensaver_animate_back_on"
     private const val GIB = 1024f * 1024f * 1024f
 
     /** Looks at this device. Takes a moment (it lists the video decoders), so call it off the main thread */
@@ -168,29 +169,27 @@ object BenflixDeviceCheck {
         val liteNow = LiteMode.isOn(context)
 
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val current =
+        var current =
             preferences.data
                 .first()
                 .interfacePreferences.screensaverPreference.animate
-        val wantedMotion = !lite
-        val byYou =
-            prefs.getBoolean(USER_MOTION, false) ||
-                if (prefs.contains(AUTO_MOTION)) {
-                    prefs.getBoolean(AUTO_MOTION, true) != current
-                } else {
-                    current != ScreensaverPreference.Animate.defaultValue
-                }
-        val motion =
-            if (byYou) {
-                prefs.edit { putBoolean(USER_MOTION, true) }
-                current
-            } else {
-                if (current != wantedMotion) {
-                    preferences.updateData { it.updateScreensaverPreferences { animate = wantedMotion } }
-                }
-                prefs.edit { putBoolean(AUTO_MOTION, wantedMotion) }
-                wantedMotion
+        // Glowfin (2026-11-24): the screensaver's slow zoom is light work, so it stays On on every TV and this
+        // check no longer turns it off on weak ones. Once, switch it back On where this check had turned it off
+        // (never where the person turned it off themselves).
+        if (!prefs.getBoolean(MOTION_BACK_ON, false)) {
+            val offByCheck =
+                !current &&
+                    !prefs.getBoolean(USER_MOTION, false) &&
+                    prefs.contains(AUTO_MOTION) &&
+                    !prefs.getBoolean(AUTO_MOTION, true)
+            if (offByCheck) {
+                preferences.updateData { it.updateScreensaverPreferences { animate = true } }
+                current = true
             }
+            prefs.edit { putBoolean(MOTION_BACK_ON, true) }
+        }
+        val motion = current
+        val byYou = current != ScreensaverPreference.Animate.defaultValue
         return DeviceChoices(
             lite = liteNow,
             liteByYou = !liteSet,

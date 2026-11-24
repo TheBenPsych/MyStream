@@ -217,8 +217,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateHomePagePreferences { enableRewatchingNextUp = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.rewatch_next_up_explain,
             )
 
         val HomeClickToPlay =
@@ -267,8 +266,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { autoPlayNext = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.auto_play_next_explain,
             )
 
         val SkipBackOnResume =
@@ -414,8 +412,7 @@ sealed interface AppPreference<Pref, T> {
                         ac3Supported = value
                     }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.ac3_supported_explain,
             )
 
         val DownMixStereo =
@@ -429,8 +426,7 @@ sealed interface AppPreference<Pref, T> {
                         downmixStereo = value
                     }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.downmix_stereo_explain,
             )
         val AssSubtitleMode =
             AppChoicePreference<AppPreferences, AssPlaybackMode>(
@@ -453,8 +449,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePlaybackOverrides { directPlayPgs = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.direct_play_pgs_explain,
             )
 
         val Hdr10Override =
@@ -530,8 +525,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePlaybackOverrides { decodeAv1 = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.software_decoding_av1_explain,
             )
 
         val CinemaMode =
@@ -542,8 +536,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { cinemaMode = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.cinema_mode_explain,
             )
 
         val RememberSelectedTab =
@@ -554,8 +547,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { rememberSelectedTab = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.remember_selected_tab_explain,
             )
 
         val ThemeColors =
@@ -579,8 +571,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { showLogos = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.prefer_logos_explain,
             )
 
         val DisplayTogglesPref =
@@ -631,8 +622,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.update { autoCheckForUpdates = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.auto_check_for_updates_explain,
             )
 
         val UpdateUrl =
@@ -827,8 +817,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { navDrawerSwitchOnFocus = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.nav_drawer_switch_on_focus_summary_off,
+                summary = R.string.nav_drawer_switch_on_focus_explain,
             )
 
         val ShowNextUpTiming =
@@ -852,8 +841,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { showClock = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.show_clock_explain,
             )
 
         val BackdropStylePref =
@@ -877,8 +865,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { enableMediaManagement = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.show_media_management_explain,
             )
 
         val OneClickPause =
@@ -998,8 +985,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateMpvOptions { useGpuNext = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.mpv_use_gpu_next_explain,
             )
 
         val MpvConfFile =
@@ -1017,8 +1003,7 @@ sealed interface AppPreference<Pref, T> {
                     DebugLogTree.INSTANCE.enabled = value
                     prefs.update { debugLogging = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.verbose_logging_explain,
             )
 
         val SignInAuto =
@@ -1029,8 +1014,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.update { signInAutomatically = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.sign_in_auto_explain,
             )
 
         val ProtectProfilePreference =
@@ -1140,8 +1124,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateLiveTvPreferences { showHeader = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.show_details_explain,
             )
         val LiveTvFavoriteChannelsBeginning =
             AppSwitchPreference<AppPreferences>(
@@ -1151,8 +1134,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateLiveTvPreferences { favoriteChannelsAtBeginning = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.favorite_channels_at_beginning_explain,
             )
         val LiveTvChannelSortByWatched =
             AppSwitchPreference<AppPreferences>(
@@ -1162,8 +1144,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateLiveTvPreferences { sortByRecentlyWatched = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.sort_channels_recently_watched_explain,
             )
         val LiveTvColorCodePrograms =
             AppSwitchPreference<AppPreferences>(
@@ -1173,8 +1154,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updateLiveTvPreferences { colorCodePrograms = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.color_code_programs_explain,
             )
 
         val SeerrIntegration =
@@ -1228,8 +1208,7 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, value ->
                     prefs.updatePhotoPreferences { slideshowPlayVideos = value }
                 },
-                summaryOn = R.string.enabled,
-                summaryOff = R.string.disabled,
+                summary = R.string.play_videos_during_slideshow_explain,
             )
 
         val ScreensaverSettings =
@@ -1716,12 +1695,28 @@ val screensaverPreferences =
                     ScreensaverPreference.Picture,
                     ScreensaverPreference.WaterSound,
                     ScreensaverPreference.StartDelay,
-                    ScreensaverPreference.Duration,
                     ScreensaverPreference.ShowClock,
-                    ScreensaverPreference.Animate,
-                    ScreensaverPreference.MaxAge,
-                    ScreensaverPreference.ItemTypes,
                     ScreensaverPreference.Start,
+                ),
+        ),
+        // Glowfin: these only change the movie pictures, so they show only when that picture is picked
+        PreferenceGroup(
+            title = R.string.screensaver_movie_art,
+            preferences = listOf(),
+            conditionalPreferences =
+                listOf(
+                    ConditionalPreferences(
+                        condition = {
+                            it.interfacePreferences.screensaverPreference.style == ScreensaverPreference.STYLE_MOVIES
+                        },
+                        preferences =
+                            listOf(
+                                ScreensaverPreference.Duration,
+                                ScreensaverPreference.Animate,
+                                ScreensaverPreference.MaxAge,
+                                ScreensaverPreference.ItemTypes,
+                            ),
+                    ),
                 ),
         ),
         PreferenceGroup(
@@ -1839,6 +1834,8 @@ class AppSliderPreference<Pref>(
     override val setter: (prefs: Pref, value: Long) -> Pref,
     @param:StringRes val summary: Int? = null,
     val summarizer: ((Long?) -> String?)? = null,
+    /** Glowfin: one plain line under the name saying what this number changes */
+    @param:StringRes val explain: Int? = null,
 ) : AppPreference<Pref, Long> {
     override fun summary(
         context: Context,

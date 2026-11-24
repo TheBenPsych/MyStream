@@ -185,7 +185,7 @@
     </plurals>
     <string name="play_with_transcoding">Play with transcoding</string>
     <string name="media_information">Media Information</string>
-    <string name="show_clock">Show Clock</string>
+    <string name="show_clock">Show clock</string>
     <string name="aired_episode_order">Aired Episode Order</string>
     <string name="create_playlist">Create new playlist</string>
     <string name="add_to_playlist">Add to playlist</string>
@@ -1162,4 +1162,43 @@
     <string name="benflix_banner_next">Next</string>
     <string name="search_failed">Couldn\'t search right now. Check your connection and try again.</string>
     <string name="glowfin_phone_alerts">Phone notifications</string>
+
+    <!-- Glowfin: one plain line under each On/Off setting saying what it changes -->
+    <string name="rewatch_next_up_explain">Next up can suggest shows you already finished, so you can start them again</string>
+    <string name="auto_play_next_explain">When an episode ends, the next one starts by itself after a short countdown</string>
+    <string name="ac3_supported_explain">Turn on if your TV or soundbar plays Dolby Digital sound. Glowfin then sends it as is</string>
+    <string name="downmix_stereo_explain">Mixes surround sound down to two speakers. Handy for TV speakers or headphones</string>
+    <string name="direct_play_pgs_explain">Shows picture-style subtitles (common on Blu-rays) without making Tower convert the video</string>
+    <string name="software_decoding_av1_explain">Lets this device play AV1 video even without a built-in AV1 chip. Can be slow on weak TVs</string>
+    <string name="cinema_mode_explain">Plays trailers from Tower before a movie starts, like at the cinema</string>
+    <string name="remember_selected_tab_explain">Pages with tabs open on the tab you used last time</string>
+    <string name="prefer_logos_explain">Shows a title\'s logo picture instead of plain text when it has one</string>
+    <string name="auto_check_for_updates_explain">Looks for a new Glowfin version when the app opens and lets you know</string>
+    <string name="nav_drawer_switch_on_focus_explain">Moving onto a side menu item opens that page straight away. Off = press OK to open it</string>
+    <string name="show_clock_explain">Shows the time in the top right corner</string>
+    <string name="show_media_management_explain">Adds options like Delete and Refresh info to title menus</string>
+    <string name="mpv_use_gpu_next_explain">Uses MPV\'s newer picture engine. Try it only if the MPV player looks wrong</string>
+    <string name="verbose_logging_explain">Saves extra detail in the app logs to help track down a problem. Leave off normally</string>
+    <string name="sign_in_auto_explain">Skips the sign-in screen and goes straight to your profile</string>
+    <string name="show_details_explain">Shows the info panel for the highlighted program at the top of the guide</string>
+    <string name="favorite_channels_at_beginning_explain">Puts your favorite channels at the top of the guide</string>
+    <string name="sort_channels_recently_watched_explain">Puts channels you watched lately near the top of the guide</string>
+    <string name="color_code_programs_explain">Colours guide programs by type, like sports, movies and news</string>
+    <string name="play_videos_during_slideshow_explain">Plays home videos when they come up in a photo slideshow</string>
+    <string name="experimental_settings_explain">Shows extra settings that are still being tested</string>
+    <string name="video_tunneling_explain">Sends video straight to the TV\'s chip. Can fix stutter on some TVs, can break others</string>
+    <string name="screensaver_start_after_explain">How long the TV sits still before the screensaver comes on</string>
+    <string name="screensaver_picture_stays">Each picture stays</string>
+    <string name="screensaver_picture_stays_explain">How long one movie picture shows before the next one</string>
+    <string name="screensaver_slow_zoom">Slow zoom</string>
+    <string name="screensaver_slow_zoom_explain">Movie pictures slowly drift closer. Off keeps them still</string>
+    <string name="screensaver_clock_explain">Shows the time in the corner</string>
+    <string name="screensaver_max_age_explain">Skips movies and shows rated above this age</string>
+    <string name="screensaver_include_types_explain">Pick movies, shows or photos for the pictures</string>
+    <string name="screensaver_dim">Dim after a while</string>
+    <string name="screensaver_dim_explain">Darkens the screensaver to rest the TV and your eyes</string>
+    <string name="screensaver_dim_amount">How dark</string>
+    <string name="screensaver_dim_amount_explain">How much darker the screensaver gets when dimmed</string>
+    <string name="screensaver_on_explain">Glowfin\'s own screensaver comes on when the TV sits idle</string>
+    <string name="screensaver_movie_art">Movie and show art</string>
 </resources>
