@@ -395,6 +395,20 @@ def main():
     for i in range(3):
         time.sleep(3)
         step(f"start-{i}")
+    # Glowfin's own crash report box at start: keep the phone's log of what crashed, then say "Do not send" and go on
+    if d.find(d.dump(), r"Glowfin has crashed") is not None:
+        problem("crash", "Glowfin crash report box showed at start")
+        with open(f"{OUT}/crash-at-start.txt", "w") as f:
+            f.write(d.adb("logcat", "-d", "-b", "all", "-v", "time", timeout=120))
+        n = d.find(d.dump(), r"^Do not send$")
+        if n is not None:
+            d.tap(n)
+        else:
+            d.sh("input keyevent 4")
+        time.sleep(4)
+        d.sh(f"am start -W -n {PKG}/com.github.damontecres.wholphin.MainActivity", timeout=90)
+        time.sleep(6)
+        step("after-crash-box")
     d.sign_in()
     step("after-sign-in")
     d.welcome_setup()
@@ -406,6 +420,8 @@ def main():
     if d.wait_for(d.DOORS_RE, 60) is None:
         step("never-got-to-home")
         problem("robot", "never got to Home")
+        with open(f"{OUT}/logcat.txt", "w") as f:
+            f.write(d.adb("logcat", "-d", "-b", "all", "-v", "time", timeout=120))
         return
     # Search goes last: on TV the remote can get held on the search box once it has letters in
     # it (Left and Right move the cursor), which used to cost every trip after it.
