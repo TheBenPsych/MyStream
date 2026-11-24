@@ -78,17 +78,36 @@
     const root = $(".details.tp");
     // Logo art instead of the typed name, only when it loads and has a sensible shape (very long or very tall
     // logos, common with anime, keep the typed name)
+    // Ben 2026-11-24 (missing logos): no logo, or one that won't load, asks Tower to find one. Tower says if Jellyfin
+    // has a working one, or puts on the best English one from TMDB / TheTVDB / Fanart.tv (never replacing a good one).
+    const findLogo = () => {
+      if (!rows || !opts.logoId || B._logoAsked?.has(opts.logoId)) return;
+      (B._logoAsked = B._logoAsked || new Set()).add(opts.logoId);
+      B.call("POST", `api/posters/logo?id=${encodeURIComponent(opts.logoId)}`).then((r) => {
+        if (!r || !r.has || !document.body.contains(root)) return;
+        const url = B.img(opts.logoId, "Logo", { tag: r.tag || "" }) + "&maxHeight=220&format=Png";
+        if (url === opts.logo) return;
+        const name = root.querySelector(".tp-name .t");
+        if (!name) return;
+        const img = document.createElement("img");
+        img.className = "tp-logo"; img.alt = opts.title || ""; img.hidden = true;
+        img.addEventListener("load", () => { if (!img.naturalWidth) return img.remove(); img.hidden = false; const l = B.tpLight(img); if (l != null && l < 0.3) img.classList.add("tp-logo-white"); name.classList.add("tp-hid"); });
+        img.addEventListener("error", () => img.remove());
+        name.before(img); img.src = url;
+      }).catch(() => {});
+    };
     const logo = $("#tpLogo");
+    if (!logo) findLogo();
     if (logo) {
       const fit = () => {
         // Ben 2026-11-23 (logo plan): details pages show the full logo in any shape, shrunk to fit the fixed box
-        if (!logo.naturalWidth || !logo.naturalHeight) return logo.remove();
+        if (!logo.naturalWidth || !logo.naturalHeight) { logo.remove(); return findLogo(); }
         logo.hidden = false;
         // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
         if (rows) { const l = B.tpLight(logo); if (l != null && l < 0.3) logo.classList.add("tp-logo-white"); }
         const h1 = root.querySelector(".tp-name .t"); if (h1) h1.classList.add("tp-hid");
       };
-      if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => logo.remove()); }
+      if (logo.complete && logo.naturalWidth) fit(); else { logo.addEventListener("load", fit); logo.addEventListener("error", () => { logo.remove(); findLogo(); }); }
     }
     // The story you can open: the full story plus the details (About) in a tall panel from the right
     const storyBtn = $("#tpStory");

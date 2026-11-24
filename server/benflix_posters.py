@@ -261,15 +261,26 @@ def _best(item_id, kind):
     return best
 
 
+TRY_AGAIN_DAYS = 7  # a title with nothing good online is looked at again after this many days
+
+
 def fill_missing(limit=FILL_PER_NIGHT, why="night"):
     """Gives missing posters, season posters, backgrounds and title logos the best English picture"""
     if _filling.is_set():
         return
     _filling.set()
     filled, tried, names = 0, 0, []
+    # Titles with nothing good online used to be tried again first every night and used up all the turns,
+    # so newer titles never got their turn (Ben 2026-11-24, missing logos). Now each one rests a week.
+    looked = _read("looked.json", {}) or {}
+    now = time.time()
+    looked = {k: v for k, v in looked.items() if now - (v or 0) < TRY_AGAIN_DAYS * 86400}
     try:
         skip = _left_alone()
-        for it in _everything():
+        items = _everything()
+        # Movies and shows first (their title logos show on every details page), then seasons and collections
+        items.sort(key=lambda x: 0 if x.get("Type") in ("Movie", "Series") else 1)
+        for it in items:
             if tried >= limit:
                 break
             iid, kind_of = it.get("Id"), it.get("Type")
@@ -284,7 +295,10 @@ def fill_missing(limit=FILL_PER_NIGHT, why="night"):
             if kind_of in ("Movie", "Series") and not tags.get("Logo"):
                 wanted.append("Logo")
             for kind in wanted:
+                if f"{iid}:{kind}" in looked:
+                    continue
                 tried += 1
+                looked[f"{iid}:{kind}"] = now
                 try:
                     best = _best(iid, kind)
                     if not best:
@@ -299,12 +313,77 @@ def fill_missing(limit=FILL_PER_NIGHT, why="night"):
                         names.append(f"{name} ({label})")
                 except PosterError:
                     continue
+        _write("looked.json", looked)
         _write("night.json", {"at": _iso(time.time()), "filled": filled, "names": names[:40], "why": why})
         log(f"filled {filled} missing pictures ({why})")
     except Exception as e:  # noqa: BLE001
         log(f"couldn't fill missing pictures: {e}")
     finally:
         _filling.clear()
+
+
+# ---------- One title's logo, right away ----------
+
+_logo_asked = {}  # item id -> when the helper last looked online for it
+
+
+def _logo_tag(item_id):
+    _, user = _admin()
+    q = urllib.parse.urlencode({"Ids": item_id, "EnableImageTypes": "Logo", "EnableUserData": "false", "userId": user or ""})
+    items = (_get("/Items?" + q) or {}).get("Items") or []
+    if not items:
+        raise PosterError(404, "That title isn't on Glowfin.")
+    return items[0], (items[0].get("ImageTags") or {}).get("Logo")
+
+
+def _logo_loads(item_id):
+    """Jellyfin can remember a logo whose picture file is gone, so it never shows. Check it really loads."""
+    token = _admin()[0]
+    try:
+        status, data, _ = _jf("GET", f"/Items/{item_id}/Images/Logo?maxWidth=60", token=token)
+        return status == 200 and bool(data)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def logo(item_id):
+    """
+    A details page with no logo asks for one (Ben 2026-11-24): if the title has a working logo, says so; if it
+    has none (or a broken one), puts on the best English one from TMDB / TheTVDB / Fanart.tv right away.
+    Never replaces a logo that works. Each title is looked up online at most once a day.
+    """
+    item_id = "".join(c for c in (item_id or "") if c.isalnum())[:40]
+    if not item_id:
+        raise PosterError(400, "Which title?")
+    it, tag = _logo_tag(item_id)
+    if tag and _logo_loads(item_id):
+        return {"has": True, "tag": tag}
+    if it.get("Type") not in ("Movie", "Series"):
+        return {"has": False}
+    with _lock:
+        last = _logo_asked.get(item_id) or 0
+        if time.time() - last < 86400:
+            return {"has": False}
+        _logo_asked[item_id] = time.time()
+    best = _best(item_id, "Logo")
+    if not best:
+        return {"has": False}
+    q = urllib.parse.urlencode({"type": "Logo", "imageUrl": best["Url"]})
+    if not _post(f"/Items/{item_id}/RemoteImages/Download?{q}"):
+        return {"has": False}
+    log(f"put a title logo on {it.get('Name') or item_id} (asked by a details page)")
+    _, tag = _logo_tag(item_id)
+    return {"has": bool(tag), "tag": tag, "new": True}
+
+
+def user_route(method, path, query):
+    """/api/posters/... for everyone signed in. Returns (status, answer) or None when it isn't one."""
+    try:
+        if method == "POST" and path == "/api/posters/logo":
+            return 200, logo((query.get("id") or [""])[0])
+    except PosterError as e:
+        return e.status, {"error": e.message}
+    return None
 
 
 def _nightly():

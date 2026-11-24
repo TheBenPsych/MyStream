@@ -255,6 +255,9 @@ fun MovieHeroContent(
         logoUrl =
             com.github.damontecres.wholphin.ui.components
                 .rememberLogoUrl(movie),
+        findLogo =
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoFinder(movie),
         tagline = if (easy) null else dto.taglines?.firstOrNull()?.takeIf { it.isNotBlank() },
         chips =
             if (easy) {

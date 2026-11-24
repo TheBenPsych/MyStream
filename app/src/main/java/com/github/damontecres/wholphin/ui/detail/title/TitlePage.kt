@@ -230,8 +230,11 @@ fun TitlePage(
     chips: List<String> = emptyList(),
     /** Movies and shows on Glowfin: "94% for you" under the score pill (Idea Box 28) */
     matchId: java.util.UUID? = null,
+    /** Details pages: asks Tower for a logo when there's none or it won't load (Ben 2026-11-24) */
+    findLogo: (suspend () -> String?)? = null,
 ) {
-    val extras = remember(logoUrl, tagline, chips, matchId) { TitleExtras(logoUrl, tagline, chips, matchId) }
+    val extras =
+        remember(logoUrl, tagline, chips, matchId, findLogo) { TitleExtras(logoUrl, tagline, chips, matchId, findLogo) }
     CompositionLocalProvider(LocalTitleExtras provides extras) {
         TitlePageBody(
             title,
@@ -260,6 +263,7 @@ internal data class TitleExtras(
     val tagline: String? = null,
     val chips: List<String> = emptyList(),
     val matchId: java.util.UUID? = null,
+    val findLogo: (suspend () -> String?)? = null,
 )
 
 internal val LocalTitleExtras = compositionLocalOf { TitleExtras() }
@@ -902,25 +906,35 @@ internal fun TitleBox(
     anyShape: Boolean = false,
 ) {
     val extras = LocalTitleExtras.current
-    var logoBad by remember(extras.logoUrl) { mutableStateOf(false) }
-    var logoReady by remember(extras.logoUrl) { mutableStateOf(false) }
-    val logoUrl = extras.logoUrl?.takeIf { !logoBad }
+    // The logo being shown: the title's own, or (details pages) one Tower found when it had none or it broke
+    var logoUrl by remember(extras.logoUrl) { mutableStateOf(extras.logoUrl) }
+    var asked by remember(extras.logoUrl) { mutableStateOf(false) }
+    var logoReady by remember(logoUrl) { mutableStateOf(false) }
+    val findLogo = extras.findLogo
+    LaunchedEffect(logoUrl, asked) {
+        if (logoUrl == null && !asked && anyShape && findLogo != null) {
+            asked = true
+            val found = findLogo()
+            if (found != null && found != extras.logoUrl) logoUrl = found
+        }
+    }
     // A logo drawn in a dark colour is drawn in white, like the rest of the words (Ben 2026-11-22)
     val logoLight = rememberImageLight(logoUrl)
     val whiteLogo = logoLight != null && logoLight < DARK_LOGO
     Box(contentAlignment = Alignment.BottomStart, modifier = modifier.height(height).widthIn(max = width)) {
-        if (logoUrl != null) {
+        val shown = logoUrl
+        if (shown != null) {
             AsyncImage(
-                model = logoUrl,
+                model = shown,
                 contentDescription = title,
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.BottomStart,
                 onSuccess = {
                     val w = it.result.image.width
                     val h = it.result.image.height
-                    if (h <= 0 || w <= 0 || (!anyShape && !logoFits(w.toFloat() / h))) logoBad = true else logoReady = true
+                    if (h <= 0 || w <= 0 || (!anyShape && !logoFits(w.toFloat() / h))) logoUrl = null else logoReady = true
                 },
-                onError = { logoBad = true },
+                onError = { logoUrl = null },
                 colorFilter =
                     if (whiteLogo) {
                         androidx.compose.ui.graphics.ColorFilter

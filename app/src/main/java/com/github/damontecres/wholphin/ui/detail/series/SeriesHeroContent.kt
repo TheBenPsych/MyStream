@@ -282,6 +282,9 @@ fun SeriesHeroContent(
         logoUrl =
             com.github.damontecres.wholphin.ui.components
                 .rememberLogoUrl(series),
+        findLogo =
+            com.github.damontecres.wholphin.ui.components
+                .rememberLogoFinder(series),
         tagline =
             if (easy) {
                 null

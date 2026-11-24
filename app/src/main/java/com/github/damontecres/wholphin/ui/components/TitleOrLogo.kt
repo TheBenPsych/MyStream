@@ -97,7 +97,8 @@ fun rememberLogoUrl(item: BaseItem?): String? {
     // "Use the name instead" in a title's More list
     val logoId = if (item?.type == BaseItemKind.EPISODE || item?.type == BaseItemKind.SEASON) item.data.seriesId else item?.id
     if (LogoChoice.usesName(logoId)) return null
-    return remember(item?.id) {
+    // Keyed on the logo itself too, so a logo put on while the page is open (or a changed one) shows
+    return remember(item?.id, item?.data?.imageTags?.get(ImageType.LOGO), item?.data?.parentLogoImageTag) {
         if ((item?.type == BaseItemKind.EPISODE || item?.type == BaseItemKind.SEASON) &&
             item.data.seriesId != null &&
             item.data.parentLogoImageTag != null
