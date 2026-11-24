@@ -59,6 +59,9 @@ enum class PlaybackDialogType {
     /** Benflix: "Report a problem" from the player's Fix a problem list */
     REPORT,
 
+    /** Benflix (Idea Box 29): "This copy is bad" asks before Tower throws the file away and finds a new one */
+    BAD_COPY,
+
     /** Benflix: watch together with people on other TVs, phones and browsers */
     TOGETHER,
 
@@ -92,6 +95,8 @@ data class PlaybackSettings(
     val canWatchTogether: Boolean = false,
     /** Benflix (Idea Box 25): "Also counts for" (main profile only, movies and episodes) */
     val canAlsoCount: Boolean = false,
+    /** Benflix (Idea Box 29): "This copy is bad" (movies and episodes on Tower, not Kids) */
+    val canSwapCopy: Boolean = false,
 )
 
 /**
@@ -260,6 +265,17 @@ fun PlaybackDialog(
                             onClick = { onPlaybackActionClick(PlaybackAction.FixPicture) },
                         ),
                     )
+                    if (settings.canSwapCopy) {
+                        add(
+                            PanelLine.Row(
+                                label = "This copy is bad",
+                                note = "Glitches, wrong language, wrong episode or cut off",
+                                icon = BenflixIcon.WARNING,
+                                closes = false,
+                                onClick = { onClickPlaybackDialogType(PlaybackDialogType.BAD_COPY) },
+                            ),
+                        )
+                    }
                     add(
                         PanelLine.Row(
                             label = "Report a problem",
@@ -570,6 +586,25 @@ fun PlaybackDialog(
                             }
                         }
                     },
+                onDismissRequest = dismissAndPulse,
+            )
+        }
+
+        PlaybackDialogType.BAD_COPY -> {
+            PlayerPanel(
+                title = "Find a new copy?",
+                subtitle =
+                    "Tower throws this copy away, never picks it again, and finds a new one. " +
+                        "It's usually back within an hour. Ben sees it on the Server page.",
+                lines =
+                    listOf(
+                        PanelLine.Row(
+                            label = "Yes, find a new copy",
+                            icon = BenflixIcon.WARNING,
+                            onClick = { onPlaybackActionClick.invoke(PlaybackAction.BadCopy) },
+                        ),
+                        PanelLine.Row(label = "No, keep this one", onClick = dismissAndPulse),
+                    ),
                 onDismissRequest = dismissAndPulse,
             )
         }

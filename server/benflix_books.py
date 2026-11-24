@@ -1595,6 +1595,80 @@ def _place_line(t, other, u):
     return f"You've listened further ({round(ra * 100)}%) than you've read ({round(rb * 100)}%)"
 
 
+def _hm(seconds):
+    m = int(seconds // 60)
+    return f"{m // 60} h {m % 60} m" if m >= 60 else f"{m} min"
+
+
+def _handoff_target(t, other, pct):
+    """Where the other way of the same book is, at this share of the way through.
+    Idea Box 29 "Read and listen at the same spot": the ebook and audiobook are matched by how far in you are."""
+    if other["kind"] == "audiobook":
+        ab = audio_book(other)
+        total = ab["seconds"] or 0.0
+        if total <= 0:
+            return None
+        pos = max(0.0, pct * total - 15.0)  # a few seconds back, so the sentence isn't cut
+        start, index = 0.0, 0
+        for i, f in enumerate(other["files"]):
+            secs = probe(f)[0]
+            if pos < start + secs or i == len(other["files"]) - 1:
+                index = i
+                break
+            start += secs
+        chapter = max(0, max((i for i, c in enumerate(ab["chapters"]) if c["at"] <= pos + 0.5), default=0))
+        return {"place": {"pos": round(pos, 2), "file": index, "cpos": round(pos - start, 2), "chapter": chapter, "pct": round(pos / total, 4)}, "line": _hm(pos) + " in"}
+    place = {"pct": round(pct, 4)}
+    if other.get("ext") == ".epub":
+        try:
+            spine = epub_cached(other["path"])["spine"]
+        except Exception:
+            spine = []
+        sizes = [max(1, s.get("size") or 1) for s in spine]
+        total = sum(sizes)
+        if total:
+            want, run = pct * total, 0
+            for i, size in enumerate(sizes):
+                if want < run + size or i == len(sizes) - 1:
+                    place.update(chapter=i, cpos=round(max(0.0, min(1.0, (want - run) / size)), 4))
+                    break
+                run += size
+    return {"place": place, "line": f"{round(pct * 100)}%"}
+
+
+def handoff_line(t, other, u):
+    """"6 h 12 m in" / "64%": where Listen from here / Read from here would start (None when the places already match)"""
+    a = u["place"].get(t["id"]) or {}
+    b = u["place"].get(other["id"]) or {}
+    pa, pb = a.get("pct") or 0, b.get("pct") or 0
+    if pa < 0.01 or abs(pa - pb) < 0.02 or (other["kind"] != "audiobook" and not other.get("readable", True)):
+        return None
+    try:
+        got = _handoff_target(t, other, pa)
+    except Exception:
+        return None
+    return got["line"] if got else None
+
+
+def handoff(user_id, tid):
+    """Listen from here / Read from here: the other way of this book jumps to where you are in this one"""
+    with _lock:
+        t = _lib["titles"].get(tid)
+        other = _lib["titles"].get(t.get("linked")) if t and t.get("linked") else None
+    if not t or not other:
+        raise BooksError(404, "This book isn't on Glowfin both ways.")
+    u = _user(user_id)
+    pct = (u["place"].get(tid) or {}).get("pct") or 0
+    got = _handoff_target(t, other, pct)
+    if not got:
+        raise BooksError(400, "Couldn't work out the same spot. Start from the chapter list instead.")
+    with _lock:
+        u["place"][other["id"]] = dict(u["place"].get(other["id"]) or {}, **got["place"], at=int(time.time()))
+        u["opened"][other["id"]] = int(time.time())
+    _save_user(u)
+    return {"id": other["id"], "kind": other["kind"], "line": got["line"]}
+
+
 def title_page(tid, user_id, is_kids, is_admin):
     with _lock:
         t = _lib["titles"].get(tid)
@@ -1712,6 +1786,7 @@ def title_page(tid, user_id, is_kids, is_admin):
         other = _lib["titles"][t["linked"]]
         out["other"] = {"id": other["id"], "kind": other["kind"], "readable": other.get("readable", True)}
         out["placeLine"] = _place_line(t, other, u)
+        out["handoff"] = handoff_line(t, other, u)
     # More by this author, then More like this (both from what's on Benflix)
     tiles = [tile(x, u) for x in _lib["titles"].values() if x["id"] not in (tid, t.get("linked")) and visible(is_kids, x)]
     _fill_series(tiles + [out])
@@ -3710,6 +3785,9 @@ def route(method, path, query, token, user_id, is_admin, is_kids, read_json, use
         if method in ("GET", "HEAD") and m:
             data, ctype = epub_part(m.group(1), m.group(2))
             return 200, data, ctype
+        m = re.fullmatch(r"/api/books/handoff/(\w+)", path)
+        if method == "POST" and m:
+            return 200, handoff(user_id, m.group(1))
         m = re.fullmatch(r"/api/books/place/(\w+)", path)
         if method in ("POST", "PUT") and m:
             return 200, save_place(user_id, m.group(1), read_json())

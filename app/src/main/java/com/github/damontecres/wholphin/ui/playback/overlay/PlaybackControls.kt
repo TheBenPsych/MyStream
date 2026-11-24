@@ -169,6 +169,9 @@ sealed interface PlaybackAction {
     /** Benflix "Fix a problem": Picture stutters (restart the picture, then a lighter quality) */
     data object FixPicture : PlaybackAction
 
+    /** Benflix "Fix a problem" (Idea Box 29): This copy is bad, Tower throws the file away and finds a new one */
+    data object BadCopy : PlaybackAction
+
     /** Benflix "Fix a problem": Report a problem, with what's wrong */
     data class ReportProblem(
         val problem: String,

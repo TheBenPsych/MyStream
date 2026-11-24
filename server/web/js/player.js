@@ -585,6 +585,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       <button class="opt" data-nosound>${I("flag")} No sound<small>Glowfin brings it back</small></button>
       ${segments.tower && !B.me.kids ? `<button class="opt" data-skipwrong>${I("flag")} Skip at the wrong time<small>Mark the right spot</small></button><div class="fixlist hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Pause at the right spot, then press one. Glowfin finds the same spot in the show's other episodes too.</p>${FIXES.map(([k, label, hint]) => `<button class="opt" data-fix="${k}">${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</button>`).join("")}</div>` : ""}
       <button class="opt" data-stutter>${I("flag")} Picture stutters<small>Tries a lighter picture</small></button>
+      ${(it.Type === "Movie" || it.Type === "Episode") && !B.me.kids ? `<button class="opt" data-badcopy>${I("flag")} This copy is bad<small>Glitches, wrong language, wrong episode or cut off</small></button><div class="badask hidden"><p class="dim" style="font-size:13px;margin:4px 0 10px">Tower throws this copy away, never picks it again, and finds a new one. It's usually back within an hour. Ben sees it on the Server page.</p><button class="opt" data-badyes>Yes, find a new copy</button></div>` : ""}
       <button class="opt" data-report>${I("flag")} Report a problem<small>Ben gets a note</small></button>
       ${B.me.admin ? `<p class="dim" style="font-size:13px;margin-top:16px">${esc(method === "DirectPlay" ? "Playing the file as it is" : method === "DirectStream" ? "Repackaged on the fly (light work for the server)" : "Converted on the fly (the server is working)")}</p>` : ""}`;
     pl.appendChild(p);
@@ -634,6 +635,8 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
       }
       if (e.target.closest("[data-towerfix]")) { p.remove(); return fixSubs(); }
       if (e.target.closest("[data-report]")) { p.remove(); v.pause(); return B.report(B.lastPlayed); }
+      if (e.target.closest("[data-badcopy]")) return $(".badask", p).classList.toggle("hidden");
+      if (e.target.closest("[data-badyes]")) { p.remove(); v.pause(); return badCopy(); }
       if (a) { audioIndex = +a.dataset.a; p.remove(); return load(v.currentTime).catch((err) => msg(B.say(err))); }
       if (s) {
         const idx = +s.dataset.s, st = subs.find((x) => x.Index === idx);
@@ -650,6 +653,21 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
         B.savePrefs((c) => { const key = k === "intro" ? "benflix.autoSkipIntro" : "benflix.autoSkipOutro"; c[key] = [...set].map(dashed).join("|") || null; }).catch(() => {});
       }
     };
+  };
+
+  // ---------- Idea Box 29 "This copy is bad": Tower throws the file away and finds a new copy ----------
+  const badCopy = async () => {
+    const title = it.Type === "Episode" ? [it.SeriesName, it.ParentIndexNumber != null && it.IndexNumber != null ? `S${it.ParentIndexNumber} E${it.IndexNumber}` : ""].filter(Boolean).join(" ") : it.Name;
+    // Ben's Server page lists it like any other report
+    B.savePrefs((c) => {
+      const lines = String(c["benflix.problems"] || "").split("\n").filter(Boolean);
+      lines.push([Date.now(), it.Id, String(title || it.Name || "").replace(/[|\n]/g, " "), "This copy is bad", "Web browser"].join("|"));
+      c["benflix.problems"] = lines.slice(-20).join("\n");
+    }).catch(() => {});
+    try {
+      const r = await B.call("POST", "api/bad-copy", { id: it.Id });
+      B.toast((r && r.message) || "Tower is finding a new copy. It's usually back within an hour.");
+    } catch (err) { B.toast(B.say(err)); }
   };
 
   // ---------- "Skip came at the wrong time?": saved on Tower at the spot the video is at now ----------

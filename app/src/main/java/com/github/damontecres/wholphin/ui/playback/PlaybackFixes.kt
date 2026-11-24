@@ -90,3 +90,44 @@ internal fun PlaybackViewModel.reportProblem(problem: String) {
         showNotice(notice)
     }
 }
+
+/**
+ * Idea Box 29 "This copy is bad": Tower has Radarr / Sonarr throw this file away, never take that download
+ * again, and look for a new copy. The video pauses (the file is going away) and Ben's Server page lists it
+ * like any other report.
+ */
+internal fun PlaybackViewModel.swapBadCopy() {
+    val helper = gameLibraryClient ?: return
+    val item = state.value.currentPlayback?.item ?: return
+    if (item.type != BaseItemKind.MOVIE && item.type != BaseItemKind.EPISODE) return
+    player.pause()
+    viewModelScope.launchIO {
+        // Ben's Server page lists it like any other report (quietly, the notice below says what happened)
+        try {
+            benflixProblems?.report(item.id, item.title.orEmpty(), "This copy is bad")
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            Timber.w(ex, "Could not send the bad copy report")
+        }
+        val notice =
+            try {
+                val answer = helper.postJson("/api/bad-copy", org.json.JSONObject().put("id", item.id.toString()))
+                PlayerNotice(
+                    title = "Thanks, Tower is on it",
+                    message = answer.optString("message").ifBlank { "Tower is finding a new copy. It's usually back within an hour." },
+                    autoHideMs = 12_000L,
+                )
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't swap the bad copy")
+                PlayerNotice(
+                    title = "Tower couldn't swap it",
+                    message = ex.message?.takeIf { it.isNotBlank() && it.length < 160 } ?: "Ben got your report and will look.",
+                    autoHideMs = 10_000L,
+                )
+            }
+        showNotice(notice)
+    }
+}
