@@ -429,7 +429,7 @@ const gameWhen = (g) => {
   const today = new Date().toDateString() === s.toDateString();
   return (today ? "Today" : s.toLocaleDateString(undefined, { weekday: "long" })) + " " + B.clock(s);
 };
-const gameCard = (title, line, live, mine, href) => `<a class="game-card${mine ? " mine" : ""}" href="${esc(href)}"><div class="gc-top">${live ? '<span class="lt-live">LIVE</span>' : ""}${mine ? '<span class="team-tag">Your team</span>' : ""}</div><div><b>${esc(title)}</b><small>${esc(line)}</small></div></a>`;
+const teamGameCard = (title, line, live, mine, href) => `<a class="game-card${mine ? " mine" : ""}" href="${esc(href)}"><div class="gc-top">${live ? '<span class="lt-live">LIVE</span>' : ""}${mine ? '<span class="team-tag">Your team</span>' : ""}</div><div><b>${esc(title)}</b><small>${esc(line)}</small></div></a>`;
 B.sportsTab = async (list, nav) => {
   $("#liveTop") && $("#liveTop").remove();
   const rows = $("#rows");
@@ -446,8 +446,8 @@ B.sportsTab = async (list, nav) => {
     ? `<div class="follow-card"><div><b>Follow your teams</b><p>Pick them once. Their games come first here, get a gold Your team tag, and Glowfin tells you when one starts.</p><div class="fc-btns"><button class="btn white" id="pickTeams">Pick teams</button><button class="btn" id="notNow">Not now</button></div></div></div>`
     : `<div class="strip team-strip">${mine.map((t) => teamBadge(t, { attr: 'data-pick="1"' })).join("")}<button class="team-badge add" data-pick="1"><span class="tb-c">+</span><small>${mine.length ? "Change" : "Pick teams"}</small></button></div>`;
   rows.innerHTML = `<section class="rowx at0"><h3>Your teams</h3>${teamsBlock}</section>
-    ${mine.length ? B.row("Your team games", games.map((g) => gameCard(g.title, `${g.channel} · ${gameWhen(g)}`, gameWhen(g) === "on now", true, `#/watch/${g.channelId}`))) || '<section class="rowx at0"><h3>Your team games</h3><div class="empty sm" style="padding:0 var(--gutter)">None of your teams are in the guide this week. Glowfin keeps looking, and tells you when one is on.</div></section>' : ""}
-    ${B.row("On now", sports.map((c) => { const p = nowOn(c); const name = p ? p.Name : "Live"; return gameCard(name, c.Name, true, B.isMyTeam(re, name), `#/watch/${c.Id}`); }))}`;
+    ${mine.length ? B.row("Your team games", games.map((g) => teamGameCard(g.title, `${g.channel} · ${gameWhen(g)}`, gameWhen(g) === "on now", true, `#/watch/${g.channelId}`))) || '<section class="rowx at0"><h3>Your team games</h3><div class="empty sm" style="padding:0 var(--gutter)">None of your teams are in the guide this week. Glowfin keeps looking, and tells you when one is on.</div></section>' : ""}
+    ${B.row("On now", sports.map((c) => { const p = nowOn(c); const name = p ? p.Name : "Live"; return teamGameCard(name, c.Name, true, B.isMyTeam(re, name), `#/watch/${c.Id}`); }))}`;
   const pick = () => teamPicker(info, nav);
   $$("[data-pick]", rows).forEach((b) => b.addEventListener("click", pick));
   const pt = $("#pickTeams"); if (pt) pt.addEventListener("click", pick);
