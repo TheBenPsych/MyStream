@@ -141,7 +141,9 @@ fun pillFromWords(
             ?.get(1)
             ?.toLongOrNull()
     val cant = low.startsWith("couldn't") || low.contains("went wrong") || low.contains("said no") || low.contains("declined")
-    val ready = low.startsWith("ready") || low.contains("on glowfin") || low.contains("on benflix") || low.contains("in your music") || low == "available"
+    val ready =
+        low.startsWith("ready") || low.contains("on glowfin") || low.contains("on benflix") || low.contains("in your music") ||
+            low == "available"
     val getting = listOf("download", "processing", "getting it", "putting it", "partly").any { low.contains(it) }
     val looking = listOf("looking", "searching", "just came out", "finding").any { low.contains(it) }
     return when {
