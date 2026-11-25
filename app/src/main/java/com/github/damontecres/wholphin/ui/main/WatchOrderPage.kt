@@ -554,7 +554,7 @@ private fun MissingCard(
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text(
-                    text = "NOT ON\nBENFLIX\n\nAsk for it",
+                    text = "NOT ON\nGLOWFIN\n\nAsk for it",
                     fontSize = BenflixType.tag,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,

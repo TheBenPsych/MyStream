@@ -245,7 +245,7 @@ B.musicPill = (r) => {
 B.bookPill = (r) => {
   const w = r.words || "";
   // Only words (a cover's "asked" line): read them
-  const s = r.state || (/ready|on benflix/i.test(w) ? "ready" : /couldn|problem/i.test(w) ? "cant" : /download/i.test(w) ? "downloading"
+  const s = r.state || (/ready|on glowfin|on benflix/i.test(w) ? "ready" : /couldn|problem/i.test(w) ? "cant" : /download/i.test(w) ? "downloading"
     : /look|search/i.test(w) ? "searching" : /waiting/i.test(w) ? "waiting" : "");
   if (s === "ready") return { k: "ready", w: "Ready to read" };
   if (s === "cant" || s === "problem" || s === "no") return { k: "cant", w: "Couldn't find it" };

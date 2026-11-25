@@ -392,7 +392,7 @@ def _jellyfin(method, path, body=None):
     except Exception:  # The helper's own error type
         return None
     if status == 401:
-        log("Jellyfin no longer accepts the saved sign-in; open Benflix as Ben once to fix it")
+        log("Jellyfin no longer accepts the saved sign-in; open Glowfin as Ben once to fix it")
         return None
     if status >= 300:
         return None
@@ -1531,7 +1531,7 @@ def _ensure_lidarr():
             problems.append("Lidarr has no download app yet. Add qBittorrent in Lidarr, see the music setup steps.")
         _ready_lidarr["problem"] = " ".join(problems) or None
         _ready_lidarr["ok"] = True
-        log("Lidarr is set up for Benflix")
+        log("Lidarr is set up for Glowfin")
         return True
     except MusicError as e:
         _ready_lidarr["problem"] = e.message
@@ -2379,7 +2379,7 @@ def redo_song(item_id, token, user_id):
         try:
             lidarr("DELETE", f"/trackfile/{track_file['id']}")
         except MusicError as e:
-            log(f"Lidarr couldn't delete the file, so Benflix will: {e.message}")
+            log(f"Lidarr couldn't delete the file, so Glowfin will: {e.message}")
     if os.path.exists(real):
         try:
             os.remove(real)
@@ -2441,7 +2441,7 @@ def delete_song(item_id, token, user_id):
         try:
             lidarr("DELETE", f"/trackfile/{track_file['id']}")
         except MusicError as e:
-            log(f"Lidarr couldn't delete the file, so Benflix will: {e.message}")
+            log(f"Lidarr couldn't delete the file, so Glowfin will: {e.message}")
         # Lidarr watches whole albums, not single songs: an unwatched album never fetches the missing song again
         if track_file.get("albumId"):
             try:

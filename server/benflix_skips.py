@@ -573,7 +573,7 @@ def season_job(info):
     series_id, season_id = info["series"], info["season"]
     token, user_id = _token_for(info)
     if not tools_ok():
-        log("ffmpeg or fpcalc is missing, so seasons can't be checked. Run the Benflix setup command again.")
+        log("ffmpeg or fpcalc is missing, so seasons can't be checked. Run the Glowfin setup command again.")
         return
     eps = _season_eps(series_id, season_id, token, user_id)
     started = time.time()

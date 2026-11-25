@@ -148,7 +148,7 @@ def start(jellyfin_call=None):
         for k, v in _probe_saved.items():
             _probe[k] = tuple(v)
     else:
-        log("No folder to save in, so places and requests won't be kept. Run the Benflix setup command again.")
+        log("No folder to save in, so places and requests won't be kept. Run the Glowfin setup command again.")
     threading.Thread(target=_loop, name="books", daemon=True).start()
     if booklists is not None:
         import sys

@@ -1131,7 +1131,7 @@ private fun MusicAskDialog(
                 CoverImage(url = item.cover, modifier = Modifier.size(72.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        "NOT ON BENFLIX YET",
+                        "NOT ON GLOWFIN YET",
                         color = BenflixColors.Muted,
                         fontSize = BenflixType.tag,
                         fontWeight = FontWeight.ExtraBold,

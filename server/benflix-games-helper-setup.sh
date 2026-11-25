@@ -88,7 +88,7 @@ fi
 cp "$NEW/benflix-health.sh" "$APP/benflix-health.sh" 2>/dev/null
 rm -rf "$NEW"
 
-say "Downloading Benflix for web browsers"
+say "Downloading Glowfin for web browsers"
 mkdir -p "$APP/web"
 if curl -fsSL "$RAW/web/files.txt" -o "$APP/web/files.txt"; then
   bad=0
@@ -213,7 +213,7 @@ MUSIC_ENV=$APP/music.env
 [ -f "$MUSIC_ENV" ] || : >"$MUSIC_ENV"
 chmod 600 "$MUSIC_ENV"
 
-say "Connecting Chaptarr (for asking for books in Benflix)"
+say "Connecting Chaptarr (for asking for books in Glowfin)"
 find_chaptarr() {
   local c cfg key port base ipaddr u
   c=$(docker ps -a --format '{{.Names}}' | grep -i chaptarr | head -1)
@@ -374,7 +374,7 @@ if ! curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play && [ -f "$G
 fi
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"server_tools": true'; then echo "  ok  http://$HOST_IP:8097 (games + Server page tools)"
   if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"web_app": true'; then
-    echo "  ok  Benflix in a web browser: open http://$HOST_IP:8097 on any computer at home. Everyone signs in with their own Benflix name."
+    echo "  ok  Glowfin in a web browser: open http://$HOST_IP:8097 on any computer at home. Everyone signs in with their own Glowfin name."
   else echo "  PROBLEM  The web version didn't load. Send this output to Claude."; fi
 elif curl -fs -m 5 http://127.0.0.1:8097/health | grep -q local_play; then echo "  ok  http://$HOST_IP:8097 (games only: the Server page tools didn't load)"; else
   echo "  PROBLEM  The helper didn't start. Its log:"
@@ -401,7 +401,7 @@ fi
 say "Music"
 if curl -fs -m 5 http://127.0.0.1:8097/health | grep -q '"music": true'; then
   if grep -q LIDARR_URL "$TOOLS_ENV"; then
-    echo "  ok  Ask for music in Benflix > Requests > Music (only you can)."
+    echo "  ok  Ask for music in Glowfin > Requests > Music (only you can)."
   else
     echo "  ok  Music is on, but Lidarr isn't connected yet (see above)."
   fi
@@ -505,6 +505,6 @@ else
 fi
 
 echo
-echo "All done. Open Benflix > Games on your TV or phone and press a game."
-echo "The Server page (My Benflix > Server) now shows your apps, downloads and how busy Tower is."
-echo "Benflix in a web browser: http://$HOST_IP:8097 (it updates itself every hour)."
+echo "All done. Open Glowfin > Games on your TV or phone and press a game."
+echo "The Server page (My Glowfin > Server) now shows your apps, downloads and how busy Tower is."
+echo "Glowfin in a web browser: http://$HOST_IP:8097 (it updates itself every hour)."

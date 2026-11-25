@@ -10,7 +10,7 @@ say() { echo; echo "== $*"; }
 HOST_IP=$(ip -4 -o addr show br0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)
 [ -n "$HOST_IP" ] || HOST_IP=$(hostname -I | awk '{print $1}')
 
-say "Getting the Benflix Recyclarr settings"
+say "Getting the Glowfin Recyclarr settings"
 mkdir -p "$APP"
 # files.txt lists every settings file; Benflix's own custom formats go in benflix-cfs/
 if ! wget -qO /tmp/recyclarr-files.txt "$RAW/files.txt"; then
