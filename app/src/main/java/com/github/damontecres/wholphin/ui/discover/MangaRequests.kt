@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,7 +54,6 @@ import com.github.damontecres.wholphin.ui.books.BOOK_RATIO
 import com.github.damontecres.wholphin.ui.books.BookCoverImage
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.detail.title.ScoreBox
-import com.github.damontecres.wholphin.ui.detail.title.ScorePill
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.music.MusicButton
@@ -313,15 +311,6 @@ fun MangaShelf(
         val topHeight =
             (maxHeight * 0.52f).coerceIn(top + 116.dp, (maxHeight - 250.dp).coerceAtLeast(top + 116.dp))
         if (isTv) RequestArtUrl(described?.cover)
-        if (isTv) {
-            described?.score?.let { score ->
-                ScorePill(
-                    rating = null,
-                    scores = listOf(StripPart("anilist", "%.1f".format(score))),
-                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = top + 2.dp),
-                )
-            }
-        }
         Column(Modifier.fillMaxSize().padding(top = if (isTv) 0.dp else top)) {
             if (!isTv) RequestsSearchBox(query = query, onQuery = viewModel::search, placeholder = "Search any manga")
             if (!isTv && query.trim().length >= 2) {
@@ -345,6 +334,7 @@ fun MangaShelf(
                             story = c.desc,
                             hint = if (c.have == null && c.asked == null) ASK_HINT else "OK opens it",
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = top + 2.dp),
+                            scores = listOfNotNull(c.score?.let { StripPart("anilist", "%.1f".format(it)) }),
                         )
                     }
                 }

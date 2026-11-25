@@ -65,7 +65,6 @@ import com.github.damontecres.wholphin.ui.components.GlowRanked
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.detail.discover.findAnimeInRequests
 import com.github.damontecres.wholphin.ui.detail.discover.searchNameFor
-import com.github.damontecres.wholphin.ui.detail.title.ScorePill
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
@@ -499,13 +498,6 @@ internal fun AnimeShelf(
             )
         if (isTv) {
             RequestArtUrl(described?.let { it.banner ?: it.cover })
-            described?.score?.let { score ->
-                ScorePill(
-                    rating = null,
-                    scores = listOf(StripPart("anilist", "$score%")),
-                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = top + 2.dp),
-                )
-            }
         }
         Column(Modifier.fillMaxSize().padding(top = if (isTv) 0.dp else top)) {
             if (isTv) {
@@ -528,6 +520,7 @@ internal fun AnimeShelf(
                             story = card.story,
                             hint = ASK_HINT,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = top + 2.dp),
+                            scores = listOfNotNull(card.score?.let { StripPart("anilist", "$it") }),
                         )
                     }
                 }

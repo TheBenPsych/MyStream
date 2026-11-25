@@ -82,6 +82,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingShape
+import com.github.damontecres.wholphin.ui.components.ProblemPage
 import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
@@ -132,7 +133,8 @@ class ChannelsViewModel
             reload()
         }
 
-        private fun reload() {
+        fun reload() {
+            _channels.value = null
             viewModelScope.launch(WholphinDispatchers.IO) {
                 _channels.value =
                     try {
@@ -204,11 +206,18 @@ fun ChannelsPage(
         return
     }
     if (list.isEmpty()) {
-        Text(
-            if (KidsMode.isActive) "Live TV isn't on for Kids." else "No live channels yet. Tower adds them when Live TV is set up.",
-            fontSize = BenflixType.lead,
-            color = Glowfin.Dim,
-            modifier = modifier.padding(32.dp),
+        // Design check (Ben 2026-11-24): the same friendly empty page as everywhere else, not a plain line of text
+        ProblemPage(
+            title = if (KidsMode.isActive) "Live TV isn't on for Kids" else "No live channels yet",
+            line =
+                if (KidsMode.isActive) {
+                    "Ask a grown-up to switch profiles to watch Live TV."
+                } else {
+                    "Tower adds them when Live TV is set up. If it already is, try again in a moment."
+                },
+            icon = BenflixIcon.LIVE,
+            modifier = modifier,
+            onClick = if (KidsMode.isActive) null else viewModel::reload,
         )
         return
     }

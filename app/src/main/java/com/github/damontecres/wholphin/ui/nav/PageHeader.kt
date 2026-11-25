@@ -178,8 +178,9 @@ fun BenflixPageHeader(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            // Side menu A (Ben 2026-11-24): the clock stays put while the open menu pushes the page right
-            modifier = (if (overPicture) Modifier.softShadow() else Modifier).stayPut(),
+            // Side menu A (Ben 2026-11-24): the clock stays put while the open menu pushes the page right.
+            // Design check (Ben 2026-11-24): no dark oval behind the clock, the clock's own text shadow is enough
+            modifier = Modifier.stayPut(),
         ) {
             // Benflix music: while music plays, a pill left of the clock on every page, Music too (OK opens
             // Now playing; Ben 2026-11-18 approved music-reach-1, the old strip at the bottom of Music pages is gone)

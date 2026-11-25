@@ -61,7 +61,9 @@ class DetailsPrefetch
 
         private fun fresh(itemId: UUID): BaseItemDto? {
             val entry = cache[itemId] ?: return null
-            return if (System.currentTimeMillis() - entry.at < MAX_AGE_MS) {
+            // Design check (Ben 2026-11-24): details fetched before something was played don't know the new
+            // saved spot, so the page said Play (from the start) instead of Resume
+            return if (System.currentTimeMillis() - entry.at < MAX_AGE_MS && entry.at > playedAt) {
                 entry.item
             } else {
                 cache.remove(itemId)
@@ -78,6 +80,16 @@ class DetailsPrefetch
         }
 
         companion object {
+            /** When playback last stopped anywhere; details fetched before then are thrown away */
+            @Volatile
+            var playedAt = 0L
+                private set
+
+            /** Called when playback stops, so the next details page asks the server for the new saved spot */
+            fun playbackStopped() {
+                playedAt = System.currentTimeMillis()
+            }
+
             private const val REST_MS = 600L
             private const val MAX_AGE_MS = 2 * 60 * 1000L
             private const val MAX_ITEMS = 10

@@ -46,6 +46,8 @@ fun EmptyPage(
             color = BenflixColors.Text,
             fontFamily = GlowfinDisplayFont,
             fontSize = BenflixType.pageTitle,
+            // Design check (Ben 2026-11-24): a two-line heading ("Couldn't load your books") had its lines on top of each other
+            lineHeight = BenflixType.pageTitle * 1.15f,
             fontWeight = FontWeight.ExtraBold,
             textAlign = align,
         )
