@@ -92,7 +92,7 @@ HOST_IP=$(ip -4 -o addr show br0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | 
 [ -n "$HOST_IP" ] || HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 [ -n "$HOST_IP" ] || HOST_IP=127.0.0.1
 
-say "Getting the Benflix Tdarr files from GitHub"
+say "Getting the Glowfin Tdarr files from GitHub"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 for f in benflix-shrink-flow.json tdarr-watch.sh; do
@@ -207,7 +207,7 @@ db() { # $1 = collection, $2 = mode, $3 = id, $4 = json object (or empty)
 }
 post() { curl -fs -m 30 -X POST "$API/$1" -H 'content-type: application/json' -d "$2"; }
 
-say "Adding the Benflix shrink steps"
+say "Adding the Glowfin shrink steps"
 LOCAL="$APP/server/Tdarr/Plugins/FlowPlugins/LocalFlowPlugins/benflix"
 for p in $PLUGINS; do
   mkdir -p "$LOCAL/$p/1.0.0"
@@ -215,7 +215,7 @@ for p in $PLUGINS; do
 done
 chown -R 99:100 "$LOCAL"
 post sync-plugins '{"data":{}}' >/dev/null
-echo "  ok  5 Benflix steps"
+echo "  ok  5 Glowfin steps"
 
 esc() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
 sed -e "s|__EPISODE_MIN_MB__|$EPISODE_MIN_MB|" -e "s|__EPISODE_MAX_MB__|$EPISODE_MAX_MB|" -e "s|__MOVIE_MIN_MB__|$MOVIE_MIN_MB|" \
@@ -228,7 +228,7 @@ sed -e "s|__EPISODE_MIN_MB__|$EPISODE_MIN_MB|" -e "s|__EPISODE_MAX_MB__|$EPISODE
 db FlowsJSONDB removeOne benflix_shrink >/dev/null
 if db FlowsJSONDB insert benflix_shrink "$(cat "$TMP/flow.json")" >/dev/null \
   && db FlowsJSONDB getById benflix_shrink | grep -q benflixPrepare; then
-  echo "  ok  flow \"Benflix shrink\""
+  echo "  ok  flow \"Glowfin shrink\""
 else
   problem "Couldn't save the flow"; exit 1
 fi

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Benflix tools</title>
+<title>Glowfin tools</title>
 <!--
   Benflix tools in a PC browser. The games helper on Tower serves this page at http://<server>:8097.
   Sign in with a Jellyfin admin login. Tower tools go to /api/admin/..., Jellyfin requests to /api/web/jf/...
@@ -101,8 +101,8 @@
 
 <section id="login" class="hidden">
   <form class="card" id="loginForm" autocomplete="on">
-    <div class="logo">Benflix</div>
-    <h1>Benflix tools</h1>
+    <div class="logo">Glowfin</div>
+    <h1>Glowfin tools</h1>
     <p>Sign in with your Jellyfin admin login.</p>
     <input class="field" id="user" name="username" placeholder="User name" autocomplete="username" required>
     <input class="field" id="pass" name="password" type="password" placeholder="Password" autocomplete="current-password">
@@ -113,7 +113,7 @@
 
 <section id="app" class="hidden">
   <header>
-    <div class="logo">Benflix</div>
+    <div class="logo">Glowfin</div>
     <div class="who"><span id="whoName"></span><button class="btn small" id="logout">Sign out</button></div>
   </header>
   <div class="layout">
@@ -162,7 +162,7 @@ async function call(method, path, body) {
   try {
     r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (e) {
-    throw new Error("Couldn't reach the Benflix helper on Tower. Is Tower on?");
+    throw new Error("Couldn't reach the Glowfin helper on Tower. Is Tower on?");
   }
   const text = await r.text();
   let data = null;
@@ -327,7 +327,7 @@ PAGES.downloads = (el) => {
       const t = await tower(fresh);
       if (current !== "downloads") return;
       let html = problemsNote(t.problems);
-      if (!t.sonarr && !t.radarr) html += `<div class="note">Sonarr and Radarr aren't connected to the helper yet. Run the Benflix setup command on Tower again.</div>`;
+      if (!t.sonarr && !t.radarr) html += `<div class="note">Sonarr and Radarr aren't connected to the helper yet. Run the Glowfin setup command on Tower again.</div>`;
       const list = t.downloads || [];
       html += `<div class="list">` + (list.map((d) => `
         <div class="item"><span class="dot ${d.stuck ? "bad" : d.paused || d.queued ? "off" : ""}"></span>
@@ -557,7 +557,7 @@ PAGES.now = (el) => {
 };
 
 PAGES.library = (el) => {
-  el.innerHTML = `<h2>Library</h2><p class="sub">How much is on Benflix, and scanning for new files.</p><div id="lb">${loading()}</div>`;
+  el.innerHTML = `<h2>Library</h2><p class="sub">How much is on Glowfin, and scanning for new files.</p><div id="lb">${loading()}</div>`;
   const draw = async () => {
     try {
       const weekAgo = new Date(Date.now() - 7 * 86400000);
@@ -691,7 +691,7 @@ PAGES.people = (el) => {
 };
 
 PAGES.problems = (el) => {
-  el.innerHTML = `<h2>Problems</h2><p class="sub">Problems people reported from Benflix, and problems from the server in the last day.</p>
+  el.innerHTML = `<h2>Problems</h2><p class="sub">Problems people reported from Glowfin, and problems from the server in the last day.</p>
     <h3 class="section-title">Reported by people</h3><div id="rep">${loading()}</div>
     <h3 class="section-title">From the server</h3><div id="srv">${loading()}</div>`;
   let reports = [];
@@ -776,13 +776,13 @@ PAGES.messages = (el) => {
         </div></div>
         <h3 class="section-title">Welcome note</h3>
         <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
-          <textarea class="field" id="welText" rows="3" placeholder="Shows once to each person the first time they open Benflix" style="resize:vertical;margin:0">${esc(welcome ? welcome.text : "")}</textarea>
+          <textarea class="field" id="welText" rows="3" placeholder="Shows once to each person the first time they open Glowfin" style="resize:vertical;margin:0">${esc(welcome ? welcome.text : "")}</textarea>
           <div class="row"><span style="flex:1"></span><button class="btn small" data-wel="clear">Remove</button><button class="btn small red" data-wel="save">Save welcome note</button></div>
         </div></div>
         <h3 class="section-title">Pop-up right now</h3>
         <div class="list"><div class="item" style="flex-direction:column;align-items:stretch">
           <input class="field" id="popText" placeholder="Like: Restarting the server in 5 minutes" style="margin:0">
-          <div class="row"><span class="s" style="flex:1">Shows for 15 seconds on every Benflix screen that's on.</span><button class="btn small red" id="popSend">Send pop-up</button></div>
+          <div class="row"><span class="s" style="flex:1">Shows for 15 seconds on every Glowfin screen that's on.</span><button class="btn small red" id="popSend">Send pop-up</button></div>
         </div></div>`;
     } catch (err) { if (current === "messages") $("#ms").innerHTML = `<div class="note">${esc(err.message)}</div>`; }
   };
@@ -811,7 +811,7 @@ PAGES.messages = (el) => {
         let n = 0;
         for (const x of s) { try { await jf("POST", `/Sessions/${encodeURIComponent(x.Id)}/Message`, { Header: "Message from " + session.name, Text: text, TimeoutMs: 15000 }); n++; } catch (err) {} }
         $("#popText").value = "";
-        return n ? `Sent to ${n} screen${n === 1 ? "" : "s"}.` : "No Benflix screens are on right now.";
+        return n ? `Sent to ${n} screen${n === 1 ? "" : "s"}.` : "No Glowfin screens are on right now.";
       });
     }
   };

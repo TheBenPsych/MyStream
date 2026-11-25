@@ -338,7 +338,7 @@ fun BenflixWrappedLayer(
                     ).padding(28.dp),
         ) {
             Text(
-                text = "YOUR ${w.year} ON BENFLIX",
+                text = "YOUR ${w.year} ON GLOWFIN",
                 color = com.github.damontecres.wholphin.ui.theme.BenflixColors.Muted,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,

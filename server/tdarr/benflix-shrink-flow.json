@@ -1,7 +1,7 @@
 {
   "_id": "benflix_shrink",
-  "name": "Benflix shrink",
-  "description": "Made by the Benflix setup command (server/tdarr/setup-tdarr.sh). Changes here are overwritten when the setup runs again.",
+  "name": "Glowfin shrink",
+  "description": "Made by the Glowfin setup command (server/tdarr/setup-tdarr.sh). Changes here are overwritten when the setup runs again.",
   "tags": "benflix",
   "flowPlugins": [
     { "name": "Input File", "sourceRepo": "Community", "pluginName": "inputFile", "version": "1.0.0", "id": "bfInput",

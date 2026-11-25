@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.door
 
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
+import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.LatestNextUpService
@@ -667,6 +668,9 @@ class DoorDataService
                 if (!seerrService.active.first()) return@safe emptyList()
                 trending()
                     .filter { (type == null || it.type == type) && it.jellyfinItemId == null && !it.isAnime }
+                    // Glowfin: Seerr can know a title is here even without a Jellyfin id, and an "ON GLOWFIN"
+                    // card doesn't belong in a row called "not on Glowfin"
+                    .filter { it.availability != SeerrAvailability.AVAILABLE }
                     .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
                     .take(ROW)
             }
@@ -679,7 +683,9 @@ class DoorDataService
         suspend fun trendingAnimeMissing(): List<DiscoverItem> =
             safe {
                 if (!seerrService.active.first()) return@safe emptyList()
-                val missing = { d: DiscoverItem -> d.jellyfinItemId == null && d.posterUrl != null }
+                val missing = { d: DiscoverItem ->
+                    d.jellyfinItemId == null && d.posterUrl != null && d.availability != SeerrAvailability.AVAILABLE
+                }
                 coroutineScope {
                     val hot = async { trending().filter { it.isAnime } }
                     val shows =

@@ -61,7 +61,7 @@ else
   echo "  ok  Nothing about streaming in it"
 fi
 
-say "Restarting the Benflix helper without the old folder"
+say "Restarting the Glowfin helper without the old folder"
 curl -fsSL "$RAW/benflix-games-helper-setup.sh" | bash
 
 echo
