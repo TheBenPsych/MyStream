@@ -976,6 +976,21 @@ def _nice_size(mib):
     return f"{mib / 1024:.1f} GB" if mib >= 1024 else f"{mib:.0f} MB"
 
 
+def _nums(nums):
+    return ", ".join(str(n) for n in sorted(nums))
+
+
+def _same_release(path, ep):
+    """True when a file is the current release with only its tags changed (same size to 0.1 MiB)"""
+    m = re.match(r"([\d.]+)\s*MiB", str(((ep or {}).get("file") or {}).get("size") or ""))
+    if not m:
+        return False
+    try:
+        return abs(os.path.getsize(path) / 1048576 - float(m.group(1))) <= 0.06
+    except OSError:
+        return False
+
+
 def _arc_rows(data):
     have = _have()
     with _lock:
@@ -984,6 +999,7 @@ def _arc_rows(data):
     for part, a in sorted(data["arcs"].items()):
         eps = a.get("episodes") or []
         got, newer, need_mib = 0, 0, 0.0
+        newer_eps, missing_eps = [], []
         for e in eps:
             try:
                 num = int(e.get("episode"))
@@ -994,9 +1010,11 @@ def _arc_rows(data):
             if key in have:
                 got += 1
                 crc = (mine.get(key) or {}).get("crc")
-                if crc and crc not in (std, ext):
+                if crc and crc not in (std, ext) and not _same_release(have[key], data["crc"].get(ext) or data["crc"].get(std)):
                     newer += 1
+                    newer_eps.append(num)
             else:
+                missing_eps.append(num)
                 info = data["crc"].get(ext or std) or data["crc"].get(std) or {}
                 need_mib += _size_mib((info.get("file") or {}).get("size"))
         total = len(eps)
@@ -1010,10 +1028,10 @@ def _arc_rows(data):
         elif missing or newer:
             bits = []
             if missing:
-                bits.append(f"{missing} missing" + (f" (about {_nice_size(need_mib)})" if need_mib else ""))
+                bits.append(f"{missing} missing" + (f" (about {_nice_size(need_mib)})" if need_mib else "") + f": episode{'s' if missing != 1 else ''} {_nums(missing_eps)}")
             if newer:
-                bits.append(f"{newer} with a newer copy on onepace.net")
-            light, line = "warn", f"{got} of {total} here. " + ", ".join(bits)
+                bits.append(f"newer copy out for episode{'s' if newer != 1 else ''} {_nums(newer_eps)}")
+            light, line = "warn", f"{got} of {total} here. " + ". ".join(b[:1].upper() + b[1:] for b in bits)
         else:
             light, line = "ok", f"All {total} here"
         label = a.get("title") or f"Arc {part}"
