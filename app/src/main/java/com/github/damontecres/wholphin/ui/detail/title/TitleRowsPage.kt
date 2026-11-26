@@ -345,24 +345,20 @@ internal fun WideRowsTitlePage(
 }
 
 /**
- * The age rating and scores as bare icons, then Glowfin's "94% for you" pill at the end (Ben 2026-11-24): one row
- * under the year line, the same as on Home, Movies, Shows and Anime.
+ * The age rating and scores as bare icons (Ben 2026-11-24): one row under the year line, the same as on Home,
+ * Movies, Shows and Anime. The "for you" percent was removed (Ben 2026-11-26).
  */
 @Composable
 private fun TitleScoreRow(
     rating: String?,
     scores: List<StripPart>,
-    small: Boolean = false,
 ) {
-    val matchId = LocalTitleExtras.current.matchId
-    if (rating.isNullOrBlank() && scores.none { !it.value.isNullOrBlank() } && matchId == null) return
+    if (rating.isNullOrBlank() && scores.none { !it.value.isNullOrBlank() }) return
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         ScoreIcons(rating = rating, scores = scores)
-        com.github.damontecres.wholphin.ui.door
-            .MatchPill(itemId = matchId, small = small)
     }
 }
 
@@ -520,7 +516,7 @@ internal fun PhoneRowsTitlePage(
                         // under the year line)
                         TitleBox(title = title, wide = false, width = 220.dp, anyShape = true)
                         InfoLine(info, null)
-                        TitleScoreRow(rating = rating, scores = scores, small = true)
+                        TitleScoreRow(rating = rating, scores = scores)
                         QualityChips()
                         infoExtra?.invoke()
                         buttons.firstOrNull()?.let { b ->

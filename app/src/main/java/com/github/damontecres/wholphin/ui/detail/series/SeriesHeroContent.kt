@@ -293,7 +293,6 @@ fun SeriesHeroContent(
                     ?.firstOrNull()
                     ?.takeIf { it.isNotBlank() }
             },
-        matchId = if (easy) null else series.id,
         modifier = modifier,
     )
 

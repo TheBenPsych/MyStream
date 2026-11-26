@@ -268,7 +268,6 @@ fun MovieHeroContent(
                         .qualityChips(movie)
                 }
             },
-        matchId = if (easy) null else movie.id,
         modifier = modifier,
     )
 
