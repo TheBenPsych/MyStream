@@ -57,6 +57,7 @@ _log_lines = []
 _state = {}  # saved: files {"S14E03": {crc, extended, name, when}}, replaced {path: when}, last {...}
 _data = {"loaded": 0, "raw": None}
 _status = {"busy": False, "step": "", "done": 0, "total": 0}
+_journal = []  # this sort's moves [(from, to)], saved so "Put back last sort" can undo them
 
 
 def log(text):
@@ -236,17 +237,19 @@ def _anime_root():
 
 
 def _move_old_show():
-    """Moves a One Pace folder an earlier version filed in the wrong place into the anime shows folder"""
+    """Moves a One Pace folder an earlier version filed in the wrong place into the anime shows folder.
+    Returns the old place (so Jellyfin can be told it's gone) or None."""
     target = _show_dir()
     if os.path.exists(target):
-        return
+        return None
     for name in OLD_ROOTS:
         old = os.path.join(MEDIA, name, SHOW_NAME)
         if os.path.abspath(old) != os.path.abspath(target) and os.path.isdir(old) and os.path.exists(os.path.join(old, "tvshow.nfo")):
             _folder(os.path.dirname(target))
             _move(old, target)
             log(f"moved One Pace from {name} to {os.path.basename(_anime_root())}")
-            return
+            return old
+    return None
 
 
 def _show_dir():
@@ -337,6 +340,7 @@ def _retire(path):
         try:
             _move(p, target)
             _share(target)
+            _journal.append((p, target))
             with _lock:
                 _state.setdefault("replaced", {})[target] = time.time()
         except OSError as e:
@@ -554,11 +558,13 @@ def _place(data, info, path, seasons_done):
     subs = [p for p in _sidecars(path) if os.path.splitext(p)[1].lower() in SIDE]
     _move(path, dst)
     _share(dst)
+    _journal.append((path, dst))
     for s in subs:
         tail = os.path.basename(s)[len(os.path.splitext(os.path.basename(path))[0]):]
         try:
             _move(s, os.path.splitext(dst)[0] + tail)
             _share(os.path.splitext(dst)[0] + tail)
+            _journal.append((s, os.path.splitext(dst)[0] + tail))
         except OSError:
             pass
     _episode_nfo(info, dst)
@@ -604,11 +610,14 @@ def _refresh_posters():
     return True
 
 
-def _tell_jellyfin(new_pictures=False):
+def _tell_jellyfin(new_pictures=False, old_place=None):
     token, _ = _admin() if _admin else (None, None)
     if not token or not _jf:
         return "Open Glowfin once as Ben so Tower can tell Jellyfin."
-    body = json.dumps({"Updates": [{"Path": _show_dir(), "UpdateType": "Modified"}]}).encode()
+    updates = [{"Path": _show_dir(), "UpdateType": "Created" if old_place else "Modified"}]
+    if old_place:
+        updates.append({"Path": old_place, "UpdateType": "Deleted"})
+    body = json.dumps({"Updates": updates}).encode()
     _jf("POST", "/Library/Media/Updated", token=token, body=body)
     # Re-read the show so new .nfo notes and posters win (only One Pace, never the whole library)
     try:
@@ -617,11 +626,118 @@ def _tell_jellyfin(new_pictures=False):
         items = json.loads(raw or b"{}").get("Items") or [] if status == 200 else []
         for it in items:
             if str(it.get("Path") or "").rstrip("/").endswith("/" + SHOW_NAME):
-                q2 = urllib.parse.urlencode({"Recursive": "true", "MetadataRefreshMode": "FullRefresh", "ImageRefreshMode": "FullRefresh", "ReplaceAllMetadata": "true", "ReplaceAllImages": "true" if new_pictures else "false"})
+                q2 = urllib.parse.urlencode({"Recursive": "true", "MetadataRefreshMode": "FullRefresh", "ImageRefreshMode": "FullRefresh", "ReplaceAllMetadata": "false", "ReplaceAllImages": "true" if new_pictures else "false"})
                 _jf("POST", f"/Items/{it['Id']}/Refresh?{q2}", token=token)
     except Exception as e:  # noqa: BLE001
         log(f"couldn't ask Jellyfin to re-read One Pace: {e}")
+    threading.Thread(target=_push_names, name="onepace-names", daemon=True).start()
     return ""
+
+
+# ---------------------------------------------------------------- names straight into Jellyfin
+# Some libraries don't read .nfo files (Jellyfin's "Nfo" metadata reader is off), and then episodes show their
+# file names. So after each Sort, Tower also writes the titles, stories and arc names into Jellyfin itself and
+# locks them, the same way Jellyfin's own Edit metadata page does.
+
+
+def _read_nfo(path):
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return None
+    return {c.tag: (c.text or "") for c in root}
+
+
+def _jf_json(method, path, token, body=None):
+    status, raw, _ = _jf(method, path, token=token, body=json.dumps(body).encode() if body is not None else None)
+    if status not in (200, 204):
+        raise RuntimeError(f"Jellyfin said {status}")
+    return json.loads(raw or b"{}") if raw else {}
+
+
+def _update_item(item_id, changes, token, user):
+    full = None
+    for path in (f"/Items/{item_id}?userId={user}", f"/Users/{user}/Items/{item_id}"):
+        try:
+            full = _jf_json("GET", path, token)
+            if full.get("Id"):
+                break
+        except Exception:  # noqa: BLE001
+            continue
+    if not full or not full.get("Id"):
+        return False
+    if all(full.get(k) == v for k, v in changes.items()) and full.get("LockData"):
+        return False
+    full.update(changes)
+    full["LockData"] = True
+    _jf_json("POST", f"/Items/{item_id}", token, full)
+    return True
+
+
+def _series_id(token):
+    q = urllib.parse.urlencode({"Recursive": "true", "IncludeItemTypes": "Series", "SearchTerm": SHOW_NAME, "Fields": "Path"})
+    for it in _jf_json("GET", f"/Items?{q}", token).get("Items") or []:
+        if os.path.abspath(str(it.get("Path") or "")) == os.path.abspath(_show_dir()):
+            return it["Id"]
+    # Jellyfin may still call it by its file name or an old guess; find it by its folder instead
+    q = urllib.parse.urlencode({"Recursive": "true", "IncludeItemTypes": "Series", "Fields": "Path", "Limit": "2000"})
+    for it in _jf_json("GET", f"/Items?{q}", token).get("Items") or []:
+        if os.path.abspath(str(it.get("Path") or "")) == os.path.abspath(_show_dir()):
+            return it["Id"]
+    return None
+
+
+def push_names(wait=True):
+    """Writes the One Pace names and stories into Jellyfin. Returns how many items it changed."""
+    token, user = _admin() if _admin else (None, None)
+    if not token or not user or not _jf:
+        return 0
+    sid = None
+    for _ in range(12 if wait else 1):  # Jellyfin needs a moment to find new files
+        sid = _series_id(token)
+        if sid:
+            break
+        time.sleep(20)
+    if not sid:
+        log("Jellyfin hasn't found the One Pace folder yet")
+        return 0
+    if wait:
+        time.sleep(60)  # let Jellyfin's own refresh finish first, so it can't undo these
+    changed = 0
+    show = _read_nfo(os.path.join(_show_dir(), "tvshow.nfo")) or {}
+    if show and _update_item(sid, {"Name": SHOW_NAME, "SortName": SHOW_NAME, "Overview": show.get("plot") or ""}, token, user):
+        changed += 1
+    q = urllib.parse.urlencode({"ParentId": sid, "Recursive": "true", "IncludeItemTypes": "Season,Episode", "Fields": "Path,Overview", "Limit": "5000"})
+    for it in _jf_json("GET", f"/Items?{q}", token).get("Items") or []:
+        path = str(it.get("Path") or "")
+        try:
+            if it.get("Type") == "Season" and path:
+                info = _read_nfo(os.path.join(path, "season.nfo"))
+                if info:
+                    if _update_item(it["Id"], {"Name": info.get("title") or it.get("Name"), "Overview": info.get("plot") or ""}, token, user):
+                        changed += 1
+            elif it.get("Type") == "Episode" and path:
+                info = _read_nfo(os.path.splitext(path)[0] + ".nfo")
+                if info and info.get("title"):
+                    ch = {"Name": info["title"], "Overview": info.get("plot") or "",
+                          "IndexNumber": int(info.get("episode") or it.get("IndexNumber") or 0),
+                          "ParentIndexNumber": int(info.get("season") or it.get("ParentIndexNumber") or 0)}
+                    if info.get("aired"):
+                        ch["PremiereDate"] = info["aired"] + "T00:00:00.0000000Z"
+                        ch["ProductionYear"] = int(info["aired"][:4])
+                    if _update_item(it["Id"], ch, token, user):
+                        changed += 1
+        except Exception as e:  # noqa: BLE001
+            log(f"couldn't name {os.path.basename(path)} in Jellyfin: {e}")
+    log(f"wrote names and stories for {changed} item(s) into Jellyfin")
+    return changed
+
+
+def _push_names():
+    try:
+        push_names(wait=True)
+    except Exception as e:  # noqa: BLE001
+        log(f"couldn't write names into Jellyfin: {e}")
 
 
 def sort_now():
@@ -631,10 +747,12 @@ def sort_now():
         _status.update({"busy": True, "step": "Getting the One Pace list", "done": 0, "total": 0})
     moved, skipped, unknown = [], [], []
     problem = None
+    old_place = None
+    _journal.clear()
     try:
         _folder(DROP)
         _share(DROP)
-        _move_old_show()
+        old_place = _move_old_show()
         _clean_replaced()
         data = _load_data(force=True)
         files = _drop_files()
@@ -657,8 +775,8 @@ def sort_now():
                 unknown.append({"name": os.path.relpath(path, DROP), "why": f"couldn't move it: {e}"})
         _tidy_drop()
         new_pictures = _refresh_posters()
-        if moved or skipped or new_pictures:
-            note = _tell_jellyfin(new_pictures)
+        if os.path.isdir(_show_dir()):
+            note = _tell_jellyfin(new_pictures, old_place)
             if note:
                 problem = note
         log(f"sorted {len(moved)}, {len(skipped)} went to Replaced, {len(unknown)} left in the drop folder")
@@ -667,6 +785,8 @@ def sort_now():
         log(f"sort stopped: {e}")
     finally:
         with _lock:
+            if _journal:
+                _state["undo"] = {"when": time.time(), "moves": list(_journal)}
             _state["last"] = {"when": time.time(), "moved": moved[-60:], "skipped": skipped[-30:], "unknown": unknown[-40:], "problem": problem, "count": len(moved)}
             _status.update({"busy": False, "step": "", "done": 0, "total": 0})
         _save()
@@ -776,12 +896,59 @@ def card():
         "level": level,
         "headline": headline,
         "reason": reason,
-        "acts": [] if busy["busy"] else [{"label": "Sort One Pace now", "do": "sort"}],
+        "acts": [] if busy["busy"] else [{"label": "Sort One Pace now", "do": "sort"}] + ([{"label": "Put back last sort", "do": "undo"}] if (_state.get("undo") or {}).get("moves") else []),
         "rows": rows,
     }
 
 
+def undo_last():
+    """Puts every file the last Sort moved back where it was, with its old name, and removes the
+    .nfo notes that Sort wrote for them. Nothing is deleted."""
+    with _lock:
+        undo = dict(_state.get("undo") or {})
+    moves = undo.get("moves") or []
+    if not moves:
+        return "There's nothing to put back."
+    back, problems = 0, []
+    for src, dst in reversed(moves):
+        try:
+            if not os.path.exists(dst):
+                continue
+            if os.path.exists(src):
+                problems.append(f"{os.path.basename(src)} (something else has that name now)")
+                continue
+            _move(dst, src)
+            _share(src)
+            nfo = os.path.splitext(dst)[0] + ".nfo"
+            if os.path.splitext(dst)[1].lower() in VIDEO and os.path.exists(nfo):
+                os.remove(nfo)
+            back += 1
+            with _lock:
+                (_state.get("replaced") or {}).pop(dst, None)
+                for key, f in list((_state.get("files") or {}).items()):
+                    if f.get("name") == os.path.basename(dst):
+                        _state["files"].pop(key, None)
+        except OSError as e:
+            problems.append(f"{os.path.basename(dst)} ({e})")
+    with _lock:
+        _state["undo"] = {}
+        _state["last"] = {"when": time.time(), "moved": [], "skipped": [], "unknown": [], "problem": None, "count": 0,
+                          "note": f"Put back {back} file(s) from the last sort."}
+    _save()
+    try:
+        _tell_jellyfin()
+    except Exception:  # noqa: BLE001
+        pass
+    log(f"put back {back} file(s) from the last sort")
+    return f"Put back {back} file(s) where they were before the last Sort." + (f" Couldn't put back: {'; '.join(problems[:5])}" if problems else "")
+
+
 def card_do(do):
+    if do == "undo":
+        with _lock:
+            if _status["busy"]:
+                return "Wait for the sort to finish first."
+        return undo_last()
     if do == "sort":
         with _lock:
             if _status["busy"]:
