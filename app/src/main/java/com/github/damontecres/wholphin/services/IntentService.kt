@@ -3,10 +3,12 @@ package com.github.damontecres.wholphin.services
 import android.app.SearchManager
 import android.content.Intent
 import androidx.annotation.VisibleForTesting
+import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.data.RestoredSession
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds
+import com.github.damontecres.wholphin.ui.games.ember.RobotLink
 import com.github.damontecres.wholphin.ui.nav.Destination
 import kotlinx.coroutines.flow.first
 import org.jellyfin.sdk.api.client.ApiClient
@@ -42,6 +44,8 @@ class IntentService
                 // Normal app launch
                 return IntentResult.NoOp
             }
+
+            if (BuildConfig.DEBUG && action == "game") return robotGame(intent)
 
             val result = prepare(intent)
             if (result != null) {
@@ -119,6 +123,26 @@ class IntentService
                 }
 
             return IntentResult.Target(destinations, true)
+        }
+
+        /**
+         * Test robot only (debug builds): opens one game straight away, so the games robot can visit
+         * every game without walking the Games rows. id = "movie:NAME", "arcade:NAME", "ember", "join"
+         * or "games"; tv = "host:port" makes the party phone page join that TV without searching.
+         */
+        private fun robotGame(intent: Intent): IntentResult {
+            if (serverRepository.currentUser == null) return IntentResult.Error("Sign in first")
+            intent.getStringParam("tv")?.let { RobotLink.use(it) }
+            val id = intent.getStringParam("id").orEmpty()
+            val destination =
+                when {
+                    id == "ember" -> Destination.EmberRoad
+                    id == "join" -> Destination.PartyJoin
+                    id == "games" -> Destination.Games
+                    id.startsWith("movie:") || id.startsWith("arcade:") -> Destination.GameInfo(id)
+                    else -> return IntentResult.Error("Unknown game $id")
+                }
+            return IntentResult.Target(listOf(destination), addHomeToBackStack = true)
         }
 
         /** A link or name shared from another app: open the title, or Search for it */

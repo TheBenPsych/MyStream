@@ -1,0 +1,188 @@
+name: Glowfin games robot
+
+# Opens every game built into Glowfin and plays it for a while: the movie puzzles, the arcade games,
+# Ember Road, and the party games with up to 4 pretend phones joined at once (one leaves part way,
+# one joins late). Runs on a pretend TV (960x540, like Ben's TCL), a pretend phone, and the web version
+# at TV, computer and phone size. Pictures + notes go to the "games-results" branch.
+# Run by hand (Actions > Run workflow), or by pushing a change to the games robot.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these games (comma list, like QUIZ,DRAW). Empty = all"
+        required: false
+        default: ""
+  push:
+    branches:
+      - 'claude/project-thread-pj4xqz'
+    paths:
+      - 'tools/audit/games*'
+      - '.github/workflows/games-check.yml'
+      - 'app/src/main/java/com/github/damontecres/wholphin/ui/games/**'
+      - 'server/web/js/b*.js'
+      - 'server/web/css/**'
+
+concurrency:
+  group: games-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Build the app (debug, for the robot)
+        run: |
+          ./gradlew assembleDefaultDebug --no-daemon
+          cp "$(find app/build/outputs/apk -name '*x86_64*.apk' | head -1)" robot-app.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: games-robot-apk
+          path: robot-app.apk
+          retention-days: 2
+
+  android:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [tv, phone]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@v5
+        with:
+          name: games-robot-apk
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Set up the emulator
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/cmdline-tools/latest/bin:$SDK/emulator:$SDK/platform-tools:$PATH
+          yes | sdkmanager --licenses >/dev/null || true
+          if [ "${{ matrix.mode }}" = tv ]; then img="system-images;android-36;android-tv;x86_64"; device=tv_1080p
+          else img="system-images;android-34;google_apis;x86_64"; device=pixel_6; fi
+          for attempt in 1 2 3; do sdkmanager "emulator" "platform-tools" "$img" >/dev/null && break; sleep 10; done
+          mkdir -p "$HOME/avd"
+          echo "ANDROID_AVD_HOME=$HOME/avd" >> $GITHUB_ENV
+          export ANDROID_AVD_HOME="$HOME/avd"
+          echo no | avdmanager create avd -n games -k "$img" -d $device -p "$HOME/avd/games.avd" --force
+          printf 'hw.ramSize=4096\ndisk.dataPartition.size=4G\nhw.keyboard=yes\n' >> "$HOME/avd/games.avd/config.ini"
+      - name: Run the games robot
+        run: |
+          SDK=$ANDROID_HOME
+          export PATH=$SDK/emulator:$SDK/platform-tools:$PATH
+          adb kill-server || true
+          mkdir -p ~/.android
+          [ -f ~/.android/adbkey ] || adb keygen ~/.android/adbkey
+          export ADB_VENDOR_KEYS=~/.android/adbkey
+          adb start-server
+          GPU=swiftshader_indirect
+          [ "${{ matrix.mode }}" = tv ] && GPU=swangle_indirect
+          booted=0
+          for attempt in 1 2 3; do
+            nohup emulator -avd games -no-window -no-audio -no-boot-anim -gpu $GPU -no-snapshot -wipe-data -camera-back none >> emulator.log 2>&1 &
+            timeout 240 adb wait-for-device || true
+            for i in $(seq 1 100); do
+              if [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then booted=1; break; fi
+              if timeout 5 adb devices | grep -q unauthorized; then adb kill-server; adb start-server; fi
+              sleep 3
+            done
+            [ $booted = 1 ] && break
+            adb emu kill || true; pkill -f qemu-system || true; sleep 5
+          done
+          [ $booted = 1 ] || { tail -50 emulator.log; exit 1; }
+          sleep 45
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          adb shell input keyevent 82 || true
+          adb shell wm size; adb shell wm density
+          adb shell 'which nc; nc --help 2>&1 | head -3' || true
+          timeout 300 adb install -r -g robot-app.apk
+          PKG=$(adb shell pm list packages | grep -o 'com.thebenpsych.benflix[a-z.]*' | head -1)
+          echo "Package $PKG"
+          GAMES_ONLY="${{ github.event.inputs.only }}" timeout 5400 python3 tools/audit/games.py ${{ matrix.mode }} "$PKG" results/${{ matrix.mode }} || echo "robot stopped with $?"
+      - name: Shrink pictures
+        if: always()
+        run: |
+          pip install pillow >/dev/null
+          python3 - <<'PY'
+          import glob, os
+          from PIL import Image
+          for p in glob.glob("results/*/*.png"):
+              try:
+                  im = Image.open(p).convert("RGB")
+                  im.thumbnail((1280, 1280))
+                  im.save(p[:-4] + ".jpg", quality=74)
+              except Exception as e:
+                  print(p, e)
+              os.remove(p)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: games-${{ matrix.mode }}
+          path: results
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Start the Glowfin helper (web version) against the Jellyfin demo server
+        run: |
+          cp -r server /tmp/srv
+          sed -i 's#^RAW = .*#RAW = "http://127.0.0.1:1/none"#' /tmp/srv/benflix_web.py
+          cd /tmp/srv
+          JELLYFIN_URL=https://demo.jellyfin.org/stable PORT=8097 nohup python3 benflix-games-helper.py > /tmp/helper.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8097/ >/dev/null && break; sleep 1; done
+      - name: Play the web games
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          cd "$GITHUB_WORKSPACE"
+          NODE_PATH=/tmp/pw/node_modules timeout 2700 node tools/audit/games_web.js http://127.0.0.1:8097/ results/web || echo "web robot stopped with $?"
+          cp /tmp/helper.log results/web/ || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: games-web
+          path: results
+
+  publish:
+    needs: [android, web]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: games-*
+          merge-multiple: true
+          path: results
+      - name: Save results to the games-results branch
+        run: |
+          mkdir -p results
+          rm -f results/robot-app.apk
+          cd results
+          git init -q -b games-results
+          git config user.name "games robot"
+          git config user.email "audit@users.noreply.github.com"
+          echo "Run ${{ github.run_id }} on ${{ github.sha }}" > RUN.txt
+          git add -A
+          git commit -qm "Games run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" games-results
