@@ -75,6 +75,8 @@ data class PartyPlayer(
     val id: String,
     val name: String,
     val score: Int = 0,
+    /** Their phone left part way through a game: nobody waits for them, and they keep their points */
+    val away: Boolean = false,
 )
 
 /** One fake (or the real) plot in "Fake plot" */
@@ -148,16 +150,24 @@ class PartyViewModel
                     context = context.applicationContext,
                     onJoin = { j ->
                         _ui.update { u ->
-                            if (u.players.any { it.id == j.id }) u else u.copy(players = u.players + PartyPlayer(j.id, j.name))
+                            if (u.players.any { it.id == j.id }) {
+                                u.copy(players = u.players.map { if (it.id == j.id) it.copy(away = false) else it })
+                            } else {
+                                u.copy(players = u.players + PartyPlayer(j.id, j.name))
+                            }
                         }
                         push()
                     },
                     onLeave = { j ->
-                        if (_ui.value.phase ==
-                            PartyPhase.LOBBY
-                        ) {
-                            _ui.update { u -> u.copy(players = u.players.filter { it.id != j.id }) }
+                        _ui.update { u ->
+                            if (u.phase == PartyPhase.LOBBY) {
+                                u.copy(players = u.players.filter { it.id != j.id })
+                            } else {
+                                // Mid-game: keep their points on the board, but stop waiting for them
+                                u.copy(players = u.players.map { if (it.id == j.id) it.copy(away = true) else it })
+                            }
                         }
+                        push()
                     },
                     onDo = { j, a -> viewModelScope.launch { onDo(j, a) } },
                     onType = { j, t -> viewModelScope.launch { onType(j, t) } },
@@ -185,7 +195,7 @@ class PartyViewModel
 
         fun startGame() {
             if (!canStart()) return
-            _ui.update { u -> u.copy(players = u.players.map { it.copy(score = 0) }, round = 0, error = null) }
+            _ui.update { u -> u.copy(players = u.players.filter { !it.away }.map { it.copy(score = 0) }, round = 0, error = null) }
             job?.cancel()
             job =
                 viewModelScope.launch {
@@ -203,7 +213,7 @@ class PartyViewModel
 
         fun backToLobby() {
             job?.cancel()
-            _ui.update { it.copy(phase = PartyPhase.LOBBY) }
+            _ui.update { u -> u.copy(phase = PartyPhase.LOBBY, players = u.players.filter { !it.away }) }
             push()
         }
 
@@ -528,7 +538,7 @@ class PartyViewModel
                     .take(6)
             val easy = titles.filter { it.rating >= 70 && !it.isSeries }.ifEmpty { titles }.shuffled()
             drawOrder.forEachIndexed { r, drawer ->
-                if (_ui.value.players.none { it.id == drawer }) return@forEachIndexed
+                if (_ui.value.players.none { it.id == drawer && !it.away }) return@forEachIndexed
                 val t = easy.getOrNull(r) ?: return
                 val choices =
                     (
@@ -580,8 +590,11 @@ class PartyViewModel
             while (System.currentTimeMillis() < end) {
                 delay(250)
                 val u = _ui.value
+                // The artist's phone left: nobody can guess a drawing that isn't coming
+                if (u.phase == PartyPhase.DRAWING && u.players.any { it.id == u.drawer && it.away }) break
                 val need =
                     u.players
+                        .filter { !it.away }
                         .map { it.id }
                         .filter { u.phase != PartyPhase.DRAWING || it != u.drawer }
                 if (need.isNotEmpty() && need.all { it in u.answered }) break

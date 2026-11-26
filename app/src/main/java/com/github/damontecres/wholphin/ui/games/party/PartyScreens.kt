@@ -356,7 +356,12 @@ private fun Scoreboard(players: List<PartyPlayer>) {
         Text("SCORES", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .6f))
         players.sortedByDescending { it.score }.forEachIndexed { i, p ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text("${i + 1}.  ${p.name}", fontSize = 20.sp, color = Color.White, modifier = Modifier.weight(1f))
+                Text(
+                    "${i + 1}.  ${p.name}" + if (p.away) "  (left)" else "",
+                    fontSize = 20.sp,
+                    color = Color.White.copy(alpha = if (p.away) .5f else 1f),
+                    modifier = Modifier.weight(1f),
+                )
                 Text("${p.score}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }

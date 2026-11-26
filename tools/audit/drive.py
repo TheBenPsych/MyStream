@@ -523,6 +523,15 @@ def sign_in():
         if find(root, r"^Step 1 of \d+$") is not None:
             log("signed in (first-time setup is showing)")
             break
+        # "Glowfin got better" (an update is waiting): not now, the robot tests this build
+        if find(root, r"got better$") is not None:
+            n = find(root, r"^Not now$")
+            if n is not None:
+                tap(n)
+            else:
+                key("BACK", wait=1.5)
+            time.sleep(2)
+            continue
         if root is None:
             # the screen can't be read right now (it never "settles" while something animates); wait and look again
             shot(f"login-unreadable-{step}")
