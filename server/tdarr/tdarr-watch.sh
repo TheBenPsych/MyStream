@@ -38,7 +38,6 @@ RUNNING=false
 jesc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
 # Runs a small script inside Tdarr that reads or changes its file list (too big for curl + grep).
-#   tdarr_files count             -> {"Queued":123,"Hold":4,...}
 #   tdarr_files requeue <status>  -> how many it set back to Queued
 #   tdarr_files forget <path>     -> forgets one file, so the next scan reads it fresh
 tdarr_files() {
@@ -50,15 +49,27 @@ const call=(body)=>new Promise((ok,no)=>{const q=h.request({host:"127.0.0.1",por
 (async()=>{const [mode,arg]=process.argv.slice(1);
   if(mode==="forget"){await call({collection:"FileJSONDB",mode:"removeOne",docID:arg});console.log("ok");return;}
   const all=await call({collection:"FileJSONDB",mode:"getAll"})||[];
-  if(mode==="count"){const c={};for(const f of all){const k=f.TranscodeDecisionMaker||"Not checked";c[k]=(c[k]||0)+1;}console.log(JSON.stringify(c));return;}
   if(mode==="requeue"){let n=0;for(const f of all){if(f.TranscodeDecisionMaker===arg){
     await call({collection:"FileJSONDB",mode:"update",docID:f._id,obj:{TranscodeDecisionMaker:"Queued"}});n++;}}console.log(n);}
 })().catch(e=>{console.error(e.message);process.exit(1)});' "$@" 2>/dev/null
 }
 
+# Counts of files by status (queued, on hold, failed...) from Tdarr's own statistics, the same small summary its
+# Statistics page shows. (Until 2026-11-26 this asked for every file record at once, which pushed Tdarr's server
+# over its 4 GB memory limit every hour at :41 and got it killed 48 times in 6 days.)
+tdarr_counts() {
+  docker exec -i tdarr node -e '
+const h=require("http");
+const q=h.request({host:"127.0.0.1",port:8265,path:"/api/v2/stats/get-pies",method:"POST",headers:{"content-type":"application/json"}},s=>{
+  let d="";s.on("data",c=>d+=c);s.on("end",()=>{try{const p=JSON.parse(d);const c={};
+    for(const x of ((p.pieStats||{}).status||{}).transcode||[]){if(x&&x.name)c[x.name]=(c[x.name]||0)+(x.value||0);}
+    if(!Object.keys(c).length)process.exit(1);console.log(JSON.stringify(c));}catch(e){process.exit(1)}});});
+q.on("error",()=>process.exit(1));q.end(JSON.stringify({data:{libraryId:""}}));' 2>/dev/null
+}
+
 save_counts() {
   local c
-  c=$(tdarr_files count) || return
+  c=$(tdarr_counts) || return
   [ -n "$c" ] || return
   printf '{"at":"%s","files":%s}\n' "$(date -Iseconds)" "$c" >"$APP/benflix-counts.json.tmp" \
     && mv "$APP/benflix-counts.json.tmp" "$APP/benflix-counts.json"

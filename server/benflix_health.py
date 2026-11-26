@@ -30,6 +30,7 @@ SETTINGS = (
     ("watchdog", "Restart by itself if Tower freezes", "The board's own safety timer. If Tower freezes hard, it restarts after 3 minutes instead of staying dead."),
     ("autostart", "Start the drives by itself after a crash", "Only when every drive is there. Otherwise Unraid waits for you, like before."),
     ("crashnote", "Tell me after a crash", "An Unraid notification (and an email, if email is set up in Unraid's Notification settings)."),
+    ("cpulimit", "Keep the processor at Intel's power limit", "65 W for long jobs, 154 W for short bursts (Intel's own numbers for this chip). The board allowed about 250 W, which pushed it to 98°C on busy nights. Videos play the same; long scans take a little longer."),
     ("hotnote", "Warn me if anything runs hot", "Processor 85°C, Arc 90°C, NVMe drives 75°C. One message an hour at most."),
 )
 
@@ -345,6 +346,55 @@ def _link_words(text):
     return f"{_gen(parts[0])}, {parts[1].lower()}"
 
 
+def _oom(st):
+    """Memory kills since Tower started, worst first: [{"app", "prog", "times", "own", "cap", "last"}]"""
+    out = []
+    for item in str((st or {}).get("oom_apps") or "").split(";"):
+        f = item.split("|")
+        if len(f) < 6:
+            continue
+        try:
+            out.append({"app": f[0], "prog": f[1], "times": int(f[2]), "own": f[3] == "own", "cap": int(f[4] or 0), "last": int(f[5] or 0)})
+        except ValueError:
+            continue
+    return out
+
+
+def _size(mb):
+    return f"{mb / 1024:g} GB" if mb >= 1024 else f"{mb} MB"
+
+
+def _oom_words(k, st=None):
+    """One memory kill line in plain words"""
+    who = "Tower itself" if k["app"] == "Tower" else k["app"]
+    prog = f" ({k['prog']})" if k["prog"] and k["prog"] != "?" and k["prog"] != k["app"] else ""
+    times = f"{k['times']} time{'' if k['times'] == 1 else 's'}"
+    if k["own"]:
+        limit = f"its own {_size(k['cap'])} limit" if k["cap"] else "its own memory limit"
+        words = f"{who}{prog} hit {limit} {times}"
+    elif k["app"] == "Tower":
+        words = f"Tower ran out of memory and stopped {k['prog'] if k['prog'] != '?' else 'a program'} {times}"
+    else:
+        words = f"Tower ran out of memory and stopped {who}{prog} {times}"
+    if k["last"]:
+        words += f", last at {_when(k['last'], st)}"
+    return words
+
+
+def _hottest(samples):
+    """The hottest processor reading, with what was busy then (busy apps are noted once a minute)"""
+    best, apps = None, ""
+    for s in samples:
+        if s.get("apps"):
+            apps = s["apps"]
+        ct = s.get("ct")
+        if isinstance(ct, (int, float)) and (best is None or ct > best["ct"]):
+            best = dict(s)
+            if not best.get("apps"):
+                best["apps"] = apps
+    return best
+
+
 def _parts(st, now_s):
     """[(light, title, words)] for memory, processor, Arc, drives, power and the motherboard"""
     st = st or {}
@@ -371,11 +421,17 @@ def _parts(st, now_s):
     title = f"Memory: {sum(sizes)} GB" if sizes else "Memory"
     if s.get("mem") is not None:
         title += f", {s['mem']}% used"
-    rows.append(("warn" if mce else "ok", title, " · ".join(w for w in mem_words if w)))
+    kills = _oom(st)
+    if kills:
+        mem_words.append("; ".join(_oom_words(k, st) for k in kills[:3]))
+    recent = any(k["last"] >= time.time() - DAY for k in kills)
+    rows.append(("warn" if mce or recent else "ok", title, " · ".join(w for w in mem_words if w)))
     # Processor
     ct = s.get("ct")
     light = "bad" if (ct or 0) >= 85 else "warn" if (ct or 0) >= 80 or mce else "ok"
-    rows.append((light, f"Processor: {ct}°C" if ct is not None else "Processor", " · ".join(w for w in [str(st.get("cpu") or ""), f"{s['cpu']}% busy" if s.get("cpu") is not None else "", "safe up to 82°C"] if w)))
+    cpuw = str(st.get("cpuw") or "").split()
+    power = f"power limit {cpuw[0]} W (bursts {cpuw[1]} W)" if len(cpuw) == 2 else ""
+    rows.append((light, f"Processor: {ct}°C" if ct is not None else "Processor", " · ".join(w for w in [str(st.get("cpu") or ""), f"{s['cpu']}% busy" if s.get("cpu") is not None else "", power, "safe up to 82°C"] if w)))
     # Arc
     at, gpu_err, aer_arc = s.get("at"), int(e.get("gpu") or 0), int(e.get("aer_arc") or 0)
     light = "bad" if (at or 0) >= 90 else "warn" if (at or 0) >= 85 or gpu_err or aer_arc else "ok"
@@ -527,6 +583,9 @@ def day_card():
             continue
         current = next((s.get(key) for s in reversed(samples) if isinstance(s.get(key), (int, float))), None)
         rows.append({"light": "off", "t": f"{name}: {current:g}{unit}" if current is not None else name, "s": f"Last 24 hours: {min(have):g} to {max(have):g}{unit}", "spark": points})
+    hot = _hottest(samples)
+    if hot and hot["ct"] >= 85:
+        rows.insert(0, {"light": "warn", "t": f"Hottest moment: {hot['ct']}°C at {_when(hot['t'], st)}", "s": _reading(hot) + (f" · {_busy_words(hot)}" if _busy_words(hot) else "")})
     first = samples[0]["t"]
     span = "Since " + _when(first, st) if now - first < DAY - 900 else "The last 24 hours"
     return {"title": "Last 24 hours", "level": "off", "headline": span, "reason": "Each line shows the highest reading in every 15 minutes, oldest on the left. Tdarr's nights are 1 to 8 AM.", "rows": rows}
@@ -646,6 +705,9 @@ def report():
         lines.append(f"Memory sticks: {st.get('dimms')}")
         lines.append("Errors since start: " + ", ".join(f"{k} {v}" for k, v in (st.get("errors") or {}).items()) + f", board crash record at this start: {'yes' if st.get('bert') else 'no'}.")
         lines.append(f"Freeze timer: {st.get('wd')}. Settings: {json.dumps(st.get('settings') or {})}.")
+        kills = _oom(st)
+        if kills:
+            lines.append("Memory kills since start: " + "; ".join(_oom_words(k, st) for k in kills) + ".")
     samples = _samples(1)
     lines.append("")
     lines.append("Parts:")
@@ -671,6 +733,9 @@ def report():
             vals = [s[key] for s in day if isinstance(s.get(key), (int, float))]
             if vals:
                 lines.append(f"  {name}: {min(vals):g} to {max(vals):g}{unit}")
+        hot = _hottest(day)
+        if hot:
+            lines.append(f"  Hottest moment: {_when(hot['t'], st)}: {_reading(hot)}" + (f" · {_busy_words(hot)}" if _busy_words(hot) else ""))
     return "\n".join(lines)
 
 
