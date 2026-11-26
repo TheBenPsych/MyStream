@@ -274,7 +274,8 @@ def _by_episode_name(data, path):
         return None, f"its name says S{arc:02d}E{num:02d}, but One Pace has no arc {arc}"
     seconds = _mkv_seconds(path)
     named = next((e for e in in_arc if int(e.get("episode") or -1) == num), None)
-    if seconds is None:
+    if seconds is None or (named and not float(named.get("duration") or 0)):
+        # can't compare lengths (not an .mkv, or the list doesn't know this episode's length): go by the name
         if named:
             return named, "by its name"
         return None, f"its name says {title} {num}, but {title} only has {max(int(e.get('episode') or 0) for e in in_arc)} episodes"
