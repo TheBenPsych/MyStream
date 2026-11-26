@@ -125,6 +125,12 @@ class MusicDoorViewModel
         var lastRow = -1
         var lastIndex = 0
 
+        /** The row you were on, by name, so rows loading in above it don't move you to another row */
+        var lastRowKey: String? = null
+
+        /** True once you pressed a button on the remote (or touched the screen) on the Music page */
+        var userMoved = false
+
         /** The Home chip you had picked (All, Mixes, Playlists, Albums, Artists, New to you) */
         var lastChip = "all"
 
@@ -233,13 +239,19 @@ class MusicDoorViewModel
 
                     // Tower's mixes can be slow (or out of reach away from home): the rest of the page doesn't wait
                     // for them, and Made for you slots in at the top when they arrive
+                    // (one shared wait for the mixes and the themes, so a slow Tower holds the page 2.5 seconds, not 5)
+                    val waitUntil = System.currentTimeMillis() + MIX_WAIT_MS
                     val earlyMixes = if (fromSnapshot) mixes.await() else withTimeoutOrNull(MIX_WAIT_MS) { mixes.await() }
                     val mixTiles = earlyMixes.orEmpty().map { MusicTile.Mix(it) }
                     if (mixTiles.isNotEmpty()) rows += MusicRow("mixes", "Made for you", mixTiles)
                     // Themed playlists (Ben 2026-11-16): holidays and seasons right under Made for you, the
                     // decades, genres, moods and throwbacks lower down, before Artists. They wait as long as the mixes.
                     val earlyThemes =
-                        if (fromSnapshot) themes.await() else withTimeoutOrNull(MIX_WAIT_MS) { themes.await() }
+                        if (fromSnapshot) {
+                            themes.await()
+                        } else {
+                            withTimeoutOrNull((waitUntil - System.currentTimeMillis()).coerceAtLeast(1L)) { themes.await() }
+                        }
 
                     fun themeRow(
                         found: com.github.damontecres.wholphin.services.MusicThemes,
@@ -333,7 +345,9 @@ class MusicDoorViewModel
                     me.await()
                     if (fromSnapshot) {
                         // Only one row (playlists, always there) means nothing came back: keep last time's page
-                        if (rows.size > 1) _state.update { it.copy(rows = rows.toList()) }
+                        // Ben 2026-11-26 (TV): a row that didn't come back this time (a slow Tower) stays where it was,
+                        // so the row you're on never vanishes under you and throws you back to the top
+                        if (rows.size > 1) _state.update { it.copy(rows = keepMissingRows(it.rows, rows)) }
                         fromSnapshot = false
                     } else {
                         _state.update { it.copy(rows = rows.toList()) }
@@ -353,6 +367,24 @@ class MusicDoorViewModel
                 fromSnapshot = false
                 _state.update { it.copy(loaded = true, offline = it.rows.isEmpty()) }
             }
+        }
+
+        /**
+         * The fresh rows, plus any row on screen now that the fresh load didn't bring back (it failed or timed
+         * out), each kept right after the row it followed before.
+         */
+        private fun keepMissingRows(
+            old: List<MusicRow>,
+            fresh: List<MusicRow>,
+        ): List<MusicRow> {
+            val out = fresh.toMutableList()
+            old.forEachIndexed { i, row ->
+                if (out.any { it.key == row.key }) return@forEachIndexed
+                val before = old.subList(0, i).lastOrNull { prev -> out.any { it.key == prev.key } }
+                val at = before?.let { b -> out.indexOfFirst { it.key == b.key } + 1 } ?: 0
+                out.add(at, row)
+            }
+            return out
         }
 
         /** Today's mixes and themes, so a mix in Jump back in can show its cover */

@@ -81,7 +81,9 @@ import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
+import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -169,8 +171,12 @@ fun MusicDoorPage(
     // Ben: opened again within 10 minutes, the door comes back on the card you were on
     remember(viewModel) {
         DoorMemory.recall(BenflixDoor.MUSIC)?.let { spot ->
-            spot.row?.toIntOrNull()?.let { viewModel.lastRow = it.coerceAtLeast(0) }
+            val row = spot.row
+            val asIndex = row?.toIntOrNull()
+            if (asIndex != null) viewModel.lastRow = asIndex.coerceAtLeast(0) else viewModel.lastRowKey = row
             viewModel.lastIndex = spot.index
+            // Coming back to the card you were on counts as having moved: rows loading in won't pull you to the top
+            if (row != null && (asIndex == null || asIndex > 0 || spot.index > 0)) viewModel.userMoved = true
         }
         true
     }
@@ -178,7 +184,11 @@ fun MusicDoorPage(
         onDispose {
             DoorMemory.keep(
                 BenflixDoor.MUSIC,
-                DoorMemory.Spot(section = frame.section, row = viewModel.lastRow.toString(), index = viewModel.lastIndex),
+                DoorMemory.Spot(
+                    section = frame.section,
+                    row = viewModel.lastRowKey ?: viewModel.lastRow.toString(),
+                    index = viewModel.lastIndex,
+                ),
             )
         }
     }
@@ -245,10 +255,13 @@ fun MusicDoorPage(
     LaunchedEffect(ready, frame.section) {
         // Focus starts on the first mix; coming Back lands on the card you were on. The cards can take a moment
         // to appear (and the menu may grab focus first), so keep asking for a little while until a card has it.
+        // Ben 2026-11-26 (TV): it stops the moment you press a button, so it never pulls you back while you move.
         if (isTv && ready && !rowsFocused && frame.section == DOOR_HOME) {
+            val startedAt = android.os.SystemClock.uptimeMillis()
             var steady = 0
             repeat(40) {
                 delay(60)
+                if (LastRemoteKey.pressAt > startedAt) return@LaunchedEffect
                 if (rowsFocused) {
                     if (++steady >= 4) return@LaunchedEffect
                 } else {
@@ -262,7 +275,13 @@ fun MusicDoorPage(
     // Back (approved dr-p-back): first up to the first mix, then out of Music
     val listState = rememberLazyListState()
     var topRequest by remember { mutableIntStateOf(0) }
-    var target by remember { mutableStateOf(viewModel.lastRow.coerceAtLeast(0) to viewModel.lastIndex) }
+    // The card focus goes back to: the row you were on (found by name, so rows loading in above it don't move
+    // you) and the card in your spot. Read again every time the rows change.
+    val targetRow =
+        viewModel.lastRowKey
+            ?.let { key -> rows.indexOfFirst { it.key == key }.takeIf { it >= 0 } }
+            ?: viewModel.lastRow.coerceIn(0, (rows.size - 1).coerceAtLeast(0))
+    val target = targetRow to viewModel.lastIndex
     LaunchedEffect(Unit) {
         snapshotFlow { listState.firstVisibleItemIndex == 0 }.collect {
             frame.atTop =
@@ -271,8 +290,8 @@ fun MusicDoorPage(
     }
     frame.toTop = {
         viewModel.lastRow = 0
+        viewModel.lastRowKey = null
         viewModel.lastIndex = 0
-        target = 0 to 0
         frame.atTop = true
         topRequest++
     }
@@ -281,6 +300,25 @@ fun MusicDoorPage(
         listState.scrollToItem(0)
         delay(160)
         if (isTv) firstFocus.tryRequestFocus()
+    }
+    // Ben 2026-11-26 (TV): Music loads its rows one by one, and a row arriving (or a card dropping out) while you
+    // moved down could take the focus off the card you were on, so it fell back to the top. Now:
+    // before you press anything, a row arriving above goes back to the very top card (like Home);
+    // after that, if a row change takes the focus away from the rows, it goes straight back to your row and card.
+    var rowsLostFocusAt by remember { mutableStateOf(0L) }
+    val firstKey = rows.firstOrNull()?.key
+    LaunchedEffect(firstKey) {
+        if (!isTv || firstKey == null || viewModel.userMoved || frame.section != DOOR_HOME) return@LaunchedEffect
+        listState.scrollToItem(0)
+        delay(FOCUS_SETTLE_MS)
+        if (!viewModel.userMoved) firstFocus.tryRequestFocus()
+    }
+    val rowsSignature = rows.map { r -> r.key to r.tiles.map { it.key } }
+    LaunchedEffect(rowsSignature) {
+        val changedAt = System.currentTimeMillis()
+        if (!isTv || frame.section != DOOR_HOME) return@LaunchedEffect
+        delay(FOCUS_SETTLE_MS)
+        if (!rowsFocused && rowsLostFocusAt >= changedAt - FOCUS_SETTLE_MS) firstFocus.tryRequestFocus()
     }
     // Anything outside this page (an artist page's Ask, the browser) can pick a tab
     DisposableEffect(frame) {
@@ -310,7 +348,15 @@ fun MusicDoorPage(
         if (frame.section != DOOR_HOME) {
             MusicSectionPage(frame.section, wide, preferences, inner)
         } else {
-            Column(inner.fillMaxSize().onFocusChanged { rowsFocused = it.hasFocus }) {
+            Column(
+                inner
+                    .fillMaxSize()
+                    .onFirstUserMove { viewModel.userMoved = true }
+                    .onFocusChanged {
+                        if (rowsFocused && !it.hasFocus) rowsLostFocusAt = System.currentTimeMillis()
+                        rowsFocused = it.hasFocus
+                    },
+            ) {
                 if (isTv) {
                     MusicTopArea(
                         lit = lit,
@@ -376,6 +422,7 @@ fun MusicDoorPage(
                                                     },
                                                     onFocus = {
                                                         viewModel.lastRow = rowIndex
+                                                        viewModel.lastRowKey = row.key
                                                         viewModel.lastIndex = i
                                                         lit.value = tile
                                                         frame.atTop = rowIndex == 0 && i == 0
@@ -399,6 +446,9 @@ fun MusicDoorPage(
         }
     }
 }
+
+/** A moment for the rows to settle before focus moves (old TVs) */
+private const val FOCUS_SETTLE_MS = 80L
 
 /** The Import tile at the end of Your playlists (Ben only): opens Import a playlist on Ask for music */
 private const val IMPORT_KIND = "import"
