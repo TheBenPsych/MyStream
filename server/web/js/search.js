@@ -75,7 +75,7 @@ B.route(/^\/search/, async (m, nav) => {
     const NC = "&EnableTotalRecordCount=false";
     const words = B.extras ? B.extras.parseWords(t) : null;
     const slow = Promise.all([
-      kids ? [] : Promise.all([B.seerr(`/search?query=${enc(t)}&page=1`), B.libTmdb().catch(() => null)]).then(([r]) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
+      kids ? [] : Promise.all([B.seerrSearch(t), B.libTmdb().catch(() => null)]).then(([r]) => (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !B.onBenflix(x))).catch(() => []),
       kids || t.length < 2 ? null : B.call("GET", `api/music/search?q=${enc(t)}`).catch(() => null),
       // "funny 90s movie under 2 hours": the words become filters (extras.js), searched beside the names
       words ? B.extras.searchWords(words).catch(() => []) : [],

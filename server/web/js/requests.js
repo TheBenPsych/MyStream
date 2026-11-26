@@ -4,6 +4,17 @@
 
 const seerr = (path, method, body) => B.jf(method || "GET", "/JellyfinEnhanced/jellyseerr" + path, body);
 B.seerr = seerr;
+// One Seerr search page is only 20 names, so a short name like "Human" can push the right show off it.
+// Read the first 3 pages together and put exact name matches first.
+B.seerrSearch = async (text) => {
+  const q = enc(text.trim()), plain = (t) => String(t || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const first = await seerr(`/search?query=${q}&page=1`);
+  const last = Math.min(3, first.totalPages || 1), more = [];
+  for (let p = 2; p <= last; p++) more.push(seerr(`/search?query=${q}&page=${p}`).then((r) => r.results || []).catch(() => []));
+  const seen = new Set(), typed = plain(text);
+  const all = (first.results || []).concat(...(await Promise.all(more))).filter((x) => { const k = x.mediaType + ":" + x.id; return !seen.has(k) && seen.add(k); });
+  return { ...first, results: all.map((x, i) => [x, i]).sort((a, b) => (plain(a[0].title || a[0].name) === typed ? 0 : 1) - (plain(b[0].title || b[0].name) === typed ? 0 : 1) || a[1] - b[1]).map((a) => a[0]) };
+};
 const tmdbImg = (p, w) => (p ? `https://image.tmdb.org/t/p/${w || "w342"}${p}` : "");
 B.tmdbImg = tmdbImg;
 B.seerrMe = () => B.cached("seerr-me", 600000, () => seerr("/user-status").catch(() => null));
@@ -331,7 +342,7 @@ B.route(/^\/requests/, async (m, nav) => {
   const search = async (text) => {
     if (!text.trim()) return drawRows();
     $("#rows").innerHTML = B.spinner("rows");
-    const [r] = await Promise.all([seerr(`/search?query=${enc(text.trim())}&page=1`).catch(() => ({ results: [] })), B.libTmdb().catch(() => null)]);
+    const [r] = await Promise.all([B.seerrSearch(text).catch(() => ({ results: [] })), B.libTmdb().catch(() => null)]);
     if (!B.alive(nav)) return;
     const res = (r.results || []).filter((x) => (x.mediaType === "movie" || x.mediaType === "tv") && !onBenflix(x));
     const mv = res.filter((x) => x.mediaType === "movie" && !isAnime(x)), tv = res.filter((x) => x.mediaType === "tv" && !isAnime(x)), an = res.filter(isAnime);
