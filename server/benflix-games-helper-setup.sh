@@ -285,17 +285,45 @@ find_scrutiny
 
 say "Connecting slskd (Soulseek, for single songs Lidarr can't find)"
 SLSK_DL=/mnt/user/appdata/benflix-music/no-slskd
+# Glowfin's slskd key gets the "readwrite" role in slskd.yml (slskd reads the file again by itself, no restart),
+# so Soulseek downloads work. A copy of the file from before is kept as slskd.yml.before-glowfin.
+slsk_can_download() {
+  local yml=$1 key=$2 tmp
+  [ -f "$yml" ] || return 0
+  tmp=$(mktemp)
+  awk -v want="$key" '
+    function ind(s) { match(s, /^ */); return RLENGTH }
+    function addrole() { if (pending) { printf "%*srole: readwrite\n", kind, ""; pending=0 } }
+    {
+      if (pending && $0 ~ /[^ ]/ && ind($0) < kind) addrole()
+      if (pending && ind($0) == kind && $0 ~ /^ *role:/) { r=$2; gsub(/["\047]/, "", r); r=tolower(r)
+        if (r != "readwrite" && r != "administrator") { printf "%*srole: readwrite\n", kind, ""; pending=0; next }
+        pending=0 }
+      if ($0 ~ /^ *key:/) { k=$2; gsub(/["\047]/, "", k); if (k == want) { pending=1; kind=ind($0) } }
+      print
+    }
+    END { addrole() }' "$yml" >"$tmp"
+  if [ -s "$tmp" ] && ! cmp -s "$tmp" "$yml"; then
+    [ -f "$yml.before-glowfin" ] || cp -p "$yml" "$yml.before-glowfin"
+    cat "$tmp" >"$yml"
+    echo "  ok  slskd's key can now download (role set to readwrite in slskd.yml)"
+  fi
+  rm -f "$tmp"
+}
+
 find_slskd() {
   local c app yml key port dl src dst u ipaddr typed
   c=$(docker ps -a --format '{{.Names}}' | grep -i slskd | head -1)
   if [ -z "$c" ]; then echo "  skip  No slskd app found. That's fine: music then only comes through Lidarr."; return; fi
   app=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}' "$c")
   yml="$app/slskd.yml"
-  # An API key in slskd's settings that can download (readwrite or admin before read-only ones), or the one typed here last time
+  # An API key in slskd's settings that can download (readwrite or admin before read-only ones), or the one typed here last time.
+  # slskd treats a key with no role as read-only (Ben 2026-11-26: Soulseek kept saying the key "can only look").
   key=$(sed -n '/api_keys:/,/^[^ ]/p' "$yml" 2>/dev/null | awk '
     /^ *key:/ { k=$2; gsub(/["\047]/, "", k); keys[++n]=k; role[n]="" }
     /^ *role:/ { r=$2; gsub(/["\047]/, "", r); role[n]=tolower(r) }
-    END { for (i=1;i<=n;i++) if (role[i]!="readonly") { print keys[i]; exit } if (n) print keys[1] }')
+    END { for (i=1;i<=n;i++) if (role[i]=="readwrite" || role[i]=="administrator") { print keys[i]; exit } if (n) print keys[1] }')
+  [ -n "$key" ] && slsk_can_download "$yml" "$key"
   [ -n "$key" ] || key=$(sed -n 's/^SLSKD_KEY=//p' "$MUSIC_ENV" | head -1)
   if [ -z "$key" ]; then
     printf "  slskd's API key (in SoulSync's settings, or slskd.yml), or just press Enter to skip: "
