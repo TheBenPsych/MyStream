@@ -6,9 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.session.MediaSession
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.AudioItem
@@ -96,6 +98,75 @@ class MusicService
                 defaultScope.launch { musicMeLazy.get().skipped(audio.id) }
             }
             player.seekToNext()
+            wake()
+        }
+
+        /** After a song failed to load the player sits stopped: get it ready again (skips and jumps then work) */
+        fun wake() {
+            if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) player.prepare()
+        }
+
+        /**
+         * Play/Pause from any music button. After a song fails to load (lots of quick skips and far jumps can make
+         * Tower drop a stream) the player sits stopped and a plain play() does nothing; this gets it going again.
+         */
+        fun playPause() {
+            Util.handlePlayPauseButtonAction(player)
+        }
+
+        /** Play from any music button, waking the player up first if a song failed to load or the list ended */
+        fun resume() {
+            Util.handlePlayButtonAction(player)
+        }
+
+        /** The song that last failed to load and when, so a song that keeps failing is skipped instead of retried */
+        private var failedKey: Long? = null
+        private var failedAt = 0L
+        private var failedCount = 0
+
+        /**
+         * A song couldn't load (often a far jump or a fast skip that Tower dropped). Before: the player just stopped
+         * until you left Now playing. Now: try the same song again from where it was, and if it keeps failing move
+         * on to the next song.
+         */
+        private fun recoverFromError(error: PlaybackException) {
+            Timber.w(error, "Music couldn't play (%s)", error.errorCodeName)
+            if (player.mediaItemCount == 0) return
+            val index = player.currentMediaItemIndex.coerceIn(0, player.mediaItemCount - 1)
+            val key = (player.getMediaItemAt(index).localConfiguration?.tag as? AudioItem)?.key
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (key != failedKey || now - failedAt > 60_000) failedCount = 0
+            failedKey = key
+            failedAt = now
+            failedCount++
+            val position = player.currentPosition.coerceAtLeast(0)
+            val gen = generation
+            val wanted = player.playWhenReady
+            defaultScope.launch {
+                // A short breath so a busy Tower can catch up
+                kotlinx.coroutines.delay(if (failedCount == 1) 500L else 1500L)
+                onMain {
+                    if (gen != generation || player.mediaItemCount == 0 || player.playerError == null) return@onMain
+                    when {
+                        failedCount <= 2 -> {
+                            player.seekTo(index.coerceAtMost(player.mediaItemCount - 1), position)
+                        }
+
+                        index + 1 < player.mediaItemCount -> {
+                            failedCount = 0
+                            player.seekTo(index + 1, 0L)
+                        }
+
+                        else -> {
+                            // The last song won't load: wait for a press of Play (which tries again) instead of looping
+                            player.pause()
+                            return@onMain
+                        }
+                    }
+                    player.prepare()
+                    player.playWhenReady = wanted
+                }
+            }
         }
 
         private val carLibrary: MusicCarLibrary get() = carLibraryLazy.get()
@@ -153,6 +224,10 @@ class MusicService
                 if (player.mediaItemCount > 0 && player.currentMediaItemIndex == player.mediaItemCount - 1) {
                     keepGoing(audio)
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                recoverFromError(error)
             }
         }
 
@@ -733,6 +808,7 @@ class MusicService
         suspend fun playIndex(index: Int) {
             onMain {
                 player.seekTo(index, 0L)
+                wake()
                 player.play()
             }
             // MusicPlayerListener will update state
@@ -786,7 +862,7 @@ class MusicService
                                 }
 
                                 PlaystateCommand.UNPAUSE -> {
-                                    player.play()
+                                    resume()
                                 }
 
                                 PlaystateCommand.NEXT_TRACK -> {
@@ -814,7 +890,7 @@ class MusicService
                                 }
 
                                 PlaystateCommand.PLAY_PAUSE -> {
-                                    if (player.isPlaying) player.pause() else player.play()
+                                    playPause()
                                 }
                             }
                         }

@@ -185,7 +185,13 @@
     if (M.index + 1 < M.queue.length) load(M.index + 1); else keepGoing(true);
   };
   M.prev = () => { if (pos() > 4 || M.index === 0) seek(0); else load(M.index - 1); };
-  M.toggle = () => { if (!M.queue.length) return; wakeSound(); if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
+  M.toggle = () => {
+    if (!M.queue.length) return;
+    wakeSound();
+    // A song that failed to load starts again from where it was instead of doing nothing
+    if (audio.error && M.current()) return reload(M.current(), pos());
+    if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+  };
   M.stop = () => {
     if (!M.queue.length) return;
     report("/Stopped");
@@ -226,6 +232,27 @@
     if (M.repeat === 2) { seek(0); audio.play().catch(() => {}); return; }
     if (M.repeat === 1 && M.index + 1 >= M.queue.length && M.queue.length) { load(0); return; }
     M.next();
+  });
+  // A song that fails to load (a far jump or quick skips that Tower dropped) used to leave the player stuck until
+  // you left and came back. Now it tries the same song again from the same spot, then moves on to the next song.
+  const reload = (s, t) => {
+    offset = t > 0 ? t : 0;
+    audio.src = src(s) + (offset ? "&StartTimeTicks=" + Math.round(offset * B.TICKS) : "");
+    audio.play().catch(() => {});
+  };
+  let failKey = null, failCount = 0, failAt = 0;
+  audio.addEventListener("error", () => {
+    const s = M.current();
+    if (!s || !audio.getAttribute("src")) return;
+    const now = Date.now();
+    if (failKey !== s._key || now - failAt > 60000) failCount = 0;
+    failKey = s._key; failAt = now; failCount++;
+    const t = pos(), mine = gen, idx = M.index;
+    setTimeout(() => {
+      if (mine !== gen || M.index !== idx || M.current() !== s) return;
+      if (failCount <= 2) reload(s, t);
+      else if (M.index + 1 < M.queue.length) load(M.index + 1);
+    }, failCount === 1 ? 500 : 1500);
   });
   audio.addEventListener("play", draw);
   audio.addEventListener("pause", draw);

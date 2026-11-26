@@ -112,8 +112,7 @@ class MusicPlacesViewModel
         fun upNext() = navigationManager.navigateTo(Destination.MusicUpNext)
 
         fun playPause() {
-            val p = musicService.player
-            if (p.isPlaying) p.pause() else p.play()
+            musicService.playPause()
         }
 
         fun next() = musicService.player.seekToNext()

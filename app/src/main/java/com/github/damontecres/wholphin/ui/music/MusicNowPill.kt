@@ -53,8 +53,7 @@ class MusicPillViewModel
         fun open() = navigationManager.navigateTo(Destination.NowPlaying)
 
         fun playPause() {
-            val p = musicService.player
-            if (p.isPlaying) p.pause() else p.play()
+            musicService.playPause()
         }
     }
 
