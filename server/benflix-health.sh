@@ -214,9 +214,40 @@ sample() { # sample <first of the minute? 1|0>
   fi
 }
 
+# Which app ran out of memory, and whether it hit its own limit or Tower ran out. One entry per app and stopped
+# program: "app|program|times|own|cap MB|last kill (epoch)" joined with ";". Worked out again only when a new kill
+# shows up in the log, so the minute job doesn't ask Docker every minute.
+oom_apps() {
+  local log=$1 n ids
+  local -A caps
+  n=$(grep -c 'oom-kill:constraint' "$log" 2>/dev/null)
+  [ "${n:-0}" -gt 0 ] || { rm -f "$TMPD/oom"; return; }
+  if [ "$(sed -n 1p "$TMPD/oom" 2>/dev/null)" != "$n" ]; then
+    ids=$(timeout 8 docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null)
+    {
+      echo "$n"
+      grep -h 'oom-kill:constraint' "$log" 2>/dev/null | while read -r ln; do
+        local c t id name when cap=0
+        c=$(echo "$ln" | grep -oE 'constraint=[A-Z_]+' | cut -d= -f2)
+        t=$(echo "$ln" | grep -oE ',task=[^,]+' | cut -d= -f2)
+        id=$(echo "$ln" | grep -oE 'task_memcg=[^,]*' | grep -oE '[0-9a-f]{64}' | head -1)
+        name=""; [ -n "$id" ] && name=$(echo "$ids" | awk -v i="$id" '$1==i{print $2; exit}')
+        if [ -n "$name" ] && [ -z "${caps[$name]}" ]; then
+          caps[$name]=$(( $(timeout 5 docker inspect -f '{{.HostConfig.Memory}}' "$name" 2>/dev/null || echo 0) / 1048576 ))
+        fi
+        [ -n "$name" ] && cap=${caps[$name]:-0}
+        when=$(date -d "$(echo "$ln" | cut -c1-15)" +%s 2>/dev/null || echo 0)
+        echo "${name:-Tower}|${t:-?}|$([ "$c" = CONSTRAINT_MEMCG ] && echo own || echo all)|$cap|$when"
+      done | awk -F'|' '{k=$1"|"$2"|"$3"|"$4; n[k]++; if($5>l[k]) l[k]=$5} END{for(k in n) print n[k]"|"k"|"l[k]}' | sort -t'|' -k1,1 -rn |
+        awk -F'|' '{printf "%s%s|%s|%s|%s|%s|%s", (NR>1?";":""), $2, $3, $1, $4, $5, $6} END{print ""}'
+    } >"$TMPD/oom.tmp" && mv "$TMPD/oom.tmp" "$TMPD/oom"
+  fi
+  sed -n 2p "$TMPD/oom"
+}
+
 # Everything Glowfin's Health page needs that only Tower itself can see, once a minute
 status() {
-  local dir errors dimms board bios cpu link cap ups_model hc=0
+  local dir errors dimms board bios cpu link cap ups_model hc=0 oom_apps
   dir=$(bb_dir); [ -n "$dir" ] || return
   if [ ! -f "$TMPD/hw" ]; then
     {
@@ -238,10 +269,11 @@ status() {
     "$(grep -E 'AER: (Corrected|Uncorrected|Multiple)|PCIe Bus Error' "$log" 2>/dev/null | grep -cE '0000:00:01\.0|0000:0[1-3]:00')" \
     "$(grep -E 'AER: (Corrected|Uncorrected|Multiple)|PCIe Bus Error' "$log" 2>/dev/null | grep -cvE '0000:00:01\.0|0000:0[1-3]:00')" \
     "$(grep -ciE 'i915 .*(GPU HANG|GPU reset|Resetting|\*ERROR\*)' "$log" 2>/dev/null)" \
-    "$(grep -ciE 'Out of memory|oom-kill|invoked oom-killer' "$log" 2>/dev/null)" \
+    "$(grep -c 'invoked oom-killer' "$log" 2>/dev/null)" \
     "$(grep -ciE 'I/O error|ata[0-9.]+: (exception|hard resetting)|nvme.*(timeout|resetting)' "$log" 2>/dev/null)")
-  printf '{"t":%s,"tz":"%s","boot":%s,"array":%s,"bert":%s,"errors":{%s},"board":%s,"bios":%s,"cpu":%s,"dimms":%s,"link":%s,"link_cap":%s,"ups_model":%s,"wd":%s,"hc":%s,"crashed":%s,"drives_started":%s,"settings":{"watchdog":%s,"autostart":%s,"crashnote":%s,"hotnote":%s}}\n' \
-    "$(date +%s)" "$(date +%z)" "$(booted_at)" "$(jstr "$(var mdState)")" "$(dmesg 2>/dev/null | grep -q 'BERT: \[Hardware Error\]' && echo 1 || echo 0)" "$errors" \
+  oom_apps=$(oom_apps "$log")
+  printf '{"t":%s,"tz":"%s","boot":%s,"array":%s,"bert":%s,"errors":{%s},"oom_apps":%s,"board":%s,"bios":%s,"cpu":%s,"dimms":%s,"link":%s,"link_cap":%s,"ups_model":%s,"wd":%s,"hc":%s,"crashed":%s,"drives_started":%s,"settings":{"watchdog":%s,"autostart":%s,"crashnote":%s,"hotnote":%s}}\n' \
+    "$(date +%s)" "$(date +%z)" "$(booted_at)" "$(jstr "$(var mdState)")" "$(dmesg 2>/dev/null | grep -q 'BERT: \[Hardware Error\]' && echo 1 || echo 0)" "$errors" "$(jstr "$oom_apps")" \
     "$(jstr "$board")" "$(jstr "$bios")" "$(jstr "$cpu")" "$(jstr "$dimms")" "$(jstr "$link")" "$(jstr "$cap")" "$(jstr "$ups_model")" \
     "$(jstr "$(cat "$TMPD/wd" 2>/dev/null)")" "$hc" "$([ -f "$TMPD/crashed" ] && echo 1 || echo 0)" "$(num "$(cat "$TMPD/drives-started" 2>/dev/null)")" \
     "$(jstr "$(setting watchdog on)")" "$(jstr "$(setting autostart on)")" "$(jstr "$(setting crashnote on)")" "$(jstr "$(setting hotnote on)")" >"$dir/status.tmp" \
