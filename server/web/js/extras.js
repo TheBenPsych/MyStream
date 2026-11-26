@@ -249,7 +249,7 @@
     if (!line) {
       const meta = scope.querySelector(".meta");
       if (!meta) return;
-      meta.insertAdjacentHTML("afterend", B.scoreIcons("", "", "", scope.classList.contains("tp") ? "tp-icons" : ""));
+      meta.insertAdjacentHTML("afterend", B.scoreIcons("", "", scope.classList.contains("tp") ? "tp-icons" : ""));
       line = scope.querySelector(".tp-scores");
       if (!line) return;
     }

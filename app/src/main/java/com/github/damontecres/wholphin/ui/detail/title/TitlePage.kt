@@ -228,13 +228,11 @@ fun TitlePage(
     tagline: String? = null,
     /** Small picture and sound tags after the info line: "4K", "Dolby Vision", "Atmos", "CC" */
     chips: List<String> = emptyList(),
-    /** Movies and shows on Glowfin: "94% for you" under the score pill (Idea Box 28) */
-    matchId: java.util.UUID? = null,
     /** Details pages: asks Tower for a logo when there's none or it won't load (Ben 2026-11-24) */
     findLogo: (suspend () -> String?)? = null,
 ) {
     val extras =
-        remember(logoUrl, tagline, chips, matchId, findLogo) { TitleExtras(logoUrl, tagline, chips, matchId, findLogo) }
+        remember(logoUrl, tagline, chips, findLogo) { TitleExtras(logoUrl, tagline, chips, findLogo) }
     CompositionLocalProvider(LocalTitleExtras provides extras) {
         TitlePageBody(
             title,
@@ -262,7 +260,6 @@ internal data class TitleExtras(
     val logoUrl: String? = null,
     val tagline: String? = null,
     val chips: List<String> = emptyList(),
-    val matchId: java.util.UUID? = null,
     val findLogo: (suspend () -> String?)? = null,
 )
 

@@ -168,8 +168,8 @@ internal fun DoorInfo(
         }
         val tag = remember(item) { doorTag(item) }
         if (tag != null) DoorTag(tag)
-        // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time, with Glowfin's
-        // "94% for you" pill at the end of the row (it used to sit alone in the top right)
+        // Ben 2026-11-24: the age rating and scores sit as bare icons right under the year and time.
+        // The "for you" percent was removed (Ben 2026-11-26).
         if (!easy) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -177,12 +177,6 @@ internal fun DoorInfo(
                 modifier = Modifier.padding(top = 2.dp),
             ) {
                 DoorScoreIcons(item = item)
-                MatchPill(
-                    itemId =
-                        item.id.takeIf {
-                            item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.SERIES
-                        },
-                )
             }
         }
         val story = item.data.overview

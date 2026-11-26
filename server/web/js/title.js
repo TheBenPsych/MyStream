@@ -62,7 +62,7 @@
         <div class="main">
           <div class="tp-name">${opts.kicker ? `<span class="tp-kick">${esc(opts.kicker)}</span>` : ""}${opts.logo ? `<img class="tp-logo" id="tpLogo" src="${esc(opts.logo)}" alt="${esc(opts.title || "")}" hidden>` : ""}<h1 class="t">${esc(opts.title || "")}</h1>${opts.original && opts.original !== opts.title ? `<div class="t2">${esc(opts.original)}</div>` : opts.tagline && !kids ? `<div class="t2 tp-tag">${esc(opts.tagline)}</div>` : ""}<i class="tp-line"></i></div>
           <div class="meta">${meta}${opts.infoExtra || ""}</div>
-          ${rows && !kids && (opts.rating || opts.scores || opts.matchId) ? B.scoreIcons(opts.rating, opts.scores, opts.matchId, "tp-icons") : ""}
+          ${rows && !kids && (opts.rating || opts.scores) ? B.scoreIcons(opts.rating, opts.scores, "tp-icons") : ""}
           ${chips.length ? `<div class="tp-chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
           ${rows ? `<button type="button" class="tp-story tp-open" id="tpStory">${opts.story ? `<span class="tp-st">${esc(opts.story)}</span>` : ""}<b>Story and details ›</b></button>` : ""}
           <div class="btns">${buttons.map(btn).join("")}</div>

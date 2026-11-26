@@ -1399,38 +1399,6 @@ document.addEventListener("keydown", (e) => {
   });
 })();
 
-// Glowfin "94% for you" (Idea Box 28, Ben 2026-11-24): any [data-match] box on the page asks Tower how well that
-// movie or show fits the person watching, and shows "94% for you" (Ben 2026-11-24: no "Because you loved" line).
-// Nothing shows for Kids, or until the person has watched or liked enough.
-(() => {
-  // Speed check (Ben 2026-11-24): only ask once the pointer rests on a title (not for every poster passed on the
-  // way), and never keep a "still working it out" answer, so the number shows on the next look.
-  const known = new Map();
-  const ask = (id) => {
-    const key = ((B.me && B.me.id) || "") + "/" + id;
-    if (!known.has(key)) {
-      const p = B.call("GET", `api/match/${encodeURIComponent(id)}`).catch(() => ({ pct: null, later: true }));
-      known.set(key, p);
-      p.then((r) => { if (!r || r.later) known.delete(key); });
-    }
-    return known.get(key);
-  };
-  const fill = (box, tries) => {
-    box.dataset.done = "1";
-    if (B.me && B.me.kids) return;
-    setTimeout(async () => {
-      if (!box.isConnected) return;
-      const r = await ask(box.dataset.match);
-      if (!box.isConnected) return;
-      if (r && r.later && (tries || 0) < 3) return fill(box, (tries || 0) + 1);
-      if (!r || !r.pct) return;
-      box.innerHTML = `<span class="mt-pill"><b>${r.pct}%</b> for you</span>`;
-    }, tries ? 4000 : 350);
-  };
-  let queued = false;
-  const scan = () => { queued = false; document.querySelectorAll("[data-match]:not([data-done])").forEach((b) => fill(b, 0)); };
-  new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(scan); } }).observe(document.body, { childList: true, subtree: true });
-})();
 // Design check (Ben 2026-11-24): on a computer the title pages match the TV, with no Back pill or where-am-I line
 // (CSS hides them). Esc or Backspace goes back instead, like the remote's Back. Typing, pop-ups and menus are left alone.
 document.addEventListener("keydown", (e) => {

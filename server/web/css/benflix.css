@@ -3092,16 +3092,6 @@ html.kids .door:focus-visible, .kbtn:hover, .kbtn:focus-visible { transform: non
 html.kids .empty-page .tile { background: radial-gradient(85% 120% at 72% 32%, var(--kacc), #12152A); }
 @media (max-width: 760px) { .empty-page { flex-direction: column; text-align: center; gap: 18px; padding: 40px 20px; } .empty-page .tile { width: 180px; height: 112px; } }
 
-/* Glowfin "94% for you" (Idea Box 28): a small pill at the end of the score icons row (Ben 2026-11-24) */
-.mt-wrap { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; text-shadow: none; }
-.mt-wrap:empty { display: none; }
-.mt-pill { display: inline-flex; align-items: baseline; gap: 6px; padding: 1px 10px; border-radius: 999px; background: rgba(11,13,26,.8); border: 1.5px solid rgba(63,224,232,.7); color: #ECEEFB; font-size: 13px; font-weight: 600; }
-.mt-pill b { color: #3FE0E8; font-size: 15px; font-weight: 800; }
-@media (max-width: 700px) {
-  /* Upright phone: a touch smaller */
-  .mt-pill { font-size: 12px; padding: 1px 8px; }
-  .mt-pill b { font-size: 14px; }
-}
 
 /* Follow your teams (Idea Box 28): Live TV's Sports tab */
 .team-tag { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: 999px; background: rgba(242,179,61,.18); border: 1.5px solid #F2B33D; color: #FCE3B0; font-size: 13px; font-weight: 600; }
@@ -3185,7 +3175,7 @@ body.nav-on { overflow-x: hidden; }
 .dt-icons span[data-s="rt"].splat::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2365B32E'%3E%3Ccircle cx='12' cy='12' r='7.2'/%3E%3Ccircle cx='20.5' cy='14' r='3.2'/%3E%3Ccircle cx='17' cy='20' r='2.4'/%3E%3Ccircle cx='8' cy='20.8' r='3.2'/%3E%3Ccircle cx='3' cy='13' r='2.4'/%3E%3Ccircle cx='6' cy='4' r='3.2'/%3E%3Ccircle cx='14' cy='2.8' r='2.4'/%3E%3Ccircle cx='20' cy='6.5' r='3'/%3E%3C/svg%3E"); }
 
 /* Ben 2026-11-24: details pages use the same icon row under the year line (the top-right pill is gone), with the
-   other score sites as small icons and "94% for you" at the end of the row */
+   other score sites as small icons */
 .dt-icons { flex-wrap: wrap; row-gap: 6px; }
 .dt-icons .tp-scores { display: contents; }
 .dt-icons span.lf { font-size: 13px; font-weight: 700; color: #fff; }
@@ -3193,7 +3183,6 @@ body.nav-on { overflow-x: hidden; }
 .dt-icons span[data-s="al"]::before { content: "AL"; display: grid; place-items: center; font: 900 9px/1 system-ui, sans-serif; color: #02A9FF; background: #152232; border-radius: 3px; width: 18px; }
 .dt-icons span[data-s="mal"]::before { content: "MAL"; display: grid; place-items: center; font: 900 9px/1 system-ui, sans-serif; color: #fff; background: #2E51A2; border-radius: 3px; width: 26px; }
 .dt-icons span[data-s="user"]::before { content: "★"; display: grid; place-items: center; font: 900 13px/1 system-ui, sans-serif; color: #fff; }
-.dt-icons .mt-wrap { position: static; }
 .tp-icons { margin: 2px 0; }
 
 /* Ben 2026-11-24: Just released date chip (aqua for Today) */
