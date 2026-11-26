@@ -225,8 +225,10 @@ private fun Live(
             delay(250)
         }
     }
+    // Players still here who need to answer (not the artist, not anyone whose phone left)
+    val answering = ui.players.count { !it.away && !(ui.phase == PartyPhase.DRAWING && it.id == ui.drawer) }
     Text(
-        "Round ${ui.round} of ${ui.rounds}  ·  $left s  ·  ${ui.answered.size} of ${ui.players.count { !it.away && !(ui.phase == PartyPhase.DRAWING && it.id == ui.drawer) }} answered",
+        "Round ${ui.round} of ${ui.rounds}  ·  $left s  ·  ${ui.answered.size} of $answering answered",
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,
         color = PuzzleGold,
