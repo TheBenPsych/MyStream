@@ -270,8 +270,30 @@ def _sidecars(video):
     return out
 
 
+def _share(path):
+    """Unraid's usual owner (nobody:users) and open rights, so Ben can add, rename and delete from Windows.
+    (The helper runs as root, so anything it makes would otherwise be locked to Windows.)"""
+    try:
+        os.chown(path, 99, 100)
+        os.chmod(path, 0o777 if os.path.isdir(path) else 0o666)
+    except OSError:
+        pass
+
+
+def _folder(path):
+    """Makes a folder (and any missing parents under Media) that Windows can write to"""
+    missing = []
+    p = path
+    while p and not os.path.isdir(p) and p not in ("/", MEDIA):
+        missing.append(p)
+        p = os.path.dirname(p)
+    os.makedirs(path, exist_ok=True)
+    for m in missing:
+        _share(m)
+
+
 def _move(src, dst):
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    _folder(os.path.dirname(dst))
     try:
         os.rename(src, dst)
     except OSError:
@@ -280,7 +302,7 @@ def _move(src, dst):
 
 def _retire(path):
     """Moves a file that lost its place (and its subtitles and .nfo) to One Pace Drop/Replaced"""
-    os.makedirs(REPLACED, exist_ok=True)
+    _folder(REPLACED)
     for p in [path] + _sidecars(path):
         target = os.path.join(REPLACED, os.path.basename(p))
         if os.path.exists(target):
@@ -288,6 +310,7 @@ def _retire(path):
             target = f"{base} ({int(time.time())}){ext}"
         try:
             _move(p, target)
+            _share(target)
             with _lock:
                 _state.setdefault("replaced", {})[target] = time.time()
         except OSError as e:
@@ -327,6 +350,8 @@ def _write(path, body):
     with open(tmp, "wb") as f:
         f.write(body)
     os.replace(tmp, path)
+    if path.startswith(MEDIA + "/"):
+        _share(path)
 
 
 def _poster(sources, folder, force=False):
@@ -386,7 +411,7 @@ def _show_nfo(data):
     for part, a in sorted(data["arcs"].items()):
         ET.SubElement(root, "namedseason", attrib={"number": str(part)}).text = a.get("title") or f"Arc {part}"
     ET.SubElement(root, "lockdata").text = "true"
-    os.makedirs(_show_dir(), exist_ok=True)
+    _folder(_show_dir())
     _write(os.path.join(_show_dir(), "tvshow.nfo"), _xml(root))
     _show_poster()
 
@@ -394,7 +419,7 @@ def _show_nfo(data):
 def _season_nfo(data, arc):
     a = data["arcs"].get(arc) or {}
     folder = _season_dir(arc)
-    os.makedirs(folder, exist_ok=True)
+    _folder(folder)
     root = ET.Element("season")
     ET.SubElement(root, "title").text = a.get("title") or ("Specials" if arc == 0 else f"Arc {arc}")
     ET.SubElement(root, "seasonnumber").text = str(arc)
@@ -502,10 +527,12 @@ def _place(data, info, path, seasons_done):
     dst = os.path.join(_season_dir(arc), f"One Pace - {key} - {title}{ext}")
     subs = [p for p in _sidecars(path) if os.path.splitext(p)[1].lower() in SIDE]
     _move(path, dst)
+    _share(dst)
     for s in subs:
         tail = os.path.basename(s)[len(os.path.splitext(os.path.basename(path))[0]):]
         try:
             _move(s, os.path.splitext(dst)[0] + tail)
+            _share(os.path.splitext(dst)[0] + tail)
         except OSError:
             pass
     _episode_nfo(info, dst)
@@ -579,7 +606,8 @@ def sort_now():
     moved, skipped, unknown = [], [], []
     problem = None
     try:
-        os.makedirs(DROP, exist_ok=True)
+        _folder(DROP)
+        _share(DROP)
         _clean_replaced()
         data = _load_data(force=True)
         files = _drop_files()
@@ -745,7 +773,18 @@ def start(jellyfin_call, admin):
         _state.clear()
         _state.update(_load_state() if _dir else {})
     try:
-        os.makedirs(DROP, exist_ok=True)
+        _folder(DROP)
+        _share(DROP)
+        # Folders an earlier version made as root (Windows couldn't write to them)
+        for folder, dirs, _names in os.walk(DROP):
+            for d in dirs:
+                _share(os.path.join(folder, d))
+        if os.path.isdir(_show_dir()):
+            _share(_show_dir())
+            for d in os.listdir(_show_dir()):
+                full = os.path.join(_show_dir(), d)
+                if os.path.isdir(full):
+                    _share(full)
     except OSError as e:
         log(f"couldn't make the drop folder: {e}")
     log(f"ready (notes in {_dir}, drop folder {DROP})")

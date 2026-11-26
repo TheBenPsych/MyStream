@@ -35,6 +35,7 @@ done
 mkdir -p "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers"
 chown nobody:users "$MEDIA/Music" "$MEDIA/Music Drop" "$MEDIA/Music Leftovers" 2>/dev/null
 chmod 777 "$MEDIA/Music Drop"
+mkdir -p "$MEDIA/One Pace Drop"; chown nobody:users "$MEDIA/One Pace Drop" 2>/dev/null; chmod 777 "$MEDIA/One Pace Drop"
 chmod 777 "$SAVES"
 HOST_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
 [ -n "$HOST_IP" ] || HOST_IP=$(hostname -i 2>/dev/null | awk '{print $1}')
