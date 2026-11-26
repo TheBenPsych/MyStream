@@ -97,6 +97,11 @@ try:  # Anime movies go into their show's Specials, plus Missing pieces and fill
 except ImportError:
     specials = None
 
+try:  # One Pace (the One Piece fan edit): sorts the One Pace Drop folder into arcs with titles and posters, in benflix_onepace.py
+    import benflix_onepace as onepace
+except ImportError:
+    onepace = None
+
 try:  # Fix posters: blurry poster finder and night-time fill of missing pictures, in benflix_posters.py
     import benflix_posters as posters
 except ImportError:
@@ -2722,6 +2727,11 @@ if __name__ == "__main__":
             tools,
             arrivals,
         )
+    if onepace is not None:
+        onepace.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+        )
     if matcher is not None:
         matcher.start(jellyfin_call)
     if teams is not None:
@@ -2751,6 +2761,8 @@ if __name__ == "__main__":
             keeper.job("specials", "Put anime movies into their shows' Specials", "Every 10 minutes", specials, "check", run=specials.check)
             keeper.job("specials-week", "Check every anime show's specials against TheTVDB", "Every week", specials, "weekly", run=specials.weekly)
             keeper.add_card("animemovies", specials.card, specials.card_do)
+        if onepace is not None:
+            keeper.add_card("onepace", onepace.card, onepace.card_do)
         if famous is not None:
             keeper.job("famous", "Gather the Famous lists (IMDb Top 250, Oscars, Emmys)", "Every week", famous, "gather", run=lambda: famous.gather(True))
         if arrivals is not None:

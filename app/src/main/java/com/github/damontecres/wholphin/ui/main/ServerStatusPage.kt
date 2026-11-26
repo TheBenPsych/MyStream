@@ -849,6 +849,7 @@ fun ServerStatusPage(
                         }
                         spaceItems(toolsState, toolsViewModel, sectionTitle)
                         towerCardItems("animemovies", "Anime movies into their shows")
+                        towerCardItems("onepace", "One Pace")
                         careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
                     }
 
