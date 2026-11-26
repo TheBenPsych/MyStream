@@ -91,8 +91,7 @@ class NavDrawerViewModel
         /** A short Play/Pause on a door (no poster picked): plays or pauses the music that's waiting */
         fun musicTap() {
             if (musicService.state.value.queueSize == 0) return
-            val p = musicService.player
-            if (p.isPlaying) p.pause() else p.play()
+            musicService.playPause()
         }
 
         /**
@@ -104,7 +103,7 @@ class NavDrawerViewModel
             viewModelScope.launch(WholphinDispatchers.IO) {
                 if (musicService.state.value.queueSize > 0) {
                     com.github.damontecres.wholphin.ui
-                        .onMain { musicService.player.play() }
+                        .onMain { musicService.resume() }
                     com.github.damontecres.wholphin.ui.components.BenflixNotices
                         .pill("Music carries on")
                     return@launch

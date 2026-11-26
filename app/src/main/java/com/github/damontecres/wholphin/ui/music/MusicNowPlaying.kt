@@ -298,6 +298,7 @@ class MusicNowPlayingViewModel
         /** Jump the song to [ms] (a lyric line, or the progress line) */
         fun seekTo(ms: Long) {
             player.seekTo(ms.coerceAtLeast(0))
+            musicService.wake()
         }
 
         private val _lyrics = MutableStateFlow<Pair<UUID, LyricDto>?>(null)
@@ -340,16 +341,20 @@ class MusicNowPlayingViewModel
         }
 
         fun playPause() {
-            if (player.isPlaying) player.pause() else player.play()
+            musicService.playPause()
         }
 
-        fun previous() = player.seekToPrevious()
+        fun previous() {
+            player.seekToPrevious()
+            musicService.wake()
+        }
 
         fun next() = musicService.skipToNext()
 
         fun seekBy(ms: Long) {
             val d = player.duration.takeIf { it > 0 } ?: return
             player.seekTo((player.currentPosition + ms).coerceIn(0, d))
+            musicService.wake()
         }
 
         fun like() {
