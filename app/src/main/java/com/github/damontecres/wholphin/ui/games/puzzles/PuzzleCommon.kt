@@ -202,8 +202,8 @@ fun PuzzleHeader(
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
         )
+        // The name is measured first so it's never cut to "Who's that a…"; the chips wrap instead
         Spacer(Modifier.weight(1f))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             line
@@ -520,6 +520,48 @@ fun PuzzleOver(
             left()
             if (run.isNotEmpty()) posters()
         }
+    }
+}
+
+/**
+ * "Not enough to play yet": a calm message in the middle of the screen with "Try again" (it used to
+ * show the end-of-run card in the top corner with "Play again", which just showed the same message).
+ */
+@Composable
+fun PuzzleNotEnough(
+    title: String,
+    message: String,
+    isTv: Boolean,
+    onAgain: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.tryRequestFocus() }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = if (isTv) 90.dp else 56.dp, start = 16.dp, end = 16.dp),
+    ) {
+        Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
+        Text(
+            "Not enough to play yet",
+            fontSize = if (isTv) 22.sp else 19.sp,
+            lineHeight = if (isTv) 30.sp else 26.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = PuzzleGold,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            message,
+            fontSize = 18.sp,
+            lineHeight = 26.sp,
+            color = Color.White.copy(alpha = .85f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 620.dp),
+        )
+        Button(onClick = onAgain, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
+            Text("Try again")
+        }
+        Text("Press Back to leave", fontSize = 14.sp, color = Color.White.copy(alpha = .5f))
     }
 }
 

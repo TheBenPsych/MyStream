@@ -214,7 +214,7 @@ def play_puzzle(game):
         if shots_at and t >= shots_at[0]:
             shots_at.pop(0)
             root = shot(f"playing-{int(t)}s")
-        if d.find(root, r"^Not enough|Couldn't load|Couldn't reach") is not None:
+        if d.find(root, r"^Not enough to play yet$|^Couldn't load|^Couldn't reach") is not None:
             shot("not-enough")
             note("the game said there isn't enough to play with (the demo server is small)")
             break
@@ -386,6 +386,14 @@ def play_party(game, players, drop_at=None, late_join=None):
         for p, v in zip(phones, vs):
             f.write(json.dumps({"phone": p.name, "at": "lobby", "view": v}) + "\n")
     start_btn = d.find(root, r"^Start with \d+$")
+    if start_btn is None and MODE != "tv":
+        # a phone hosting: Start can be further down the page
+        d.sh(f"input swipe {SIZE[0] // 2} {SIZE[1] * 3 // 4} {SIZE[0] // 2} {SIZE[1] // 4} 400")
+        time.sleep(1.2)
+        root = d.dump()
+        start_btn = d.find(root, r"^Start with \d+$")
+        if start_btn is not None:
+            note("phone host: had to scroll down to find Start")
     if start_btn is None:
         n = d.find(root, r"^Needs \d+ more")
         problem(game, "can't start", n.get("text") if n is not None else "no Start button on the TV")
@@ -399,6 +407,7 @@ def play_party(game, players, drop_at=None, late_join=None):
     round_times = []
     over = False
     seen_keys = set()
+    draw_shot_at = None
     while time.time() - started < 260 and not d.out_of_time():
         active = [p for p in phones if not getattr(p, "gone", False)]
         views = [(p, p.view()) for p in active]
@@ -414,10 +423,15 @@ def play_party(game, players, drop_at=None, late_join=None):
             shots_taken += 1
             time.sleep(0.8)
             shot(f"tv-{re.sub(r'[^a-z0-9]+', '-', title.lower())[:24]}-{rnd}")
+            if game == "DRAW" and 0 < rnd < 100 and title != "Answer":
+                draw_shot_at = time.time() + 6
             with open(f"{OUT}/{game.lower()}-phone-views.jsonl", "a") as f:
                 for p, v in views:
                     f.write(json.dumps({"phone": p.name, "at": f"{title} {rnd}", "view": v}) + "\n")
-        if title in ("Game over", "You win!"):
+        if draw_shot_at and time.time() > draw_shot_at:
+            draw_shot_at = None
+            shot(f"tv-drawing-on-screen-{rnd}")
+        if title in ("Game over", "You win!", "You tied for the win!"):
             over = True
             time.sleep(1.5)
             shot("tv-game-over")
@@ -445,8 +459,10 @@ def play_party(game, players, drop_at=None, late_join=None):
         shot("tv-after-260s")
         problem(game, "game didn't finish", f"still going after 260 s (last: {title} round {rnd})")
     if dropped and round_times:
-        after = round_times[drop_at - 1:] if drop_at and len(round_times) >= drop_at else round_times[-2:]
-        if after and max(after) > 18:
+        before = round_times[:max(1, (drop_at or 1) - 1)]
+        after = round_times[(drop_at or 1):]
+        usual = sorted(before)[len(before) // 2]
+        if after and max(after) > usual + 8:
             problem(game, "waits for a player who left",
                     f"after a phone left, rounds took up to {max(after)} s (everyone else had answered): {round_times}")
     # The end screen buttons
@@ -519,16 +535,16 @@ def phone_join_screens():
     st = "Quiz night · Robot · 1,250 points"
     screens = [
         ("question", {"title": "Question 3 of 10", "text": "Which movie is this poster from?", "status": st, "round": 3,
-                      "actions": [{"id": f"c{i}", "label": n} for i, n in enumerate(["The Great St. Louis Bank Robbery", "Jungle Book", "King Lear", "Night of the Living Dead"])]}, "tap", r"^DO c\d"),
-        ("number", {"title": "Round 2 of 8", "text": "What year did Night of the Living Dead come out?", "status": "Closest wins · Robot · 500 points", "input": "number", "round": 2}, "number", r"^TYPE "),
-        ("write", {"title": "Round 1 of 3", "text": "Write a made-up plot for King Lear (1953). Make it sound real!", "status": "Fake plot · Robot · 0 points", "input": "text", "round": 1}, "text", r"^TYPE "),
+                      "actions": [{"id": f"c{i}", "label": n} for i, n in enumerate(["The Great St. Louis Bank Robbery", "Jungle Book", "King Lear", "Night of the Living Dead"])]}, "tap", r" DO c\d"),
+        ("number", {"title": "Round 2 of 8", "text": "What year did Night of the Living Dead come out?", "status": "Closest wins · Robot · 500 points", "input": "number", "round": 2}, "number", r" TYPE "),
+        ("write", {"title": "Round 1 of 3", "text": "Write a made-up plot for King Lear (1953). Make it sound real!", "status": "Fake plot · Robot · 0 points", "input": "text", "round": 1}, "text", r" TYPE "),
         ("vote", {"title": "Vote", "text": "Which is the REAL plot of King Lear (1953)? (yours isn't shown)", "status": "Fake plot · Robot · 0 points", "round": 101,
                   "actions": [{"id": "p0", "label": "1. In this abridged television production, the old king vows revenge against his conniving daughters after they try to take swift control of his power."},
                               {"id": "p2", "label": "2. A lost robot named Ana has to win a baking contest to save the city from a giant goose."},
-                              {"id": "p3", "label": "3. Short one."}]}, "tap", r"^DO p\d"),
-        ("draw", {"title": "You're drawing!", "text": "Draw this so the others can guess it. No letters or numbers!", "secret": "The Great St. Louis Bank Robbery", "input": "draw", "status": "Draw the movie · Robot · 300 points", "round": 2}, "draw", r"^DRAW "),
+                              {"id": "p3", "label": "3. Short one."}]}, "tap", r" DO p\d"),
+        ("draw", {"title": "You're drawing!", "text": "Draw this so the others can guess it. No letters or numbers!", "secret": "The Great St. Louis Bank Robbery", "input": "draw", "status": "Draw the movie · Robot · 300 points", "round": 2}, "draw", r" DRAW "),
         ("guess-drawing", {"title": "Round 3 of 4", "text": "What is Ana drawing? Watch the TV.", "status": "Draw the movie · Robot · 300 points", "round": 3,
-                           "actions": [{"id": f"c{i}", "label": n} for i, n in enumerate(["Jungle Book", "King Lear", "Popeye the Sailor Meets Sindbad the Sailor", "Big Buck Bunny", "Sintel", "Cosmos Laundromat"])]}, "tap", r"^DO c\d"),
+                           "actions": [{"id": f"c{i}", "label": n} for i, n in enumerate(["Jungle Book", "King Lear", "Popeye the Sailor Meets Sindbad the Sailor", "Big Buck Bunny", "Sintel", "Cosmos Laundromat"])]}, "tap", r" DO c\d"),
         ("reveal", {"title": "Answer", "text": "It's Jungle Book!\nAna +950   Robot +720", "status": st, "round": 3}, None, None),
         ("over", {"title": "You win!", "text": "Robot: 4,120\nAna: 3,900\nBen: 1,200", "status": st}, None, None),
     ]
@@ -572,6 +588,71 @@ def phone_join_screens():
             note(f"{name}: TV got '{[t for t in tv.heard if re.search(expect, t)][0][:80]}'")
     tv.on = False
     d.check_crash("PARTY_PHONE")
+    leave()
+
+
+def ember():
+    """Ember Road: the title screen, the phones lobby, the setup steps, then a few days on the road"""
+    entry("EMBER", "adventure")
+    open_link("ember")
+    if d.wait_for(r"New journey|Continue the journey", 25) is None:
+        shot("title-missing")
+        problem("EMBER", "didn't open", "Ember Road's title screen never showed")
+        leave()
+        return
+    shot("title")
+    d.press(r"^New journey", timeout=6)
+    time.sleep(2)
+    if d.find(d.dump(), r"Skip, just the TV") is not None:
+        shot("phones-lobby")
+        d.press(r"Skip, just the TV", timeout=5)
+        time.sleep(2)
+    for step in range(4):
+        shot(f"setup-{step + 1}")
+        target = r"^Set out!$" if step == 3 else r"^Next$"
+        if MODE == "tv":
+            if not d.tv_focus_down_to(target, presses=40, right_of=r"^(Back|Cancel)$"):
+                problem("EMBER", "remote can't reach", f"{target} on setup step {step + 1}")
+                break
+        else:
+            n = d.find_scrolling(target)
+            if n is None:
+                problem("EMBER", "button missing", f"no {target} on setup step {step + 1}")
+                break
+            d.tap(n)
+        time.sleep(1.5)
+    start = time.time()
+    last_words, same_since = None, time.time()
+    i = 0
+    while time.time() - start < 70 and not d.out_of_time():
+        root = d.dump()
+        if i % 3 == 0:
+            root = shot(f"road-{i}")
+        i += 1
+        n = None
+        for pattern in (r"^Keep going$", r"^Continue$", r"^Go this way$", r"^Pack up and go on$", r"^Leave$", r"^Done shopping$"):
+            n = d.find(root, pattern)
+            if n is not None:
+                break
+        if n is not None:
+            d.tap(n)
+        elif MODE == "tv":
+            if d.focused_node(root) is None:
+                d.key("DPAD_DOWN", wait=0.6)
+            d.key("DPAD_CENTER", wait=1.2)
+        else:
+            phone_tap_something(root)
+        words = screen_words(root)
+        if words != last_words:
+            last_words, same_since = words, time.time()
+        elif time.time() - same_since > STUCK_S:
+            shot("looks-stuck")
+            problem("EMBER", "looks stuck", f"nothing changed for {STUCK_S} s")
+            break
+        time.sleep(1.5)
+    d.key("BACK", wait=1.5)
+    shot("menu")
+    d.check_crash("EMBER")
     leave()
 
 
@@ -628,7 +709,7 @@ def main():
     jobs += [(g, lambda g=g: play_puzzle(g)) for g in PUZZLES if want(g)]
     jobs += [(g, lambda g=g: play_arcade(g)) for g in ARCADE if want(g)]
     if want("EMBER"):
-        jobs.append(("EMBER", lambda: (entry("EMBER", "adventure"), d.ember_road())))
+        jobs.append(("EMBER", ember))
     for name, job in jobs:
         if d.out_of_time():
             problem(name, "robot", "ran out of time before this game")

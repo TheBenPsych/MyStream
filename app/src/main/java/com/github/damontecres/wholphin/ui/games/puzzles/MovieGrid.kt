@@ -328,7 +328,7 @@ fun MovieGridScreen(
             }
 
             is GridState.NotEnough -> {
-                PuzzleOver("Movie grid", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("Movie grid", s.message, isTv, viewModel::start)
             }
 
             is GridState.Over -> {

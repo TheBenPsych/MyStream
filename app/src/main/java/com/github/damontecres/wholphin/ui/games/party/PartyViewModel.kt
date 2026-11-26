@@ -779,9 +779,15 @@ class PartyViewModel
                 }
 
                 PartyPhase.OVER -> {
-                    val winner = u.players.maxByOrNull { it.score }
+                    val top = u.players.maxOfOrNull { it.score } ?: 0
+                    val won = top > 0 && me?.score == top
                     PhoneView(
-                        title = if (winner?.id == j.id) "You win!" else "Game over",
+                        title =
+                            when {
+                                won && u.players.count { it.score == top } > 1 -> "You tied for the win!"
+                                won -> "You win!"
+                                else -> "Game over"
+                            },
                         text = u.players.sortedByDescending { it.score }.joinToString("\n") { "${it.name}: ${it.score}" },
                         status = status,
                     )
