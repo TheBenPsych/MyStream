@@ -48,6 +48,8 @@ SIDE = {".srt", ".ass", ".ssa", ".sub", ".idx", ".vtt", ".sup"}
 CRC_IN_NAME = re.compile(r"\[([0-9A-Fa-f]{8})\]")
 OLD_NAME = re.compile(r"\[One Pace\]\[[^\]]*\]\s*(.+?)\s+(\d{1,3})(?:\s|\[|$)", re.I)
 OUR_NAME = re.compile(r"^One Pace - S(\d{2})E(\d{2,3}) - ")
+SE_NAME = re.compile(r"(?i)(?<![a-z0-9])S(\d{1,2})\s*E(\d{1,3})(?![0-9])")
+LENGTH_SLACK = 150  # seconds an older copy's length may differ from today's episode
 
 _jf = None  # helper's jellyfin_call(method, path, token=None, body=None) -> (status, bytes, type)
 _admin = None  # () -> (token, user id)
@@ -200,6 +202,96 @@ def _by_old_name(data, name):
         if part and _norm(words) in (_norm(a.get("title")), _norm(a.get("mkvcode")), _norm(a.get("originaltitle"))):
             return part, num, extended
     return None
+
+
+def _mkv_seconds(path):
+    """Length of an .mkv in seconds, read from its Segment Info (no ffprobe on Tower's helper). None if unknown."""
+    if os.path.splitext(path)[1].lower() not in (".mkv", ".webm"):
+        return None
+    try:
+        with open(path, "rb") as f:
+            buf = f.read(4 * 1024 * 1024)
+    except OSError:
+        return None
+
+    def vint(i, keep_marker):
+        if i >= len(buf):
+            return None, i
+        first = buf[i]
+        n = 1
+        while n <= 8 and not (first & (0x80 >> (n - 1))):
+            n += 1
+        if n > 8 or i + n > len(buf):
+            return None, i
+        value = first if keep_marker else first & (0xFF >> n)
+        for b in buf[i + 1:i + n]:
+            value = (value << 8) | b
+        unknown = not keep_marker and value == (1 << (7 * n)) - 1
+        return (-1 if unknown else value), i + n
+
+    def children(start, end):
+        i = start
+        while i < end:
+            eid, j = vint(i, True)
+            size, k = vint(j, False)
+            if eid is None or size is None:
+                return
+            stop = len(buf) if size < 0 else min(k + size, len(buf))
+            yield eid, k, stop
+            if size < 0:
+                return
+            i = k + size
+
+    import struct
+    for eid, a, b in children(0, len(buf)):
+        if eid != 0x18538067:  # Segment
+            continue
+        for cid, c, d in children(a, b):
+            if cid != 0x1549A966:  # Info
+                continue
+            scale, dur = 1000000, None
+            for iid, e, g in children(c, d):
+                raw = buf[e:g]
+                if iid == 0x2AD7B1 and raw:
+                    scale = int.from_bytes(raw, "big")
+                elif iid == 0x4489 and len(raw) in (4, 8):
+                    dur = struct.unpack(">f" if len(raw) == 4 else ">d", raw)[0]
+            return dur * scale / 1e9 if dur else None
+        return None
+    return None
+
+
+def _by_episode_name(data, path):
+    """Ben's own names ('One Pace S19E05.mkv', 'Season 19/... E05'), checked against the episode's length.
+    -> (ep, note) or (None, why) or None when the name has no SxxEyy"""
+    m = SE_NAME.search(os.path.basename(path))
+    if not m:
+        return None
+    arc, num = int(m.group(1)), int(m.group(2))
+    title = (data["arcs"].get(arc) or {}).get("title") or f"arc {arc}"
+    in_arc = [e for e in data["crc"].values() if int(e.get("arc") or -1) == arc and not e.get("edit")]
+    if not in_arc:
+        return None, f"its name says S{arc:02d}E{num:02d}, but One Pace has no arc {arc}"
+    seconds = _mkv_seconds(path)
+    named = next((e for e in in_arc if int(e.get("episode") or -1) == num), None)
+    if seconds is None:
+        if named:
+            return named, "by its name"
+        return None, f"its name says {title} {num}, but {title} only has {max(int(e.get('episode') or 0) for e in in_arc)} episodes"
+    if named and abs(float(named.get("duration") or 0) - seconds) <= LENGTH_SLACK:
+        return named, "by its name and length"
+    # numbering may have shifted in a re-release: take the one episode of the arc whose length fits
+    fits = {}
+    for e in in_arc:
+        if abs(float(e.get("duration") or 0) - seconds) <= 45:
+            fits.setdefault(int(e.get("episode") or 0), e)
+    if len(fits) == 1:
+        e = next(iter(fits.values()))
+        return e, f"by its length (its name said episode {num})"
+    mins = round(seconds / 60)
+    if named:
+        return None, f"its name says {title} {num}, but it is {mins} min long and that episode is {round(float(named.get('duration') or 0) / 60)} min, so it was left for you to check"
+    return None, f"its name says {title} {num}, but {title} only has {max(int(e.get('episode') or 0) for e in in_arc)} episodes"
 
 
 def _file_crc(path):
@@ -530,6 +622,14 @@ def _identify(data, path):
             info = _info(data, ep)
             info.update({"extended": extended, "crc": c, "older": True})
             return info, "older copy"
+    mine = _by_episode_name(data, path)
+    if mine:
+        ep, note = mine
+        if not ep:
+            return None, note
+        info = _info(data, ep)
+        info.update({"extended": "extended" in name.lower() or info["extended"], "crc": c, "older": True})
+        return info, note
     return None, "not a One Pace episode Glowfin knows"
 
 
@@ -545,6 +645,9 @@ def _place(data, info, path, seasons_done):
         if old_ext and not info["extended"]:
             _retire(path)
             return f"{label}: kept the extended cut you already have (this normal cut went to Replaced)"
+        if info.get("older") and mine and not mine.get("older"):
+            _retire(path)
+            return f"{label}: kept the newer copy you already have (this older one went to Replaced)"
         if mine.get("crc") == info["crc"] and not info.get("older"):
             _retire(path)
             return f"{label}: already here (the extra copy went to Replaced)"
@@ -770,7 +873,7 @@ def sort_now():
                     unknown.append({"name": os.path.relpath(path, DROP), "why": how})
                     continue
                 said = _place(data, info, path, seasons_done)
-                (skipped if "Replaced" in said else moved).append(said + (" (older copy, a newer one is out)" if info.get("older") else ""))
+                (skipped if "Replaced" in said else moved).append(said + (f" ({how})" if how.startswith("by its length") else "") + (" (older copy, a newer one is out)" if info.get("older") and "Replaced" not in said else ""))
             except Exception as e:  # noqa: BLE001
                 unknown.append({"name": os.path.relpath(path, DROP), "why": f"couldn't move it: {e}"})
         _tidy_drop()
@@ -787,7 +890,7 @@ def sort_now():
         with _lock:
             if _journal:
                 _state["undo"] = {"when": time.time(), "moves": list(_journal)}
-            _state["last"] = {"when": time.time(), "moved": moved[-60:], "skipped": skipped[-30:], "unknown": unknown[-40:], "problem": problem, "count": len(moved)}
+            _state["last"] = {"when": time.time(), "moved": moved[-60:], "skipped": skipped[-30:], "unknown": unknown[-400:], "problem": problem, "count": len(moved)}
             _status.update({"busy": False, "step": "", "done": 0, "total": 0})
         _save()
 
@@ -883,7 +986,7 @@ def card():
             rows.append({"light": "ok", "t": line, "s": f"Sorted {when}", "acts": []})
         for line in (last.get("skipped") or [])[:10]:
             rows.append({"light": "off", "t": line, "s": f"Sorted {when}. Files in Replaced are deleted after 7 days.", "acts": []})
-        for u in (last.get("unknown") or [])[:20]:
+        for u in (last.get("unknown") or [])[:400]:
             rows.append({"light": "bad", "t": f"Left in the drop folder: {u['name']}", "s": u["why"][:1].upper() + u["why"][1:] + ".", "acts": []})
     if data is not None:
         arc_rows, missing, newer, here = _arc_rows(data)
