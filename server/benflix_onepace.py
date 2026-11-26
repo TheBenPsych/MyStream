@@ -11,7 +11,7 @@ content"). One press:
     One Pace's own release feed and episode spreadsheets),
   * finds each file's episode by its CRC32 code (in the name like [D767799C], or worked out from the file itself
     when the name was changed), with the "[One Pace][1-7] Romance Dawn 03" name as a last try for old copies,
-  * moves it to Anime/One Pace/Season NN/One Pace - SNNEMM - Title.mkv (subtitles go with it),
+  * moves it to Anime Shows/One Pace/Season NN/One Pace - SNNEMM - Title.mkv (subtitles go with it),
   * writes locked .nfo files (show, arc, episode: titles, descriptions, dates, chapters) and the arc posters,
   * an extended cut takes the normal cut's place; a newer copy of an episode takes the older one's place.
     The file that loses goes to One Pace Drop/Replaced and is deleted 7 days later (on a later press),
@@ -215,12 +215,38 @@ def _file_crc(path):
 # ---------------------------------------------------------------- where things go
 
 
+ANIME_NAMES = ("Anime Shows", "Anime Series", "Anime TV", "Anime")
+OLD_ROOTS = ("Anime", "anime", "Shows", "TV Shows", "TV")  # where an earlier version may have put One Pace
+
+
 def _anime_root():
-    for name in ("Anime", "anime", "Shows", "TV Shows", "TV"):
+    """Ben's anime shows folder (Media/Anime Shows), never the regular Shows folder"""
+    for name in ANIME_NAMES:
         p = os.path.join(MEDIA, name)
         if os.path.isdir(p):
             return p
-    return os.path.join(MEDIA, "Anime")
+    try:
+        for name in sorted(os.listdir(MEDIA)):
+            low = name.lower()
+            if "anime" in low and "movie" not in low and os.path.isdir(os.path.join(MEDIA, name)):
+                return os.path.join(MEDIA, name)
+    except OSError:
+        pass
+    return os.path.join(MEDIA, "Anime Shows")
+
+
+def _move_old_show():
+    """Moves a One Pace folder an earlier version filed in the wrong place into the anime shows folder"""
+    target = _show_dir()
+    if os.path.exists(target):
+        return
+    for name in OLD_ROOTS:
+        old = os.path.join(MEDIA, name, SHOW_NAME)
+        if os.path.abspath(old) != os.path.abspath(target) and os.path.isdir(old) and os.path.exists(os.path.join(old, "tvshow.nfo")):
+            _folder(os.path.dirname(target))
+            _move(old, target)
+            log(f"moved One Pace from {name} to {os.path.basename(_anime_root())}")
+            return
 
 
 def _show_dir():
@@ -240,7 +266,7 @@ def _key(arc, ep):
 
 
 def _have():
-    """What's in Anime/One Pace right now: {"S14E03": full path}"""
+    """What's in Anime Shows/One Pace right now: {"S14E03": full path}"""
     have = {}
     root = _show_dir()
     if not os.path.isdir(root):
@@ -608,6 +634,7 @@ def sort_now():
     try:
         _folder(DROP)
         _share(DROP)
+        _move_old_show()
         _clean_replaced()
         data = _load_data(force=True)
         files = _drop_files()
