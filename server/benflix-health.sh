@@ -272,11 +272,12 @@ status() {
     "$(grep -c 'invoked oom-killer' "$log" 2>/dev/null)" \
     "$(grep -ciE 'I/O error|ata[0-9.]+: (exception|hard resetting)|nvme.*(timeout|resetting)' "$log" 2>/dev/null)")
   oom_apps=$(oom_apps "$log")
-  printf '{"t":%s,"tz":"%s","boot":%s,"array":%s,"bert":%s,"errors":{%s},"oom_apps":%s,"board":%s,"bios":%s,"cpu":%s,"dimms":%s,"link":%s,"link_cap":%s,"ups_model":%s,"wd":%s,"hc":%s,"crashed":%s,"drives_started":%s,"settings":{"watchdog":%s,"autostart":%s,"crashnote":%s,"hotnote":%s}}\n' \
+  printf '{"t":%s,"tz":"%s","boot":%s,"array":%s,"bert":%s,"errors":{%s},"oom_apps":%s,"board":%s,"bios":%s,"cpu":%s,"dimms":%s,"link":%s,"link_cap":%s,"ups_model":%s,"wd":%s,"hc":%s,"crashed":%s,"drives_started":%s,"cpuw":%s,"settings":{"watchdog":%s,"autostart":%s,"crashnote":%s,"hotnote":%s,"cpulimit":%s}}\n' \
     "$(date +%s)" "$(date +%z)" "$(booted_at)" "$(jstr "$(var mdState)")" "$(dmesg 2>/dev/null | grep -q 'BERT: \[Hardware Error\]' && echo 1 || echo 0)" "$errors" "$(jstr "$oom_apps")" \
     "$(jstr "$board")" "$(jstr "$bios")" "$(jstr "$cpu")" "$(jstr "$dimms")" "$(jstr "$link")" "$(jstr "$cap")" "$(jstr "$ups_model")" \
     "$(jstr "$(cat "$TMPD/wd" 2>/dev/null)")" "$hc" "$([ -f "$TMPD/crashed" ] && echo 1 || echo 0)" "$(num "$(cat "$TMPD/drives-started" 2>/dev/null)")" \
-    "$(jstr "$(setting watchdog on)")" "$(jstr "$(setting autostart on)")" "$(jstr "$(setting crashnote on)")" "$(jstr "$(setting hotnote on)")" >"$dir/status.tmp" \
+    "$(jstr "$(cat "$TMPD/cpuw" 2>/dev/null)")" \
+    "$(jstr "$(setting watchdog on)")" "$(jstr "$(setting autostart on)")" "$(jstr "$(setting crashnote on)")" "$(jstr "$(setting hotnote on)")" "$(jstr "$(setting cpulimit on)")" >"$dir/status.tmp" \
     && mv "$dir/status.tmp" "$dir/status.json"
   # A copy of the crash list where the helper can read it (the USB stick's own copy is the real one)
   cp "$FLASH/boots.jsonl" "$dir/boots.jsonl" 2>/dev/null
@@ -284,10 +285,54 @@ status() {
   [ "$(date +%M)" = 05 ] && find "$dir" -maxdepth 1 -name 'blackbox-*.jsonl' -mtime +7 -delete 2>/dev/null
   # Settings Glowfin asked for (the helper can't write to the USB stick, so it leaves them here)
   if [ -f "$dir/settings.want" ]; then
-    grep -E '^(watchdog|autostart|crashnote|hotnote)=(on|off)$' "$dir/settings.want" >"$FLASH/settings.cfg.tmp" && mv "$FLASH/settings.cfg.tmp" "$FLASH/settings.cfg"
+    grep -E '^(watchdog|autostart|crashnote|hotnote|cpulimit)=(on|off)$' "$dir/settings.want" >"$FLASH/settings.cfg.tmp" && mv "$FLASH/settings.cfg.tmp" "$FLASH/settings.cfg"
     rm -f "$dir/settings.want"
     watchdog_check
+    power_check
   fi
+}
+
+# Processor power limit (Ben 2026-11-26). The board lets the i5-11500 draw about 200-250 W for as long as it likes,
+# so long night jobs (Tdarr + Jellyfin's scans together) pushed it to 98°C. Intel's own limits for this chip are
+# 65 W for long jobs and 154 W for short bursts (about 28 seconds), which keeps it cool and only makes long
+# processor-heavy jobs a little slower; videos still play the same (the Arc does that work). "Off" puts the
+# board's own numbers back. The numbers the board had are kept on the USB stick (rapl-original).
+CPU_LONG_W=65
+CPU_SHORT_W=154
+rapl_zones() { ls -d /sys/class/powercap/intel-rapl:0 /sys/class/powercap/intel-rapl-mmio:0 2>/dev/null; }
+rapl_get() { # rapl_get <zone> <long_term|short_term> -> limit in microwatts
+  local c
+  for c in "$1"/constraint_*_name; do
+    [ "$(cat "$c" 2>/dev/null)" = "$2" ] && { cat "${c%_name}_power_limit_uw" 2>/dev/null; return; }
+  done
+}
+rapl_set() { # rapl_set <zone> <long_term|short_term> <microwatts>
+  local c
+  for c in "$1"/constraint_*_name; do
+    if [ "$(cat "$c" 2>/dev/null)" = "$2" ]; then
+      [ "$(cat "${c%_name}_power_limit_uw" 2>/dev/null)" = "$3" ] || echo "$3" >"${c%_name}_power_limit_uw" 2>/dev/null
+      return
+    fi
+  done
+}
+power_check() {
+  local z key want_l want_s orig
+  orig=$FLASH/rapl-original
+  for z in $(rapl_zones); do
+    key=$(basename "$z")
+    if ! grep -q "^$key " "$orig" 2>/dev/null; then
+      echo "$key $(rapl_get "$z" long_term) $(rapl_get "$z" short_term)" >>"$orig"
+    fi
+    if [ "$(setting cpulimit on)" = on ]; then
+      want_l=$((CPU_LONG_W * 1000000)); want_s=$((CPU_SHORT_W * 1000000))
+    else
+      read -r _ want_l want_s <<<"$(grep "^$key " "$orig" | head -1)"
+    fi
+    [ -n "$want_l" ] && rapl_set "$z" long_term "$want_l"
+    [ -n "$want_s" ] && rapl_set "$z" short_term "$want_s"
+  done
+  z=$(rapl_zones | head -1)
+  [ -n "$z" ] && echo "$(($(rapl_get "$z" long_term) / 1000000)) $(($(rapl_get "$z" short_term) / 1000000))" >"$TMPD/cpuw"
 }
 
 run() {
@@ -298,6 +343,7 @@ run() {
   boot_check
   watchdog_check
   drives_after_crash
+  power_check
   while :; do
     sample $([ "$i" = 0 ] && echo 1 || echo 0)
     [ "$i" = 0 ] && status

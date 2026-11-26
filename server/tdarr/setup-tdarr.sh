@@ -34,7 +34,7 @@ FOLDER_MATCH=""     # which Media folders: empty = every folder with videos in i
 # Folders never touched, even if a video is inside (Ben 2026-11-21: "go ahead with the rest" after the anime test)
 FOLDER_SKIP='music|audio|book|manga|comic|podcast|game|roms|photo|picture|download|torrent|trailer|backup|recording'
 MIN_FREE_GB=300     # stop starting new files while the backup folder's disk has less free than this
-SETUP_VERSION=2     # bump when the container itself needs re-making
+SETUP_VERSION=3     # bump when the container itself needs re-making (3: memory limit 4 -> 8 GB, 2026-11-26)
 
 # ---- Where things are ----
 MEDIA=${TDARR_MEDIA:-/mnt/user/Homelab/Media}
@@ -172,7 +172,7 @@ else
   # The whole /dev/dri, so each card keeps its real name (renaming the Arc to renderD128 broke Quick Sync,
   # 2026-11-16). The flow picks the Arc by its name, so the built-in graphics stays free for everything else.
   [ -n "$GPU" ] && dev=(--device /dev/dri)
-  if ! docker run -d --name tdarr --restart unless-stopped --memory=4g \
+  if ! docker run -d --name tdarr --restart unless-stopped --memory=8g \
     -p 8265:8265 -p 8266:8266 "${dev[@]}" \
     -e serverIP=0.0.0.0 -e serverPort=8266 -e webUIPort=8265 -e internalNode=true -e inContainer=true \
     -e ffmpegVersion=8 -e nodeName=TowerNode -e auth=false -e PUID=99 -e PGID=100 -e UMASK_SET=002 \

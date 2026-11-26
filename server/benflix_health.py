@@ -30,6 +30,7 @@ SETTINGS = (
     ("watchdog", "Restart by itself if Tower freezes", "The board's own safety timer. If Tower freezes hard, it restarts after 3 minutes instead of staying dead."),
     ("autostart", "Start the drives by itself after a crash", "Only when every drive is there. Otherwise Unraid waits for you, like before."),
     ("crashnote", "Tell me after a crash", "An Unraid notification (and an email, if email is set up in Unraid's Notification settings)."),
+    ("cpulimit", "Keep the processor at Intel's power limit", "65 W for long jobs, 154 W for short bursts (Intel's own numbers for this chip). The board allowed about 250 W, which pushed it to 98°C on busy nights. Videos play the same; long scans take a little longer."),
     ("hotnote", "Warn me if anything runs hot", "Processor 85°C, Arc 90°C, NVMe drives 75°C. One message an hour at most."),
 )
 
@@ -428,7 +429,9 @@ def _parts(st, now_s):
     # Processor
     ct = s.get("ct")
     light = "bad" if (ct or 0) >= 85 else "warn" if (ct or 0) >= 80 or mce else "ok"
-    rows.append((light, f"Processor: {ct}°C" if ct is not None else "Processor", " · ".join(w for w in [str(st.get("cpu") or ""), f"{s['cpu']}% busy" if s.get("cpu") is not None else "", "safe up to 82°C"] if w)))
+    cpuw = str(st.get("cpuw") or "").split()
+    power = f"power limit {cpuw[0]} W (bursts {cpuw[1]} W)" if len(cpuw) == 2 else ""
+    rows.append((light, f"Processor: {ct}°C" if ct is not None else "Processor", " · ".join(w for w in [str(st.get("cpu") or ""), f"{s['cpu']}% busy" if s.get("cpu") is not None else "", power, "safe up to 82°C"] if w)))
     # Arc
     at, gpu_err, aer_arc = s.get("at"), int(e.get("gpu") or 0), int(e.get("aer_arc") or 0)
     light = "bad" if (at or 0) >= 90 else "warn" if (at or 0) >= 85 or gpu_err or aer_arc else "ok"
