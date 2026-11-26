@@ -35,6 +35,10 @@ jobs:
       run: |
         python3 -m pip install --quiet pyflakes==4.1.0
         bash tools/audit/web_check.sh
+    - name: Check Tower's setup scripts can run (no leftover merge marks)
+      run: |
+        for f in server/*.sh; do bash -n "$f" || exit 1; done
+        if grep -rnE '^(<<<<<<< |>>>>>>> )' server app/src web 2>/dev/null; then echo "Leftover merge marks found"; exit 1; fi
 
   build:
     runs-on: ubuntu-latest
