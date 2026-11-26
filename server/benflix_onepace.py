@@ -34,6 +34,9 @@ import zlib
 
 DATA_URL = "https://raw.githubusercontent.com/ladyisatis/one-pace-metadata/refs/heads/v2/metadata/data.json"
 POSTER_URL = "https://raw.githubusercontent.com/ladyisatis/OnePaceOrganizer/refs/heads/main/posters"
+# Ben's own set (the One Pace arc "wanted posters", 2024), kept in Glowfin's repo; used first, OnePaceOrganizer's as backup
+BEN_POSTERS = "https://raw.githubusercontent.com/TheBenPsych/MyStream/main/server/onepace-posters"
+POSTER_SET = "ben-2026-11-25"  # change this when the poster set changes, so the next Sort swaps them all
 MEDIA = os.environ.get("MEDIA_DIR", "/media")
 DROP = os.path.join(MEDIA, "One Pace Drop")
 REPLACED = os.path.join(DROP, "Replaced")
@@ -326,24 +329,43 @@ def _write(path, body):
     os.replace(tmp, path)
 
 
-def _poster(name, dst):
-    """Downloads a One Pace poster (kept in the notes folder so it's fetched once)"""
-    if os.path.exists(dst):
+def _poster(sources, folder, force=False):
+    """Puts poster.jpg/.png in [folder] from the first source that works ([(key, url)], Ben's own set first).
+    Each picture is kept in the notes folder so it's downloaded once."""
+    have = [n for n in ("poster.jpg", "poster.png") if os.path.exists(os.path.join(folder, n))]
+    if have and not force:
         return True
-    cache = os.path.join(_dir, "posters", name.replace("/", "_")) if _dir else None
-    try:
-        if cache and os.path.exists(cache):
-            shutil.copyfile(cache, dst)
-            return True
-        body = _get_url(f"{POSTER_URL}/{name}", timeout=120)
-        if cache:
-            os.makedirs(os.path.dirname(cache), exist_ok=True)
-            _write(cache, body)
-        _write(dst, body)
+    for key, url in sources:
+        ext = os.path.splitext(url)[1].lower() or ".jpg"
+        cache = os.path.join(_dir, "posters", key + ext) if _dir else None
+        try:
+            if cache and os.path.exists(cache):
+                with open(cache, "rb") as f:
+                    body = f.read()
+            else:
+                body = _get_url(url, timeout=120)
+                if cache:
+                    os.makedirs(os.path.dirname(cache), exist_ok=True)
+                    _write(cache, body)
+        except Exception as e:  # noqa: BLE001
+            log(f"no poster at {url.rsplit('/', 2)[-2:]}: {e}")
+            continue
+        for old in have:
+            try:
+                os.remove(os.path.join(folder, old))
+            except OSError:
+                pass
+        _write(os.path.join(folder, "poster" + ext), body)
         return True
-    except Exception as e:  # noqa: BLE001
-        log(f"no poster {name}: {e}")
-        return False
+    return False
+
+
+def _show_poster(force=False):
+    return _poster([("ben-show", f"{BEN_POSTERS}/show.jpg"), ("op-show", f"{POSTER_URL}/poster.png")], _show_dir(), force)
+
+
+def _arc_poster(arc, force=False):
+    return _poster([(f"ben-{arc}", f"{BEN_POSTERS}/{arc}.jpg"), (f"op-{arc}", f"{POSTER_URL}/{arc}/poster.png")], _season_dir(arc), force)
 
 
 def _show_nfo(data):
@@ -366,7 +388,7 @@ def _show_nfo(data):
     ET.SubElement(root, "lockdata").text = "true"
     os.makedirs(_show_dir(), exist_ok=True)
     _write(os.path.join(_show_dir(), "tvshow.nfo"), _xml(root))
-    _poster("poster.png", os.path.join(_show_dir(), "poster.png"))
+    _show_poster()
 
 
 def _season_nfo(data, arc):
@@ -381,7 +403,7 @@ def _season_nfo(data, arc):
         ET.SubElement(root, "outline").text = a["description"]
     ET.SubElement(root, "lockdata").text = "true"
     _write(os.path.join(folder, "season.nfo"), _xml(root))
-    _poster(f"{arc}/poster.png", os.path.join(folder, "poster.png"))
+    _arc_poster(arc)
 
 
 def _episode_nfo(info, video):
@@ -505,7 +527,31 @@ def _tidy_drop():
             continue
 
 
-def _tell_jellyfin():
+def _refresh_posters():
+    """When the poster set changed, swaps the show and every arc poster already on Tower. True if it did."""
+    with _lock:
+        if _state.get("poster_set") == POSTER_SET:
+            return False
+    root = _show_dir()
+    if not os.path.isdir(root):
+        with _lock:
+            _state["poster_set"] = POSTER_SET
+        return False
+    if _dir:
+        shutil.rmtree(os.path.join(_dir, "posters"), ignore_errors=True)
+    _show_poster(force=True)
+    for name in os.listdir(root):
+        m = re.match(r"^Season (\d+)$", name)
+        arc = 0 if name == "Specials" else int(m.group(1)) if m else None
+        if arc is not None:
+            _arc_poster(arc, force=True)
+    with _lock:
+        _state["poster_set"] = POSTER_SET
+    log("swapped in the new poster set")
+    return True
+
+
+def _tell_jellyfin(new_pictures=False):
     token, _ = _admin() if _admin else (None, None)
     if not token or not _jf:
         return "Open Glowfin once as Ben so Tower can tell Jellyfin."
@@ -518,7 +564,7 @@ def _tell_jellyfin():
         items = json.loads(raw or b"{}").get("Items") or [] if status == 200 else []
         for it in items:
             if str(it.get("Path") or "").rstrip("/").endswith("/" + SHOW_NAME):
-                q2 = urllib.parse.urlencode({"Recursive": "true", "MetadataRefreshMode": "FullRefresh", "ImageRefreshMode": "FullRefresh", "ReplaceAllMetadata": "true", "ReplaceAllImages": "false"})
+                q2 = urllib.parse.urlencode({"Recursive": "true", "MetadataRefreshMode": "FullRefresh", "ImageRefreshMode": "FullRefresh", "ReplaceAllMetadata": "true", "ReplaceAllImages": "true" if new_pictures else "false"})
                 _jf("POST", f"/Items/{it['Id']}/Refresh?{q2}", token=token)
     except Exception as e:  # noqa: BLE001
         log(f"couldn't ask Jellyfin to re-read One Pace: {e}")
@@ -555,8 +601,9 @@ def sort_now():
             except Exception as e:  # noqa: BLE001
                 unknown.append({"name": os.path.relpath(path, DROP), "why": f"couldn't move it: {e}"})
         _tidy_drop()
-        if moved or skipped:
-            note = _tell_jellyfin()
+        new_pictures = _refresh_posters()
+        if moved or skipped or new_pictures:
+            note = _tell_jellyfin(new_pictures)
             if note:
                 problem = note
         log(f"sorted {len(moved)}, {len(skipped)} went to Replaced, {len(unknown)} left in the drop folder")
