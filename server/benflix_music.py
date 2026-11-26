@@ -179,6 +179,11 @@ def start(jellyfin_call):
     threading.Thread(target=_lyrics_worker, name="music-lyrics", daemon=True).start()
     threading.Thread(target=_info_worker, name="music-song-info", daemon=True).start()
     threading.Thread(target=_cover_worker, name="music-covers", daemon=True).start()
+    saved_pages = _read("discover-pages.json") or {}
+    if isinstance(saved_pages, dict):
+        # Kept pages count as old, so the first look shows them at once and makes fresh ones behind the scenes
+        _pages.update({k: [0, v[1]] for k, v in saved_pages.items() if isinstance(v, list) and len(v) == 2 and isinstance(v[1], dict)})
+    threading.Thread(target=_page_warm, name="music-page-warm", daemon=True).start()
     log(f"ready (Lidarr {'set up' if LIDARR_URL else 'NOT set up yet'}, ffmpeg {'found' if _has_ffmpeg() else 'missing'})")
 
 
@@ -717,16 +722,60 @@ def album_page(album_id):
 # ---------- Discover: what's popular right now (Deezer's charts, looked at every few hours) ----------
 
 _found_cache = {}
+_key_locks = {}
+_refreshing = set()
+
+
+def _key_lock(key):
+    with _lock:
+        lk = _key_locks.get(key)
+        if lk is None:
+            if len(_key_locks) > 2000:
+                _key_locks.clear()
+            lk = _key_locks[key] = threading.Lock()
+        return lk
+
+
+def _refresh_later(key, load):
+    """Builds a fresh copy behind the scenes (one at a time per list), so nobody waits for it"""
+    with _lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def run():
+        try:
+            value = load()
+            if value is not None:
+                with _lock:
+                    _found_cache[key] = (time.time(), value)
+        except Exception:  # noqa: BLE001 - the catalogue was out of reach: the old copy stays
+            pass
+        finally:
+            with _lock:
+                _refreshing.discard(key)
+
+    threading.Thread(target=run, name="music-refresh", daemon=True).start()
 
 
 def _cached(key, load, keep=4 * 3600):
+    """Ben 2026-11-26 (Music requests slow to open): an old copy is shown straight away while a fresh one is made
+    behind the scenes, and two people asking for the same list at once share one look at the catalogue"""
     with _lock:
         hit = _found_cache.get(key)
     if hit and time.time() - hit[0] < keep:
         return copy.deepcopy(hit[1])
-    value = load()
-    with _lock:
-        _found_cache[key] = (time.time(), value)
+    if hit:
+        _refresh_later(key, load)
+        return copy.deepcopy(hit[1])
+    with _key_lock(key):
+        with _lock:
+            hit = _found_cache.get(key)
+        if hit:
+            return copy.deepcopy(hit[1])
+        value = load()
+        with _lock:
+            _found_cache[key] = (time.time(), value)
     return copy.deepcopy(value)
 
 
@@ -1020,7 +1069,8 @@ def _hide_owned_albums(out):
             out[key] = [a for a in out[key] if not _album_owned(a, have_albums)]
 
 
-def discover(token=None, user_id=None):
+def _discover_build(token=None, user_id=None):
+    """The slow part of the Music requests page: charts, genres, trending lists and Because you have"""
     out = _chart(0, songs=100)
     top_ids = [x["id"] for x in out["songs"][:100]]
     out["genres"] = _genres()
@@ -1032,6 +1082,78 @@ def discover(token=None, user_id=None):
     trending, because = _each([(lambda _x: _trending(top_ids), None), (lambda _x: _because(seeds), None)], wait=40)
     out["trending"] = trending or []
     out["because"] = because or []
+    return out
+
+
+# Ben 2026-11-26: Music requests took a long time to open. Every list on it comes from the music catalogue, which
+# answers about 10 calls a second, and a full page is ~200 calls. Now each person's page is kept (also on disk, so a
+# Tower restart doesn't empty it), shown straight away, and made again behind the scenes for their next look.
+_pages = {}
+_pages_busy = set()
+PAGE_AGAIN = 60  # Seconds before a look makes a new page behind the scenes (Because you have changes each time)
+
+
+def _pages_save():
+    with _lock:
+        keep = dict(_pages)
+    try:
+        _write("discover-pages.json", keep)
+    except (OSError, TypeError, ValueError):
+        pass
+
+
+def _page_build(who, token, user_id):
+    with _lock:
+        if who in _pages_busy:
+            return
+        _pages_busy.add(who)
+    try:
+        built = _discover_build(token, user_id)
+        with _lock:
+            _pages[who] = [time.time(), built]
+        _pages_save()
+    except Exception as e:  # noqa: BLE001 - the old page stays until the catalogue answers again
+        log(f"couldn't make a fresh Music requests page: {getattr(e, 'message', e)}")
+    finally:
+        with _lock:
+            _pages_busy.discard(who)
+
+
+def _page_warm():
+    """When Tower's helper starts: the main lists are made before anyone opens Music requests"""
+    time.sleep(15)
+    with _lock:
+        have = bool(_pages)
+    if not have:
+        _page_build("", None, None)
+    else:
+        try:
+            _discover_build(None, None)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def discover(token=None, user_id=None):
+    who = str(user_id or "")
+    with _lock:
+        hit = _pages.get(who) or (_pages.get("") if who else None)
+        mine = who in _pages
+    if hit:
+        if not mine or time.time() - hit[0] > PAGE_AGAIN:
+            threading.Thread(target=_page_build, args=(who, token, user_id), name="music-page", daemon=True).start()
+        out = copy.deepcopy(hit[1])
+    else:
+        with _key_lock("page-" + who):
+            with _lock:
+                hit = _pages.get(who)
+            if not hit:
+                _page_build(who, token, user_id)
+                with _lock:
+                    hit = _pages.get(who)
+        if not hit:
+            out = _discover_build(token, user_id)  # Shows the catalogue's own error
+        else:
+            out = copy.deepcopy(hit[1])
     _mark_asked(out)
     _hide_owned_albums(out)
     for row in out["trending"]:
@@ -2515,7 +2637,8 @@ def slskd(method, path, body=None, _again=True):
                 return slskd(method, path, body, _again=False)
             if e.code == 403:
                 _slsk_problem[0] = (
-                    "slskd's API key can only look, not download. In slskd's settings, set the key's role to readwrite."
+                    "slskd's API key can only look, not download. Tower fixes this by itself at its next update (within an hour). "
+                    "If this is still here tomorrow, run the Glowfin setup command again."
                 )
             else:
                 _slsk_problem[0] = "slskd (Soulseek) didn't accept the key. Run the Glowfin setup command again."
@@ -2571,7 +2694,8 @@ def slsk_keys_in(yml):
             keys.append(cur)
         elif cur is not None:
             cur[1] = m.group(2).lower()
-    keys = [(k, r) for k, r in keys if k]
+    # slskd treats a key with no role as read-only (Ben 2026-11-26: that's why Soulseek said "can only look")
+    keys = [(k, r or "readonly") for k, r in keys if k]
     keys.sort(key=lambda kr: kr[1] == "readonly")
     return keys
 

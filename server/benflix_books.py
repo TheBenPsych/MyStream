@@ -150,6 +150,7 @@ def start(jellyfin_call=None):
     else:
         log("No folder to save in, so places and requests won't be kept. Run the Glowfin setup command again.")
     threading.Thread(target=_loop, name="books", daemon=True).start()
+    threading.Thread(target=_manga_warm_later, name="manga-lists-warm", daemon=True).start()
     if booklists is not None:
         import sys
 
@@ -3447,42 +3448,110 @@ def _manga_list(variables):
     return [_manga_card(m, here, asks) for m in media if not m.get("isAdult")]
 
 
-_mal_trend = [0, []]
-
-
-def _mal_trending_manga():
-    """MyAnimeList's most popular manga coming out now (Jikan), as AniList cards in MyAnimeList's order (saved 6 hours)"""
-    if time.time() - _mal_trend[0] < 6 * 3600 and _mal_trend[1]:
-        return _mal_trend[1]
-    try:
-        j = _json("https://api.jikan.moe/v4/top/manga?filter=publishing&limit=25") or {}
-        mal = [x.get("mal_id") for x in (j.get("data") or []) if x.get("mal_id") and x.get("type") not in ("Novel", "Light Novel")]
-    except Exception:
-        mal = []
+def _mal_trending_media():
+    """MyAnimeList's most popular manga coming out now (Jikan), looked up on AniList, in MyAnimeList's order"""
+    j = _json("https://api.jikan.moe/v4/top/manga?filter=publishing&limit=25") or {}
+    mal = [x.get("mal_id") for x in (j.get("data") or []) if x.get("mal_id") and x.get("type") not in ("Novel", "Light Novel")]
     if not mal:
-        return _mal_trend[1]
-    here, asks = _manga_here(), _asks_by_id()
+        return []
     media = (_anilist(_MR_BY_MAL, {"ids": mal}).get("Page") or {}).get("media") or []
     order = {m: i for i, m in enumerate(mal)}
-    media = sorted((m for m in media if not m.get("isAdult")), key=lambda m: order.get(m.get("idMal"), 999))
-    cards = [_manga_card(m, here, asks) for m in media]
-    _mal_trend[0], _mal_trend[1] = time.time(), cards
-    return cards
+    return sorted((m for m in media if not m.get("isAdult")), key=lambda m: order.get(m.get("idMal"), 999))
+
+
+MANGA_ROWS = [
+    # Glowfin new look (Ben 2026-11-22): "Trending from MyAnimeList and AniList would be good here too"
+    ("Trending on AniList", {"sort": ["TRENDING_DESC"], "page": 1}),
+    ("Trending on MyAnimeList", None),
+    ("Most loved of all time", {"sort": ["POPULARITY_DESC"], "page": 1}),
+    ("Top rated", {"sort": ["SCORE_DESC"], "page": 1}),
+    ("Still coming out", {"sort": ["POPULARITY_DESC"], "status": "RELEASING", "page": 1}),
+    ("Finished, read it all", {"sort": ["POPULARITY_DESC"], "status": "FINISHED", "page": 1}),
+]
+# Ben 2026-11-26: Manga requests took a long time to open (6 lists asked of AniList one after another, every 6
+# hours, and after every Tower restart). Now the lists are asked for side by side, kept on disk, shown straight away,
+# and made fresh behind the scenes when they're over 6 hours old.
+_md = {"at": 0, "rows": None, "busy": False, "tried": 0}
+
+
+def _manga_rows_build():
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(v):
+        try:
+            if v is None:
+                return _mal_trending_media()
+            return (_anilist(_MR_LIST, v).get("Page") or {}).get("media") or []
+        except Exception:  # noqa: BLE001 - one list that doesn't answer never stops the others
+            return None
+
+    with ThreadPoolExecutor(max_workers=len(MANGA_ROWS)) as pool:
+        got = list(pool.map(one, [v for _n, v in MANGA_ROWS]))
+    old = {n: m for n, m in (_md["rows"] or [])}
+    rows = [(n, m if m is not None else old.get(n) or []) for (n, _v), m in zip(MANGA_ROWS, got)]
+    if not any(m for _n, m in rows):
+        raise BooksError(502, "Couldn't reach AniList for the manga lists. Try again in a minute.")
+    return rows
+
+
+def _manga_rows_refresh():
+    with _lock:
+        if _md["busy"]:
+            return
+        _md["busy"] = True
+    try:
+        rows = _manga_rows_build()
+        with _lock:
+            _md["at"], _md["rows"] = time.time(), rows
+        if _dir:
+            try:
+                with open(os.path.join(_dir, "manga-lists.json.tmp"), "w", encoding="utf-8") as f:
+                    json.dump({"at": _md["at"], "rows": rows}, f)
+                os.replace(os.path.join(_dir, "manga-lists.json.tmp"), os.path.join(_dir, "manga-lists.json"))
+            except OSError:
+                pass
+    except Exception as e:  # noqa: BLE001 - the old lists stay
+        log(f"Couldn't refresh the manga lists: {e}")
+    finally:
+        with _lock:
+            _md["busy"] = False
+
+
+def _manga_rows():
+    if _md["rows"] is None and _dir:
+        try:
+            with open(os.path.join(_dir, "manga-lists.json"), encoding="utf-8") as f:
+                saved = json.load(f)
+            _md["at"], _md["rows"] = float(saved.get("at") or 0), [tuple(r) for r in saved.get("rows") or []]
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
+    if _md["rows"]:
+        if time.time() - _md["at"] > 6 * 3600 and time.time() - _md["tried"] > 300:
+            _md["tried"] = time.time()
+            threading.Thread(target=_manga_rows_refresh, name="manga-lists", daemon=True).start()
+        return _md["rows"]
+    _manga_rows_refresh()
+    if not _md["rows"]:
+        raise BooksError(502, "Couldn't reach AniList for the manga lists. Try again in a minute.")
+    return _md["rows"]
+
+
+def _manga_warm_later():
+    """When Tower's helper starts: the manga lists are ready before anyone opens Manga requests"""
+    time.sleep(20)
+    try:
+        _manga_rows()
+    except Exception:  # noqa: BLE001 - AniList out of reach: the first look tries again
+        pass
 
 
 def manga_discover():
-    rows = [
-        # Glowfin new look (Ben 2026-11-22): "Trending from MyAnimeList and AniList would be good here too"
-        ("Trending on AniList", {"sort": ["TRENDING_DESC"], "page": 1}),
-        ("Most loved of all time", {"sort": ["POPULARITY_DESC"], "page": 1}),
-        ("Top rated", {"sort": ["SCORE_DESC"], "page": 1}),
-        ("Still coming out", {"sort": ["POPULARITY_DESC"], "status": "RELEASING", "page": 1}),
-        ("Finished, read it all", {"sort": ["POPULARITY_DESC"], "status": "FINISHED", "page": 1}),
+    here, asks = _manga_here(), _asks_by_id()
+    out = [
+        {"name": n, "items": [_manga_card(m, here, asks) for m in media if not m.get("isAdult")]}
+        for n, media in _manga_rows()
     ]
-    out = [{"name": n, "items": _manga_list(v)} for n, v in rows]
-    mal = _mal_trending_manga()
-    if mal:
-        out.insert(1, {"name": "Trending on MyAnimeList", "items": mal})
+    out = [r for r in out if r["items"] or r["name"] != "Trending on MyAnimeList"]
     return {"rows": out, "genres": MANGA_GENRES}
 
 
