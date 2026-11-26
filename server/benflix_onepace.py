@@ -49,6 +49,40 @@ CRC_IN_NAME = re.compile(r"\[([0-9A-Fa-f]{8})\]")
 OLD_NAME = re.compile(r"\[One Pace\]\[[^\]]*\]\s*(.+?)\s+(\d{1,3})(?:\s|\[|$)", re.I)
 OUR_NAME = re.compile(r"^One Pace - S(\d{2})E(\d{2,3}) - ")
 SE_NAME = re.compile(r"(?i)(?<![a-z0-9])S(\d{1,2})\s*E(\d{1,3})(?![0-9])")
+# Where a special belongs while watching. Fan Letter happens at the Sabaody reunion, so it plays
+# right before Fishman Island. The April Fools and joke specials aren't part of the story: they sit
+# after the last arc so Glowfin never slots them in by release date.
+# Fan Letter (special 98) is part of the story, so it's filed as the last episode of Return to
+# Sabaody (arc 28) and plays in order, the same place Ben's batch had it.
+STORY_SPECIALS = {98: 28}
+SPECIAL_LAST = {"AirsAfterSeasonNumber": 99}
+
+
+def _special_spot(episode):
+    return SPECIAL_LAST
+
+
+def _story_specials(crc, arcs, desc):
+    """Moves story specials out of Specials into the arc they belong to, as its last episode"""
+    for special, arc in STORY_SPECIALS.items():
+        target = arcs.get(arc)
+        sp = arcs.get(0)
+        if not target or not sp:
+            continue
+        entry = next((e for e in sp.get("episodes") or [] if str(e.get("episode")).lstrip("0") == str(special)), None)
+        if not entry:
+            continue
+        nums = [int(e.get("episode")) for e in target.get("episodes") or [] if str(e.get("episode") or "").isdigit()]
+        num = max(nums or [0]) + 1
+        sp["episodes"] = [e for e in sp["episodes"] if e is not entry]
+        target["episodes"] = list(target.get("episodes") or []) + [{**entry, "episode": f"{num:02d}"}]
+        for c, ep in list(crc.items()):
+            if ep.get("arc") is not None and int(ep["arc"]) == 0 and int(ep.get("episode") or -1) == special:
+                crc[c] = {**ep, "arc": arc, "episode": num, "was_special": special}
+        if (0, special) in desc:
+            desc[(arc, num)] = desc[(0, special)]
+
+
 LENGTH_SLACK = 150  # seconds an older copy's length may differ from today's episode
 
 _jf = None  # helper's jellyfin_call(method, path, token=None, body=None) -> (status, bytes, type)
@@ -160,6 +194,7 @@ def _load_data(force=False):
             desc[(int(d["arc"]), int(d["episode"]))] = d
         except (KeyError, ValueError, TypeError):
             continue
+    _story_specials(crc, arcs, desc)
     data = {"crc": crc, "arcs": arcs, "desc": desc, "show": (raw.get("tvshow") or {}).get("en") or {},
             "version": (raw.get("status") or {}).get("version"), "updated": (raw.get("status") or {}).get("last_update")}
     with _lock:
@@ -269,7 +304,7 @@ def _by_episode_name(data, path):
         return None
     arc, num = int(m.group(1)), int(m.group(2))
     title = (data["arcs"].get(arc) or {}).get("title") or f"arc {arc}"
-    in_arc = [e for e in data["crc"].values() if int(e.get("arc") or -1) == arc and not e.get("edit")]
+    in_arc = [e for e in data["crc"].values() if int(e["arc"] if e.get("arc") is not None else -1) == arc and not e.get("edit")]
     if not in_arc:
         return None, f"its name says S{arc:02d}E{num:02d}, but One Pace has no arc {arc}"
     seconds = _mkv_seconds(path)
@@ -576,6 +611,11 @@ def _episode_nfo(info, video):
         ET.SubElement(root, "year").text = day[:4]
         ET.SubElement(root, "premiered").text = day
         ET.SubElement(root, "aired").text = day
+    if info["arc"] == 0:
+        spot = _special_spot(info["episode"])
+        tags = {"AirsBeforeSeasonNumber": "airsbefore_season", "AirsBeforeEpisodeNumber": "airsbefore_episode", "AirsAfterSeasonNumber": "airsafter_season"}
+        for key, value in spot.items():
+            ET.SubElement(root, tags[key]).text = str(value)
     ET.SubElement(root, "lockdata").text = "true"
     _write(os.path.splitext(video)[0] + ".nfo", _xml(root))
 
@@ -618,7 +658,7 @@ def _identify(data, path):
     old = _by_old_name(data, name)
     if old:
         arc, num, extended = old
-        ep = next((e for e in data["crc"].values() if int(e.get("arc") or -1) == arc and int(e.get("episode") or -1) == num and not e.get("edit")), None)
+        ep = next((e for e in data["crc"].values() if int(e["arc"] if e.get("arc") is not None else -1) == arc and int(e.get("episode") or -1) == num and not e.get("edit")), None)
         if ep:
             info = _info(data, ep)
             info.update({"extended": extended, "crc": c, "older": True})
@@ -676,6 +716,29 @@ def _place(data, info, path, seasons_done):
         _state.setdefault("files", {})[key] = {"crc": info["crc"], "extended": info["extended"], "name": os.path.basename(dst), "when": time.time(), "older": bool(info.get("older"))}
     a = data["arcs"].get(arc) or {}
     return f"{a.get('title') or 'Arc ' + str(arc)} {num}: {info['title']}" + (" (Extended)" if info["extended"] else "")
+
+
+def _refile_story_specials(data, seasons_done):
+    """A story special filed in Specials by an earlier sort moves to its arc"""
+    out = []
+    for key, path in _have().items():
+        m = re.match(r"S00E(\d+)$", key)
+        if not m or int(m.group(1)) not in STORY_SPECIALS:
+            continue
+        ep = next((e for e in data["crc"].values() if e.get("was_special") == int(m.group(1)) and not e.get("edit")), None)
+        if not ep:
+            continue
+        try:
+            old_nfo = os.path.splitext(path)[0] + ".nfo"
+            said = _place(data, _info(data, ep), path, seasons_done)
+            if os.path.exists(old_nfo):
+                os.remove(old_nfo)
+            with _lock:
+                (_state.get("files") or {}).pop(key, None)
+            out.append(said + " (moved from Specials so it plays in order)")
+        except OSError as e:
+            log(f"couldn't move {os.path.basename(path)}: {e}")
+    return out
 
 
 def _tidy_drop():
@@ -829,6 +892,8 @@ def push_names(wait=True):
                     if info.get("aired"):
                         ch["PremiereDate"] = info["aired"] + "T00:00:00.0000000Z"
                         ch["ProductionYear"] = int(info["aired"][:4])
+                    if ch["ParentIndexNumber"] == 0:
+                        ch.update(_special_spot(ch["IndexNumber"]))
                     if _update_item(it["Id"], ch, token, user):
                         changed += 1
         except Exception as e:  # noqa: BLE001
@@ -863,6 +928,7 @@ def sort_now():
         with _lock:
             _status["total"] = len(files)
         seasons_done = set()
+        moved.extend(_refile_story_specials(data, seasons_done))
         if files or not os.path.exists(os.path.join(_show_dir(), "tvshow.nfo")):
             _show_nfo(data)
         for i, path in enumerate(files):
