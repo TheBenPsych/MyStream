@@ -28,6 +28,10 @@ import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.toLocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
@@ -43,6 +47,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 typealias SeerrSearchResult = SearchGet200ResponseResultsInner
+
+/** How many pages of Seerr search to read at once (20 names each) */
+private const val SEARCH_PAGES = 3
+
+private fun plainName(text: String?): String =
+    text
+        .orEmpty()
+        .lowercase()
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .trim()
 
 /**
  * Main access for the current Seerr server (if any)
@@ -87,14 +101,40 @@ class SeerrService
             return all.take(max)
         }
 
+        /**
+         * Search for movies, shows and people. One page from Seerr is only 20 names, and a short or common
+         * name (like "Human") can push the right show off it, so the first few pages are read together.
+         * Names that match what was typed exactly come first, then the rest in Seerr's order.
+         */
         suspend fun search(
             query: String,
-            page: Int = 1,
+            pages: Int = SEARCH_PAGES,
         ): List<SeerrSearchResult> =
-            api.searchApi
-                .searchGet(query = query, page = page)
-                .results
-                .orEmpty()
+            coroutineScope {
+                val first = api.searchApi.searchGet(query = query, page = 1)
+                val last = minOf(pages, first.totalPages ?: 1)
+                val more =
+                    (2..last)
+                        .map { page ->
+                            async {
+                                try {
+                                    api.searchApi
+                                        .searchGet(query = query, page = page)
+                                        .results
+                                        .orEmpty()
+                                } catch (ex: CancellationException) {
+                                    throw ex
+                                } catch (ex: Exception) {
+                                    Timber.w(ex, "Search page %d", page)
+                                    emptyList()
+                                }
+                            }
+                        }.awaitAll()
+                        .flatten()
+                val all = (first.results.orEmpty() + more).distinctBy { "${it.mediaType}:${it.id}" }
+                val typed = plainName(query)
+                all.sortedBy { if (plainName(it.title ?: it.name) == typed) 0 else 1 }
+            }
 
         suspend fun discoverTv(page: Int = 1): List<DiscoverItem> =
             api.searchApi
