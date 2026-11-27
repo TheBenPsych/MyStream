@@ -296,9 +296,11 @@ def _mkv_seconds(path):
     return None
 
 
-def _by_episode_name(data, path):
-    """Ben's own names ('One Pace S19E05.mkv', 'Season 19/... E05'), checked against the episode's length.
-    -> (ep, note) or (None, why) or None when the name has no SxxEyy"""
+def _by_episode_name(data, path, remap=False):
+    """Ben's own names ('One Pace S19E05.mkv', 'Season 19/... E05').
+    The name wins when that episode's place is free, even for an older cut with a different length.
+    With remap, a file whose named place is taken may go to the one free episode of the arc whose
+    length fits (numbering moved in a re-release). -> (ep, note) or (None, why) or None (no SxxEyy)"""
     m = SE_NAME.search(os.path.basename(path))
     if not m:
         return None
@@ -308,26 +310,29 @@ def _by_episode_name(data, path):
     if not in_arc:
         return None, f"its name says S{arc:02d}E{num:02d}, but One Pace has no arc {arc}"
     seconds = _mkv_seconds(path)
-    named = next((e for e in in_arc if int(e.get("episode") or -1) == num), None)
-    if seconds is None or (named and not float(named.get("duration") or 0)):
-        # can't compare lengths (not an .mkv, or the list doesn't know this episode's length): go by the name
-        if named:
-            return named, "by its name"
-        return None, f"its name says {title} {num}, but {title} only has {max(int(e.get('episode') or 0) for e in in_arc)} episodes"
-    if named and abs(float(named.get("duration") or 0) - seconds) <= LENGTH_SLACK:
-        return named, "by its name and length"
-    # numbering may have shifted in a re-release: take the one episode of the arc whose length fits
-    fits = {}
-    for e in in_arc:
-        if abs(float(e.get("duration") or 0) - seconds) <= 45:
-            fits.setdefault(int(e.get("episode") or 0), e)
-    if len(fits) == 1:
-        e = next(iter(fits.values()))
-        return e, f"by its length (its name said episode {num})"
-    mins = round(seconds / 60)
+    want_ext = "extended" in os.path.basename(path).lower()
+    same = [e for e in in_arc if int(e.get("episode") or -1) == num]
+    named = next((e for e in same if bool(e.get("extended")) == want_ext), same[0] if same else None)
+    taken = _have()
     if named:
-        return None, f"its name says {title} {num}, but it is {mins} min long and that episode is {round(float(named.get('duration') or 0) / 60)} min, so it was left for you to check"
-    return None, f"its name says {title} {num}, but {title} only has {max(int(e.get('episode') or 0) for e in in_arc)} episodes"
+        length = float(named.get("duration") or 0)
+        if seconds is None or not length or abs(length - seconds) <= LENGTH_SLACK:
+            return named, "by its name"
+        if _key(arc, num) not in taken:
+            return named, f"by its name (an older cut, {round(seconds / 60)} min where today's is {round(length / 60)} min)"
+    if remap and seconds is not None:
+        fits = {}
+        for e in in_arc:
+            n = int(e.get("episode") or 0)
+            if _key(arc, n) not in taken and abs(float(e.get("duration") or 0) - seconds) <= 45:
+                fits.setdefault(n, e)
+        if len(fits) == 1:
+            e = next(iter(fits.values()))
+            return e, f"by its length (its name said episode {num})"
+    if named:
+        return None, f"its name says {title} {num}, and {title} {num} already has a file, so this one was left for you to check"
+    last = max(int(e.get("episode") or 0) for e in in_arc)
+    return None, f"its name says {title} {num}, but {title} only has {last} episode{'s' if last != 1 else ''}"
 
 
 def _file_crc(path):
@@ -623,6 +628,12 @@ def _episode_nfo(info, video):
 # ---------------------------------------------------------------- one sort
 
 
+def _replaced_files():
+    if not os.path.isdir(REPLACED):
+        return []
+    return sorted(os.path.join(REPLACED, n) for n in os.listdir(REPLACED) if os.path.splitext(n)[1].lower() in VIDEO)
+
+
 def _drop_files():
     out = []
     if not os.path.isdir(DROP):
@@ -638,7 +649,10 @@ def _drop_files():
     return sorted(out)
 
 
-def _identify(data, path):
+_crc_cache = {}
+
+
+def _identify(data, path, remap=False):
     """-> (info, how) or (None, why)"""
     name = os.path.basename(path)
     found = CRC_IN_NAME.findall(name)
@@ -649,7 +663,8 @@ def _identify(data, path):
     with _lock:
         _status["step"] = f"Reading {name[:60]}"
     try:
-        c = _file_crc(path)
+        c = _crc_cache.get(path) or _file_crc(path)
+        _crc_cache[path] = c
     except OSError as e:
         return None, f"couldn't read it ({e})"
     ep = data["crc"].get(c)
@@ -663,15 +678,19 @@ def _identify(data, path):
             info = _info(data, ep)
             info.update({"extended": extended, "crc": c, "older": True})
             return info, "older copy"
-    mine = _by_episode_name(data, path)
+    mine = _by_episode_name(data, path, remap)
     if mine:
         ep, note = mine
         if not ep:
             return None, note
         info = _info(data, ep)
-        info.update({"extended": "extended" in name.lower() or info["extended"], "crc": c, "older": True})
+        info.update({"extended": "extended" in name.lower(), "crc": c, "older": True})
         return info, note
     return None, "not a One Pace episode Glowfin knows"
+
+
+class _Keep(Exception):
+    """The file stays where it is, with this reason on the card"""
 
 
 def _place(data, info, path, seasons_done):
@@ -686,9 +705,8 @@ def _place(data, info, path, seasons_done):
         if old_ext and not info["extended"]:
             _retire(path)
             return f"{label}: kept the extended cut you already have (this normal cut went to Replaced)"
-        if info.get("older") and mine and not mine.get("older"):
-            _retire(path)
-            return f"{label}: kept the newer copy you already have (this older one went to Replaced)"
+        if info.get("older"):
+            raise _Keep(f"{label} already has a file, so this older copy was left for you to check")
         if mine.get("crc") == info["crc"] and not info.get("older"):
             _retire(path)
             return f"{label}: already here (the extra copy went to Replaced)"
@@ -931,18 +949,39 @@ def sort_now():
         moved.extend(_refile_story_specials(data, seasons_done))
         if files or not os.path.exists(os.path.join(_show_dir(), "tvshow.nfo")):
             _show_nfo(data)
-        for i, path in enumerate(files):
-            with _lock:
-                _status.update({"done": i, "step": f"Sorting {os.path.basename(path)[:60]}"})
-            try:
-                info, how = _identify(data, path)
-                if not info:
-                    unknown.append({"name": os.path.relpath(path, DROP), "why": how})
-                    continue
-                said = _place(data, info, path, seasons_done)
-                (skipped if "Replaced" in said else moved).append(said + (f" ({how})" if how.startswith("by its length") else "") + (" (older copy, a newer one is out)" if info.get("older") and "Replaced" not in said else ""))
-            except Exception as e:  # noqa: BLE001
-                unknown.append({"name": os.path.relpath(path, DROP), "why": f"couldn't move it: {e}"})
+        _crc_cache.clear()
+        # copies an earlier sort set aside whose episode now has no file go back in
+        rescue = [p for p in _replaced_files() if p not in files]
+        left = {}
+        for remap in (False, True):
+            todo = files if not remap else [p for p in files if p in left]
+            if remap:
+                todo += [p for p in rescue if os.path.exists(p)]
+            for i, path in enumerate(todo):
+                with _lock:
+                    _status.update({"done": i, "total": len(todo), "step": f"Sorting {os.path.basename(path)[:60]}"})
+                try:
+                    info, how = _identify(data, path, remap)
+                    if not info:
+                        left[path] = how
+                        continue
+                    if path in rescue and _key(info["arc"], info["episode"]) in _have():
+                        continue
+                    said = _place(data, info, path, seasons_done)
+                    left.pop(path, None)
+                    note = ""
+                    if how.startswith("by its length"):
+                        note = f" ({how})"
+                    elif how.startswith("by its name ("):
+                        note = " " + how[len("by its name "):]
+                    (skipped if "Replaced" in said else moved).append(said + note + (" (from Replaced)" if path in rescue else ""))
+                except _Keep as e:
+                    left[path] = str(e)
+                except Exception as e:  # noqa: BLE001
+                    left[path] = f"couldn't move it: {e}"
+        for path, why in left.items():
+            if path not in rescue:
+                unknown.append({"name": os.path.relpath(path, DROP), "why": why})
         _tidy_drop()
         new_pictures = _refresh_posters()
         if os.path.isdir(_show_dir()):
