@@ -956,12 +956,14 @@ def sort_now():
         old_place = _move_old_show()
         _clean_replaced()
         data = _load_data(force=True)
-        files = _drop_files()
-        done_dl = []
+        done_dl, busy_paths = [], set()
         if get:
             with _lock:
                 st = dict(_state)
             _rows, busy_paths, done_dl = get.progress(st)
+            get.remove_unwanted(st, done_dl)
+        files = _drop_files()
+        if get:
             if busy_paths:
                 files = [p for p in files if not any(p == b or p.startswith(b.rstrip("/") + "/") for b in _drop_view(busy_paths))]
         with _lock:
