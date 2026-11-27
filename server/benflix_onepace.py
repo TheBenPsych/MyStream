@@ -32,6 +32,11 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zlib
 
+try:  # downloads through qBittorrent (Ben's picks 2026-11-26), in benflix_onepace_get.py
+    import benflix_onepace_get as get
+except ImportError:
+    get = None
+
 DATA_URL = "https://raw.githubusercontent.com/ladyisatis/one-pace-metadata/refs/heads/v2/metadata/data.json"
 POSTER_URL = "https://raw.githubusercontent.com/ladyisatis/OnePaceOrganizer/refs/heads/main/posters"
 # Ben's own set (the One Pace arc "wanted posters", 2024), kept in Glowfin's repo; used first, OnePaceOrganizer's as backup
@@ -628,6 +633,15 @@ def _episode_nfo(info, video):
 # ---------------------------------------------------------------- one sort
 
 
+def _drop_view(paths):
+    """qBittorrent's paths for its downloads, as the helper sees them (both name One Pace Drop)"""
+    out = []
+    for p in paths:
+        i = p.find("/One Pace Drop")
+        out.append(DROP + p[i + len("/One Pace Drop"):] if i >= 0 else p)
+    return out
+
+
 def _replaced_files():
     if not os.path.isdir(REPLACED):
         return []
@@ -943,6 +957,13 @@ def sort_now():
         _clean_replaced()
         data = _load_data(force=True)
         files = _drop_files()
+        done_dl = []
+        if get:
+            with _lock:
+                st = dict(_state)
+            _rows, busy_paths, done_dl = get.progress(st)
+            if busy_paths:
+                files = [p for p in files if not any(p == b or p.startswith(b.rstrip("/") + "/") for b in _drop_view(busy_paths))]
         with _lock:
             _status["total"] = len(files)
         seasons_done = set()
@@ -982,6 +1003,8 @@ def sort_now():
         for path, why in left.items():
             if path not in rescue:
                 unknown.append({"name": os.path.relpath(path, DROP), "why": why})
+        if get and done_dl:
+            get.tidy_finished(_state, done_dl)
         _tidy_drop()
         new_pictures = _refresh_posters()
         if os.path.isdir(_show_dir()):
@@ -1035,7 +1058,9 @@ def _arc_rows(data):
     with _lock:
         mine = dict(_state.get("files") or {})
     rows, missing_total, newer_total = [], 0, 0
+    wanted = {"missing": [], "newer": []}
     for part, a in sorted(data["arcs"].items()):
+        arc_want = []
         eps = a.get("episodes") or []
         got, newer, need_mib = 0, 0, 0.0
         newer_eps, missing_eps = [], []
@@ -1052,10 +1077,13 @@ def _arc_rows(data):
                 if crc and crc not in (std, ext) and not _same_release(have[key], data["crc"].get(ext) or data["crc"].get(std)):
                     newer += 1
                     newer_eps.append(num)
+                    arc_want.append(("newer", _want(data, part, num, ext, std)))
             else:
                 missing_eps.append(num)
                 info = data["crc"].get(ext or std) or data["crc"].get(std) or {}
                 need_mib += _size_mib((info.get("file") or {}).get("size"))
+                if part:
+                    arc_want.append(("missing", _want(data, part, num, ext, std)))
         total = len(eps)
         if not got and part == 0:
             continue
@@ -1074,8 +1102,62 @@ def _arc_rows(data):
         else:
             light, line = "ok", f"All {total} here"
         label = a.get("title") or f"Arc {part}"
-        rows.append({"light": light, "t": f"{'Specials' if part == 0 else str(part) + '. ' + label}", "s": line, "acts": []})
+        arc_want = [(k, w) for k, w in arc_want if w]
+        for k, w in arc_want:
+            wanted[k].append(w)
+        acts = [{"label": f"Get {'this' if len(arc_want) == 1 else 'these ' + str(len(arc_want))}", "do": f"get:{part}"}] if arc_want and get else []
+        rows.append({"light": light, "t": f"{'Specials' if part == 0 else str(part) + '. ' + label}", "s": line, "acts": acts})
+    with _lock:
+        _wanted_now.clear()
+        _wanted_now.update(wanted)
     return rows, missing_total, newer_total, len(have)
+
+
+_wanted_now = {}
+
+
+def _want(data, arc, num, ext, std):
+    """The release to download for one episode (the extended cut when there is one)"""
+    ep = data["crc"].get(ext or std) or data["crc"].get(std)
+    f = (ep or {}).get("file") or {}
+    if not f.get("hash") or not f.get("name"):
+        return None
+    title = (data["arcs"].get(arc) or {}).get("title") or f"Arc {arc}"
+    return {"hash": str(f["hash"]), "name": str(f["name"]), "label": f"{title} {num}", "arc": arc, "mib": _size_mib(f.get("size"))}
+
+
+def _get(which):
+    """which: "missing", "newer" or "get:<arc>" -> message"""
+    if not get:
+        return "Downloads aren't set up on this Tower."
+    data = _load_data()
+    _arc_rows(data)
+    with _lock:
+        if which.startswith("get:"):
+            arc = int(which[4:])
+            wanted = [w for k in ("missing", "newer") for w in _wanted_now.get(k) or [] if w["arc"] == arc]
+        else:
+            wanted = list(_wanted_now.get(which) or [])
+    try:
+        with _lock:
+            st = _state
+        return get.start_downloads(wanted, st, _save)
+    except get.GetError as e:
+        return str(e)
+
+
+def _get_acts():
+    if not get:
+        return []
+    with _lock:
+        miss, new = list(_wanted_now.get("missing") or []), list(_wanted_now.get("newer") or [])
+    acts = []
+    if miss:
+        acts.append({"label": f"Get missing episodes ({len(miss)}, about {_nice_size(sum(w['mib'] for w in miss))})", "do": "missing"})
+    if new:
+        acts.append({"label": f"Get newer cuts ({len(new)}, about {_nice_size(sum(w['mib'] for w in new))})", "do": "newer",
+                     "ask": f"Download {len(new)} newer cuts? Your current copies go to Replaced for 7 days after you sort."})
+    return acts
 
 
 def card():
@@ -1117,13 +1199,18 @@ def card():
         if here and level == "ok" and (missing or newer):
             reason = f"{here} episodes here. " + (f"{missing} not on Tower yet" if missing else "") + (", " if missing and newer else "") + (f"{newer} {'has' if newer == 1 else 'have'} a newer copy on onepace.net" if newer else "") + ". Get them from onepace.net and drop them in Media/One Pace Drop."
         rows.extend(arc_rows)
+    if get:
+        with _lock:
+            st = dict(_state)
+        for light, t, sub in get.progress(st)[0][::-1]:
+            rows.insert(0, {"light": light, "t": t, "s": sub, "acts": []})
     return {
         "title": "One Pace",
         "intro": "One Pace (onepace.net) is the fan edit of One Piece that cuts the filler, with every story arc as its own season. Drop the files in Media/One Pace Drop and press Sort. Glowfin finds each episode and adds the arc names, descriptions and posters.",
         "level": level,
         "headline": headline,
         "reason": reason,
-        "acts": [] if busy["busy"] else [{"label": "Sort One Pace now", "do": "sort"}] + ([{"label": "Put back last sort", "do": "undo"}] if (_state.get("undo") or {}).get("moves") else []),
+        "acts": [] if busy["busy"] else _get_acts() + [{"label": "Sort One Pace now", "do": "sort"}] + ([{"label": "Put back last sort", "do": "undo"}] if (_state.get("undo") or {}).get("moves") else []),
         "rows": rows,
     }
 
@@ -1182,6 +1269,11 @@ def card_do(do):
                 return "Already sorting."
         threading.Thread(target=sort_now, name="onepace-sort", daemon=True).start()
         return "Sorting now. This card shows how it's going."
+    if do in ("missing", "newer") or do.startswith("get:"):
+        try:
+            return _get(do)
+        except Exception as e:  # noqa: BLE001
+            return f"Couldn't start the downloads: {e}"
     return "Glowfin didn't understand that button."
 
 
@@ -1190,6 +1282,8 @@ def start(jellyfin_call, admin):
     global _jf, _admin, _dir
     _jf, _admin = jellyfin_call, admin
     _dir = _pick_dir()
+    if get:
+        get.setup(_dir, log, DROP)
     with _lock:
         _state.clear()
         _state.update(_load_state() if _dir else {})
