@@ -3349,11 +3349,11 @@ internal fun RequestEntry.manageShown(
     declined: String?,
 ): ManageShown {
     val asked = listOfNotNull("$who asked", ago(request.createdAt)).joinToString(" ")
-    val days = BenflixCantFind.daysSince(request.updatedAt ?: request.createdAt) ?: 0L
+    val days = manageStuckDays() ?: 0L
     val tag =
         when (lane) {
             ManageLane.NEEDS -> RqTag(RqTagKind.WAITING, asked)
-            ManageLane.WAY -> RqTag(RqTagKind.ON_WAY, downloadPercent?.let { "Downloading · $it%" } ?: "On its way")
+            ManageLane.WAY -> RqTag(RqTagKind.ON_WAY, downloadPercent?.let { "Downloading · $it%" } ?: manageNotOut() ?: "On its way")
             ManageLane.STUCK -> RqTag(RqTagKind.PROBLEM, if (cantFind != null) "Couldn't find it" else "Stuck $days days")
             ManageLane.READY -> RqTag(RqTagKind.HERE, "Here now")
             ManageLane.NO -> RqTag(RqTagKind.PROBLEM, "You said no")

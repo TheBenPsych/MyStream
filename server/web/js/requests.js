@@ -531,13 +531,43 @@ B.rqAbout = (r) => {
   return [r.title || r.name, d.slice(0, 4), soon, r.voteAverage ? "★ " + (+r.voteAverage).toFixed(1) : ""].filter(Boolean).join(" · ");
 };
 // Seerr requests with their real names (and which tab they belong on)
+// When a request can really be looked for (same rule as the app's search clock, Ben 2026-11-03 / 2026-11-26):
+// a movie needs its home release (or ~90 days after cinemas), a show the asked-for season to have aired.
+// { notOut, on } (on = release Date or null). Not out yet means Radarr / Sonarr can't find it, so it is never "stuck".
+const outOf = (d, r) => {
+  const day = (t) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const today = new Date();
+  let known = false, on = null;
+  if (r.type === "movie") {
+    const homes = (((d.releases || {}).results) || []).flatMap((x) => x.release_dates || []).filter((x) => [4, 5, 6].includes(+x.type)).map((x) => day(x.release_date)).filter(Boolean).sort((a, b) => a - b);
+    const cinema = day(d.releaseDate);
+    if (homes[0]) { known = true; on = homes[0]; } else if (cinema) { known = true; on = new Date(cinema.getTime() + 90 * 86400000); } else known = d.status === "Released";
+  } else {
+    const wanted = (r.seasons || []).map((x) => x.seasonNumber);
+    const last = d.lastEpisodeToAir || null, lastAired = day(last && last.airDate);
+    if (!wanted.length) {
+      on = (d.nextEpisodeToAir ? lastAired : day(d.lastAirDate) || lastAired) || day(d.firstAirDate);
+      known = !!day(d.firstAirDate);
+    } else {
+      const prem = (d.seasons || []).filter((x) => wanted.includes(x.seasonNumber) && day(x.airDate)).map((x) => [x.seasonNumber, day(x.airDate)]);
+      const aired = prem.filter((x) => x[1] <= today).sort((a, b) => b[0] - a[0]);
+      if (aired.length) { known = true; on = last && last.seasonNumber === aired[0][0] && lastAired && lastAired > aired[0][1] ? lastAired : aired[0][1]; }
+      else if (prem.length) { known = true; on = prem.map((x) => x[1]).sort((a, b) => a - b)[0]; }
+      else {
+        const first = day(d.firstAirDate), lastDay = day(d.lastAirDate) || lastAired;
+        if (first) { known = true; on = first > today ? first : lastDay || first; } else known = ["Ended", "Returning Series", "Canceled"].includes(d.status);
+      }
+    }
+  }
+  return { notOut: !known || (!!on && on > today), on };
+};
 B.seerrNamed = async (l, tab) => {
   const items = ((l && l.results) || []).filter((r) => (tab === "movies" ? r.type === "movie" : tab ? r.type === "tv" : true));
   await Promise.all(items.map(async (r) => {
     const md = r.media || (r.media = {});
     if (!md.tmdbId) return;
     const d = await B.cached(`seerr-${r.type}-${md.tmdbId}`, 3600000, () => seerr(`/${r.type}/${md.tmdbId}`)).catch(() => null);
-    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; md.backdrop = d.backdropPath; md.overview = d.overview; md.year = (d.releaseDate || d.firstAirDate || "").slice(0, 4); }
+    if (d) { md.title = d.title || d.name || md.title; md.anime = detailsAnime(d); md.poster = d.posterPath; md.backdrop = d.backdropPath; md.overview = d.overview; md.year = (d.releaseDate || d.firstAirDate || "").slice(0, 4); md.out = outOf(d, r); }
   }));
   if (!tab) return items;
   return items.filter((r) => (tab === "movies" ? !r.media.anime : tab === "shows" ? !r.media.anime : r.media.anime));
@@ -752,9 +782,14 @@ B.manageTab = async (nav) => {
     named.forEach((r) => {
       const md = r.media || {}, at = Date.parse(r.createdAt || "") || 0;
       const since = Date.parse(r.updatedAt || r.createdAt || "") || at;
-      const days = Math.floor((Date.now() - since) / 86400000);
+      // Ben 2026-11-26: the days only count once it's out plus 3 weeks of grace (Radarr / Sonarr can't find what isn't out)
+      const out = md.out || { notOut: false, on: null };
+      const from = out.on ? Math.max(since, out.on.getTime() + 21 * 86400000) : since;
+      const days = out.notOut ? -1 : Math.floor((Date.now() - from) / 86400000);
+      const notOut = r.status === 2 && md.status !== 5 && md.status !== 4 && out.notOut;
       const seasons = (r.seasons || []).map((x) => x.seasonNumber);
       const l = r.status === 1 ? "needs" : r.status === 3 ? "no" : md.status === 5 ? "ready" : r.status === 4 || (md.status !== 4 && days >= MG_STUCK_DAYS) ? "stuck" : "way";
+      const outPill = notOut ? { k: "asked", w: out.on ? `Not out yet · out ${out.on.toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "Not out yet" } : null;
       out.push({
         key: "seerr:" + r.id, src: "seerr", id: r.id, lane: l, at, title: md.title || md.name || "Name not found",
         who: (r.requestedBy && (r.requestedBy.displayName || r.requestedBy.jellyfinUsername)) || "Someone",
@@ -763,7 +798,7 @@ B.manageTab = async (nav) => {
         cover: md.poster ? tmdbImg(md.poster, "w185") : "", type: r.type, tmdb: md.tmdbId,
         art: md.backdrop ? tmdbImg(md.backdrop, "w1280") : md.poster ? tmdbImg(md.poster, "w500") : "", story: md.overview || "", year: md.year || "",
         said: r.status === 2 || r.status === 5 || md.status === 5,
-        pill: l === "stuck" ? { k: "looking", w: r.status === 4 ? "Stuck · couldn't start" : `Stuck · day ${days + 1}` } : l === "no" ? { k: "cant", w: "You said no" } : l === "needs" ? { k: "asked", w: "Waiting for you" } : B.seerrPill(r),
+        pill: l === "stuck" ? { k: "looking", w: r.status === 4 ? "Stuck · couldn't start" : `Stuck · day ${days + 1}` } : l === "no" ? { k: "cant", w: "You said no" } : l === "needs" ? { k: "asked", w: "Waiting for you" } : outPill || B.seerrPill(r),
         why: l === "no" && B.reasons["seerr:" + r.id] ? `Why: ${B.reasons["seerr:" + r.id]}` : "",
       });
     });

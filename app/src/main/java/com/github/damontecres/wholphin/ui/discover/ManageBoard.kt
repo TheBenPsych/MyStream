@@ -77,7 +77,7 @@ internal enum class ManageLane(
 internal const val MANAGE_STUCK_DAYS = 5L
 
 internal fun RequestEntry.manageLane(notFound: Boolean): ManageLane {
-    val days = BenflixCantFind.daysSince(request.updatedAt ?: request.createdAt) ?: 0L
+    val days = manageStuckDays()
     return when {
         available -> ManageLane.READY
 
@@ -90,10 +90,30 @@ internal fun RequestEntry.manageLane(notFound: Boolean): ManageLane {
         // some of it is here: a show still airing sits like this for months, so it is never called stuck
         downloading || request.media?.status == SeerrAvailability.PARTIALLY_AVAILABLE.status -> ManageLane.WAY
 
-        days >= MANAGE_STUCK_DAYS -> ManageLane.STUCK
+        // Ben 2026-11-26: not out yet (or only just out) isn't stuck, Radarr / Sonarr can't look for it yet
+        days != null && days >= MANAGE_STUCK_DAYS -> ManageLane.STUCK
 
         else -> ManageLane.WAY
     }
+}
+
+/**
+ * Days a request has really been looking: counted from its release (plus a few weeks of grace, the same
+ * search clock the Couldn't find it list uses), so a title that isn't out yet gives null and is never stuck.
+ * Falls back to days since the yes when there is no release clock.
+ */
+internal fun RequestEntry.manageStuckDays(): Long? =
+    if (clock != null) {
+        clock.daysLooking
+    } else {
+        BenflixCantFind.daysSince(request.updatedAt ?: request.createdAt) ?: 0L
+    }
+
+/** Not out yet: "Not out yet · out Dec 5" for the On its way lane, or null */
+internal fun RequestEntry.manageNotOut(): String? {
+    val c = clock?.takeIf { it.notOut && !downloading && !available } ?: return null
+    return listOfNotNull("Not out yet", c.outOn?.let { BenflixCantFind.niceDate(it.toString()) }?.let { "out $it" })
+        .joinToString(" · ")
 }
 
 internal fun AskLine.manageLane(): ManageLane =
