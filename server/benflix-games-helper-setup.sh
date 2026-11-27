@@ -49,7 +49,7 @@ NEW=$APP/.new
 GOOD=$APP/.last-good
 rm -rf "$NEW"; mkdir -p "$NEW"
 for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_onepace.py benflix_famous.py benflix_teams.py benflix_scenes.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix_health.py benflix-fix-tracks.py benflix-web.html benflix-health.sh; do
-  if curl -fsSL -m 120 --retry 3 "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
+  if curl -fsSL -4 --connect-timeout 15 -m 120 --retry 3 "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     rm -rf "$NEW"
     exit 1
@@ -87,12 +87,12 @@ rm -rf "$NEW"
 
 say "Downloading Glowfin for web browsers"
 mkdir -p "$APP/web"
-if curl -fsSL -m 60 --retry 3 "$RAW/web/files.txt" -o "$APP/web/files.txt"; then
+if curl -fsSL -4 --connect-timeout 15 -m 60 --retry 3 "$RAW/web/files.txt" -o "$APP/web/files.txt"; then
   bad=0
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     mkdir -p "$APP/web/$(dirname "$f")"
-    curl -fsSL -m 60 --retry 3 "$RAW/web/$f" -o "$APP/web/$f" || bad=1
+    curl -fsSL -4 --connect-timeout 15 -m 60 --retry 3 "$RAW/web/$f" -o "$APP/web/$f" || bad=1
   done < "$APP/web/files.txt"
   if [ "$bad" = 0 ]; then echo "  ok  $(grep -c . "$APP/web/files.txt") files"; else echo "  PROBLEM  Some web files didn't download. Run this command again."; fi
 else
