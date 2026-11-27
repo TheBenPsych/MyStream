@@ -1,0 +1,6 @@
+* [0,128][1080,2337] 
+  [523,167][557,256] 1
+  [404,1054][676,1143] Paused
+  [460,1168][621,1222] Score 1
+  [137,1247][943,1342] Remote or controller: ◀ ▶ to move · Phone: hold left or right side
+  [215,1367][865,1412] Tap to keep playing · Back to leave

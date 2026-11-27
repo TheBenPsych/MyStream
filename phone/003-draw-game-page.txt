@@ -1,0 +1,18 @@
+  [336,219][745,832] Draw the movie
+  [39,898][463,934] GLOWFIN PARTY GAME
+  [39,968][500,1039] Draw the movie
+  [68,1083][318,1128] 3 to 8 players
+  [396,1083][762,1128] Android phones join
+  [68,1168][306,1213] About 10 min
+  [39,1257][1041,1408] One phone gets a secret movie and draws it. The drawing shows on the TV and everyone else guesses.
+  [592,1468][918,1515] Join a TV's game
+* [39,1432][524,1550] 
+  [78,1468][485,1515] ▶ Host on this phone
+  [88,1613][321,1652] HOW TO PLAY
+  [88,1677][932,1724] 1.  Your phone shows a secret title: draw it.
+  [88,1749][937,1796] 2.  Others pick the answer on their phones.
+  [88,1821][992,1927] 3.  Fast guesses score more, and so does the artist.
+  [88,2039][237,2078] PLAYERS
+  [88,2103][992,2209] Everyone joins with their own Android phone: Glowfin › Games › Join party.
+  [88,2234][962,2273] iPhones can't join, because Glowfin is only on Android.
+  [88,2298][992,2337] Scores are kept for the game, then start fresh.

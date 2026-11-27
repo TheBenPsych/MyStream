@@ -1,0 +1,50 @@
+  [64,173][373,214] Hearthvale Fields
+  [953,188][988,241] ☰
+  [123,773][244,812] demo ★
+  [259,776][360,809] ♥♥♥
+  [123,812][305,838] Healer · Clumsy
+  [626,773][742,809] Thalion
+  [757,775][858,808] ♥♥♥
+  [626,809][795,835] Ranger · Brave
+  [123,853][235,889] Durgan
+  [250,855][351,888] ♥♥♥
+  [123,889][280,915] Bard · Greedy
+  [626,853][684,889] Bea
+  [699,855][800,888] ♥♥♥
+  [626,889][881,915] Merchant · Good cook
+  [123,939][197,975] Hoot
+  [61,1023][110,1049] DAY
+  [61,1049][86,1094] 5
+  [61,1094][135,1120] spring
+  [311,1023][380,1049] FOOD
+  [311,1049][378,1094] 182
+  [311,1094][417,1120] ~22 days
+  [560,1023][627,1049] GOLD
+  [560,1049][608,1094] 70
+  [809,1023][886,1049] SPIRIT
+  [809,1049][892,1094] 8/10
+  [61,1149][140,1175] HERBS
+  [61,1175][86,1220] 5
+  [311,1149][475,1175] EGG WARMTH
+  [311,1175][394,1220] 8/10
+  [311,1220][471,1246] hatches ~32d
+  [560,1149][625,1175] CART
+  [560,1175][661,1220] 10/10
+  [809,1149][889,1175] MAGIC
+  [809,1175][901,1220] calm
+  [61,1275][129,1301] ROAD
+  [61,1301][178,1346] 40/40
+  [61,1346][216,1372] mi · leg 1 of 5
+  [58,1453][726,1509] The road splits. Which way?
+  [58,1534][740,1575] Hearthvale Fields  →  ?  →  Ember Peak
+  [58,1600][1022,1687] Whisperwood: A dark, tangled forest where the trees whisper your name. Fast, if you don't get lost.
+  [58,1712][1022,1799] The Skyshard Isles: Islands of rock floating in the sky, joined by rope bridges and wind.
+  [58,1824][1022,1911] Silverleaf Wood: An ancient elf forest of white trees and singing leaves.
+  [127,2102][505,2149] The Skyshard Isles
+  [127,2149][372,2185] the strange road
+  [127,2246][443,2293] Silverleaf Wood
+  [127,2293][321,2329] safe but long
+* [58,1936][1022,2063] 
+  [73,1982][127,2018] ▶
+  [127,1958][404,2005] Whisperwood
+  [127,2005][426,2041] short but dangerous

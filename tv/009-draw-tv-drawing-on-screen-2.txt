@@ -1,0 +1,11 @@
+  [765,56][1156,116] Draw the movie
+  [668,139][1252,176] Round 2 of 3  ·  54 s  ·  0 of 1 answered
+  [783,199][1137,252] Ben is drawing…
+  [349,818][575,855] A  Jungle Book
+  [638,818][1075,855] B  Caminandes: Llama Drama
+  [1138,818][1572,855] C  Caminandes: Gran Dillama
+  [306,898][709,935] D  Night of the Living Dead
+  [773,898][1147,935] E  Caminandes: Llamigos
+  [1210,898][1614,935] F  The Great Train Robbery
+  [878,982][931,1014] Ana
+  [991,982][1043,1014] Ben

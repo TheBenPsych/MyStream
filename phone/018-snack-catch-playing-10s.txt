@@ -1,0 +1,6 @@
+* [0,128][1080,2337] 
+  [514,167][566,256] 0
+  [342,1054][738,1143] Game over
+  [365,1168][716,1222] Score 0 · Best 0
+  [137,1247][943,1342] Remote or controller: ◀ ▶ to move · Phone: hold left or right side
+  [238,1367][842,1412] Tap to play again · Back to leave

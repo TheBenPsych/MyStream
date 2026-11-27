@@ -1,0 +1,49 @@
+  [92,48][350,82] Hearthvale Fields
+  [1116,52][1227,89] demo ★
+  [1238,57][1328,85] ♥♥♥
+  [1116,89][1316,113] Healer · Picky eater
+  [1496,52][1595,85] Caelith
+  [1606,55][1696,83] ♥♥♥
+  [1496,85][1655,108] Ranger · Strong
+  [1116,127][1190,160] Ketta
+  [1201,130][1290,158] ♥♥♥
+  [1116,160][1350,183] Bard · Afraid of spiders
+  [1496,127][1566,160] Theo
+  [1577,130][1667,158] ♥♥♥
+  [1496,160][1678,183] Merchant · Singer
+  [1112,207][1178,239] Hoot
+  [1061,286][1104,310] DAY
+  [1061,310][1086,356] 5
+  [1061,356][1127,380] spring
+  [1213,286][1273,310] FOOD
+  [1213,310][1280,356] 182
+  [1213,356][1306,380] ~22 days
+  [1364,286][1423,310] GOLD
+  [1364,310][1413,356] 70
+  [1514,286][1581,310] SPIRIT
+  [1514,310][1598,356] 8/10
+  [1664,286][1733,310] HERBS
+  [1664,310][1689,356] 5
+  [1061,409][1173,432] EGG WARMTH
+  [1061,432][1146,478] 8/10
+  [1061,478][1173,502] hatches ~32d
+  [1213,409][1270,432] CART
+  [1213,432][1315,478] 10/10
+  [1364,409][1434,432] MAGIC
+  [1364,432][1457,478] calm
+  [1514,409][1574,432] ROAD
+  [1514,432][1624,478] 40/40
+  [1514,478][1624,502] mi · leg 1 of 5
+  [100,577][732,631] The road splits. Which way?
+  [100,647][662,681] Hearthvale Fields  →  ?  →  Ember Peak
+  [100,697][996,773] The Ironroot Mountains: High passes and the great stone gates of the dwarf kingdom.
+  [100,789][996,865] The Skyshard Isles: Islands of rock floating in the sky, joined by rope bridges and wind.
+  [100,881][996,957] The King's Road: A wide paved road past castles and toll gates. Safe, slow, full of guards.
+  [1096,716][1463,762] The Skyshard Isles
+  [1096,762][1316,793] the strange road
+  [1096,839][1413,885] The King's Road
+  [1096,885][1270,916] safe but long
+* [1040,577][1820,686] 
+  [1052,615][1096,649] ▶
+  [1096,593][1546,639] The Ironroot Mountains
+  [1096,639][1365,670] short but dangerous

@@ -1,0 +1,50 @@
+  [64,173][373,214] Hearthvale Fields
+  [953,188][988,241] ☰
+  [123,773][244,812] demo ★
+  [259,776][360,809] ♥♥♥
+  [123,812][305,838] Healer · Clumsy
+  [626,773][742,809] Thalion
+  [757,775][858,808] ♥♥♥
+  [626,809][795,835] Ranger · Brave
+  [123,853][235,889] Durgan
+  [250,855][351,888] ♥♥♥
+  [123,889][280,915] Bard · Greedy
+  [626,853][684,889] Bea
+  [699,855][800,888] ♥♥♥
+  [626,889][881,915] Merchant · Good cook
+  [123,939][197,975] Hoot
+  [61,1023][110,1049] DAY
+  [61,1049][80,1094] 1
+  [61,1094][135,1120] spring
+  [311,1023][380,1049] FOOD
+  [311,1049][385,1094] 228
+  [311,1094][418,1120] ~28 days
+  [560,1023][627,1049] GOLD
+  [560,1049][608,1094] 70
+  [809,1023][886,1049] SPIRIT
+  [809,1049][890,1094] 7/10
+  [61,1149][140,1175] HERBS
+  [61,1175][86,1220] 5
+  [311,1149][475,1175] EGG WARMTH
+  [311,1175][394,1220] 8/10
+  [311,1220][472,1246] hatches ~36d
+  [560,1149][625,1175] CART
+  [560,1175][661,1220] 10/10
+  [809,1149][889,1175] MAGIC
+  [809,1175][901,1220] calm
+  [61,1275][129,1301] ROAD
+  [61,1301][153,1346] 0/40
+  [61,1346][216,1372] mi · leg 1 of 5
+  [58,1453][455,1507] Hearthvale Fields
+  [58,1532][965,1582] Golden farmland and sleepy villages. Home.
+  [58,1607][1022,1786] New here? Keep going travels one day. Make camp rests everyone and warms the egg. Watch Food and Egg warmth up top. Bag & journal shows your things and spells.
+  [127,1977][356,2024] Make camp
+  [127,2024][819,2060] Rest a day: heals, warms the egg, calms magic
+  [127,2121][385,2168] Pace: steady
+  [127,2168][591,2204] Normal speed. Press to change
+  [127,2265][389,2312] Food: normal
+  [127,2312][650,2337] 2 food each a day. Press to change
+* [58,1811][1022,1938] 
+  [73,1857][127,1893] ▶
+  [127,1833][352,1880] Keep going
+  [127,1880][567,1916] Travel one day down the road

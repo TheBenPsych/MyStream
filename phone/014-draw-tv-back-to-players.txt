@@ -1,0 +1,9 @@
+  [310,157][771,228] Draw the movie
+  [39,262][1041,460] One phone gets a secret movie and draws it. The drawing shows on the TV and everyone else guesses.
+  [83,528][505,569] JOIN ON YOUR PHONES
+  [83,589][997,835] Open Glowfin on your phone, go to Games, and press Join party. Phones need to be on the same Wi-Fi as this phone.
+  [39,903][1041,944] PLAYERS (2) · 3 TO 8
+  [237,1131][326,1185] Ana
+  [756,1131][843,1185] Ben
+* [348,1244][732,1362] 
+  [387,1284][693,1323] Needs 1 more player

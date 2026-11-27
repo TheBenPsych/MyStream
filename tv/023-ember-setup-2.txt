@@ -1,0 +1,19 @@
+  [882,11][1039,45] Step 2 of 4
+  [96,73][1824,192] Everyone brings one skill and one trait. Press a button to change it. Skills help the whole party (two of the same don't add up, so mix them). If someone goes home, their skill goes with them. Traits change what happens on the road, and some open up special choices. Finish journeys to unlock Mage and Smith.
+  [216,249][353,295] demo ★
+  [1000,344][1265,383] Trait: Picky eater
+  [1000,383][1330,414] Won't eat anything green.
+* [116,324][952,434] 
+  [148,344][334,383] Skill: Healer
+  [148,383][601,414] Brings extra herbs. Fevers are rarer.
+  [216,514][340,555] Caelith
+  [148,606][344,645] Skill: Ranger
+  [148,645][785,676] Brings a bow. Finds the way faster and hunts well.
+  [1000,606][1194,645] Trait: Strong
+  [1000,645][1396,676] Can lift a cart. Has lifted a cart.
+  [216,776][308,817] Ketta
+  [148,868][304,907] Skill: Bard
+  [148,907][827,938] Brings a lute. Great at talking the party out of trouble.
+  [1000,868][1350,907] Trait: Afraid of spiders
+  [1000,907][1463,938] Screams at anything with eight legs.
+  [216,1038][305,1079] Theo

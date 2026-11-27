@@ -1,0 +1,15 @@
+  [697,56][1224,128] A pet for the road
+  [882,156][1039,190] Step 3 of 4
+* [196,218][796,332] 
+  [228,238][331,281] ● Hoot
+  [228,281][656,312] A wise little owl. Sees in the dark.
+  [948,238][1053,277] Truffle
+  [948,277][1484,346] A dog with a mushroom cap. Sniffs out food.
+  [228,406][360,445] Pudding
+  [228,445][750,476] A lazy orange cat. Brave when it matters.
+  [948,406][1111,445] Sir Croaks
+  [948,445][1381,476] A toad in a tiny helmet. Very loyal.
+  [1568,406][1672,445] No pet
+  [1568,445][1757,476] Just the family
+  [833,545][911,584] Back
+  [999,544][1087,590] Next

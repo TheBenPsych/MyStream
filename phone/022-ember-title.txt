@@ -1,0 +1,13 @@
+  [362,192][718,263] Ember Road
+  [207,263][873,308] Carry the dragon egg to Ember Peak
+  [78,790][548,846] Continue the journey
+  [78,846][472,885] Day 5 in Hearthvale Fields
+  [78,1073][448,1120] Join the TV's game
+  [78,1120][710,1159] Vote, type and play along from this phone
+  [78,1230][324,1277] Endings 0/12
+  [589,1230][880,1277] Creatures 0/20
+  [78,1348][304,1395] How to play
+  [418,1348][606,1395] Music: on
+  [759,1348][963,1395] Old TV: off
+* [39,920][1041,1038] 
+  [78,956][565,1003] New journey (starts over)

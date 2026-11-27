@@ -1,0 +1,22 @@
+  [312,167][768,238] Skills and traits
+  [443,272][638,313] Step 2 of 4
+  [39,347][1041,670] Everyone brings one skill and one trait. Press a button to change it. Skills help the whole party (two of the same don't add up, so mix them). If someone goes home, their skill goes with them. Traits change what happens on the road, and some open up special choices. Finish journeys to unlock Mage and Smith.
+  [187,741][355,797] demo ★
+  [103,1009][356,1056] Trait: Clumsy
+  [103,1056][435,1095] Trips over everything.
+* [64,833][1016,969] 
+  [103,858][329,905] Skill: Healer
+  [103,905][643,944] Brings extra herbs. Fevers are rarer.
+  [187,1219][347,1269] Thalion
+  [103,1333][339,1380] Skill: Ranger
+  [103,1380][859,1419] Brings a bow. Finds the way faster and hunts well.
+  [103,1484][321,1531] Trait: Brave
+  [103,1531][418,1570] Runs toward trouble.
+  [187,1694][344,1744] Durgan
+  [103,1808][292,1855] Skill: Bard
+  [103,1855][909,1894] Brings a lute. Great at talking the party out of trouble.
+  [103,1959][351,2006] Trait: Greedy
+  [103,2006][529,2045] Loves gold a little too much.
+  [187,2169][268,2219] Bea
+  [103,2283][387,2330] Skill: Merchant
+  [103,2330][749,2337] Brings more gold. Better prices at markets.

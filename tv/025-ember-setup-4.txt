@@ -1,0 +1,17 @@
+  [710,0][882,2] About 30 min
+* [96,0][662,18] 
+  [96,42][273,81] How hard?
+  [128,121][204,160] Easy
+  [128,160][267,191] Half points
+  [710,121][851,164] ● Normal
+  [710,164][887,195] The real thing
+  [1291,121][1367,160] Hard
+  [1291,160][1616,191] Finish 1 journey to unlock
+  [96,235][250,274] Your cart
+  [128,314][372,357] ● Trusty wagon
+  [710,314][874,353] Giant snail
+  [710,353][909,384] Finish 1 journey
+  [1291,314][1482,353] Royal coach
+  [1291,353][1510,384] Finish 3 journeys
+  [805,959][883,998] Back
+  [971,958][1115,1004] Set out!

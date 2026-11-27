@@ -1,0 +1,3831 @@
+{
+ "started": "2026-11-27T00:19:18.122Z",
+ "games": [
+  {
+   "size": "tv",
+   "game": "GAMES_PAGE",
+   "kind": "Games page",
+   "shots": [
+    {
+     "name": "games",
+     "file": "001-tv-GAMES-PAGE-games.jpg",
+     "cut": [
+      "Guess the movie or show from a still picture taken from it. "
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-1",
+     "file": "002-tv-GAMES-PAGE-games-scroll-1.jpg",
+     "cut": [],
+     "covered": [
+      "Who's that actor? under button.arrow"
+     ],
+     "small": []
+    },
+    {
+     "name": "games-scroll-2",
+     "file": "003-tv-GAMES-PAGE-games-scroll-2.jpg",
+     "cut": [],
+     "covered": [
+      "Film Can Stack under button.arrow"
+     ],
+     "small": []
+    },
+    {
+     "name": "games-scroll-3",
+     "file": "004-tv-GAMES-PAGE-games-scroll-3.jpg",
+     "cut": [],
+     "covered": [
+      "Film Can Stack under button.arrow"
+     ],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "SCENES",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "005-tv-SCENES-game-page.jpg",
+     "cut": [
+      "Guess the movie or show from a still picture taken from it. "
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "006-tv-SCENES-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 The Boy in the Plastic Bubble under div.bg-over",
+      "2 Caminandes: Llama Drama under div.bg-gotyou",
+      "3 The Great St. Louis Bank Robbery under div.bg-over",
+      "4 Caminandes: Gran Dillama under div.bg-over",
+      "5 Dracula under div.bg-gotyou",
+      "6 Pioneer One under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "007-tv-SCENES-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-6s",
+     "file": "008-tv-SCENES-playing-6s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 3 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "POSTER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "009-tv-POSTER-game-page.jpg",
+     "cut": [
+      "A poster hides under 16 tiles that flip away one by one, but"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "010-tv-POSTER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Caminandes: Llama Drama under div.bg-over",
+      "2 King Lear under button.btn",
+      "3 Dracula under div.bg-over",
+      "4 Jungle Book under div.bg-over",
+      "5 The Great Train Robbery under div.bg-gotyou",
+      "6 Night of the Living Dead under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "011-tv-POSTER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "012-tv-POSTER-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "GRID",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "013-tv-GRID-game-page.jpg",
+     "cut": [
+      "Every square needs a movie or show from Tower that fits its "
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "014-tv-GRID-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "015-tv-GRID-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Movie grid couldn't make a board from what's on Tower. Try again later. Back"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "TIMELINE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "016-tv-TIMELINE-game-page.jpg",
+     "cut": [
+      "Posters arrive one at a time. Slot each one into the right p"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "017-tv-TIMELINE-playing-4s.jpg",
+     "cut": [],
+     "covered": [
+      "Here under div.bg-card",
+      "Here under div.bg-gotyou",
+      "Here under div.bg-end-r"
+     ],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "018-tv-TIMELINE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "Here under div.bg-card",
+      "Here under div.bg-gotyou",
+      "Here under div.bg-end-r"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "019-tv-TIMELINE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 4 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "ACTOR",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "020-tv-ACTOR-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "021-tv-ACTOR-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "022-tv-ACTOR-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Margaret Phillips under div.bg-over",
+      "2 Arnold Moss under div.bg-gotyou",
+      "3 Judith O'Dea under div.bg-over",
+      "4 Bruce Bennett under div.bg-over",
+      "5 Sabu under div.bg-gotyou",
+      "6 Ralph Byrd under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "023-tv-ACTOR-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-14s",
+     "file": "024-tv-ACTOR-playing-14s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 9 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "QUOTE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "025-tv-QUOTE-game-page.jpg",
+     "cut": [
+      "A famous line from a movie or show on Tower. Name where it's"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "026-tv-QUOTE-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "027-tv-QUOTE-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Quote it needs a few well-known movies or shows on Tower (it found 0 famous lines). Back"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "ROLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "028-tv-ROLE-game-page.jpg",
+     "cut": [
+      "You get a character and the movie they're in. Pick the actor"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "029-tv-ROLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Margaret Phillips under div.bg-over",
+      "2 David J. Stewart under button.btn",
+      "3 Arnold Moss under button.btn",
+      "4 Orson Welles under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "030-tv-ROLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "031-tv-ROLE-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "BLITZ",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "032-tv-BLITZ-game-page.jpg",
+     "cut": [
+      "True or false lines about what's on Tower. Answer as many as"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "033-tv-BLITZ-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "034-tv-BLITZ-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "035-tv-BLITZ-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ✓ True under div.bg-end-l",
+      "2 ✗ False under div.bg-runs"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "036-tv-BLITZ-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "037-tv-BLITZ-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 28 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "SEASON",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "038-tv-SEASON-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "039-tv-SEASON-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "040-tv-SEASON-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Which season? takes pictures on Tower. It arrives with Tower's next hourly update. Back"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "GUESS",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "041-tv-GUESS-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "042-tv-GUESS-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "043-tv-GUESS-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "044-tv-GUESS-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Dracula under div.bg-over",
+      "2 Caminandes: Llamigos under div.bg-over",
+      "3 Jungle Book under div.bg-over",
+      "4 Night of the Living Dead under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "045-tv-GUESS-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "046-tv-GUESS-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 26 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "RIDDLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "047-tv-RIDDLE-game-page.jpg",
+     "cut": [
+      "Guess the movie from its clues. Clues get easier as the cloc"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "048-tv-RIDDLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 The Boy in the Plastic Bubble under div.bg-over",
+      "2 Jungle Book under div.bg-end-l",
+      "3 Night of the Living Dead under div.bg-over",
+      "4 The Great Train Robbery under div.bg-over",
+      "5 Caminandes: Llama Drama under button.btn"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "049-tv-RIDDLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "050-tv-RIDDLE-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "HIGHER_LOWER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "051-tv-HIGHER-LOWER-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "052-tv-HIGHER-LOWER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ▲ Later under div.bg-over",
+      "2 ▼ Earlier under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "053-tv-HIGHER-LOWER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-6s",
+     "file": "054-tv-HIGHER-LOWER-playing-6s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 3 s"
+   ]
+  },
+  {
+   "size": "tv",
+   "game": "POPCORN_POP",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "055-tv-POPCORN-POP-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "056-tv-POPCORN-POP-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "057-tv-POPCORN-POP-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "058-tv-POPCORN-POP-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "059-tv-POPCORN-POP-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "060-tv-POPCORN-POP-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "061-tv-POPCORN-POP-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "062-tv-POPCORN-POP-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "REEL_RUSH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "063-tv-REEL-RUSH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "064-tv-REEL-RUSH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "065-tv-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "066-tv-REEL-RUSH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "067-tv-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "068-tv-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "069-tv-REEL-RUSH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "070-tv-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "071-tv-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "072-tv-REEL-RUSH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "073-tv-REEL-RUSH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "SNACK_CATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "074-tv-SNACK-CATCH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "075-tv-SNACK-CATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "076-tv-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-11s",
+     "file": "077-tv-SNACK-CATCH-playing-11s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "078-tv-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-23s",
+     "file": "079-tv-SNACK-CATCH-playing-23s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "080-tv-SNACK-CATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "081-tv-SNACK-CATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "USHER_DASH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "082-tv-USHER-DASH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "083-tv-USHER-DASH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "084-tv-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "085-tv-USHER-DASH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "086-tv-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-23s",
+     "file": "087-tv-USHER-DASH-playing-23s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "088-tv-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "089-tv-USHER-DASH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "090-tv-USHER-DASH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "FILM_CAN_STACK",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "091-tv-FILM-CAN-STACK-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "092-tv-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "093-tv-FILM-CAN-STACK-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "094-tv-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-12s",
+     "file": "095-tv-FILM-CAN-STACK-playing-12s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "096-tv-FILM-CAN-STACK-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "097-tv-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "098-tv-FILM-CAN-STACK-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "099-tv-FILM-CAN-STACK-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "MATINEE_MATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "100-tv-MATINEE-MATCH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "101-tv-MATINEE-MATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "102-tv-MATINEE-MATCH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "103-tv-MATINEE-MATCH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "104-tv-MATINEE-MATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "105-tv-MATINEE-MATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "QUIZ",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "106-tv-QUIZ-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "FAKE_PLOT",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "107-tv-FAKE-PLOT-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "DRAW",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "108-tv-DRAW-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "CLOSEST",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "109-tv-CLOSEST-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "tv",
+   "game": "CAPTION",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "110-tv-CAPTION-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "GAMES_PAGE",
+   "kind": "Games page",
+   "shots": [
+    {
+     "name": "games",
+     "file": "111-computer-GAMES-PAGE-games.jpg",
+     "cut": [
+      "Guess the movie or show from a still picture taken from it. "
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-1",
+     "file": "112-computer-GAMES-PAGE-games-scroll-1.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-2",
+     "file": "113-computer-GAMES-PAGE-games-scroll-2.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-3",
+     "file": "114-computer-GAMES-PAGE-games-scroll-3.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "SCENES",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "115-computer-SCENES-game-page.jpg",
+     "cut": [
+      "Scene by scene"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "116-computer-SCENES-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "117-computer-SCENES-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "118-computer-SCENES-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Pioneer One under div.bg-card",
+      "2 Sahara under div.bg-card",
+      "3 Caminandes: Llamigos under div.bg-card",
+      "4 The Boy in the Plastic Bubble under div.bg-over",
+      "5 Dracula under div.bg-over",
+      "6 The Great St. Louis Bank Robbery under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "119-computer-SCENES-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 21 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "POSTER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "120-computer-POSTER-game-page.jpg",
+     "cut": [
+      "Poster puzzle"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "121-computer-POSTER-playing-4s.jpg",
+     "cut": [],
+     "covered": [
+      "1 Caminandes: Llama Drama under div.bg-gotyou",
+      "2 The Boy in the Plastic Bubble under div.bg-end-r",
+      "3 Caminandes: Llamigos under div.bg-end-r",
+      "4 Dracula under div.bg-gotyou",
+      "5 Night of the Living Dead under div.bg-end-r",
+      "6 Pioneer One under div.bg-end-r"
+     ],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "122-computer-POSTER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Caminandes: Llama Drama under div.bg-gotyou",
+      "2 The Boy in the Plastic Bubble under div.bg-end-r",
+      "3 Caminandes: Llamigos under div.bg-end-r",
+      "4 Dracula under div.bg-gotyou",
+      "5 Night of the Living Dead under div.bg-end-r",
+      "6 Pioneer One under div.bg-end-r"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "123-computer-POSTER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 4 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "GRID",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "124-computer-GRID-game-page.jpg",
+     "cut": [
+      "Movie grid"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "125-computer-GRID-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "126-computer-GRID-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Movie grid couldn't make a board from what's on Tower. Try again later. Back"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "TIMELINE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "127-computer-TIMELINE-game-page.jpg",
+     "cut": [
+      "Timeline"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "128-computer-TIMELINE-run-over.jpg",
+     "cut": [
+      "The Great St. Louis Bank Robbery"
+     ],
+     "covered": [
+      "Here under div.bg-card",
+      "Here under div.bg-gotyou"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "129-computer-TIMELINE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "130-computer-TIMELINE-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "ACTOR",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "131-computer-ACTOR-game-page.jpg",
+     "cut": [
+      "Who's that actor?"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "132-computer-ACTOR-playing-4s.jpg",
+     "cut": [],
+     "covered": [
+      "1 Orson Welles under div.bg-over",
+      "2 Alan Badel under div.bg-gotyou",
+      "3 Rex Ingram under div.bg-over",
+      "4 Humphrey Bogart under div.bg-over",
+      "5 Duane Jones under div.bg-over",
+      "6 Sabu under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "133-computer-ACTOR-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Orson Welles under div.bg-over",
+      "2 Alan Badel under div.bg-gotyou",
+      "3 Rex Ingram under div.bg-over",
+      "4 Humphrey Bogart under div.bg-over",
+      "5 Duane Jones under div.bg-over",
+      "6 Sabu under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "134-computer-ACTOR-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-14s",
+     "file": "135-computer-ACTOR-playing-14s.jpg",
+     "cut": [],
+     "covered": [
+      "1 Jack Haley under div.bg-over",
+      "2 Natasha Parry under div.bg-gotyou",
+      "3 John Travolta under div.bg-over",
+      "4 Rex Ingram under div.bg-over",
+      "5 Margaret Phillips under div.bg-over",
+      "6 Bramwell Fletcher under div.bg-over"
+     ],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 4 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "QUOTE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "136-computer-QUOTE-game-page.jpg",
+     "cut": [
+      "Quote it"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "137-computer-QUOTE-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "138-computer-QUOTE-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Quote it needs a few well-known movies or shows on Tower (it found 0 famous lines). Back"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "ROLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "139-computer-ROLE-game-page.jpg",
+     "cut": [
+      "Who played them?"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "140-computer-ROLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 David J. Stewart under div.bg-over",
+      "2 Humphrey Bogart under div.bg-end-l",
+      "3 Ralph Byrd under div.bg-end-l",
+      "4 Sabu under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "141-computer-ROLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "142-computer-ROLE-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "BLITZ",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "143-computer-BLITZ-game-page.jpg",
+     "cut": [
+      "60-second blitz"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "144-computer-BLITZ-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "145-computer-BLITZ-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "146-computer-BLITZ-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ✓ True under button.btn",
+      "2 ✗ False under div.bg-runs"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "147-computer-BLITZ-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "148-computer-BLITZ-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 27 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "SEASON",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "149-computer-SEASON-game-page.jpg",
+     "cut": [
+      "Which season?"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "message",
+     "file": "150-computer-SEASON-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "151-computer-SEASON-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Which season? takes pictures on Tower. It arrives with Tower's next hourly update. Back"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "GUESS",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "152-computer-GUESS-game-page.jpg",
+     "cut": [
+      "Guess the movie"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "153-computer-GUESS-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "154-computer-GUESS-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "155-computer-GUESS-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 The Boy in the Plastic Bubble under div.bg-over",
+      "2 The Great Train Robbery under div.bg-over",
+      "3 Caminandes: Llama Drama under div.bg-over",
+      "4 Caminandes: Llamigos under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "156-computer-GUESS-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "157-computer-GUESS-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 26 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "RIDDLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "158-computer-RIDDLE-game-page.jpg",
+     "cut": [
+      "Movie riddle"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "159-computer-RIDDLE-playing-4s.jpg",
+     "cut": [],
+     "covered": [
+      "1 Jungle Book under div.bg-over",
+      "2 Night of the Living Dead under div.bg-big",
+      "3 Dracula under div.bg-over",
+      "4 Caminandes: Gran Dillama under div.bg-over",
+      "5 Sahara under div.bg-end-l"
+     ],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "160-computer-RIDDLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Jungle Book under div.bg-over",
+      "2 Night of the Living Dead under div.bg-big",
+      "3 Dracula under div.bg-over",
+      "4 Caminandes: Gran Dillama under div.bg-over",
+      "5 Sahara under div.bg-end-l"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "161-computer-RIDDLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 4 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "HIGHER_LOWER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "162-computer-HIGHER-LOWER-game-page.jpg",
+     "cut": [
+      "Higher or Lower"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-4s",
+     "file": "163-computer-HIGHER-LOWER-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "164-computer-HIGHER-LOWER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ▲ Longer under div.bg-over",
+      "2 ▼ Shorter under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "165-computer-HIGHER-LOWER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 5 s"
+   ]
+  },
+  {
+   "size": "computer",
+   "game": "POPCORN_POP",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "166-computer-POPCORN-POP-game-page.jpg",
+     "cut": [
+      "Popcorn Pop"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "167-computer-POPCORN-POP-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "168-computer-POPCORN-POP-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "169-computer-POPCORN-POP-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "170-computer-POPCORN-POP-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "171-computer-POPCORN-POP-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "172-computer-POPCORN-POP-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "173-computer-POPCORN-POP-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "174-computer-POPCORN-POP-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "REEL_RUSH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "175-computer-REEL-RUSH-game-page.jpg",
+     "cut": [
+      "Reel Rush"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "176-computer-REEL-RUSH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "177-computer-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "178-computer-REEL-RUSH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "179-computer-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "180-computer-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-23s",
+     "file": "181-computer-REEL-RUSH-playing-23s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "182-computer-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "183-computer-REEL-RUSH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "184-computer-REEL-RUSH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "SNACK_CATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "185-computer-SNACK-CATCH-game-page.jpg",
+     "cut": [
+      "Snack Catch"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "186-computer-SNACK-CATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "187-computer-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-11s",
+     "file": "188-computer-SNACK-CATCH-playing-11s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "189-computer-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "190-computer-SNACK-CATCH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "191-computer-SNACK-CATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "192-computer-SNACK-CATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "USHER_DASH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "193-computer-USHER-DASH-game-page.jpg",
+     "cut": [
+      "Usher Dash"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "194-computer-USHER-DASH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "195-computer-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-11s",
+     "file": "196-computer-USHER-DASH-playing-11s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "197-computer-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "198-computer-USHER-DASH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "199-computer-USHER-DASH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "200-computer-USHER-DASH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "FILM_CAN_STACK",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "201-computer-FILM-CAN-STACK-game-page.jpg",
+     "cut": [
+      "Film Can Stack"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "202-computer-FILM-CAN-STACK-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "203-computer-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "204-computer-FILM-CAN-STACK-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "205-computer-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "206-computer-FILM-CAN-STACK-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "207-computer-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "208-computer-FILM-CAN-STACK-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "209-computer-FILM-CAN-STACK-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "MATINEE_MATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "210-computer-MATINEE-MATCH-game-page.jpg",
+     "cut": [
+      "Matinee Match"
+     ],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-2s",
+     "file": "211-computer-MATINEE-MATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "212-computer-MATINEE-MATCH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "213-computer-MATINEE-MATCH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "214-computer-MATINEE-MATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "215-computer-MATINEE-MATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "QUIZ",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "216-computer-QUIZ-game-page.jpg",
+     "cut": [
+      "Quiz night"
+     ],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "FAKE_PLOT",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "217-computer-FAKE-PLOT-game-page.jpg",
+     "cut": [
+      "Fake plot"
+     ],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "DRAW",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "218-computer-DRAW-game-page.jpg",
+     "cut": [
+      "Draw the movie"
+     ],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "CLOSEST",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "219-computer-CLOSEST-game-page.jpg",
+     "cut": [
+      "Closest wins"
+     ],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "computer",
+   "game": "CAPTION",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "220-computer-CAPTION-game-page.jpg",
+     "cut": [
+      "Caption this"
+     ],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "GAMES_PAGE",
+   "kind": "Games page",
+   "shots": [
+    {
+     "name": "games",
+     "file": "221-phone-GAMES-PAGE-games.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-1",
+     "file": "222-phone-GAMES-PAGE-games-scroll-1.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-2",
+     "file": "223-phone-GAMES-PAGE-games-scroll-2.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "games-scroll-3",
+     "file": "224-phone-GAMES-PAGE-games-scroll-3.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "SCENES",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "225-phone-SCENES-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Games (44x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "226-phone-SCENES-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Games (44x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "227-phone-SCENES-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "228-phone-SCENES-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Jungle Book under div.bg-gotyou",
+      "2 Caminandes: Llama Drama under div.bg-gotyou",
+      "3 Pioneer One under div.bg-gotyou",
+      "4 Caminandes: Llamigos under div.bg-gotyou",
+      "5 The Great St. Louis Bank Robbery under div.bg-runs",
+      "6 The Boy in the Plastic Bubble under div.bg-runs"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "229-phone-SCENES-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-14s",
+     "file": "230-phone-SCENES-playing-14s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 11 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "POSTER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "231-phone-POSTER-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Scene by scene (100x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "232-phone-POSTER-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Scene by scene (100x18)"
+     ]
+    },
+    {
+     "name": "run-over",
+     "file": "233-phone-POSTER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 The Boy in the Plastic Bubble under div.bg-gotyou",
+      "2 Jungle Book under div.bg-gotyou",
+      "3 Pioneer One under div.bg-gotyou",
+      "4 The Great St. Louis Bank Robbery under div.bg-gotyou",
+      "5 Sahara under div.bg-over",
+      "6 King Lear under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "234-phone-POSTER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "235-phone-POSTER-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "GRID",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "236-phone-GRID-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Poster puzzle (84x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "237-phone-GRID-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Poster puzzle (84x18)"
+     ]
+    },
+    {
+     "name": "message",
+     "file": "238-phone-GRID-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "239-phone-GRID-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Movie grid couldn't make a board from what's on Tower. Try again later. Back"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "TIMELINE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "240-phone-TIMELINE-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Movie grid (65x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "241-phone-TIMELINE-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Movie grid (65x18)"
+     ]
+    },
+    {
+     "name": "run-over",
+     "file": "242-phone-TIMELINE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "Here under div.bg-gotyou",
+      "Here under button.btn"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "243-phone-TIMELINE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-5s",
+     "file": "244-phone-TIMELINE-playing-5s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 1 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "ACTOR",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "245-phone-ACTOR-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Timeline (53x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "246-phone-ACTOR-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Timeline (53x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "247-phone-ACTOR-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "248-phone-ACTOR-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Glynnis O'Connor under div.bg-gotyou",
+      "2 Judith O'Dea under div.bg-gotyou",
+      "3 David J. Stewart under div.bg-over",
+      "4 Margaret Phillips under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "249-phone-ACTOR-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-16s",
+     "file": "250-phone-ACTOR-playing-16s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 12 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "QUOTE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "251-phone-QUOTE-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Who's that actor? (108x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "252-phone-QUOTE-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Who's that actor? (108x18)"
+     ]
+    },
+    {
+     "name": "message",
+     "file": "253-phone-QUOTE-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "254-phone-QUOTE-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Quote it needs a few well-known movies or shows on Tower (it found 0 famous lines). Back"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "ROLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "255-phone-ROLE-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Quote it (48x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "256-phone-ROLE-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Quote it (48x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "257-phone-ROLE-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "258-phone-ROLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Einar Gunn under div.bg-gotyou",
+      "2 Jack Haley under div.bg-gotyou",
+      "3 David J. Stewart under div.bg-runs",
+      "4 James Rich under div.bg-runs"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "259-phone-ROLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 7 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "BLITZ",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "260-phone-BLITZ-game-page.jpg",
+     "cut": [],
+     "covered": [
+      "Who played them? under button.nback"
+     ],
+     "small": [
+      "Who played them? (115x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "261-phone-BLITZ-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [
+      "Who played them? under button.nback"
+     ],
+     "small": [
+      "Who played them? (115x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "262-phone-BLITZ-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-15s",
+     "file": "263-phone-BLITZ-playing-15s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "264-phone-BLITZ-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ✓ True under div.bg-runs",
+      "2 ✗ False under div.bg-runs"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "265-phone-BLITZ-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "266-phone-BLITZ-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 27 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "SEASON",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "267-phone-SEASON-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "60-second blitz (97x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "268-phone-SEASON-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "60-second blitz (97x18)"
+     ]
+    },
+    {
+     "name": "message",
+     "file": "269-phone-SEASON-message.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-50s",
+     "file": "270-phone-SEASON-after-50s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "Not enough to play yet Which season? takes pictures on Tower. It arrives with Tower's next hourly update. Back"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "GUESS",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "271-phone-GUESS-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Which season? (95x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "272-phone-GUESS-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Which season? (95x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "273-phone-GUESS-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-14s",
+     "file": "274-phone-GUESS-playing-14s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "275-phone-GUESS-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 The Great St. Louis Bank Robbery under p.dim",
+      "2 Dracula under p.dim",
+      "3 Caminandes: Gran Dillama under div.bg-over",
+      "4 Night of the Living Dead under div.bg-over"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "276-phone-GUESS-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-33s",
+     "file": "277-phone-GUESS-playing-33s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 26 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "RIDDLE",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "278-phone-RIDDLE-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Guess the movie (104x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "279-phone-RIDDLE-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Guess the movie (104x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "280-phone-RIDDLE-playing-4s.jpg",
+     "cut": [],
+     "covered": [
+      "1 Night of the Living Dead under div.bg-big",
+      "2 Dracula under div.bg-big",
+      "3 Sahara under div.bg-end-l",
+      "4 Caminandes: Llamigos under div.bg-end-l",
+      "5 The Boy in the Plastic Bubble under button.btn"
+     ],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "281-phone-RIDDLE-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 Night of the Living Dead under div.bg-big",
+      "2 Dracula under div.bg-big",
+      "3 Sahara under div.bg-end-l",
+      "4 Caminandes: Llamigos under div.bg-end-l",
+      "5 The Boy in the Plastic Bubble under button.btn"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "282-phone-RIDDLE-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 4 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "HIGHER_LOWER",
+   "kind": "puzzle",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "283-phone-HIGHER-LOWER-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Movie riddle (76x18)"
+     ]
+    },
+    {
+     "name": "game-page-scrolled",
+     "file": "284-phone-HIGHER-LOWER-game-page-scrolled.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Movie riddle (76x18)"
+     ]
+    },
+    {
+     "name": "playing-4s",
+     "file": "285-phone-HIGHER-LOWER-playing-4s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "run-over",
+     "file": "286-phone-HIGHER-LOWER-run-over.jpg",
+     "cut": [],
+     "covered": [
+      "1 ▲ Higher under div.bg-gotyou",
+      "2 ▼ Lower under div.bg-gotyou"
+     ],
+     "small": []
+    },
+    {
+     "name": "play-again",
+     "file": "287-phone-HIGHER-LOWER-play-again.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": [
+    "a run ended after 5 s"
+   ]
+  },
+  {
+   "size": "phone",
+   "game": "POPCORN_POP",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "288-phone-POPCORN-POP-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Higher or Lower (100x18)"
+     ]
+    },
+    {
+     "name": "playing-2s",
+     "file": "289-phone-POPCORN-POP-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "290-phone-POPCORN-POP-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "291-phone-POPCORN-POP-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "292-phone-POPCORN-POP-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "293-phone-POPCORN-POP-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "REEL_RUSH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "294-phone-REEL-RUSH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Popcorn Pop (80x18)"
+     ]
+    },
+    {
+     "name": "playing-2s",
+     "file": "295-phone-REEL-RUSH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "296-phone-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "297-phone-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "298-phone-REEL-RUSH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "299-phone-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "300-phone-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "301-phone-REEL-RUSH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "302-phone-REEL-RUSH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "303-phone-REEL-RUSH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "304-phone-REEL-RUSH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "SNACK_CATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "305-phone-SNACK-CATCH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Reel Rush (61x18)"
+     ]
+    },
+    {
+     "name": "playing-2s",
+     "file": "306-phone-SNACK-CATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "307-phone-SNACK-CATCH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "308-phone-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "309-phone-SNACK-CATCH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "310-phone-SNACK-CATCH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "311-phone-SNACK-CATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "312-phone-SNACK-CATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "USHER_DASH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "313-phone-USHER-DASH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Snack Catch (78x18)"
+     ]
+    },
+    {
+     "name": "playing-2s",
+     "file": "314-phone-USHER-DASH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "315-phone-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "316-phone-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-12s",
+     "file": "317-phone-USHER-DASH-playing-12s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "318-phone-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "319-phone-USHER-DASH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "320-phone-USHER-DASH-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "321-phone-USHER-DASH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "322-phone-USHER-DASH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "FILM_CAN_STACK",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "323-phone-FILM-CAN-STACK-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Usher Dash (72x18)"
+     ]
+    },
+    {
+     "name": "game-over",
+     "file": "324-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-3s",
+     "file": "325-phone-FILM-CAN-STACK-playing-3s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "326-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "327-phone-FILM-CAN-STACK-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "328-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "329-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "330-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "331-phone-FILM-CAN-STACK-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "332-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "game-over",
+     "file": "333-phone-FILM-CAN-STACK-game-over.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "334-phone-FILM-CAN-STACK-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "335-phone-FILM-CAN-STACK-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "MATINEE_MATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "336-phone-MATINEE-MATCH-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Film Can Stack (91x18)"
+     ]
+    },
+    {
+     "name": "playing-2s",
+     "file": "337-phone-MATINEE-MATCH-playing-2s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-10s",
+     "file": "338-phone-MATINEE-MATCH-playing-10s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "playing-22s",
+     "file": "339-phone-MATINEE-MATCH-playing-22s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "after-30s",
+     "file": "340-phone-MATINEE-MATCH-after-30s.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    },
+    {
+     "name": "escape-pressed",
+     "file": "341-phone-MATINEE-MATCH-escape-pressed.jpg",
+     "cut": [],
+     "covered": [],
+     "small": []
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "QUIZ",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "342-phone-QUIZ-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Matinee Match (92x18)"
+     ]
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "FAKE_PLOT",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "343-phone-FAKE-PLOT-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Quiz night (62x18)"
+     ]
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "DRAW",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "344-phone-DRAW-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Fake plot (56x18)"
+     ]
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "CLOSEST",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "345-phone-CLOSEST-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Draw the movie (96x18)"
+     ]
+    }
+   ],
+   "notes": []
+  },
+  {
+   "size": "phone",
+   "game": "CAPTION",
+   "kind": "party page",
+   "shots": [
+    {
+     "name": "game-page",
+     "file": "346-phone-CAPTION-game-page.jpg",
+     "cut": [],
+     "covered": [],
+     "small": [
+      "Closest wins (79x18)"
+     ]
+    }
+   ],
+   "notes": []
+  }
+ ],
+ "problems": [
+  {
+   "size": "tv",
+   "game": "GAMES_PAGE",
+   "type": "words cut off",
+   "text": "games: Guess the movie or show from a still picture taken from it. "
+  },
+  {
+   "size": "tv",
+   "game": "GAMES_PAGE",
+   "type": "button covered",
+   "text": "games-scroll-1: Who's that actor? under button.arrow"
+  },
+  {
+   "size": "tv",
+   "game": "GAMES_PAGE",
+   "type": "button covered",
+   "text": "games-scroll-2: Film Can Stack under button.arrow"
+  },
+  {
+   "size": "tv",
+   "game": "GAMES_PAGE",
+   "type": "button covered",
+   "text": "games-scroll-3: Film Can Stack under button.arrow"
+  },
+  {
+   "size": "tv",
+   "game": "SCENES",
+   "type": "words cut off",
+   "text": "game-page: Guess the movie or show from a still picture taken from it. "
+  },
+  {
+   "size": "tv",
+   "game": "SCENES",
+   "type": "button covered",
+   "text": "run-over: 1 The Boy in the Plastic Bubble under div.bg-over | 2 Caminandes: Llama Drama under div.bg-gotyou | 3 The Great St. Louis Bank Robbery under div.bg-over | 4 Caminandes: Gran Dillama under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "POSTER",
+   "type": "words cut off",
+   "text": "game-page: A poster hides under 16 tiles that flip away one by one, but"
+  },
+  {
+   "size": "tv",
+   "game": "POSTER",
+   "type": "button covered",
+   "text": "run-over: 1 Caminandes: Llama Drama under div.bg-over | 2 King Lear under button.btn | 3 Dracula under div.bg-over | 4 Jungle Book under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "GRID",
+   "type": "words cut off",
+   "text": "game-page: Every square needs a movie or show from Tower that fits its "
+  },
+  {
+   "size": "tv",
+   "game": "TIMELINE",
+   "type": "words cut off",
+   "text": "game-page: Posters arrive one at a time. Slot each one into the right p"
+  },
+  {
+   "size": "tv",
+   "game": "TIMELINE",
+   "type": "button covered",
+   "text": "playing-4s: Here under div.bg-card | Here under div.bg-gotyou | Here under div.bg-end-r"
+  },
+  {
+   "size": "tv",
+   "game": "TIMELINE",
+   "type": "button covered",
+   "text": "run-over: Here under div.bg-card | Here under div.bg-gotyou | Here under div.bg-end-r"
+  },
+  {
+   "size": "tv",
+   "game": "ACTOR",
+   "type": "button covered",
+   "text": "run-over: 1 Margaret Phillips under div.bg-over | 2 Arnold Moss under div.bg-gotyou | 3 Judith O'Dea under div.bg-over | 4 Bruce Bennett under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "QUOTE",
+   "type": "words cut off",
+   "text": "game-page: A famous line from a movie or show on Tower. Name where it's"
+  },
+  {
+   "size": "tv",
+   "game": "ROLE",
+   "type": "words cut off",
+   "text": "game-page: You get a character and the movie they're in. Pick the actor"
+  },
+  {
+   "size": "tv",
+   "game": "ROLE",
+   "type": "button covered",
+   "text": "run-over: 1 Margaret Phillips under div.bg-over | 2 David J. Stewart under button.btn | 3 Arnold Moss under button.btn | 4 Orson Welles under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "BLITZ",
+   "type": "words cut off",
+   "text": "game-page: True or false lines about what's on Tower. Answer as many as"
+  },
+  {
+   "size": "tv",
+   "game": "BLITZ",
+   "type": "button covered",
+   "text": "run-over: 1 ✓ True under div.bg-end-l | 2 ✗ False under div.bg-runs"
+  },
+  {
+   "size": "tv",
+   "game": "GUESS",
+   "type": "button covered",
+   "text": "run-over: 1 Dracula under div.bg-over | 2 Caminandes: Llamigos under div.bg-over | 3 Jungle Book under div.bg-over | 4 Night of the Living Dead under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "RIDDLE",
+   "type": "words cut off",
+   "text": "game-page: Guess the movie from its clues. Clues get easier as the cloc"
+  },
+  {
+   "size": "tv",
+   "game": "RIDDLE",
+   "type": "button covered",
+   "text": "run-over: 1 The Boy in the Plastic Bubble under div.bg-over | 2 Jungle Book under div.bg-end-l | 3 Night of the Living Dead under div.bg-over | 4 The Great Train Robbery under div.bg-over"
+  },
+  {
+   "size": "tv",
+   "game": "HIGHER_LOWER",
+   "type": "button covered",
+   "text": "run-over: 1 ▲ Later under div.bg-over | 2 ▼ Earlier under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "GAMES_PAGE",
+   "type": "words cut off",
+   "text": "games: Guess the movie or show from a still picture taken from it. "
+  },
+  {
+   "size": "computer",
+   "game": "SCENES",
+   "type": "words cut off",
+   "text": "game-page: Scene by scene"
+  },
+  {
+   "size": "computer",
+   "game": "SCENES",
+   "type": "button covered",
+   "text": "run-over: 1 Pioneer One under div.bg-card | 2 Sahara under div.bg-card | 3 Caminandes: Llamigos under div.bg-card | 4 The Boy in the Plastic Bubble under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "POSTER",
+   "type": "words cut off",
+   "text": "game-page: Poster puzzle"
+  },
+  {
+   "size": "computer",
+   "game": "POSTER",
+   "type": "button covered",
+   "text": "playing-4s: 1 Caminandes: Llama Drama under div.bg-gotyou | 2 The Boy in the Plastic Bubble under div.bg-end-r | 3 Caminandes: Llamigos under div.bg-end-r | 4 Dracula under div.bg-gotyou"
+  },
+  {
+   "size": "computer",
+   "game": "POSTER",
+   "type": "button covered",
+   "text": "run-over: 1 Caminandes: Llama Drama under div.bg-gotyou | 2 The Boy in the Plastic Bubble under div.bg-end-r | 3 Caminandes: Llamigos under div.bg-end-r | 4 Dracula under div.bg-gotyou"
+  },
+  {
+   "size": "computer",
+   "game": "GRID",
+   "type": "words cut off",
+   "text": "game-page: Movie grid"
+  },
+  {
+   "size": "computer",
+   "game": "TIMELINE",
+   "type": "words cut off",
+   "text": "game-page: Timeline"
+  },
+  {
+   "size": "computer",
+   "game": "TIMELINE",
+   "type": "words cut off",
+   "text": "run-over: The Great St. Louis Bank Robbery"
+  },
+  {
+   "size": "computer",
+   "game": "TIMELINE",
+   "type": "button covered",
+   "text": "run-over: Here under div.bg-card | Here under div.bg-gotyou"
+  },
+  {
+   "size": "computer",
+   "game": "ACTOR",
+   "type": "words cut off",
+   "text": "game-page: Who's that actor?"
+  },
+  {
+   "size": "computer",
+   "game": "ACTOR",
+   "type": "button covered",
+   "text": "playing-4s: 1 Orson Welles under div.bg-over | 2 Alan Badel under div.bg-gotyou | 3 Rex Ingram under div.bg-over | 4 Humphrey Bogart under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "ACTOR",
+   "type": "button covered",
+   "text": "run-over: 1 Orson Welles under div.bg-over | 2 Alan Badel under div.bg-gotyou | 3 Rex Ingram under div.bg-over | 4 Humphrey Bogart under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "ACTOR",
+   "type": "button covered",
+   "text": "playing-14s: 1 Jack Haley under div.bg-over | 2 Natasha Parry under div.bg-gotyou | 3 John Travolta under div.bg-over | 4 Rex Ingram under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "QUOTE",
+   "type": "words cut off",
+   "text": "game-page: Quote it"
+  },
+  {
+   "size": "computer",
+   "game": "ROLE",
+   "type": "words cut off",
+   "text": "game-page: Who played them?"
+  },
+  {
+   "size": "computer",
+   "game": "ROLE",
+   "type": "button covered",
+   "text": "run-over: 1 David J. Stewart under div.bg-over | 2 Humphrey Bogart under div.bg-end-l | 3 Ralph Byrd under div.bg-end-l | 4 Sabu under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "BLITZ",
+   "type": "words cut off",
+   "text": "game-page: 60-second blitz"
+  },
+  {
+   "size": "computer",
+   "game": "BLITZ",
+   "type": "button covered",
+   "text": "run-over: 1 ✓ True under button.btn | 2 ✗ False under div.bg-runs"
+  },
+  {
+   "size": "computer",
+   "game": "SEASON",
+   "type": "words cut off",
+   "text": "game-page: Which season?"
+  },
+  {
+   "size": "computer",
+   "game": "GUESS",
+   "type": "words cut off",
+   "text": "game-page: Guess the movie"
+  },
+  {
+   "size": "computer",
+   "game": "GUESS",
+   "type": "button covered",
+   "text": "run-over: 1 The Boy in the Plastic Bubble under div.bg-over | 2 The Great Train Robbery under div.bg-over | 3 Caminandes: Llama Drama under div.bg-over | 4 Caminandes: Llamigos under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "RIDDLE",
+   "type": "words cut off",
+   "text": "game-page: Movie riddle"
+  },
+  {
+   "size": "computer",
+   "game": "RIDDLE",
+   "type": "button covered",
+   "text": "playing-4s: 1 Jungle Book under div.bg-over | 2 Night of the Living Dead under div.bg-big | 3 Dracula under div.bg-over | 4 Caminandes: Gran Dillama under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "RIDDLE",
+   "type": "button covered",
+   "text": "run-over: 1 Jungle Book under div.bg-over | 2 Night of the Living Dead under div.bg-big | 3 Dracula under div.bg-over | 4 Caminandes: Gran Dillama under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "HIGHER_LOWER",
+   "type": "words cut off",
+   "text": "game-page: Higher or Lower"
+  },
+  {
+   "size": "computer",
+   "game": "HIGHER_LOWER",
+   "type": "button covered",
+   "text": "run-over: 1 ▲ Longer under div.bg-over | 2 ▼ Shorter under div.bg-over"
+  },
+  {
+   "size": "computer",
+   "game": "POPCORN_POP",
+   "type": "words cut off",
+   "text": "game-page: Popcorn Pop"
+  },
+  {
+   "size": "computer",
+   "game": "REEL_RUSH",
+   "type": "words cut off",
+   "text": "game-page: Reel Rush"
+  },
+  {
+   "size": "computer",
+   "game": "SNACK_CATCH",
+   "type": "words cut off",
+   "text": "game-page: Snack Catch"
+  },
+  {
+   "size": "computer",
+   "game": "USHER_DASH",
+   "type": "words cut off",
+   "text": "game-page: Usher Dash"
+  },
+  {
+   "size": "computer",
+   "game": "FILM_CAN_STACK",
+   "type": "words cut off",
+   "text": "game-page: Film Can Stack"
+  },
+  {
+   "size": "computer",
+   "game": "MATINEE_MATCH",
+   "type": "words cut off",
+   "text": "game-page: Matinee Match"
+  },
+  {
+   "size": "computer",
+   "game": "QUIZ",
+   "type": "words cut off",
+   "text": "game-page: Quiz night"
+  },
+  {
+   "size": "computer",
+   "game": "FAKE_PLOT",
+   "type": "words cut off",
+   "text": "game-page: Fake plot"
+  },
+  {
+   "size": "computer",
+   "game": "DRAW",
+   "type": "words cut off",
+   "text": "game-page: Draw the movie"
+  },
+  {
+   "size": "computer",
+   "game": "CLOSEST",
+   "type": "words cut off",
+   "text": "game-page: Closest wins"
+  },
+  {
+   "size": "computer",
+   "game": "CAPTION",
+   "type": "words cut off",
+   "text": "game-page: Caption this"
+  },
+  {
+   "size": "phone",
+   "game": "SCENES",
+   "type": "button covered",
+   "text": "run-over: 1 Jungle Book under div.bg-gotyou | 2 Caminandes: Llama Drama under div.bg-gotyou | 3 Pioneer One under div.bg-gotyou | 4 Caminandes: Llamigos under div.bg-gotyou"
+  },
+  {
+   "size": "phone",
+   "game": "POSTER",
+   "type": "button covered",
+   "text": "run-over: 1 The Boy in the Plastic Bubble under div.bg-gotyou | 2 Jungle Book under div.bg-gotyou | 3 Pioneer One under div.bg-gotyou | 4 The Great St. Louis Bank Robbery under div.bg-gotyou"
+  },
+  {
+   "size": "phone",
+   "game": "TIMELINE",
+   "type": "button covered",
+   "text": "run-over: Here under div.bg-gotyou | Here under button.btn"
+  },
+  {
+   "size": "phone",
+   "game": "ACTOR",
+   "type": "button covered",
+   "text": "run-over: 1 Glynnis O'Connor under div.bg-gotyou | 2 Judith O'Dea under div.bg-gotyou | 3 David J. Stewart under div.bg-over | 4 Margaret Phillips under div.bg-over"
+  },
+  {
+   "size": "phone",
+   "game": "ROLE",
+   "type": "button covered",
+   "text": "run-over: 1 Einar Gunn under div.bg-gotyou | 2 Jack Haley under div.bg-gotyou | 3 David J. Stewart under div.bg-runs | 4 James Rich under div.bg-runs"
+  },
+  {
+   "size": "phone",
+   "game": "BLITZ",
+   "type": "button covered",
+   "text": "game-page: Who played them? under button.nback"
+  },
+  {
+   "size": "phone",
+   "game": "BLITZ",
+   "type": "button covered",
+   "text": "game-page-scrolled: Who played them? under button.nback"
+  },
+  {
+   "size": "phone",
+   "game": "BLITZ",
+   "type": "button covered",
+   "text": "run-over: 1 ✓ True under div.bg-runs | 2 ✗ False under div.bg-runs"
+  },
+  {
+   "size": "phone",
+   "game": "GUESS",
+   "type": "button covered",
+   "text": "run-over: 1 The Great St. Louis Bank Robbery under p.dim | 2 Dracula under p.dim | 3 Caminandes: Gran Dillama under div.bg-over | 4 Night of the Living Dead under div.bg-over"
+  },
+  {
+   "size": "phone",
+   "game": "RIDDLE",
+   "type": "button covered",
+   "text": "playing-4s: 1 Night of the Living Dead under div.bg-big | 2 Dracula under div.bg-big | 3 Sahara under div.bg-end-l | 4 Caminandes: Llamigos under div.bg-end-l"
+  },
+  {
+   "size": "phone",
+   "game": "RIDDLE",
+   "type": "button covered",
+   "text": "run-over: 1 Night of the Living Dead under div.bg-big | 2 Dracula under div.bg-big | 3 Sahara under div.bg-end-l | 4 Caminandes: Llamigos under div.bg-end-l"
+  },
+  {
+   "size": "phone",
+   "game": "HIGHER_LOWER",
+   "type": "button covered",
+   "text": "run-over: 1 ▲ Higher under div.bg-gotyou | 2 ▼ Lower under div.bg-gotyou"
+  }
+ ]
+}

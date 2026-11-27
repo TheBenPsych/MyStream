@@ -1,0 +1,229 @@
+{
+ "mode": "tv",
+ "games": [
+  {
+   "game": "DRAW",
+   "kind": "party, 3 phones",
+   "shots": [
+    {
+     "n": 3,
+     "name": "game-page",
+     "file": [
+      "003-draw-game-page.png"
+     ]
+    },
+    {
+     "n": 4,
+     "name": "lobby-with-phones",
+     "file": [
+      "004-draw-lobby-with-phones.png"
+     ]
+    },
+    {
+     "n": 5,
+     "name": "tv-you-re-drawing--1",
+     "file": [
+      "005-draw-tv-you-re-drawing-1.png"
+     ]
+    },
+    {
+     "n": 6,
+     "name": "tv-drawing-on-screen-1",
+     "file": [
+      "006-draw-tv-drawing-on-screen-1.png"
+     ]
+    },
+    {
+     "n": 7,
+     "name": "tv-answer-1",
+     "file": [
+      "007-draw-tv-answer-1.png"
+     ]
+    },
+    {
+     "n": 8,
+     "name": "tv-round-2-of-3-2",
+     "file": [
+      "008-draw-tv-round-2-of-3-2.png"
+     ]
+    },
+    {
+     "n": 9,
+     "name": "tv-drawing-on-screen-2",
+     "file": [
+      "009-draw-tv-drawing-on-screen-2.png"
+     ]
+    },
+    {
+     "n": 10,
+     "name": "tv-answer-2",
+     "file": [
+      "010-draw-tv-answer-2.png"
+     ]
+    },
+    {
+     "n": 11,
+     "name": "tv-game-over-0",
+     "file": [
+      "011-draw-tv-game-over-0.png"
+     ]
+    },
+    {
+     "n": 12,
+     "name": "tv-game-over",
+     "file": [
+      "012-draw-tv-game-over.png"
+     ]
+    },
+    {
+     "n": 13,
+     "name": "tv-back-to-players",
+     "file": [
+      "013-draw-tv-back-to-players.png"
+     ]
+    }
+   ],
+   "notes": [
+    "3 of 3 phone names showed on the TV; 3 phones got the TV's screen",
+    "Cy's phone left in round 1",
+    "seconds per round: [36.7]"
+   ]
+  },
+  {
+   "game": "SNACK_CATCH",
+   "kind": "arcade",
+   "shots": [
+    {
+     "n": 14,
+     "name": "game-page",
+     "file": [
+      "014-snack-catch-game-page.png"
+     ]
+    },
+    {
+     "n": 15,
+     "name": "playing-2s",
+     "file": [
+      "015-snack-catch-playing-2s.png"
+     ]
+    },
+    {
+     "n": 16,
+     "name": "playing-10s",
+     "file": [
+      "016-snack-catch-playing-10s.png"
+     ]
+    },
+    {
+     "n": 17,
+     "name": "playing-22s",
+     "file": [
+      "017-snack-catch-playing-22s.png"
+     ]
+    },
+    {
+     "n": 18,
+     "name": "after-30s",
+     "file": [
+      "018-snack-catch-after-30s.png"
+     ]
+    },
+    {
+     "n": 19,
+     "name": "back-pressed",
+     "file": [
+      "019-snack-catch-back-pressed.png"
+     ]
+    }
+   ],
+   "notes": []
+  },
+  {
+   "game": "EMBER",
+   "kind": "adventure",
+   "shots": [
+    {
+     "n": 20,
+     "name": "title",
+     "file": [
+      "020-ember-title.png"
+     ]
+    },
+    {
+     "n": 21,
+     "name": "phones-lobby",
+     "file": [
+      "021-ember-phones-lobby.png"
+     ]
+    },
+    {
+     "n": 22,
+     "name": "setup-1",
+     "file": [
+      "022-ember-setup-1.png"
+     ]
+    },
+    {
+     "n": 23,
+     "name": "setup-2",
+     "file": [
+      "023-ember-setup-2.png"
+     ]
+    },
+    {
+     "n": 24,
+     "name": "setup-3",
+     "file": [
+      "024-ember-setup-3.png"
+     ]
+    },
+    {
+     "n": 25,
+     "name": "setup-4",
+     "file": [
+      "025-ember-setup-4.png"
+     ]
+    },
+    {
+     "n": 26,
+     "name": "road-0",
+     "file": [
+      "026-ember-road-0.png"
+     ]
+    },
+    {
+     "n": 27,
+     "name": "road-3",
+     "file": [
+      "027-ember-road-3.png"
+     ]
+    },
+    {
+     "n": 28,
+     "name": "road-6",
+     "file": [
+      "028-ember-road-6.png"
+     ]
+    },
+    {
+     "n": 29,
+     "name": "road-9",
+     "file": [
+      "029-ember-road-9.png"
+     ]
+    },
+    {
+     "n": 30,
+     "name": "menu",
+     "file": [
+      "030-ember-menu.png"
+     ]
+    }
+   ],
+   "notes": []
+  }
+ ],
+ "problems": [],
+ "crashes": [],
+ "remote": []
+}

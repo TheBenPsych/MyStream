@@ -1,0 +1,12 @@
+  [310,157][771,228] Draw the movie
+  [112,262][968,316] Round 1 of 3  ·  67 s  ·  0 of 2 answered
+  [337,350][743,410] Ana is drawing…
+  [223,1087][435,1141] A  Sahara
+  [528,1087][858,1141] B  Pioneer One
+  [240,1206][841,1260] C  The Great Train Robbery
+  [140,1325][941,1379] D  The Great St. Louis Bank Robbery
+  [85,1444][351,1498] E  King Lear
+  [444,1444][996,1498] F  Caminandes: Llamigos
+  [346,1567][425,1614] Ana
+  [513,1567][591,1614] Ben
+  [679,1567][735,1614] Cy

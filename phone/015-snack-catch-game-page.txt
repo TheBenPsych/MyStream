@@ -1,0 +1,19 @@
+  [336,219][745,832] Snack Catch
+  [39,898][373,934] GLOWFIN ARCADE
+  [39,968][411,1039] Snack Catch
+  [68,1083][209,1128] 1 player
+  [287,1083][754,1128] Remote or Android phone
+  [68,1168][289,1213] About 2 min
+  [39,1257][1041,1356] Catch the falling snacks in your popcorn bucket. Watch out for spilled sodas!
+* [39,1380][247,1498] 
+  [78,1416][208,1463] ▶ Play
+  [88,1561][321,1600] HOW TO PLAY
+  [88,1625][824,1678] 1.  Remote or controller: ◀ ▶ to move
+  [88,1703][707,1750] 2.  Phone: hold left or right side
+  [88,1862][331,1901] LEADERBOARD
+  [88,1926][614,1973] No scores yet. Be the first!
+  [88,1998][811,2045] Your best
+  [811,1998][992,2045] None yet
+  [88,2070][429,2109] Ranked by best score
+  [88,2221][254,2260] SETTINGS
+  [88,2285][992,2337] Remote or controller: ◀ ▶ to move · Phone: hold left or right side

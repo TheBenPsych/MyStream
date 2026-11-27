@@ -1,0 +1,12 @@
+  [765,56][1156,116] Draw the movie
+  [669,139][1252,176] Round 1 of 3  ·  67 s  ·  0 of 2 answered
+  [783,199][1137,252] Ana is drawing…
+  [392,818][870,855] A  The Boy in the Plastic Bubble
+  [933,818][1087,855] B  Dracula
+  [1151,818][1528,855] C  Caminandes: Llamigos
+  [494,898][678,935] D  King Lear
+  [741,898][1141,935] E  Night of the Living Dead
+  [1204,898][1426,935] F  Pioneer One
+  [828,982][882,1014] Ana
+  [942,982][994,1014] Ben
+  [1054,982][1092,1014] Cy

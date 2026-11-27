@@ -1,0 +1,25 @@
+  [311,167][769,238] Who's coming?
+  [446,272][634,313] Step 1 of 4
+  [39,347][1041,578] Your family is the party (up to 4 people). Select a name to type a new one. Press the folk button (Human, Elf, Dwarf, Fox folk) to change it. Roll gives a new look, skill and trait but keeps the name. The first person leads the party.
+  [232,649][665,766] demo
+  [207,757][638,799] ★ Leader · Healer · Clumsy
+  [754,654][891,701] Human
+  [754,762][825,809] Roll
+  [927,761][963,814] ✕
+  [232,937][665,1054] Thalion
+  [207,1045][439,1084] Ranger · Brave
+  [761,940][812,987] Elf
+  [754,1048][825,1095] Roll
+  [927,1047][963,1100] ✕
+  [232,1223][665,1340] Durgan
+  [207,1331][425,1370] Bard · Greedy
+  [754,1226][870,1273] Dwarf
+  [754,1334][825,1381] Roll
+  [927,1333][963,1386] ✕
+  [232,1509][665,1626] Bea
+  [207,1617][560,1656] Merchant · Good cook
+  [754,1512][891,1559] Human
+  [754,1620][825,1667] Roll
+  [927,1619][963,1672] ✕
+  [367,1782][501,1829] Cancel
+  [608,1781][714,1837] Next

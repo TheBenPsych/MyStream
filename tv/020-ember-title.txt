@@ -1,0 +1,12 @@
+  [386,296][748,368] Ember Road
+  [294,368][840,404] Carry the dragon egg to Ember Peak
+  [1133,296][1519,342] Continue the journey
+  [1133,342][1465,373] Day 2 in Hearthvale Fields
+  [1133,526][1337,565] Endings 0/12
+  [1502,526][1742,565] Creatures 0/20
+  [1133,621][1300,698] How to play
+  [1380,622][1535,661] Music: on
+  [1626,622][1792,661] Old TV: off
+  [1101,734][1824,805] Psst… Ember Road works really well on a phone too. Phones can join this game from Games on Glowfin.
+* [1101,401][1824,497] 
+  [1133,430][1533,469] New journey (starts over)

@@ -1,0 +1,11 @@
+  [310,157][771,228] Draw the movie
+  [111,262][969,316] Round 2 of 3  ·  65 s  ·  0 of 1 answered
+  [338,350][743,410] Ben is drawing…
+  [274,1087][486,1141] A  Sahara
+  [579,1087][807,1141] B  Dracula
+  [192,1206][525,1260] C  Jungle Book
+  [618,1206][890,1260] D  King Lear
+  [243,1325][838,1379] E  The Great Train Robbery
+  [143,1444][938,1498] F  The Great St. Louis Bank Robbery
+  [418,1567][497,1614] Ana
+  [585,1567][663,1614] Ben

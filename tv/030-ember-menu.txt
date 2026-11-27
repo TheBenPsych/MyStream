@@ -1,0 +1,32 @@
+  [92,48][432,82] The Ironroot Mountains
+  [1116,52][1120,89] demo ★
+  [1116,89][1120,113] Healer · Picky eater
+  [1116,127][1120,160] Ketta
+  [1116,160][1120,183] Bard · Afraid of spiders
+  [1112,207][1120,239] Hoot
+  [1061,286][1104,310] DAY
+  [1061,310][1086,356] 5
+  [1061,356][1120,380] spring
+  [1061,409][1120,432] EGG WARMTH
+  [1061,432][1120,478] 8/10
+  [1061,478][1120,502] hatches ~32d
+  [100,577][602,628] The Ironroot Mountains
+  [100,644][996,744] High passes and the great stone gates of the dwarf kingdom.
+  [1096,593][1120,639] Keep going
+  [1096,639][1120,670] Travel one day down the road
+  [1096,716][1120,762] Make camp
+  [1096,762][1120,793] Rest a day: heals, warms the egg, calms magic
+  [1096,839][1120,885] Pace: steady
+  [1096,885][1120,916] Normal speed. Press to change
+  [1096,962][1349,984] Food: normal
+  [1160,40][1522,112] Ember Road
+  [1192,245][1398,284] Bag & journal
+  [1192,340][1593,379] Watch a show on the side
+  [1192,379][1644,410] It plays in the corner while you play
+  [1192,467][1347,506] Music: on
+  [1192,563][1433,602] Old TV look: off
+  [1192,659][1562,698] Save and go to the start
+  [1192,755][1624,794] Save and leave Ember Road
+  [1160,830][1880,899] The journey saves by itself, and you can carry on from another TV or phone.
+* [1160,120][1880,216] 
+  [1192,149][1462,188] Back to the game

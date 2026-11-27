@@ -1,0 +1,6 @@
+  [628,56][1292,128] Playing on the couch?
+  [160,156][1760,360] Everyone can join from their phone: open Glowfin on the phone, go to Games, pick Ember Road and then "Join the TV's game". When something happens on the road, every phone and the TV votes (a tie goes to the TV). Other buttons, like Keep going or Make camp, work straight away for whoever presses first. Phones can also type commands and play the mini-games, and they can join later too.
+  [746,388][1175,437] Waiting for phones…
+  [1118,486][1196,525] Back
+* [692,460][1062,556] 
+  [724,485][1030,531] Skip, just the TV
