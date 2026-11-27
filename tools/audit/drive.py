@@ -913,7 +913,7 @@ def find_scrolling(pattern, tries=8):
         n = find(root, pattern)
         if n is not None:
             a, b, c, d = bounds(n)
-            if MODE == "tv" or (b > 100 and d < 2200):
+            if MODE == "tv" or (b > 100 and d < 2330):
                 return n
         if MODE == "tv":
             return n

@@ -353,6 +353,11 @@ def act(p, v, game):
         p.send(f"TYPE {words}")
         p.sent[key] = time.time()
     elif actions:
+        if game == "DRAW":
+            # give the drawer time to draw (and the robot time to picture the TV board) before guessing
+            first = p.sent.setdefault(("seen",) + key, time.time())
+            if time.time() - first < 12:
+                return
         p.send(f"DO {random.choice(actions)['id']}")
         p.sent[key] = time.time()
 
@@ -423,11 +428,14 @@ def play_party(game, players, drop_at=None, late_join=None):
             shots_taken += 1
             time.sleep(0.8)
             shot(f"tv-{re.sub(r'[^a-z0-9]+', '-', title.lower())[:24]}-{rnd}")
-            if game == "DRAW" and 0 < rnd < 100 and title != "Answer":
-                draw_shot_at = time.time() + 6
             with open(f"{OUT}/{game.lower()}-phone-views.jsonl", "a") as f:
                 for p, v in views:
                     f.write(json.dumps({"phone": p.name, "at": f"{title} {rnd}", "view": v}) + "\n")
+        if game == "DRAW":
+            drawer = next((v for _, v in views if v and v.get("input") == "draw"), None)
+            if drawer and (drawer.get("round"), drawer.get("secret")) not in seen_keys:
+                seen_keys.add((drawer.get("round"), drawer.get("secret")))
+                draw_shot_at = time.time() + 7
         if draw_shot_at and time.time() > draw_shot_at:
             draw_shot_at = None
             shot(f"tv-drawing-on-screen-{rnd}")
