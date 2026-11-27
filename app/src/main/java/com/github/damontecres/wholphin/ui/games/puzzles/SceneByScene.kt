@@ -258,7 +258,7 @@ fun SceneBySceneScreen(
             }
 
             is SceneState.NotEnough -> {
-                PuzzleOver("Scene by scene", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("Scene by scene", s.message, isTv, viewModel::start)
             }
 
             is SceneState.Over -> {

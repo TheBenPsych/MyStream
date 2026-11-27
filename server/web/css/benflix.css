@@ -1836,7 +1836,8 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 .bg-runs i { font-style: normal; font-size: 12px; padding: 6px; text-align: center; }
 .bg-runs em { position: absolute; top: 5px; right: 5px; font-style: normal; font-size: 12px; font-weight: 800; color: #46D37A; background: rgba(0,0,0,.75); border-radius: 99px; padding: 2px 7px; }
 @media (max-width: 700px) {
-  .bgq-head { flex-wrap: wrap; } .bgq-head span { justify-content: flex-start; }
+  .bgq-head { flex-wrap: wrap; } .bgq-head span { justify-content: flex-start; flex-basis: 100%; }
+  .bgq-head b { flex: 1 1 auto; white-space: normal; overflow: visible; }
   .bg-hls { flex-direction: column; }
   .bg-hl { flex-direction: row; padding: 12px; gap: 12px; }
   .bg-hl .p { width: 78px; flex: none; }
@@ -3216,3 +3217,11 @@ body.nav-on.rail-push #page .top .clock { transform: translateX(calc(var(--nrail
    because the button row sat 4px under the bar and Play was pulled up 4px with a 5px ring round it. */
 .player .p4 .row2.p1row.nl4 { margin-top: 16px; }
 .player .p4 .nl4 .pbtn.play { margin-top: 0; }
+/* Short screens (a TV at 960x540, a laptop with the browser bars): the picture gets smaller so every
+   answer fits on the screen without scrolling (games robot, 2026-11-26) */
+@media (max-height: 620px) and (min-width: 701px) {
+  .bgq-pic.wide { max-height: 33vh; }
+  .bgq-pic.tall { height: 30vh; }
+  .bg-thumbs span { width: 46px; }
+  .bg-face img { aspect-ratio: 1; }
+}

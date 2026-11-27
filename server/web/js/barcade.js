@@ -573,10 +573,18 @@
       document.removeEventListener("keydown", onKey); document.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("pointerup", up); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("blur", pause);
     });
-    // The how-to line under the game for a few seconds
-    const how = document.createElement("div");
-    how.className = "bg-how"; how.textContent = ctx.game.how;
-    ctx.stage.appendChild(how);
-    setTimeout(() => how.classList.add("gone"), 5000);
+    // The how-to line under the game for a few seconds, the first time only (on Play again it sat over
+    // the bucket and the runner while you played: games robot, 2026-11-26). Gone at the first press too.
+    const seen = B.bgHowSeen || (B.bgHowSeen = {});
+    if (!seen[ctx.game.key]) {
+      seen[ctx.game.key] = true;
+      const how = document.createElement("div");
+      how.className = "bg-how"; how.textContent = ctx.game.how;
+      ctx.stage.appendChild(how);
+      const hide = () => how.classList.add("gone");
+      setTimeout(hide, 5000);
+      document.addEventListener("keydown", hide, { once: true });
+      ctx.stage.addEventListener("pointerdown", hide, { once: true });
+    }
   };
 })();

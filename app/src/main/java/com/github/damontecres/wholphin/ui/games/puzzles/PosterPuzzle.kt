@@ -221,7 +221,7 @@ fun PosterPuzzleScreen(
             }
 
             is PosterState.NotEnough -> {
-                PuzzleOver("Poster puzzle", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("Poster puzzle", s.message, isTv, viewModel::start)
             }
 
             is PosterState.Over -> {

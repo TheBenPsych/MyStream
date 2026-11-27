@@ -438,6 +438,7 @@ private fun RoundContent(
                     Text(
                         text = (if (round.kind == ClueKind.PLOT) "“${round.text}”" else round.text),
                         fontSize = if (isTv) 24.sp else 19.sp,
+                        lineHeight = if (isTv) 32.sp else 26.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
                     )
@@ -520,7 +521,7 @@ private fun EndCard(
         modifier = Modifier.padding(top = 24.dp),
     ) {
         Text(title, fontFamily = BenflixFont, fontWeight = FontWeight.Bold, fontSize = BenflixType.pageTitle, color = Color.White)
-        Text(body, fontSize = 20.sp, color = BenflixColors.Soft, textAlign = TextAlign.Center)
+        Text(body, fontSize = 20.sp, lineHeight = 28.sp, color = BenflixColors.Soft, textAlign = TextAlign.Center)
         Button(onClick = onClick, modifier = Modifier.focusRequester(focus), scale = ButtonDefaults.scale(focusedScale = 1f)) {
             Text(button)
         }

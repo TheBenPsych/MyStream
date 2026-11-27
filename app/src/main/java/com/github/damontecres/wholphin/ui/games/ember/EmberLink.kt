@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
+import com.github.damontecres.wholphin.BuildConfig
 import kotlinx.serialization.Serializable
 import timber.log.Timber
 import java.net.DatagramPacket
@@ -132,6 +133,8 @@ class EmberLinkHost(
                 }
             socket = s
             running = true
+            // The games robot reads this line to find the TV's port for its pretend phones
+            Timber.i("Phone link for %s is on port %d", label, s.localPort)
             val info =
                 NsdServiceInfo().apply {
                     serviceName = "$label on ${Build.MODEL}".take(60)
@@ -273,6 +276,20 @@ data class FoundEmberTv(
     val port: Int,
 )
 
+/**
+ * Test robot only (debug builds): a pretend phone can't find a TV on the Wi-Fi, so the robot gives it
+ * the address of its own pretend TV to join straight away.
+ */
+object RobotLink {
+    @Volatile var tv: FoundEmberTv? = null
+
+    fun use(address: String) {
+        val host = address.substringBeforeLast(':')
+        val port = address.substringAfterLast(':').toIntOrNull() ?: return
+        tv = runCatching { FoundEmberTv("Robot TV", InetAddress.getByName(host), port) }.getOrNull()
+    }
+}
+
 /** The phone side: finds the TV, joins, and passes on button presses and typing */
 class EmberLinkClient(
     context: Context,
@@ -334,6 +351,7 @@ class EmberLinkClient(
                 isDaemon = true
                 start()
             }
+            if (BuildConfig.DEBUG) RobotLink.tv?.let { join(it) }
             nsd.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discovery)
             discovering = true
         } catch (e: Exception) {

@@ -264,7 +264,7 @@ fun WhosThatActorScreen(
             }
 
             is ActorState.NotEnough -> {
-                PuzzleOver("Who's that actor?", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("Who's that actor?", s.message, isTv, viewModel::start)
             }
 
             is ActorState.Over -> {

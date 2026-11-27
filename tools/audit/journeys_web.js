@@ -263,7 +263,7 @@ async function trip(browser, vp, size, isPhone) {
   await ctx.close();
 }
 
-module.exports = { look, settle };
+module.exports = { look, settle, signIn };
 
 if (require.main === module) (async () => {
   const browser = await chromium.launch();

@@ -184,7 +184,7 @@ fun TimelineScreen(
             }
 
             is TimelineState.NotEnough -> {
-                PuzzleOver("Timeline", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("Timeline", s.message, isTv, viewModel::start)
             }
 
             is TimelineState.Over -> {

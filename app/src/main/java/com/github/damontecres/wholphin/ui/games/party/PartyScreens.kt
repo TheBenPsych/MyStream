@@ -92,7 +92,8 @@ private fun LobbyCards(
     isTv: Boolean,
 ) {
     val perRow = if (isTv) 4 else 2
-    val open = (perRow - names.size % perRow).takeIf { names.size < 8 && it > 0 } ?: 0
+    // Phones only fill the last row (a whole extra row of open spots pushed Start off the screen)
+    val open = (perRow - names.size % perRow).takeIf { names.size < 8 && it > 0 && (isTv || it < perRow) } ?: 0
     val spots: List<String?> = names + List(if (names.isEmpty()) perRow else open) { null }
     val shape = RoundedCornerShape(14.dp)
     spots.chunked(perRow).forEach { row ->
@@ -104,7 +105,7 @@ private fun LobbyCards(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .aspectRatio(if (isTv) 1.6f else 1.2f)
+                            .aspectRatio(if (isTv) 1.6f else 2f)
                             .then(
                                 if (name != null) {
                                     Modifier.background(Glowfin.Raise, shape)
@@ -119,7 +120,7 @@ private fun LobbyCards(
                             friend = SeaFriend.entries[pick % SeaFriend.entries.size],
                             colour = (pick / 7) % SeaColours.size,
                             contentDescription = null,
-                            modifier = Modifier.size(if (isTv) 64.dp else 52.dp).clip(CircleShape),
+                            modifier = Modifier.size(if (isTv) 64.dp else 40.dp).clip(CircleShape),
                         )
                         Text(name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Glowfin.Text, maxLines = 1)
                     } else {
@@ -224,8 +225,10 @@ private fun Live(
             delay(250)
         }
     }
+    // Players still here who need to answer (not the artist, not anyone whose phone left)
+    val answering = ui.players.count { !it.away && !(ui.phase == PartyPhase.DRAWING && it.id == ui.drawer) }
     Text(
-        "Round ${ui.round} of ${ui.rounds}  ·  $left s  ·  ${ui.answered.size} of ${ui.players.size - if (ui.phase == PartyPhase.DRAWING) 1 else 0} answered",
+        "Round ${ui.round} of ${ui.rounds}  ·  $left s  ·  ${ui.answered.size} of $answering answered",
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,
         color = PuzzleGold,
@@ -290,7 +293,7 @@ private fun Live(
             ChoicesShown(ui.choices)
         }
     }
-    PlayerChips(ui.players.map { (if (it.id in ui.answered) "✓ " else "") + it.name })
+    PlayerChips(ui.players.filter { !it.away }.map { (if (it.id in ui.answered) "✓ " else "") + it.name })
 }
 
 @Composable
@@ -331,15 +334,19 @@ private fun Over(
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.tryRequestFocus() }
-    val winner = ui.players.maxByOrNull { it.score }
+    val top = ui.players.maxOfOrNull { it.score } ?: 0
+    val winners = ui.players.filter { it.score == top }
     Text(
-        winner?.let {
-            "${it.name} wins!"
-        } ?: "Game over",
+        when {
+            top == 0 -> "Game over: nobody scored"
+            winners.size > 1 -> "It's a tie: " + winners.joinToString(" and ") { it.name }
+            else -> "${winners[0].name} wins!"
+        },
         fontFamily = BenflixFont,
         fontWeight = FontWeight.Bold,
         fontSize = BenflixType.pageTitle,
         color = PuzzleGold,
+        textAlign = TextAlign.Center,
     )
     Scoreboard(ui.players)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -356,7 +363,12 @@ private fun Scoreboard(players: List<PartyPlayer>) {
         Text("SCORES", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .6f))
         players.sortedByDescending { it.score }.forEachIndexed { i, p ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text("${i + 1}.  ${p.name}", fontSize = 20.sp, color = Color.White, modifier = Modifier.weight(1f))
+                Text(
+                    "${i + 1}.  ${p.name}" + if (p.away) "  (left)" else "",
+                    fontSize = 20.sp,
+                    color = Color.White.copy(alpha = if (p.away) .5f else 1f),
+                    modifier = Modifier.weight(1f),
+                )
                 Text("${p.score}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
@@ -487,6 +499,7 @@ fun PartyJoinScreen(
             Text(
                 v.secret,
                 fontSize = 26.sp,
+                lineHeight = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.Black,
                 textAlign = TextAlign.Center,

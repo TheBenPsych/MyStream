@@ -718,7 +718,7 @@ private fun RunGameStates(
         }
 
         is RunState.NotEnough -> {
-            PuzzleOver(title, s.message, null, viewModel.actions, isTv, viewModel::start)
+            PuzzleNotEnough(title, s.message, isTv, viewModel::start)
         }
 
         is RunState.Over -> {

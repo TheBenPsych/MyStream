@@ -262,7 +262,7 @@ fun BlitzScreen(
             }
 
             is BlitzState.NotEnough -> {
-                PuzzleOver("60-second blitz", s.message, null, viewModel.actions, isTv, viewModel::start)
+                PuzzleNotEnough("60-second blitz", s.message, isTv, viewModel::start)
             }
 
             is BlitzState.Over -> {

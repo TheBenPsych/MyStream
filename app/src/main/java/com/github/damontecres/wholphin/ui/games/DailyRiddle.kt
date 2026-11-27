@@ -554,6 +554,7 @@ private fun RiddleContent(
                             (if (s.timedOut) "Time ran out. " else "") +
                             "It was ${s.answer}.\nYour best: %,d points".format(s.best),
                     fontSize = 20.sp,
+                    lineHeight = 28.sp,
                     color = BenflixColors.Soft,
                     textAlign = TextAlign.Center,
                 )
