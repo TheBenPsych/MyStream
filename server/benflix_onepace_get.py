@@ -193,60 +193,72 @@ def start_downloads(wanted, state, save):
     added = 0
     for h, items in groups.items():
         names = [i["name"] for i in items]
-        _wanted[h] = sorted(set(names + (_wanted.get(h) or [])))
+        old = (state.get("downloads") or {}).get(h) or {}
+        state.setdefault("downloads", {})[h] = {"names": sorted(set(names + (old.get("names") or []))),
+                                                "labels": sorted(set([i["label"] for i in items] + (old.get("labels") or []))), "when": time.time()}
+        _picked.discard(h)
         if h not in have:
-            qb("/api/v2/torrents/add", {"urls": magnet(h, names[0]), "savepath": path, "category": CATEGORY, "tags": "onepace", "autoTMM": "false"})
-        state.setdefault("downloads", {})[h] = {"names": sorted(set(names + (state.get("downloads", {}).get(h, {}).get("names") or []))),
-                                                "labels": [i["label"] for i in items], "when": time.time()}
+            # Stops by itself once it knows its file list, so nothing downloads before only the wanted files are ticked
+            qb("/api/v2/torrents/add", {"urls": magnet(h, names[0]), "savepath": path, "category": CATEGORY, "tags": "onepace",
+                                       "autoTMM": "false", "stopCondition": "MetadataReceived"})
         added += len(items)
     save()
-    threading.Thread(target=_tick_files, args=(list(groups),), name="onepace-pick-files", daemon=True).start()
+    threading.Thread(target=_tick_files, args=(state, list(groups)), name="onepace-pick-files", daemon=True).start()
     return f"Asked qBittorrent for {added} episode{'s' if added != 1 else ''}. Press Sort One Pace now when they're done."
 
 
-def _tick_files(hashes):
-    """Waits for each release's file list (up to 5 minutes) and turns off every file that isn't wanted"""
-    deadline = time.time() + 300
+def _verb(verbs, h):
+    for verb in verbs:  # qBittorrent 5 says start/stop, 4 says resume/pause
+        try:
+            qb(f"/api/v2/torrents/{verb}", {"hashes": h})
+            return
+        except GetError:
+            continue
+
+
+def _pick(state, h):
+    """Ticks only the wanted files in one release and starts it. True once done (False while its file list isn't known yet)."""
+    if h in _picked:
+        return True
+    want = set(((state.get("downloads") or {}).get(h) or {}).get("names") or [])
+    files = qb_json("/api/v2/torrents/files", {"hash": h}) or []
+    if not files:
+        return False
+    keep, drop = [], []
+    for i, f in enumerate(files):
+        idx = f.get("index", i)
+        (keep if os.path.basename(f.get("name") or "") in want else drop).append(str(idx))
+    if not keep:
+        _verb(("stop", "pause"), h)  # never let a whole batch download
+        _ctx["log"](f"onepace: none of the wanted files are in release {h}, so it was stopped")
+        _picked.add(h)
+        return True
+    if drop:
+        qb("/api/v2/torrents/filePrio", {"hash": h, "id": "|".join(drop), "priority": "0"})
+    qb("/api/v2/torrents/filePrio", {"hash": h, "id": "|".join(keep), "priority": "1"})
+    _verb(("start", "resume"), h)
+    _picked.add(h)
+    return True
+
+
+def _tick_files(state, hashes):
+    """Waits for each release's file list (up to 3 hours, slow magnets can take a while) and ticks only the wanted files"""
+    deadline = time.time() + 3 * 3600
     left = set(hashes)
     while left and time.time() < deadline:
         for h in list(left):
             try:
-                files = qb_json("/api/v2/torrents/files", {"hash": h}) or []
-            except GetError:
-                continue
-            if not files:
-                continue
-            want = set((_wanted_names().get(h) or []))
-            keep, drop = [], []
-            for i, f in enumerate(files):
-                idx = f.get("index", i)
-                (keep if os.path.basename(f.get("name") or "") in want else drop).append(str(idx))
-            try:
-                if drop and keep:
-                    qb("/api/v2/torrents/filePrio", {"hash": h, "id": "|".join(drop), "priority": "0"})
-                if keep:
-                    qb("/api/v2/torrents/filePrio", {"hash": h, "id": "|".join(keep), "priority": "1"})
-                    for verb in ("start", "resume"):  # qBittorrent 5 says start, 4 says resume
-                        try:
-                            qb(f"/api/v2/torrents/{verb}", {"hashes": h})
-                            break
-                        except GetError:
-                            continue
-                else:
-                    _ctx["log"](f"onepace: none of the wanted files are in release {h}")
+                if _pick(state, h):
+                    left.discard(h)
             except GetError as e:
                 _ctx["log"](f"onepace: couldn't pick files in {h}: {e}")
-            left.discard(h)
-        time.sleep(3)
+        if left:
+            time.sleep(3)
     if left:
-        _ctx["log"](f"onepace: qBittorrent didn't get the file list for {len(left)} release(s) in 5 minutes")
+        _ctx["log"](f"onepace: qBittorrent didn't get the file list for {len(left)} release(s) in 3 hours")
 
 
-_wanted = {}
-
-
-def _wanted_names():
-    return _wanted
+_picked = set()
 
 
 def progress(state):
@@ -268,7 +280,14 @@ def progress(state):
             if time.time() - float(d.get("when") or 0) > 300:
                 done.append(h)
             continue
+        if h not in _picked and t.get("state") != "metaDL":
+            try:
+                _pick(state, h)  # after a Tower restart, or when the first try missed it
+            except GetError:
+                pass
         p = float(t.get("progress") or 0)
+        if h not in _picked:
+            p = 0.0  # stopped after its file list arrived, waiting for the wanted files to be ticked
         if p >= 1 or (t.get("amount_left") == 0 and t.get("state") not in ("metaDL", "checkingResumeData")):
             done.append(h)
         else:
@@ -287,6 +306,42 @@ def progress(state):
         rows.append(("ok", f"{len(done)} download{'s' if len(done) != 1 else ''} finished",
                      "Press Sort One Pace now to file " + ("it." if len(done) == 1 else "them.")))
     return rows, busy, done
+
+
+def _drop_path(p):
+    """A qBittorrent path in One Pace Drop, as the helper sees it"""
+    i = p.find("/One Pace Drop")
+    return (_ctx["drop"] or "") + p[i + len("/One Pace Drop"):] if i >= 0 and _ctx["drop"] else None
+
+
+def remove_unwanted(state, done):
+    """Before a Sort: deletes the unticked files a finished release left behind (bits of neighbouring episodes that
+    share a piece with a wanted one). Only files in One Pace Drop that qBittorrent itself says weren't wanted."""
+    removed = 0
+    for h in done:
+        want = set(((state.get("downloads") or {}).get(h) or {}).get("names") or [])
+        try:
+            t = (qb_json("/api/v2/torrents/info", {"hashes": h}) or [None])[0]
+            files = qb_json("/api/v2/torrents/files", {"hash": h}) or [] if t else []
+        except GetError:
+            continue
+        for f in files:
+            name = f.get("name") or ""
+            if f.get("priority") != 0 or os.path.basename(name) in want:
+                continue
+            path = _drop_path(os.path.join(t.get("save_path") or "", name))
+            if not path:
+                continue
+            for p in (path, path + ".!qB"):
+                try:
+                    if os.path.isfile(p):
+                        os.remove(p)
+                        removed += 1
+                except OSError:
+                    pass
+    if removed:
+        _ctx["log"](f"onepace: removed {removed} unticked file(s) left by finished downloads")
+    return removed
 
 
 def tidy_finished(state, done):
