@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -61,6 +60,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalClock
@@ -316,7 +316,7 @@ fun ProfileMenu(
             delay(30)
             firstFocus.tryRequestFocus()
         }
-        val shape = RoundedCornerShape(16.dp)
+        val shape = BenflixShapes.Panel
         val card: @Composable (Modifier) -> Unit = { m ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -411,7 +411,7 @@ private fun MenuPill(
     text: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -439,7 +439,7 @@ private fun MenuRow(
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = item.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -485,7 +485,7 @@ private fun MenuRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
-                            .background(BenflixColors.Text, RoundedCornerShape(50))
+                            .background(BenflixColors.Text, BenflixShapes.Pill)
                             .padding(horizontal = 7.dp, vertical = 2.dp),
                 )
             }

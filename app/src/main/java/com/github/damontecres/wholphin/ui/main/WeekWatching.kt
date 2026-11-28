@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +34,7 @@ import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.weekStart
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -128,7 +128,7 @@ fun WeekWatchingCard(
         modifier =
             modifier
                 .widthIn(max = 720.dp)
-                .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                .background(BenflixColors.Panel, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text(
@@ -150,7 +150,7 @@ fun WeekWatchingCard(
                     Modifier
                         .fillMaxWidth()
                         .height(12.dp)
-                        .clip(RoundedCornerShape(50))
+                        .clip(BenflixShapes.Pill)
                         .background(BenflixColors.Raised),
             ) {
                 list.filter { it.seconds > 0 }.forEach { door ->

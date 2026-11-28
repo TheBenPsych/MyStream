@@ -43,7 +43,9 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.Button
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -513,7 +515,7 @@ fun QuoteItScreen(
             Modifier
                 .widthIn(max = 860.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(BenflixShapes.Panel)
                 .background(PuzzlePanel)
                 .timerRing(s.left, corner = 16.dp)
                 .padding(horizontal = 28.dp, vertical = 24.dp),
@@ -546,7 +548,7 @@ fun WhichSeasonScreen(
                     .timerRing(s.left, corner = 14.dp)
                     .padding(6.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(BenflixShapes.Card)
                     .background(PuzzlePanel),
         ) {
             AsyncImage(
@@ -621,7 +623,7 @@ fun WhoPlayedScreen(
                                     .glowfinButtonBorder(RoundedCornerShape(14.dp)),
                             colors =
                                 ButtonDefaults.colors(
-                                    containerColor = if (isRight) Color(0xFF2E8B57) else Color(0xFF1A1E38),
+                                    containerColor = if (isRight) Color(0xFF2E8B57) else Glowfin.Raise,
                                     contentColor = Color.White,
                                     focusedContainerColor = PuzzleGold,
                                     focusedContentColor = Color.Black,
@@ -644,7 +646,7 @@ fun WhoPlayedScreen(
                                         Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(3f / 4f)
-                                            .clip(RoundedCornerShape(10.dp))
+                                            .clip(BenflixShapes.Card)
                                             .background(PuzzlePanel),
                                 )
                                 Text(

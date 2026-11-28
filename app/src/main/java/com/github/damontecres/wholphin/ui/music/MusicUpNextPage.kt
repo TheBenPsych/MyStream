@@ -37,6 +37,7 @@ import com.github.damontecres.wholphin.services.rememberQueue
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -239,7 +240,7 @@ private fun QueueRow(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
-                    CoverImage(audio.imageUrl, Modifier.size(40.dp), shape = RoundedCornerShape(6.dp))
+                    CoverImage(audio.imageUrl, Modifier.size(40.dp), shape = BenflixShapes.Small)
                     if (isCurrent) PlayingBars(playing)
                 }
                 Column(Modifier.weight(1f)) {

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -22,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.formatDuration
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import kotlin.time.Duration.Companion.seconds
 
@@ -75,13 +76,13 @@ fun TrickplayPreview(
                 Modifier
                     .background(
                         Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(6.dp),
+                        shape = BenflixShapes.Small,
                     ).padding(horizontal = 8.dp, vertical = 4.dp),
         )
         if (chapterName != null) {
             Text(
                 text = chapterName,
-                color = Color(0xFF0B0D1A),
+                color = Glowfin.Ink,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 maxLines = 1,
@@ -89,7 +90,7 @@ fun TrickplayPreview(
                 modifier =
                     Modifier
                         .widthIn(max = 320.dp)
-                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .background(Color.White, shape = BenflixShapes.Pill)
                         .padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }

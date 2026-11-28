@@ -172,7 +172,7 @@ private fun finPath(): Path =
 private const val FIN_BOX_W = 100f
 private const val FIN_WATERLINE = 64f
 
-private val SKY_TOP = Color(0xFF0B0D1A)
+private val SKY_TOP get() = Glowfin.Ink
 private val SKY_MID = Color(0xFF10132A)
 private val SKY_LOW = Color(0xFF1B1C40)
 private val WATER_TOP = Color(0xFF0A0C1C)

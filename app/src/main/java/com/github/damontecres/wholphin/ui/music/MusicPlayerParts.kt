@@ -58,6 +58,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.AudioItem
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.glowFocus
 import org.jellyfin.sdk.model.api.LyricDto
@@ -105,7 +106,7 @@ fun PlayerProgress(
     var dragAt by remember { mutableStateOf<Float?>(null) }
     var focused by remember { mutableStateOf(false) }
     val f = dragAt ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -409,7 +410,7 @@ fun PlayerTabs(
         tabs.forEach { t ->
             val on = t == tab
             val faded = t == PlayerTab.LYRICS && noLyrics
-            val shape = RoundedCornerShape(50)
+            val shape = BenflixShapes.Pill
             Surface(
                 onClick = { onTab(t) },
                 shape = ClickableSurfaceDefaults.shape(shape),
@@ -482,7 +483,7 @@ fun SongChip(
     modifier: Modifier = Modifier,
     showArtist: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -505,7 +506,7 @@ fun SongChip(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(5.dp),
         ) {
-            CoverImage(song.imageUrl, Modifier.size(36.dp), shape = RoundedCornerShape(6.dp))
+            CoverImage(song.imageUrl, Modifier.size(36.dp), shape = BenflixShapes.Small)
             Column(Modifier.weight(1f)) {
                 Text(
                     song.title.orEmpty(),
@@ -740,7 +741,7 @@ fun LyricLine(
                 modifier =
                     Modifier
                         .padding(start = 10.dp)
-                        .background(BenflixColors.Raised, RoundedCornerShape(50))
+                        .background(BenflixColors.Raised, BenflixShapes.Pill)
                         .padding(horizontal = 10.dp, vertical = 3.dp),
             )
         }

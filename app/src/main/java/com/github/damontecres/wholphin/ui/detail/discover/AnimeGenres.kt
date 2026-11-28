@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,8 +63,10 @@ import com.github.damontecres.wholphin.ui.discover.ActiveFilterChip
 import com.github.damontecres.wholphin.ui.discover.RequestsChip
 import com.github.damontecres.wholphin.ui.discover.RequestsSearchBox
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -269,7 +270,7 @@ private fun GenrePill(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = if (quiet) Color.Transparent else ANIME_PURPLE.copy(alpha = .35f),
@@ -914,9 +915,9 @@ private fun AnimePoster(
         Surface(
             border =
                 com.github.damontecres.wholphin.ui.theme
-                    .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                    .benflixFocusBorder(BenflixShapes.Card),
             onClick = onClick,
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+            shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF26262C), focusedContainerColor = Color.White),
             modifier =
@@ -929,7 +930,7 @@ private fun AnimePoster(
                     model = anime.cover,
                     contentDescription = anime.title,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.fillMaxSize().clip(BenflixShapes.Card),
                 )
                 if (missingEpisodes) {
                     Text(
@@ -946,7 +947,7 @@ private fun AnimePoster(
                                 .padding(6.dp)
                                 .background(
                                     com.github.damontecres.wholphin.ui.AppColors.Discover.Green,
-                                    RoundedCornerShape(6.dp),
+                                    BenflixShapes.Small,
                                 ).padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 } else if (anime.isMovie) {
@@ -959,7 +960,7 @@ private fun AnimePoster(
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = .7f), BenflixShapes.Small)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -971,7 +972,7 @@ private fun AnimePoster(
                         modifier =
                             Modifier
                                 .align(Alignment.Center)
-                                .background(Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = .75f), BenflixShapes.Small)
                                 .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                 }

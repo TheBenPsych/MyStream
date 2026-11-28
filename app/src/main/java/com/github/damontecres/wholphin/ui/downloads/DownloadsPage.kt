@@ -59,7 +59,9 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -194,7 +196,7 @@ fun DownloadButton(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(BenflixShapes.Small)
                 .background(Color(0xFF2B2B2B))
                 .clickable {
                     when (status) {
@@ -311,7 +313,7 @@ fun DownloadsPage(
                         color = Color.White,
                         modifier =
                             Modifier
-                                .clip(RoundedCornerShape(50))
+                                .clip(BenflixShapes.Pill)
                                 .background(Color(0xFF2B2B2B))
                                 .clickable { confirmWatched = true }
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -324,7 +326,7 @@ fun DownloadsPage(
                     color = Color.White,
                     modifier =
                         Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(BenflixShapes.Pill)
                             .background(Color(0xFF2B2B2B))
                             .clickable {
                                 smaller = !smaller
@@ -383,7 +385,7 @@ fun DownloadsPage(
                             color = BenflixColors.OnMusic,
                             modifier =
                                 Modifier
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(BenflixShapes.Pill)
                                     .background(BenflixColors.Music)
                                     .clickable { viewModel.playMusic(songs.filter { service.status(it) == DownloadStatus.Done }, 0) }
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -411,7 +413,7 @@ fun DownloadsPage(
                             modifier =
                                 Modifier
                                     .size(48.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(BenflixShapes.Small)
                                     .background(Color(0xFF2B2B2B)),
                         )
                         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -488,7 +490,7 @@ fun DownloadsPage(
                             Modifier
                                 .width(64.dp)
                                 .height(96.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(BenflixShapes.Small)
                                 .background(Color(0xFF2B2B2B)),
                     )
                     Column(
@@ -633,7 +635,7 @@ private fun MangaDownloads(
                         modifier =
                             Modifier
                                 .size(width = 48.dp, height = 72.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(BenflixShapes.Small)
                                 .background(Color(0xFF2B2B2B)),
                     )
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -683,7 +685,7 @@ private fun MangaDownloads(
                                 color = if (c == next) BenflixColors.OnBooks else Color.White,
                                 modifier =
                                     Modifier
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(BenflixShapes.Pill)
                                         .background(if (c == next) BenflixColors.Books else Color(0xFF2B2B2B))
                                         .clickable { onRead(c.volId) }
                                         .padding(horizontal = 14.dp, vertical = 9.dp),

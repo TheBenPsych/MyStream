@@ -77,6 +77,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.door.progress
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
@@ -598,7 +599,7 @@ private fun SeasonChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         modifier = modifier,
@@ -672,7 +673,7 @@ internal fun EpisodeCard(
         }
     val progress = remember(episode) { episode.progress() }
     val upcoming = episode.data.premiereDay?.isAfter(java.time.LocalDate.now()) == true
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Column(Modifier.width(width)) {
         Surface(
             onClick = onClick,
@@ -725,7 +726,7 @@ internal fun EpisodeCard(
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                .background(BenflixColors.Text, BenflixShapes.Small)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -747,7 +748,7 @@ internal fun EpisodeCard(
                             .padding(8.dp)
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(BenflixShapes.Small)
                             .background(Color(0x99000000)),
                     ) {
                         Box(
@@ -915,7 +916,7 @@ private fun GroupChip(
     onClick: () -> Unit,
 ) {
     // Approved gc-square: squarer white chips for groups (seasons stay round and blue)
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

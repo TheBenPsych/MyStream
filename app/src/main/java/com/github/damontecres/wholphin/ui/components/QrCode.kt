@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -11,6 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
@@ -36,7 +36,7 @@ fun QrCode(
     Canvas(
         modifier =
             modifier
-                .background(Color.White, RoundedCornerShape(10.dp))
+                .background(Color.White, BenflixShapes.Card)
                 .padding(8.dp),
     ) {
         val cell = minOf(size.width / matrix.width, size.height / matrix.height)

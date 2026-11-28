@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 
 /** Which pad the button key is drawn for */
 enum class KeyFor {
@@ -231,8 +232,8 @@ fun PhoneTip(modifier: Modifier = Modifier) {
             modifier =
                 Modifier
                     .size(22.dp)
-                    .background(PadGrey, RoundedCornerShape(6.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
+                    .background(PadGrey, BenflixShapes.Small)
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), BenflixShapes.Small),
         ) {
             Text("📱", fontSize = 11.sp)
         }

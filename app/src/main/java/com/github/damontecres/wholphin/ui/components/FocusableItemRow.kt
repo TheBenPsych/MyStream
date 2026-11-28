@@ -8,7 +8,6 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -18,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 
 /**
  * Placeholder for [com.github.damontecres.wholphin.ui.cards.ItemRow]. It is [focusable] so it can be scrolled.
@@ -69,7 +69,7 @@ fun FocusableItemRow(
             modifier
                 .padding(start = 8.dp)
                 .focusable(interactionSource = interactionSource)
-                .background(background, shape = RoundedCornerShape(10.dp))
+                .background(background, shape = BenflixShapes.Card)
                 .padding(8.dp),
     ) {
         titleContent.invoke()

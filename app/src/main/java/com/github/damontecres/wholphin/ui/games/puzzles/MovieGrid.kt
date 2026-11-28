@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,6 +38,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -427,7 +427,7 @@ private fun GridBoard(
                 repeat(3) { c ->
                     val i = r * 3 + c
                     val t = s.filled[i]
-                    val shape = RoundedCornerShape(10.dp)
+                    val shape = BenflixShapes.Card
                     Surface(
                         onClick = { onOpen(i) },
                         shape = ClickableSurfaceDefaults.shape(shape),
@@ -472,7 +472,7 @@ private fun RuleLabel(
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.background(Color(0xFF26262B), RoundedCornerShape(10.dp)).padding(4.dp),
+        modifier = modifier.background(Color(0xFF26262B), BenflixShapes.Card).padding(4.dp),
     ) {
         Text(
             text,

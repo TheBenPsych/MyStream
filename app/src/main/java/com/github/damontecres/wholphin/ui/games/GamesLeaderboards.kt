@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.services.HighScore
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -141,7 +142,7 @@ internal fun BoardPanel(
     modifier: Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = BenflixShapes.Panel
     Surface(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -238,7 +239,7 @@ internal fun DeviceCard(
 ) {
     val good = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.GOOD }.map { it.title }
     val slow = LocalConsole.ALL.filter { power.fit(it.power) == DevicePower.Fit.MAY_BE_SLOW }.map { it.title }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -390,7 +391,7 @@ internal fun ConsoleGrid(
     ) {
         items(playable.size, key = { "console-${playable[it].first.slug}" }) { i ->
             val (console, local, fit) = playable[i]
-            val shape = RoundedCornerShape(10.dp)
+            val shape = BenflixShapes.Card
             val count = "${console.games.size} ${if (console.games.size == 1) "game" else "games"}"
             Surface(
                 onClick = { onOpen(console.slug) },
@@ -447,7 +448,7 @@ internal fun ConsoleGrid(
                     Box(
                         Modifier
                             .size(width = 28.dp, height = 4.dp)
-                            .background(consoleColour(console.slug), RoundedCornerShape(6.dp)),
+                            .background(consoleColour(console.slug), BenflixShapes.Small),
                     )
                     Box(Modifier.weight(1f))
                     Text(
@@ -494,7 +495,7 @@ internal fun StorageCard(
             else -> Color(0xFF46A758)
         }
     var managing by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = { if (games.isNotEmpty() && onRemove != null) managing = true },
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -517,13 +518,13 @@ internal fun StorageCard(
                 Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .background(Color.White.copy(alpha = .15f), RoundedCornerShape(6.dp)),
+                    .background(Color.White.copy(alpha = .15f), BenflixShapes.Small),
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth(used.coerceIn(0.02f, 1f))
                         .height(8.dp)
-                        .background(barColor, RoundedCornerShape(6.dp)),
+                        .background(barColor, BenflixShapes.Small),
                 )
             }
             Text(
@@ -550,7 +551,7 @@ internal fun StorageCard(
                     Modifier
                         .widthIn(max = 460.dp)
                         .heightIn(max = 560.dp)
-                        .background(Color(0xFF1C1C1C), RoundedCornerShape(16.dp))
+                        .background(Color(0xFF1C1C1C), BenflixShapes.Panel)
                         .verticalScroll(rememberScrollState())
                         .padding(24.dp),
             ) {
@@ -583,7 +584,7 @@ internal fun ChoiceButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

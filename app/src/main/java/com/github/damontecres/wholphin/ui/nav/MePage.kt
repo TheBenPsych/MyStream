@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.preferences.GlowfinAdminYellow
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.glowFocus
@@ -222,7 +223,7 @@ private fun MeTile(
                         modifier =
                             Modifier
                                 .padding(top = 4.dp)
-                                .background(Glowfin.Aqua, RoundedCornerShape(50))
+                                .background(Glowfin.Aqua, BenflixShapes.Pill)
                                 .padding(horizontal = 8.dp, vertical = 1.dp),
                     )
                 }
@@ -239,7 +240,7 @@ private fun MePill(
     onClick: () -> Unit,
     quiet: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

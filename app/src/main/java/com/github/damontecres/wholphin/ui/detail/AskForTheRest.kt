@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +40,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -225,7 +225,7 @@ fun AskForTheRest(
     if (missing.isEmpty()) return
     Surface(
         onClick = { open = true },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Raised,
@@ -274,7 +274,7 @@ private fun AskForTheRestDialog(
                 Modifier
                     .widthIn(max = 560.dp)
                     .fillMaxWidth()
-                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.Panel, BenflixShapes.Panel)
                     .padding(24.dp),
         ) {
             Text(
@@ -316,14 +316,14 @@ private fun AskForTheRestDialog(
                     Surface(
                         border =
                             com.github.damontecres.wholphin.ui.theme
-                                .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                                .benflixFocusBorder(BenflixShapes.Card),
                         onClick = { picked = if (ticked) picked - credit else picked + credit },
                         colors =
                             ClickableSurfaceDefaults.colors(
                                 containerColor = BenflixColors.PanelHigh,
                                 focusedContainerColor = BenflixColors.FocusRow,
                             ),
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier =
                             Modifier
@@ -341,7 +341,7 @@ private fun AskForTheRestDialog(
                                         .size(22.dp)
                                         .background(
                                             if (ticked) BenflixColors.Text else BenflixColors.Line,
-                                            RoundedCornerShape(6.dp),
+                                            BenflixShapes.Small,
                                         ),
                             ) {
                                 if (ticked) Text("✓", color = BenflixColors.Tray, fontWeight = FontWeight.Black)

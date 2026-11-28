@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +46,7 @@ import com.github.damontecres.wholphin.ui.door.coverTopHeight
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
@@ -145,7 +145,7 @@ internal fun RequestCoverRows(
                     model = c.cover,
                     contentDescription = c.name,
                     contentScale = ContentScale.Crop,
-                    modifier = m.clip(if (c.round) CircleShape else RoundedCornerShape(10.dp)),
+                    modifier = m.clip(if (c.round) CircleShape else BenflixShapes.Card),
                 )
             }
         } else if (isTv) {
@@ -243,7 +243,7 @@ private fun RqCover(
     ratio: Float,
     onFocus: (RqCoverCard) -> Unit,
 ) {
-    val shape = if (c.round) CircleShape else RoundedCornerShape(10.dp)
+    val shape = if (c.round) CircleShape else BenflixShapes.Card
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(width)) {
         Box {
             Surface(

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,6 +58,7 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
@@ -246,9 +246,9 @@ private fun WhoLink(
     Surface(
         border =
             com.github.damontecres.wholphin.ui.theme
-                .benflixFocusBorder(RoundedCornerShape(50)),
+                .benflixFocusBorder(BenflixShapes.Pill),
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
@@ -297,7 +297,7 @@ fun AvatarPickerDialog(
                 Modifier
                     .background(
                         com.github.damontecres.wholphin.ui.theme.Glowfin.Deep,
-                        RoundedCornerShape(16.dp),
+                        BenflixShapes.Panel,
                     ).padding(24.dp),
         ) {
             Column(

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -34,6 +33,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Haptics
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -119,8 +119,8 @@ fun PhonePosterCarousel(
                             Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2f / 3f)
-                                .shadow(16.dp, RoundedCornerShape(16.dp))
-                                .clip(RoundedCornerShape(16.dp))
+                                .shadow(16.dp, BenflixShapes.Panel)
+                                .clip(BenflixShapes.Panel)
                                 .background(Color(0xFF1C1C22))
                                 .clickable {
                                     haptics.tap()

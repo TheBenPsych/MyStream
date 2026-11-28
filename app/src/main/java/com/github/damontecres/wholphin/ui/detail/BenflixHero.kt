@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.detail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +21,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /**
@@ -37,7 +37,7 @@ fun HeroButton(
     primary: Boolean = false,
     big: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     var focused by remember { mutableStateOf(false) }
     val container = if (primary) BenflixColors.Text else BenflixColors.FocusRow.copy(alpha = .92f)
     val content = if (primary) BenflixColors.Tray else BenflixColors.Text

@@ -38,7 +38,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -133,6 +132,7 @@ import com.github.damontecres.wholphin.ui.seasonEpisode
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -691,8 +691,7 @@ fun PlaybackPageContent(
                             .padding(top = 24.dp)
                             .background(
                                 Color(0xAA000000),
-                                androidx.compose.foundation.shape
-                                    .RoundedCornerShape(50),
+                                BenflixShapes.Pill,
                             ).padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
@@ -1053,7 +1052,7 @@ fun PlaybackPageContent(
                 onClick = { showSideGuide = true },
                 shape =
                     androidx.tv.material3.ClickableSurfaceDefaults
-                        .shape(RoundedCornerShape(50)),
+                        .shape(BenflixShapes.Pill),
                 colors =
                     androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = Color.Black.copy(alpha = .7f),
@@ -1176,7 +1175,7 @@ fun PlaybackPageContent(
                 fontSize = BenflixType.lead,
                 modifier =
                     Modifier
-                        .background(Color(0xE6202024), RoundedCornerShape(10.dp))
+                        .background(Color(0xE6202024), BenflixShapes.Card)
                         .padding(horizontal = 18.dp, vertical = 12.dp),
             )
         }
@@ -1228,7 +1227,7 @@ fun PlaybackPageContent(
                             .height(170.dp)
                             .background(
                                 Color.Black.copy(alpha = .82f),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = BenflixShapes.Card,
                             ),
                 )
             }
@@ -1309,7 +1308,7 @@ fun PlaybackPageContent(
                             .height(170.dp)
                             .background(
                                 Color.Black.copy(alpha = .82f),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = BenflixShapes.Card,
                             ),
                 )
             }
@@ -1521,7 +1520,7 @@ private fun RecapCard(
             modifier
                 .padding(24.dp)
                 .widthIn(max = 640.dp)
-                .background(Color(0xF0141418), RoundedCornerShape(16.dp))
+                .background(Color(0xF0141418), BenflixShapes.Panel)
                 .padding(24.dp),
     ) {
         Text(text = "It's been a while. Here's where you left off.", fontSize = BenflixType.body, color = BenflixColors.Soft)

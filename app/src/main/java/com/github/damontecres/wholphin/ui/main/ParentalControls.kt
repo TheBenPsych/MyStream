@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +55,7 @@ import com.github.damontecres.wholphin.services.KidsWatch
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.setup.PinEntryCreate
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
@@ -298,11 +298,11 @@ private fun KidsWatchedSection(posterUrl: (String) -> String?) {
                 val url = remember(watch.titleId) { posterUrl(watch.titleId) }
                 Surface(
                     onClick = { picked = watch },
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                    shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
                     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                     border =
                         ClickableSurfaceDefaults.border(
-                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
+                            focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = BenflixShapes.Card),
                         ),
                     modifier =
                         Modifier

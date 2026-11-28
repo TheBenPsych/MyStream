@@ -31,6 +31,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -75,7 +76,7 @@ fun ScoreBox(
         Text(text = value, color = plainColor, fontSize = fontSize, fontWeight = FontWeight.ExtraBold, maxLines = 1, modifier = modifier)
         return
     }
-    val shape = RoundedCornerShape(6.dp)
+    val shape = BenflixShapes.Small
     Text(
         text = value,
         color = brand.text,
@@ -135,7 +136,7 @@ fun ScorePill(
     if (rating.isNullOrBlank() && shown.isEmpty()) return
     val font = if (small) BenflixType.tag else BenflixType.body
     val mark = if (small) 12.dp else 14.dp
-    val chip = RoundedCornerShape(6.dp)
+    val chip = BenflixShapes.Small
     val padX = if (small) 6.dp else 8.dp
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -223,7 +224,7 @@ fun SiteMark(
                     Modifier
                         .offset(x = size * .3f, y = -size * .12f)
                         .size(width = size * .42f, height = size * .26f)
-                        .background(Color(0xFF3AA33A), RoundedCornerShape(50)),
+                        .background(Color(0xFF3AA33A), BenflixShapes.Pill),
                 )
             }
         }

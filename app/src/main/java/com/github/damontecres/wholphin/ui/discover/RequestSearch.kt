@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +46,7 @@ import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.search.SearchKeyboard
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -83,7 +83,7 @@ internal fun RequestSearchButton(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -270,7 +270,7 @@ private fun RequestDoorHeading(
         Box(
             Modifier
                 .size(width = 4.dp, height = 16.dp)
-                .background(if (count == 0) BenflixColors.Line else door.color, RoundedCornerShape(6.dp)),
+                .background(if (count == 0) BenflixColors.Line else door.color, BenflixShapes.Small),
         )
         Text(
             text = door.title,
@@ -303,7 +303,7 @@ private fun RequestDoorColumn(
                     Modifier
                         .fillMaxWidth()
                         .height(cardWidth / POSTER_RATIO)
-                        .background(BenflixColors.Raised.copy(alpha = .5f), RoundedCornerShape(10.dp)),
+                        .background(BenflixColors.Raised.copy(alpha = .5f), BenflixShapes.Card),
             ) {
                 Text("None", color = BenflixColors.Muted, fontSize = BenflixType.small, fontWeight = FontWeight.Bold)
             }
@@ -326,7 +326,7 @@ private fun RequestDoorColumn(
             }
         }
         if (items.size > 4) {
-            val shape = RoundedCornerShape(10.dp)
+            val shape = BenflixShapes.Card
             Surface(
                 onClick = onSeeAll,
                 shape = ClickableSurfaceDefaults.shape(shape),

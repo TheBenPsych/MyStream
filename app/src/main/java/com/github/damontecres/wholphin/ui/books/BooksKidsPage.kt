@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +35,7 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -114,7 +114,7 @@ fun BooksKidsPage(
             item(key = "loading") { Text("Loading…", color = BenflixColors.Muted, fontSize = BenflixType.body) }
         } else {
             items(l, key = { it.id }) { b ->
-                val shape = RoundedCornerShape(10.dp)
+                val shape = BenflixShapes.Card
                 Surface(
                     onClick = { viewModel.toggle(b) },
                     shape = ClickableSurfaceDefaults.shape(shape),

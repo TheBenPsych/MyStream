@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,6 +63,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -640,7 +640,7 @@ private fun LibraryRow(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -677,7 +677,7 @@ private fun LibraryRow(
                             Modifier
                                 .padding(end = 6.dp)
                                 .size(8.dp)
-                                .background(BenflixColors.Music, RoundedCornerShape(50)),
+                                .background(BenflixColors.Music, BenflixShapes.Pill),
                         )
                     }
                     Text(
@@ -698,7 +698,7 @@ private fun LibraryTextButton(
     label: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -734,7 +734,7 @@ private fun NewPlaylistDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
-                    .background(BenflixColors.PanelHigh, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.PanelHigh, BenflixShapes.Panel)
                     .padding(20.dp)
                     .width(360.dp),
         ) {

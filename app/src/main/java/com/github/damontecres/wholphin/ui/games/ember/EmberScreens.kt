@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,7 +49,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -348,7 +349,7 @@ private fun SetupScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(EmberPanel, RoundedCornerShape(10.dp))
+                                    .background(EmberPanel, BenflixShapes.Card)
                                     .padding(10.dp),
                         ) {
                             PixelPortrait(Member(d.name, d.folk, d.traits, face = d.face), size = if (isTv) 56.dp else 48.dp)
@@ -425,7 +426,7 @@ private fun SetupScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(EmberPanel, RoundedCornerShape(10.dp))
+                                    .background(EmberPanel, BenflixShapes.Card)
                                     .padding(10.dp),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -559,7 +560,7 @@ fun NameField(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF15101A), RoundedCornerShape(6.dp))
+                .background(Color(0xFF15101A), BenflixShapes.Small)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
     )
 }
@@ -588,7 +589,7 @@ private fun GalleryScreen(
                     Modifier
                         .walkable(isTv)
                         .width(if (isTv) 250.dp else 165.dp)
-                        .background(EmberPanel, RoundedCornerShape(10.dp))
+                        .background(EmberPanel, BenflixShapes.Card)
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -642,7 +643,7 @@ private fun BookScreen(
                     Modifier
                         .walkable(isTv)
                         .width(if (isTv) 200.dp else 160.dp)
-                        .background(EmberPanel, RoundedCornerShape(10.dp))
+                        .background(EmberPanel, BenflixShapes.Card)
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -697,7 +698,7 @@ private fun Modifier.walkable(isTv: Boolean): Modifier {
     return this
         .onFocusChanged { focused = it.isFocused }
         .focusable()
-        .border(2.dp, if (focused) EmberGold else Color.Transparent, RoundedCornerShape(10.dp))
+        .border(2.dp, if (focused) EmberGold else Color.Transparent, BenflixShapes.Card)
 }
 
 @Composable

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +59,7 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
@@ -485,7 +485,7 @@ private fun Pills(pills: List<String>) {
                     Modifier
                         .background(
                             Color.White.copy(alpha = .14f),
-                            RoundedCornerShape(50),
+                            BenflixShapes.Pill,
                         ).padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
@@ -502,7 +502,7 @@ private fun Section(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             modifier
-                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = .06f), BenflixShapes.Panel)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text(title.uppercase(), fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, color = BenflixColors.Muted)

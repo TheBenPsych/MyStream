@@ -80,6 +80,7 @@ import androidx.palette.graphics.Palette
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.isTvDevice
@@ -1714,8 +1715,7 @@ class GameActivity : ComponentActivity() {
                                     Modifier
                                         .background(
                                             Color(0xFFF2B544),
-                                            androidx.compose.foundation.shape
-                                                .RoundedCornerShape(50),
+                                            BenflixShapes.Pill,
                                         ).padding(horizontal = 12.dp, vertical = 4.dp),
                             )
                         }
@@ -1927,7 +1927,7 @@ class GameActivity : ComponentActivity() {
         val focused by interaction.collectIsFocusedAsState()
         // Glowfin G1: a plain list row like the player's Settings; the one you're on gets the raised colour and an
         // aqua bar on its left
-        val shape = RoundedCornerShape(10.dp)
+        val shape = BenflixShapes.Card
         val fg = if (focused) Glowfin.Text else Glowfin.Text.copy(alpha = 0.85f)
         Row(
             verticalAlignment = Alignment.CenterVertically,

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,6 +38,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.BenflixPopups
 import com.github.damontecres.wholphin.ui.components.popupTurn
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -334,7 +334,7 @@ fun BenflixWrappedLayer(
                     .widthIn(max = 640.dp)
                     .background(
                         com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel,
-                        RoundedCornerShape(16.dp),
+                        BenflixShapes.Panel,
                     ).padding(28.dp),
         ) {
             Text(
@@ -421,7 +421,7 @@ private fun WrappedMusicSlide(
                     .widthIn(max = 640.dp)
                     .background(
                         com.github.damontecres.wholphin.ui.theme.BenflixColors.Panel,
-                        RoundedCornerShape(16.dp),
+                        BenflixShapes.Panel,
                     ).padding(28.dp),
         ) {
             Text(

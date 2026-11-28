@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -295,7 +294,7 @@ private fun GlanceTileCard(
     modifier: Modifier,
 ) {
     val isTv = rememberIsTv()
-    val shape = RoundedCornerShape(16.dp)
+    val shape = BenflixShapes.Panel
     Surface(
         onClick = tile.onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -403,7 +402,7 @@ private fun NeedRow(need: NeedLine) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(BenflixShapes.Card)
                 .background(com.github.damontecres.wholphin.ui.preferences.GlowfinGlass)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -499,7 +498,7 @@ private fun ToolTile(
     width: Dp? = null,
 ) {
     val isTv = rememberIsTv()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -593,7 +592,7 @@ private fun HealthCard(
     modifier: Modifier,
 ) {
     val isTv = rememberIsTv()
-    val shape = RoundedCornerShape(16.dp)
+    val shape = BenflixShapes.Panel
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

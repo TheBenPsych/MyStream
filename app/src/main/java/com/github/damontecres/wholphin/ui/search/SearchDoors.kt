@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.music.musicCardLine
 import com.github.damontecres.wholphin.ui.music.musicCover
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -385,7 +386,7 @@ fun SearchDoorResults(
                         letterSpacing = 1.sp,
                         modifier =
                             Modifier
-                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                .background(BenflixColors.Text, BenflixShapes.Small)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                     Text(
@@ -486,7 +487,7 @@ private fun SearchRow(
             Box(
                 Modifier
                     .size(width = 4.dp, height = 16.dp)
-                    .background(door.color, RoundedCornerShape(6.dp)),
+                    .background(door.color, BenflixShapes.Small),
             )
             Text(
                 text = door.title,
@@ -680,7 +681,7 @@ private fun ResultPosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val (w, h) = cardSize(line, isTv)
-    val shape = if (shapeOf(line) == CardShape.ROUND) RoundedCornerShape(50) else RoundedCornerShape(8.dp)
+    val shape = if (shapeOf(line) == CardShape.ROUND) BenflixShapes.Pill else RoundedCornerShape(8.dp)
     val px = with(LocalDensity.current) { h.roundToPx() }
     val look = rememberCardLook(line, px)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(w)) {
@@ -732,7 +733,7 @@ private fun ResultPosterCard(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(5.dp)
-                                .background(if (look.asked) BenflixColors.Text else ASK_YELLOW, RoundedCornerShape(50))
+                                .background(if (look.asked) BenflixColors.Text else ASK_YELLOW, BenflixShapes.Pill)
                                 .padding(horizontal = 7.dp, vertical = 1.dp),
                     )
                 }
@@ -877,7 +878,7 @@ private fun ResultLineCard(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
     val square =
@@ -959,7 +960,7 @@ private fun ResultLineCard(
                 modifier =
                     Modifier
                         .size(width = picWidth, height = picHeight)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(BenflixShapes.Small)
                         .background(BenflixColors.Raised),
             ) {
                 if (line is ResultLine.Game) {
@@ -1000,7 +1001,7 @@ private fun ResultLineCard(
                         fontWeight = FontWeight.ExtraBold,
                         modifier =
                             Modifier
-                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                .background(BenflixColors.Text, BenflixShapes.Small)
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
@@ -1089,7 +1090,7 @@ private fun DoorHeading(
         Box(
             Modifier
                 .size(width = 4.dp, height = 16.dp)
-                .background(if (count == 0) BenflixColors.Line else color, RoundedCornerShape(6.dp)),
+                .background(if (count == 0) BenflixColors.Line else color, BenflixShapes.Small),
         )
         Text(
             text = title,
@@ -1124,7 +1125,7 @@ private fun MusicAskDialog(
                 Modifier
                     .widthIn(max = 360.dp)
                     .fillMaxWidth()
-                    .background(BenflixColors.Tray, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.Tray, BenflixShapes.Panel)
                     .padding(20.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1211,7 +1212,7 @@ private fun MusicAskDialog(
 
 @Composable
 private fun SeeAllChip(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

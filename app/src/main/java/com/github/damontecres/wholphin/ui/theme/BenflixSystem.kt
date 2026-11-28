@@ -37,19 +37,22 @@ object BenflixType {
     val tag: TextUnit get() = if (isTvKnown) 14.sp else 12.sp
 }
 
-/** The only corner sizes Benflix uses */
+/** The only corner sizes Glowfin uses. Each theme sets its own ([ThemeLook]). */
 object BenflixShapes {
     /** Tags, chips, small bars */
-    val Small = RoundedCornerShape(6.dp)
+    val Small: RoundedCornerShape get() = GlowfinTheme.look.small
 
     /** Posters, tiles, cards */
-    val Card = RoundedCornerShape(10.dp)
+    val Card: RoundedCornerShape get() = GlowfinTheme.look.card
 
     /** Menus, side panels, phone sheets */
-    val Panel = RoundedCornerShape(16.dp)
+    val Panel: RoundedCornerShape get() = GlowfinTheme.look.panel
 
-    /** Buttons */
-    val Pill = RoundedCornerShape(percent = 50)
+    /** Buttons, tabs and filter pills (round on Glowfin; a theme may square them) */
+    val Pill: RoundedCornerShape get() = GlowfinTheme.look.button
+
+    /** Things that are round in every theme: dots, progress lines, round pictures */
+    val Round = RoundedCornerShape(percent = 50)
 }
 
 /** One speed for all movement: arrive in 0.18 s, leave in 0.12 s, same smooth ease */

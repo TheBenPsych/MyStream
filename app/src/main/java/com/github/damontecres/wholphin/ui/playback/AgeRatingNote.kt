@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +29,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
@@ -75,7 +75,7 @@ fun AgeRatingNote(
             modifier =
                 Modifier
                     .widthIn(max = if (isTv) 520.dp else 320.dp)
-                    .background(Color(0x99000000), RoundedCornerShape(10.dp))
+                    .background(Color(0x99000000), BenflixShapes.Card)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             // A thin white bar beside the rating (Benflix redesign: no red)
@@ -84,7 +84,7 @@ fun AgeRatingNote(
                     Modifier
                         .width(3.dp)
                         .height(if (isTv) 40.dp else 32.dp)
-                        .background(Color.White, RoundedCornerShape(6.dp)),
+                        .background(Color.White, BenflixShapes.Small),
             )
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(

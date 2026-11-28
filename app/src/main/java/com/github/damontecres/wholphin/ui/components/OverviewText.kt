@@ -8,7 +8,6 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.playOnClickSound
 import com.github.damontecres.wholphin.ui.playSoundOnFocus
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 
 /**
  * Show the overview text for an item. Uses a fixed size and allows for clicking.
@@ -47,7 +47,7 @@ fun OverviewText(
     Box(
         modifier =
             modifier
-                .background(bgColor, shape = RoundedCornerShape(10.dp))
+                .background(bgColor, shape = BenflixShapes.Card)
                 .playSoundOnFocus(true)
                 .clickable(
                     enabled = enabled,

@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +30,7 @@ import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /*
@@ -194,14 +194,14 @@ internal fun AskLineRow(line: AskLine) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(BenflixShapes.Card)
                 .background(BenflixColors.Panel)
                 .padding(10.dp),
     ) {
         Box(
             Modifier
                 .size(width = 48.dp, height = if (line.square) 48.dp else 72.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(BenflixShapes.Small)
                 .background(BenflixColors.Raised),
         ) {
             AsyncImage(model = line.cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

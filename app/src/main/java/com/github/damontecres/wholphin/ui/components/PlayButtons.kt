@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -414,9 +415,7 @@ val LocalAlwaysShowButtonLabels = staticCompositionLocalOf { false }
 val LocalFlatButtons = staticCompositionLocalOf { false }
 
 /** Benflix look A: the rounded rectangle shape of a flat button */
-private val FlatButtonShape =
-    androidx.compose.foundation.shape
-        .RoundedCornerShape(10.dp)
+private val FlatButtonShape get() = BenflixShapes.Card
 
 @Composable
 private fun flatShape() =

@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +69,7 @@ import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.preferences.glowfinDimmedPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
@@ -1418,7 +1418,7 @@ private fun LazyListScope.watchingItems(
                                 Modifier
                                     .width(54.dp)
                                     .height(80.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(BenflixShapes.Small)
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
                     },
@@ -1595,14 +1595,14 @@ internal fun ProgressLine(share: Float) {
             Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(50)),
+                .background(Color.White.copy(alpha = 0.15f), BenflixShapes.Pill),
     ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth(share.coerceIn(0.02f, 1f))
                     .height(4.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
+                    .background(MaterialTheme.colorScheme.primary, BenflixShapes.Pill),
         )
     }
 }
@@ -1692,7 +1692,7 @@ internal fun LoadingBox(text: String) {
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
@@ -1733,7 +1733,7 @@ private fun StatusChip(
         fontWeight = FontWeight.SemiBold,
         modifier =
             Modifier
-                .background(color.copy(alpha = 0.16f), RoundedCornerShape(50))
+                .background(color.copy(alpha = 0.16f), BenflixShapes.Pill)
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
 }
@@ -1747,7 +1747,7 @@ private fun BigNumber(
     Column(
         modifier =
             modifier
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(12.dp),
     ) {
         // Benflix: a dash while the number is still loading
@@ -1770,7 +1770,7 @@ private fun DiskBar(disk: ServerDisk) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -1793,14 +1793,14 @@ private fun DiskBar(disk: ServerDisk) {
                 Modifier
                     .fillMaxWidth()
                     .height(10.dp)
-                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50)),
+                    .background(Color.White.copy(alpha = 0.12f), BenflixShapes.Pill),
         ) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth(disk.usedShare.coerceIn(0.02f, 1f))
                         .height(10.dp)
-                        .background(color, RoundedCornerShape(50)),
+                        .background(color, BenflixShapes.Pill),
             )
         }
         if (disk.nearlyFull) {

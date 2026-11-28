@@ -33,6 +33,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.BACKSPACE
 import com.github.damontecres.wholphin.services.BENFLIX_TYPE
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -225,7 +226,7 @@ fun PlayOnTvButton(
             open = true
         },
         scale = OutlinedButtonDefaults.scale(focusedScale = 1f),
-        shape = OutlinedButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = OutlinedButtonDefaults.shape(BenflixShapes.Small),
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -417,7 +418,7 @@ fun PhoneRemoteDialog(
                                     .background(
                                         androidx.compose.ui.graphics
                                             .Color(0xFF26262B),
-                                        RoundedCornerShape(10.dp),
+                                        BenflixShapes.Card,
                                     ).padding(12.dp),
                         ) {
                             if (text.isEmpty()) Text("Type for the TV's search box", color = androidx.compose.ui.graphics.Color.Gray)
@@ -459,7 +460,7 @@ private fun RemoteKey(
                         androidx.compose.ui.graphics
                             .Color(0xFF26262B)
                     },
-                    RoundedCornerShape(16.dp),
+                    BenflixShapes.Panel,
                 ).clickable {
                     haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     onClick()

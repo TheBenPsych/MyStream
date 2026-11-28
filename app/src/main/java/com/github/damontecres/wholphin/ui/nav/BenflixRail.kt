@@ -91,6 +91,7 @@ import com.github.damontecres.wholphin.ui.preferences.OnWhiteText
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
@@ -924,7 +925,7 @@ private fun CountDot(
         textAlign = TextAlign.Center,
         modifier =
             modifier
-                .background(BenflixColors.LiveTv, RoundedCornerShape(50))
+                .background(BenflixColors.LiveTv, BenflixShapes.Pill)
                 .padding(horizontal = 5.dp * scale, vertical = 1.dp),
     )
 }
@@ -1058,7 +1059,7 @@ private fun PanelRow(
     picture: (@Composable () -> Unit)? = null,
     muted: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
@@ -1306,13 +1307,13 @@ private fun NowPlayingRailButton(
                                 .padding(top = 2.dp * scale)
                                 .fillMaxWidth()
                                 .height(2.dp * scale)
-                                .background(Glowfin.Line, RoundedCornerShape(50)),
+                                .background(Glowfin.Line, BenflixShapes.Pill),
                         ) {
                             Box(
                                 Modifier
                                     .fillMaxHeight()
                                     .fillMaxWidth(progress)
-                                    .background(Glowfin.GlowAcross, RoundedCornerShape(50)),
+                                    .background(Glowfin.GlowAcross, BenflixShapes.Pill),
                             )
                         }
                     }
@@ -1363,10 +1364,10 @@ private val RAIL_TUCKED = 66.dp
 private val RAIL_INSET = 16.dp
 
 /** Side menu A: rounded squares for the menu's spots */
-private val RAIL_TILE = RoundedCornerShape(10.dp)
+private val RAIL_TILE get() = BenflixShapes.Card
 
 /** Side menu A: the soft aqua square behind the page you're on */
-private val CURRENT_TILE = Glowfin.Aqua.copy(alpha = .13f)
+private val CURRENT_TILE get() = Glowfin.Aqua.copy(alpha = .13f)
 
 /** How far the page slides right while the menu is open */
 fun railPush(big: Boolean): Dp = (RAIL_OPEN - RAIL_TUCKED) * (if (big) BIG_SCALE else 1f)
@@ -1421,7 +1422,7 @@ private val FADE_EDGE_TUCKED = 44.dp
 private val FADE_EDGE_OPEN = 56.dp
 
 /** Names that aren't lit (soft white) */
-private val NameColor = Glowfin.Text.copy(alpha = .9f)
+private val NameColor get() = Glowfin.Text.copy(alpha = .9f)
 
 /** Small words on the white pill */
 private val OnWhiteDim = Color(0xFF4A4F72)

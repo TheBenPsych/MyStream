@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -54,6 +53,7 @@ import com.github.damontecres.wholphin.ui.music.CoverGlow
 import com.github.damontecres.wholphin.ui.music.CoverGlowColors
 import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -163,7 +163,7 @@ private fun GameTopCover(
     modifier: Modifier,
 ) {
     val context = LocalContext.current
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val drawn = remember(p.key) { gameCover(p.key) }
     Box(modifier.clip(shape).background(Glowfin.Raise)) {
         when {
@@ -235,7 +235,7 @@ internal fun LeaderboardRow(
         ) {
             items(games, key = { "board-${it.id}" }) { g ->
                 val top = board?.get(g.id).orEmpty()
-                val shape = RoundedCornerShape(10.dp)
+                val shape = BenflixShapes.Card
                 Surface(
                     onClick = g.open,
                     shape = ClickableSurfaceDefaults.shape(shape),
@@ -339,7 +339,7 @@ internal fun GameIconSquare(
         modifier =
             Modifier
                 .size(size)
-                .background(colors.firstOrNull() ?: BenflixColors.Line, RoundedCornerShape(6.dp)),
+                .background(colors.firstOrNull() ?: BenflixColors.Line, BenflixShapes.Small),
     ) {
         Text(
             text = stringResource(icon ?: R.string.fa_bolt),

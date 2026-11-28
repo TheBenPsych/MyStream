@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -72,6 +71,7 @@ import com.github.damontecres.wholphin.ui.door.CoverTopWords
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.search.SearchKeyboard
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -877,7 +877,7 @@ private fun SongTileRow(
                 Tile(
                     picture = song.cover,
                     size = size,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = BenflixShapes.Card,
                     name = if (numbered) "${i + firstNumber}. ${song.title}" else song.title,
                     line = song.asked ?: if (song.have) "In your music" else song.artist,
                     onClick = { onSong(song) },
@@ -908,7 +908,7 @@ private fun GenreRow(
                 Tile(
                     picture = g.picture,
                     size = if (isTv) 130 else 104,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = BenflixShapes.Card,
                     name = g.name,
                     line = null,
                     onClick = { onGenre(g) },
@@ -1027,9 +1027,9 @@ private fun MusicPageView(
                 val (picture, shape) =
                     when (page) {
                         is MusicPage.Artist -> page.artist.picture to CircleShape
-                        is MusicPage.Album -> page.album.cover to RoundedCornerShape(10.dp)
-                        is MusicPage.Genre -> page.genre.picture to RoundedCornerShape(10.dp)
-                        is MusicPage.Songs -> page.songs.firstOrNull()?.cover to RoundedCornerShape(10.dp)
+                        is MusicPage.Album -> page.album.cover to BenflixShapes.Card
+                        is MusicPage.Genre -> page.genre.picture to BenflixShapes.Card
+                        is MusicPage.Songs -> page.songs.firstOrNull()?.cover to BenflixShapes.Card
                     }
                 Cover(picture, if (isTv) 120 else 96, shape)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
@@ -1148,7 +1148,7 @@ private fun SongRow(
     number: Int? = null,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val preview = LocalSongPreview.current
     // Benflix: a round play button beside the row plays 30 seconds of the song (Right on the remote reaches it)
     Row(
@@ -1188,7 +1188,7 @@ private fun SongRow(
                         modifier = Modifier.widthIn(min = 32.dp),
                     )
                 }
-                Cover(song.cover, 48, RoundedCornerShape(6.dp))
+                Cover(song.cover, 48, BenflixShapes.Small)
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = song.title,
@@ -1241,7 +1241,7 @@ private fun AlbumRow(
                 Tile(
                     picture = album.cover,
                     size = size,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = BenflixShapes.Card,
                     name = album.title,
                     line = album.asked ?: listOf(album.year, albumType(album)).filter { it.isNotBlank() }.joinToString(" · "),
                     onClick = { onAlbum(album) },
@@ -1350,7 +1350,7 @@ private fun PlaylistSection(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(BenflixShapes.Card)
                         .background(BenflixColors.Panel)
                         .padding(10.dp),
             ) {
@@ -1368,7 +1368,7 @@ private fun PlaylistSection(
                         Modifier
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(50))
+                            .clip(BenflixShapes.Pill)
                             .background(BenflixColors.Raised),
                     ) {
                         Box(Modifier.fillMaxWidth(p.bar).height(4.dp).background(BenflixColors.Text))
@@ -1433,7 +1433,7 @@ private fun TidySection(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 260.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(BenflixShapes.Card)
                     .background(BenflixColors.Raised)
                     .verticalScroll(rememberScrollState())
                     .padding(10.dp),
@@ -1475,7 +1475,7 @@ private fun PlaylistDialog(
                         focusedContainerColor = BenflixColors.Raised,
                         unfocusedContainerColor = BenflixColors.Raised,
                     ),
-                shape = RoundedCornerShape(10.dp),
+                shape = BenflixShapes.Card,
                 modifier = Modifier.fillMaxWidth(),
             )
             // Ben: someone else's playlist can bring in just the songs, without a Benflix playlist
@@ -1516,7 +1516,7 @@ private fun MusicButton(
     big: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val shape = if (big) RoundedCornerShape(10.dp) else RoundedCornerShape(50)
+    val shape = if (big) BenflixShapes.Card else BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -1608,7 +1608,7 @@ private fun NoteLine(text: String) {
         modifier =
             Modifier
                 .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(BenflixShapes.Card)
                 .background(BenflixColors.Raised)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
     )

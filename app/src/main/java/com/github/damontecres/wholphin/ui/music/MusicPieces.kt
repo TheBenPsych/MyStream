@@ -62,6 +62,7 @@ import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -316,18 +317,19 @@ fun MixCover(
 }
 
 /** The mix name strip: Glowfin's glow, a little see-through so the covers show under it */
-private val MixStrip =
-    Brush.horizontalGradient(
-        0f to
-            com.github.damontecres.wholphin.ui.theme.Glowfin.Violet
-                .copy(alpha = 0.92f),
-        0.6f to
-            com.github.damontecres.wholphin.ui.theme.Glowfin.Blue
-                .copy(alpha = 0.92f),
-        1f to
-            com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua
-                .copy(alpha = 0.92f),
-    )
+private val MixStrip
+    get() =
+        Brush.horizontalGradient(
+            0f to
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Violet
+                    .copy(alpha = 0.92f),
+            0.6f to
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Blue
+                    .copy(alpha = 0.92f),
+            1f to
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua
+                    .copy(alpha = 0.92f),
+        )
 
 /** A colour pair for a mix with no covers yet (Glowfin: night blues and violets only, picked by name) */
 private fun mixTint(name: String): List<Color> {
@@ -336,7 +338,7 @@ private fun mixTint(name: String): List<Color> {
             listOf(Color(0xFF3B2C6E), com.github.damontecres.wholphin.ui.theme.Glowfin.Violet),
             listOf(Color(0xFF12305A), com.github.damontecres.wholphin.ui.theme.Glowfin.Blue),
             listOf(Color(0xFF0E3B47), Color(0xFF2BB5C0)),
-            listOf(Color(0xFF2A1F5C), Color(0xFF6C6FE8)),
+            listOf(Color(0xFF2A1F5C), Glowfin.FillMid),
         )
     return tints[(name.lowercase().hashCode() and 0x7fffffff) % tints.size]
 }
@@ -447,17 +449,18 @@ private const val BAR_COUNT = 4
 private val PAUSED_BARS = floatArrayOf(0.5f, 0.85f, 0.4f, 0.65f)
 
 /** Violet, two steps of blue, aqua: the logo's glow across the four bars */
-private val PlayingBarColors =
-    listOf(
-        com.github.damontecres.wholphin.ui.theme.Glowfin.Violet,
-        androidx.compose.ui.graphics.lerp(
+private val PlayingBarColors
+    get() =
+        listOf(
             com.github.damontecres.wholphin.ui.theme.Glowfin.Violet,
+            androidx.compose.ui.graphics.lerp(
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Violet,
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Blue,
+                0.6f,
+            ),
             com.github.damontecres.wholphin.ui.theme.Glowfin.Blue,
-            0.6f,
-        ),
-        com.github.damontecres.wholphin.ui.theme.Glowfin.Blue,
-        com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua,
-    )
+            com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua,
+        )
 
 /** "3:45" */
 fun songLength(d: Duration?): String {
@@ -589,9 +592,9 @@ fun SongRow(
                 }
             if (withCover) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (big) 48.dp else 40.dp)) {
-                    CoverImage(cover, Modifier.fillMaxSize(), shape = RoundedCornerShape(6.dp))
+                    CoverImage(cover, Modifier.fillMaxSize(), shape = BenflixShapes.Small)
                     if (isCurrent) {
-                        Box(Modifier.fillMaxSize().background(Color(0x99000000), RoundedCornerShape(6.dp)))
+                        Box(Modifier.fillMaxSize().background(Color(0x99000000), BenflixShapes.Small))
                         PlayingBars(isPlaying)
                     }
                 }
@@ -664,7 +667,7 @@ fun MusicButton(
     filledPlay: Boolean = false,
     filledHeart: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()

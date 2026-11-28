@@ -347,14 +347,15 @@ fun PlaybackOverlay(
 }
 
 /** The soft shade at the top of the player, behind the clock and Ends at */
-private val TOP_SHADE =
-    Brush.verticalGradient(
-        listOf(
-            com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
-                .copy(alpha = .7f),
-            Color.Transparent,
-        ),
-    )
+private val TOP_SHADE
+    get() =
+        Brush.verticalGradient(
+            listOf(
+                com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
+                    .copy(alpha = .7f),
+                Color.Transparent,
+            ),
+        )
 
 /** How much taller than the controls the dark strip is (the part above them is its fade) */
 private const val STRIP_OVER_CONTROLS = 1.9f

@@ -75,6 +75,7 @@ import com.github.damontecres.wholphin.ui.setup.SeaFriend
 import com.github.damontecres.wholphin.ui.setup.SeaFriendImage
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -253,7 +254,7 @@ private fun Live(
                             Modifier
                                 .width(if (isTv) tvPictureHeight(0.26f) * (16f / 9f) else 260.dp)
                                 .aspectRatio(16f / 9f)
-                                .background(PuzzlePanel, RoundedCornerShape(10.dp)),
+                                .background(PuzzlePanel, BenflixShapes.Card),
                     )
                 }
             }
@@ -287,7 +288,7 @@ private fun Live(
                                     150.dp
                                 },
                             ).aspectRatio(if (ui.wide) 16f / 9f else 2f / 3f)
-                            .background(PuzzlePanel, RoundedCornerShape(10.dp)),
+                            .background(PuzzlePanel, BenflixShapes.Card),
                 )
             }
             ChoicesShown(ui.choices)
@@ -308,7 +309,7 @@ private fun ChoicesShown(choices: List<String>) {
                 "${'A' + i}  $c",
                 fontSize = 18.sp,
                 color = Color.White,
-                modifier = Modifier.background(Color(0xFF2A2A2E), RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.background(Color(0xFF2A2A2E), BenflixShapes.Card).padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
     }
@@ -384,7 +385,7 @@ private fun PlayerChips(names: List<String>) {
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
-                modifier = Modifier.background(Color(0xFF33333A), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 6.dp),
+                modifier = Modifier.background(Color(0xFF33333A), BenflixShapes.Pill).padding(horizontal = 14.dp, vertical = 6.dp),
             )
         }
     }
@@ -397,7 +398,7 @@ private fun Panel(content: @Composable () -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = .06f), BenflixShapes.Card)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) { content() }
 }
@@ -411,7 +412,7 @@ fun DrawingBoard(
     Canvas(
         modifier
             .aspectRatio(4f / 3f)
-            .background(Color.White, RoundedCornerShape(10.dp)),
+            .background(Color.White, BenflixShapes.Card),
     ) {
         lines.forEach { line ->
             val pts =
@@ -503,7 +504,7 @@ fun PartyJoinScreen(
                 fontWeight = FontWeight.Black,
                 color = Color.Black,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().background(PuzzleGold, RoundedCornerShape(10.dp)).padding(12.dp),
+                modifier = Modifier.fillMaxWidth().background(PuzzleGold, BenflixShapes.Card).padding(12.dp),
             )
         }
         if (v.text.isNotBlank()) Text(v.text, fontSize = 18.sp, lineHeight = 26.sp, color = Color.White)
@@ -563,8 +564,8 @@ private fun SendBox(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(PuzzlePanel, RoundedCornerShape(10.dp))
-                .border(1.dp, Color(0xFF44444C), RoundedCornerShape(10.dp))
+                .background(PuzzlePanel, BenflixShapes.Card)
+                .border(1.dp, Color(0xFF44444C), BenflixShapes.Card)
                 .padding(14.dp),
     )
     Button(onClick = send, modifier = Modifier.fillMaxWidth(), scale = ButtonDefaults.scale(focusedScale = 1f)) {

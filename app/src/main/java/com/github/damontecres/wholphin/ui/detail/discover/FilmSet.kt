@@ -29,6 +29,7 @@ import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -221,7 +222,7 @@ fun FilmSetBlock(
                     overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
-                            .background(Color.White.copy(alpha = if (part.state == PartState.HERE) .14f else .06f), RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = if (part.state == PartState.HERE) .14f else .06f), BenflixShapes.Pill)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }

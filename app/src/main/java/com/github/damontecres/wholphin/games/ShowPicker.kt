@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -321,7 +323,7 @@ private fun Poster(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Column(Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
         Box(
             Modifier

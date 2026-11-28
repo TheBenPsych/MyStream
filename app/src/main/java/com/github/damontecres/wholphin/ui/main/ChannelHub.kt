@@ -58,6 +58,7 @@ import com.github.damontecres.wholphin.services.FAVOURITES_GROUP
 import com.github.damontecres.wholphin.services.group
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
@@ -97,7 +98,7 @@ internal fun digitOf(event: KeyEvent): Int? {
     }
 }
 
-private val Muted = Glowfin.Dim
+private val Muted get() = Glowfin.Dim
 
 @Composable
 private fun tileColors(container: Color) =
@@ -111,7 +112,7 @@ private fun tileColors(container: Color) =
 @Composable
 private fun tileBorder() =
     ClickableSurfaceDefaults.border(
-        focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = RoundedCornerShape(10.dp)),
+        focusedBorder = Border(BorderStroke(2.5.dp, BenflixColors.Focus), shape = BenflixShapes.Card),
     )
 
 /**
@@ -241,7 +242,7 @@ internal fun ChannelRow(
     Surface(
         onClick = onClick,
         onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Small),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = if (playing) Glowfin.Raise else Color.Transparent,
@@ -251,7 +252,7 @@ internal fun ChannelRow(
             ),
         border =
             com.github.damontecres.wholphin.ui.nav
-                .focusRing(RoundedCornerShape(6.dp)),
+                .focusRing(BenflixShapes.Small),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.fillMaxWidth().height(52.dp),
     ) {
@@ -283,7 +284,7 @@ internal fun ChannelRow(
 }
 
 /** Glowfin (L1): favourite stars are aqua, like the sheet */
-internal val StarGold = Glowfin.Aqua
+internal val StarGold get() = Glowfin.Aqua
 
 /**
  * Glowfin (L1): a Recently watched tile. The logo on a raised 16:9 card (glow ring when the remote is
@@ -300,7 +301,7 @@ internal fun RecentCard(
 ) {
     val now = System.currentTimeMillis()
     val on = schedule.programAt(now)
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.width(width)) {
         Surface(
             onClick = onClick,
@@ -352,7 +353,7 @@ internal fun HideTypesDialog(
             modifier =
                 Modifier
                     .widthIn(max = 420.dp)
-                    .background(Glowfin.Deep, RoundedCornerShape(16.dp))
+                    .background(Glowfin.Deep, BenflixShapes.Panel)
                     .padding(18.dp),
         ) {
             Text(
@@ -376,7 +377,7 @@ internal fun HideTypesDialog(
                     val shown = group !in hidden
                     Surface(
                         onClick = { ChannelPrefs.setHidden(group, shown) },
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Small),
                         colors =
                             ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
@@ -386,7 +387,7 @@ internal fun HideTypesDialog(
                             ),
                         border =
                             com.github.damontecres.wholphin.ui.nav
-                                .focusRing(RoundedCornerShape(6.dp)),
+                                .focusRing(BenflixShapes.Small),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier =
                             Modifier
@@ -428,7 +429,7 @@ internal fun LiveChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

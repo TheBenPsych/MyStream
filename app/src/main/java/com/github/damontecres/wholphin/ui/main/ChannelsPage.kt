@@ -93,6 +93,7 @@ import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -708,7 +709,7 @@ private fun GuideGrid(
                     Surface(
                         onClick = { channelPage = schedule },
                         onLongClick = { ChannelPrefs.toggleFavourite(schedule.key) },
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Small),
                         colors =
                             ClickableSurfaceDefaults.colors(
                                 containerColor = Color.Transparent,
@@ -718,7 +719,7 @@ private fun GuideGrid(
                             ),
                         border =
                             com.github.damontecres.wholphin.ui.nav
-                                .focusRing(RoundedCornerShape(6.dp)),
+                                .focusRing(BenflixShapes.Small),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier = Modifier.width(CHANNEL_COL).fillMaxHeight(),
                     ) {
@@ -776,7 +777,7 @@ private fun GuideGrid(
                                         laterMenu = schedule to program
                                     }
                                 },
-                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Small),
                                 // Glowfin L1: on now sits on the raised colour, later ones on the deep one;
                                 // the remote's show turns white with an aqua ring
                                 colors =
@@ -790,14 +791,14 @@ private fun GuideGrid(
                                     ClickableSurfaceDefaults.border(
                                         border =
                                             if (isSelected) {
-                                                Border(BorderStroke(2.dp, Color.White), shape = RoundedCornerShape(6.dp))
+                                                Border(BorderStroke(2.dp, Color.White), shape = BenflixShapes.Small)
                                             } else if (BenflixTeams.isMine(program.name())) {
                                                 // Follow your teams: a game with one of your teams gets a gold edge
-                                                Border(BorderStroke(1.5.dp, TEAM_GOLD), shape = RoundedCornerShape(6.dp))
+                                                Border(BorderStroke(1.5.dp, TEAM_GOLD), shape = BenflixShapes.Small)
                                             } else {
                                                 Border.None
                                             },
-                                        focusedBorder = Border(BorderStroke(2.5.dp, Glowfin.Aqua), shape = RoundedCornerShape(6.dp)),
+                                        focusedBorder = Border(BorderStroke(2.5.dp, Glowfin.Aqua), shape = BenflixShapes.Small),
                                     ),
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                 modifier =
@@ -980,7 +981,7 @@ private fun SuggestFavouriteTile(
         modifier =
             Modifier
                 .height(64.dp)
-                .background(Glowfin.Raise, RoundedCornerShape(10.dp))
+                .background(Glowfin.Raise, BenflixShapes.Card)
                 .padding(horizontal = 12.dp),
     ) {
         Text(
@@ -1011,7 +1012,7 @@ private fun AddChannelsDialog(
             modifier =
                 Modifier
                     .widthIn(max = 520.dp)
-                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.Panel, BenflixShapes.Panel)
                     .padding(18.dp),
         ) {
             Text(
@@ -1072,7 +1073,7 @@ internal fun LivePill(modifier: Modifier = Modifier) {
         color = Glowfin.Ink,
         modifier =
             modifier
-                .background(Glowfin.Aqua, RoundedCornerShape(50))
+                .background(Glowfin.Aqua, BenflixShapes.Pill)
                 .padding(horizontal = 8.dp, vertical = 1.dp),
     )
 }
@@ -1220,13 +1221,13 @@ private fun GuideHeader(
                             .padding(top = 4.dp)
                             .width(220.dp)
                             .height(4.dp)
-                            .background(Color.White.copy(alpha = .14f), RoundedCornerShape(6.dp)),
+                            .background(Color.White.copy(alpha = .14f), BenflixShapes.Small),
                 ) {
                     Box(
                         Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(progress)
-                            .background(Glowfin.GlowAcross, RoundedCornerShape(6.dp)),
+                            .background(Glowfin.GlowAcross, BenflixShapes.Small),
                     )
                 }
             }
@@ -1402,7 +1403,7 @@ fun ChannelBanner(
                                 .weight(1f, fill = false)
                                 .fillMaxWidth()
                                 .height(4.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(BenflixShapes.Small)
                                 .background(Color.White.copy(alpha = .2f)),
                         ) {
                             Box(
@@ -1447,7 +1448,7 @@ private const val HERO_SHARE = .64f
 
 /** On phones the header (and so its 16:9 picture) is shorter, leaving room for the title */
 private val PHONE_HEADER_HEIGHT = 110.dp
-private val BenflixRed = BenflixColors.LiveTv
+private val BenflixRed get() = BenflixColors.LiveTv
 
 private val ROW_HEIGHT = 56.dp
 

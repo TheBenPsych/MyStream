@@ -43,6 +43,7 @@ import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.detail.title.ScoreBox
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -579,7 +580,7 @@ fun SeerrTagsBlock(
         if (sorted.size > COLLAPSED_TAGS) {
             Surface(
                 onClick = { expanded = !expanded },
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = Color.Transparent,
@@ -707,7 +708,7 @@ private fun ScoresCard(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
             modifier
-                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .background(CARD_BACKGROUND, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         FactLabel("Scores")
@@ -737,7 +738,7 @@ private fun FactsCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             modifier
-                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .background(CARD_BACKGROUND, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         facts.chunked(2).forEach { pair ->
@@ -773,7 +774,7 @@ private fun TagPill(
         fontSize = BenflixType.small,
         modifier =
             Modifier
-                .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), RoundedCornerShape(50))
+                .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), BenflixShapes.Pill)
                 .padding(horizontal = 12.dp, vertical = 5.dp),
     )
 }
@@ -791,7 +792,7 @@ private fun Pill(
         fontWeight = FontWeight.Bold,
         modifier =
             Modifier
-                .background(background, RoundedCornerShape(6.dp))
+                .background(background, BenflixShapes.Small)
                 .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }

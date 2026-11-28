@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -67,6 +66,7 @@ import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.preferences.GlowfinSettingRow
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -198,7 +198,7 @@ fun RqStatusTag(
     tag: RqTag,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val color = tag.kind.dot
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -530,7 +530,7 @@ private fun WaitingPill(
     wide: Boolean,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -761,21 +761,23 @@ fun RequestFiltersPanel(
 private fun onOff(on: Boolean) = if (on) "On" else "Off"
 
 /** The panel: nearly solid on the right, fading in from the left so the page shows faintly beside it */
-private val PANEL_FADE =
-    Brush.horizontalGradient(
-        0f to Glowfin.Deep.copy(alpha = .9f),
-        .2f to Glowfin.Deep.copy(alpha = .97f),
-        1f to Glowfin.Deep,
-    )
+private val PANEL_FADE
+    get() =
+        Brush.horizontalGradient(
+            0f to Glowfin.Deep.copy(alpha = .9f),
+            .2f to Glowfin.Deep.copy(alpha = .97f),
+            1f to Glowfin.Deep,
+        )
 
 /** The soft shade on the left of the art, only as wide as the words */
-private val ART_LEFT =
-    Brush.horizontalGradient(
-        0f to BenflixColors.Tray.copy(alpha = .92f),
-        .15f to BenflixColors.Tray.copy(alpha = .78f),
-        .4f to BenflixColors.Tray.copy(alpha = .42f),
-        .68f to Color.Transparent,
-    )
+private val ART_LEFT
+    get() =
+        Brush.horizontalGradient(
+            0f to BenflixColors.Tray.copy(alpha = .92f),
+            .15f to BenflixColors.Tray.copy(alpha = .78f),
+            .4f to BenflixColors.Tray.copy(alpha = .42f),
+            .68f to Color.Transparent,
+        )
 
 private val SOFT_EDGE = Shadow(color = Color.Black.copy(alpha = .6f), offset = Offset(0f, 1.5f), blurRadius = 4f)
 private val WAIT_FILL = Color(0xFFF2B33D).copy(alpha = .2f)
