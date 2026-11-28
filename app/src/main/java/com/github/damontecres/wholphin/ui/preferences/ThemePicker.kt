@@ -182,12 +182,19 @@ private fun ThemeThumb(look: ThemeLook) {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 repeat(3) { index ->
                     val cover = Modifier.size(width = 26.dp, height = 30.dp).background(look.raise, coverShape)
-                    Box(if (index == 1) cover.border(1.5.dp, look.outline, coverShape) else cover)
+                    val frame = look.frame
+                    Box(
+                        when {
+                            index == 1 -> cover.border(1.5.dp, look.outline, coverShape)
+                            frame != null -> cover.border(1.dp, frame, coverShape)
+                            else -> cover
+                        },
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(width = 30.dp, height = 9.dp).background(glow, buttonShape))
-                Box(Modifier.height(4.dp).width(40.dp).background(look.focus, CircleShape))
+                Box(Modifier.height(4.dp).width(40.dp).background(look.accent, CircleShape))
             }
         }
     }

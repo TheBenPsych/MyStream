@@ -662,7 +662,11 @@
   window.addEventListener("pageshow", towersBack);
   // Glowfin (M1): the logo's glow, violet at the bottom up to aqua at the top (no more amber door colours)
   // The glow from the bottom row to the top, in the theme's own colours (Sunset: rose > orange > gold)
-  const COLORS = B.theme && B.theme() === "sunset" ? ["#F0567A", "#F8703C", "#FF8A3D", "#FFA644", "#FFC24A"] : ["#A55BE0", "#6282E3", "#1FA8E6", "#2FC4E7", "#3FE0E8"];
+  const COLORS = ({
+    sunset: ["#F0567A", "#F8703C", "#FF8A3D", "#FFA644", "#FFC24A"],
+    slate: ["#5D55E7", "#635CE6", "#6962E4", "#6F69E3", "#756FE2"],
+    classic: ["#00A4DC", "#00A4DC", "#00A4DC", "#00A4DC", "#00A4DC"],
+  })[B.theme ? B.theme() : ""] || ["#A55BE0", "#6282E3", "#1FA8E6", "#2FC4E7", "#3FE0E8"];
   const levels = [];
   let towersOn = false;
   function startTowers() {
