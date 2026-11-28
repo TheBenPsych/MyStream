@@ -74,6 +74,8 @@ fun Destination.underTopBar(): Boolean =
         this is Destination.Requests ||
         // Glowfin new look (Search): the box sits in the header row and the result's art goes up behind it
         this is Destination.Search ||
+        // Server redesign (Ben 2026-11-28): the Server page's tabs sit in the header row, like Movies and Requests
+        this is Destination.ServerStatus ||
         // Ben 2026-11-23: movie, show and episode pages too. The art fills the screen up behind the clock, with no
         // bar of its own, and the title and scores sit up in the corners
         isRowsTitlePage() ||

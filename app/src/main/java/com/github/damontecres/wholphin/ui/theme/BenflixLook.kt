@@ -64,6 +64,11 @@ object BenflixColors {
     val Check = Color(0xFFE8D44D)
     val Problem = Color(0xFFFF7A7A)
 
+    /** The same three, darker, for words on a white (lit) card */
+    val OkOnLight = Color(0xFF1F9D58)
+    val CheckOnLight = Color(0xFF8A6A00)
+    val ProblemOnLight = Color(0xFFC62828)
+
     /** "Couldn't find it" on Requests */
     val CantFind = Color(0xFFFF8A8A)
 
