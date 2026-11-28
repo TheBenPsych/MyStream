@@ -410,7 +410,7 @@ fun PlayerTabs(
         tabs.forEach { t ->
             val on = t == tab
             val faded = t == PlayerTab.LYRICS && noLyrics
-            val shape = RoundedCornerShape(50)
+            val shape = BenflixShapes.Pill
             Surface(
                 onClick = { onTab(t) },
                 shape = ClickableSurfaceDefaults.shape(shape),
@@ -741,7 +741,7 @@ fun LyricLine(
                 modifier =
                     Modifier
                         .padding(start = 10.dp)
-                        .background(BenflixColors.Raised, RoundedCornerShape(50))
+                        .background(BenflixColors.Raised, BenflixShapes.Pill)
                         .padding(horizontal = 10.dp, vertical = 3.dp),
             )
         }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +48,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -532,7 +532,7 @@ private fun TagChip(
         onLongClick = onLongClick,
         shape =
             androidx.tv.material3.ClickableSurfaceDefaults
-                .shape(RoundedCornerShape(50)),
+                .shape(BenflixShapes.Pill),
         colors =
             androidx.tv.material3.ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .12f),

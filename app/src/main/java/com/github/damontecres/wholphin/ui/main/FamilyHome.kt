@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -265,7 +264,7 @@ private fun FamilyHeader(
                     maxLines = 1,
                     modifier =
                         Modifier
-                            .background(BenflixColors.Line, RoundedCornerShape(50))
+                            .background(BenflixColors.Line, BenflixShapes.Pill)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
@@ -293,7 +292,7 @@ private fun KidsButton(
     modifier: Modifier = Modifier,
 ) {
     // New look: round buttons, in the Kids colours
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -485,7 +484,7 @@ fun ProfileBadge(
             overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
-                    .background(bg, RoundedCornerShape(50))
+                    .background(bg, BenflixShapes.Pill)
                     .padding(horizontal = 12.dp * scale, vertical = 4.dp * scale),
         )
         if (guest && showGuestLine) {

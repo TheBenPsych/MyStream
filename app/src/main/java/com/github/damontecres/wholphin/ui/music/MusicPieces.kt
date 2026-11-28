@@ -667,7 +667,7 @@ fun MusicButton(
     filledPlay: Boolean = false,
     filledHeart: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val isTv =
         com.github.damontecres.wholphin.ui.touch
             .rememberIsTv()

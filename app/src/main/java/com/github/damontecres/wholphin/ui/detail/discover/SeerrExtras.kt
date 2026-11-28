@@ -580,7 +580,7 @@ fun SeerrTagsBlock(
         if (sorted.size > COLLAPSED_TAGS) {
             Surface(
                 onClick = { expanded = !expanded },
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = Color.Transparent,
@@ -774,7 +774,7 @@ private fun TagPill(
         fontSize = BenflixType.small,
         modifier =
             Modifier
-                .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), RoundedCornerShape(50))
+                .background(if (grownUp) Color(0xFFB3261E) else Color.White.copy(alpha = .1f), BenflixShapes.Pill)
                 .padding(horizontal = 12.dp, vertical = 5.dp),
     )
 }

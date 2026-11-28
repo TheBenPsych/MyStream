@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** One spot on the Arcade wall */
@@ -47,7 +47,7 @@ internal fun PlayIcon(kind: PlayWith) {
         modifier =
             Modifier
                 .size(30.dp)
-                .background(Color(0xFF33363F), RoundedCornerShape(50)),
+                .background(Color(0xFF33363F), BenflixShapes.Pill),
     ) {
         when (kind) {
             PlayWith.REMOTE -> {
@@ -78,7 +78,7 @@ internal fun Badge(
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier =
             Modifier
-                .background(Color.White.copy(alpha = .1f), RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = .1f), BenflixShapes.Pill)
                 .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         when (kind) {

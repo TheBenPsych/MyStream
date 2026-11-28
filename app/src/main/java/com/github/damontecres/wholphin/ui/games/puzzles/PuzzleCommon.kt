@@ -219,7 +219,7 @@ fun PuzzleHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =
                         Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(BenflixShapes.Pill)
                             .background(Color.White.copy(alpha = .07f))
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
@@ -251,7 +251,7 @@ private fun BarChip(
         maxLines = 1,
         modifier =
             Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(BenflixShapes.Pill)
                 .background(Color.White.copy(alpha = .07f))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
     )
@@ -274,7 +274,7 @@ fun HintChips(hints: List<String>) {
                 color = Color(0xFFFFD36B),
                 modifier =
                     Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(BenflixShapes.Pill)
                         .background(Color(0xFF3B2F10))
                         .padding(horizontal = 12.dp, vertical = 5.dp),
             )
@@ -497,7 +497,7 @@ fun PuzzleOver(
                                     Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(5.dp)
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(BenflixShapes.Pill)
                                         .background(Color.Black.copy(alpha = .75f))
                                         .padding(horizontal = 7.dp, vertical = 2.dp),
                             )

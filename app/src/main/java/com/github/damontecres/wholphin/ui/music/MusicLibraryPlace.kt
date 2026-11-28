@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -678,7 +677,7 @@ private fun LibraryRow(
                             Modifier
                                 .padding(end = 6.dp)
                                 .size(8.dp)
-                                .background(BenflixColors.Music, RoundedCornerShape(50)),
+                                .background(BenflixColors.Music, BenflixShapes.Pill),
                         )
                     }
                     Text(
@@ -699,7 +698,7 @@ private fun LibraryTextButton(
     label: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

@@ -224,7 +224,7 @@ fun SiteMark(
                     Modifier
                         .offset(x = size * .3f, y = -size * .12f)
                         .size(width = size * .42f, height = size * .26f)
-                        .background(Color(0xFF3AA33A), RoundedCornerShape(50)),
+                        .background(Color(0xFF3AA33A), BenflixShapes.Pill),
                 )
             }
         }

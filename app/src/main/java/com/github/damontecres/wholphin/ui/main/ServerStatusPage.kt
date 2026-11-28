@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -1349,14 +1348,14 @@ internal fun ProgressLine(share: Float) {
             Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(50)),
+                .background(Color.White.copy(alpha = 0.15f), BenflixShapes.Pill),
     ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth(share.coerceIn(0.02f, 1f))
                     .height(4.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
+                    .background(MaterialTheme.colorScheme.primary, BenflixShapes.Pill),
         )
     }
 }
@@ -1487,7 +1486,7 @@ private fun StatusChip(
         fontWeight = FontWeight.SemiBold,
         modifier =
             Modifier
-                .background(color.copy(alpha = 0.16f), RoundedCornerShape(50))
+                .background(color.copy(alpha = 0.16f), BenflixShapes.Pill)
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
 }
@@ -1547,14 +1546,14 @@ private fun DiskBar(disk: ServerDisk) {
                 Modifier
                     .fillMaxWidth()
                     .height(10.dp)
-                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50)),
+                    .background(Color.White.copy(alpha = 0.12f), BenflixShapes.Pill),
         ) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth(disk.usedShare.coerceIn(0.02f, 1f))
                         .height(10.dp)
-                        .background(color, RoundedCornerShape(50)),
+                        .background(color, BenflixShapes.Pill),
             )
         }
         if (disk.nearlyFull) {

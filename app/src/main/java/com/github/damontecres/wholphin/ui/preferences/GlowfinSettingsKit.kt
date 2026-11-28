@@ -72,7 +72,7 @@ private val BarWidth = 3.dp
  * The setting you're on is solid white with the aqua ring, like every other focus in the app.
  * Nothing grows and nothing blurs, so it stays smooth on the weak TCL TVs.
  */
-private val PillShape = RoundedCornerShape(99.dp)
+private val PillShape get() = BenflixShapes.Pill
 private val CardShape = RoundedCornerShape(9.dp)
 
 /** The see-through fill and edge of a pill or setting that isn't lit */

@@ -1072,7 +1072,7 @@ internal fun TitleButtonView(
 ) {
     // Glowfin "fresh" pick: round buttons. The main one is solid white; the rest are see-through so the art
     // shows through them (a plain see-through fill, no blur, so it stays smooth on weak TVs).
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val primaryFill = BenflixColors.Text
     val container = if (primary) primaryFill else Color.White.copy(alpha = .14f)
     val content =
