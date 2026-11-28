@@ -335,7 +335,14 @@ private fun HandPanel(
     val focus = remember { FocusRequester() }
     LaunchedEffect(active) { if (active) focus.tryRequestFocus() }
     val buttons = t?.buttons.orEmpty()
-    val r = if (buttons.isEmpty()) 0 else if (t != null && t.playable.isEmpty()) 1 else row
+    val r =
+        if (buttons.isEmpty()) {
+            0
+        } else if (t != null && t.playable.isEmpty()) {
+            1
+        } else {
+            row
+        }
     val s = if (r == 0) spot.coerceIn(0, (hand.size - 1).coerceAtLeast(0)) else spot.coerceIn(0, (buttons.size - 1).coerceAtLeast(0))
 
     fun ok() {
