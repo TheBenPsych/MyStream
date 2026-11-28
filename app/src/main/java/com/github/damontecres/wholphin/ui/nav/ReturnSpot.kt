@@ -73,8 +73,7 @@ object ReturnSpot {
         synchronized(left) { left.clear() }
     }
 
-    internal fun wants(key: String): Boolean =
-        wanted == key && now() - wantedAt < FRESH_MS && LastRemoteKey.pressAt <= wantedAt
+    internal fun wants(key: String): Boolean = wanted == key && now() - wantedAt < FRESH_MS && LastRemoteKey.pressAt <= wantedAt
 
     internal fun claimedBy(key: String) {
         if (wanted == key) claimed = true
