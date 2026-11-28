@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,6 +31,8 @@ fun TrickplayPreview(
     trickplayInfo: TrickplayInfo?,
     trickplayUrlFor: (Int) -> String?,
     modifier: Modifier = Modifier,
+    /** The chapter you're jumping into, shown as a white pill while you move along the bar */
+    chapterName: String? = null,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -75,6 +78,21 @@ fun TrickplayPreview(
                         shape = RoundedCornerShape(6.dp),
                     ).padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        if (chapterName != null) {
+            Text(
+                text = chapterName,
+                color = Color(0xFF0B0D1A),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .widthIn(max = 320.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 

@@ -22,6 +22,7 @@ fun DpadSeekOverlay(
     trickplayInfo: TrickplayInfo?,
     trickplayUrlFor: (Int) -> String?,
     modifier: Modifier = Modifier,
+    chapters: List<com.github.damontecres.wholphin.data.model.Chapter> = emptyList(),
 ) {
     val durationMs = player.duration.coerceAtLeast(0L)
     val seekProgressPercent =
@@ -49,6 +50,7 @@ fun DpadSeekOverlay(
                 seekProgressMs = seekPositionMs,
                 trickplayInfo = trickplayInfo,
                 trickplayUrlFor = trickplayUrlFor,
+                chapterName = chapterNameAt(chapters, seekPositionMs),
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
@@ -60,6 +62,7 @@ fun DpadSeekOverlay(
             progress = seekProgressPercent,
             bufferedProgress = bufferedProgress,
             durationMs = durationMs,
+            chapterMarks = chapterMarksFor(chapters, durationMs),
             modifier = Modifier.fillMaxWidth(),
         )
         SeekTimecodes(

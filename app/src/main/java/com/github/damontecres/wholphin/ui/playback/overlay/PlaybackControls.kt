@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -222,13 +223,28 @@ fun PlaybackControls(
             initialFocusRequester.tryRequestFocus()
         }
     }
+    // Simple player (Ben 2026-11-27): two rows only, low on the screen. The bar with the two times on its line,
+    // then one row: the name on the left, Play in the middle of the screen, Subtitles to Settings on the right.
     Column(
         modifier = modifier.bringIntoViewRequester(bringIntoViewRequester),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
+        // "Skip intro" sits just above the right end of the bar, only while there's something to skip
+        currentSegment?.let { segment ->
+            Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth(.95f).padding(bottom = 6.dp)) {
+                PlayerPillButton(
+                    text = stringResource(segment.type.skipStringRes),
+                    faIcon = R.string.fa_arrow_right_long,
+                    onClick = {
+                        player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
+                    },
+                    onControllerInteraction = onControllerInteraction,
+                    highlighted = true,
+                )
+            }
+        }
         if (live != null) {
-            PlayerTitleLine(title = title, subtitle = subtitle, modifier = Modifier.fillMaxWidth(.95f))
             // Live TV: the programme's own line (when it started, when it ends) in place of chapters
             LiveLine(
                 live = live,
@@ -245,12 +261,7 @@ fun PlaybackControls(
                 seekBack = seekBack,
                 seekForward = seekForward,
                 chapters = chapters,
-                title = title,
-                subtitle = subtitle,
-                modifier =
-                    Modifier
-                        .padding(vertical = 0.dp)
-                        .fillMaxWidth(.95f),
+                modifier = Modifier.fillMaxWidth(.95f),
             )
         }
         NetflixControlRow(
@@ -268,12 +279,10 @@ fun PlaybackControls(
             seekBack = seekBack,
             seekForward = seekForward,
             skipBackOnResume = skipBackOnResume,
-            currentSegment = currentSegment,
             live = live != null,
-            modifier =
-                Modifier
-                    .fillMaxWidth(.95f)
-                    .padding(top = 2.dp, bottom = 4.dp),
+            title = title,
+            subtitle = subtitle,
+            modifier = Modifier.fillMaxWidth(.95f),
         )
     }
 }
@@ -282,12 +291,12 @@ fun PlaybackControls(
 private const val PLAY_HIDE_MS = 600L
 
 /**
- * Glowfin new look (Part 4, Ben 2026-11-22): round see-through buttons with their names under them, and Pause
- * (or Play) solid white like the main button on every page. Every button is kept: Previous, Back 10, Play/Pause,
- * Ahead 10 and Next on the left, then Subtitles, Audio, Episodes and Settings on the right. The Skip and LIVE
- * pills show just before Subtitles when they matter. No Volume button here: the TV remote and the phone's own
- * buttons do volume (Ben: Volume only on the browser and computer apps). Same on TV and phones (phones sideways
- * get slightly smaller buttons).
+ * The simple player's one row of buttons (Ben 2026-11-27): plain white icons with no names under them and no
+ * circles round them. Only the button the remote is on gets a solid white circle. The show's name sits on the
+ * left, Previous, Back, Play/Pause, Ahead and Next sit in the middle of the screen, and Subtitles, Audio,
+ * Episodes and Settings on the right (after the LIVE pill on Live TV). Every button is kept. No Volume button
+ * here: the TV remote and the phone's own buttons do volume. Same on TV and phones (phones get slightly
+ * smaller buttons).
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -302,115 +311,121 @@ fun NetflixControlRow(
     seekBack: Duration,
     seekForward: Duration,
     skipBackOnResume: Duration?,
-    currentSegment: MediaSegmentDto?,
     modifier: Modifier = Modifier,
     previousEnabled: Boolean = false,
     episodesEnabled: Boolean = false,
     live: Boolean = false,
     onPlayStarted: () -> Unit = {},
+    title: String? = null,
+    subtitle: String? = null,
 ) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(modifier = modifier.focusGroup()) {
             val compact = maxWidth < WIDE_CONTROLS_MIN_WIDTH
             val sizes = if (compact) PlayerButtonSizes.Compact else PlayerButtonSizes.Wide
-            val gap = if (compact) 4.dp else 8.dp
             val open = { type: PlaybackDialogType ->
                 onControllerInteraction.invoke()
                 onClickPlaybackDialogType.invoke(type)
             }
             // Previous and Next show for episodes (and playlists), dimmed when there's none, so nothing moves
             val showEpisodeArrows = episodesEnabled || previousEnabled || nextEnabled
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(gap),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                // Left: Previous, Back 10, Play/Pause, Ahead 10, Next
-                if (showEpisodeArrows) {
-                    PlayerGlowButton(
-                        icon = GlowfinIcon.PREVIOUS,
-                        number = null,
-                        label = "Previous",
-                        contentDescription = "Previous episode",
-                        sizes = sizes,
-                        enabled = previousEnabled,
-                        onClick = {
-                            onControllerInteraction.invoke()
-                            onPlaybackActionClick.invoke(PlaybackAction.Previous)
-                        },
-                        onControllerInteraction = onControllerInteraction,
+            // The room left of the middle buttons, for the name (and the same room on the right for the rest)
+            val middleWidth = sizes.slot * if (showEpisodeArrows) 5 else 3
+            val sideWidth = ((maxWidth - middleWidth) / 2 - 8.dp).coerceAtLeast(0.dp)
+            Box(modifier = Modifier.fillMaxWidth().height(sizes.big)) {
+                // Left: the name and the episode line (hidden when a narrow phone leaves no room)
+                if (sideWidth >= 120.dp) {
+                    PlayerNameBlock(
+                        title = title,
+                        subtitle = subtitle,
+                        compact = compact,
+                        modifier = Modifier.align(Alignment.CenterStart).width(sideWidth),
                     )
                 }
-                PlayerGlowButton(
-                    icon = GlowfinIcon.BACK,
-                    number = seekBack.inWholeSeconds.toString(),
-                    label = "Back ${seekBack.inWholeSeconds}",
-                    contentDescription = "Back ${seekBack.inWholeSeconds} seconds",
-                    sizes = sizes,
-                    onClick = {
-                        onControllerInteraction.invoke()
-                        player.seekBack(seekBack)
-                    },
-                    onControllerInteraction = onControllerInteraction,
-                )
-                PlayerGlowButton(
-                    icon = if (showPlay) GlowfinIcon.PLAY else GlowfinIcon.PAUSE,
-                    number = null,
-                    label = if (showPlay) "Play" else "Pause",
-                    sizes = sizes,
-                    big = true,
-                    solid = true,
-                    onClick = {
-                        onControllerInteraction.invoke()
-                        if (showPlay) {
-                            player.play()
-                            skipBackOnResume?.let {
-                                player.seekBack(it)
-                            }
-                            onPlayStarted.invoke()
-                        } else {
-                            player.pause()
-                        }
-                    },
-                    onControllerInteraction = onControllerInteraction,
-                    modifier = Modifier.focusRequester(initialFocusRequester),
-                )
-                PlayerGlowButton(
-                    icon = GlowfinIcon.AHEAD,
-                    number = seekForward.inWholeSeconds.toString(),
-                    label = "Ahead ${seekForward.inWholeSeconds}",
-                    contentDescription = "Ahead ${seekForward.inWholeSeconds} seconds",
-                    sizes = sizes,
-                    onClick = {
-                        onControllerInteraction.invoke()
-                        player.seekForward(seekForward)
-                    },
-                    onControllerInteraction = onControllerInteraction,
-                )
-                if (showEpisodeArrows) {
-                    PlayerGlowButton(
-                        icon = GlowfinIcon.NEXT,
-                        number = null,
-                        label = "Next",
-                        contentDescription = "Next episode",
-                        sizes = sizes,
-                        enabled = nextEnabled,
-                        onClick = {
-                            onControllerInteraction.invoke()
-                            onPlaybackActionClick.invoke(PlaybackAction.Next)
-                        },
-                        onControllerInteraction = onControllerInteraction,
-                    )
-                }
-                // Right: the pills that only show when they matter, then Subtitles, Audio, Episodes and Settings
+                // Middle of the screen: Previous, Back 10, Play/Pause, Ahead 30, Next
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(gap, Alignment.End),
-                    verticalAlignment = Alignment.Top,
-                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.align(Alignment.Center),
                 ) {
-                    // The pills sit level with the round buttons' middles
-                    val pillTop = (sizes.big - 42.dp).coerceAtLeast(0.dp) / 2
-                    // Live TV: a LIVE pill where movies show "Ends at". Pressing it jumps back to live.
+                    if (showEpisodeArrows) {
+                        PlayerIconButton(
+                            icon = GlowfinIcon.PREVIOUS,
+                            number = null,
+                            contentDescription = "Previous episode",
+                            sizes = sizes,
+                            enabled = previousEnabled,
+                            onClick = {
+                                onControllerInteraction.invoke()
+                                onPlaybackActionClick.invoke(PlaybackAction.Previous)
+                            },
+                            onControllerInteraction = onControllerInteraction,
+                        )
+                    }
+                    PlayerIconButton(
+                        icon = GlowfinIcon.BACK,
+                        number = seekBack.inWholeSeconds.toString(),
+                        contentDescription = "Back ${seekBack.inWholeSeconds} seconds",
+                        sizes = sizes,
+                        onClick = {
+                            onControllerInteraction.invoke()
+                            player.seekBack(seekBack)
+                        },
+                        onControllerInteraction = onControllerInteraction,
+                    )
+                    PlayerIconButton(
+                        icon = if (showPlay) GlowfinIcon.PLAY else GlowfinIcon.PAUSE,
+                        number = null,
+                        contentDescription = if (showPlay) "Play" else "Pause",
+                        sizes = sizes,
+                        big = true,
+                        onClick = {
+                            onControllerInteraction.invoke()
+                            if (showPlay) {
+                                player.play()
+                                skipBackOnResume?.let {
+                                    player.seekBack(it)
+                                }
+                                onPlayStarted.invoke()
+                            } else {
+                                player.pause()
+                            }
+                        },
+                        onControllerInteraction = onControllerInteraction,
+                        modifier = Modifier.focusRequester(initialFocusRequester),
+                    )
+                    PlayerIconButton(
+                        icon = GlowfinIcon.AHEAD,
+                        number = seekForward.inWholeSeconds.toString(),
+                        contentDescription = "Ahead ${seekForward.inWholeSeconds} seconds",
+                        sizes = sizes,
+                        onClick = {
+                            onControllerInteraction.invoke()
+                            player.seekForward(seekForward)
+                        },
+                        onControllerInteraction = onControllerInteraction,
+                    )
+                    if (showEpisodeArrows) {
+                        PlayerIconButton(
+                            icon = GlowfinIcon.NEXT,
+                            number = null,
+                            contentDescription = "Next episode",
+                            sizes = sizes,
+                            enabled = nextEnabled,
+                            onClick = {
+                                onControllerInteraction.invoke()
+                                onPlaybackActionClick.invoke(PlaybackAction.Next)
+                            },
+                            onControllerInteraction = onControllerInteraction,
+                        )
+                    }
+                }
+                // Right: the LIVE pill (Live TV only), then Subtitles, Audio, Episodes and Settings
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                ) {
+                    // Live TV: pressing the LIVE pill jumps back to live
                     if (live) {
                         PlayerPillButton(
                             text = "● LIVE",
@@ -424,53 +439,41 @@ fun NetflixControlRow(
                             onControllerInteraction = onControllerInteraction,
                             modifier =
                                 Modifier
-                                    .padding(top = pillTop)
+                                    .padding(end = 8.dp)
                                     .semantics { contentDescription = "Live. Press to jump to live" },
                         )
                     }
-                    currentSegment?.let { segment ->
-                        PlayerPillButton(
-                            text = stringResource(segment.type.skipStringRes),
-                            faIcon = R.string.fa_arrow_right_long,
-                            onClick = {
-                                player.seekTo(segment.endTicks.ticks.inWholeMilliseconds)
-                            },
-                            onControllerInteraction = onControllerInteraction,
-                            highlighted = true,
-                            modifier = Modifier.padding(top = pillTop),
-                        )
-                    }
-                    PlayerGlowButton(
+                    PlayerIconButton(
                         icon = GlowfinIcon.SUBTITLES,
                         number = null,
-                        label = "Subtitles",
+                        contentDescription = "Subtitles",
                         sizes = sizes,
                         onClick = { open(PlaybackDialogType.CAPTIONS) },
                         onControllerInteraction = onControllerInteraction,
                     )
-                    PlayerGlowButton(
+                    PlayerIconButton(
                         icon = GlowfinIcon.AUDIO,
                         number = null,
-                        label = "Audio",
+                        contentDescription = "Audio",
                         sizes = sizes,
                         onClick = { open(PlaybackDialogType.AUDIO) },
                         onControllerInteraction = onControllerInteraction,
                     )
                     if (episodesEnabled) {
-                        PlayerGlowButton(
+                        PlayerIconButton(
                             icon = GlowfinIcon.EPISODES,
                             number = null,
-                            label = "Episodes",
+                            contentDescription = "Episodes",
                             sizes = sizes,
                             onClick = { open(PlaybackDialogType.EPISODES) },
                             onControllerInteraction = onControllerInteraction,
                         )
                     }
                     // Subtitle timing, Quality and the Fix a problem list all live behind the cog
-                    PlayerGlowButton(
+                    PlayerIconButton(
                         icon = GlowfinIcon.SETTINGS,
                         number = null,
-                        label = "Settings",
+                        contentDescription = "Settings",
                         sizes = sizes,
                         onClick = { open(PlaybackDialogType.SETTINGS) },
                         onControllerInteraction = onControllerInteraction,
@@ -485,118 +488,127 @@ fun NetflixControlRow(
 private val WIDE_CONTROLS_MIN_WIDTH = 820.dp
 
 /**
- * How big the player's round buttons are: [normal] ones, the [big] Play/Pause, the name under them, and the
- * [slot] each button and its name take (the same for every button, so the row never moves when Pause turns to Play)
+ * How big the player's buttons are: the white circle a [normal] button gets when the remote is on it, the [big]
+ * one for Play/Pause, and the [slot] of room each button takes in the row (the same for every button, so the row
+ * never moves when Pause turns to Play)
  */
 internal data class PlayerButtonSizes(
     val normal: Dp,
     val big: Dp,
-    val labelSize: androidx.compose.ui.unit.TextUnit,
     val slot: Dp,
 ) {
     companion object {
-        val Wide = PlayerButtonSizes(normal = 48.dp, big = 56.dp, labelSize = 13.sp, slot = 66.dp)
-        val Compact = PlayerButtonSizes(normal = 40.dp, big = 48.dp, labelSize = 11.sp, slot = 54.dp)
+        val Wide = PlayerButtonSizes(normal = 48.dp, big = 54.dp, slot = 60.dp)
+        val Compact = PlayerButtonSizes(normal = 40.dp, big = 46.dp, slot = 50.dp)
     }
 }
 
 /**
- * One of the player's round buttons (new look): see-through until the remote is on it, then white with the Glowfin
- * glow ring (a thin dark gap, an aqua ring and a soft violet glow, drawn once, no blur, cheap on older TVs).
- * A [solid] button (Pause/Play) is always white. Every button sits in a box as tall as Play/Pause, so all their
- * middles line up, with its name below.
+ * One of the simple player's buttons: just a white icon, nothing round it, until the remote is on it. Then it gets
+ * a solid white circle with a dark icon (no ring, no glow, no blur, so it costs nothing on older TVs). No name is
+ * drawn under it; [contentDescription] is still read out by screen readers.
  */
 @Composable
-internal fun PlayerGlowButton(
+internal fun PlayerIconButton(
     icon: GlowfinIcon,
     number: String?,
-    label: String?,
+    contentDescription: String,
     sizes: PlayerButtonSizes,
     onClick: () -> Unit,
     onControllerInteraction: () -> Unit,
     modifier: Modifier = Modifier,
     big: Boolean = false,
-    /** Always solid white (Pause/Play, the main button) */
-    solid: Boolean = false,
     enabled: Boolean = true,
-    contentDescription: String? = label,
 ) {
     val size = if (big) sizes.big else sizes.normal
     var focused by remember { mutableStateOf(false) }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(sizes.slot)) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(sizes.big)) {
-            TvButton(
-                onClick = onClick,
-                enabled = enabled,
-                shape = ButtonDefaults.shape(CircleShape),
-                contentPadding = PaddingValues(0.dp),
-                colors =
-                    ButtonDefaults.colors(
-                        containerColor = if (solid) Color.White else Color.White.copy(alpha = .14f),
-                        contentColor = if (solid) Glowfin.Ink else Color.White,
-                        focusedContainerColor = Color.White,
-                        focusedContentColor = Glowfin.Ink,
-                    ),
-                border =
-                    ButtonDefaults.border(
-                        border =
-                            if (solid) {
-                                androidx.tv.material3.Border.None
-                            } else {
-                                androidx.tv.material3.Border(
-                                    androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .22f)),
-                                    shape = CircleShape,
-                                )
-                            },
-                        focusedBorder = androidx.tv.material3.Border.None,
-                    ),
-                scale = ButtonDefaults.scale(focusedScale = 1f),
-                modifier =
-                    modifier
-                        .playerGlowRing { focused }
-                        .size(size)
-                        .alpha(if (enabled) 1f else .35f)
-                        .onFocusChanged {
-                            focused = it.isFocused
-                            onControllerInteraction.invoke()
-                        }.semantics { contentDescription?.let { this.contentDescription = it } },
-            ) {
-                val tint = if (focused || solid) Glowfin.Ink else Color.White
-                val iconSize = size * if (number != null) .62f else .5f
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    GlowfinIconImage(icon = icon, color = tint, size = iconSize)
-                    number?.let {
-                        // The number sits in the middle of the round arrow, which is moved down to look centred
-                        Text(
-                            text = it,
-                            color = tint,
-                            fontSize = (iconSize.value * .3f).sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            modifier = Modifier.offset(y = iconSize * (icon.centreShiftY() / 24f)),
-                        )
-                    }
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = sizes.slot, height = sizes.big)) {
+        TvButton(
+            onClick = onClick,
+            enabled = enabled,
+            shape = ButtonDefaults.shape(CircleShape),
+            contentPadding = PaddingValues(0.dp),
+            colors =
+                ButtonDefaults.colors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White,
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Glowfin.Ink,
+                    disabledContainerColor = Color.Transparent,
+                    disabledContentColor = Color.White,
+                ),
+            border =
+                ButtonDefaults.border(
+                    border = androidx.tv.material3.Border.None,
+                    focusedBorder = androidx.tv.material3.Border.None,
+                ),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+            modifier =
+                modifier
+                    .size(size)
+                    .alpha(if (enabled) 1f else .35f)
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        onControllerInteraction.invoke()
+                    }.semantics { this.contentDescription = contentDescription },
+        ) {
+            val tint = if (focused) Glowfin.Ink else Color.White
+            // The icons are a little bigger than before (they have no circle round them to carry them now)
+            val iconSize = size * if (number != null) .66f else .58f
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                GlowfinIconImage(icon = icon, color = tint, size = iconSize)
+                number?.let {
+                    // The number sits in the middle of the round arrow, which is moved down to look centred
+                    Text(
+                        text = it,
+                        color = tint,
+                        fontSize = (iconSize.value * .3f).sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        modifier = Modifier.offset(y = iconSize * (icon.centreShiftY() / 24f)),
+                    )
                 }
             }
-        }
-        if (label != null) {
-            Text(
-                text = label,
-                color = if (focused) Glowfin.Text else PlayerLabelColor,
-                fontSize = sizes.labelSize,
-                fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 5.dp),
-            )
         }
     }
 }
 
-private val PlayerLabelColor = Color(0xFFD6D9EC)
+/**
+ * The name at the left of the simple player's button row: the show or movie in plain white words, with the small
+ * line under it ("S11 E4 · Name", or the year and rating for a movie, or what's on for Live TV).
+ */
+@Composable
+private fun PlayerNameBlock(
+    title: String?,
+    subtitle: String?,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (title.isNullOrBlank() && subtitle.isNullOrBlank()) return
+    Column(modifier = modifier.padding(start = 4.dp)) {
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = if (compact) 16.sp else 19.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!subtitle.isNullOrBlank()) {
+            Text(
+                text = subtitle,
+                color = Color(0xFFB4B8D0),
+                fontSize = if (compact) 13.sp else 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 /**
  * The Glowfin glow ring round a round (or pill) player button while [focused] says so: a thin dark gap, an aqua
@@ -697,7 +709,7 @@ fun PlayerCircleButton(
 }
 
 /**
- * Labeled button like "Skip intro" or "● LIVE": see-through until selected, then white with the Glowfin glow ring
+ * Labeled button like "Skip intro" or "● LIVE": turns plain white when selected (no ring, like the other buttons)
  */
 @Composable
 fun PlayerPillButton(
@@ -733,7 +745,6 @@ fun PlayerPillButton(
         scale = ButtonDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
-                .playerGlowRing(corner = 21.dp) { focused }
                 .height(42.dp)
                 .onFocusChanged {
                     focused = it.isFocused
@@ -762,6 +773,10 @@ fun PlayerPillButton(
     }
 }
 
+/**
+ * The simple player's bar (Ben 2026-11-27): the time played, the bar and the time left, all on one line.
+ * Chapters cut the bar into pieces (see SeekBarDisplay). "Ends at" sits under the clock at the top right.
+ */
 @OptIn(UnstableApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SeekBar(
@@ -775,8 +790,6 @@ fun SeekBar(
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chapters: List<Chapter> = emptyList(),
-    title: String? = null,
-    subtitle: String? = null,
 ) {
     val resources = LocalResources.current
     var bufferedProgress by remember(player) { mutableFloatStateOf(player.bufferedPosition.toFloat() / player.duration) }
@@ -791,72 +804,64 @@ fun SeekBar(
         }
     }
     val durationMs = player.duration
-    // Where each chapter starts, as a share of the whole (the first one at 0 needs no cut)
-    val chapterMarks =
-        remember(chapters, durationMs) {
-            if (durationMs <= 0 || chapters.size < 2) {
-                emptyList()
-            } else {
-                chapters
-                    .map { it.position.inWholeMilliseconds.toFloat() / durationMs }
-                    .filter { it > 0.005f && it < 0.995f }
-            }
-        }
-    // New look (Part 4): the logo (or name) and episode bottom left, the two times just above the bar's ends,
-    // then the bar the whole width. "Ends at" sits under the clock at the top right (PlayerEndsAt).
+    val chapterMarks = remember(chapters, durationMs) { chapterMarksFor(chapters, durationMs) }
     val positionSec = position / 1000
     val remainingSec = (durationMs - position) / 1000
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        PlayerTitleLine(title = title, subtitle = subtitle, modifier = Modifier.fillMaxWidth())
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            // Design check (Ben 2026-11-24): a little room under the title block, so the time played sits level
-            // with the time left at the bar's ends instead of squeezed under the year
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 10.dp),
-            ) {
-                Text(
-                    text = remember(positionSec) { resources.formatDuration(positionSec.seconds) },
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text =
-                        remember(remainingSec) {
-                            if (remainingSec < 0) "" else "−${resources.formatDuration(remainingSec.seconds)}"
-                        },
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    softWrap = false,
+    val slot = playerTimeSlotWidth(durationMs)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier,
+        ) {
+            Text(
+                text = remember(positionSec) { resources.formatDuration(positionSec.seconds) },
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.width(slot).padding(start = 4.dp),
+            )
+            // A fixed-height home for the bar, so the rows don't jump when the bar grows under the remote
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f).heightIn(min = 22.dp)) {
+                IntervalSeekBarImpl(
+                    chapterMarks = chapterMarks,
+                    progress = progress,
+                    bufferedProgress = bufferedProgress,
+                    onSeek = {
+                        onSeekProgress(it)
+                    },
+                    controllerViewState = controllerViewState,
+                    modifier = Modifier.fillMaxWidth(),
+                    interactionSource = interactionSource,
+                    enabled = isEnabled,
+                    durationMs = player.duration,
+                    seekBack = seekBack,
+                    seekForward = seekForward,
                 )
             }
-            IntervalSeekBarImpl(
-                chapterMarks = chapterMarks,
-                progress = progress,
-                bufferedProgress = bufferedProgress,
-                onSeek = {
-                    onSeekProgress(it)
-                },
-                controllerViewState = controllerViewState,
-                modifier = Modifier.fillMaxWidth(),
-                interactionSource = interactionSource,
-                enabled = isEnabled,
-                durationMs = player.duration,
-                seekBack = seekBack,
-                seekForward = seekForward,
+            Text(
+                text =
+                    remember(remainingSec) {
+                        if (remainingSec < 0) "" else "−${resources.formatDuration(remainingSec.seconds)}"
+                    },
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge.merge(TimeSlotStyle),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(slot).padding(end = 4.dp),
             )
         }
     }
 }
+
+/**
+ * The room each of the two times takes at the ends of the bar (wider once the video is an hour or more, as the
+ * times get longer). The scene strip above the bar uses it too, to stay lined up with the dot.
+ */
+internal fun playerTimeSlotWidth(durationMs: Long): Dp = if (durationMs >= 3_600_000L) 112.dp else 84.dp
 
 /**
  * "Ends at 10:14 PM" under the player's clock (new look). Worked out from the time left and the play speed,
@@ -904,42 +909,6 @@ fun PlayerEndsAt(
 
 /** Same-width digits, so "1" and "8" take the same room */
 private val TimeSlotStyle = TextStyle(fontFeatureSettings = "tnum")
-
-/**
- * The player's name block, bottom left (new look): the logo when it's a good shape (else the name, shrinking to
- * fit), then the small words under it ("S11 · E4 · Name", or the year and rating for a movie).
- */
-@Composable
-fun PlayerTitleLine(
-    title: String?,
-    subtitle: String?,
-    modifier: Modifier = Modifier,
-) {
-    if (title.isNullOrBlank() && subtitle.isNullOrBlank()) return
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
-    ) {
-        if (!title.isNullOrBlank()) {
-            com.github.damontecres.wholphin.ui.detail.title.TitleBox(
-                title = title,
-                wide = true,
-                height = 40.dp,
-                width = 300.dp,
-            )
-        }
-        if (!subtitle.isNullOrBlank()) {
-            Text(
-                text = subtitle,
-                color = Color(0xFFE6E8F5),
-                fontSize = BenflixType.body,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
 
 @Composable
 fun SeekTimecodes(
@@ -1046,11 +1015,6 @@ data class LiveBarInfo(
     }
 }
 
-/** The live bar fills in the Glowfin colours, like the normal seek bar */
-private val LIVE_BAR_FILL =
-    androidx.compose.ui.graphics.Brush
-        .horizontalGradient(listOf(Glowfin.Violet, Glowfin.Blue, Glowfin.Aqua))
-
 /** The Live TV line: "Started 22 min ago" above it, the programme's start and end times under it */
 @Composable
 fun LiveLine(
@@ -1084,7 +1048,7 @@ fun LiveLine(
                 Modifier
                     .fillMaxWidth(live.progress(now))
                     .height(4.dp)
-                    .background(LIVE_BAR_FILL, RoundedCornerShape(3.dp)),
+                    .background(Color.White, RoundedCornerShape(3.dp)),
             )
         }
         if (live.endMs > live.startMs) {

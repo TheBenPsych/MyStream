@@ -43,9 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -56,7 +54,6 @@ import com.github.damontecres.wholphin.ui.playback.ControllerViewState
 import com.github.damontecres.wholphin.ui.playback.calculateSeekAccelerationMultiplier
 import com.github.damontecres.wholphin.ui.playback.isDpadLeft
 import com.github.damontecres.wholphin.ui.playback.isDpadRight
-import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -131,9 +128,11 @@ fun StaticSeekBarImpl(
     durationMs: Long,
     bufferedProgress: Float,
     modifier: Modifier = Modifier,
+    chapterMarks: List<Float> = emptyList(),
 ) {
     SeekBarDisplay(
         enabled = false,
+        chapterMarks = chapterMarks,
         progress = progress,
         bufferedProgress = bufferedProgress,
         durationMs = durationMs,
@@ -222,8 +221,6 @@ private fun SeekBarDisplay(
     onTouchSeek: ((Float) -> Unit)? = null,
     chapterMarks: List<Float> = emptyList(),
 ) {
-    // Glowfin (P1): the progress line in the logo's violet > blue > aqua glow, cut into chapters when the file
-    // has them, with a white knob in an aqua ring
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -351,63 +348,74 @@ private fun SeekBarDisplay(
                         }
                     }.focusable(enabled = enabled, interactionSource = interactionSource),
             onDraw = {
+                // Simple player (Ben 2026-11-27): a plain white line with a white dot. Chapters show as small
+                // gaps that cut the line into pieces. No colours, no glow, no blur.
                 val yOffset = size.height.div(2)
-                drawLine(
-                    color = onSurface.copy(alpha = 0.25f),
-                    start = Offset(x = 0f, y = yOffset),
-                    end = Offset(x = size.width, y = yOffset),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round,
-                )
-                drawLine(
-                    color = onSurface.copy(alpha = .65f),
-                    start = Offset(x = 0f, y = yOffset),
-                    end =
-                        Offset(
-                            x = size.width.times(bufferedProgress),
-                            y = yOffset,
-                        ),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round,
-                )
-                drawLine(
-                    brush =
-                        Brush.horizontalGradient(
-                            0f to Glowfin.Violet,
-                            0.6f to Glowfin.Blue,
-                            1f to Glowfin.Aqua,
-                            startX = 0f,
-                            endX = size.width,
-                        ),
-                    start = Offset(x = 0f, y = yOffset),
-                    end =
-                        Offset(
-                            x = size.width.times(shownProgress),
-                            y = yOffset,
-                        ),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round,
-                )
-                // Chapter marks (approved P1 sheet): small white marks standing a little above and below the line
-                val markWidth = 2.dp.toPx()
-                val markHeight = size.height + 5.dp.toPx()
-                chapterMarks.forEach { mark ->
-                    val x = size.width * mark
-                    drawRoundRect(
-                        color = Color.White.copy(alpha = .7f),
-                        topLeft = Offset(x - markWidth / 2, yOffset - markHeight / 2),
-                        size = Size(markWidth, markHeight),
-                        cornerRadius = CornerRadius(markWidth / 2),
-                    )
+                val gap = if (chapterMarks.isEmpty()) 0f else 3.dp.toPx()
+                val corner = CornerRadius(size.height / 2)
+                val playedTo = size.width * shownProgress.coerceIn(0f, 1f)
+                val bufferedTo = size.width * bufferedProgress.coerceIn(0f, 1f)
+                var from = 0f
+                for (i in 0..chapterMarks.size) {
+                    val to = if (i < chapterMarks.size) chapterMarks[i] else 1f
+                    val x0 = size.width * from + if (i > 0) gap / 2 else 0f
+                    val x1 = size.width * to - if (i < chapterMarks.size) gap / 2 else 0f
+                    from = to
+                    if (x1 <= x0) continue
+
+                    fun piece(
+                        until: Float,
+                        color: Color,
+                    ) {
+                        val end = until.coerceAtMost(x1)
+                        if (end > x0) {
+                            drawRoundRect(
+                                color = color,
+                                topLeft = Offset(x0, 0f),
+                                size = Size(end - x0, size.height),
+                                cornerRadius = corner,
+                            )
+                        }
+                    }
+                    piece(x1, onSurface.copy(alpha = .28f))
+                    piece(bufferedTo, onSurface.copy(alpha = .3f))
+                    piece(playedTo, Color.White)
                 }
-                // The knob: white, a thin dark gap, an aqua ring and a soft violet glow
-                val knob = Offset(x = size.width.times(shownProgress), y = yOffset)
-                val knobRadius = size.height + 2
-                drawCircle(color = Glowfin.Violet.copy(alpha = .35f), radius = knobRadius + 7.dp.toPx(), center = knob)
-                drawCircle(color = Glowfin.Aqua, radius = knobRadius + 3.5.dp.toPx(), center = knob)
-                drawCircle(color = Color(0xFF05060D), radius = knobRadius + 1.5.dp.toPx(), center = knob)
+                // The dot: plain white, with a thin dark edge so it shows on the white line
+                val knob = Offset(x = playedTo, y = yOffset)
+                val knobRadius = size.height / 2 + 3.5.dp.toPx()
+                drawCircle(color = Color(0x5906070E), radius = knobRadius + 1.dp.toPx(), center = knob)
                 drawCircle(color = Color.White, radius = knobRadius, center = knob)
             },
         )
     }
 }
+
+/** Where each chapter starts, as a share of the whole video (the first one at 0 needs no cut) */
+fun chapterMarksFor(
+    chapters: List<com.github.damontecres.wholphin.data.model.Chapter>,
+    durationMs: Long,
+): List<Float> =
+    if (durationMs <= 0 || chapters.size < 2) {
+        emptyList()
+    } else {
+        chapters
+            .map { it.position.inWholeMilliseconds.toFloat() / durationMs }
+            .filter { it > 0.005f && it < 0.995f }
+            .sorted()
+    }
+
+/** The name of the chapter playing at [positionMs], or null when the video has no named chapters */
+fun chapterNameAt(
+    chapters: List<com.github.damontecres.wholphin.data.model.Chapter>,
+    positionMs: Long,
+): String? =
+    if (chapters.size < 2) {
+        null
+    } else {
+        chapters
+            .filter { it.position.inWholeMilliseconds <= positionMs }
+            .maxByOrNull { it.position }
+            ?.name
+            ?.takeIf { it.isNotBlank() }
+    }

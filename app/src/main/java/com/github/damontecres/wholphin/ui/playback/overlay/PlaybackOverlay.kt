@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -149,22 +150,11 @@ fun PlaybackOverlay(
             exit = fadeOut(BenflixMotion.exit()),
             modifier = Modifier.matchParentSize(),
         ) {
-            // Background scrim for OSD readability
-            val scrimBrush =
-                remember {
-                    Brush.verticalGradient(
-                        colors =
-                            listOf(
-                                Color.Transparent,
-                                com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
-                                    .copy(alpha = 0.5f),
-                                com.github.damontecres.wholphin.ui.theme.Glowfin.Ink
-                                    .copy(alpha = 0.88f),
-                            ),
-                    )
-                }
-            // New look (Part 4): only a soft shade at the bottom (behind the controls) and the top (behind the
-            // clock), so the picture stays clear. Plain gradients, no blur.
+            // Simple player (Ben 2026-11-27): a dark strip behind the controls that is solid by the time it
+            // reaches them, so styled anime subtitles (which never move) can't show through the buttons. It is
+            // sized from the controls' real height, with a short fade above. A soft shade at the top sits behind
+            // the clock. Plain gradients, no blur.
+            val stripHeight = if (controllerHeight > 0.dp) controllerHeight * STRIP_OVER_CONTROLS else 160.dp
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier =
@@ -179,8 +169,8 @@ fun PlaybackOverlay(
                         Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .fillMaxHeight(.46f)
-                            .background(scrimBrush),
+                            .height(stripHeight)
+                            .background(BOTTOM_STRIP),
                 )
             }
         }
@@ -213,51 +203,39 @@ fun PlaybackOverlay(
                                 (player.currentPosition.toFloat() / player.duration)
                         }
                     }
-                    val logoUrl =
-                        com.github.damontecres.wholphin.ui.components
-                            .rememberLogoUrl(item.takeIf { live == null })
-                    val extras =
-                        remember(logoUrl) {
-                            com.github.damontecres.wholphin.ui.detail.title
-                                .TitleExtras(logoUrl = logoUrl)
-                        }
-                    androidx.compose.runtime.CompositionLocalProvider(
-                        com.github.damontecres.wholphin.ui.detail.title.LocalTitleExtras provides extras,
-                    ) {
-                        PlaybackController(
-                            item = item,
-                            player = player,
-                            controllerViewState = controllerViewState,
-                            showPlay = showPlay,
-                            previousEnabled = previousEnabled,
-                            nextEnabled = nextEnabled,
-                            episodesEnabled = episodesEnabled,
-                            seekEnabled = seekEnabled,
-                            seekBack = seekBack,
-                            skipBackOnResume = skipBackOnResume,
-                            seekForward = seekForward,
-                            onPlaybackActionClick = onPlaybackActionClick,
-                            onClickPlaybackDialogType = onClickPlaybackDialogType,
-                            onSeekBarChange = {
-                                onSeekBarChange(it)
-                                seekProgressMs = it
-                            },
-                            currentSegment = currentSegment,
-                            onChangeState = onChangeState,
-                            title = topTitle,
-                            subtitle = topLine,
-                            modifier =
-                                Modifier
-                                    .padding(bottom = 8.dp)
-                                    .onGloballyPositioned {
-                                        controllerHeight = with(density) { it.size.height.toDp() }
-                                        controllerViewState.controlsHeightPx = it.size.height
-                                    },
-                            seekBarInteractionSource = seekBarInteractionSource,
-                            chapters = chapters,
-                            live = live,
-                        )
-                    }
+                    PlaybackController(
+                        item = item,
+                        player = player,
+                        controllerViewState = controllerViewState,
+                        showPlay = showPlay,
+                        previousEnabled = previousEnabled,
+                        nextEnabled = nextEnabled,
+                        episodesEnabled = episodesEnabled,
+                        seekEnabled = seekEnabled,
+                        seekBack = seekBack,
+                        skipBackOnResume = skipBackOnResume,
+                        seekForward = seekForward,
+                        onPlaybackActionClick = onPlaybackActionClick,
+                        onClickPlaybackDialogType = onClickPlaybackDialogType,
+                        onSeekBarChange = {
+                            onSeekBarChange(it)
+                            seekProgressMs = it
+                        },
+                        currentSegment = currentSegment,
+                        onChangeState = onChangeState,
+                        title = topTitle,
+                        subtitle = topLine,
+                        modifier =
+                            Modifier
+                                .padding(bottom = 8.dp)
+                                .onGloballyPositioned {
+                                    controllerHeight = with(density) { it.size.height.toDp() }
+                                    controllerViewState.controlsHeightPx = it.size.height
+                                },
+                        seekBarInteractionSource = seekBarInteractionSource,
+                        chapters = chapters,
+                        live = live,
+                    )
                 }
             }
         }
@@ -279,7 +257,9 @@ fun PlaybackOverlay(
                     modifier =
                         Modifier
                             .align(Alignment.Center)
-                            .fillMaxWidth(.95f),
+                            .fillMaxWidth(.95f)
+                            // the bar sits between the two times, so the strip lines up with the dot
+                            .padding(horizontal = playerTimeSlotWidth(player.duration) + 4.dp),
                 ) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -295,6 +275,8 @@ fun PlaybackOverlay(
                             seekProgressMs = seekProgressMs,
                             trickplayInfo = trickplayInfo,
                             trickplayUrlFor = trickplayUrlFor,
+                            // The chapter's name shows only while you move along the bar
+                            chapterName = chapterNameAt(chapters, seekProgressMs),
                         )
                     }
                 }
@@ -372,6 +354,18 @@ private val TOP_SHADE =
                 .copy(alpha = .7f),
             Color.Transparent,
         ),
+    )
+
+/** How much taller than the controls the dark strip is (the part above them is its fade) */
+private const val STRIP_OVER_CONTROLS = 1.9f
+
+/** The dark strip behind the controls: clear at its top, nearly solid 40% down and solid from halfway */
+private val BOTTOM_STRIP =
+    Brush.verticalGradient(
+        0f to Color(0x0006070E),
+        .4f to Color(0xE606070E),
+        .5f to Color(0xFF06070E),
+        1f to Color(0xFF06070E),
     )
 
 /**

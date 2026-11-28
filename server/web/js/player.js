@@ -97,11 +97,11 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     <div class="pcorner"><button class="skip hidden" id="pSkip"></button><div class="upnext hidden" id="pNext"></div></div>
     <div class="eprow hidden" id="pEps"></div>
     <div class="controls p1 p4">
-      <div class="tline">${B.logoUrl && B.logoUrl(it) ? `<img class="plogo" src="${esc(B.logoUrl(it))}" alt="${esc(isEp ? it.SeriesName || it.Name : it.Name)}" onerror="this.remove()">` : ""}<span class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</span><span class="st">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</span></div>
       <div class="srow"><span id="pTime">0:00</span>
       <div class="bar" id="pBar"><div class="track"><u id="pBuf"></u><b id="pDone"></b></div><span id="pTicks"></span><span class="knob" id="pKnob"></span><span class="tpv hidden" id="pPrev"></span><span class="hovert hidden" id="pHover"></span></div>
       <span id="pLeft"></span></div>
-      <div class="row2 p1row nl4">
+      <div class="row2 p1row sp1">
+        <div class="p1l"><span class="tt">${esc(isEp ? it.SeriesName || it.Name : it.Name)}</span><span class="st">${esc(isEp ? `S${it.ParentIndexNumber} E${it.IndexNumber} · "${it.Name}"` : [it.ProductionYear, it.OfficialRating].filter(Boolean).join(" · "))}</span></div>
         <div class="p1c">
         ${isEp ? `<button class="pbtn lab" id="pPv" title="Previous episode (P)" disabled>${I("prev")}<em>Previous</em></button>` : ""}
         <button class="pbtn lab" id="pBk" title="Back 10 seconds (left arrow)">${I("back10")}<em>Back 10</em></button>
@@ -286,7 +286,7 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
 
   // ---------- chapters bar ----------
   const segs = chapters.length > 1 && dur ? chapters.map((c, i) => ({ name: c.Name, start: c.StartPositionTicks / B.TICKS, end: i + 1 < chapters.length ? chapters[i + 1].StartPositionTicks / B.TICKS : dur })) : [{ name: "", start: 0, end: dur || 1 }];
-  // Glowfin P1: one thin line with small white chapter marks (not gaps), like the approved player sheet
+  // Simple player (Ben 2026-11-27): a plain white line, cut into chapters by small gaps (each "tick" is a gap)
   $("#pTicks").innerHTML = segs.slice(1).map((s) => `<span class="tick" style="left:${(s.start / (dur || 1)) * 100}%"></span>`).join("");
   const total = () => v.duration && isFinite(v.duration) ? Math.max(v.duration, dur) : dur || 1;
   const drawBar = () => {
