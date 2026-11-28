@@ -550,6 +550,10 @@ object MovieCuts {
         val raw = source.name.orEmpty()
         val low = raw.lowercase().replace('’', '\'')
         KNOWN.firstOrNull { low.contains(it.first) }?.let { return it.second }
-        return raw.substringAfterLast(" - ").trim().ifBlank { "Version" }.take(28)
+        return raw
+            .substringAfterLast(" - ")
+            .trim()
+            .ifBlank { "Version" }
+            .take(28)
     }
 }

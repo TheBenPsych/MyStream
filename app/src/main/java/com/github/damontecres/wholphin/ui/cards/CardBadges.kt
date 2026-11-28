@@ -51,7 +51,11 @@ fun CardWordBadge(
     val isTv = rememberIsTv()
     // Benflix "Your show is back": a show you finished got a new season this week
     // Benflix "Part 2 is here": the next movie in a set you've started just arrived
-    val sequel = remember(item) { com.github.damontecres.wholphin.services.SequelArrived.label(item) }
+    val sequel =
+        remember(item) {
+            com.github.damontecres.wholphin.services.SequelArrived
+                .label(item)
+        }
     if (sequel != null) {
         CardBadge(
             text = sequel,
