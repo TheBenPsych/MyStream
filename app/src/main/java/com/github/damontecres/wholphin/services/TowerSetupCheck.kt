@@ -67,7 +67,7 @@ class TowerSetupCheck
              * Bump this (and SETUP_VERSION in server/benflix-games-helper.py, and SETUP_NEEDED in web server.js)
              * whenever a change only works after the setup command runs again, and say what it is in [WAITING].
              */
-            const val SETUP_NEEDED = 18
+            const val SETUP_NEEDED = 19
 
             /** For each setup number, what starts working once Tower has it */
             val WAITING: Map<Int, List<String>> =
@@ -144,6 +144,10 @@ class TowerSetupCheck
                     18 to
                         listOf(
                             "Server > Health: Tower's black box, crash check, freeze timer and changes diary",
+                        ),
+                    19 to
+                        listOf(
+                            "Specials & bonus: looking for missing story specials inside complete-series packs (connects Prowlarr)",
                         ),
                 )
 

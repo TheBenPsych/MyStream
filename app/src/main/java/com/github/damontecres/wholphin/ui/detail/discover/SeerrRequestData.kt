@@ -37,4 +37,12 @@ data class TvRequest(
     val is4k: Boolean,
     val profileId: Int?,
     val folder: String?,
+    // Glowfin (Ben 2026-11-27): "Get all specials" instead of only the ones that are part of the story
+    val allSpecials: Boolean = false,
+)
+
+/** Glowfin Specials & bonus: how Tower labels a show's specials (unknown until the show is on Tower) */
+data class SpecialsInfo(
+    val story: Int,
+    val more: Int,
 )

@@ -275,7 +275,7 @@ class SeriesViewModel
                     }
                     viewModelScope.launchIO {
                         val extras = extrasService.getExtras(series.id)
-                        _state.update { it.copy(extras = extras) }
+                        _state.update { it.copy(seriesExtras = extras) }
                     }
                     // Benflix: the show's best-rated episodes, to play one straight away
                     viewModelScope.launchIO {
@@ -1203,6 +1203,8 @@ data class SeriesState(
     val episodes: EpisodeList = EpisodeList.Loading,
     val trailers: List<Trailer> = emptyList(),
     val extras: List<ExtrasItem> = emptyList(),
+    /** The show's own Bonus videos (extras holds the open season's) */
+    val seriesExtras: List<ExtrasItem> = emptyList(),
     val people: List<Person> = emptyList(),
     val similar: List<BaseItem> = emptyList(),
     // Benflix: best-rated episodes

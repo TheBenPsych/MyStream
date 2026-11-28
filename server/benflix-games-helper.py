@@ -93,6 +93,11 @@ try:  # Anime movies go into their show's Specials, plus Missing pieces and fill
 except ImportError:
     specials = None
 
+try:  # Specials and bonus videos for shows: labels, pack hunting and sorting, in benflix_extras.py
+    import benflix_extras as extras
+except ImportError:
+    extras = None
+
 try:  # One Pace (the One Piece fan edit): sorts the One Pace Drop folder into arcs with titles and posters, in benflix_onepace.py
     import benflix_onepace as onepace
 except ImportError:
@@ -230,7 +235,7 @@ BOOK_PAGE_RULES = "script-src 'none'; object-src 'none'; base-uri 'self'; form-a
 
 # Benflix: bump this (and SETUP_NEEDED in the app's TowerSetupCheck.kt and web server.js) whenever a change only
 # starts working after Ben runs the setup command on Tower again. Older helpers say 0 (they don't send it).
-SETUP_VERSION = 18
+SETUP_VERSION = 19
 # 2026-11-16: autosetup now also syncs Recyclarr settings from GitHub (this line makes Tower pick that up)
 # 2026-11-16: autosetup now also syncs Benflix custom formats (files.txt) for English or original audio only
 # 2026-11-21: autosetup now also keeps Harbor on its newest build
@@ -1550,6 +1555,12 @@ class Handler(BaseHTTPRequestHandler):
                     raise HelperError(503, "Famous lists aren't on the server yet. They arrive with Tower's next hourly update.")
                 status, answer = famous.route(method, path, is_kids)
                 return self.send(status, answer)
+            if path.startswith("/api/extras/"):
+                # Shows: Specials & bonus counts and labels, "Get all specials" (everyone signed in; Kids can't ask)
+                if extras is None:
+                    raise HelperError(503, "Specials & bonus isn't on the server yet. It arrives with Tower's next hourly update.")
+                status, answer = extras.route(method, path, query, self.read_json, is_admin, is_kids)
+                return self.send(status, answer)
             if path.startswith("/api/specials/"):
                 # Anime shows: Missing pieces, filler labels, Get (everyone signed in; Kids can't Get)
                 if specials is None:
@@ -2717,6 +2728,14 @@ if __name__ == "__main__":
             tools,
             arrivals,
         )
+    if extras is not None:
+        extras.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            tools,
+            _seerr_link,
+            _seerr,
+        )
     if onepace is not None:
         onepace.start(
             jellyfin_call,
@@ -2751,6 +2770,9 @@ if __name__ == "__main__":
             keeper.add_card("animemovies", specials.card, specials.card_do)
         if onepace is not None:
             keeper.add_card("onepace", onepace.card, onepace.card_do)
+        if extras is not None:
+            keeper.job("extras", "Sort specials and bonus videos from finished packs, look for missing story specials", "Every 10 minutes", extras, "sort_round", run=lambda: extras.sort_round(True))
+            keeper.add_card("specialsbonus", extras.card, extras.card_do)
         if famous is not None:
             keeper.job("famous", "Gather the Famous lists (IMDb Top 250, Oscars, Emmys)", "Every week", famous, "gather", run=lambda: famous.gather(True))
         if arrivals is not None:
