@@ -1751,7 +1751,9 @@ class PlaybackViewModel
                                     )
                                 if (made.size >= 2) {
                                     updateCurrentMedia { info ->
-                                        if (info.chapters.size < 2 || info.chapters.all { it.tag == null && it.name in SEGMENT_CHAPTER_NAMES }) {
+                                        if (info.chapters.size < 2 ||
+                                            info.chapters.all { it.tag == null && it.name in SEGMENT_CHAPTER_NAMES }
+                                        ) {
                                             info.copy(chapters = made)
                                         } else {
                                             info

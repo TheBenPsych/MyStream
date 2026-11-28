@@ -1224,7 +1224,9 @@ fun PlaybackPageContent(
                     }
                 }
                 if (endScreen) {
-                    NextUpScreen(imageUrl = LocalImageUrlService.current.rememberImageUrl(it, org.jellyfin.sdk.model.api.ImageType.BACKDROP)) {
+                    NextUpScreen(
+                        imageUrl = LocalImageUrlService.current.rememberImageUrl(it, org.jellyfin.sdk.model.api.ImageType.BACKDROP),
+                    ) {
                         NextUpEpisode(
                             title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
                             description = it.data.overview,
