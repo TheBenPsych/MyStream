@@ -222,8 +222,11 @@ oom_apps() {
   local -A caps
   n=$(grep -c 'oom-kill:constraint' "$log" 2>/dev/null)
   [ "${n:-0}" -gt 0 ] || { rm -f "$TMPD/oom"; return; }
-  if [ "$(sed -n 1p "$TMPD/oom" 2>/dev/null)" != "$n" ]; then
-    ids=$(timeout 8 docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null)
+  # Work it out again when there's a new kill, or hourly while an app's name couldn't be found (Docker busy or
+  # not answering the first time, 2026-11-27: the report said "Tower itself" for Tdarr's kills)
+  if [ "$(sed -n 1p "$TMPD/oom" 2>/dev/null)" != "$n" ] ||
+    { sed -n 2p "$TMPD/oom" | grep -qE '(^|;)(\?|Tower)\|[^|]*\|[0-9]+\|own' && [ -n "$(find "$TMPD/oom" -mmin +60 2>/dev/null)" ]; }; then
+    ids=$(timeout 20 /usr/bin/docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null || timeout 20 docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null)
     {
       echo "$n"
       grep -h 'oom-kill:constraint' "$log" 2>/dev/null | while read -r ln; do
@@ -232,11 +235,14 @@ oom_apps() {
         t=$(echo "$ln" | grep -oE ',task=[^,]+' | cut -d= -f2)
         id=$(echo "$ln" | grep -oE 'task_memcg=[^,]*' | grep -oE '[0-9a-f]{64}' | head -1)
         name=""; [ -n "$id" ] && name=$(echo "$ids" | awk -v i="$id" '$1==i{print $2; exit}')
+        # An app that's gone or was re-made has a new ID; Docker may still know the old one
+        [ -z "$name" ] && [ -n "$id" ] && name=$(timeout 5 docker inspect -f '{{.Name}}' "$id" 2>/dev/null | tr -d /)
         if [ -n "$name" ] && [ -z "${caps[$name]}" ]; then
           caps[$name]=$(( $(timeout 5 docker inspect -f '{{.HostConfig.Memory}}' "$name" 2>/dev/null || echo 0) / 1048576 ))
         fi
         [ -n "$name" ] && cap=${caps[$name]:-0}
         when=$(date -d "$(echo "$ln" | cut -c1-15)" +%s 2>/dev/null || echo 0)
+        [ -z "$name" ] && [ "$c" = CONSTRAINT_MEMCG ] && name="?"
         echo "${name:-Tower}|${t:-?}|$([ "$c" = CONSTRAINT_MEMCG ] && echo own || echo all)|$cap|$when"
       done | awk -F'|' '{k=$1"|"$2"|"$3"|"$4; n[k]++; if($5>l[k]) l[k]=$5} END{for(k in n) print n[k]"|"k"|"l[k]}' | sort -t'|' -k1,1 -rn |
         awk -F'|' '{printf "%s%s|%s|%s|%s|%s|%s", (NR>1?";":""), $2, $3, $1, $4, $5, $6} END{print ""}'
