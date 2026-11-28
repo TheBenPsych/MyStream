@@ -1,0 +1,70 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen start-0: Looking for your server\u2026 | Checking your home Wi-Fi",
+  "screen start-1: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen start-2: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen start-3: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen start-4: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen start-5: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen login-1: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org |   | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Talk | Space | QWERTY | Done | Ne",
+  "screen typed-server: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org | https://demo.jellyfin.org/stable | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Ta",
+  "sign-in screen: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "signed in",
+  "screen after-login: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "welcome setup: didn't open (this account already did it)",
+  "screen home: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "monkey test",
+  "screen after-monkey: YOUR PLAYLIST | Liked songs | SHUFFLE | Play | Press the heart on a song and it lands here. | 6:18 | AM | demo",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "focus sweep 'home': 2 buttons, 1 never focused",
+  "screen home-after-sweep: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "could not find '^Games$'",
+  "could not find 'My (?:Benflix|Glowfin)'",
+  "Ember Road: no Games page found",
+  "could not find '^Movies$'",
+  "could not find '^Shows$'",
+  "could not find '^Live TV$'",
+  "could not find '^Games$'",
+  "could not find '^Search$'",
+  "could not find '^Movies$'",
+  "screen details: The Boy in the Plastic Bubble | 1976 \u00b7 1h 33m \u00b7 TV Movie \u00b7 Drama | SD | Stereo | PG | 5.7 | Tod Lubitch is born with a deficient immune system. As such, he must spend the rest of his life in a completely sterile environment. His room is completely hermetically sealed against bacteria and virus, his ",
+  "focus sweep 'details': 15 buttons, 3 never focused",
+  "screen details-trailer: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "could not find '^Play$|^Resume$'",
+  "could not find '^Settings$'",
+  "screen settings: The Great Train Robbery | 1903 \u00b7 12m \u00b7 Western \u00b7 Crime | SD | Stereo | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Story and details \u203a | Trailer | My List |"
+ ],
+ "timings": {
+  "cold start (ms, first frame)": 735,
+  "home doors visible (s)": 2.0,
+  "details page (s)": 2.4
+ },
+ "unreachable": {
+  "home": [
+   "demo"
+  ],
+  "details": [
+   "John Travolta",
+   "demo",
+   "\uf007"
+  ]
+ },
+ "problems": [],
+ "welcome": "not shown",
+ "home_texts": [
+  "The Great Train Robbery",
+  "1903 \u00b7 12m",
+  "9 min left",
+  "7.0",
+  "100",
+  "After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits.",
+  "Keep watching",
+  "The Great Train Robbery",
+  "Recently added",
+  "6:18",
+  "AM",
+  "demo"
+ ]
+}

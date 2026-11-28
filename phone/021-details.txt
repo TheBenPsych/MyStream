@@ -1,0 +1,18 @@
+  [39,153][234,220] Movies
+  [73,272][204,312] For you
+  [287,272][332,312] All
+  [415,272][601,312] Collections
+  [684,272][801,312] Genres
+  [884,272][1080,312] Famous lists
+  [39,358][351,407] Keep watching
+  [39,427][311,835] The Great Train Robbery
+  [39,879][552,928] Top 10 movies this week
+  [258,948][530,1356] The Boy in the Plastic Bubble
+  [39,1400][366,1449] Recently added
+  [39,1469][311,1877] The Boy in the Plastic Bubble
+  [410,1692][543,1738] See all
+  [68,2279][149,2313] Home
+  [274,2279][374,2313] Movies
+  [496,2279][585,2313] Shows
+  [712,2279][800,2313] Anime
+  [937,2279][1008,2313] More

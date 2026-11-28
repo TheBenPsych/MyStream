@@ -1,0 +1,168 @@
+{
+ "app": "benflix",
+ "package": "com.thebenpsych.benflix",
+ "starts": [
+  16.2,
+  18.8,
+  16.5
+ ],
+ "scroll": {
+  "frames": 51,
+  "janky": 51,
+  "p50_ms": 250,
+  "p90_ms": 750,
+  "p95_ms": 950,
+  "p99_ms": 1250,
+  "slow_ui_thread": 36,
+  "slow_bitmap_uploads": 0,
+  "seconds": 15.6
+ },
+ "memory_kb": 104547,
+ "notes": [
+  "could not open Settings"
+ ],
+ "first_start_incl_sign_in_s": 92.2,
+ "app_timings": [
+  {
+   "steps_ms": {
+    "app": 94,
+    "screen": 264,
+    "update check": 300,
+    "signed in": 1831,
+    "Who's watching": 2347,
+    "intro done": 5113,
+    "profile picked": 9486,
+    "Home rows": 9491,
+    "banner": 9491
+   },
+   "summary": "Opened in 2.4 s (app 0.1, screen 0.3, update check 0.3, signed in 1.8, Who's watching 2.3, intro done 5.1, profile picked 9.5, Home rows 9.5, banner 9.5, waited on Who's watching 7.1 s)"
+  },
+  {
+   "steps_ms": {
+    "app": 65,
+    "screen": 149,
+    "update check": 238,
+    "signed in": 1821,
+    "Who's watching": 2645,
+    "intro done": 5487,
+    "profile picked": 12149,
+    "Home rows": 12151,
+    "banner": 12151
+   },
+   "summary": "Opened in 2.6 s (app 0.1, screen 0.1, update check 0.2, signed in 1.8, Who's watching 2.6, intro done 5.5, profile picked 12.1, Home rows 12.2, banner 12.2, waited on Who's watching 9.5 s)"
+  },
+  {
+   "steps_ms": {
+    "app": 39,
+    "screen": 334,
+    "update check": 345,
+    "signed in": 1906,
+    "Who's watching": 2578,
+    "intro done": 5550,
+    "profile picked": 9732,
+    "Home rows": 9734,
+    "banner": 9734
+   },
+   "summary": "Opened in 2.6 s (app 0.0, screen 0.3, update check 0.3, signed in 1.9, Who's watching 2.6, intro done 5.6, profile picked 9.7, Home rows 9.7, banner 9.7, waited on Who's watching 7.2 s)"
+  }
+ ],
+ "open_item": {
+  "frames": 16,
+  "janky": 16,
+  "p50_ms": 300,
+  "p90_ms": 950,
+  "p95_ms": 950,
+  "p99_ms": 950,
+  "slow_ui_thread": 11,
+  "slow_bitmap_uploads": 0
+ },
+ "pages": {
+  "Home": {
+   "frames": 47,
+   "janky": 45,
+   "p50_ms": 250,
+   "p90_ms": 700,
+   "p95_ms": 850,
+   "p99_ms": 1050,
+   "slow_ui_thread": 20,
+   "slow_bitmap_uploads": 1
+  },
+  "Movies": {
+   "frames": 68,
+   "janky": 66,
+   "p50_ms": 150,
+   "p90_ms": 300,
+   "p95_ms": 500,
+   "p99_ms": 950,
+   "slow_ui_thread": 31,
+   "slow_bitmap_uploads": 1
+  },
+  "Shows": {
+   "frames": 61,
+   "janky": 59,
+   "p50_ms": 150,
+   "p90_ms": 200,
+   "p95_ms": 250,
+   "p99_ms": 300,
+   "slow_ui_thread": 27,
+   "slow_bitmap_uploads": 0
+  },
+  "Live TV": {
+   "frames": 31,
+   "janky": 29,
+   "p50_ms": 150,
+   "p90_ms": 200,
+   "p95_ms": 250,
+   "p99_ms": 250,
+   "slow_ui_thread": 11,
+   "slow_bitmap_uploads": 0
+  },
+  "Music": {
+   "frames": 59,
+   "janky": 58,
+   "p50_ms": 400,
+   "p90_ms": 650,
+   "p95_ms": 650,
+   "p99_ms": 700,
+   "slow_ui_thread": 38,
+   "slow_bitmap_uploads": 1
+  },
+  "Games": {
+   "frames": 55,
+   "janky": 52,
+   "p50_ms": 500,
+   "p90_ms": 600,
+   "p95_ms": 650,
+   "p99_ms": 750,
+   "slow_ui_thread": 34,
+   "slow_bitmap_uploads": 1
+  },
+  "Books": {
+   "frames": 34,
+   "janky": 34,
+   "p50_ms": 150,
+   "p90_ms": 250,
+   "p95_ms": 250,
+   "p99_ms": 250,
+   "slow_ui_thread": 11,
+   "slow_bitmap_uploads": 0
+  },
+  "Requests": {
+   "frames": 37,
+   "janky": 36,
+   "p50_ms": 113,
+   "p90_ms": 200,
+   "p95_ms": 200,
+   "p99_ms": 250,
+   "slow_ui_thread": 13,
+   "slow_bitmap_uploads": 0
+  }
+ },
+ "slower_pages": [
+  "Home",
+  "Movies",
+  "Music",
+  "Games",
+  "Books"
+ ]
+}

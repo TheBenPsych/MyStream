@@ -1,0 +1,26 @@
+  [164,36][844,236] The Great Train Robbery
+  [164,437][643,477] 1903 · 12m · Western · Crime
+  [679,440][721,475] SD
+  [757,440][855,475] Stereo
+  [206,497][251,535] 7.0
+  [321,497][375,535] 100
+  [164,563][1026,693] After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits.
+  [164,701][468,739] Story and details ›
+  [460,795][576,835] Trailer
+  [712,795][835,835] My List
+  [971,795][1160,835] Not for me
+  [1296,795][1383,835] More
+* [164,767][356,863] 
+  [248,795][324,835] Play
+  [164,951][439,996] Cast and crew
+  [164,1016][364,1080] Gilbert M. Anderson
+  [408,1049][576,1080] 
+  [636,1049][804,1080] 
+  [864,1049][1032,1080] 
+  [1076,1016][1276,1080] Robert Milasch
+  [1320,1049][1488,1080] 
+  [1548,1049][1716,1080] 
+  [1776,1049][1920,1080] 
+  [1670,49][1773,112] 6:28
+  [1781,73][1824,106] AM
+  [38,1002][94,1058] demo

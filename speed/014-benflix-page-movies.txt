@@ -1,0 +1,18 @@
+  [164,148][764,260] The Boy in the Plastic Bubble
+  [164,272][369,310] 1976 · 1h 33m
+  [176,328][219,363] PG
+  [301,326][346,364] 5.7
+  [164,376][1044,452] Tod Lubitch is born with a deficient immune system. As such, he must spend the rest of his life in a completely sterile environment. His room is completely hermetically sealed against bacteria and virus, his food is specially prepared, and his only human contact comes in the form of gloved hands. The movie follows his life into a teenager.
+  [164,614][463,659] Recently added
+  [164,675][404,1035] The Boy in the Plastic Bubble
+  [490,869][606,909] See all
+  [399,60][577,100] All movies
+  [649,60][839,100] Collections
+  [911,60][1031,100] Genres
+  [1103,60][1321,100] Famous lists
+  [1393,60][1516,100] My List
+* [164,32][355,128] 
+  [192,60][327,100] For you
+  [1671,49][1773,112] 6:17
+  [1781,73][1824,106] AM
+  [38,1002][94,1058] demo

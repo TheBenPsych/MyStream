@@ -1,0 +1,23 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Select Server | Server placeholder | Add Server | Add Server",
+  "screen typed-server: Enter Server IP or URL | https://demo.jellyfin.org/stable | Submit",
+  "screen login-4: Select User | Stable Demo | demo | demo | Add User | Add User | \uf0ec | Switch servers",
+  "screen typed-user: Enter username/password to login to Stable Demo | Username | demo | Password | Login",
+  "signed in",
+  "screen wholphin-first: demo | demo | Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | The Great Train Robbery | 1903  \u2022  12m  \u2022  3m left |   \u2022  7.0\ufffd |   \u2022  100%\ufffd |   \u2022  Ends at 6:27 AM | After the train station clerk is assaulted and left bound and gagged, then the departing ",
+  "screen login-1: demo | demo | Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | The Great Train Robbery | 1903  \u2022  12m  \u2022  3m left |   \u2022  7.0\ufffd |   \u2022  100%\ufffd |   \u2022  Ends at 6:27 AM | After the train station clerk is assaulted and left bound and gagged, then the departing ",
+  "signed in",
+  "screen wholphin-start0: demo | demo | Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | The Great Train Robbery | 1903  \u2022  12m  \u2022  3m left |   \u2022  7.0\ufffd |   \u2022  100%\ufffd |   \u2022  Ends at 6:27 AM | After the train station clerk is assaulted and left bound and gagged, then the departing ",
+  "signed in",
+  "screen wholphin-start1: demo | demo | Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | The Great Train Robbery | 1903  \u2022  12m  \u2022  3m left |   \u2022  7.0\ufffd |   \u2022  100%\ufffd |   \u2022  Ends at 6:28 AM | After the train station clerk is assaulted and left bound and gagged, then the departing ",
+  "signed in",
+  "screen wholphin-start2: demo | demo | Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | The Great Train Robbery | 1903  \u2022  12m  \u2022  3m left |   \u2022  7.0\ufffd |   \u2022  100%\ufffd |   \u2022  Ends at 6:28 AM | After the train station clerk is assaulted and left bound and gagged, then the departing ",
+  "screen wholphin-after-scroll: Search | Home | \uf004 | Favorites | \uf26c | Shows | \uf008 | Movies | \uf001 | Music | \uf0ca | Playlists | Settings | demo | demo | Stable Demo | Thraximundar | 2013  \u2022  5m |   \u2022  Ends at 6:31 AM | Recently added in Music | Thraximundar | \uf004 | \uf004 | 6:26 AM",
+  "screen wholphin-opened: Select User | Stable Demo | demo | demo | Add User | Add User | \uf0ec | Switch servers"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}

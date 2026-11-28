@@ -1,0 +1,66 @@
+Applications Graphics Acceleration Info:
+Uptime: 603034 Realtime: 603034
+
+** Graphics info for pid 7542 [com.thebenpsych.benflix] **
+
+Stats since: 327789788680ns
+Total frames rendered: 209
+Janky frames: 183 (87.56%)
+Janky frames (legacy): 162 (77.51%)
+50th percentile: 53ms
+90th percentile: 133ms
+95th percentile: 200ms
+99th percentile: 600ms
+Number Missed Vsync: 46
+Number High input latency: 26
+Number Slow UI thread: 71
+Number Slow bitmap uploads: 9
+Number Slow issue draw commands: 181
+Number Frame deadline missed: 183
+Number Frame deadline missed (legacy): 151
+HISTOGRAM: 5ms=0 6ms=0 7ms=4 8ms=3 9ms=0 10ms=2 11ms=1 12ms=0 13ms=0 14ms=1 15ms=0 16ms=30 17ms=2 18ms=1 19ms=2 20ms=2 21ms=2 22ms=3 23ms=1 24ms=0 25ms=0 26ms=0 27ms=0 28ms=1 29ms=2 30ms=1 31ms=1 32ms=9 34ms=4 36ms=4 38ms=3 40ms=2 42ms=1 44ms=6 46ms=4 48ms=11 53ms=6 57ms=2 61ms=8 65ms=11 69ms=2 73ms=6 77ms=4 81ms=8 85ms=6 89ms=3 93ms=3 97ms=2 101ms=9 105ms=2 109ms=2 113ms=2 117ms=4 121ms=2 125ms=2 129ms=0 133ms=2 150ms=7 200ms=4 250ms=3 300ms=0 350ms=0 400ms=0 450ms=0 500ms=1 550ms=1 600ms=2 650ms=0 700ms=0 750ms=0 800ms=0 850ms=0 900ms=1 950ms=1 1000ms=0 1050ms=0 1100ms=0 1150ms=0 1200ms=0 1250ms=0 1300ms=0 1350ms=0 1400ms=0 1450ms=0 1500ms=0 1550ms=0 1600ms=0 1650ms=0 1700ms=0 1750ms=0 1800ms=0 1850ms=0 1900ms=0 1950ms=0 2000ms=0 2050ms=0 2100ms=0 2150ms=0 2200ms=0 2250ms=0 2300ms=0 2350ms=0 2400ms=0 2450ms=0 2500ms=0 2550ms=0 2600ms=0 2650ms=0 2700ms=0 2750ms=0 2800ms=0 2850ms=0 2900ms=0 2950ms=0 3000ms=0 3050ms=0 3100ms=0 3150ms=0 3200ms=0 3250ms=0 3300ms=0 3350ms=0 3400ms=0 3450ms=0 3500ms=0 3550ms=0 3600ms=0 3650ms=0 3700ms=0 3750ms=0 3800ms=0 3850ms=0 3900ms=0 3950ms=0 4000ms=0 4050ms=0 4100ms=0 4150ms=0 4200ms=0 4250ms=0 4300ms=0 4350ms=0 4400ms=0 4450ms=0 4500ms=0 4550ms=0 4600ms=0 4650ms=0 4700ms=0 4750ms=0 4800ms=0 4850ms=0 4900ms=0 4950ms=0
+50th gpu percentile: 4950ms
+90th gpu percentile: 4950ms
+95th gpu percentile: 4950ms
+99th gpu percentile: 4950ms
+GPU HISTOGRAM: 1ms=0 2ms=0 3ms=0 4ms=0 5ms=0 6ms=0 7ms=7 8ms=1 9ms=2 10ms=2 11ms=2 12ms=1 13ms=1 14ms=5 15ms=14 16ms=21 17ms=5 18ms=6 19ms=1 20ms=3 21ms=2 22ms=3 23ms=2 24ms=6 25ms=6 4950ms=119
+
+Pipeline=Skia (OpenGL)
+Memory policy:
+  Max surface area: 2966496
+  Max resource usage: 142.39MB (x48)
+  Background retention: 50% (altUiHidden = true)
+  GPU Context timeout: 10
+Contexts: 1 (stopped = 0)
+CPU Caches:
+  Glyph Cache: 305.02 KB (1 entry)
+  Glyph Count: 72 
+Total CPU memory usage:
+  312345 bytes, 305.02 KB (0.00 bytes is purgeable)
+GPU Caches:
+  Other:
+    Other: 5.59 KB (1 entry)
+    Buffer Object: 2.50 KB (4 entries)
+    StencilAttachment: 512.00 KB (1 entry)
+  Image:
+    Texture: 44.06 KB (25 entries)
+  Scratch:
+    RenderTarget: 3.22 MB (32 entries)
+    Buffer Object: 142.00 KB (4 entries)
+    Texture: 10.47 MB (53 entries)
+Total GPU memory usage:
+  15081102 bytes, 14.38 MB (11.33 MB is purgeable)
+
+Profile data in ms:
+
+	com.thebenpsych.benflix/com.github.damontecres.wholphin.MainActivity/android.view.ViewRootImpl@783fef (visibility=0)
+View hierarchy:
+
+  com.thebenpsych.benflix/com.github.damontecres.wholphin.MainActivity/android.view.ViewRootImpl@783fef
+  12 views, 22.13 kB of render nodes
+
+
+Total ViewRootImpl   : 1
+Total attached Views : 12
+Total RenderNode     : 22.13 kB (used) / 69.80 kB (capacity)
+

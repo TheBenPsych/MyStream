@@ -1,0 +1,33 @@
+{
+ "mode": "tv",
+ "steps": [
+  "screen login-1: Looking for your server\u2026 | Checking your home Wi-Fi",
+  "screen typed-server: What's your server address? | Like 192.168.1.105:8096 or myserver.duckdns.org | https://demo.jellyfin.org/stable | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | Delete | 1 | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | - | . | _ | @ | Shift | #+= | Ta",
+  "screen login-4: Glowfin | Glow | fin | Sign in with your phone | On your phone, open Glowfin, then My Glowfin \u203a Quick Connect, and type this code: | 5 | 6 | 4 | 7 | 9 | 7 | Waiting for your phone\u2026 | No Glowfin on your phone? Scan this with its camera, sign in, and type the code there. | Or type it in | Name | demo ",
+  "sign-in screen: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "signed in",
+  "screen benflix-first: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start0: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start1: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "screen login-1: Glowfin | Glow | fin | Who's watching? | demo | demo | Kids | Kids | ? | Guest | Hold OK on a picture to change it | Add someone | Change server",
+  "signed in",
+  "screen benflix-start2: The Great Train Robbery | 1903 \u00b7 12m | 9 min left | 7.0 | 100 | After the train station clerk is assaulted and left bound and gagged, then the departing train and its passengers robbed, a posse goes in hot pursuit of the fleeing bandits. | Keep watching | The Great Train Robbery | The Boy in the Pla",
+  "screen benflix-after-scroll: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "screen benflix-opened: Search movies, shows, music, books and people | Talk | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z | Space | Delete | 123 | A | Browse genres and moods | Results show here as you type | Phone with Glowfin open? Type there | 6:16 | AM | demo",
+  "screen benflix-page-Home: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "screen benflix-page-Movies: The Boy in the Plastic Bubble | 1976 \u00b7 1h 33m | PG | 5.7 | Tod Lubitch is born with a deficient immune system. As such, he must spend the rest of his life in a completely sterile environment. His room is completely hermetically sealed against bacteria and virus, his food is specially prepared, and h",
+  "screen benflix-page-Shows: Pioneer One | 2010 | NR | 6.2 | Pioneer One is a 2010 American web series produced by Josh Bernhard and Bracey Smith. It has been funded purely through donations, and is the first series created for and released on BitTorrent networks. | Recently added | Pioneer One | See all | All shows | Genres | ",
+  "screen benflix-page-LiveTV: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "screen benflix-page-Music: Liked songs | 0 songs | Your playlist | Recently added | Nemesis | Promo | You Can't Stop Da Funk | Albums | Artists | Playlists | Songs | For you | 6:19 | AM | demo",
+  "screen benflix-page-Games: Movie grid | Movie grid | Movie puzzle \u00b7 Plays with remote or phone | Fill a 3 by 3 board with titles that fit both rules. | Movie puzzles | Scene by scene | Poster puzzle | Movie grid | Timeline | Who's that actor? | Quote it | Who played them? | Arcade | For you | Ember Road | Consoles | Party | T",
+  "screen benflix-page-Books: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo",
+  "screen benflix-page-Requests: Glow | fin | Search | Home | Movies | Shows | Anime | Live TV | Music | Games | Books | Requests | demo | demo"
+ ],
+ "timings": {},
+ "unreachable": {},
+ "problems": []
+}

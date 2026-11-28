@@ -1,0 +1,26 @@
+  [164,36][584,236] The Boy in the Plastic Bubble
+  [164,437][722,477] 1976 · 1h 33m · TV Movie · Drama
+  [758,440][800,475] SD
+  [836,440][934,475] Stereo
+  [176,499][219,534] PG
+  [301,497][346,535] 5.7
+  [164,563][1026,693] Tod Lubitch is born with a deficient immune system. As such, he must spend the rest of his life in a completely sterile environment. His room is completely hermetically sealed against bacteria and virus, his food is specially prepared, and his only human contact comes in the form of gloved hands. The movie follows his life into a teenager.
+  [164,701][468,739] Story and details ›
+  [460,795][576,835] Trailer
+  [712,795][835,835] My List
+  [971,795][1065,835] Liked
+  [1201,795][1288,835] More
+* [164,767][356,863] 
+  [248,795][324,835] Play
+  [164,951][439,996] Cast and crew
+  [164,1016][364,1080] John Travolta
+  [408,1049][576,1080] 
+  [636,1049][804,1080] 
+  [864,1049][1032,1080] 
+  [1092,1049][1260,1080] 
+  [1320,1049][1488,1080] 
+  [1548,1049][1716,1080] 
+  [1776,1049][1920,1080] 
+  [1668,49][1773,112] 6:24
+  [1781,73][1824,106] AM
+  [38,1002][94,1058] demo
