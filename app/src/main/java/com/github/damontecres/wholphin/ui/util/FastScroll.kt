@@ -26,6 +26,22 @@ object FastScroll {
         }
     }
 
+    /** When the last arrow move was let through (the key's own clock) */
+    private var movedAt = 0L
+
+    /**
+     * Speed + navigation check (Ben 2026-11-27): a held arrow sends about 20 moves a second, more than a weak TV
+     * can draw, so the moves queued up and the cursor kept going after the arrow was let go. While it is held,
+     * moves closer together than [PACE_MS] are dropped (about 10 a second). Single presses are never touched.
+     * @return true when this repeat should be dropped
+     */
+    fun tooSoon(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN || event.keyCode !in ARROWS) return false
+        if (event.repeatCount > 0 && event.eventTime - movedAt < PACE_MS) return true
+        movedAt = event.eventTime
+        return false
+    }
+
     /** Waits until no arrow is held. Returns true if it had to wait. */
     suspend fun awaitReleased(): Boolean {
         if (!_held.value) return false
@@ -35,6 +51,7 @@ object FastScroll {
     }
 
     private const val MAX_HOLD_MS = 4_000L
+    private const val PACE_MS = 90L
 
     private val ARROWS =
         setOf(

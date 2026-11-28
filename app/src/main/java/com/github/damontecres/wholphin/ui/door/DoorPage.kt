@@ -39,6 +39,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.layout
@@ -60,6 +61,8 @@ import com.github.damontecres.wholphin.ui.main.DoorWipe
 import com.github.damontecres.wholphin.ui.music.MusicButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
+import com.github.damontecres.wholphin.ui.nav.rememberRowSpot
+import com.github.damontecres.wholphin.ui.nav.rowSpot
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
@@ -67,6 +70,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.FocusStripesRoom
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LastRemoteKey
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.ui.util.onFirstUserMove
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
@@ -614,8 +618,17 @@ internal fun DoorRow(
     LaunchedEffect(scrollKey) {
         if (scrollKey > 0) listState.scrollToItem(focusIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
     }
+    // Up and Down come back to the poster you were on in this row (the first one when the row is new to you)
+    val spot = rememberRowSpot(startIndex)
     // TV: the row name always comes into view with the posters (Ben: the Top 10 name was cut off)
-    Column(modifier = modifier.fillMaxWidth().scrollAsOneBlock()) {
+    Column(
+        modifier =
+            modifier.fillMaxWidth().scrollAsOneBlock().focusProperties {
+                onEnter = {
+                    if (LastRemoteKey.upDownJustNow()) spot.land()
+                }
+            },
+    ) {
         Text(
             text =
                 if (row.note == null) {
@@ -666,9 +679,9 @@ internal fun DoorRow(
                         cornerNote = if (row.askNote && item.jellyfinItemId == null) "Ask for it" else null,
                         modifier =
                             if (focusRequester != null && index == focusIndex.coerceAtMost(row.discover.size - 1)) {
-                                Modifier.focusRequester(focusRequester)
+                                Modifier.rowSpot(spot, index).focusRequester(focusRequester)
                             } else {
-                                Modifier
+                                Modifier.rowSpot(spot, index)
                             },
                     )
                 }
@@ -676,9 +689,9 @@ internal fun DoorRow(
             itemsIndexed(row.items, key = { _, it -> it.id.toString() }) { index, item ->
                 val mod =
                     if (focusRequester != null && index == focusIndex.coerceAtMost(row.items.size - 1)) {
-                        Modifier.focusRequester(focusRequester)
+                        Modifier.rowSpot(spot, index).focusRequester(focusRequester)
                     } else {
-                        Modifier
+                        Modifier.rowSpot(spot, index)
                     }
                 if (row.style == DoorRowStyle.TOP10) {
                     DoorTop10Poster(

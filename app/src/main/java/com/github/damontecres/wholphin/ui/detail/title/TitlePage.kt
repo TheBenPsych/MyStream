@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.components.BenflixPanelDialog
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -413,7 +414,8 @@ private fun WideTitlePage(
     LaunchedEffect(Unit) {
         if (isTv) {
             delay(60)
-            firstButton.tryRequestFocus()
+            // Back from a title opened from this page: the remote goes back to that card, not to Play
+            if (!ReturnSpot.settle()) firstButton.tryRequestFocus()
         }
     }
     LaunchedEffect(jump) {

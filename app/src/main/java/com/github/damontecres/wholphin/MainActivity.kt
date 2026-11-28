@@ -464,6 +464,13 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
             }
+            // A held arrow moves about 10 times a second on the browsing pages (players and games keep every press)
+            if (navigationManager.backStack.lastOrNull()?.fullScreen != true &&
+                com.github.damontecres.wholphin.ui.util.FastScroll
+                    .tooSoon(event)
+            ) {
+                return true
+            }
             return super.dispatchKeyEvent(event)
         }
     }
