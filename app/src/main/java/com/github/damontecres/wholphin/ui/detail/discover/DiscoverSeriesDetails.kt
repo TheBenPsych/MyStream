@@ -173,6 +173,7 @@ fun DiscoverSeriesDetails(
             loading = state.profileLoading,
             data = state.requestData,
             onDismissRequest = { showRequestSeasonDialog = false },
+            specials = state.specials,
         )
     }
 }

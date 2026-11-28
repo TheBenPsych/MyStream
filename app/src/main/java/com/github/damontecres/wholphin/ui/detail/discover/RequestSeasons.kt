@@ -72,14 +72,20 @@ fun RequestSeasons(
     request4kEnabled: Boolean,
     onSubmit: (TvRequest) -> Unit,
     modifier: Modifier = Modifier,
+    specials: SpecialsInfo? = null,
 ) {
     var is4k by remember { mutableStateOf(!requestEnabled) }
-    val seasons = remember(is4k, seasons, seasons4k) { if (is4k) seasons4k else seasons }
+    // Glowfin Specials & bonus (Ben 2026-11-27): Specials (season 0) go last, and only when ticked on their own
+    val seasons =
+        remember(is4k, seasons, seasons4k) {
+            (if (is4k) seasons4k else seasons).sortedBy { if (it.season.seasonNumber == 0) Int.MAX_VALUE else it.season.seasonNumber ?: 0 }
+        }
+    var allSpecials by remember { mutableStateOf(false) }
 
     val allSeasonNumbers =
         remember(seasons) {
             seasons
-                .filter { it.editable }
+                .filter { it.editable && it.season.seasonNumber != 0 }
                 .mapNotNull { it.season.seasonNumber }
                 .toSet()
         }
@@ -140,6 +146,7 @@ fun RequestSeasons(
                 is4k = is4k,
                 profileId = profile?.id,
                 folder = folder?.path,
+                allSpecials = allSpecials && 0 in selectedSeasons,
             ),
         )
     }
@@ -244,7 +251,15 @@ fun RequestSeasons(
                         }
                     },
                     modifier = Modifier,
+                    specials = specials,
                 )
+                if (seasonNumber == 0 && seasonNumber in selectedSeasons) {
+                    ClickSwitch(
+                        label = "Get all specials, not only the ones that are part of the story",
+                        checked = allSpecials,
+                        onClick = { allSpecials = !allSpecials },
+                    )
+                }
             }
             if (seasons.size > 3) {
                 item {
@@ -277,24 +292,49 @@ fun SeasonListItem(
     checked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    specials: SpecialsInfo? = null,
 ) {
+    val isSpecials = season.season.seasonNumber == 0
     ListItem(
         enabled = season.editable,
         selected = false,
         headlineContent = {
             Text(
                 text =
-                    season.season.name
-                        ?: season.season.seasonNumber?.let { formatSeasonNumber(it) }
-                        ?: "",
+                    if (isSpecials) {
+                        "Specials & bonus"
+                    } else {
+                        season.season.name
+                            ?: season.season.seasonNumber?.let { formatSeasonNumber(it) }
+                            ?: ""
+                    },
             )
         },
         supportingContent = {
-            season.season.episodeCount?.let {
+            if (isSpecials) {
                 Text(
-                    // TODO should use plurals string
-                    text = "${season.season.episodeCount} " + stringResource(R.string.episodes),
+                    text =
+                        when {
+                            specials != null -> {
+                                "${specials.story} part of the story · ${specials.more} more"
+                            }
+
+                            season.season.episodeCount != null -> {
+                                "${season.season.episodeCount} specials · the ones that are part of the story first"
+                            }
+
+                            else -> {
+                                "The ones that are part of the story first"
+                            }
+                        },
                 )
+            } else {
+                season.season.episodeCount?.let {
+                    Text(
+                        // TODO should use plurals string
+                        text = "${season.season.episodeCount} " + stringResource(R.string.episodes),
+                    )
+                }
             }
         },
         leadingContent = {
@@ -404,6 +444,7 @@ fun RequestSeasonsDialog(
     request4kEnabled: Boolean,
     onSubmit: (TvRequest) -> Unit,
     onDismissRequest: () -> Unit,
+    specials: SpecialsInfo? = null,
 ) {
     BasicDialog(
         onDismissRequest = onDismissRequest,
@@ -435,6 +476,7 @@ fun RequestSeasonsDialog(
                         Modifier
                             .padding(16.dp)
                             .focusRequester(focusRequester),
+                    specials = specials,
                 )
             }
         }

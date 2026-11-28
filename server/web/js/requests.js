@@ -175,21 +175,31 @@ B.askPanel = async (type, id) => {
     const have = new Set(((d.mediaInfo && d.mediaInfo.seasons) || []).filter((s) => s.status >= 2).map((s) => s.seasonNumber));
     const status = d.mediaInfo ? d.mediaInfo.status : 1;
     const jfId = d.mediaInfo && d.mediaInfo.jellyfinMediaId;
+    // Glowfin Specials & bonus (Ben 2026-11-27): Seerr's season 0, last, only when ticked on its own.
+    // Tower gets the ones that are part of the story first ("Get all specials" for every one).
+    const sp = type === "tv" ? (d.seasons || []).find((s) => s.seasonNumber === 0 && s.episodeCount) : null;
+    const spOpen = !!sp && !have.has(0);
+    const spHtml = sp ? `<button class="opt" data-season="0" data-spec ${spOpen ? "" : "disabled"}>Specials &amp; bonus<small data-spinfo>${spOpen ? sp.episodeCount + " specials · the ones that are part of the story first" : "Asked or on Glowfin"}</small></button><button class="chip" data-spall hidden title="Every special, not only the ones that are part of the story">Get all specials</button>` : "";
     p.innerHTML = `<button class="circle x" data-close title="Close">${I("x")}</button>
       ${d.backdropPath ? `<div style="aspect-ratio:16/9;border-radius:12px;background:#222 center/cover url('${tmdbImg(d.backdropPath, "w780")}');margin-bottom:16px"></div>` : ""}
       <h3>${esc(t)}</h3><p class="dim">${esc([year, type === "tv" ? "Show" : "Movie", d.runtime ? B.len(d.runtime) : "", (d.genres || []).slice(0, 3).map((g) => g.name).join(", "), d.originalLanguage && d.originalLanguage !== "en" ? "Spoken in " + B.langName(d.originalLanguage) : ""].filter(Boolean).join(" · "))}</p>
       ${d.voteAverage ? `<div class="scores"><span data-s="user"><b>${d.voteAverage.toFixed(1)}</b>TMDB</span></div>` : ""}
       <p>${esc(d.overview || "")}</p>
-      ${status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Glowfin</a>`
-        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-severy title="All of them now, and each new season when it comes out">Every new season from now on</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Glowfin" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}` : ""}
+      ${status === 5 && jfId && spOpen ? `<a class="btn white" href="#/show/${jfId}">${I("play")} It's on Glowfin</a><h4 style="margin:16px 0 8px">Ask for its specials</h4>${spHtml.replace('class="opt"', 'class="opt on"').replace(" hidden title", " title")}<div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for them</button></div>`
+        : status === 5 && jfId ? `<a class="btn white" href="#/${type === "tv" ? "show" : "movie"}/${jfId}">${I("play")} It's on Glowfin</a>`
+        : `<h4 style="margin:16px 0 8px">Ask for ${esc(t)}</h4>${seasons.length > 1 ? `<div class="acts" style="justify-content:flex-start;margin-bottom:8px"><button class="chip on" data-sall>All seasons</button><button class="chip" data-severy title="All of them now, and each new season when it comes out">Every new season from now on</button><button class="chip" data-slast>${esc((seasons.filter((s) => !have.has(s.seasonNumber)).slice(-1)[0] || {}).name || "Newest season")} only</button></div>` : ""}${seasons.length ? `<h4 class="dim" style="margin:8px 0 8px">Or pick seasons</h4>${seasons.map((s) => `<button class="opt ${have.has(s.seasonNumber) ? "" : "on"}" data-season="${s.seasonNumber}" ${have.has(s.seasonNumber) ? "disabled" : ""}>${esc(s.name || "Season " + s.seasonNumber)}<small>${have.has(s.seasonNumber) ? "Asked or on Glowfin" : (s.episodeCount || "") + " episodes"}</small></button>`).join("")}${spHtml}` : ""}
         ${status === 2 || status === 3 ? `<p>${B.rqPillHtml(status === 3 ? { k: "looking", w: "Still looking" } : { k: "asked", w: "Asked · waiting for Ben" })}</p>` : ""}
         <div class="acts" style="margin-top:16px"><button class="btn white" id="askGo">${I("plus")} Ask for it</button>${B.reqForHtml()}</div>`}`;
     B.reqForFill(p);
+    // Tower's labels when the show is already on Tower: "7 part of the story · 21 more"
+    if (spOpen) B.call("GET", `api/extras/show?tmdb=${+id}`).then((x) => { const el = $("[data-spinfo]", p); if (x && x.known && el) el.textContent = `${x.story} part of the story · ${x.nice + x.skip} more`; }).catch(() => {});
     const go = $("#askGo", p);
     if (go) go.onclick = () => B.busy(go, async () => {
       const body = { mediaType: type, mediaId: +id };
       if (type === "tv") {
         const picked = $$("[data-season].on", p).map((b) => +b.dataset.season);
+        // Tell Tower first, so it knows whether to get every special or only the story ones
+        if (picked.includes(0)) await B.call("POST", "api/extras/want", { tmdb: +id, all: !!$("[data-spall].on", p) }).catch(() => {});
         if (!picked.length) throw new Error("Tick at least one season.");
         body.seasons = picked;
       }
@@ -207,11 +217,14 @@ B.askPanel = async (type, id) => {
     p.addEventListener("click", (e) => {
       const b = e.target.closest("[data-season]");
       if (b && !b.disabled) b.classList.toggle("on");
+      if (e.target.closest("[data-spall]")) e.target.closest("[data-spall]").classList.toggle("on");
+      const spAll = $("[data-spall]", p);
+      if (spAll) spAll.hidden = !$("[data-spec].on", p);
       // All seasons / the newest season only (Redesign 2's one Ask for it panel)
       const all = e.target.closest("[data-sall]") || e.target.closest("[data-severy]"), last = e.target.closest("[data-slast]");
       if (b && !b.disabled) $$("[data-severy]", p).forEach((x) => x.classList.toggle("on", false));
       if (!all && !last) return;
-      const open = $$("[data-season]:not([disabled])", p);
+      const open = $$("[data-season]:not([disabled]):not([data-spec])", p);
       open.forEach((x, i) => x.classList.toggle("on", !!all || i === open.length - 1));
       $$("[data-sall],[data-slast],[data-severy]", p).forEach((x) => x.classList.toggle("on", x === (all || last)));
     });

@@ -65,6 +65,8 @@ class DiscoverSeriesViewModel
         @Assisted val item: DiscoverItem,
         // Benflix (2026-11-16): "More like this" leaves out what's already on Benflix
         private val libraryTmdb: com.github.damontecres.wholphin.services.BenflixLibraryTmdb,
+        // Glowfin Specials & bonus (Ben 2026-11-27): Tower's labels for the Specials choice, and "Get all specials"
+        private val helper: com.github.damontecres.wholphin.services.GameLibraryClient,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -375,6 +377,21 @@ class DiscoverSeriesViewModel
         fun requestOnClick() {
             viewModelScope.launchIO {
                 try {
+                    val info = helper.getJson("/api/extras/show?tmdb=${item.id}")
+                    if (info.optBoolean("known")) {
+                        val story = info.optInt("story")
+                        val more = info.optInt("nice") + info.optInt("skip")
+                        _state.update { it.copy(specials = SpecialsInfo(story, more)) }
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    // Older Tower, or the show isn't on Tower yet: the Specials choice just shows Seerr's count
+                    Timber.d(ex, "Specials labels")
+                }
+            }
+            viewModelScope.launchIO {
+                try {
                     val data = seerrService.getProfilesAndFolders(SeerrItemType.TV)
                     _state.update {
                         it.copy(
@@ -395,6 +412,23 @@ class DiscoverSeriesViewModel
         }
 
         fun request(request: TvRequest) {
+            if (0 in request.seasons) {
+                viewModelScope.launchIO {
+                    try {
+                        helper.postJson(
+                            "/api/extras/want",
+                            org.json
+                                .JSONObject()
+                                .put("tmdb", request.tvId)
+                                .put("all", request.allSpecials),
+                        )
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Tower didn't hear about the Specials ask")
+                    }
+                }
+            }
             viewModelScope.launchIO {
                 state.value.tvSeries.successValue?.let { tv ->
                     val currentUserId = seerrServerRepository.currentUserId.first()
@@ -498,4 +532,5 @@ data class DiscoverSeriesState(
     val profileLoading: LoadingState = LoadingState.Pending,
     val requestData: SeerrRequestData = SeerrRequestData(),
     val availability: SeerrAvailability = SeerrAvailability.UNKNOWN,
+    val specials: SpecialsInfo? = null,
 )

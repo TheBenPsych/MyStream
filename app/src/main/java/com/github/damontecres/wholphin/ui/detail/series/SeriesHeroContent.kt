@@ -104,6 +104,8 @@ class SeriesHeroActions(
     val pickPoster: (() -> Unit)? = null,
     /** Change logo in More (the poster picker on its logo tab) */
     val pickLogo: (() -> Unit)? = null,
+    /** Glowfin Specials & bonus: open a Bonus tile (a video, or the list of one kind) */
+    val openExtra: ((com.github.damontecres.wholphin.ui.nav.Destination) -> Unit)? = null,
 )
 
 /**
@@ -220,6 +222,11 @@ fun SeriesHeroContent(
                         }
                     },
                 )
+            }
+            // Glowfin Specials & bonus (Ben 2026-11-27): deleted scenes, behind the scenes, interviews...
+            val bonus = (state.seriesExtras + state.extras).distinctBy { "${it.type}|${it.title}" }
+            if (bonus.isNotEmpty() && actions.openExtra != null) {
+                add(TitleTab("Bonus") { scope -> BonusRow(scope, bonus, actions.openExtra) })
             }
             if (!easy && state.people.isNotEmpty()) {
                 add(TitleTab("Cast and crew") { scope -> TitleCastRow(scope, state.people, actions.openPerson) })
@@ -707,7 +714,8 @@ internal fun EpisodeCard(
                             ) {
                                 "MOVIE"
                             } else {
-                                "SPECIAL"
+                                // Glowfin Specials & bonus: Tower's label (part of the story, extra, skippable)
+                                SpecialLabels.tag(episode.data.seriesId, episode.data.indexNumber)?.let { "SPECIAL · $it" } ?: "SPECIAL"
                             },
                         color = BenflixColors.Tray,
                         fontSize = BenflixType.tag,

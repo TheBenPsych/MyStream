@@ -903,7 +903,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     strip: B.tpStrip([maker]),
     tabs: [
       { name: "Episodes", id: "tpEpisodes", keep: true, html: `<div class="seasons" id="seasons">${seasons.map((s) => `<button class="chip ${s.Id === seasonId ? "on" : ""}" style="--accent:${DOORS.shows.color}" data-season="${s.Id}" ${seasonSeen(s).say ? `title="${seasonSeen(s).say}"` : ""}>${esc(s.IndexNumber === 0 ? "Specials" : s.Name)}${seasonSeen(s).pct ? `<i class="seen"><i style="width:${seasonSeen(s).pct}%"></i></i>` : ""}</button>`).join("")}</div>
-        <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div><div id="story"></div>` },
+        <div class="seasons" id="groups"></div><div id="eps">${B.spinner("list")}</div><div id="story"></div><div id="bonus"></div>` },
       { name: "Cast", id: "tpCast", html: B.peopleRow(it) },
       { name: "Reviews", id: "tpReviews", load: (pane) => B.reviewsRow(pane, it, "tv", nav) },
       { name: "More like this", id: "below2", load: async (pane) => {
@@ -931,6 +931,11 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
   ]);
   let episodes = [], group = 0;
   const story = { filler: null };
+  // Glowfin Specials & bonus (Ben 2026-11-27): Tower's label for each special (story / extra / skippable)
+  const spLabels = {};
+  B.call("GET", `api/extras/show?${(it.ProviderIds || {}).Tvdb ? "tvdb=" + it.ProviderIds.Tvdb : "tmdb=" + ((it.ProviderIds || {}).Tmdb || "")}`)
+    .then((x) => { Object.assign(spLabels, (x && x.labels) || {}); if (Object.keys(spLabels).length && B.alive(nav) && episodes.length) drawEps(); }).catch(() => {});
+  const spTag = (e) => ({ story: "SPECIAL · STORY", nice: "SPECIAL · EXTRA", skip: "SPECIAL · SKIPPABLE" })[spLabels[e.IndexNumber]] || "SPECIAL";
   const drawEps = () => {
     const now = Date.now();
     const list = episodes.length > 50 ? episodes.slice(group * 25, group * 25 + 25) : episodes;
@@ -941,7 +946,7 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
       // Anime: Canon / Mixed / Filler from Anime Filler List (through Tower)
       const kind = !special && story.filler ? story.filler[`${e.ParentIndexNumber}x${e.IndexNumber}`] : "";
       const sub = soon ? `Coming ${B.day(e.PremiereDate)}` : [special ? (movie ? "Movie" : "Special") : `E${e.IndexNumber}`, e.RunTimeTicks ? B.len(B.minutes(e.RunTimeTicks)) : "", B.isNew(e) && !(e.UserData || {}).Played ? "New" : ""].filter(Boolean).join(" · ");
-      return B.wideCard(e, { href: `#/play/${e.Id}?resume=1`, title: `${special ? "" : e.IndexNumber + ". "}${e.Name}`, sub, story: true, soon, tag: special ? (movie ? "MOVIE" : "SPECIAL") : kind === "filler" ? "FILLER" : kind === "mixed" ? "MIXED" : "" });
+      return B.wideCard(e, { href: `#/play/${e.Id}?resume=1`, title: `${special ? "" : e.IndexNumber + ". "}${e.Name}`, sub, story: true, soon, tag: special ? (movie ? "MOVIE" : spTag(e)) : kind === "filler" ? "FILLER" : kind === "mixed" ? "MIXED" : "" });
     }), { id: "epRow" });
     const t = focus && $(`#epRow [data-id="${CSS.escape(focus.Id)}"]`);
     if (t) { t.scrollIntoView({ inline: "start", block: "nearest" }); $("#epRow .strip").scrollLeft -= 48; }
@@ -976,6 +981,13 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
     });
   });
   if (seasonId) await loadSeason(seasonId); else $("#eps").innerHTML = "";
+  // Bonus row: deleted scenes, behind the scenes, interviews... (Jellyfin's extras folders, filled by Tower)
+  q(`/Users/${u}/Items/${it.Id}/SpecialFeatures`).then((list) => {
+    const keep = (list || []).filter((x) => !/^(Trailer|ThemeSong|ThemeVideo)$/.test(x.ExtraType || ""));
+    if (!keep.length || !B.alive(nav) || !$("#bonus")) return;
+    const word = { DeletedScene: "Deleted scene", BehindTheScenes: "Behind the scenes", Interview: "Interview", Featurette: "Featurette", Short: "Short", Clip: "Clip", Scene: "Scene", Sample: "Sample" };
+    $("#bonus").innerHTML = B.row(`Bonus · ${keep.length}`, keep.map((x) => B.wideCard(x, { href: `#/play/${x.Id}`, title: x.Name, sub: [word[x.ExtraType] || "Extra", x.RunTimeTicks ? B.len(B.minutes(x.RunTimeTicks)) : ""].filter(Boolean).join(" · ") })), { id: "bonusRow" });
+  }).catch(() => {});
   // Ben 2026-11-22: anime shows get Watch order, Missing pieces, filler tags and "Watch the movie first?"
   if (B.alive(nav)) B.story.show(it, nav, $("#story"), story, () => { if (B.alive(nav) && episodes.length) drawEps(); });
   $("#eps").addEventListener("click", (e) => {

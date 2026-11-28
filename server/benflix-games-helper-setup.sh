@@ -48,7 +48,7 @@ say "Downloading the helper"
 NEW=$APP/.new
 GOOD=$APP/.last-good
 rm -rf "$NEW"; mkdir -p "$NEW"
-for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_onepace.py benflix_onepace_get.py benflix_famous.py benflix_teams.py benflix_scenes.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix_health.py benflix-fix-tracks.py benflix-web.html benflix-health.sh; do
+for f in benflix-games-helper.py benflix_server_tools.py benflix_livetv.py benflix_livetv_lineup.py benflix_web.py benflix_skips.py benflix_music.py benflix_care.py benflix_arrivals.py benflix_specials.py benflix_onepace.py benflix_onepace_get.py benflix_extras.py benflix_famous.py benflix_teams.py benflix_scenes.py benflix_posters.py benflix_keeper.py benflix_books.py benflix_booklists.py benflix_lobby.py benflix_health.py benflix-fix-tracks.py benflix-web.html benflix-health.sh; do
   if curl -fsSL -4 --connect-timeout 15 -m 120 --retry 3 "$RAW/$f" -o "$NEW/$f"; then echo "  ok  $f"; else
     echo "  PROBLEM  Couldn't download $f. Check the server has internet."
     rm -rf "$NEW"
@@ -169,6 +169,29 @@ find_arr() { # $1 = sonarr or radarr, $2 = usual port
 }
 find_arr sonarr 8989
 find_arr radarr 7878
+
+say "Connecting Prowlarr (for finding show specials inside complete-series packs)"
+find_prowlarr() {
+  local c cfg key port base ipaddr u
+  c=$(docker ps -a --format '{{.Names}}' | grep -i prowlarr | head -1)
+  if [ -z "$c" ]; then echo "  skip  No Prowlarr app found. Specials still get sorted, just not looked for in packs."; return; fi
+  cfg=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$c")/config.xml
+  if [ ! -f "$cfg" ]; then echo "  PROBLEM  Couldn't find Prowlarr's settings file ($cfg)"; return; fi
+  key=$(sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' "$cfg" | head -1)
+  port=$(sed -n 's:.*<Port>\(.*\)</Port>.*:\1:p' "$cfg" | head -1)
+  base=$(sed -n 's:.*<UrlBase>\(.*\)</UrlBase>.*:\1:p' "$cfg" | head -1)
+  [ -n "$port" ] || port=9696
+  ipaddr=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$c" | awk '{print $1}')
+  for u in "http://127.0.0.1:$port$base" "http://$HOST_IP:$port$base" ${ipaddr:+"http://$ipaddr:$port$base"}; do
+    if curl -fs -m 5 -H "X-Api-Key: $key" "$u/api/v1/system/status" >/dev/null; then
+      printf 'PROWLARR_URL=%s\nPROWLARR_KEY=%s\n' "$u" "$key" >>"$TOOLS_ENV"
+      echo "  ok  $c ($u)"
+      return
+    fi
+  done
+  echo "  PROBLEM  Found $c but couldn't reach it on port $port. Send this output to Claude."
+}
+find_prowlarr
 
 say "Connecting Lidarr (for music requests)"
 # Same idea as Sonarr and Radarr, plus where Lidarr sees the Music folder (like /data/Music)

@@ -131,6 +131,8 @@ fun SeriesDetails(
             }
             val series = st.data
             val played = series.data.userData?.played ?: false
+            // Glowfin Specials & bonus (Ben 2026-11-27): Tower's labels for the Specials tiles
+            LaunchedEffect(series.id) { story.loadSpecialLabels(series) }
             LaunchedEffect(state.seasons) {
                 if (state.inlineSeasonIndex < 0 && state.seasons.isNotEmpty()) {
                     // Opened from an episode or season: that season, else the first one not finished
@@ -179,6 +181,7 @@ fun SeriesDetails(
                         openAsk = { viewModel.navigateTo(it.destination) },
                         pickPoster = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id)) }) else null,
                         pickLogo = if (state.isAdmin) ({ viewModel.navigateTo(Destination.PosterPicker(series.id, "LOGO")) }) else null,
+                        openExtra = { viewModel.navigateTo(it) },
                     ),
             )
             firstAsk?.let { (episode, fromStart, movie) ->

@@ -156,6 +156,17 @@ fun RequestTitlePage(
             if (availability == SeerrAvailability.PARTIALLY_AVAILABLE && !cantFind && !kids) {
                 add(TitleButton("Ask for the rest", BenflixIcon.REQUESTS, requestOnClick, note = "Some of it isn't on Glowfin yet"))
             }
+            // Glowfin Specials & bonus (Ben 2026-11-27): a show that's all here can still ask for its specials
+            if (!isMovie && availability == SeerrAvailability.AVAILABLE && canRequest && !kids) {
+                add(
+                    TitleButton(
+                        "Ask for specials",
+                        BenflixIcon.REQUESTS,
+                        requestOnClick,
+                        note = "Specials that are part of the story, and bonus videos",
+                    ),
+                )
+            }
             add(
                 TitleButton(
                     "Trailer",

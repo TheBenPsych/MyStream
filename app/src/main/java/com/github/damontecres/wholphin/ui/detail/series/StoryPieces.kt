@@ -183,6 +183,36 @@ class StoryViewModel
             }
         }
 
+        /** Glowfin Specials & bonus: Tower's label for each special of this show, shown on its tile */
+        fun loadSpecialLabels(series: BaseItem) {
+            if (SpecialLabels.bySeries.containsKey(series.id)) return
+            val tvdb =
+                series.data.providerIds
+                    .orEmpty()["Tvdb"]
+                    ?.filter { it.isDigit() }
+                    .orEmpty()
+            val tmdb =
+                series.data.providerIds
+                    .orEmpty()["Tmdb"]
+                    ?.filter { it.isDigit() }
+                    .orEmpty()
+            if (tvdb.isEmpty() && tmdb.isEmpty()) return
+            viewModelScope.launch(WholphinDispatchers.IO) {
+                try {
+                    val q = if (tvdb.isNotEmpty()) "tvdb=$tvdb" else "tmdb=$tmdb"
+                    val labels = helper.getJson("/api/extras/show?$q").optJSONObject("labels") ?: return@launch
+                    val out = mutableMapOf<Int, String>()
+                    labels.keys().forEach { k -> k.toIntOrNull()?.let { out[it] = labels.optString(k) } }
+                    SpecialLabels.bySeries[series.id] = out
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    // Older Tower, or the show isn't in Sonarr: the tiles just say Special
+                    Timber.d(ex, "Special labels for %s", series.name)
+                }
+            }
+        }
+
         /** Every episode and special of the show, in story order (kept while the page is open) */
         suspend fun storyOrder(seriesId: UUID): List<BaseItemDto> {
             episodes?.takeIf { it.first == seriesId }?.let { return NextEpisode.storyOrder(it.second) }
@@ -417,4 +447,24 @@ fun AnimeMoviesAsk(
             ),
         onDismissRequest = viewModel::dismiss,
     )
+}
+
+/**
+ * Glowfin Specials & bonus (Ben 2026-11-27): Tower's label for each special ("story", "nice", "skip"),
+ * by show, for the Specials tiles. Filled once per show while the app runs.
+ */
+object SpecialLabels {
+    val bySeries = androidx.compose.runtime.mutableStateMapOf<UUID, Map<Int, String>>()
+
+    /** The tile's tag word for a special, or null to keep the plain one */
+    fun tag(
+        seriesId: UUID?,
+        number: Int?,
+    ): String? =
+        when (bySeries[seriesId ?: return null]?.get(number ?: return null)) {
+            "story" -> "STORY"
+            "nice" -> "EXTRA"
+            "skip" -> "SKIPPABLE"
+            else -> null
+        }
 }
