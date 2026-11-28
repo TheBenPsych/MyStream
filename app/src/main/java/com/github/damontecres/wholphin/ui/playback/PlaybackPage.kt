@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -710,8 +709,7 @@ fun PlaybackPageContent(
                             .padding(top = 24.dp)
                             .background(
                                 Color(0xAA000000),
-                                androidx.compose.foundation.shape
-                                    .RoundedCornerShape(50),
+                                BenflixShapes.Pill,
                             ).padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
@@ -1072,7 +1070,7 @@ fun PlaybackPageContent(
                 onClick = { showSideGuide = true },
                 shape =
                     androidx.tv.material3.ClickableSurfaceDefaults
-                        .shape(RoundedCornerShape(50)),
+                        .shape(BenflixShapes.Pill),
                 colors =
                     androidx.tv.material3.ClickableSurfaceDefaults.colors(
                         containerColor = Color.Black.copy(alpha = .7f),

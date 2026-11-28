@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -19,9 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -62,10 +64,13 @@ import com.github.damontecres.wholphin.ui.door.DOOR_HOME
 import com.github.damontecres.wholphin.ui.door.DoorFrame
 import com.github.damontecres.wholphin.ui.door.DoorFrameState
 import com.github.damontecres.wholphin.ui.door.DoorSection
+import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
+import com.github.damontecres.wholphin.ui.preferences.glowfinDimmedPage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
+import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -297,8 +302,9 @@ class ServerStatusViewModel
 
 /**
  * Benflix Server page (only for admins), split into sections like Jellyfin's Dashboard.
- * TV: the sections in a menu on the left (moving through it shows each one straight away).
- * Phone: the sections as tabs along the top, pull down to refresh.
+ * Redesign (Ben 2026-11-28): the sections are tabs along the top on every screen. Overview opens with one big
+ * status line and five glance tiles; Tools is a row of tool tiles per group, and each tool opens on its own page.
+ * Phones: pull down to refresh.
  * Each part shows as soon as its own answer arrives; until then a grey "loading" box.
  */
 @Composable
@@ -311,6 +317,7 @@ fun ServerStatusPage(
     towerViewModel: ServerTowerViewModel = hiltViewModel(),
     speedCheck: ServerSpeedCheckViewModel = hiltViewModel(),
     care: ServerCareViewModel = hiltViewModel(),
+    cardsModel: TowerCardsViewModel = hiltViewModel(),
 ) {
     val isTv = rememberIsTv()
     val data = viewModel.data
@@ -333,7 +340,7 @@ fun ServerStatusPage(
         remember {
             DoorFrameState(
                 door = com.github.damontecres.wholphin.ui.theme.BenflixDoor.MOVIES,
-                start = (jump.first ?: ServerSection.OVERVIEW).key,
+                start = (jump.first ?: if (jump.second != null) ServerSection.TOOLS else ServerSection.OVERVIEW).key,
                 jumps = false,
                 pillColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Text,
                 onPillColor = com.github.damontecres.wholphin.ui.theme.BenflixColors.Tray,
@@ -346,7 +353,12 @@ fun ServerStatusPage(
         delay(FIRST_FOCUS_MS)
         frame.content.tryRequestFocus()
     }
+    // Which Tools row to show first (from Settings' "Find a setting", or a "Go" button)
     var toolGroup by rememberSaveable { mutableStateOf(jump.second) }
+    // Redesign (Ben 2026-11-28): one tool open on its own page, or null for the tab's tiles
+    var openToolName by rememberSaveable { mutableStateOf<String?>(null) }
+    val shownTool = openToolName?.let { n -> ServerTool.entries.firstOrNull { it.name == n } }?.takeIf { it.section == section }
+    LaunchedEffect(section) { if (shownTool == null) openToolName = null }
     LaunchedEffect(isAdmin) {
         if (isAdmin) {
             viewModel.checkSetup()
@@ -354,7 +366,7 @@ fun ServerStatusPage(
             data.refreshTower(fresh = false)
         }
     }
-    LaunchedEffect(section, toolGroup, isAdmin) {
+    LaunchedEffect(section, shownTool?.group, isAdmin) {
         if (!isAdmin) return@LaunchedEffect
         when (section) {
             ServerSection.OVERVIEW -> {
@@ -374,7 +386,12 @@ fun ServerStatusPage(
             }
 
             ServerSection.TOOLS -> {
-                when (toolGroup ?: ServerToolGroup.LIBRARY) {
+                when (shownTool?.group) {
+                    // The tiles: Tower's answer gives the Downloads, apps, drives and setup tiles their status
+                    null -> {
+                        data.refreshTower(fresh = false)
+                    }
+
                     ServerToolGroup.LIBRARY -> {
                         viewModel.loadTools()
                         care.loadLibrary()
@@ -489,7 +506,12 @@ fun ServerStatusPage(
     val sectionTitle: @Composable (String) -> Unit = { SectionTitle(it) }
     val openTools: (ServerToolGroup) -> Unit = { group ->
         toolGroup = group
+        openToolName = null
         frame.pick(ServerSection.TOOLS.key)
+    }
+    val openTool: (ServerTool) -> Unit = { tool ->
+        if (tool.section != section) frame.pick(tool.section.key)
+        openToolName = tool.name
     }
     // Redesign 2 (approved sv2-glance): what needs you, with its buttons right on the card
     val pendingStatus = com.github.damontecres.wholphin.data.model.RequestStatus.PENDING
@@ -554,7 +576,7 @@ fun ServerStatusPage(
                             text = "Drive ${d.name}: ${d.words}",
                             light = driveLight(d),
                             supporting = d.where.ifBlank { null },
-                            actions = listOf("Go" to { openTools(ServerToolGroup.TOWER) }),
+                            actions = listOf("Go" to { openTool(ServerTool.DRIVES) }),
                         ),
                     )
                 }
@@ -682,28 +704,6 @@ fun ServerStatusPage(
         healthNeeds.firstOrNull()?.let { first ->
             first.text + if (healthNeeds.size > 1) " (and ${healthNeeds.size - 1} more below)" else ""
         }
-    val stuckCount = tower?.downloads.orEmpty().count { it.stuck }
-    val pills =
-        listOf(
-            (if (header?.online == false) "Jellyfin: not answering" else "Jellyfin") to
-                when {
-                    header == null -> Light.UNKNOWN
-                    header?.online == true -> Light.GOOD
-                    else -> Light.BAD
-                },
-            (if (brokenApps(tower).isNotEmpty()) "Tower: ${brokenApps(tower).size} app(s) down" else "Tower") to
-                when {
-                    tower == null -> Light.UNKNOWN
-                    brokenApps(tower).isNotEmpty() -> Light.BAD
-                    else -> Light.GOOD
-                },
-            (if (stuckCount > 0) "Downloads: $stuckCount stuck" else "Downloads") to
-                when {
-                    tower == null -> Light.UNKNOWN
-                    stuckCount > 0 -> Light.WARN
-                    else -> Light.GOOD
-                },
-        )
     val ago by produceState(agoText(updatedAt), updatedAt) {
         while (true) {
             value = agoText(updatedAt)
@@ -718,41 +718,377 @@ fun ServerStatusPage(
         viewModel.checkSetup(fresh = true)
     }
 
-    val content: LazyListScope.() -> Unit = content@{
-        item(key = "server-header") {
-            PageHeader(
-                header = header,
-                sectionTitle = if (isAdmin) section.title else "Server",
-                loading = loadingParts > 0,
-                ago = ago,
-                waitingOn = waitingOn,
-                onRefresh = if (isAdmin) refreshAll else null,
+    // Redesign (Ben 2026-11-28): each tile's short status, from what the page already knows
+    val towerCards by cardsModel.cards.collectAsState()
+    val toolStatus: (ServerTool) -> ToolStatus = { tool ->
+        val t = tower
+        when (tool) {
+            ServerTool.DOWNLOADS -> {
+                if (t == null) {
+                    ToolStatus(tool.line, null)
+                } else {
+                    val going = t.downloads.size
+                    val stuck = t.downloads.count { it.stuck }
+                    when {
+                        stuck > 0 -> ToolStatus("$going going · $stuck stuck", Light.WARN)
+                        going == 0 -> ToolStatus("Nothing downloading", Light.GOOD)
+                        else -> ToolStatus("$going going", Light.GOOD)
+                    }
+                }
+            }
+
+            ServerTool.SETUP -> {
+                when {
+                    setupNeed != null -> ToolStatus("Needs the setup command", Light.WARN)
+                    t != null -> ToolStatus("Up to date", Light.GOOD)
+                    else -> ToolStatus(tool.line, null)
+                }
+            }
+
+            ServerTool.APPS -> {
+                val broken = brokenApps(t)
+                when {
+                    t?.apps == null -> {
+                        ToolStatus(tool.line, null)
+                    }
+
+                    broken.isNotEmpty() -> {
+                        ToolStatus(
+                            if (broken.size ==
+                                1
+                            ) {
+                                "${broken[0].nice} isn't running"
+                            } else {
+                                "${broken.size} not running"
+                            },
+                            Light.BAD,
+                        )
+                    }
+
+                    else -> {
+                        ToolStatus("All running", Light.GOOD)
+                    }
+                }
+            }
+
+            ServerTool.DRIVES -> {
+                when {
+                    t == null -> ToolStatus(tool.line, null)
+                    t.drivesBad.isNotEmpty() -> ToolStatus("${t.drivesBad.size} with warning signs", Light.WARN)
+                    else -> ToolStatus("No warning signs", Light.GOOD)
+                }
+            }
+
+            ServerTool.CHORES -> {
+                val n = watching?.size
+                when {
+                    plannedRestart != null -> ToolStatus("A restart is planned", Light.WARN)
+                    n == null -> ToolStatus(tool.line, null)
+                    n == 0 -> ToolStatus("Nobody is watching", null)
+                    else -> ToolStatus("$n watching now", null)
+                }
+            }
+
+            else -> {
+                tool.card?.let { towerCards[it].toolStatus(tool.line) } ?: ToolStatus(tool.line, null)
+            }
+        }
+    }
+    val pendingCount = requests.orEmpty().count { it.status == pendingStatus }
+    val glance =
+        run {
+            val t = tower
+            val broken = brokenApps(t)
+            val used = disks.orEmpty().sumOf { it.usedBytes }
+            val free = disks.orEmpty().sumOf { it.freeBytes }
+            val going = t?.downloads?.size
+            val stuck = t?.downloads.orEmpty().count { it.stuck }
+            listOf(
+                GlanceTile(
+                    label = "Tower",
+                    icon = BenflixIcon.SERVER,
+                    value =
+                        when {
+                            header?.online == false -> "Off?"
+                            t == null -> "…"
+                            broken.isNotEmpty() || t.healthLevel == "bad" -> "Problem"
+                            t.healthLevel == "warn" -> "Check"
+                            else -> "OK"
+                        },
+                    valueLight =
+                        when {
+                            header?.online == false -> Light.BAD
+                            t == null -> null
+                            broken.isNotEmpty() || t.healthLevel == "bad" -> Light.BAD
+                            t.healthLevel == "warn" -> Light.WARN
+                            else -> Light.GOOD
+                        },
+                    line =
+                        when {
+                            broken.isNotEmpty() -> "${broken.size} app(s) down"
+                            t?.cpu != null -> "Processor ${t.cpu}% busy"
+                            else -> "Health and parts"
+                        },
+                    onClick = { frame.pick(ServerSection.HEALTH.key) },
+                ),
+                GlanceTile(
+                    label = "Space",
+                    icon = BenflixIcon.STATS,
+                    value = if (used + free > 0) "${(used * 100 / (used + free)).toInt()}%" else "…",
+                    valueLight = if (disks.orEmpty().any { it.nearlyFull }) Light.WARN else null,
+                    line = if (used + free > 0) "${sizeText(free)} free" else "Disk space",
+                    onClick = { frame.pick(ServerSection.LIBRARY.key) },
+                ),
+                GlanceTile(
+                    label = "Watching",
+                    icon = BenflixIcon.PLAY,
+                    value = watching?.size?.toString() ?: "…",
+                    line =
+                        watching
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.map { it.who }
+                            ?.distinct()
+                            ?.joinToString(", ") ?: "Nobody right now",
+                    onClick = { frame.pick(ServerSection.NOW.key) },
+                ),
+                GlanceTile(
+                    label = "Downloads",
+                    icon = BenflixIcon.DOWNLOAD,
+                    value = going?.toString() ?: "…",
+                    line =
+                        if (stuck > 0) {
+                            "$stuck stuck"
+                        } else if (going == 0) {
+                            "Nothing going"
+                        } else {
+                            "None stuck"
+                        },
+                    lineLight = if (stuck > 0) Light.WARN else null,
+                    onClick = { openTool(ServerTool.DOWNLOADS) },
+                ),
+                GlanceTile(
+                    label = "Requests",
+                    icon = BenflixIcon.REQUESTS,
+                    value = if (seerrActive) pendingCount.toString() else "–",
+                    line =
+                        when {
+                            !seerrActive -> "Seerr isn't connected"
+                            pendingCount == 0 -> "None waiting"
+                            else -> "Waiting for you"
+                        },
+                    lineLight = if (seerrActive && pendingCount > 0) Light.WARN else null,
+                    onClick = {
+                        viewModel.navigationManager.navigateTo(com.github.damontecres.wholphin.ui.nav.Destination.Requests)
+                    },
+                ),
             )
         }
-        if (!isAdmin) {
-            item { Text("Only the server's admin can see this page.", fontSize = BenflixType.lead) }
-            return@content
+    val statusWords =
+        when {
+            loadingParts > 0 -> "Loading new numbers…"
+            waitingOn.isNotEmpty() -> "Still checking: " + waitingOn.joinToString(", ").lowercase() + "…"
+            else -> ago
         }
-        when (section) {
-            ServerSection.OVERVIEW -> {
-                item(key = "banner") { ServerBanner(bannerLight, bannerReason, pills, null) }
-                setupNeed?.let { need -> item(key = "setup-card") { ServerSetupCard(need) } }
-                item(key = "cards") {
-                    ServerOverviewCards(
-                        needs = healthNeeds + signinNeeds + requestNeeds,
-                        watching = watching,
-                        onOpenWatching = { frame.pick(ServerSection.NOW.key) },
+    // Each tile's focus, so Back from a tool lands on the tile you opened
+    val tileFocus = remember { mutableMapOf<ServerTool, FocusRequester>() }
+    val focusOf: (ServerTool) -> FocusRequester = { tileFocus.getOrPut(it) { FocusRequester() } }
+    val rowStates = remember { mutableMapOf<ServerToolGroup, LazyListState>() }
+    val rowState: (ServerToolGroup) -> LazyListState = { rowStates.getOrPut(it) { LazyListState() } }
+    val tabStates = remember { ServerSection.entries.associateWith { LazyListState() } }
+    val toolListState = remember(shownTool) { LazyListState() }
+    var lastTool by remember { mutableStateOf<ServerTool?>(null) }
+    val closeTool: () -> Unit = {
+        lastTool = shownTool
+        openToolName = null
+    }
+    LaunchedEffect(shownTool) {
+        if (!isTv) return@LaunchedEffect
+        delay(TOOL_FOCUS_MS)
+        if (shownTool != null) {
+            frame.content.tryRequestFocus()
+        } else {
+            lastTool?.takeIf { it.section == section }?.let { focusOf(it).tryRequestFocus() }
+        }
+    }
+    // A "Go" (or Settings' "Find a setting") on a Tools row: show that row first
+    LaunchedEffect(section, toolGroup) {
+        val group = toolGroup ?: return@LaunchedEffect
+        if (section != ServerSection.TOOLS || shownTool != null) return@LaunchedEffect
+        tabStates.getValue(ServerSection.TOOLS).scrollToItem(1 + ServerTool.rows.indexOf(group).coerceAtLeast(0) * 2)
+        toolGroup = null
+        if (isTv) {
+            delay(TOOL_FOCUS_MS)
+            ServerTool.inGroup(group).firstOrNull()?.let { focusOf(it).tryRequestFocus() }
+        }
+    }
+
+    val toolPage: LazyListScope.(ServerTool) -> Unit = { tool ->
+        item(key = "tool-header") { ToolPageHeader(tool, onBack = closeTool) }
+        when (tool) {
+            ServerTool.SCAN -> {
+                toolItems(
+                    libraries = libraries,
+                    chores = chores,
+                    onScan = viewModel::scan,
+                    onChore = viewModel::runChore,
+                    onRestart = { askRestart = true },
+                    plannedRestart = plannedRestart,
+                    onCancelRestart = viewModel::cancelRestart,
+                    showRest = false,
+                )
+            }
+
+            ServerTool.CHECKUP -> {
+                checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
+                    when {
+                        tower == null -> emptyList()
+                        title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
+                        title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
+                        else -> emptyList()
+                    }
+                }
+            }
+
+            ServerTool.POSTERS -> {
+                item(key = "fix-posters") {
+                    ServerActionRow(
+                        headline = "Fix posters",
+                        supporting =
+                            "Missing, blurry or wrong-shaped posters, one at a time. " +
+                                "Missing ones also get filled in every night.",
+                        onClick = toolsViewModel::openPosterFixer,
+                        actions = listOf("Start" to { toolsViewModel.openPosterFixer() }),
                     )
                 }
-                towerCardItems("try", "Try these on a real screen", max = 4, hideWhenEmpty = true)
-                if (!seerrActive) {
-                    item {
+            }
+
+            ServerTool.SPACE -> {
+                spaceItems(toolsState, toolsViewModel, sectionTitle)
+            }
+
+            ServerTool.TIDY -> {
+                careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
+            }
+
+            ServerTool.DOWNLOADS -> {
+                towerDownloadItems(tower, towerProblem, towerViewModel, showApps = false)
+            }
+
+            ServerTool.TRACKS -> {
+                trackTidyItems(tracks, tracksProblem, towerViewModel)
+            }
+
+            ServerTool.SPEED -> {
+                speedCheckItems(speedState, speedCheck)
+            }
+
+            ServerTool.STARTUP -> {
+                startupSpeedItem(sectionTitle)
+            }
+
+            ServerTool.GAMES -> {
+                gameProblemItems()
+            }
+
+            ServerTool.VERSIONS -> {
+                versionItems(
+                    versions = toolsState.versions,
+                    failed = toolsState.versionsFailed,
+                    onLoad = toolsViewModel::loadVersions,
+                    onMessage = { ids, title, prefill -> toolsDialog = ServerToolsDialog.WritePopupToMany(ids, title, prefill) },
+                    sectionTitle = sectionTitle,
+                )
+            }
+
+            ServerTool.MESSAGES -> {
+                messageItems(toolsState, { toolsDialog = it }, sectionTitle)
+            }
+
+            ServerTool.KIDS_RATINGS -> {
+                kidsRatingItems()
+            }
+
+            ServerTool.KIDS_GAMES -> {
+                kidsGamesItems()
+            }
+
+            ServerTool.SETUP -> {
+                item(key = "setup-tools") {
+                    val need = setupNeed
+                    if (need != null) {
+                        ServerSetupCard(need)
+                    } else {
                         ServerActionRow(
-                            headline = "Seerr isn't connected, so requests can't show here",
-                            supporting = "Connect it in Settings > Behind the scenes.",
+                            headline = "Tower is up to date",
+                            supporting = "When an update needs the setup command, a yellow card shows here and on Overview.",
+                            leading = { Dot(Light.GOOD) },
                         )
                     }
                 }
+            }
+
+            ServerTool.APPS -> {
+                towerDownloadItems(tower, towerProblem, towerViewModel, showDownloads = false)
+            }
+
+            ServerTool.CHORES -> {
+                toolItems(
+                    libraries = libraries,
+                    chores = chores,
+                    onScan = viewModel::scan,
+                    onChore = viewModel::runChore,
+                    onRestart = { askRestart = true },
+                    plannedRestart = plannedRestart,
+                    onCancelRestart = viewModel::cancelRestart,
+                    showScan = false,
+                )
+            }
+
+            ServerTool.DRIVES -> {
+                driveHealthItems()
+            }
+
+            ServerTool.BOOKS -> {
+                bookListItems()
+            }
+
+            else -> {
+                tool.card?.let { towerCardItems(it, tool.title) }
+            }
+        }
+    }
+
+    val content: LazyListScope.() -> Unit = content@{
+        if (!isAdmin) {
+            item(key = "server-header") {
+                PageHeader(
+                    header = header,
+                    sectionTitle = "Server",
+                    loading = loadingParts > 0,
+                    ago = ago,
+                    waitingOn = waitingOn,
+                    onRefresh = null,
+                )
+            }
+            item { Text("Only the server's admin can see this page.", fontSize = BenflixType.lead) }
+            return@content
+        }
+        shownTool?.let { tool ->
+            toolPage(tool)
+            return@content
+        }
+        item(key = "server-top") {
+            if (section == ServerSection.OVERVIEW) {
+                ServerStatusLine(bannerLight, bannerReason, statusWords, refreshAll)
+            } else {
+                ServerTabLine(section.hint, statusWords, refreshAll)
+            }
+        }
+        when (section) {
+            ServerSection.OVERVIEW -> {
+                item(key = "glance") { ServerGlanceTiles(glance) }
+                setupNeed?.let { need -> item(key = "setup-card") { ServerSetupCard(need) } }
+                needsYouItems(healthNeeds + signinNeeds + requestNeeds)
                 problemReportItems(
                     reports = reports,
                     viewModel = toolsViewModel,
@@ -763,8 +1099,7 @@ fun ServerStatusPage(
                 )
                 serverProblemItems(problems)
                 careReportItems(careReport, careReportProblem, care)
-                item(key = "tools-title") { SectionTitle("Tools") }
-                item(key = "tool-tiles") { ServerToolTiles(selected = null, onPick = openTools) }
+                towerCardItems("try", "Try these on a real screen", max = 4, hideWhenEmpty = true)
             }
 
             ServerSection.NOW -> {
@@ -784,7 +1119,7 @@ fun ServerStatusPage(
             ServerSection.LIBRARY -> {
                 libraryNumberItems(library)
                 diskItems(disks)
-                towerOverviewItems(tower, towerProblem) { openTools(ServerToolGroup.TOWER) }
+                towerOverviewItems(tower, towerProblem) { openTool(ServerTool.APPS) }
                 item(key = "library-tools") {
                     ServerActionRow(
                         headline = "Library tools",
@@ -808,132 +1143,37 @@ fun ServerStatusPage(
             }
 
             ServerSection.HEALTH -> {
-                // Ben's picks, 2026-11-22 (benflix_health.py on Tower): all six Health cards on one page
-                towerCardItems("health", "Health")
-                towerCardItems("healthparts", "Parts")
-                towerCardItems("health24", "Last 24 hours")
-                towerCardItems("healthfix", "Warn me and fix it")
-                towerCardItems("crashes", "Crash notebook")
-                towerCardItems("diary", "Changes diary")
+                // Ben's picks, 2026-11-22 (benflix_health.py on Tower): the six Health cards, each opens on its own
+                item(key = "health-grid") { HealthCardGrid(toolStatus, focusOf, openTool) }
             }
 
             ServerSection.TOOLS -> {
-                item(key = "tool-tiles") { ServerToolTiles(selected = toolGroup, onPick = { toolGroup = it }) }
-                when (toolGroup ?: ServerToolGroup.LIBRARY) {
-                    ServerToolGroup.LIBRARY -> {
-                        toolItems(
-                            libraries = libraries,
-                            chores = chores,
-                            onScan = viewModel::scan,
-                            onChore = viewModel::runChore,
-                            onRestart = { askRestart = true },
-                            plannedRestart = plannedRestart,
-                            onCancelRestart = viewModel::cancelRestart,
-                            showRest = false,
-                        )
-                        item(key = "fix-posters") {
-                            ServerActionRow(
-                                headline = "Fix posters",
-                                supporting =
-                                    "Missing, blurry or wrong-shaped posters, one at a time. " +
-                                        "Missing ones also get filled in every night.",
-                                onClick = toolsViewModel::openPosterFixer,
-                            )
-                        }
-                        checkupItems(toolsState, toolsViewModel, { toolsDialog = it }, sectionTitle) { title, found ->
-                            when {
-                                tower == null -> emptyList()
-                                title == "Missing episodes" -> listOf("Search" to { towerViewModel.searchMissing(found) })
-                                title.startsWith("Low quality") -> listOf("Find a better copy" to { towerViewModel.searchBetter(found) })
-                                else -> emptyList()
-                            }
-                        }
-                        spaceItems(toolsState, toolsViewModel, sectionTitle)
-                        towerCardItems("animemovies", "Anime movies into their shows")
-                        towerCardItems("onepace", "One Pace")
-                        towerCardItems("specialsbonus", "Specials & bonus")
-                        towerCardItems("groups", "Skipped release groups")
-                        careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
-                    }
-
-                    ServerToolGroup.DOWNLOADS -> {
-                        towerDownloadItems(tower, towerProblem, towerViewModel, showApps = false)
-                    }
-
-                    ServerToolGroup.PEOPLE -> {
-                        versionItems(
-                            versions = toolsState.versions,
-                            failed = toolsState.versionsFailed,
-                            onLoad = toolsViewModel::loadVersions,
-                            onMessage = { ids, title, prefill -> toolsDialog = ServerToolsDialog.WritePopupToMany(ids, title, prefill) },
-                            sectionTitle = sectionTitle,
-                        )
-                        messageItems(toolsState, { toolsDialog = it }, sectionTitle)
-                        kidsRatingItems()
-                        kidsGamesItems()
-                    }
-
-                    ServerToolGroup.FIXES -> {
-                        trackTidyItems(tracks, tracksProblem, towerViewModel)
-                        gameProblemItems()
-                        towerCardItems("convert", "Converting")
-                        speedCheckItems(speedState, speedCheck)
-                        startupSpeedItem(sectionTitle)
-                    }
-
-                    ServerToolGroup.TOWER -> {
-                        item(key = "setup-title") { SectionTitle("Setup command") }
-                        item(key = "setup-tools") {
-                            val need = setupNeed
-                            if (need != null) {
-                                ServerSetupCard(need)
-                            } else {
-                                ServerActionRow(
-                                    headline = "Tower is up to date",
-                                    supporting = "When an update needs the setup command, a yellow card shows here and on Overview.",
-                                    leading = { Dot(Light.GOOD) },
-                                )
-                            }
-                        }
-                        towerDownloadItems(tower, towerProblem, towerViewModel, showDownloads = false)
-                        toolItems(
-                            libraries = libraries,
-                            chores = chores,
-                            onScan = viewModel::scan,
-                            onChore = viewModel::runChore,
-                            onRestart = { askRestart = true },
-                            plannedRestart = plannedRestart,
-                            onCancelRestart = viewModel::cancelRestart,
-                            showScan = false,
-                        )
-                        towerCardItems("jobs", "Tower's own jobs")
-                        driveHealthItems()
-                        towerCardItems("backup", "Safety copy")
-                        towerCardItems("away", "Away check")
-                        towerCardItems("drivemap", "What's on each drive")
-                        towerCardItems("updates", "Night updates")
-                        towerCardItems("addons", "Jellyfin add-ons")
-                        bookListItems()
-                        towerCardItems("jellyfin", "Rarely needed (these stay in Jellyfin)")
-                    }
-                }
+                toolRowItems(toolStatus, rowState, focusOf, openTool)
             }
         }
     }
 
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= WIDE_SMALLEST_DP
     val edge = if (isTv) 0.dp else 12.dp
     DoorFrame(
         state = frame,
         sections = if (isAdmin) ServerSection.entries.map { it.railItem(lights[it]) } else emptyList(),
-        // TV: the frame draws the dimmed picture and the right-hand panel (new look, same as Settings)
-        modifier = if (isTv && isAdmin) modifier.fillMaxSize() else modifier.fillMaxSize().serverLookABackground(),
+        // Redesign (Ben 2026-11-28): the places are tabs along the top (like Movies), so the page gets the whole width
+        modifier = if (isTv) modifier.fillMaxSize().glowfinDimmedPage() else modifier.fillMaxSize().serverLookABackground(),
         ownRail = true,
-        sideListTitle = "Server",
+        tabs = true,
+        tabsInHeader = true,
     ) { inner ->
+        // Back closes an open tool first (back to its tile), before the tabs' own Back
+        BackHandler(enabled = shownTool != null, onBack = closeTool)
+        val top = if (wide) LocalTopBarOverlap.current else 0.dp
+        val listState = if (shownTool != null) toolListState else tabStates.getValue(section)
         if (isTv) {
             LazyColumn(
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(start = 4.dp, end = 12.dp, top = 12.dp, bottom = 48.dp),
+                contentPadding = PaddingValues(start = BenflixSpace.tvEdge, end = 28.dp, top = top + 8.dp, bottom = 48.dp),
                 modifier = inner,
                 content = content,
             )
@@ -944,8 +1184,9 @@ fun ServerStatusPage(
                 modifier = inner,
             ) {
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = edge, end = edge, top = 8.dp, bottom = 96.dp),
+                    contentPadding = PaddingValues(start = edge, end = edge, top = top + 8.dp, bottom = 96.dp),
                     modifier = Modifier.fillMaxSize(),
                     content = content,
                 )
@@ -1036,6 +1277,8 @@ fun ServerStatusPage(
 
 private const val MANY_PROBLEMS = 3
 private const val FIRST_FOCUS_MS = 200L
+private const val TOOL_FOCUS_MS = 120L
+private const val WIDE_SMALLEST_DP = 600
 private const val CHORE_CHECKS = 200
 
 /** Benflix: the section's name big, the server's name small, how fresh the numbers are, and Refresh */
@@ -1352,14 +1595,14 @@ internal fun ProgressLine(share: Float) {
             Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(50)),
+                .background(Color.White.copy(alpha = 0.15f), BenflixShapes.Pill),
     ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth(share.coerceIn(0.02f, 1f))
                     .height(4.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
+                    .background(MaterialTheme.colorScheme.primary, BenflixShapes.Pill),
         )
     }
 }
@@ -1490,7 +1733,7 @@ private fun StatusChip(
         fontWeight = FontWeight.SemiBold,
         modifier =
             Modifier
-                .background(color.copy(alpha = 0.16f), RoundedCornerShape(50))
+                .background(color.copy(alpha = 0.16f), BenflixShapes.Pill)
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
 }
@@ -1550,14 +1793,14 @@ private fun DiskBar(disk: ServerDisk) {
                 Modifier
                     .fillMaxWidth()
                     .height(10.dp)
-                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50)),
+                    .background(Color.White.copy(alpha = 0.12f), BenflixShapes.Pill),
         ) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth(disk.usedShare.coerceIn(0.02f, 1f))
                         .height(10.dp)
-                        .background(color, RoundedCornerShape(50)),
+                        .background(color, BenflixShapes.Pill),
             )
         }
         if (disk.nearlyFull) {

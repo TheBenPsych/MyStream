@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +50,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleButton
 import com.github.damontecres.wholphin.ui.detail.title.TitleButtonView
 import com.github.damontecres.wholphin.ui.door.DoorTag
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
@@ -446,10 +446,10 @@ internal fun LiveRedTag(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier =
             modifier
-                .background(LIVE_RED, RoundedCornerShape(50))
+                .background(LIVE_RED, BenflixShapes.Pill)
                 .padding(horizontal = 9.dp, vertical = 2.dp),
     ) {
-        Box(Modifier.width(6.dp).height(6.dp).background(Color.White, RoundedCornerShape(50)))
+        Box(Modifier.width(6.dp).height(6.dp).background(Color.White, BenflixShapes.Pill))
         Text(
             text = "LIVE",
             fontSize = BenflixType.tag,

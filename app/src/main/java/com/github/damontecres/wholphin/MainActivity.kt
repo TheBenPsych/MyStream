@@ -72,6 +72,7 @@ import com.github.damontecres.wholphin.ui.playback.PlayExternalViewModel
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.theme.colors.MyStreamThemeColors
+import com.github.damontecres.wholphin.ui.theme.toChoice
 import com.github.damontecres.wholphin.ui.touch.PhoneFit
 import com.github.damontecres.wholphin.ui.touch.touchTaps
 import com.github.damontecres.wholphin.ui.util.ProvideLocalClock
@@ -340,6 +341,18 @@ class MainActivity : AppCompatActivity() {
                                     LocalImageUrlService provides imageUrlService,
                                     androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides snappyBringIntoView,
                                 ) {
+                                    // Glowfin themes: the look this person picked (Kids always keeps its own)
+                                    val pickedLook =
+                                        if (com.github.damontecres.wholphin.ui.theme.KidsLook.on) {
+                                            com.github.damontecres.wholphin.ui.theme.BluePurpleLook
+                                        } else {
+                                            appPreferences.benflixPreferences.look
+                                                .toChoice()
+                                                .look
+                                        }
+                                    if (com.github.damontecres.wholphin.ui.theme.GlowfinTheme.look !== pickedLook) {
+                                        com.github.damontecres.wholphin.ui.theme.GlowfinTheme.look = pickedLook
+                                    }
                                     WholphinTheme(
                                         true,
                                         accent = appPreferences.benflixPreferences.accent,

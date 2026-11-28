@@ -50,6 +50,7 @@ import com.github.damontecres.wholphin.ui.preferences.PreferencesViewModel
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.calculateEdgeSize
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings.toSubtitleStyle
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.Media3SubtitleOverride
@@ -324,8 +325,7 @@ private fun SubtitlePillChip(
     onClick: () -> Unit,
 ) {
     val shape =
-        androidx.compose.foundation.shape
-            .RoundedCornerShape(50)
+        BenflixShapes.Pill
     androidx.tv.material3.Surface(
         onClick = onClick,
         shape =

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -222,7 +221,7 @@ internal fun DoorTag(
     /** Search: yellow for "Not on Glowfin yet" (things to ask for) */
     yellow: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val dot = if (yellow) TAG_YELLOW else TAG_AQUA
     val words = if (yellow) TAG_YELLOW_TEXT else TAG_TEXT
     Row(

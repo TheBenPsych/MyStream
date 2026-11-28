@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 
@@ -138,7 +139,7 @@ fun PhoneBottomBar(
                                 .width(56.dp)
                                 .height(30.dp)
                                 .then(
-                                    if (on) Modifier.background(Glowfin.GlowAcross, RoundedCornerShape(50)) else Modifier,
+                                    if (on) Modifier.background(Glowfin.GlowAcross, BenflixShapes.Pill) else Modifier,
                                 ),
                     ) {
                         // Glowfin: the tab you're on sits on the glow
@@ -228,7 +229,7 @@ private fun SheetRow(
                     maxLines = 1,
                     modifier =
                         Modifier
-                            .background(BenflixColors.Text, RoundedCornerShape(50))
+                            .background(BenflixColors.Text, BenflixShapes.Pill)
                             .padding(horizontal = 7.dp, vertical = 2.dp),
                 )
             }

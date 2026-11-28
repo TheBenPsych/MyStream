@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -586,8 +585,7 @@ fun GamesPage(
                                                     Modifier
                                                         .background(
                                                             Color(0xFFF2B544),
-                                                            androidx.compose.foundation.shape
-                                                                .RoundedCornerShape(50),
+                                                            BenflixShapes.Pill,
                                                         ).padding(horizontal = 14.dp, vertical = 6.dp),
                                             )
                                         }

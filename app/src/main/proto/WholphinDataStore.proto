@@ -321,6 +321,14 @@ message BenflixPreferences {
   bool stpatricks_look_off = 20;
   // Benflix Video Games Day look (12 Sep) is on unless this is set (31: other theme builds use 15 to 20s)
   bool videogames_look_off = 31;
+  // Glowfin themes (Ben 2026-11-27): the look this person picked in Settings > Look > Theme
+  GlowfinLook look = 32;
+}
+
+// A Glowfin theme. Add new ones at the end; the app and browser share the short names in GlowfinTheme.kt
+enum GlowfinLook {
+  LOOK_BLUE_PURPLE = 0;
+  LOOK_SUNSET = 1;
 }
 
 enum BenflixAccent {

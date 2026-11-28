@@ -313,7 +313,7 @@ fun DownloadsPage(
                         color = Color.White,
                         modifier =
                             Modifier
-                                .clip(RoundedCornerShape(50))
+                                .clip(BenflixShapes.Pill)
                                 .background(Color(0xFF2B2B2B))
                                 .clickable { confirmWatched = true }
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -326,7 +326,7 @@ fun DownloadsPage(
                     color = Color.White,
                     modifier =
                         Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(BenflixShapes.Pill)
                             .background(Color(0xFF2B2B2B))
                             .clickable {
                                 smaller = !smaller
@@ -385,7 +385,7 @@ fun DownloadsPage(
                             color = BenflixColors.OnMusic,
                             modifier =
                                 Modifier
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(BenflixShapes.Pill)
                                     .background(BenflixColors.Music)
                                     .clickable { viewModel.playMusic(songs.filter { service.status(it) == DownloadStatus.Done }, 0) }
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -685,7 +685,7 @@ private fun MangaDownloads(
                                 color = if (c == next) BenflixColors.OnBooks else Color.White,
                                 modifier =
                                     Modifier
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(BenflixShapes.Pill)
                                         .background(if (c == next) BenflixColors.Books else Color(0xFF2B2B2B))
                                         .clickable { onRead(c.volId) }
                                         .padding(horizontal = 14.dp, vertical = 9.dp),

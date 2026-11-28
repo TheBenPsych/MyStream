@@ -30,7 +30,13 @@ fun WholphinTheme(
     // Kids (Ben's pick K1): Glowfin for Kids, or Night Light near bedtime. Reading KidsLook here redraws
     // everything when Kids is switched on or off.
     val kidsPalette = KidsLook.palette
-    val colorScheme = if (kidsPalette != null) baseScheme.withKids(kidsPalette) else baseScheme
+    val look = GlowfinTheme.look
+    val colorScheme =
+        when {
+            kidsPalette != null -> baseScheme.withKids(kidsPalette)
+            look !== BluePurpleLook -> baseScheme.withLook(look)
+            else -> baseScheme
+        }
     val accentColor = kidsPalette?.accent ?: BenflixRedBase
     val isTv =
         com.github.damontecres.wholphin.ui.touch
@@ -42,7 +48,11 @@ fun WholphinTheme(
         androidx.compose.material3.MaterialTheme(
             colorScheme =
                 (if (darkTheme) themeColors.darkSchemeMaterial else themeColors.lightSchemeMaterial).let { scheme ->
-                    if (kidsPalette != null) scheme.withKids(kidsPalette) else scheme
+                    when {
+                        kidsPalette != null -> scheme.withKids(kidsPalette)
+                        look !== BluePurpleLook -> scheme.withLook(look)
+                        else -> scheme
+                    }
                 },
             typography = materialTypography,
         ) {
@@ -77,6 +87,57 @@ val BenflixRed: Color
 fun BenflixAccent.toColor(): Color =
     com.github.damontecres.wholphin.ui.setup.SeaColours[themeIndex()]
         .first
+
+/** A theme's colours for the TV library's own pieces (Blue-purple keeps the built-in set untouched) */
+private fun ColorScheme.withLook(l: ThemeLook): ColorScheme =
+    copy(
+        primary = l.text,
+        onPrimary = l.ink,
+        primaryContainer = l.focusRow,
+        onPrimaryContainer = l.text,
+        secondary = l.soft,
+        onSecondary = l.ink,
+        secondaryContainer = l.raise,
+        onSecondaryContainer = l.text,
+        border = l.dim,
+        borderVariant = l.line,
+        background = l.ink,
+        onBackground = l.text,
+        surface = l.ink,
+        onSurface = l.text,
+        surfaceVariant = l.raise,
+        onSurfaceVariant = l.dim,
+        inverseSurface = l.text,
+        inverseOnSurface = l.ink,
+    )
+
+/** The same for the phone-style (Material 3) pieces */
+private fun androidx.compose.material3.ColorScheme.withLook(l: ThemeLook): androidx.compose.material3.ColorScheme =
+    copy(
+        primary = l.text,
+        onPrimary = l.ink,
+        primaryContainer = l.focusRow,
+        onPrimaryContainer = l.text,
+        secondary = l.soft,
+        onSecondary = l.ink,
+        secondaryContainer = l.raise,
+        onSecondaryContainer = l.text,
+        outline = l.dim,
+        outlineVariant = l.line,
+        background = l.ink,
+        onBackground = l.text,
+        surface = l.ink,
+        onSurface = l.text,
+        surfaceVariant = l.raise,
+        onSurfaceVariant = l.dim,
+        inverseSurface = l.text,
+        inverseOnSurface = l.ink,
+        surfaceContainerLowest = l.ink,
+        surfaceContainerLow = l.ink,
+        surfaceContainer = l.deep,
+        surfaceContainerHigh = l.raise,
+        surfaceContainerHighest = l.focusRow,
+    )
 
 /** The Kids colours for the TV parts of the app */
 private fun ColorScheme.withKids(k: KidsPalette): ColorScheme =

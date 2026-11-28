@@ -48,6 +48,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import kotlinx.coroutines.delay
@@ -280,7 +281,7 @@ private fun Pill(modifier: Modifier = Modifier) {
             modifier =
                 Modifier
                     .widthIn(max = 560.dp)
-                    .background(BenflixColors.Text, RoundedCornerShape(50))
+                    .background(BenflixColors.Text, BenflixShapes.Pill)
                     .padding(horizontal = 22.dp, vertical = 11.dp),
         )
     }

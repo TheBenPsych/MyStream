@@ -112,16 +112,27 @@ const SECTIONS = [
   { id: "library", label: "Library", subs: [["library", "Library"]] },
   { id: "people", label: "People", subs: [["people", "People"]] },
   { id: "health", label: "Health", subs: [["health", "Health"]] },
-  { id: "tools", label: "Tools", subs: TOOL_GROUPS.flatMap((t) => t.subs) },
+  { id: "tools", label: "Tools", subs: [["all", "All tools"]].concat(TOOL_GROUPS.flatMap((t) => t.subs)) },
 ];
+// Server redesign (Ben 2026-11-28): every tool is a tile on Tools with a short line, and opens on its own page
+const TOOL_LINES = {
+  tidy: "Missing episodes, weak copies and other gaps", animemovies: "Anime movies into their shows", onepace: "Sort One Pace into its seasons",
+  specialsbonus: "Specials and bonus videos for shows", posters: "Missing, blurry or wrong-shaped posters", find: "Look for better copies", playtest: "Night-time play test", groups: "Uploaders skipped after two bad copies",
+  drivemap: "If a drive dies, what was on it", updates: "Tower's apps update one at a time",
+  downloads: "What's downloading, and stuck ones",
+  messages: "Send a note to someone's screen", versions: "Who needs to update", kidsratings: "Kids titles with no rating", kidsgames: "Which games Kids can play",
+  tracks: "Sound and subtitle names that read well", gameproblems: "Games that failed to open", convert: "How Tower converts for your TVs",
+  setup: "Tower's setup and updates", apps: "Sonarr, Radarr and the rest", drives: "Warning signs on Tower's drives", chores: "Jellyfin's chores, and restarting it",
+  backup: "A copy of Glowfin's settings", away: "Can people reach Tower from outside", addons: "Add-ons and their updates", livetv: "The free Live TV lists",
+  booklists: "Lists and keys for Books", webversion: "This browser Glowfin", jellyfin: "These stay in Jellyfin",
+};
+const groupName = (g) => (g.id === "tfix" ? "Playback" : g.label);
+// The order of the rows on Tools (Playback before People, like the TV)
+const TOOL_ROWS = ["tlib", "tdl", "tfix", "tppl", "ttower"].map((id) => TOOL_GROUPS.find((g) => g.id === id));
 const SUB_HOME = {};
 SECTIONS.forEach((s) => s.subs.forEach(([id]) => { SUB_HOME[id] = s.id; }));
 const go = (sub) => B.go(`#/server/${SUB_HOME[sub] || "overview"}/${sub}`);
 const groupOf = (sub) => TOOL_GROUPS.find((t) => t.subs.some(([id]) => id === sub)) || TOOL_GROUPS[0];
-// The five tool tiles (Overview's bottom and the top of Tools)
-function toolTiles(on) {
-  return `<div class="srv-tiles">${TOOL_GROUPS.map((t) => `<a class="srv-tile ${t === on ? "on" : ""}" href="#/server/tools/${t.subs[0][0]}">${B.I(t.icon)}<b>${esc(t.label)}</b><span>${esc(t.line)}</span></a>`).join("")}</div>`;
-}
 
 // Approved ss-p-setup: Tower's helper says which setup it came from (/health "setup"; older ones don't say = 0).
 // Bump this with SETUP_VERSION in benflix-games-helper.py and SETUP_NEEDED in the app's TowerSetupCheck.kt.
@@ -176,12 +187,14 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   if (!B.me.admin) return B.go("#/home");
   const sec = SECTIONS.find((s) => s.id === m[1]) || SECTIONS[0];
   const sub = sec.subs.find(([id]) => id === m[2]) ? m[2] : sec.subs[0][0];
-  const group = sec.id === "tools" ? groupOf(sub) : null;
-  const chips = group ? group.subs : sec.subs;
-  // Glowfin (S1): Overview / Watching / Library / People / Tools in a plain list on the left, like Settings
-  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="split srv-split"><nav><div class="splith">Server</div>${SECTIONS.map((x) => `<a href="#/server/${x.id}" class="${x === sec ? "on" : ""}">${esc(x.label)}</a>`).join("")}</nav><main class="srv"><h2>${esc(sec.label)}</h2>
-      ${group ? toolTiles(group) : ""}
-      ${chips.length > 1 ? `<div class="tabs">${chips.map(([id, label]) => `<a class="chip ${id === sub ? "on" : ""}" href="#/server/${sec.id}/${id}">${esc(label)}</a>`).join("")}</div>` : ""}
+  const group = sec.id === "tools" && sub !== "all" ? groupOf(sub) : null;
+  const chips = sec.id === "tools" ? [] : sec.subs;
+  const label = group ? (group.subs.find(([id]) => id === sub) || [sub, sub])[1] : "";
+  // Server redesign (Ben 2026-11-28): the sections are tabs along the top and the page gets the whole width.
+  // A tool opens on its own page, with the way back to all the tools.
+  B.page().innerHTML = B.top("Server", null, { solid: true }) + `<div class="srv-page"><nav class="srv-tabs">${SECTIONS.map((x) => `<a href="#/server/${x.id}" class="${x === sec ? "on" : ""}">${esc(x.label)}</a>`).join("")}</nav><main class="srv">
+      ${group ? `<div class="srv-toolhead"><div class="grow"><div class="crumb">Tools · ${esc(groupName(group))}</div><h2>${esc(label)}</h2><div class="s">${esc(TOOL_LINES[sub] || "")}</div></div><a class="btn small" href="#/server/tools/all">All tools</a></div>` : ""}
+      ${chips.length > 1 ? `<div class="tabs">${chips.map(([id, name]) => `<a class="chip ${id === sub ? "on" : ""}" href="#/server/${sec.id}/${id}">${esc(name)}</a>`).join("")}</div>` : ""}
       <div id="main" class="subpage"></div></main>
   </div>`;
   B.wireTop();
@@ -191,10 +204,32 @@ B.route(/^\/server(?:\/(\w+))?(?:\/(\w+))?/, async (m) => {
   // Health gets a dot when a part needs a look or Tower just crashed
   tower(false).then((t) => {
     const l = t && t.health && t.health.level;
-    const a = document.querySelector('.srv-split nav a[href="#/server/health"]');
+    const a = document.querySelector('.srv-tabs a[href="#/server/health"]');
     if (a && (l === "warn" || l === "bad") && !a.querySelector(".dot")) a.insertAdjacentHTML("beforeend", ` <span class="dot ${l}" aria-label="needs a look"></span>`);
   }).catch(() => {});
 });
+
+// ---------- Tools: a row of tool tiles per group (Server redesign, Ben 2026-11-28) ----------
+PAGES.all = (el) => {
+  const tileHtml = (id, name, dot, words) => `<a class="srv-tooltile" href="#/server/tools/${id}" data-tool="${id}"><span class="ti">${B.I(groupOf(id).icon || "server")}</span><b>${esc(name)}</b><span class="st">${dot != null ? `<span class="dot ${dot}"></span>` : ""}${esc(words)}</span></a>`;
+  const draw = (t, waiting) => {
+    const st = {};
+    if (t) {
+      const stuck = (t.downloads || []).filter((d) => d.stuck).length, going = (t.downloads || []).length;
+      st.downloads = stuck ? ["warn", `${going} going · ${stuck} stuck`] : ["", going ? `${going} going` : "Nothing downloading"];
+      const down = (t.apps || []).filter((a) => (a.problem ?? !a.ok) && a.status !== "Never started");
+      if (t.apps) st.apps = down.length ? ["bad", down.length === 1 ? `${down[0].nice} isn't running` : `${down.length} not running`] : ["", "All running"];
+      st.drives = (t.drives_bad || []).length ? ["warn", `${t.drives_bad.length} with warning signs`] : ["", "No warning signs"];
+      st.setup = waiting ? ["warn", "Needs the setup command"] : ["", "Up to date"];
+    }
+    el.innerHTML = TOOL_ROWS.map((g) => `<h3 class="srv-rowname">${esc(groupName(g))}</h3><div class="srv-toolrow">${g.subs.map(([id, name]) => {
+      const s = st[id];
+      return tileHtml(id, name, s ? s[0] : null, s ? s[1] : TOOL_LINES[id] || "");
+    }).join("")}</div>`).join("");
+  };
+  draw(null, null);
+  Promise.all([tower(false).catch(() => null), setupNeed()]).then(([t, waiting]) => { if (current === "all") draw(t, waiting); });
+};
 
 // ---------- Tools > Tower > Setup command ----------
 PAGES.setup = (el) => {
@@ -260,30 +295,26 @@ PAGES.overview = (el) => {
       const level = !info && !sessions ? "bad" : bad ? "bad" : health.length ? "warn" : "ok";
       const headline = level === "ok" ? "Everything is running" : level === "warn" ? "Something needs a look" : "Something isn't working";
       const reason = health.length ? health[0][1] + (health.length > 1 ? ` (and ${health.length - 1} more below)` : "") : "";
-      // Glowfin (S1): plain OK / Check / Problem boxes with words
-      const pill = (label, l) => {
-        const [name, detail] = label.split(": ");
-        const word = l === "ok" ? "OK" : l === "warn" ? "Check" : l === "bad" ? "Problem" : "Off";
-        return `<span class="srv-pill srv-box ${l}"><small>${esc(name)}</small><b>${word}</b>${detail ? `<em>${esc(detail)}</em>` : ""}</span>`;
-      };
+      // Server redesign (Ben 2026-11-28): one big line, five glance tiles, then Needs you
+      const used = (t.disks || []).reduce((n, d) => n + (d.used || 0), 0), free = (t.disks || []).reduce((n, d) => n + (d.free || 0), 0);
+      const going = (t.downloads || []).length;
+      const healthWord = !info ? ["bad", "Off?"] : down.length || (t.health && t.health.level === "bad") ? ["bad", "Problem"] : t.health && t.health.level === "warn" ? ["warn", "Check"] : t.apps ? ["ok", "OK"] : ["", "…"];
+      const glance = (href, icon, label, value, light, line, lineLight) => `<a class="srv-glance" href="${href}"><span class="l">${B.I(icon)}${esc(label)}</span><b class="${light || ""}">${esc(value)}</b><span class="s ${lineLight || ""}">${esc(line)}</span></a>`;
+      const who = [...new Set(watching.map((s) => s.UserName || "Someone"))].join(", ");
       let html = problemsNote(t.problems);
-      html += `<div class="srv-banner ${level}"><div class="h"><span class="big-dot"></span>${esc(headline)}</div>${reason ? `<div class="r">${esc(reason)}</div>` : ""}
-        <div class="pills">${pill(info ? "Jellyfin" : "Jellyfin: not answering", info ? "ok" : "bad")}${pill(down.length ? `Tower: ${down.length} app${down.length === 1 ? "" : "s"} down` : "Tower", down.length ? "bad" : apps.length ? "ok" : "off")}${pill(stuck.length ? `Downloads: ${stuck.length} stuck` : "Downloads", stuck.length ? "warn" : "ok")}${info ? `<span class="dim">${esc(info.ServerName)} · Jellyfin ${esc(info.Version)}</span>` : ""}</div></div>`;
+      html += `<div class="srv-status ${level}"><span class="big-dot"></span><div class="grow"><div class="h">${esc(headline)}</div><div class="r">${esc([reason, info ? `${info.ServerName} · Jellyfin ${info.Version}` : ""].filter(Boolean).join(" · "))}</div></div></div>`;
+      html += `<div class="srv-glances">
+        ${glance("#/server/health", "server", "Tower", healthWord[1], healthWord[0], down.length ? `${down.length} app${down.length === 1 ? "" : "s"} down` : "Health and parts", down.length ? "bad" : "")}
+        ${glance("#/server/library", "chart", "Space", used + free ? Math.round(100 * used / (used + free)) + "%" : "…", disksFull.length ? "warn" : "", used + free ? `${bytes(free)} free` : "Disk space")}
+        ${glance("#/server/watching", "play", "Watching", String(watching.length), "", who || "Nobody right now")}
+        ${glance("#/server/tools/downloads", "dl", "Downloads", String(going), "", stuck.length ? `${stuck.length} stuck` : going ? "None stuck" : "Nothing going", stuck.length ? "warn" : "")}
+        ${glance("#/requests", "bell", "Requests", reqs ? String(pending.length) : "–", "", !reqs ? "Seerr isn't connected" : pending.length ? "Waiting for you" : "None waiting", pending.length ? "warn" : "")}
+      </div>`;
       if (setupWaiting) html += setupCard(setupWaiting);
       const needs = health.concat(newSigns, asks);
-      html += `<div class="srv-cards">
-        <section class="srv-card"><h3>Needs you${needs.length ? ` <span class="cnt">${needs.length}</span>` : ""}</h3>${needs.map((n) => need(...n)).join("") || `<div class="empty">All good! Nothing needs you right now.</div>`}</section>
-        <section class="srv-card"><h3>Watching now${watching.length ? ` <span class="cnt">${watching.length}</span>` : ""}</h3>${watching.map((s) => {
-          const it = s.NowPlayingItem;
-          const title = it.Type === "Episode" ? [it.SeriesName, it.Name].filter(Boolean).join(" · ") : it.Name;
-          const pic = it.Type === "Episode" && it.SeriesId ? it.SeriesId : it.Id;
-          const pos = (s.PlayState && s.PlayState.PositionTicks) || 0, len = it.RunTimeTicks || 0;
-          const pct = len ? Math.min(100, Math.round(100 * pos / len)) : null;
-          return `<a class="srv-watch" href="#/server/watching/now"><img src="${imgUrl(pic, 120)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="grow"><div class="t">${esc(s.UserName || "Someone")}</div><div class="s">${esc(title)}</div><div class="s dim">${esc(s.DeviceName || "")}${s.PlayState && s.PlayState.IsPaused ? " · Paused" : ""}</div>${pct == null ? "" : `<div class="bar"><i style="width:${pct}%"></i></div>`}</div></a>`;
-        }).join("") || `<div class="empty">Nobody is watching right now.</div>`}</section></div>`;
+      html += `<h3 class="srv-rowname">Needs you${needs.length ? ` <small>${needs.length === 1 ? "1 thing" : needs.length + " things"}</small>` : ""}</h3><div class="srv-needs">${needs.map((n) => need(...n)).join("") || need("", "All good! Nothing needs you right now.", "", "")}</div>`;
       // "Try these on a real screen" (Ben 2026-11-21): new things only the test robot has checked
       if (tryCard && (tryCard.rows || []).length) html += `<section class="srv-card" id="tryCard" style="margin:16px 0"><h3>Try these on a real screen${tryCard.count ? ` <span class="cnt">${tryCard.count}</span>` : ""}</h3><div class="s dim" style="margin:-4px 0 4px">${esc(tryCard.intro || "")}</div>${cardHtml("try", tryCard, { plain: true, max: tryAll ? 999 : 4 })}<div class="acts" style="display:flex;gap:8px;margin-top:4px">${(tryCard.rows || []).length > 4 && !tryAll ? `<button class="btn small" id="tryMore">See all ${tryCard.rows.length}</button>` : ""}${tryCard.copy ? `<button class="btn small" data-copy="${esc(tryCard.copy)}">Copy the not-right list for Claude</button>` : ""}</div></section>`;
-      html += `<h3 class="section-title">Tools</h3>${toolTiles(null)}`;
       $("#ov").innerHTML = html;
     } catch (err) {
       if (current === "overview") $("#ov").innerHTML = `<div class="note">${esc(B.say(err))}</div>`;

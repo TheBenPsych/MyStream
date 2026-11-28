@@ -235,8 +235,11 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
   if (g.id === "look") {
     const size = ws.textSize || 100;
-    sp.innerHTML = setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10"${size <= 80 ? " disabled" : ""}>−</button><span>${size}%</span><button data-step="10"${size >= 150 ? " disabled" : ""}>+</button></div>`);
+    sp.innerHTML = setRow("Theme", "The colours of Glowfin. It follows you to your TVs and phones.", valBtn("theme", (B.THEMES.find((t) => t.value === B.theme()) || B.THEMES[0]).label))
+      + setRow("Text size", "Makes everything in Glowfin bigger or smaller in this browser.", `<div class="stepper"><button data-step="-10"${size <= 80 ? " disabled" : ""}>−</button><span>${size}%</span><button data-step="10"${size >= 150 ? " disabled" : ""}>+</button></div>`);
     sp.onclick = (e) => {
+      const t = e.target.closest('[data-pick="theme"]');
+      if (t) return pickFrom(t, B.THEMES, B.theme(), (v) => { B.setTheme(v); B.render(); });
       const b = e.target.closest("[data-step]"); if (!b) return; const v = Math.max(80, Math.min(150, size + +b.dataset.step)); B.setWebSetting("textSize", v); B.applyLook(); B.render();
     };
   }
@@ -266,7 +269,30 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
   }
 });
 // Text size (Settings > Look) zooms the whole page in this browser
-B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || 100; document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); };
+B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || 100; document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); B.themeLook(); };
+// Themes (Ben 2026-11-27): the same short names the TV and phone app saves ("glowfin", "sunset"), kept on the
+// person's account under "glowfin.theme" so a pick made here shows up there and the other way round.
+B.THEMES = [{ value: "glowfin", label: "Blue-purple" }, { value: "sunset", label: "Sunset" }];
+B.theme = () => { const t = B.me ? B.webSettings().theme : null; return B.THEMES.some((x) => x.value === t) ? t : "glowfin"; };
+B.themeLook = () => {
+  const t = B.theme();
+  const root = document.documentElement;
+  B.THEMES.forEach((x) => root.classList.toggle("th-" + x.value, x.value === t && t !== "glowfin"));
+  const bar = document.querySelector('meta[name="theme-color"]');
+  if (bar) bar.content = t === "sunset" && !(B.me && B.me.kids) ? "#140B12" : "#0B0C10";
+  // Once per person per visit: pick up a theme chosen on a TV or phone
+  if (B.me && B.themeAsked !== B.me.id) {
+    B.themeAsked = B.me.id;
+    B.prefs().then((p) => {
+      const saved = ((p && p.CustomPrefs) || {})["glowfin.theme"];
+      if (saved && saved !== B.theme() && B.THEMES.some((x) => x.value === saved)) { B.setWebSetting("theme", saved); B.themeLook(); }
+    }).catch(() => {});
+  }
+};
+B.setTheme = (v) => {
+  B.setWebSetting("theme", v); B.themeLook();
+  B.savePrefs((c) => { c["glowfin.theme"] = v; }).catch(() => B.toast("Couldn't save your theme to your account. It's still set in this browser."));
+};
 window.addEventListener("hashchange", () => B.applyLook());
 // Kids look (Ben's pick kc-sky, 13 Nov 2026): Sky and Sunshine blue and yellow with round letters while a Kids
 // profile is open, and the calmer Night Light colours from 8 PM (an hour before the usual 9 PM bedtime) until 6 AM.

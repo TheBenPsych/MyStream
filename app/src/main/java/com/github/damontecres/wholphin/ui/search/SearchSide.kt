@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
@@ -20,6 +19,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** Phones: the suggestions as a row of chips under the search box */
@@ -38,7 +38,7 @@ fun SuggestionChips(
         items(suggestions, key = { it }) { name ->
             Surface(
                 onClick = { onPick(name) },
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = BenflixColors.Raised,

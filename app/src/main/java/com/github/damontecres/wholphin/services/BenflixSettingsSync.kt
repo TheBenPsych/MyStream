@@ -13,10 +13,13 @@ import com.github.damontecres.wholphin.preferences.BenflixAccent
 import com.github.damontecres.wholphin.preferences.BenflixPreferences
 import com.github.damontecres.wholphin.preferences.InterfacePreferences
 import com.github.damontecres.wholphin.preferences.PlaybackPreferences
+import com.github.damontecres.wholphin.preferences.updateBenflixPreferences
 import com.github.damontecres.wholphin.ui.playback.BenflixPlayerPrefs
 import com.github.damontecres.wholphin.ui.setup.AvatarChoices
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.ProfileColours
+import com.github.damontecres.wholphin.ui.theme.ThemeChoices
+import com.github.damontecres.wholphin.ui.theme.toChoice
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -109,6 +112,16 @@ class BenflixSettingsSync
                     }
                 } else {
                     lastSynced = null
+                }
+                // The theme also travels as a plain name, so the browser version can share it
+                ThemeChoices.firstOrNull { it.key == customPrefs[THEME_KEY] }?.let { theme ->
+                    preferencesDataStore.updateData { current ->
+                        if (current.benflixPreferences.look == theme.choice) {
+                            current
+                        } else {
+                            current.updateBenflixPreferences { look = theme.choice }
+                        }
+                    }
                 }
                 loaded = true
             } catch (ex: CancellationException) {
@@ -253,6 +266,12 @@ class BenflixSettingsSync
             try {
                 displayPreferencesService.updateDisplayPreferences(userId) {
                     put(KEY, encoded)
+                    put(
+                        THEME_KEY,
+                        prefs.benflixPreferences.look
+                            .toChoice()
+                            .key,
+                    )
                 }
                 lastSynced = encoded
                 Timber.i("Saved Benflix settings to the account")
@@ -265,6 +284,9 @@ class BenflixSettingsSync
 
         companion object {
             private const val KEY = "benflix.settings.v1"
+
+            /** The picked theme as a plain name ("glowfin", "sunset"), shared with the browser version */
+            private const val THEME_KEY = "glowfin.theme"
             private const val PREFS = "benflix_settings_sync"
             private const val NEXT_UP_MOVED_KEY = "benflix.nextup5"
             private const val OLD_NEXT_UP_SECONDS = 15L

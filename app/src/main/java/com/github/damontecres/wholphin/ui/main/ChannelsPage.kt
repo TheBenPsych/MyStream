@@ -1073,7 +1073,7 @@ internal fun LivePill(modifier: Modifier = Modifier) {
         color = Glowfin.Ink,
         modifier =
             modifier
-                .background(Glowfin.Aqua, RoundedCornerShape(50))
+                .background(Glowfin.Aqua, BenflixShapes.Pill)
                 .padding(horizontal = 8.dp, vertical = 1.dp),
     )
 }

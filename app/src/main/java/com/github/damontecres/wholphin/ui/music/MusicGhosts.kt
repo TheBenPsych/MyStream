@@ -204,7 +204,7 @@ fun AskPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = { if (!done) onClick() },
         shape = ClickableSurfaceDefaults.shape(shape),

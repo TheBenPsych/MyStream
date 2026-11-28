@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.detail
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +27,7 @@ import com.github.damontecres.wholphin.ui.detail.title.TitleTab
 import com.github.damontecres.wholphin.ui.detail.title.TitleTabScope
 import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -145,7 +145,7 @@ private fun PillButton(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = BenflixColors.Raised,

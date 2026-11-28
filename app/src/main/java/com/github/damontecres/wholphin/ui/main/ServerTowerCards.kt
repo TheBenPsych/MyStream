@@ -104,7 +104,7 @@ private fun cardOf(j: JSONObject): TowerCard =
         copyLabel = j.optString("copy_label").takeIf { it.isNotBlank() },
     )
 
-private fun lightOf(word: String): Light =
+internal fun towerLight(word: String): Light =
     when (word) {
         "ok" -> Light.GOOD
         "warn" -> Light.WARN
@@ -220,7 +220,7 @@ private fun TowerCardRows(
                             card.said,
                             card.reason.takeIf { it.isNotBlank() },
                         ).joinToString(" · ").takeIf { it.isNotBlank() },
-                    leading = { Dot(lightOf(card.level)) },
+                    leading = { Dot(towerLight(card.level)) },
                     actions =
                         card.actions.map { a -> a.label to { viewModel.press(name, a) } } +
                             // A report to paste to Claude: phones only (a TV has nowhere to paste it)
@@ -239,7 +239,7 @@ private fun TowerCardRows(
                         headline = r.title,
                         supporting = r.sub.takeIf { it.isNotBlank() },
                         extra = r.spark?.let { points -> @Composable { SparkLine(points) } },
-                        leading = { Dot(lightOf(r.light)) },
+                        leading = { Dot(towerLight(r.light)) },
                         actions =
                             r.actions.map { a -> a.label to { viewModel.press(name, a) } } +
                                 // Jellyfin's dashboard needs a mouse or a finger, so TVs only get the words

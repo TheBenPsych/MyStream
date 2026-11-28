@@ -91,6 +91,7 @@ import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
+import com.github.damontecres.wholphin.ui.theme.toChoice
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.DataLoadingState
@@ -158,6 +159,7 @@ fun PreferencesContent(
     var showBirthdayDialog by remember { mutableStateOf(false) }
     var showHiddenGenres by remember { mutableStateOf(false) }
     var showHomeRows by remember { mutableStateOf(false) }
+    var showTheme by remember { mutableStateOf(false) }
     var showParentPin by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -676,6 +678,21 @@ fun PreferencesContent(
                                         )
                                     }
 
+                                    AppPreference.ThemePref -> {
+                                        ClickPreference(
+                                            title = stringResource(pref.title),
+                                            onClick = { showTheme = true },
+                                            modifier = focusModifier,
+                                            summary = "Pick the colours and style of Glowfin",
+                                            onLongClick = null,
+                                            interactionSource = interactionSource,
+                                            value =
+                                                preferences.benflixPreferences.look
+                                                    .toChoice()
+                                                    .title,
+                                        )
+                                    }
+
                                     AppPreference.HomeRowsPref -> {
                                         ClickPreference(
                                             title = stringResource(pref.title),
@@ -1113,6 +1130,17 @@ fun PreferencesContent(
     }
     if (showHiddenGenres) {
         HiddenGenresDialog(onDismiss = { showHiddenGenres = false })
+    }
+    if (showTheme) {
+        ThemePickerDialog(
+            picked = preferences.benflixPreferences.look,
+            onPick = { pick ->
+                scope.launch(ExceptionHandler()) {
+                    viewModel.preferenceDataStore.updateData { it.updateBenflixPreferences { look = pick } }
+                }
+            },
+            onDismiss = { showTheme = false },
+        )
     }
     if (showBirthdayDialog) {
         BirthdayDialog(

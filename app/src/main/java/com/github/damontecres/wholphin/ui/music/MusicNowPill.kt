@@ -37,6 +37,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -70,7 +71,7 @@ fun MusicNowPill(
     val music by viewModel.musicService.state.collectAsState()
     val audio = music.currentAudio
     if (music.queueSize == 0 || audio == null) return
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = viewModel::open,
         shape = ClickableSurfaceDefaults.shape(shape),

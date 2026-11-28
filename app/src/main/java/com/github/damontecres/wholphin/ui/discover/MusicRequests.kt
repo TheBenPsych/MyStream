@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -1369,7 +1368,7 @@ private fun PlaylistSection(
                         Modifier
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(50))
+                            .clip(BenflixShapes.Pill)
                             .background(BenflixColors.Raised),
                     ) {
                         Box(Modifier.fillMaxWidth(p.bar).height(4.dp).background(BenflixColors.Text))
@@ -1517,7 +1516,7 @@ private fun MusicButton(
     big: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val shape = if (big) BenflixShapes.Card else RoundedCornerShape(50)
+    val shape = if (big) BenflixShapes.Card else BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -412,7 +411,7 @@ private fun MenuPill(
     text: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -486,7 +485,7 @@ private fun MenuRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier =
                         Modifier
-                            .background(BenflixColors.Text, RoundedCornerShape(50))
+                            .background(BenflixColors.Text, BenflixShapes.Pill)
                             .padding(horizontal = 7.dp, vertical = 2.dp),
                 )
             }
