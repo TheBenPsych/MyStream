@@ -118,7 +118,7 @@ private fun Modifier.aquaBar(on: Boolean): Modifier =
         drawBehind { drawRect(Glowfin.Aqua, size = Size(BarWidth.toPx(), size.height)) }
     }
 
-/** A big Sora heading at the top of a list or a page ("Settings", "Watching", "Server") */
+/** A big heading at the top of a list or a page ("Settings", "Watching", "Server") */
 @Composable
 fun GlowfinPageHeading(
     text: String,

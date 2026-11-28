@@ -8,31 +8,23 @@ import androidx.tv.material3.Typography
 import com.github.damontecres.wholphin.R
 
 /**
- * Glowfin's letters (Ben's pick): Inter for reading, Sora for names and titles. Kids keep the rounder
- * Fredoka (Ben: kc-p-letters).
+ * Glowfin's letters (Ben 2026-11-27): Lexend everywhere, for reading and for titles, in every theme, because
+ * it's much easier to read from the couch. Kids keep the rounder Fredoka (Ben: kc-p-letters). The logo keeps
+ * its own letters (BenflixLogoMark).
  */
-val BenflixFont: FontFamily get() = if (KidsLook.on) KidsFont else InterFont
+val BenflixFont: FontFamily get() = if (KidsLook.on) KidsFont else LexendFont
 
-/** Sora: page titles, row names and big names (the logo's letters) */
-val GlowfinDisplayFont: FontFamily get() = if (KidsLook.on) KidsFont else SoraFont
+/** Page titles, row names and big names: the same Lexend (kept as its own name so a theme could differ later) */
+val GlowfinDisplayFont: FontFamily get() = BenflixFont
 
-private val InterFont =
+private val LexendFont =
     FontFamily(
-        Font(R.font.glowfin_inter_regular, FontWeight.Normal),
-        Font(R.font.glowfin_inter_medium, FontWeight.Medium),
-        Font(R.font.glowfin_inter_semibold, FontWeight.SemiBold),
-        Font(R.font.glowfin_inter_bold, FontWeight.Bold),
-        Font(R.font.glowfin_inter_bold, FontWeight.ExtraBold),
-    )
-
-private val SoraFont =
-    FontFamily(
-        Font(R.font.glowfin_sora_light, FontWeight.Light),
-        Font(R.font.glowfin_sora_regular, FontWeight.Normal),
-        Font(R.font.glowfin_sora_regular, FontWeight.Medium),
-        Font(R.font.glowfin_sora_semibold, FontWeight.SemiBold),
-        Font(R.font.glowfin_sora_bold, FontWeight.Bold),
-        Font(R.font.glowfin_sora_bold, FontWeight.ExtraBold),
+        Font(R.font.glowfin_lexend_light, FontWeight.Light),
+        Font(R.font.glowfin_lexend_regular, FontWeight.Normal),
+        Font(R.font.glowfin_lexend_medium, FontWeight.Medium),
+        Font(R.font.glowfin_lexend_semibold, FontWeight.SemiBold),
+        Font(R.font.glowfin_lexend_bold, FontWeight.Bold),
+        Font(R.font.glowfin_lexend_bold, FontWeight.ExtraBold),
     )
 
 /** Round, friendly letters for Kids (Fredoka; it has no extra-bold, so that uses bold) */
@@ -47,11 +39,11 @@ private val KidsFont =
 
 private fun TextStyle.benflix() = copy(fontFamily = BenflixFont)
 
-/** Inter at one of the shared Benflix sizes ([BenflixType]), with comfortable line spacing */
+/** Lexend at one of the shared Benflix sizes ([BenflixType]), with comfortable line spacing */
 private fun TextStyle.benflix(size: androidx.compose.ui.unit.TextUnit) =
     copy(fontFamily = BenflixFont, fontSize = size, lineHeight = size * 1.25f)
 
-/** Sora at one of the shared sizes, for titles and row names */
+/** Lexend at one of the shared sizes, for titles and row names */
 private fun TextStyle.display(size: androidx.compose.ui.unit.TextUnit) =
     copy(fontFamily = GlowfinDisplayFont, fontSize = size, lineHeight = size * 1.2f)
 
