@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -37,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ButtonDefaults
@@ -90,6 +93,8 @@ fun NextUpEpisode(
     onNotNow: (() -> Unit)? = null,
     /** The countdown words (with %d for the seconds), e.g. "Plays in %d" for movies */
     countdownTextRes: Int = R.string.player_next_episode_in,
+    /** The end of episode screen (Idea Box 31): no picture in the row (it's behind), bigger words */
+    big: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.tryRequestFocus() }
@@ -98,43 +103,57 @@ fun NextUpEpisode(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(aspectRatio.coerceAtLeast(AspectRatios.MIN))
-                    .clip(BenflixShapes.Small)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-        )
+        if (!big) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(aspectRatio.coerceAtLeast(AspectRatios.MIN))
+                        .clip(BenflixShapes.Small)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        }
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(if (big) 10.dp else 6.dp),
             modifier =
-                Modifier
-                    .fillMaxHeight()
-                    .weight(1f),
+                if (big) {
+                    Modifier.weight(1f)
+                } else {
+                    Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                },
         ) {
             Text(
-                text = (heading ?: stringResource(R.string.player_next_episode)).uppercase(),
+                text = (heading ?: stringResource(R.string.player_next_episode)).let { if (big) it else it.uppercase() },
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = if (big) BenflixType.lead else TextUnit.Unspecified,
+                color =
+                    if (big) {
+                        com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
             )
             Text(
                 text = title ?: "",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                fontSize = if (big) BenflixType.pageTitle else TextUnit.Unspecified,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = if (big) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = description ?: "",
                 style = MaterialTheme.typography.bodySmall,
+                fontSize = if (big) BenflixType.body else TextUnit.Unspecified,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = .8f),
-                maxLines = 2,
+                maxLines = if (big) 3 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
             runtime?.let {
@@ -159,7 +178,7 @@ fun NextUpEpisode(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.weight(1f))
+            if (big) Spacer(Modifier.height(8.dp)) else Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val counting = timeLeft != null && timeLeft > Duration.ZERO
                 val fraction =
@@ -289,6 +308,67 @@ fun NextUpEpisode(
         }
     }
 }
+
+/**
+ * Benflix end of episode screen (Idea Box 31, Ben 2026-11-27 "build all"): the credits keep playing in a
+ * small window top right (the player page shrinks the video, see [END_SCREEN_VIDEO_WIDTH]) and the next
+ * episode takes the rest of the screen: its picture on the left fading into black, its name, length,
+ * when it ends and the story, with Play filling up as the countdown. Nothing is drawn over the video window.
+ */
+@Composable
+fun NextUpScreen(
+    imageUrl: String?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(1f - END_SCREEN_VIDEO_WIDTH - .04f),
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to Color.Black.copy(alpha = .55f),
+                            .7f to Color.Black.copy(alpha = .8f),
+                            1f to Color.Black,
+                        ),
+                    ),
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            .35f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = .9f),
+                        ),
+                    ),
+            )
+        }
+        Box(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 24.dp, bottom = 32.dp)
+                .widthIn(max = 600.dp)
+                .fillMaxWidth(.66f),
+        ) {
+            content()
+        }
+    }
+}
+
+/** How much of the screen's width the credits window takes on the end of episode screen */
+const val END_SCREEN_VIDEO_WIDTH = .32f
 
 @OptIn(ExperimentalCoilApi::class)
 @PreviewTvSpec

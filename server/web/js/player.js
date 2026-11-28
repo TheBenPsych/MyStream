@@ -159,15 +159,27 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const forceStream = !!noDirect || (source && (source.DefaultAudioStreamIndex === -99 || otherSound(source.MediaStreams)));
     info = await B.jf("POST", `/Items/${it.Id}/PlaybackInfo?userId=${u}`, {
       DeviceProfile: B.deviceProfile(QUALITY[settings.quality || "auto"] || QUALITY.auto),
-      StartTimeTicks: Math.round((atSeconds || 0) * B.TICKS), AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex,
+      StartTimeTicks: Math.round((atSeconds || 0) * B.TICKS), AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex, MediaSourceId: B.q("source") || undefined,
       MaxStreamingBitrate: QUALITY[settings.quality || "auto"] || QUALITY.auto,
       EnableDirectPlay: !forceStream && (settings.quality || "auto") === "auto", EnableDirectStream: true, EnableTranscoding: true, AutoOpenLiveStream: true,
     });
     if (!here()) return;
-    source = (info.MediaSources || [])[0];
+    source = (info.MediaSources || []).find((x) => B.q("source") && x.Id === B.q("source")) || (info.MediaSources || [])[0];
     if (!source) throw new Error("Tower couldn't find a way to play this.");
     playSession = info.PlaySessionId;
-    if (audioIndex == null) audioIndex = source.DefaultAudioStreamIndex;
+    if (audioIndex == null) {
+      audioIndex = source.DefaultAudioStreamIndex;
+      // Never start on the commentary (Idea Box 31): a commentary or audio description track marked as the
+      // default is swapped for the film's own sound in the same language. Picking it by hand still works.
+      const side = (s) => /commentary|comment|audio[ -]description|descriptive|described|visually impaired|(^|[^a-z])ad([^a-z]|$)/i.test(`${s.Title || ""} ${s.DisplayTitle || ""}`);
+      const sounds = (source.MediaStreams || []).filter((s) => s.Type === "Audio");
+      const chosen = sounds.find((s) => s.Index === audioIndex);
+      if (chosen && side(chosen)) {
+        const main = sounds.filter((s) => !side(s));
+        const swap = main.find((s) => s.Language && s.Language === chosen.Language) || main[0];
+        if (swap) audioIndex = swap.Index;
+      }
+    }
     // Picked sound isn't the file's first one, but Jellyfin offered the plain file (which would play the
     // first one while the list shows the picked one): ask again for a stream with the picked sound in it
     if (!forceStream && otherSound(source.MediaStreams) && source.SupportsDirectPlay && !source.TranscodingUrl) return load(atSeconds, true);
@@ -285,9 +297,27 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   };
 
   // ---------- chapters bar ----------
-  const segs = chapters.length > 1 && dur ? chapters.map((c, i) => ({ name: c.Name, start: c.StartPositionTicks / B.TICKS, end: i + 1 < chapters.length ? chapters[i + 1].StartPositionTicks / B.TICKS : dur })) : [{ name: "", start: 0, end: dur || 1 }];
+  let segs = chapters.length > 1 && dur ? chapters.map((c, i) => ({ name: c.Name, start: c.StartPositionTicks / B.TICKS, end: i + 1 < chapters.length ? chapters[i + 1].StartPositionTicks / B.TICKS : dur })) : [{ name: "", start: 0, end: dur || 1 }];
   // Simple player (Ben 2026-11-27): a plain white line, cut into chapters by small gaps (each "tick" is a gap)
-  $("#pTicks").innerHTML = segs.slice(1).map((s) => `<span class="tick" style="left:${(s.start / (dur || 1)) * 100}%"></span>`).join("");
+  const drawTicks = () => { $("#pTicks").innerHTML = segs.slice(1).map((s) => `<span class="tick" style="left:${(s.start / (dur || 1)) * 100}%"></span>`).join(""); };
+  drawTicks();
+  // Chapter gaps on every episode (Idea Box 30): a video without chapters gets them from its skip times
+  // (Recap, Intro, Episode, Credits). Videos with their own chapters keep those.
+  const chaptersFromSkips = (list) => {
+    if (chapters.length > 1 || !dur || !document.body.contains($("#pTicks"))) return;
+    const NAME = { Recap: "Recap", Intro: "Intro", Outro: "Credits", Preview: "Preview" };
+    const starts = [[0, "Episode"]];
+    list.filter((x) => NAME[x.type] && x.end > x.start).sort((a, b) => a.start - b.start).forEach((x) => {
+      starts.push([Math.max(0, x.start), NAME[x.type]]);
+      if (x.end < dur - 10) starts.push([x.end, "Episode"]);
+    });
+    const tidy = [];
+    starts.sort((a, b) => a[0] - b[0]).forEach((p) => { if (tidy.length && p[0] - tidy[tidy.length - 1][0] < 10) tidy[tidy.length - 1] = [tidy[tidy.length - 1][0], p[1]]; else tidy.push(p); });
+    const merged = tidy.filter((p, i) => i === 0 || tidy[i - 1][1] !== p[1]);
+    if (merged.length < 2) return;
+    segs = merged.map((p, i) => ({ name: p[1], start: p[0], end: i + 1 < merged.length ? merged[i + 1][0] : dur }));
+    drawTicks();
+  };
   const total = () => v.duration && isFinite(v.duration) ? Math.max(v.duration, dur) : dur || 1;
   const drawBar = () => {
     const t = v.currentTime, T = total();
@@ -404,11 +434,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
   }).catch(() => {});
   // Skip times: Tower's first (it compares every episode's sound, reads chapters, asks TheIntroDB and
   // uses fixes people made), else the server's own. Only times Tower is sure of skip by themselves.
-  const fromServer = () => B.get(`/MediaSegments/${it.Id}`).then((r) => { if (!segments.tower) segments = (r.Items || []).map((s) => ({ type: s.Type, start: s.StartTicks / B.TICKS, end: s.EndTicks / B.TICKS })); }).catch(() => {});
+  const fromServer = () => B.get(`/MediaSegments/${it.Id}`).then((r) => { if (!segments.tower) { segments = (r.Items || []).map((s) => ({ type: s.Type, start: s.StartTicks / B.TICKS, end: s.EndTicks / B.TICKS })); chaptersFromSkips(tidySegments(segments, dur || 0)); } }).catch(() => {});
   const useTower = (r) => {
     const list = ((r && r.segments) || []).filter((s) => s.end > s.start).map((s) => ({ type: s.type, start: s.start, end: s.end, sure: !!s.sure, fixed: s.source === "you" || s.source === "fix" }));
     segments = list;
     segments.tower = true;
+    chaptersFromSkips(tidySegments(list, dur || 0));
   };
   // An intro is never "Skip credits": credits only count in the last quarter. Credits near the start
   // (an anime opening shows staff names, or the sources mixed up opening and ending) become the intro
@@ -462,12 +493,20 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const box = $("#pNext");
     const wait = isEp ? 10 : 20;
     box.classList.remove("hidden");
-    box.innerHTML = `<div class="dim" style="font-weight:700">Up next</div><div class="im" style="background-image:url('${B.thumb(n, 600)}')"></div>
-      <div style="font-weight:700">${esc(n.Type === "Episode" ? `S${n.ParentIndexNumber} E${n.IndexNumber} · ${n.Name}` : n.Name)}</div>
+    // End of episode screen (Idea Box 31): the credits shrink into a window top right and the next one takes
+    // the screen (its picture, name, length, story). Watch credits brings the video back to full size.
+    const mins = n.RunTimeTicks ? Math.round(n.RunTimeTicks / B.TICKS / 60) : 0;
+    const ends = mins ? ` · Ends at ${B.clock(new Date(Date.now() + mins * 60000))}` : "";
+    $("#pl").classList.add("endscr");
+    box.innerHTML = `<div class="endart" style="background-image:url('${B.thumb(n, 1280)}')"></div><div class="endwords">
+      <div class="endhead">${isEp ? "Next episode" : "Watch next"}</div>
+      <div class="endname">${esc(n.Type === "Episode" ? `S${n.ParentIndexNumber} E${n.IndexNumber} · ${n.Name}` : n.Name)}</div>
+      ${mins ? `<div class="dim">${mins} min${ends}</div>` : ""}
+      ${n.Overview ? `<div class="endov">${esc(n.Overview)}</div>` : ""}
       ${autoNext ? `<div class="cd"><i id="cdBar" style="width:100%"></i></div>` : ""}
-      <div class="row"><button class="btn white small" id="nPlay">${I("play")} Play now</button><button class="btn small" id="nStay">Watch credits</button></div>`;
+      <div class="row"><button class="btn white" id="nPlay">${I("play")} Play now</button><button class="btn" id="nStay">Watch credits</button></div></div>`;
     $("#nPlay").onclick = () => { sessionStorage.setItem("benflix.autoplays", "0"); goNext(n); };
-    $("#nStay").onclick = () => { box.classList.add("hidden"); clearInterval(cd); };
+    $("#nStay").onclick = () => { box.classList.add("hidden"); $("#pl").classList.remove("endscr"); clearInterval(cd); };
     let left = wait, cd = null;
     if (autoNext) {
       requestAnimationFrame(() => { const b = $("#cdBar"); if (b) { b.style.transition = `width ${wait}s linear`; b.style.width = "0%"; } });

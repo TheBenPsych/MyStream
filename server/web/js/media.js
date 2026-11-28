@@ -724,6 +724,11 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
   const hasTrailer = !!(it.LocalTrailerCount || (it.RemoteTrailers || []).length);
   const scores = B.me.kids ? [] : [it.CommunityRating ? ["IMDb", (+it.CommunityRating).toFixed(1)] : null, it.CriticRating ? ["Rotten Tomatoes", Math.round(it.CriticRating) + "%"] : null];
   const audio = B.audioLine(it).split(",")[0];
+  // Pick the cut (Idea Box 30): movies with more than one version get a button after Play naming the cut
+  const cuts = (it.MediaSources || []).filter((x) => x.Id);
+  let cutId = null; try { cutId = localStorage.getItem("glowfin.cut." + it.Id); } catch (e) {}
+  const cut = cuts.find((x) => x.Id === cutId) || cuts[0];
+  const cutQ = cuts.length > 1 && cut ? `source=${enc(cut.Id)}` : "";
   const tp = B.titlePage({
     title: it.Name,
     original: it.OriginalTitle,
@@ -736,7 +741,8 @@ B.route(/^\/movie\/([\w-]+)/, async (m, nav) => {
     rating: it.OfficialRating,
     info: [it.ProductionYear, len ? B.len(len) : "", (it.Genres || []).slice(0, 2).join(" · ")],
     buttons: [
-      { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", left: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", pct: resume ? ud.PlayedPercentage || 0 : 0 },
+      { label: resume ? "Resume" : "Play", icon: "play", href: `#/play/${it.Id}${resume ? "?resume=1" : ""}${cutQ ? (resume ? "&" : "?") + cutQ : ""}`, note: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", left: resume ? `${B.len(B.minutes(it.RunTimeTicks - ud.PlaybackPositionTicks))} left` : "", pct: resume ? ud.PlayedPercentage || 0 : 0 },
+      cuts.length > 1 && !B.me.kids ? { label: B.cutName(cut), icon: "film", note: `${cuts.length} cuts of this movie`, onClick: () => B.pickCut(it, cuts, cut) } : null,
       { label: "Trailer", icon: "trailer", off: hasTrailer ? "" : "No trailer for this one yet", onClick: () => B.trailer(it) },
       { id: "bList", label: "My List", icon: ud.IsFavorite ? "check" : "plus", onClick: (e, el) => B.toggleList(it, el) },
       B.me.kids ? null : B.rateButton(it),
@@ -782,6 +788,21 @@ B.playOnTv = async (it) => {
       return `Playing on ${tv.DeviceName || "the TV"}.`;
     });
   };
+};
+// Pick the cut (Idea Box 30): "Extended", "Director's cut"... from the version's name (Jellyfin takes it from the file name)
+B.cutName = (src) => {
+  const raw = (src && src.Name) || "", low = raw.toLowerCase().replace(/’/g, "'");
+  const known = [["director's cut", "Director's cut"], ["directors cut", "Director's cut"], ["extended", "Extended"], ["theatrical", "Theatrical"], ["unrated", "Unrated"], ["uncut", "Uncut"], ["imax", "IMAX"], ["final cut", "Final cut"], ["ultimate", "Ultimate cut"], ["special edition", "Special edition"], ["remastered", "Remastered"], ["4k", "4K"], ["2160p", "4K"], ["1080p", "1080p"]];
+  const hit = known.find(([k]) => low.includes(k));
+  return hit ? hit[1] : (raw.split(" - ").pop().trim() || "Version").slice(0, 28);
+};
+B.pickCut = (it, cuts, current) => {
+  const shortest = Math.min(...cuts.map((c) => c.RunTimeTicks || Infinity));
+  B.tpMore("Which cut?", cuts.map((c) => {
+    const mins = c.RunTimeTicks ? B.minutes(c.RunTimeTicks) : 0;
+    const extra = c.RunTimeTicks && isFinite(shortest) ? Math.round((c.RunTimeTicks - shortest) / B.TICKS / 60) : 0;
+    return { label: `${B.cutName(c)}${mins ? ` · ${B.len(mins)}` : ""}${extra >= 1 ? ` · +${extra} min` : ""}`, icon: c === current ? "check" : "film", onClick: () => { try { localStorage.setItem("glowfin.cut." + it.Id, c.Id); } catch (e) {} B.render(); } };
+  }));
 };
 const movieMore = (it) => {
   const ud = it.UserData || {};
@@ -1004,15 +1025,41 @@ B.route(/^\/show\/([\w-]+)/, async (m, nav) => {
 });
 
 // ---------- collection page ----------
+// Box sets in story order (Idea Box 31): every part numbered on its cover, oldest first. Parts you don't have yet
+// sit in their spot, greyed, and open their Ask page. Play carries on from where you are.
 B.route(/^\/collection\/([\w-]+)/, async (m, nav) => {
   const u = B.uid();
-  const [it, kids] = await Promise.all([B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS}`), q(`/Items?userId=${u}&ParentId=${m[1]}&SortBy=ProductionYear,SortName&Fields=${B.FIELDS}`)]);
+  const [it, kidsRaw] = await Promise.all([B.get(`/Users/${u}/Items/${m[1]}?Fields=${B.FIELDS},ProviderIds`), q(`/Items?userId=${u}&ParentId=${m[1]}&SortBy=PremiereDate,ProductionYear,SortName&Fields=${B.FIELDS},PremiereDate`)]);
   if (!B.alive(nav)) return;
+  const kids = kidsRaw.slice().sort((x, y) => (x.PremiereDate || "9999").localeCompare(y.PremiereDate || "9999") || (x.ProductionYear || 0) - (y.ProductionYear || 0));
+  const ud = (k) => k.UserData || {};
+  const next = kids.find((k) => ud(k).PlaybackPositionTicks > 0) || kids.find((k) => !ud(k).Played) || kids[0];
+  const nextHref = next ? `#/play/${next.Id}${ud(next).PlaybackPositionTicks > 0 ? "?resume=1" : ""}` : "";
+  const numbered = (html, n) => html.replace('<div class="im">', `<div class="im"><span class="partno">${n}</span>`);
+  const draw = (parts) => parts.map((p, i) => p.jf ? numbered(B.posterCard(p.jf), i + 1)
+    : `<a class="poster partgone" href="${B.me.kids ? "javascript:void 0" : `#/ask/movie/${p.id}`}" title="${esc(p.title)}"><div class="im"><span class="partno">${i + 1}</span>${p.img ? `<img class="art" src="${B.tmdbImg(p.img)}" alt="" loading="lazy">` : `<div class="noart"><span class="nt">${esc(p.title)}</span></div>`}<span class="newp grey">${p.notout ? "Not out yet" : p.asked ? "Asked for" : B.me.kids ? "Not here" : "Ask for it"}</span></div></a>`).join("");
   B.page().innerHTML = B.top("Movies", DOORS.movies.color) + `<div class="details"><div class="hero" style="background-image:url('${B.backdrop(it, 1920)}');min-height:60vh"><div class="hero-in"><div class="main">
-    <h1 class="t">${esc(it.Name)}</h1><div class="meta"><span>${kids.length} movies</span></div><div class="ov">${esc(it.Overview || "")}</div>
-    ${kids[0] ? `<div class="btns"><a class="btn white big" href="#/movie/${(kids.find((k) => !(k.UserData || {}).Played) || kids[0]).Id}">${I("play")} Start with ${esc((kids.find((k) => !(k.UserData || {}).Played) || kids[0]).Name)}</a></div>` : ""}
-    </div></div></div><div class="below wrap"><div class="grid">${kids.map((k) => B.posterCard(k)).join("")}</div></div></div>`;
+    <h1 class="t">${esc(it.Name)}</h1><div class="meta"><span id="setCount">${kids.length} movies</span></div><div class="ov">${esc(it.Overview || "")}</div>
+    ${next ? `<div class="btns"><a class="btn white big" href="${nextHref}">${I("play")} ${next === kids[0] && !ud(next).PlaybackPositionTicks && !ud(next).Played ? "Play from the start" : `Play from where you are · ${esc(next.Name)}`}</a><a class="btn" href="#/movie/${next.Id}">${I("info")} About ${esc(next.Name)}</a></div>` : ""}
+    </div></div></div><div class="below wrap"><h3 class="setline">In story order</h3><div class="grid" id="setGrid">${draw(kids.map((k) => ({ jf: k })))}</div></div></div>`;
   B.wireTop();
+  // The parts that aren't here yet, from Seerr's copy of the TMDb collection
+  const cid = it.ProviderIds && (it.ProviderIds.Tmdb || it.ProviderIds.TmdbCollection);
+  if (!cid || !B.seerr) return;
+  const set = await B.seerr(`/collection/${cid}`).catch(() => null);
+  if (!set || !B.alive(nav)) return;
+  const byTmdb = new Map(kids.map((k) => [String((k.ProviderIds || {}).Tmdb || ""), k]));
+  const today = new Date().toISOString().slice(0, 10);
+  const parts = (set.parts || []).filter((p) => p && p.id).map((p) => {
+    const st = (p.mediaInfo && p.mediaInfo.status) || 1;
+    return { id: p.id, title: p.title || p.name || "", date: p.releaseDate || "", img: p.posterPath, jf: byTmdb.get(String(p.id)), asked: st >= 2 && st < 5, notout: !p.releaseDate || p.releaseDate > today };
+  }).sort((x, y) => (x.date || "9999").localeCompare(y.date || "9999"));
+  // Keep any of ours Seerr doesn't list, in date order
+  kids.forEach((k) => { if (!parts.some((p) => p.jf === k)) parts.push({ jf: k, date: (k.PremiereDate || "").slice(0, 10) }); });
+  parts.sort((x, y) => (x.date || "9999").localeCompare(y.date || "9999"));
+  if (parts.length === kids.length) return;
+  const grid = $("#setGrid"); if (grid) grid.innerHTML = draw(parts);
+  const cnt = $("#setCount"); if (cnt) cnt.textContent = `${parts.length} movies · ${kids.length} on Glowfin`;
 });
 
 // ---------- person page: photo, name and story on top, then their movies and shows ----------
@@ -1024,6 +1071,14 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
     q(`/Items?userId=${u}&PersonIds=${m[1]}&IncludeItemTypes=Series&Recursive=true&SortBy=ProductionYear&SortOrder=Descending&Fields=${B.FIELDS}`),
   ]);
   if (!B.alive(nav)) return;
+  // How old they are (or were), from Born and Died
+  const age = (x) => {
+    if (!x.PremiereDate) return 0;
+    const b = new Date(x.PremiereDate), e = x.EndDate ? new Date(x.EndDate) : new Date();
+    let n = e.getFullYear() - b.getFullYear();
+    if (e.getMonth() < b.getMonth() || (e.getMonth() === b.getMonth() && e.getDate() < b.getDate())) n--;
+    return n > 0 && n < 130 ? n : 0;
+  };
   // Redesign 2 actor page: their picture where the cover goes, then tabs Movies / Shows / Not on Benflix yet
   const grid = (list) => (list.length ? `<div class="grid tp-grid">${list.map((x) => B.posterCard(x)).join("")}</div>` : "");
   const fav = !!(p.UserData && p.UserData.IsFavorite);
@@ -1031,7 +1086,9 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
     title: p.Name,
     color: DOORS.movies.color,
     cover: { url: p.ImageTags && p.ImageTags.Primary ? B.img(p.Id, "Primary", { h: 600 }) : "", ratio: 2 / 3 },
-    info: [p.PremiereDate ? "Born " + B.day(p.PremiereDate) : "", p.EndDate ? "Died " + B.day(p.EndDate) : "", (p.ProductionLocations || [])[0] || ""],
+    info: [p.PremiereDate ? "Born " + B.day(p.PremiereDate) : "", p.EndDate ? "Died " + B.day(p.EndDate) : "", age(p) ? `Age ${age(p)}` : "", (p.ProductionLocations || [])[0] || ""],
+    // Idea Box 31 actor page: two lines of their story right under the info line; press it to read it all
+    infoExtra: p.Overview ? `<button type="button" class="tp-story tp-open person-bio" id="pBio"><span class="tp-st">${esc(p.Overview)}</span><b>Read more ›</b></button>` : "",
     buttons: [
       { id: "pFav", label: fav ? "Favourite" : "Add to favourites", icon: "heart", onClick: async (e, el) => {
         const on = !(p.UserData && p.UserData.IsFavorite);
@@ -1047,6 +1104,7 @@ B.route(/^\/person\/([\w-]+)/, async (m, nav) => {
       { name: "Not on Glowfin yet", id: "tpAsk", html: "", skip: !!B.me.kids },
     ],
   });
+  const bio = $("#pBio"); if (bio) bio.onclick = () => B.side(`<h3>${esc(p.Name)}</h3><p style="line-height:1.6">${esc(p.Overview || "")}</p>`);
   // The Overview tab isn't used on actor pages: their story is behind About them
   const ov = $('.tp-tab[data-tab="tpOverview"]'); if (ov) ov.remove();
   if (!movies.length && !shows.length) tp.pane("tpMovies").insertAdjacentHTML("afterbegin", '<div class="wrap empty">Nothing with them on Glowfin yet.</div>');

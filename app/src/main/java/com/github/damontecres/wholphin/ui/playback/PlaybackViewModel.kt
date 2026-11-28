@@ -1703,6 +1703,8 @@ class PlaybackViewModel
                     // While Tower is still checking the season, ask again after 20 seconds, 1 minute and 2 minutes
                     val askAgainAt = mutableListOf(20_000L, 60_000L, 120_000L)
                     var waited = 0L
+                    // Benflix: skip times become the seek bar's chapter gaps when the file has none (see SegmentChapters)
+                    var segmentChaptersDone = false
                     if (segments.isNotEmpty() || towerAnswer != null) {
                         while (isActive) {
                             delay(500L)
@@ -1728,6 +1730,7 @@ class PlaybackViewModel
                                 if (fresh != null) {
                                     tower = fresh
                                     towerPending = false
+                                    segmentChaptersDone = false
                                     segments = BenflixSkipsService.merge(fresh, aniSkipSegments)
                                     unsureSegments = fresh.unsure
                                 }
@@ -1738,6 +1741,26 @@ class PlaybackViewModel
                                     player.currentPosition.milliseconds.inWholeTicks to
                                         (if (d > 0) d.milliseconds.inWholeTicks else 0L)
                                 }
+                            if (!towerPending && !segmentChaptersDone && lengthTicks > 0) {
+                                segmentChaptersDone = true
+                                val made =
+                                    SegmentChapters.from(
+                                        itemId,
+                                        BenflixSkipsService.tidy(segments, lengthTicks),
+                                        lengthTicks,
+                                    )
+                                if (made.size >= 2) {
+                                    updateCurrentMedia { info ->
+                                        if (info.chapters.size < 2 ||
+                                            info.chapters.all { it.tag == null && it.name in SEGMENT_CHAPTER_NAMES }
+                                        ) {
+                                            info.copy(chapters = made)
+                                        } else {
+                                            info
+                                        }
+                                    }
+                                }
+                            }
                             // Benflix: an intro is never "Skip credits" (credits only near the end)
                             val currentSegment =
                                 BenflixSkipsService

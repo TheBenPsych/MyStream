@@ -402,7 +402,14 @@ B.route(/^\/me$/, async (m, nav) => {
     B.profileGo(b.dataset.go);
   });
   if (B.meByKeys) { B.meByKeys = false; const first = $(".me-tile", page); if (first) first.focus({ preventScroll: true }); }
-  B.watchTime().then((w) => { const el = $("#meWt"); if (el && B.alive(nav)) el.textContent = `${B.hm(w.month)} this month`; }).catch(() => {});
+  // The month in one line (Idea Box 31): time watched, plus films and shows finished when Tower knows them
+  B.watchTime().then((w) => {
+    const el = $("#meWt"); if (!el || !B.alive(nav)) return;
+    const bits = [`This month: ${B.hm(w.month)} watched`];
+    if (w.showsFinished) bits.push(`${w.showsFinished} show${w.showsFinished === 1 ? "" : "s"} finished`);
+    if (w.films) bits.push(`${w.films} film${w.films === 1 ? "" : "s"}`);
+    el.textContent = bits.join(" · ");
+  }).catch(() => {});
 });
 
 B.signOut = async () => {

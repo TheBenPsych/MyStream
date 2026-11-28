@@ -84,6 +84,10 @@ PAGES.addons = (el) => cardPage("addons", el);
 PAGES.animemovies = (el) => cardPage("animemovies", el);
 PAGES.onepace = (el) => cardPage("onepace", el);
 PAGES.specialsbonus = (el) => cardPage("specialsbonus", el);
+// Idea Box 30 (benflix_nightwatch.py): which drive each title is on, night updates, skipped release groups
+PAGES.drivemap = (el) => cardPage("drivemap", el);
+PAGES.updates = (el) => cardPage("updates", el);
+PAGES.groups = (el) => cardPage("groups", el);
 PAGES.convert = (el) => cardPage("convert", el);
 PAGES.jellyfin = (el) => cardPage("jellyfin", el);
 // Server > Health (Ben's picks, 2026-11-22, benflix_health.py): Tower's parts, the black box, the crash notebook and
@@ -96,11 +100,11 @@ PAGES.health = (el) => {
 // Redesign 2 (Server and Settings, approved sv2-glance): the five sections sit on the doors' side menu
 // (js/doors.js draws it). Overview puts the answer first; Tools are grouped by job in five tiles.
 const TOOL_GROUPS = [
-  { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["animemovies", "Anime movies"], ["onepace", "One Pace"], ["specialsbonus", "Specials & bonus"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
+  { id: "tlib", label: "Library", icon: "film", line: "The library checkup, posters and better copies", subs: [["tidy", "Checkup"], ["animemovies", "Anime movies"], ["onepace", "One Pace"], ["specialsbonus", "Specials & bonus"], ["groups", "Skipped groups"], ["posters", "Fix posters"], ["find", "Find copies"], ["playtest", "Play test"]] },
   { id: "tdl", label: "Downloads", icon: "dl", line: "What's downloading, and stuck ones", subs: [["downloads", "Downloads"]] },
   { id: "tppl", label: "People", icon: "user", line: "Messages, Glowfin versions, Kids ratings and Kids games", subs: [["messages", "Messages"], ["versions", "Versions"], ["kidsratings", "Kids ratings"], ["kidsgames", "Kids games"]] },
   { id: "tfix", label: "Playback fixes", icon: "play", line: "Tidy track names, games that didn't start, converting", subs: [["tracks", "Track names"], ["gameproblems", "Games that didn't start"], ["convert", "Converting"]] },
-  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, jobs, safety copy, away check", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["chores", "Jobs and restart"], ["backup", "Safety copy"], ["away", "Away check"], ["addons", "Jellyfin add-ons"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"], ["jellyfin", "Rarely needed"]] },
+  { id: "ttower", label: "Tower", icon: "server", line: "Setup command, apps, drive health, jobs, safety copy, away check", subs: [["setup", "Setup command"], ["apps", "Apps"], ["drives", "Drive health"], ["drivemap", "What's on each drive"], ["updates", "Night updates"], ["chores", "Jobs and restart"], ["backup", "Safety copy"], ["away", "Away check"], ["addons", "Jellyfin add-ons"], ["livetv", "Live TV lists"], ["booklists", "Lists and keys"], ["webversion", "Web version"], ["jellyfin", "Rarely needed"]] },
 ];
 const SECTIONS = [
   { id: "overview", label: "Overview", subs: [["overview", "Overview"], ["week", "This week"], ["problems", "Problems"]] },
@@ -113,7 +117,8 @@ const SECTIONS = [
 // Server redesign (Ben 2026-11-28): every tool is a tile on Tools with a short line, and opens on its own page
 const TOOL_LINES = {
   tidy: "Missing episodes, weak copies and other gaps", animemovies: "Anime movies into their shows", onepace: "Sort One Pace into its seasons",
-  specialsbonus: "Specials and bonus videos for shows", posters: "Missing, blurry or wrong-shaped posters", find: "Look for better copies", playtest: "Night-time play test",
+  specialsbonus: "Specials and bonus videos for shows", posters: "Missing, blurry or wrong-shaped posters", find: "Look for better copies", playtest: "Night-time play test", groups: "Uploaders skipped after two bad copies",
+  drivemap: "If a drive dies, what was on it", updates: "Tower's apps update one at a time",
   downloads: "What's downloading, and stuck ones",
   messages: "Send a note to someone's screen", versions: "Who needs to update", kidsratings: "Kids titles with no rating", kidsgames: "Which games Kids can play",
   tracks: "Sound and subtitle names that read well", gameproblems: "Games that failed to open", convert: "How Tower converts for your TVs",

@@ -118,6 +118,11 @@ try:  # Server > Health: the black box, crash notebook, parts and changes diary,
 except ImportError:
     health = None
 
+try:  # Tower looking after itself (Idea Box 30): let go when paused, watched downloads first, drive list, night updates
+    import benflix_nightwatch as nightwatch
+except ImportError:
+    nightwatch = None
+
 ROMM_URL = os.environ.get("ROMM_URL", "http://127.0.0.1:8095").rstrip("/")
 ROMM_AUTH = "Basic " + base64.b64encode(
     f"{os.environ.get('ROMM_USER', '')}:{os.environ.get('ROMM_PASS', '')}".encode()
@@ -2785,6 +2790,13 @@ if __name__ == "__main__":
                 tools.HEALTH = health.summary  # the Server page's Health dot and Overview line
         if books is not None:
             keeper.job("books", "Look for new books and audiobooks", "Every 10 minutes", books, "scan", run=lambda: books.scan())
+    if nightwatch is not None:
+        nightwatch.start(
+            jellyfin_call,
+            lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),
+            tools,
+            keeper,
+        )
     threading.Thread(
         target=request_doctor,
         args=(lambda: ((getattr(skips, "_admin", None) or {}).get("token"), (getattr(skips, "_admin", None) or {}).get("user")) if skips is not None else (None, None),),

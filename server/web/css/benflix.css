@@ -3310,6 +3310,45 @@ body.nav-on.rail-push #page .top .clock { transform: translateX(calc(var(--nrail
   .player .p4 .sp1 .p1r { grid-column: 1; grid-row: 2; justify-content: center; }
 }
 
+/* End of episode screen (Idea Box 31, Ben 2026-11-27): the credits play in a small window top right and
+   the next episode or movie takes the rest of the screen. Watch credits takes the class away again. */
+.player.endscr video { inset: 24px 24px auto auto; width: 32%; height: auto; aspect-ratio: 16/9; z-index: 3; border-radius: 10px; }
+.player.endscr .controls, .player.endscr .shadeB, .player.endscr .pends { display: none; }
+.player.endscr .pcorner { inset: 0; right: 0; bottom: 0; display: block; z-index: 2; }
+.player.endscr .upnext { position: absolute; inset: 0; width: auto; max-width: none; border: 0; border-radius: 0; background: #000; padding: 0; display: block; }
+.player.endscr .upnext .endart { position: absolute; inset: 0 34% 0 0; background: #111 center/cover no-repeat; }
+.player.endscr .upnext .endart::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.8) 70%, #000), linear-gradient(180deg, transparent 35%, rgba(0,0,0,.9)); }
+.player.endscr .upnext .endwords { position: absolute; left: 48px; bottom: 56px; width: min(600px, 62%); display: flex; flex-direction: column; gap: 10px; }
+.player .upnext .endhead { color: var(--aqua, #3FE0E8); font-weight: 700; font-size: 18px; }
+.player .upnext .endname { font-size: 30px; font-weight: 700; line-height: 1.2; }
+.player .upnext .endov { color: rgba(255,255,255,.8); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.player:not(.endscr) .upnext .endart { flex: 0 1 auto; min-height: 0; aspect-ratio: 16/9; border-radius: 10px; background: #222 center/cover no-repeat; }
+.player:not(.endscr) .upnext .endov, .player:not(.endscr) .upnext .endhead { display: none; }
+.player:not(.endscr) .upnext .endwords { display: flex; flex-direction: column; gap: 10px; }
+.player:not(.endscr) .upnext .endname { font-size: 16px; }
+@media (max-width: 700px) { .player.endscr video { width: 46%; } .player.endscr .upnext .endwords { left: 16px; right: 16px; width: auto; bottom: 24px; } .player.endscr .upnext .endart { inset: 0; } }
+
+/* Tidier Me page (Idea Box 31, Ben 2026-11-27): two even columns of wide rows, so every name and line fits
+   (three boxes in a row cut the words off at TV and laptop widths, "Report a pr..."). Phones: one column. */
+.me-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 980px; }
+.me-tile { align-items: center; min-height: 0; padding: 14px 18px; }
+.me-tx b, .me-tx small { overflow-wrap: anywhere; }
+.me-wt { font-size: 16px; color: var(--ink2); margin: 4px 0 10px; }
+@media (max-width: 700px) { .me-tiles { grid-template-columns: 1fr; } }
+
+/* Box sets in story order (Idea Box 31): the part number on each cover, and parts not here yet greyed */
+.poster .im .partno { position: absolute; left: 8px; top: 8px; z-index: 2; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px;
+  background: rgba(0, 0, 0, .72); color: #fff; font: 600 15px/28px Lexend, sans-serif; text-align: center; }
+.poster.partgone .im .art, .poster.partgone .im .noart { filter: grayscale(1) brightness(.55); }
+.setline { margin: 0 0 12px; }
+
+/* Actor page (Idea Box 31): two lines of their story under the info line, press to read it all */
+.tp .meta .person-bio { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; flex-basis: 100%;
+  max-width: 640px; margin: 10px 0 0 -8px; padding: 4px 8px; border-radius: 10px; color: var(--ink2); line-height: 1.5; }
+.tp .meta .person-bio .tp-st { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tp .meta .person-bio b { color: var(--ink); font-weight: 600; }
+.tp .meta .person-bio:hover, .tp .meta .person-bio:focus-visible { background: rgba(255,255,255,.1); outline: 2px solid var(--ink); }
+
 /* ---------- Server redesign (Ben 2026-11-28): tabs on top, glance tiles, a row of tool tiles per group ---------- */
 .srv-page { padding: 10px var(--gutter) 60px; }
 .srv-page main.srv { max-width: none; padding: 0; }

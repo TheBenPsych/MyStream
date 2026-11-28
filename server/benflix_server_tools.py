@@ -1052,7 +1052,8 @@ def bad_copy(info, who):
         if not movie.get("hasFile") or not file.get("id"):
             raise ToolError(404, "Radarr has no file for this movie. Report a problem instead.")
         history = _arr("radarr", "GET", f"/api/v3/history/movie?movieId={movie['id']}") or []
-        blocked = _mark_failed("radarr", _grab_for("radarr", history, "movieFileId", file["id"]))
+        grab = _grab_for("radarr", history, "movieFileId", file["id"])
+        blocked = _mark_failed("radarr", grab)
         _arr("radarr", "DELETE", f"/api/v3/moviefile/{file['id']}")
         _arr("radarr", "POST", "/api/v3/command", {"name": "MoviesSearch", "movieIds": [movie["id"]]})
         name = movie.get("title") or "this movie"
@@ -1072,12 +1073,22 @@ def bad_copy(info, who):
         if isinstance(history, dict):
             history = history.get("records") or []
         history = [h for h in history if h.get("episodeId") in (None, ep["id"]) or (h.get("eventType") or "").lower() == "grabbed"]
-        blocked = _mark_failed("sonarr", _grab_for("sonarr", history, "episodeFileId", ep["episodeFileId"]))
+        grab = _grab_for("sonarr", history, "episodeFileId", ep["episodeFileId"])
+        blocked = _mark_failed("sonarr", grab)
         _arr("sonarr", "DELETE", f"/api/v3/episodefile/{ep['episodeFileId']}")
         _arr("sonarr", "POST", "/api/v3/command", {"name": "EpisodeSearch", "episodeIds": [ep["id"]]})
         name = f"{series.get('title') or 'this show'} S{season} E{number}"
     _forget()
     print(f"bad copy: {who or 'someone'} threw away {name} (blocked: {blocked})", flush=True)
+    # Idea Box 30: a release group with two bad copies is skipped from then on (benflix_nightwatch.py)
+    group = ((grab or {}).get("data") or {}).get("releaseGroup")
+    if group:
+        try:
+            import benflix_nightwatch
+
+            benflix_nightwatch.bad_copy_group(group, name)
+        except Exception as e:  # noqa: BLE001 - the bad copy is already thrown away either way
+            print(f"bad copy: couldn't note the release group ({e})", flush=True)
     return {
         "message": f"Tower threw away this copy of {name} and is finding a new one."
         + (" It won't pick that copy again." if blocked else "")

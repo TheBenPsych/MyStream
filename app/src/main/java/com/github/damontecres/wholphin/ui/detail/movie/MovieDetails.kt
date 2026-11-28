@@ -142,6 +142,7 @@ fun MovieDetails(
                         openAsk = { viewModel.navigateTo(it.destination) },
                         pickPoster = { viewModel.navigateTo(Destination.PosterPicker(movie.id)) },
                         pickLogo = { viewModel.navigateTo(Destination.PosterPicker(movie.id, "LOGO")) },
+                        pickCut = { source -> source.id?.let { viewModel.savePlayVersion(movie, it.toUUID()) } },
                     ),
                 modifier = modifier,
             )

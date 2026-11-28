@@ -104,7 +104,9 @@ class HomeDataService
 
                     // Benflix: a show you finished that just got a new season goes first
                     val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
-                    val withBack = back + resume.withoutShowsIn(back)
+                    // Benflix: Part 2 is here (a sequel to a movie you watched just arrived) goes first of all
+                    val sequels = latestNextUpService.getSequelsArrived(userDto.id).filter { s -> resume.none { it.id == s.id } }
+                    val withBack = sequels + back + resume.withoutShowsIn(back)
                     // Benflix: "3 left in season" on the cards
                     scope.launchIO { EpisodeFacts.loadSeasonLeft(api, userDto.id, withBack) }
 
@@ -156,7 +158,8 @@ class HomeDataService
                         )
                     // Benflix: a show you finished that just got a new season goes first
                     val back = latestNextUpService.getNewSeasonsBack(userDto.id, row.viewOptions.useSeries)
-                    val combined = back + latestNextUpService.buildCombined(resume, nextUp).withoutShowsIn(back)
+                    val sequels = latestNextUpService.getSequelsArrived(userDto.id).filter { s -> resume.none { it.id == s.id } }
+                    val combined = sequels + back + latestNextUpService.buildCombined(resume, nextUp).withoutShowsIn(back)
                     // Benflix: "3 left in season" on the cards
                     scope.launchIO { EpisodeFacts.loadSeasonLeft(api, userDto.id, combined.take(limit)) }
 

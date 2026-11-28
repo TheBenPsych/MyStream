@@ -151,12 +151,24 @@ fun CollectionDetails(
         onPauseOrDispose { }
     }
     val onClickPlayAll =
-        remember {
+        remember(state.items, state.itemFilter) {
             { shuffle: Boolean ->
+                // Benflix (Idea Box 31, box sets in story order): Play carries on from where you are,
+                // the half-watched part first, else the first part you haven't seen, else part 1
+                val ordered = state.items.filterNotNull().sortedBy { it.data.premiereDate }
+                val startAt =
+                    if (shuffle) {
+                        0
+                    } else {
+                        ordered
+                            .indexOfFirst { (it.data.userData?.playbackPositionTicks ?: 0L) > 0L }
+                            .takeIf { it >= 0 }
+                            ?: ordered.indexOfFirst { it.data.userData?.played != true }.coerceAtLeast(0)
+                    }
                 val dest =
                     Destination.PlaybackList(
                         itemId = itemId,
-                        startIndex = 0,
+                        startIndex = startAt,
                         shuffle = shuffle,
                         recursive = true,
                         // Benflix: Play all goes in release order, oldest first
