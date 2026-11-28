@@ -86,12 +86,14 @@ data class GamePageInfo(
     val colors: List<Color>,
     val movie: MovieGame?,
     val arcade: BuiltInGame?,
+    val table: com.github.damontecres.wholphin.ui.games.table.TableGame? = null,
 ) {
     /** The small line over the title: "Glowfin arcade", "Glowfin movie puzzle" or "Glowfin party game" */
     val kicker: String
         get() =
             when {
                 arcade != null -> "Glowfin arcade"
+                table != null -> "Glowfin table game"
                 movie?.group == MovieGameGroup.PARTY -> "Glowfin party game"
                 else -> "Glowfin movie puzzle"
             }
@@ -99,6 +101,24 @@ data class GamePageInfo(
     companion object {
         fun of(id: String): GamePageInfo? {
             val name = id.substringAfter(':')
+            if (id.startsWith("table:")) {
+                val t =
+                    com.github.damontecres.wholphin.ui.games.table.TableGame
+                        .of(name) ?: return null
+                return GamePageInfo(
+                    id = id,
+                    title = t.title,
+                    about = t.about,
+                    steps = t.steps,
+                    pills = listOf(t.players, if (t.versus) "Play Glowfin or a friend" else "Remote or touch", t.minutes),
+                    boardKey = null,
+                    ranked = "",
+                    colors = t.colors,
+                    movie = null,
+                    arcade = null,
+                    table = t,
+                )
+            }
             return if (id.startsWith("arcade:")) {
                 val g = BuiltInGame.entries.firstOrNull { it.name == name } ?: return null
                 GamePageInfo(
@@ -199,6 +219,10 @@ class GameInfoViewModel
         fun nextAnime() = pool.setAnime(pool.anime.value.next())
 
         fun play(info: GamePageInfo) {
+            info.table?.let { t ->
+                navigationManager.navigateTo(Destination.TablePlay(t.name))
+                return
+            }
             info.arcade?.let { g ->
                 prefs.edit().putString("last_${pool.profileKey()}", g.name).apply()
                 navigationManager.navigateTo(Destination.PlayGame(g.name))
@@ -234,7 +258,8 @@ fun GameInfoPage(
     val top = remember(info) { viewModel.top(info) }
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { playFocus.tryRequestFocus() }
-    val cover = remember(info) { gameCover(info.arcade?.name ?: info.movie?.name ?: "") }
+    val cover =
+        remember(info) { gameCover(info.arcade?.name ?: info.movie?.name ?: info.table?.let { "table_" + it.name.lowercase() } ?: "") }
 
     val buttons: @Composable () -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

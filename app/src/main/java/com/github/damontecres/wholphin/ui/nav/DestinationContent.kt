@@ -588,6 +588,11 @@ fun DestinationContent(
                 .GameInfoPage(destination.id, modifier)
         }
 
+        is Destination.TablePlay -> {
+            com.github.damontecres.wholphin.ui.games.table
+                .TablePlayPage(destination.name, modifier)
+        }
+
         is Destination.MovieGamePlay -> {
             com.github.damontecres.wholphin.ui.games
                 .MovieGamePlayPage(destination.name, modifier)

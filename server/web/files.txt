@@ -105,3 +105,9 @@ fonts/glowfin_lexend_bold.ttf
 fonts/lexend.LICENSE.txt
 try-list.json
 movie-quotes.json
+js/btable.js
+img/games/table_solitaire.png
+img/games/table_checkers.png
+img/games/table_chess.png
+img/games/table_four_row.png
+img/games/table_five_dice.png

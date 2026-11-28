@@ -262,6 +262,8 @@ fun GamesPage(
                 add(DoorSection(TAB_MOVIE, "Movie games", BenflixIcon.FILM))
                 if (library != LibraryState.Hidden) add(DoorSection(TAB_CONSOLES, "Consoles", BenflixIcon.PAD))
                 add(DoorSection(TAB_PARTY, "Party", BenflixIcon.PHONE))
+                // Ben 2026-11-28: board, card and dice games for the living room
+                add(DoorSection(TAB_TABLE, "Table", BenflixIcon.DICE))
                 add(DoorSection(TAB_SCORES, "Scores", BenflixIcon.STATS))
             }
         }
@@ -302,7 +304,7 @@ fun GamesPage(
     val rowNameGap = if (isTv) 8.dp else 16.dp
     val rowPad = if (isTv) 4.dp else 8.dp
     // TV tabs made of rows (For you, Movie games, Party): the row you move to jumps up under the top
-    val rowsJump = isTv && (forYou || tab == TAB_MOVIE || tab == TAB_PARTY)
+    val rowsJump = isTv && (forYou || tab == TAB_MOVIE || tab == TAB_PARTY || tab == TAB_TABLE)
     val cardSize = Modifier.size(width = cardHeight * BoxArt.DEFAULT_RATIO, height = cardHeight)
 
     @Composable
@@ -514,6 +516,13 @@ fun GamesPage(
                             if (forYou) FavouritesRow()
                             if (forYou || tab == TAB_MOVIE) {
                                 GameRows(viewModel = viewModel, isTv = isTv, only = setOf("arcade"), board = board, onFocus = onFocus)
+                            }
+                            if (tab == TAB_TABLE) {
+                                GameRows(viewModel = viewModel, isTv = isTv, only = setOf("table"), board = board, onFocus = onFocus)
+                                InfoText(
+                                    "Table games play on this screen with the remote or by touch. Pass the remote to a friend, " +
+                                        "or play against Glowfin. Card games for phones are coming next.",
+                                )
                             }
                             if (tab == TAB_PARTY) {
                                 GameRows(viewModel = viewModel, isTv = isTv, only = setOf("party"), board = board, onFocus = onFocus)
@@ -1077,6 +1086,7 @@ private const val TAB_CONSOLES = "consoles"
 private const val TAB_EMBER = "ember"
 private const val TAB_MOVIE = "movie"
 private const val TAB_PARTY = "party"
+private const val TAB_TABLE = "table"
 private const val TAB_SCORES = "scores"
 
 /** A row's name in the Glowfin look (the same as Music and Books rows) */

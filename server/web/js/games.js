@@ -102,7 +102,7 @@ const favs = () => loadJson(favKey(), []);
 // Glowfin G1 (Ben's pick, Nov 2026): the same word tabs as Movies and Music: For you | Consoles | Movie games |
 // Party | Scores. For you = the top area (the game you're on and what it works with), then Continue playing,
 // Movie puzzles, Favourites and Arcade. Each other tab holds one kind of game.
-const GAME_PLACES = ["home", "ember", "movie", "consoles", "party", "scores"];
+const GAME_PLACES = ["home", "ember", "movie", "consoles", "party", "table", "scores"];
 const worksWith = (remote) => `<span class="gw-chips">${[remote ? "Remote" : "", "Controller", "Phone"].filter(Boolean).map((x) => `<span class="gw-chip">${x}</span>`).join("")}</span>`;
 const describeGame = (g, kick) => `<div class="kick">${esc(kick || [g.console, g.year || ""].filter(Boolean).join(" · "))}</div><div class="t">${esc(g.name)}</div><div class="ov">Plays in your browser. Use the keyboard or plug in a controller.</div>${worksWith(false)}`;
 
@@ -164,12 +164,13 @@ B.route(/^\/games(?:\?.*)?$/, async (m, nav) => {
     return;
   }
   // Glowfin's own games (puzzles, party games, arcade, Ember Road) don't need RomM
-  if (place === "movie" || place === "party" || place === "scores") {
+  if (place === "movie" || place === "party" || place === "table" || place === "scores") {
     if (!B.bgRows) { rows.innerHTML = ""; return; }
     try {
-      rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade"] : ["party"]);
+      rows.innerHTML = place === "scores" ? await B.bgScores() : await B.bgRows(place === "movie" ? ["puzzles", "arcade"] : place === "table" ? ["table"] : ["party"]);
     } catch (e) { rows.innerHTML = `<div class="wrap empty">${esc(B.say(e))}</div>`; }
     if (place === "party") rows.insertAdjacentHTML("beforeend", `<div class="wrap"><p class="dim" style="max-width:62ch">Party games run on the TV. Everyone opens Glowfin on their Android phone, goes to Games and presses Join a party, then answers on the phone. 3 to 8 players.</p></div>`);
+    if (place === "table") rows.insertAdjacentHTML("beforeend", `<div class="wrap"><p class="dim" style="max-width:62ch">Table games play right here with the mouse, keyboard or touch. Pass the device to a friend, or play against Glowfin. Card games for phones are coming next.</p></div>`);
     if (B.bgWire) B.bgWire(rows, null);
     return;
   }

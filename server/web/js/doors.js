@@ -62,6 +62,7 @@
       ["Movie games", "film", "#/games?p=movie", () => has("p") === "movie"],
       ["Consoles", "pad", "#/games?p=consoles", () => has("p") === "consoles" || location.hash.startsWith("#/console/")],
       ["Party", "phone", "#/games?p=party", () => has("p") === "party"],
+      ["Table", "dice", "#/games?p=table", () => has("p") === "table"],
       ["Scores", "chart", "#/games?p=scores", () => has("p") === "scores"],
     ];
     // Ben 2026-11-18: the same places as the Music tabs (no Music search of its own; the menu's Search finds music)

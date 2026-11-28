@@ -161,6 +161,23 @@ internal fun GameRows(
                 kind = "Arcade",
             )
 
+    fun tableRow(games: List<com.github.damontecres.wholphin.ui.games.table.TableGame>) =
+        games.map { g ->
+            RowGame(
+                "table_${g.name}",
+                g.title,
+                g.about,
+                g.colors,
+                R.string.fa_dice,
+                g.players,
+                onClick = { open("table:${g.name}") },
+                kind = "${g.kind} · ${g.players}",
+                playWith = listOf(PlayWith.REMOTE, PlayWith.PHONE),
+            )
+        }
+    val tableCards = tableRow(com.github.damontecres.wholphin.ui.games.table.TableGame.cardGames)
+    val tableBoards = tableRow(com.github.damontecres.wholphin.ui.games.table.TableGame.boardGames)
+
     val focus: (RowGame) -> Unit = { g ->
         onFocus(
             GamePreview(
@@ -179,6 +196,10 @@ internal fun GameRows(
     if ("puzzles" in only) GameRow("Movie puzzles", puzzles, isTv, focus)
     if ("party" in only && party.isNotEmpty()) GameRow("Party · needs phones", party, isTv, focus)
     if ("arcade" in only) GameRow("Arcade", arcade, isTv, focus)
+    if ("table" in only) {
+        GameRow("Board and dice games", tableBoards, isTv, focus)
+        GameRow("Card games", tableCards, isTv, focus)
+    }
 }
 
 @Composable
