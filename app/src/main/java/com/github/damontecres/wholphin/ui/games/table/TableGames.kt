@@ -67,6 +67,12 @@ enum class TableGame(
     /** Can play against Glowfin */
     val versus: Boolean,
     val colors: List<Color>,
+    /** Card games played with phones: how many seats the table can have */
+    val seatsMin: Int = 0,
+    val seatsMax: Int = 0,
+    val seatsStart: Int = seatsMax,
+    /** Shows on Kids profiles */
+    val kids: Boolean = true,
 ) {
     SOLITAIRE(
         "Solitaire",
@@ -134,15 +140,119 @@ enum class TableGame(
         true,
         listOf(Color(0xFF9333EA), Color(0xFF3B0764)),
     ),
+    HEARTS(
+        "Hearts",
+        "Card game",
+        "4 players",
+        "About 20 min",
+        "Dodge the hearts and the queen of spades. Lowest score wins. Phones hold your cards; Glowfin fills empty seats.",
+        listOf(
+            "Pass 3 cards, then follow the suit that was led if you can.",
+            "Each heart is 1 point and the queen of spades is 13.",
+            "Take every one of them and everyone else gets 26. First to 50 ends it.",
+        ),
+        true,
+        listOf(Color(0xFFE11D48), Color(0xFF4C0519)),
+        seatsMin = 4,
+        seatsMax = 4,
+    ),
+    SPADES(
+        "Spades",
+        "Card game",
+        "4 players in teams",
+        "About 30 min",
+        "Two teams of two. Say how many tricks you'll win, then try to hit it. Spades beat every other suit.",
+        listOf(
+            "Partners sit across from each other.",
+            "Bid your tricks, or Nil for none at all.",
+            "Make your team's bid for points. First team to 300 wins.",
+        ),
+        true,
+        listOf(Color(0xFF334155), Color(0xFF0F172A)),
+        seatsMin = 4,
+        seatsMax = 4,
+    ),
+    CRAZY_EIGHTS(
+        "Crazy Eights",
+        "Card game",
+        "2 to 6 players",
+        "About 10 min",
+        "Match the suit or the number. Eights change the suit. First out of cards wins.",
+        listOf(
+            "Play a card that matches the top card's suit or number.",
+            "An 8 goes on anything, and you pick the new suit.",
+            "Nothing fits? Draw one. First with no cards wins.",
+        ),
+        true,
+        listOf(Color(0xFF16A34A), Color(0xFF052E16)),
+        seatsMin = 2,
+        seatsMax = 6,
+        seatsStart = 4,
+    ),
+    RUMMY(
+        "Rummy",
+        "Card game",
+        "2 to 4 players",
+        "About 15 min",
+        "Collect sets and runs, lay them down, and be first to empty your hand.",
+        listOf(
+            "Take a card from the deck or the discard pile.",
+            "Lay down 3 or 4 of a number, or 3 in a row in one suit.",
+            "Discard one. First with no cards wins the points left in other hands.",
+        ),
+        true,
+        listOf(Color(0xFF0891B2), Color(0xFF083344)),
+        seatsMin = 2,
+        seatsMax = 4,
+        seatsStart = 3,
+    ),
+    GO_FISH(
+        "Go Fish",
+        "Card game",
+        "2 to 5 players",
+        "About 10 min",
+        "Ask for the cards you need. An easy one for little ones.",
+        listOf(
+            "Pick a card you hold, then who to ask for that number.",
+            "They hand them over, or say Go fish and you draw one.",
+            "Four of a number is a book. Most books wins.",
+        ),
+        true,
+        listOf(Color(0xFF2563EB), Color(0xFF172554)),
+        seatsMin = 2,
+        seatsMax = 5,
+        seatsStart = 4,
+    ),
+    HOLDEM(
+        "Hold'em night",
+        "Card game",
+        "2 to 8 players",
+        "About 30 min",
+        "Texas Hold'em with pretend chips only. No money anywhere.",
+        listOf(
+            "Everyone starts with 1,000 pretend chips.",
+            "Two cards each, then five shared cards come out with betting in between.",
+            "Best five-card hand wins the pot. Last player with chips wins the night.",
+        ),
+        true,
+        listOf(Color(0xFF15803D), Color(0xFF14532D)),
+        seatsMin = 2,
+        seatsMax = 8,
+        seatsStart = 6,
+        kids = false,
+    ),
     ;
 
-    val needsSetup: Boolean get() = this != SOLITAIRE
+    /** Card games where phones hold the hands (they have their own lobby with seats) */
+    val atTable: Boolean get() = seatsMax > 0
+
+    val needsSetup: Boolean get() = this != SOLITAIRE && !atTable
 
     companion object {
         fun of(name: String): TableGame? = entries.firstOrNull { it.name == name }
 
         /** The Table tab's rows */
-        val cardGames: List<TableGame> get() = listOf(SOLITAIRE)
+        val cardGames: List<TableGame> get() = listOf(HEARTS, SPADES, CRAZY_EIGHTS, RUMMY, GO_FISH, HOLDEM, SOLITAIRE)
         val boardGames: List<TableGame> get() = listOf(CHECKERS, CHESS, FOUR_ROW, FIVE_DICE)
     }
 }
@@ -377,6 +487,7 @@ fun TablePlayPage(
                     TableGame.CHESS -> ChessGame(s, viewModel.me, again, leave)
                     TableGame.FOUR_ROW -> FourRowGame(s, viewModel.me, again, leave)
                     TableGame.FIVE_DICE -> FiveDiceGame(s, viewModel.me, again, leave)
+                    else -> CardTablePage(game, viewModel.me, leave)
                 }
             }
         }

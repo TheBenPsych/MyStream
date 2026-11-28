@@ -110,7 +110,16 @@ data class GamePageInfo(
                     title = t.title,
                     about = t.about,
                     steps = t.steps,
-                    pills = listOf(t.players, if (t.versus) "Play Glowfin or a friend" else "Remote or touch", t.minutes),
+                    pills =
+                        listOf(
+                            t.players,
+                            when {
+                                t.seatsMax > 0 -> "Phones hold your cards"
+                                t.versus -> "Play Glowfin or a friend"
+                                else -> "Remote or touch"
+                            },
+                            t.minutes,
+                        ),
                     boardKey = null,
                     ranked = "",
                     colors = t.colors,

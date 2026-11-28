@@ -9,11 +9,13 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -69,6 +72,9 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGold
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleGreen
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePanel
+import com.github.damontecres.wholphin.ui.games.table.PlayingCard
+import com.github.damontecres.wholphin.ui.games.table.cardFromCode
+import com.github.damontecres.wholphin.ui.games.table.onTap
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.setup.SeaColours
 import com.github.damontecres.wholphin.ui.setup.SeaFriend
@@ -513,6 +519,7 @@ fun PartyJoinScreen(
             "text" -> SendBox(v.round, number = false, hint = "Your made-up plot") { client.type(it) }
             "draw" -> DrawPad(v.round, onLine = { client.draw(it) })
         }
+        if (v.hand.isNotEmpty()) PhoneHand(v) { client.press("card:$it") }
         v.actions.forEach { a ->
             Button(
                 onClick = { client.press(a.id) },
@@ -520,6 +527,9 @@ fun PartyJoinScreen(
                 modifier = Modifier.fillMaxWidth(),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
             ) { Text(a.label, fontSize = 17.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+            if (v.hand.isNotEmpty() && a.hint.isNotBlank() && v.picked.isEmpty()) {
+                Text(a.hint, fontSize = 13.sp, color = Color.White.copy(alpha = .55f))
+            }
         }
         Button(onClick = {
             client.leave()
@@ -624,3 +634,34 @@ private fun DrawPad(
 
 private fun encode(points: List<Offset>): String =
     points.joinToString(" ") { "${it.x.toInt().coerceIn(0, 1000)},${it.y.toInt().coerceIn(0, 1000)}" }
+
+/** Table card games: this phone's cards. Tap one to pick it; cards that can't be played now are faded */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PhoneHand(
+    v: PhoneView,
+    onTap: (Int) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        v.hand.forEachIndexed { i, code ->
+            val card = cardFromCode(code) ?: return@forEachIndexed
+            val can = i in v.playable
+            val up = i in v.picked
+            PlayingCard(
+                card,
+                faceUp = true,
+                width = 54.dp,
+                picked = up,
+                modifier =
+                    Modifier
+                        .offset(y = if (up) (-6).dp else 0.dp)
+                        .alpha(if (can || v.playable.isEmpty()) 1f else .4f)
+                        .onTap { onTap(i) },
+            )
+        }
+    }
+}
