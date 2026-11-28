@@ -368,7 +368,7 @@ fun TablePlayPage(
         if (s == null) {
             TableSetup(game, viewModel.me, onStart = { seats = it }, onLeave = viewModel::leave)
         } else {
-            val again = { round++ }
+            val again: () -> Unit = { round += 1 }
             val leave = viewModel::leave
             androidx.compose.runtime.key(round) {
                 when (game) {
