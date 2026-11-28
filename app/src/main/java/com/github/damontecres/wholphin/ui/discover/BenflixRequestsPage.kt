@@ -1002,10 +1002,45 @@ class BenflixRequestsViewModel
                     }
                 }
             if (todo.isEmpty()) return
+            // Speed check (Ben 2026-11-28): this page asks Seerr about every title in every row (around 200), and
+            // each answer used to redraw the whole page by itself. Answers from the last quarter of an hour are
+            // reused straight away, and new ones are put on the page a batch at a time.
+            val who = serverRepository.currentUser?.id.toString()
+            val now = System.currentTimeMillis()
+            val known = todo.mapNotNull { item -> KeptRatings.get(who, item.requestKey(), now)?.let { item.requestKey() to it } }
+            if (known.isNotEmpty()) {
+                _ratings.update { it + known.map { (key, kept) -> key to kept.rating } }
+                val here = known.mapNotNull { (key, kept) -> kept.here?.let { key to it } }
+                if (here.isNotEmpty()) _onBenflix.update { it + here }
+                known.forEach { (key, kept) -> if (kept.adult) AdultContentFlags.mark(key) }
+            }
+            val knownKeys = known.mapTo(HashSet()) { it.first }
+            val ask = todo.filter { it.requestKey() !in knownKeys }
+            if (ask.isEmpty()) return
             viewModelScope.launch(WholphinDispatchers.IO) {
                 val semaphore = Semaphore(6)
+                val newRatings = HashMap<String, ItemRating>()
+                val newHere = HashMap<String, Boolean>()
+                val putOnPage = {
+                    val (freshRatings, freshHere) =
+                        synchronized(newRatings) {
+                            val copy = HashMap(newRatings) to HashMap(newHere)
+                            newRatings.clear()
+                            newHere.clear()
+                            copy
+                        }
+                    if (freshHere.isNotEmpty()) _onBenflix.update { it + freshHere }
+                    if (freshRatings.isNotEmpty()) _ratings.update { it + freshRatings }
+                }
+                val batches =
+                    launch {
+                        while (true) {
+                            kotlinx.coroutines.delay(RATINGS_BATCH_MS)
+                            putOnPage()
+                        }
+                    }
                 coroutineScope {
-                    todo
+                    ask
                         .map { item ->
                             async {
                                 semaphore.withPermit {
@@ -1028,24 +1063,27 @@ class BenflixRequestsViewModel
                                                     } else {
                                                         showArrival.wholeShowHere(o, inJellyfin)
                                                     }
-                                                if (here != null) _onBenflix.update { it + (key to here) }
+                                                if (here != null) synchronized(newRatings) { newHere[key] = here }
                                                 val age = if (movie) movieAgeRating(o) else tvAgeRating(o)
-                                                if (isAdultContent(o, age)) AdultContentFlags.mark(item.requestKey())
+                                                val adult = isAdultContent(o, age)
+                                                if (adult) AdultContentFlags.mark(item.requestKey())
                                                 ItemRating(
                                                     age = age,
                                                     adultTags = o["adult"].str() == "true" || tags(o).any(::isGrownUpTag),
-                                                )
+                                                ).also { KeptRatings.put(who, key, it, here, adult) }
                                             }
                                         } catch (ex: CancellationException) {
                                             throw ex
                                         } catch (ex: Exception) {
                                             ItemRating(null, false)
                                         }
-                                    _ratings.update { it + (item.requestKey() to rating) }
+                                    synchronized(newRatings) { newRatings[item.requestKey()] = rating }
                                 }
                             }
                         }.awaitAll()
                 }
+                batches.cancel()
+                putOnPage()
             }
         }
 
@@ -3425,4 +3463,38 @@ internal fun AskLine.manageShown(lane: ManageLane): ManageShown {
         story = null,
         lines = listOfNotNull(why.takeIf { it.isNotBlank() }?.let { "Why: $it" }),
     )
+}
+
+/** How often the answers of [BenflixRequestsViewModel.loadRatings] are put on the page while they come in */
+private const val RATINGS_BATCH_MS = 300L
+
+/** Age ratings and "already here" answers from Seerr, kept for a quarter of an hour so Requests opens fast again */
+private object KeptRatings {
+    class Kept(
+        val rating: ItemRating,
+        val here: Boolean?,
+        val adult: Boolean,
+        val at: Long,
+    )
+
+    private const val KEEP_MS = 15 * 60_000L
+    private const val MAX = 4_000
+    private val kept = java.util.concurrent.ConcurrentHashMap<String, Kept>()
+
+    fun get(
+        who: String,
+        key: String,
+        now: Long,
+    ): Kept? = kept["$who|$key"]?.takeIf { now - it.at < KEEP_MS }
+
+    fun put(
+        who: String,
+        key: String,
+        rating: ItemRating,
+        here: Boolean?,
+        adult: Boolean,
+    ) {
+        if (kept.size > MAX) kept.clear()
+        kept["$who|$key"] = Kept(rating, here, adult, System.currentTimeMillis())
+    }
 }

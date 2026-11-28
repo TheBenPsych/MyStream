@@ -917,6 +917,28 @@ class DoorDataService
             return ids.mapNotNull { found[it] }
         }
 
+        /** A big list kept in memory for a short while (All movies, All shows, Collections, See all) */
+        class Kept(
+            val at: Long,
+            val items: List<BaseItem>,
+        )
+
+        private val kept = java.util.concurrent.ConcurrentHashMap<String, Kept>()
+
+        /**
+         * Speed check (Ben 2026-11-28): the big grids asked Tower for the whole library on every visit, and again
+         * each time you came Back from a title. The last answer is kept for [KEEP_MS] so the grid shows at once.
+         */
+        fun keptList(key: String): Kept? = kept[key]?.takeIf { System.currentTimeMillis() - it.at < KEEP_MS }
+
+        /** Remembers a list for [keptList]. An empty answer (Tower didn't reply) never replaces a good one. */
+        fun keepList(
+            key: String,
+            items: List<BaseItem>,
+        ) {
+            if (items.isNotEmpty() || kept[key] == null) kept[key] = Kept(System.currentTimeMillis(), items)
+        }
+
         private suspend fun items(request: GetItemsRequest): List<BaseItem> =
             safe {
                 api.itemsApi
@@ -951,6 +973,9 @@ class DoorDataService
             private const val JUST_RELEASED_EPISODES = 300
             private const val JUST_RELEASED_CACHE_MS = 10L * 60 * 1000
             private const val EVERYTHING_LIMIT = 5000
+
+            /** How long a big grid's list is shown from memory before it must be asked for again */
+            private const val KEEP_MS = 10 * 60_000L
             private const val BECAUSE_TRIES = 4
             private const val HISTORY_MAX = 120
             private const val BECAUSE_MIN = 5

@@ -807,13 +807,34 @@ class DoorViewModel
                     movies -> libs.ofKind(LibraryKind.MOVIES) + libs.ofKind(LibraryKind.STANDUP)
                     else -> libs.showLibraries()
                 }
-            return data.everything(userId, parents, type)
+            return data.everything(userId, parents, type).also { data.keepList(listKey("all-${door.name}-$movies"), it) }
         }
+
+        private fun listKey(what: String) = "${serverRepository.currentUser?.id}-${KidsMode.level}-$what"
+
+        /** The list a grid showed last time, if it is still fresh enough to show at once ([DoorDataService.keptList]) */
+        fun keptEverything(
+            door: BenflixDoor,
+            movies: Boolean = door == BenflixDoor.MOVIES,
+        ): DoorDataService.Kept? = data.keptList(listKey("all-${door.name}-$movies"))
+
+        fun keptBoxSets(): DoorDataService.Kept? = data.keptList(listKey("boxsets"))
+
+        fun keptRow(
+            door: BenflixDoor,
+            key: String,
+        ): DoorDataService.Kept? = data.keptList(listKey("row-${door.name}-$key"))
+
+        fun keepRow(
+            door: BenflixDoor,
+            key: String,
+            items: List<BaseItem>,
+        ) = data.keepList(listKey("row-${door.name}-$key"), items)
 
         /** Movies > Collections: every box set on Tower (Harry Potter Collection and so on) */
         suspend fun boxSets(): List<BaseItem> {
             val userId = serverRepository.currentUser?.id ?: return emptyList()
-            return data.boxSets(userId)
+            return data.boxSets(userId).also { data.keepList(listKey("boxsets"), it) }
         }
 
         /** The anime library for the Anime page's Genres tab (shows first, else movies) */

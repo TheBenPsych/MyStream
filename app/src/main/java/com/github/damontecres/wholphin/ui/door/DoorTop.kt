@@ -32,7 +32,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -118,7 +120,16 @@ internal fun DoorArtUrl(
     val bright = light != null && light > BRIGHT_ART
     LaunchedEffect(bright) { onBright(bright) }
     // Side menu A (Ben 2026-11-24): the art stays put while the open menu pushes the words and rows right
-    Box(Modifier.fillMaxSize().underRail().stayPut()) {
+    // Speed check (Ben 2026-11-28): the art, its dimmer and the two shades were four full-screen layers painted again
+    // on every frame while the rows slide. They are flattened into one saved picture that is only painted again when
+    // the art itself changes. It looks the same.
+    Box(
+        Modifier
+            .fillMaxSize()
+            .underRail()
+            .stayPut()
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
+    ) {
         Crossfade(targetState = shownUrl, animationSpec = tween(ART_FADE_MS), label = "doorArt") { picture ->
             if (picture != null) {
                 AsyncImage(

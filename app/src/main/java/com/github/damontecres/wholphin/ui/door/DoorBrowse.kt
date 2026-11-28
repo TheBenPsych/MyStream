@@ -144,8 +144,16 @@ private fun AllTitlesPage(
     viewModel: DoorViewModel,
     modifier: Modifier = Modifier,
 ) {
-    var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
-    LaunchedEffect(door, movies) { loaded = viewModel.everything(door, movies) }
+    // Speed check (Ben 2026-11-28): the list from a moment ago shows at once (also when you come Back from a title);
+    // Tower is only asked again when that list is more than half a minute old, and the answer swaps in quietly
+    val kept = remember(door, movies) { viewModel.keptEverything(door, movies) }
+    var loaded by remember(door, movies) { mutableStateOf(kept?.items) }
+    LaunchedEffect(door, movies) {
+        if (kept.isStale()) {
+            val fresh = viewModel.everything(door, movies)
+            if (fresh.isNotEmpty() || loaded == null) loaded = fresh
+        }
+    }
     val items = loaded ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     val anime = door == BenflixDoor.ANIME
     TitleGrid(
@@ -180,8 +188,14 @@ private fun BoxSetsPage(
     viewModel: DoorViewModel,
     modifier: Modifier = Modifier,
 ) {
-    var loaded by remember { mutableStateOf<List<BaseItem>?>(null) }
-    LaunchedEffect(door) { loaded = viewModel.boxSets() }
+    val kept = remember(door) { viewModel.keptBoxSets() }
+    var loaded by remember(door) { mutableStateOf(kept?.items) }
+    LaunchedEffect(door) {
+        if (kept.isStale()) {
+            val fresh = viewModel.boxSets()
+            if (fresh.isNotEmpty() || loaded == null) loaded = fresh
+        }
+    }
     val items = loaded ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     TitleGrid(
         title = "Collections",
@@ -205,8 +219,17 @@ fun DoorRowGridPage(
 ) {
     val door = BenflixDoor.entries.firstOrNull { it.name == destination.door } ?: BenflixDoor.MOVIES
     val movies = door == BenflixDoor.MOVIES || destination.key == DoorViewModel.ANIME_MOVIES
-    var items by remember { mutableStateOf<List<BaseItem>?>(null) }
-    LaunchedEffect(destination) { items = viewModel.fullRow(door, destination.key).distinctBy { it.id } }
+    // (My List is small and changes whenever you add or remove a title, so it is always asked for fresh)
+    val mine = destination.key == DoorViewModel.MY_LIST
+    val kept = remember(destination) { if (mine) null else viewModel.keptRow(door, destination.key) }
+    var items by remember(destination) { mutableStateOf(kept?.items) }
+    LaunchedEffect(destination) {
+        if (kept.isStale()) {
+            val fresh = viewModel.fullRow(door, destination.key).distinctBy { it.id }
+            if (!mine) viewModel.keepRow(door, destination.key, fresh)
+            if (mine || fresh.isNotEmpty() || items == null) items = fresh
+        }
+    }
     val list = items ?: return LoadingPage(modifier.fillMaxSize(), shape = LoadingShape.WALL)
     // Top 10 and "Because you watched" keep their own order first; the rest open on the person's last sort
     val history = destination.key == DoorViewModel.HISTORY
@@ -245,3 +268,8 @@ private fun PageTitle(title: String) {
                 .padding(top = 4.dp, bottom = 14.dp),
     )
 }
+
+/** A kept list older than this is shown at once but also asked for again in the background */
+private const val FRESH_MS = 30_000L
+
+private fun DoorDataService.Kept?.isStale() = this == null || System.currentTimeMillis() - at > FRESH_MS
