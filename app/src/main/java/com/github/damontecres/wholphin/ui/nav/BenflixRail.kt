@@ -41,6 +41,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -258,7 +259,51 @@ class RailModel(
     val isTop: () -> Boolean = { true },
 )
 
-/** When a page was last picked in the side menu (shared by every page's own menu) */
+/**
+ * Speed + navigation check (Ben 2026-11-27, finding 12): one side menu for the whole app. Every page used to build
+ * its own copy, so each page change built the menu again and cross-faded two of them. Now the app draws it once,
+ * beside the pages, and the page showing just says what it should show ([model]), where the focus goes when the
+ * menu closes ([contentFocus]) and what the remote's shortcut buttons do ([onKey]).
+ */
+class SharedRail {
+    var model by mutableStateOf<RailModel?>(null)
+    var contentFocus by mutableStateOf<FocusRequester?>(null)
+    val control = RailControl()
+
+    /** The page [onKey] belongs to (keys are only passed on while that page is the one showing) */
+    @Volatile var keysFor: Destination? = null
+
+    @Volatile var onKey: ((androidx.compose.ui.input.key.KeyEvent) -> Boolean)? = null
+}
+
+val LocalSharedRail = androidx.compose.runtime.staticCompositionLocalOf<SharedRail?> { null }
+
+/** The one side menu, drawn over the pages. [show] is false on full-screen pages (players, games) */
+@Composable
+fun SharedRailHost(
+    shared: SharedRail,
+    show: Boolean,
+) {
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val isTv =
+        com.github.damontecres.wholphin.ui.touch
+            .rememberIsTv()
+    val wide = isTv || config.screenWidthDp > config.screenHeightDp || config.smallestScreenWidthDp >= 600
+    val model = shared.model
+    val focus = shared.contentFocus
+    // It comes back with the page (the same quick fade); leaving for a player it just goes, the player covers it
+    AnimatedVisibility(
+        visible = show && wide && model != null && focus != null,
+        enter = fadeIn(tween(SHARED_FADE_MS)),
+        exit = androidx.compose.animation.ExitTransition.None,
+    ) {
+        if (model != null && focus != null) BenflixRail(model = model, contentFocus = focus, control = shared.control)
+    }
+}
+
+private const val SHARED_FADE_MS = 250
+
+/** When a page was last picked in the side menu */
 internal object RailPick {
     @Volatile
     var at: Long = 0L
@@ -366,11 +411,19 @@ fun BenflixRail(
     LaunchedEffect(control.profileRequests) {
         if (control.profileRequests > 0) openProfilePanel()
     }
-    // Back closes the panel first, then tucks the rail away
-    BackHandler(enabled = panelOpen) { closePanel() }
-    BackHandler(enabled = railFocused && !panelOpen && !model.alwaysOpen) {
-        opened = false
-        contentFocus.tryRequestFocus()
+    // One side menu for the whole app (Ben 2026-11-27): it outlives the pages, so the waits below always look at
+    // the page showing now and not the one that was showing when they started
+    val now by rememberUpdatedState(model)
+    val pageFocus by rememberUpdatedState(contentFocus)
+    // Back closes the panel first, then tucks the rail away. (Each is added only while it is needed: the newest
+    // Back listener wins, and a page opened after the menu was built would otherwise get Back first.)
+    if (panelOpen) {
+        BackHandler { closePanel() }
+    } else if (railFocused && !model.alwaysOpen) {
+        BackHandler {
+            opened = false
+            contentFocus.tryRequestFocus()
+        }
     }
 
     // The one hand-off from the menu to the page (Ben 2026-11-18, the Wholphin way): while the tucked menu holds
@@ -382,23 +435,20 @@ fun BenflixRail(
         repeat(HANDOFF_TRIES) {
             delay(HANDOFF_STEP_MS)
             if (!railFocused || opened || panelOpen) return@LaunchedEffect
-            // A page was picked: this menu belongs to the page that is fading away, so it never hands the focus
-            // back to that page (the new page's own menu does the hand-off below)
-            if (!model.isTop()) return@LaunchedEffect
-            contentFocus.tryRequestFocus()
+            // A page was picked: until the new page is the one showing, there is nothing to hand the focus to
+            // (it never goes back to the page that is fading away)
+            if (now.isTop()) pageFocus.tryRequestFocus()
         }
     }
-    // Every page has its own menu. Right after a pick, the new page's menu keeps offering the focus to the new
-    // page until the page has it (or you open the menu with Left / ☰ Menu), so the focus can't end up nowhere
-    // and then fall onto the menu.
-    LaunchedEffect(Unit) {
-        if (model.alwaysOpen) return@LaunchedEffect
+    // Right after a pick, the menu keeps offering the focus to the new page until the page has it (or you open
+    // the menu with Left / ☰ Menu), so the focus can't end up nowhere and then fall onto the menu.
+    LaunchedEffect(model.destination) {
+        if (now.alwaysOpen) return@LaunchedEffect
         if (android.os.SystemClock.uptimeMillis() - RailPick.at > PICK_FRESH_MS) return@LaunchedEffect
         repeat(HANDOFF_TRIES) {
             delay(HANDOFF_STEP_MS)
             if (control.contentFocused || opened || panelOpen) return@LaunchedEffect
-            if (!model.isTop()) return@LaunchedEffect
-            contentFocus.tryRequestFocus()
+            if (now.isTop()) pageFocus.tryRequestFocus()
         }
     }
     // The open menu let go of the focus without Right, Back or a pick (it can blink off for a moment while you
