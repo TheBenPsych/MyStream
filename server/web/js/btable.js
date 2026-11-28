@@ -792,6 +792,6 @@
     setup(run);
   };
 
-  // For tests in Node (node btable.js): the rules only
-  if (typeof module !== "undefined") module.exports = { Checkers, Chess, FourRow, FiveDice, Solitaire, boxScore };
+  // The rules on their own, for tests
+  B.tableRules = { Checkers, Chess, FourRow, FiveDice, Solitaire, boxScore };
 })();
