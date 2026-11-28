@@ -366,7 +366,7 @@ def _size(mb):
 
 def _oom_words(k, st=None):
     """One memory kill line in plain words"""
-    who = "Tower itself" if k["app"] == "Tower" else k["app"]
+    who = "Tower itself" if k["app"] == "Tower" else "an app" if k["app"] in ("", "?") else k["app"]
     prog = f" ({k['prog']})" if k["prog"] and k["prog"] != "?" and k["prog"] != k["app"] else ""
     times = f"{k['times']} time{'' if k['times'] == 1 else 's'}"
     if k["own"]:
