@@ -912,7 +912,9 @@ fun NavDrawer(
     val alwaysOpen = !isTv
     val railWidth = if (alwaysOpen) railOpenWidth(easy) else railTuckedWidth(easy)
     val contentFocus = remember { FocusRequester() }
-    val railControl = remember { RailControl() }
+    // One side menu for the whole app (speed + navigation check, finding 12): this page only says what it shows
+    val shared = LocalSharedRail.current
+    val railControl = shared?.control ?: remember { RailControl() }
     // ☰ Menu: a short press opens the rail, holding it opens your profile panel (approved ix-holdmenu)
     var menuHeld by remember { mutableStateOf(false) }
     val railModel =
@@ -962,40 +964,50 @@ fun NavDrawer(
             modifier = Modifier.onFocusChanged { topBarFocused = it.hasFocus },
         )
     }
-    Box(
-        modifier =
-            modifier.onPreviewKeyEvent { event ->
-                val native = event.nativeKeyEvent
-                if (RemoteShortcuts.onKey(
-                        native = native,
-                        destination = destination,
-                        kids = kids,
-                        focusManager = focusManager,
-                        scope = shortcutScope,
-                        goHome = { nav.goToHome() },
-                        openSearch = onClickSearch,
-                        play = { viewModel.quickPlay(it) },
-                        musicHold = { viewModel.musicHold(kids) },
-                        musicTap = { viewModel.musicTap() },
-                    )
-                ) {
-                    true
-                } else if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU) {
-                    if (native.action == android.view.KeyEvent.ACTION_DOWN) {
-                        if (native.repeatCount == 0) menuHeld = false
-                        if (native.repeatCount == MENU_HOLD_REPEATS) {
-                            menuHeld = true
-                            railControl.openProfile()
-                        }
-                    } else if (native.action == android.view.KeyEvent.ACTION_UP && !menuHeld) {
-                        railControl.open()
-                    }
-                    true
-                } else {
-                    false
+    val onKey: (androidx.compose.ui.input.key.KeyEvent) -> Boolean = { event ->
+        val native = event.nativeKeyEvent
+        if (RemoteShortcuts.onKey(
+                native = native,
+                destination = destination,
+                kids = kids,
+                focusManager = focusManager,
+                scope = shortcutScope,
+                goHome = { nav.goToHome() },
+                openSearch = onClickSearch,
+                play = { viewModel.quickPlay(it) },
+                musicHold = { viewModel.musicHold(kids) },
+                musicTap = { viewModel.musicTap() },
+            )
+        ) {
+            true
+        } else if (native.keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            if (native.action == android.view.KeyEvent.ACTION_DOWN) {
+                if (native.repeatCount == 0) menuHeld = false
+                if (native.repeatCount == MENU_HOLD_REPEATS) {
+                    menuHeld = true
+                    railControl.openProfile()
                 }
-            },
-    ) {
+            } else if (native.action == android.view.KeyEvent.ACTION_UP && !menuHeld) {
+                railControl.open()
+            }
+            true
+        } else {
+            false
+        }
+    }
+    val isTop = railModel.isTop
+    if (shared != null) {
+        // (after every redraw of this page, so the menu always has this page's newest buttons)
+        androidx.compose.runtime.SideEffect {
+            if (isTop()) {
+                shared.model = railModel
+                shared.contentFocus = contentFocus
+                shared.onKey = onKey
+                shared.keysFor = destination
+            }
+        }
+    }
+    Box(modifier = if (shared == null) modifier.onPreviewKeyEvent(onKey) else modifier) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -1003,7 +1015,8 @@ fun NavDrawer(
                 // Side menu A (Ben 2026-11-24, like Wholphin): the open menu pushes the page right. Only the layer
                 // moves (read while drawing), so the page is never measured again during the slide.
                 .graphicsLayer { translationX = railPushNow() }
-                .onFocusChanged { railControl.contentFocused = it.hasFocus }
+                // (the page that is fading away never speaks for the page showing now)
+                .onFocusChanged { if (it.hasFocus || isTop()) railControl.contentFocused = it.hasFocus }
                 .focusRequester(contentFocus)
                 .focusRestorer(),
         ) {
@@ -1061,11 +1074,13 @@ fun NavDrawer(
                 }
             }
         }
-        BenflixRail(
-            model = railModel,
-            contentFocus = contentFocus,
-            control = railControl,
-        )
+        if (shared == null) {
+            BenflixRail(
+                model = railModel,
+                contentFocus = contentFocus,
+                control = railControl,
+            )
+        }
     }
 }
 

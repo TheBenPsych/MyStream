@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -89,52 +92,65 @@ fun ApplicationContent(
             )
         }
         val navDrawerListState = rememberLazyListState()
-        NavDisplay(
-            backStack = navigationManager.backStack,
-            onBack = { navigationManager.goBack() },
-            // Opening a door from Home: the door's colour already covers the screen, so swap the page in
-            // at once underneath it. A cross-fade here let Home's doors show through as the colour faded (Ben).
-            // Everything else keeps the usual fade.
-            transitionSpec = {
-                if (com.github.damontecres.wholphin.ui.main.DoorWipe.covering) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    fadeIn(tween(NAV_FADE_MS)) togetherWith fadeOut(tween(NAV_FADE_MS))
-                }
+        // One side menu for the whole app: the pages change beside it instead of each building their own
+        val sharedRail = remember { SharedRail() }
+        Box(
+            Modifier.fillMaxSize().onPreviewKeyEvent { event ->
+                // The remote's shortcut buttons, wherever the focus is (page or menu)
+                val onKey = sharedRail.onKey
+                onKey != null && sharedRail.keysFor == navigationManager.backStack.lastOrNull() && onKey(event)
             },
-            entryDecorators =
-                listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator(),
-                ),
-            entryProvider = { key ->
-                key as Destination
-                val contentKey = "${key}_${server?.id}_${user?.id}"
-                NavEntry(key, contentKey = contentKey) {
-                    if (key.fullScreen) {
-                        DestinationContent(
-                            destination = key,
-                            preferences = preferences,
-                            onClearBackdrop = viewModel::clearBackdrop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else if (user != null && server != null) {
-                        NavDrawer(
-                            destination = key,
-                            preferences = preferences,
-                            user = user,
-                            server = server,
-                            drawerState = drawerState,
-                            navDrawerListState = navDrawerListState,
-                            onClearBackdrop = viewModel::clearBackdrop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        ErrorMessage("Trying to go to $key without a user logged in", null)
-                    }
-                }
-            },
-        )
+        ) {
+            CompositionLocalProvider(LocalSharedRail provides sharedRail) {
+                NavDisplay(
+                    backStack = navigationManager.backStack,
+                    onBack = { navigationManager.goBack() },
+                    // Opening a door from Home: the door's colour already covers the screen, so swap the page in
+                    // at once underneath it. A cross-fade here let Home's doors show through as the colour faded (Ben).
+                    // Everything else keeps the usual fade.
+                    transitionSpec = {
+                        if (com.github.damontecres.wholphin.ui.main.DoorWipe.covering) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else {
+                            fadeIn(tween(NAV_FADE_MS)) togetherWith fadeOut(tween(NAV_FADE_MS))
+                        }
+                    },
+                    entryDecorators =
+                        listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
+                    entryProvider = { key ->
+                        key as Destination
+                        val contentKey = "${key}_${server?.id}_${user?.id}"
+                        NavEntry(key, contentKey = contentKey) {
+                            if (key.fullScreen) {
+                                DestinationContent(
+                                    destination = key,
+                                    preferences = preferences,
+                                    onClearBackdrop = viewModel::clearBackdrop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else if (user != null && server != null) {
+                                NavDrawer(
+                                    destination = key,
+                                    preferences = preferences,
+                                    user = user,
+                                    server = server,
+                                    drawerState = drawerState,
+                                    navDrawerListState = navDrawerListState,
+                                    onClearBackdrop = viewModel::clearBackdrop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                ErrorMessage("Trying to go to $key without a user logged in", null)
+                            }
+                        }
+                    },
+                )
+            }
+            SharedRailHost(shared = sharedRail, show = top?.fullScreen == false)
+        }
         // Picking a door on Home: its colour fills the screen and fades into the door's page
         com.github.damontecres.wholphin.ui.main
             .DoorWipeOverlay()
