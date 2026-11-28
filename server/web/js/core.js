@@ -20,6 +20,7 @@ const P = {
   // Navigation redesign: the taller Xbox-style controller, with a gap around the stick
   pad: '<path d="M7.2 4.8h9.6c2.4 0 4 1.5 4.6 3.9l1.3 6.6c.5 2.6-1.1 4.4-3.1 4.4-1.4 0-2.3-.8-3-1.9l-1.1-1.8H8.5l-1.1 1.8c-.7 1.1-1.6 1.9-3 1.9-2 0-3.6-1.8-3.1-4.4l1.3-6.6c.6-2.4 2.2-3.9 4.6-3.9z"/><path d="M7 9.4v4M5 11.4h4M12 8.3h.01M16.6 10h.01M18.2 12.6h.01"/>',
   home: '<path d="M3 11.5 12 4l9 7.5M5 10v10h14V10"/>',
+  dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   filter: '<path d="M4 7h16M7 12h10M10 17h4"/>',
   down: '<path d="m6 9 6 6 6-6"/>', up: '<path d="m18 15-6-6-6 6"/>',
@@ -1058,7 +1059,7 @@ B.PAGE_TABS = {
   // Ben 2026-11-18: Live TV has tabs too (no slide-out menu any more)
   live: [["Guide", "#/live"], ["Favourites", "#/live?v=fav"], ["Sports", "#/live?v=sports"], ["Recently watched", "#/live?v=recent"]],
   // Glowfin Games (G1)
-  games: [["For you", "#/games"], ["Ember Road", "#/games?p=ember"], ["Movie games", "#/games?p=movie"], ["Consoles", "#/games?p=consoles"], ["Party", "#/games?p=party"], ["Scores", "#/games?p=scores"]],
+  games: [["For you", "#/games"], ["Ember Road", "#/games?p=ember"], ["Movie games", "#/games?p=movie"], ["Consoles", "#/games?p=consoles"], ["Party", "#/games?p=party"], ["Table", "#/games?p=table"], ["Scores", "#/games?p=scores"]],
 };
 // Which page's tabs a link belongs to, and which tab is on
 B.tabsFor = (hash) => {

@@ -36,6 +36,15 @@
     { key: "CLOSEST", title: "Closest wins", short: "Guess the year, length or score. Closest wins.", colors: C("#65A30D", "#1A2E05"), kids: true },
     { key: "CAPTION", title: "Caption this", short: "Write a funny caption for a real scene, then vote.", colors: C("#F43F5E", "#4C0519"), kids: true },
   ];
+  // Table games (2026-11-28): the same as the app's Table tab (ui/games/table/TableGames.kt), played in js/btable.js
+  const TABLE = [
+    { key: "TABLE_CHECKERS", game: "CHECKERS", title: "Checkers", group: "Board game", players: "2 players", minutes: "About 15 min", about: "Jump your way across the board. Pass the device, or play Glowfin.", steps: ["Move one square forward on the diagonal.", "Jumping a piece takes it, and you must jump when you can.", "Reach the far side to become a king that moves both ways."], versus: true, colors: C("#DC2626", "#450A0A") },
+    { key: "TABLE_CHESS", game: "CHESS", title: "Chess", group: "Board game", players: "2 players", minutes: "About 30 min", about: "The full game, with every rule. Pass the device, or play Glowfin at three levels.", steps: ["Pick a piece. Dots show where it can go.", "Trap the other king to win.", "Take back a move from the menu."], versus: true, colors: C("#4338CA", "#1E1B4B") },
+    { key: "TABLE_FOUR_ROW", game: "FOUR_ROW", title: "Four in a Row", group: "Board game", players: "2 players", minutes: "About 5 min", about: "Drop discs into the frame. First to get four in a line wins.", steps: ["Pick a column.", "Your disc drops to the bottom.", "Four in a row in any direction wins."], versus: true, colors: C("#CA8A04", "#422006") },
+    { key: "TABLE_FIVE_DICE", game: "FIVE_DICE", title: "Five Dice", group: "Dice game", players: "1 to 6 players", minutes: "About 15 min", about: "Roll five dice up to three times a turn, keep the ones you like, and fill your score sheet.", steps: ["Roll, then click a die to keep it for the next roll.", "After up to three rolls, pick a box on your sheet.", "13 turns each. The biggest total wins."], versus: true, colors: C("#9333EA", "#3B0764") },
+    { key: "TABLE_SOLITAIRE", game: "SOLITAIRE", title: "Solitaire", group: "Card game", players: "1 player", minutes: "About 10 min", about: "The classic one-player card game. Build four piles from ace to king, one suit each.", steps: ["Move cards onto the next card down in the other colour.", "Click a card, then where it goes. Double-click sends it home.", "Only a king goes in an empty space."], versus: false, colors: C("#7C3AED", "#2E1065") },
+  ];
+  B.bgTableGames = TABLE;
   const kids = () => !!(B.me && B.me.kids);
   const find = (key) => {
     const p = PUZZLES.find((g) => g.key === key);
@@ -44,6 +53,8 @@
     if (a) return Object.assign({ kind: "arcade", board: a.key, ranked: "most points", steps: [a.how], about: a.short, minutes: "A minute or two", icon: "pad" }, a);
     const y = PARTY.find((g) => g.key === key);
     if (y) return Object.assign({ kind: "party", about: y.short, steps: [], icon: "phone" }, y);
+    const t = TABLE.find((g) => g.key === key);
+    if (t) return Object.assign({ kind: "table", short: t.about, icon: "dice", kids: true }, t);
     return null;
   };
 
@@ -104,7 +115,7 @@
   const describe = (g) => {
     const t = g.board ? top3(g.board) : [];
     const best = g.board ? B.bgBest(g.board) : 0;
-    const kick = [g.kind === "arcade" ? "Arcade · Play alone" : g.kind === "party" ? "Party · 3 to 8 players" : "Movie puzzle", best ? `Your best ${best.toLocaleString()}` : ""].filter(Boolean).join(" · ");
+    const kick = [g.kind === "arcade" ? "Arcade · Play alone" : g.kind === "party" ? "Party · 3 to 8 players" : g.kind === "table" ? `${g.group} · ${g.players}` : "Movie puzzle", best ? `Your best ${best.toLocaleString()}` : ""].filter(Boolean).join(" · ");
     const works = g.kind === "arcade" ? ["Remote", "Controller", "Phone"] : g.kind === "party" ? ["Phone"] : ["Remote", "Phone"];
     return `<div class="kick">${esc(kick)}</div><div class="t">${esc(g.title)}</div><div class="ov">${esc(g.about || g.short)}</div>${t.length ? `<div class="bg-top3">${t.map((s, i) => `<span>${i + 1}. ${esc(s.name)} ${s.score.toLocaleString()}</span>`).join("")}</div>` : ""}<span class="gw-chips">${works.map((x) => `<span class="gw-chip">${x}</span>`).join("")}</span>`;
   };
@@ -118,6 +129,7 @@
       puzzles: () => B.row("Movie puzzles", puzzles.map((g) => tile(g, badge(g.board)))),
       party: () => B.row("Party · needs phones", party.map((g) => tile(g, "Needs the TV and phones"))),
       arcade: () => B.row("Arcade", [...ARCADE.map((g) => tile(g, badge(g.key))), `<a class="poster bgm" href="#/playb/surprise" title="Surprise me"><div class="im"><img class="art" src="${art({ key: "SURPRISE" })}" alt=""></div><div class="cap"><span class="nm">Surprise me</span><small>Random</small></div></a>`]),
+      table: () => B.row("Board and dice games", TABLE.filter((g) => g.group !== "Card game").map((g) => tile(g, g.players))) + B.row("Card games", TABLE.filter((g) => g.group === "Card game").map((g) => tile(g, g.players))),
       ember: () => `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Glowfin's own adventure game. Plays on the TV with your phone.</span></a></div>`,
     };
     return (keys || Object.keys(parts)).map((k) => (parts[k] ? parts[k]() : "")).join("");
@@ -161,9 +173,10 @@
     const best = g.board ? B.bgBest(g.board) : 0;
     const t = g.board ? top3(g.board) : [];
     const party = g.kind === "party";
+    const table = g.kind === "table";
     // Glowfin game page (2026-11-18): the cover blurred behind the top, title on the left, the cover on the right,
     // then rows: How to play, Leaderboard, More Glowfin games, About this game
-    const kindName = g.kind === "arcade" ? "Glowfin arcade" : party ? "Glowfin party game" : "Glowfin movie puzzle";
+    const kindName = g.kind === "arcade" ? "Glowfin arcade" : table ? "Glowfin table game" : party ? "Glowfin party game" : "Glowfin movie puzzle";
     const steps = (g.steps || []).filter(Boolean);
     const howHtml = steps.length || (g.kind === "puzzle" && !kids())
       ? `<h3 class="tp-h">How to play</h3><div class="bg-how">${steps.map((st, i) => `<div class="bg-step"><b>${i + 1}</b><span>${esc(st)}</span></div>`).join("")}${g.kind === "puzzle" && !kids() ? `<div class="bg-step bg-anime"><span class="dim">Anime in the questions</span><button class="chip" id="bgAnime"></button></div>` : ""}</div>`
@@ -171,27 +184,28 @@
     const boardHtml = g.board
       ? `<h3 class="tp-h">Leaderboard · all time</h3><div class="bg-board">${t.length ? t.map((sc, i) => `<div><span><b class="m${i + 1}">${i + 1}</b>${esc(sc.name)}</span><b>${sc.score.toLocaleString()}</b></div>`).join("") : `<div><span class="dim">No scores yet. Be the first!</span></div>`}<div class="you"><span>Your best</span><b>${best ? best.toLocaleString() : "None yet"}</b></div><small class="dim">Ranked by ${esc(g.ranked || "most points")}</small></div>`
       : "";
-    const sameKind = g.kind === "arcade" ? ARCADE.map((x) => find(x.key)) : party ? PARTY.map((x) => find(x.key)) : PUZZLES.map((x) => find(x.key));
+    const sameKind = g.kind === "arcade" ? ARCADE.map((x) => find(x.key)) : table ? TABLE.map((x) => find(x.key)) : party ? PARTY.map((x) => find(x.key)) : PUZZLES.map((x) => find(x.key));
     const more = sameKind.filter((x) => x && x.key !== g.key && (!kids() || x.kind === "arcade" || x.kids));
+    const moreName = g.kind === "arcade" ? "More Glowfin arcade" : table ? "More table games" : party ? "More party games" : "More movie puzzles";
     B.titlePage({
       title: g.title,
       color: DOORS.games.color,
       rows: true,
       kicker: kindName,
       cover: { url: art(g), ratio: 2 / 3 },
-      info: [g.kind === "arcade" ? "Arcade" : party ? "Party" : "Movie puzzle", party ? "Needs phones · 3 to 8 players" : "1 player", g.minutes || "", best ? `Your best ${best.toLocaleString()}` : ""],
+      info: [g.kind === "arcade" ? "Arcade" : table ? g.group : party ? "Party" : "Movie puzzle", party ? "Needs phones · 3 to 8 players" : table ? g.players : "1 player", g.minutes || "", best ? `Your best ${best.toLocaleString()}` : ""],
       story: g.about || g.short,
-      status: party ? "Plays on the TV · everyone answers on their Android phone" : g.kind === "arcade" ? "Works with: Keyboard · Controller · Touch" : "Works with: Mouse · Keyboard · Touch",
+      status: party ? "Plays on the TV · everyone answers on their Android phone" : table ? (g.versus ? "Works with: Mouse · Keyboard · Touch · Play Glowfin or a friend" : "Works with: Mouse · Keyboard · Touch") : g.kind === "arcade" ? "Works with: Keyboard · Controller · Touch" : "Works with: Mouse · Keyboard · Touch",
       buttons: [
         party
           ? { label: "Host on the TV", icon: "tv", off: "Party games run on the TV, and everyone answers on their own Android phone. Start it from Games on the TV." }
-          : { label: best ? "Play again" : "Play", icon: "play", href: `#/playb/${g.key}`, note: g.kind === "arcade" ? g.how : "Click an answer, or use the arrow keys and Enter. Number keys pick a choice too." },
+          : { label: best ? "Play again" : "Play", icon: "play", href: `#/playb/${g.key}`, note: g.kind === "arcade" ? g.how : table ? "Click to pick, or use the arrow keys and Enter. Esc opens the menu." : "Click an answer, or use the arrow keys and Enter. Number keys pick a choice too." },
         g.board ? { label: "Leaderboard", icon: "chart", onClick: () => { const r = $("#tpBoard"); if (r) r.scrollIntoView({ behavior: "smooth", block: "center" }); } } : null,
       ].filter(Boolean),
       tabs: [
         { name: "How to play", id: "tpHow", html: howHtml, skip: !howHtml },
         { name: "Leaderboard · all time", id: "tpBoard", html: boardHtml, skip: !boardHtml },
-        { name: g.kind === "arcade" ? "More Glowfin arcade" : party ? "More party games" : "More movie puzzles", id: "tpLike", html: more.length ? `<h3 class="tp-h">${g.kind === "arcade" ? "More Glowfin arcade" : party ? "More party games" : "More movie puzzles"}</h3><div class="bg-more">${more.map((x) => tile(x, x.kind === "arcade" ? "Arcade" : x.kind === "party" ? "Party" : "Movie puzzle")).join("")}</div>` : "", skip: !more.length },
+        { name: moreName, id: "tpLike", html: more.length ? `<h3 class="tp-h">${moreName}</h3><div class="bg-more">${more.map((x) => tile(x, x.kind === "arcade" ? "Arcade" : x.kind === "party" ? "Party" : x.kind === "table" ? x.group : "Movie puzzle")).join("")}</div>` : "", skip: !more.length },
       ],
       aboutStory: g.about || g.short,
     });
@@ -231,6 +245,7 @@
     };
     try {
       if (g.kind === "arcade") B.bgArcade(ctx);
+      else if (g.kind === "table") B.bgTable(ctx);
       else B.bgPuzzle(ctx);
     } catch (e) {
       console.warn(e);

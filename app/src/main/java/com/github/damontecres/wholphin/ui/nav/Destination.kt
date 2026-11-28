@@ -350,6 +350,12 @@ sealed class Destination(
         val name: String,
     ) : Destination(true)
 
+    /** A Table game (Checkers, Chess, Solitaire…) by its [com.github.damontecres.wholphin.ui.games.table.TableGame] name */
+    @Serializable
+    data class TablePlay(
+        val name: String,
+    ) : Destination(true)
+
     /** Benflix: hosting a party game on this TV (PartyKind name) */
     @Serializable
     data class PartyHost(

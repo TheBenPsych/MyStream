@@ -47,6 +47,12 @@ enum class BenflixIcon(
     DOWN("M6 9l6 6 6-6"),
     REQUESTS("M4 13l2-8h12l2 8v6H4z", "M4 13h5l1 2h4l1-2h5"),
     STATS("M5 20V11M12 20V5M19 20v-6"),
+
+    // Table games tab: a die showing five
+    DICE(
+        "M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z",
+        "M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01",
+    ),
     GEAR(
         "M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0z",
         "M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1",

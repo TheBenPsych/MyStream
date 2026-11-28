@@ -50,6 +50,11 @@ internal fun gameCover(key: String): Int? =
         "FILM_CAN_STACK" -> R.drawable.game_cover_film_can_stack
         "MATINEE_MATCH" -> R.drawable.game_cover_matinee_match
         "EMBER", "EMBER_ROAD" -> R.drawable.game_cover_ember
+        "TABLE_SOLITAIRE" -> R.drawable.game_cover_table_solitaire
+        "TABLE_CHECKERS" -> R.drawable.game_cover_table_checkers
+        "TABLE_CHESS" -> R.drawable.game_cover_table_chess
+        "TABLE_FOUR_ROW" -> R.drawable.game_cover_table_four_row
+        "TABLE_FIVE_DICE" -> R.drawable.game_cover_table_five_dice
         "SURPRISE" -> R.drawable.game_cover_surprise
         else -> null
     }
