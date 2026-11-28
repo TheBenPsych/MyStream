@@ -51,6 +51,7 @@ import com.github.damontecres.wholphin.ui.cards.EpisodeStandIn
 import com.github.damontecres.wholphin.ui.cards.hasOwnPicture
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -206,10 +207,10 @@ fun EpisodesPanel(
                     val selected = season.id == state.seasonId
                     Button(
                         onClick = { viewModel.pickSeason(seriesId, season.id) },
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ButtonDefaults.shape(BenflixShapes.Small),
                         border =
                             com.github.damontecres.wholphin.ui.theme
-                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                                .glowfinButtonBorder(BenflixShapes.Small),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = if (selected) Color.White.copy(alpha = .85f) else Color.White.copy(alpha = .12f),
@@ -271,7 +272,7 @@ private fun EpisodePanelCard(
 ) {
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .08f),
@@ -279,7 +280,7 @@ private fun EpisodePanelCard(
             ),
         border =
             com.github.damontecres.wholphin.ui.theme
-                .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                .benflixFocusBorder(BenflixShapes.Card),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier =
             modifier
@@ -314,7 +315,7 @@ private fun EpisodePanelCard(
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(8.dp)
-                                .background(Color.White, RoundedCornerShape(6.dp))
+                                .background(Color.White, BenflixShapes.Small)
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }

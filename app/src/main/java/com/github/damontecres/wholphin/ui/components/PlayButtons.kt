@@ -414,9 +414,7 @@ val LocalAlwaysShowButtonLabels = staticCompositionLocalOf { false }
 val LocalFlatButtons = staticCompositionLocalOf { false }
 
 /** Benflix look A: the rounded rectangle shape of a flat button */
-private val FlatButtonShape =
-    androidx.compose.foundation.shape
-        .RoundedCornerShape(10.dp)
+private val FlatButtonShape get() = BenflixShapes.Card
 
 @Composable
 private fun flatShape() =

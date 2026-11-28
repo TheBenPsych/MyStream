@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,7 +51,7 @@ import java.time.LocalDateTime
 /** Posters are 2:3 */
 const val POSTER_RATIO = 2f / 3f
 
-private val PosterShape = BenflixShapes.Card
+private val PosterShape get() = BenflixShapes.Card
 
 /** The redesign's focus: a white outline only, no growing or dimming */
 @Composable
@@ -203,7 +202,7 @@ fun DoorPoster(
                             Modifier
                                 .align(Alignment.TopStart)
                                 .padding(6.dp)
-                                .background(BenflixColors.Text, RoundedCornerShape(6.dp))
+                                .background(BenflixColors.Text, BenflixShapes.Small)
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
@@ -235,7 +234,7 @@ fun DoorPoster(
                                 .padding(start = 6.dp, end = 6.dp, bottom = if (progress != null) 16.dp else 6.dp)
                                 .background(
                                     if (today) com.github.damontecres.wholphin.ui.theme.Glowfin.Aqua else Color(0xE00B0D1A),
-                                    RoundedCornerShape(6.dp),
+                                    BenflixShapes.Small,
                                 ).padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
@@ -246,7 +245,7 @@ fun DoorPoster(
                             .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                             .fillMaxWidth()
                             .height(4.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(BenflixShapes.Small)
                             .background(Color(0x99000000)),
                     ) {
                         Box(
@@ -374,7 +373,7 @@ fun BrowseTile(
     modifier: Modifier = Modifier,
     big: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

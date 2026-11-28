@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -61,6 +60,7 @@ import com.github.damontecres.wholphin.games.SideShow
 import com.github.damontecres.wholphin.games.SideShowItem
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
@@ -160,8 +160,8 @@ fun EmberPlay(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .border(3.dp, EmberText, RoundedCornerShape(6.dp))
-                        .background(EmberBox, RoundedCornerShape(6.dp))
+                        .border(3.dp, EmberText, BenflixShapes.Small)
+                        .background(EmberBox, BenflixShapes.Small)
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
                     PhaseContent(vm, e, isTv, first, onBag = { bag = true })
@@ -183,8 +183,8 @@ fun EmberPlay(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .border(2.dp, EmberText, RoundedCornerShape(6.dp))
-                        .background(EmberBox, RoundedCornerShape(6.dp))
+                        .border(2.dp, EmberText, BenflixShapes.Small)
+                        .background(EmberBox, BenflixShapes.Small)
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -199,7 +199,7 @@ fun EmberPlay(
                     .padding(top = 16.dp, end = 32.dp)
                     .width(380.dp)
                     .aspectRatio(shape)
-                    .border(2.dp, EmberGold, RoundedCornerShape(6.dp))
+                    .border(2.dp, EmberGold, BenflixShapes.Small)
                     .background(Color.Black),
             ) {
                 AndroidView(factory = { texture }, modifier = Modifier.fillMaxSize())
@@ -309,7 +309,7 @@ private fun Scene(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(6.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.55f), BenflixShapes.Small)
                     .padding(horizontal = 8.dp, vertical = 2.dp),
         )
     }
@@ -327,7 +327,7 @@ private fun StatTile(
 ) {
     Column(
         modifier
-            .background(EmberPanelDark, RoundedCornerShape(6.dp))
+            .background(EmberPanelDark, BenflixShapes.Small)
             .padding(horizontal = if (isTv) 8.dp else 5.dp, vertical = if (isTv) 4.dp else 3.dp),
     ) {
         Text(
@@ -428,7 +428,7 @@ private fun PartyPanel(
     }
     Box(
         modifier
-            .background(EmberPanel, RoundedCornerShape(10.dp))
+            .background(EmberPanel, BenflixShapes.Card)
             .padding(horizontal = if (isTv) 14.dp else 8.dp, vertical = if (isTv) 10.dp else 8.dp),
     ) {
         // TV: shrinks a little if a big party doesn't fit (the remote can't scroll this)
@@ -829,8 +829,8 @@ fun TypeBox(
                 Modifier
                     .weight(1f)
                     .focusRequester(focus)
-                    .background(Color(0xFF15101A), RoundedCornerShape(6.dp))
-                    .border(1.dp, Color(0xFF4A3A40), RoundedCornerShape(6.dp))
+                    .background(Color(0xFF15101A), BenflixShapes.Small)
+                    .border(1.dp, Color(0xFF4A3A40), BenflixShapes.Small)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             decorationBox = { inner ->
                 Box {
@@ -981,7 +981,7 @@ private fun RecapContent(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2A1C18), RoundedCornerShape(10.dp))
+                .background(Color(0xFF2A1C18), BenflixShapes.Card)
                 .padding(12.dp),
     ) {
         lines.forEach { Text(it, color = EmberText, fontSize = 15.sp) }
@@ -1093,8 +1093,8 @@ private fun BagPanel(
                 Modifier
                     .fillMaxWidth(if (isTv) 0.7f else 0.95f)
                     .fillMaxHeight(0.9f)
-                    .background(EmberBg, RoundedCornerShape(10.dp))
-                    .border(2.dp, Color(0xFF3A2A30), RoundedCornerShape(10.dp))
+                    .background(EmberBg, BenflixShapes.Card)
+                    .border(2.dp, Color(0xFF3A2A30), BenflixShapes.Card)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
         ) {

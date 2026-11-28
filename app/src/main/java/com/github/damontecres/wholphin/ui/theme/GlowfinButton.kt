@@ -59,7 +59,7 @@ fun Button(
 }
 
 /** Dark words on a white lit button */
-val OnWhite = Color(0xFF1B1F3A)
+val OnWhite: Color get() = GlowfinTheme.look.onFocusFill
 
 /** The TV library's normal button colours, but lit = white with dark words (Kids: the Kids colour) */
 @Composable

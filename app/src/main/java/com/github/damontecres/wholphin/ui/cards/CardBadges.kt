@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +22,7 @@ import com.github.damontecres.wholphin.services.AniListFacts
 import com.github.damontecres.wholphin.services.NewSeasonBack
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -102,7 +102,7 @@ fun CardAnimeTags(
         overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
-                .background(Color.Black.copy(alpha = .78f), RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = .78f), BenflixShapes.Small)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
@@ -138,7 +138,7 @@ fun CardBadge(
     overflow = TextOverflow.Ellipsis,
     modifier =
         modifier
-            .background(background, RoundedCornerShape(6.dp))
+            .background(background, BenflixShapes.Small)
             .padding(horizontal = 6.dp, vertical = 2.dp),
 )
 

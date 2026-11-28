@@ -16,7 +16,7 @@ object BenflixColors {
     val Text: Color get() = KidsLook.palette?.text ?: Glowfin.Text
 
     /** Softer words, like the clock */
-    val Soft: Color get() = KidsLook.palette?.soft ?: Color(0xFFC6CBE8)
+    val Soft: Color get() = KidsLook.palette?.soft ?: GlowfinTheme.look.soft
 
     /** Quiet words: hints, site names, small labels */
     val Muted: Color get() = KidsLook.palette?.muted ?: Glowfin.Dim
@@ -31,19 +31,19 @@ object BenflixColors {
     val PanelHigh: Color get() = KidsLook.palette?.panelHigh ?: Glowfin.Raise
 
     /** The "you are here" ring around whatever the remote is on: Glowfin aqua, or sunny yellow on Kids */
-    val Focus: Color get() = KidsLook.palette?.accent ?: Glowfin.Aqua
+    val Focus: Color get() = KidsLook.palette?.accent ?: GlowfinTheme.look.focus
 
     /**
      * A button the remote is on fills with this. Glowfin new look "One focus look everywhere" (Ben 2026-11-22):
      * solid white with the aqua ring ([Focus]), or sunny yellow on Kids
      */
-    val FocusFill: Color get() = KidsLook.palette?.accent ?: Color.White
+    val FocusFill: Color get() = KidsLook.palette?.accent ?: GlowfinTheme.look.focusFill
 
     /** Words on [FocusFill] */
-    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: OnWhite
+    val OnFocusFill: Color get() = KidsLook.palette?.onAccent ?: GlowfinTheme.look.onFocusFill
 
     /** The outline round a lit poster or card: white (new look), or the Kids colour on Kids */
-    val Outline: Color get() = KidsLook.palette?.accent ?: Color.White
+    val Outline: Color get() = KidsLook.palette?.accent ?: GlowfinTheme.look.outline
 
     /** Thin lines and panel edges */
     val Line: Color get() = KidsLook.palette?.line ?: Glowfin.Line
@@ -69,25 +69,25 @@ object BenflixColors {
 
     // Glowfin (Ben 2026-11-18): every area uses the same blue that Shows always had. The old Benflix colour per
     // area (orange Movies, pink Games, aqua Live TV and Books, violet Music) is gone. Kids keeps its own colours.
-    private val Area = Color(0xFF7AA7FF)
-    private val OnArea = Color(0xFF0F1521)
+    private val Area: Color get() = GlowfinTheme.look.area
+    private val OnArea: Color get() = GlowfinTheme.look.onArea
 
     val Movies: Color get() = KidsLook.palette?.movies ?: Area
     val OnMovies: Color get() = KidsLook.palette?.onMovies ?: OnArea
     val Shows: Color get() = KidsLook.palette?.shows ?: Area
     val OnShows: Color get() = KidsLook.palette?.onShows ?: OnArea
-    val LiveTv = Area
-    val OnLiveTv = OnArea
+    val LiveTv: Color get() = Area
+    val OnLiveTv: Color get() = OnArea
     val Games: Color get() = KidsLook.palette?.games ?: Area
     val OnGames: Color get() = KidsLook.palette?.onGames ?: OnArea
 
     /** Music: the same Glowfin area blue, with dark words on it */
-    val Music = Area
-    val OnMusic = OnArea
+    val Music: Color get() = Area
+    val OnMusic: Color get() = OnArea
 
     /** Books: the same Glowfin area blue, with dark words on it */
-    val Books = Area
-    val OnBooks = OnArea
+    val Books: Color get() = Area
+    val OnBooks: Color get() = OnArea
 }
 
 /** The Home doors, in their fixed order (Music is the fifth) */

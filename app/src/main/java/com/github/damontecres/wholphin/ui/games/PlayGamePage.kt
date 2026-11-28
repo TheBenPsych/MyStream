@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +56,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.services.KidsMode
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -335,7 +335,7 @@ internal fun GameCard(
             modifier
                 .padding(16.dp)
                 .widthIn(max = 560.dp)
-                .background(Color.Black.copy(alpha = .7f), RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = .7f), BenflixShapes.Panel)
                 .padding(horizontal = 40.dp, vertical = 24.dp),
     ) {
         Text(text = title, fontSize = BenflixType.hero, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)

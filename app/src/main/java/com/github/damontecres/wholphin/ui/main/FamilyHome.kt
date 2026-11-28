@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.components.GlowfinIconImage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.theme.KidsLook
@@ -400,7 +401,7 @@ private fun FamilyPoster(
     modifier: Modifier = Modifier,
     nameUnder: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val width = height * 2f / 3f
     Column(Modifier.width(width)) {
         Surface(

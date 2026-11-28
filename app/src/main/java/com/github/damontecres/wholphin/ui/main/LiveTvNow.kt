@@ -466,16 +466,18 @@ private val LIVE_RED = Color(0xFFE5484D)
 private const val ART_WAIT_MS = 350L
 private const val ART_FADE_MS = 260
 
-private val LIVE_LEFT_SHADE =
-    Brush.horizontalGradient(
-        0f to BenflixColors.Tray.copy(alpha = .88f),
-        .38f to BenflixColors.Tray.copy(alpha = .55f),
-        .66f to Color.Transparent,
-    )
+private val LIVE_LEFT_SHADE
+    get() =
+        Brush.horizontalGradient(
+            0f to BenflixColors.Tray.copy(alpha = .88f),
+            .38f to BenflixColors.Tray.copy(alpha = .55f),
+            .66f to Color.Transparent,
+        )
 
-private val LIVE_BOTTOM_SHADE =
-    Brush.verticalGradient(
-        .45f to Color.Transparent,
-        .72f to BenflixColors.Tray.copy(alpha = .75f),
-        1f to BenflixColors.Tray.copy(alpha = .96f),
-    )
+private val LIVE_BOTTOM_SHADE
+    get() =
+        Brush.verticalGradient(
+            .45f to Color.Transparent,
+            .72f to BenflixColors.Tray.copy(alpha = .75f),
+            1f to BenflixColors.Tray.copy(alpha = .96f),
+        )

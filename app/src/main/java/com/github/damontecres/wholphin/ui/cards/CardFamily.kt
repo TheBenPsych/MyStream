@@ -31,6 +31,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import org.jellyfin.sdk.model.api.BaseItemKind
 
@@ -205,7 +206,7 @@ fun CardNameUnder(
                 .then(
                     if (strip) {
                         Modifier
-                            .background(BenflixColors.Panel, RoundedCornerShape(6.dp))
+                            .background(BenflixColors.Panel, BenflixShapes.Small)
                             .padding(horizontal = 6.dp, vertical = 4.dp)
                     } else {
                         Modifier

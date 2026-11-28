@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.detail.series.NextSeasonAsk
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
@@ -171,7 +171,7 @@ fun PlayerNoticeCard(
             modifier
                 .padding(if (isTv) 32.dp else 16.dp)
                 .widthIn(max = 520.dp)
-                .background(Color(0xF0141418), RoundedCornerShape(16.dp))
+                .background(Color(0xF0141418), BenflixShapes.Panel)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text(text = notice.title, fontSize = BenflixType.lead, fontWeight = FontWeight.Bold, color = Color.White)
@@ -244,11 +244,11 @@ fun ShowDoneCard(
                     done.similar.forEachIndexed { index, item ->
                         Surface(
                             onClick = { onOpen(item) },
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                            shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
                             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             modifier =
                                 Modifier
-                                    .benflixOuterFocusRing(RoundedCornerShape(10.dp), width = 4.dp)
+                                    .benflixOuterFocusRing(BenflixShapes.Card, width = 4.dp)
                                     .width(if (isTv) 150.dp else 100.dp)
                                     .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
                         ) {
@@ -261,7 +261,7 @@ fun ShowDoneCard(
                                         Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(2f / 3f)
-                                            .clip(RoundedCornerShape(10.dp))
+                                            .clip(BenflixShapes.Card)
                                             .background(Color.DarkGray),
                                 )
                             }

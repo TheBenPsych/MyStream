@@ -26,14 +26,15 @@ import kotlin.math.sqrt
 /**
  * Glowfin (M1): the logo's glow from the bottom row to the top, violet > blue > aqua (no more amber door colours)
  */
-private val TowerColors =
-    listOf(
-        Glowfin.Violet,
-        lerp(Glowfin.Violet, Glowfin.Blue, 0.5f),
-        Glowfin.Blue,
-        lerp(Glowfin.Blue, Glowfin.Aqua, 0.5f),
-        Glowfin.Aqua,
-    )
+private val TowerColors
+    get() =
+        listOf(
+            Glowfin.Violet,
+            lerp(Glowfin.Violet, Glowfin.Blue, 0.5f),
+            Glowfin.Blue,
+            lerp(Glowfin.Blue, Glowfin.Aqua, 0.5f),
+            Glowfin.Aqua,
+        )
 
 /** The loudness of tower [i] of [n], from the 32 measured bands */
 private fun level(
@@ -117,7 +118,8 @@ fun TowerLine(
         val w = (size.width - gapX * (towers - 1)) / towers
         // Five rows of thin squares, one glow colour each, violet at the bottom up to aqua at the top (the
         // approved sheet). Tiny lines (the pill, the mini bar) get fewer rows so the squares stay visible.
-        val rows = (size.height / 4.dp.toPx()).toInt().coerceIn(2, TowerColors.size)
+        val colors = TowerColors
+        val rows = (size.height / 4.dp.toPx()).toInt().coerceIn(2, colors.size)
         val gapY = size.height * 0.08f
         val block = (size.height - gapY * (rows - 1)) / rows
         val corner = CornerRadius(minOf(w, block) * 0.3f, minOf(w, block) * 0.3f)
@@ -135,7 +137,7 @@ fun TowerLine(
                     .coerceIn(1, rows)
             for (r in 0 until lit) {
                 val y = size.height - (r + 1) * block - r * gapY
-                val color = if (played) TowerColors[min(TowerColors.size - 1, r * TowerColors.size / rows)] else grey
+                val color = if (played) colors[min(colors.size - 1, r * colors.size / rows)] else grey
                 drawRoundRect(color = color, topLeft = Offset(x, y), size = Size(w, block), cornerRadius = corner)
             }
         }

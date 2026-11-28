@@ -64,6 +64,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -640,7 +641,7 @@ private fun LibraryRow(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -734,7 +735,7 @@ private fun NewPlaylistDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
-                    .background(BenflixColors.PanelHigh, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.PanelHigh, BenflixShapes.Panel)
                     .padding(20.dp)
                     .width(360.dp),
         ) {

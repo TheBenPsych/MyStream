@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -38,6 +37,7 @@ import com.github.damontecres.wholphin.ui.components.PhoneRemoteDialog
 import com.github.damontecres.wholphin.ui.nav.TopNavTab
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import java.util.UUID
 
@@ -91,7 +91,7 @@ fun PhoneMyBenflixHeader(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(BenflixShapes.Card)
                         .clickable(onClick = menu.onClickProfile),
             ) {
                 userId?.let {
@@ -165,7 +165,7 @@ private fun RowScope.RoundButton(
         modifier =
             Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(BenflixShapes.Card)
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
     ) {
@@ -204,7 +204,7 @@ private fun TileGrid(
 
 @Composable
 private fun RowScope.IconTile(tab: TopNavTab) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = BenflixShapes.Panel
     // "Requests (2)" shows as Requests with a red 2
     val count = Regex("""\s\((\d+)\)$""").find(tab.title)
     val label = if (count != null) tab.title.removeRange(count.range) else tab.title

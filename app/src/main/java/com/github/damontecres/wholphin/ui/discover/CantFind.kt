@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
@@ -48,6 +47,7 @@ import com.github.damontecres.wholphin.services.BenflixCantFind
 import com.github.damontecres.wholphin.services.CantFindEntry
 import com.github.damontecres.wholphin.services.CantFindOutcome
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -234,7 +234,7 @@ fun CantFindBlock(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier =
             modifier
-                .background(CANT_FIND_COLOR.copy(alpha = .16f), RoundedCornerShape(10.dp))
+                .background(CANT_FIND_COLOR.copy(alpha = .16f), BenflixShapes.Card)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         FlowRow(
@@ -307,7 +307,7 @@ fun CantFindOnlyRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(BenflixShapes.Card)
                 .background(Color(0xFF18181C))
                 .padding(10.dp),
     ) {
@@ -320,7 +320,7 @@ fun CantFindOnlyRow(
                 modifier =
                     Modifier
                         .size(width = 54.dp, height = 80.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(BenflixShapes.Small)
                         .background(Color(0xFF24242A)),
             ) {
                 AsyncImage(
@@ -345,7 +345,7 @@ fun CantFindOnlyRow(
                 Box(
                     modifier =
                         Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(BenflixShapes.Small)
                             .background(CANT_FIND_COLOR.copy(alpha = .18f))
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                 ) {

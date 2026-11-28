@@ -44,6 +44,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.setup.PinEntryDialog
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -450,10 +451,10 @@ private fun OfflineButton(
         onClick = onClick,
         shape =
             androidx.tv.material3.ButtonDefaults
-                .shape(RoundedCornerShape(6.dp)),
+                .shape(BenflixShapes.Small),
         border =
             com.github.damontecres.wholphin.ui.theme
-                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                .glowfinButtonBorder(BenflixShapes.Small),
         colors =
             androidx.tv.material3.ButtonDefaults.colors(
                 containerColor = if (primary) BENFLIX_RED else Color(0xFF333333),

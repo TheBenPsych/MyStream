@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +56,7 @@ import com.github.damontecres.wholphin.ui.components.BenflixPlayFilled
 import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
@@ -106,7 +106,7 @@ fun NextUpEpisode(
                 Modifier
                     .fillMaxHeight()
                     .aspectRatio(aspectRatio.coerceAtLeast(AspectRatios.MIN))
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(BenflixShapes.Small)
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         )
         Column(
@@ -175,10 +175,10 @@ fun NextUpEpisode(
                 )
                 Button(
                     onClick = onClick,
-                    shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                    shape = ButtonDefaults.shape(BenflixShapes.Small),
                     border =
                         com.github.damontecres.wholphin.ui.theme
-                            .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                            .glowfinButtonBorder(BenflixShapes.Small),
                     contentPadding = PaddingValues(0.dp),
                     colors =
                         ButtonDefaults.colors(
@@ -191,7 +191,7 @@ fun NextUpEpisode(
                     modifier =
                         Modifier
                             .weight(1f, fill = false)
-                            .benflixOuterFocusRing(RoundedCornerShape(6.dp))
+                            .benflixOuterFocusRing(BenflixShapes.Small)
                             .height(44.dp)
                             .focusRequester(focusRequester),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
@@ -234,10 +234,10 @@ fun NextUpEpisode(
                 if (counting && onWatchCredits != null) {
                     Button(
                         onClick = onWatchCredits,
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ButtonDefaults.shape(BenflixShapes.Small),
                         border =
                             com.github.damontecres.wholphin.ui.theme
-                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                                .glowfinButtonBorder(BenflixShapes.Small),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
@@ -261,10 +261,10 @@ fun NextUpEpisode(
                 if (onNotNow != null) {
                     Button(
                         onClick = onNotNow,
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        shape = ButtonDefaults.shape(BenflixShapes.Small),
                         border =
                             com.github.damontecres.wholphin.ui.theme
-                                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                                .glowfinButtonBorder(BenflixShapes.Small),
                         colors =
                             ButtonDefaults.colors(
                                 containerColor = Color.White.copy(alpha = .15f),
@@ -326,7 +326,7 @@ private fun NextUpEpisodePreview() {
                             .align(Alignment.BottomCenter)
                             .background(
                                 MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = BenflixShapes.Card,
                             ),
                 )
             }

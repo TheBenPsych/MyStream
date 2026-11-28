@@ -284,12 +284,13 @@ fun SeasonAskPanel(
     }
 }
 
-private val SEASON_PANEL =
-    Brush.horizontalGradient(
-        0f to Glowfin.Deep.copy(alpha = .9f),
-        .2f to Glowfin.Deep.copy(alpha = .97f),
-        1f to Glowfin.Deep,
-    )
+private val SEASON_PANEL
+    get() =
+        Brush.horizontalGradient(
+            0f to Glowfin.Deep.copy(alpha = .9f),
+            .2f to Glowfin.Deep.copy(alpha = .97f),
+            1f to Glowfin.Deep,
+        )
 
 /** Books: Ebook and audiobook (picked first), Ebook, or Audiobook. Asking also adds it to Want to read. */
 @Composable

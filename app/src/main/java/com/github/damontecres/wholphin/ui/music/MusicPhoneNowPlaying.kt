@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.AudioItem
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlin.math.abs
 
@@ -224,6 +225,6 @@ private fun SwipeCover(
                 )
             },
     ) {
-        CoverImage(audio?.imageUrl, Modifier.fillMaxSize(), shape = RoundedCornerShape(16.dp))
+        CoverImage(audio?.imageUrl, Modifier.fillMaxSize(), shape = BenflixShapes.Panel)
     }
 }

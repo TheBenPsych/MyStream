@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui
 
 import android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -129,7 +128,7 @@ object Cards {
     val serverUserCircle = height2x3 * .75f
 
     /** Benflix tiles: rounded corners, and a thin white outline on the one you're on */
-    val focusShape = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
+    val focusShape get() = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
 
     @Composable
     fun focusBorder() =

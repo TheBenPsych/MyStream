@@ -41,6 +41,7 @@ import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.detail.discover.str
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -274,7 +275,7 @@ private fun AskForTheRestDialog(
                 Modifier
                     .widthIn(max = 560.dp)
                     .fillMaxWidth()
-                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.Panel, BenflixShapes.Panel)
                     .padding(24.dp),
         ) {
             Text(
@@ -316,14 +317,14 @@ private fun AskForTheRestDialog(
                     Surface(
                         border =
                             com.github.damontecres.wholphin.ui.theme
-                                .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                                .benflixFocusBorder(BenflixShapes.Card),
                         onClick = { picked = if (ticked) picked - credit else picked + credit },
                         colors =
                             ClickableSurfaceDefaults.colors(
                                 containerColor = BenflixColors.PanelHigh,
                                 focusedContainerColor = BenflixColors.FocusRow,
                             ),
-                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
                         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                         modifier =
                             Modifier
@@ -341,7 +342,7 @@ private fun AskForTheRestDialog(
                                         .size(22.dp)
                                         .background(
                                             if (ticked) BenflixColors.Text else BenflixColors.Line,
-                                            RoundedCornerShape(6.dp),
+                                            BenflixShapes.Small,
                                         ),
                             ) {
                                 if (ticked) Text("✓", color = BenflixColors.Tray, fontWeight = FontWeight.Black)

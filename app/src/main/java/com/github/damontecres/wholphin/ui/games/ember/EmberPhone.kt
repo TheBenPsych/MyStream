@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 
 /** A phone joining the TV's game: it shows the TV's words, and its buttons vote or play */
@@ -80,7 +80,7 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF2A1C18), RoundedCornerShape(6.dp))
+                        .background(Color(0xFF2A1C18), BenflixShapes.Small)
                         .padding(10.dp),
             )
         }
@@ -117,7 +117,7 @@ fun EmberPhoneScreen(vm: EmberViewModel) {
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .background(EmberPanel, RoundedCornerShape(6.dp))
+                            .background(EmberPanel, BenflixShapes.Small)
                             .padding(10.dp),
                 )
             }

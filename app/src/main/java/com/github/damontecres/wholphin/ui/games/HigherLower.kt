@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,8 +59,10 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleScreen
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -475,7 +476,7 @@ private fun HigherLowerModes(
                 enabled = enough,
                 colors =
                     ButtonDefaults.colors(
-                        containerColor = Color(0xFF1A1E38),
+                        containerColor = Glowfin.Raise,
                         contentColor = Color.White,
                         focusedContainerColor = BenflixColors.FocusFill,
                         focusedContentColor = BenflixColors.OnFocusFill,
@@ -642,7 +643,7 @@ private fun FaceOffSide(
     Box(
         modifier =
             modifier
-                .clip(RoundedCornerShape(16.dp))
+                .clip(BenflixShapes.Panel)
                 .background(Color(0xFF1C1C1F)),
     ) {
         if (movie.backdrop != null) {
@@ -674,7 +675,7 @@ private fun FaceOffSide(
                     Modifier
                         .width(posterW)
                         .aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(BenflixShapes.Card)
                         .background(Color(0xFF26262B)),
             )
         }
@@ -709,7 +710,7 @@ private fun FaceOffSide(
                                     false -> BenflixRed
                                     null -> Color.Black.copy(alpha = .55f)
                                 },
-                                RoundedCornerShape(10.dp),
+                                BenflixShapes.Card,
                             ).padding(horizontal = 14.dp, vertical = 4.dp),
                 )
             }

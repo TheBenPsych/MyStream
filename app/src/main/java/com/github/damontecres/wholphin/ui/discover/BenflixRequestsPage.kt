@@ -106,6 +106,7 @@ import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -3127,7 +3128,7 @@ private fun RequestRow(
                 modifier =
                     Modifier
                         .size(width = if (slim) 44.dp else 54.dp, height = if (slim) 64.dp else 80.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(BenflixShapes.Small)
                         .background(com.github.damontecres.wholphin.ui.theme.Glowfin.Raise),
             ) {
                 AsyncImage(

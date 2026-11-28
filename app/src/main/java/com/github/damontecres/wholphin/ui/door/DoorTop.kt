@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.ui.theme.BenflixShade
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
@@ -307,7 +308,7 @@ private val LEFT_SHADE =
 private val SOFT_EDGE = Shadow(color = Color.Black.copy(alpha = .5f), offset = Offset(0f, 1.5f), blurRadius = 4f)
 private val WORD_EDGE = Shadow(color = Color.Black.copy(alpha = .7f), offset = Offset(0f, 1.5f), blurRadius = 4f)
 
-private val TAG_AQUA = Color(0xFF3FE0E8)
+private val TAG_AQUA get() = Glowfin.Aqua
 private val TAG_TEXT = Color(0xFFC9FBFF)
 private val TAG_YELLOW = Color(0xFFF2B33D)
 private val TAG_YELLOW_TEXT = Color(0xFFFFE7B5)
