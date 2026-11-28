@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,6 +75,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.UUID
 import kotlin.time.Duration
 
 /**
@@ -280,8 +283,12 @@ internal fun WideDoor(
     // Speed fix (Ben 2026-11-24, like Wholphin): the words change almost at once (a tiny settle so racing
     // along a row stays smooth); only the wallpaper keeps the half-second wait so the screen doesn't flash.
     val focused = remember { mutableStateOf<BaseItem?>(null) }
-    var shown by remember { mutableStateOf<BaseItem?>(null) }
-    var shownArt by remember { mutableStateOf<BaseItem?>(null) }
+    // Speed check (Ben 2026-11-28): these two are only read inside the top's own words and art, so stopping on a
+    // poster rebuilds just those and not the whole page around them
+    val shownState = remember { mutableStateOf<BaseItem?>(null) }
+    val shownArtState = remember { mutableStateOf<BaseItem?>(null) }
+    var shown by shownState
+    var shownArt by shownArtState
     LaunchedEffect(Unit) {
         snapshotFlow { focused.value }.collectLatest { item ->
             if (item == null) return@collectLatest
@@ -308,8 +315,6 @@ internal fun WideDoor(
             shownArt = null
         }
     }
-    val preview = shown?.takeIf { it.id in onPage } ?: first
-    val artItem = shownArt?.takeIf { it.id in onPage } ?: first
 
     val restore = remember { FocusRequester() }
     // Ben: every door opens on the first card of the top row. Rows load in one by one, so until you
@@ -342,6 +347,9 @@ internal fun WideDoor(
     val posterWidth = if (easy) 128.dp else 120.dp
     val columnState =
         rememberLazyListState(
+            // Speed check (Ben 2026-11-28): the rows just below and above are built in spare moments, so Down and Up
+            // find them ready. On Home the next row is off the screen, so it used to be built during the press.
+            cacheWindow = LazyLayoutCacheWindow(aheadFraction = ROWS_AHEAD, behindFraction = ROWS_BEHIND),
             initialFirstVisibleItemIndex = state.rows.indexOfFirst { it.key == targetRow }.coerceAtLeast(0),
         )
     LaunchedEffect(firstKey) {
@@ -401,22 +409,24 @@ internal fun WideDoor(
         val wordsTop = if (topFree && !easy) FREE_WORDS_TOP else overlap + 2.dp
         var brightArt by remember { mutableStateOf(false) }
         // The art of the card you're on fills the whole page, behind the tabs and the rows too
-        DoorArt(
-            item = artItem,
+        ShownArt(
+            shown = shownArtState,
+            onPage = onPage,
+            first = first,
             pageHeight = maxHeight,
             onBright = { brightArt = it },
             shadeFrom = if (topFree && !easy) LOW_ROWS_SHADE_FROM else BOTTOM_SHADE_FROM,
         )
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().height(topHeight)) {
-                if (preview != null) {
-                    DoorInfo(
-                        item = preview,
-                        easy = easy,
-                        brightArt = brightArt,
-                        modifier = Modifier.padding(start = SIDE, end = SIDE, top = wordsTop).widthIn(max = 560.dp),
-                    )
-                }
+                ShownInfo(
+                    shown = shownState,
+                    onPage = onPage,
+                    first = first,
+                    easy = easy,
+                    brightArt = brightArt,
+                    modifier = Modifier.padding(start = SIDE, end = SIDE, top = wordsTop).widthIn(max = 560.dp),
+                )
             }
             // Like Wholphin: the row you move to jumps up whole (name and all) right under the locked top area
             val defaultSpec = LocalBringIntoViewSpec.current
@@ -470,6 +480,34 @@ internal fun WideDoor(
             }
         }
     }
+}
+
+/** The art of the poster you stopped on (the first poster until you move, or once that title has left the rows) */
+@Composable
+private fun ShownArt(
+    shown: State<BaseItem?>,
+    onPage: Set<UUID>,
+    first: BaseItem?,
+    pageHeight: Dp,
+    onBright: (Boolean) -> Unit,
+    shadeFrom: Float,
+) {
+    val item = shown.value?.takeIf { it.id in onPage } ?: first
+    DoorArt(item = item, pageHeight = pageHeight, onBright = onBright, shadeFrom = shadeFrom)
+}
+
+/** The words about the poster you stopped on */
+@Composable
+private fun ShownInfo(
+    shown: State<BaseItem?>,
+    onPage: Set<UUID>,
+    first: BaseItem?,
+    easy: Boolean,
+    brightArt: Boolean,
+    modifier: Modifier,
+) {
+    val item = shown.value?.takeIf { it.id in onPage } ?: first ?: return
+    DoorInfo(item = item, easy = easy, brightArt = brightArt, modifier = modifier)
 }
 
 /** A row on the page: one that has loaded, or a grey placeholder for one still loading */
@@ -548,6 +586,7 @@ private fun WaitingRow(
 }
 
 /** One row: medium white name, then posters, ending in "See all" when there is more */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun DoorRow(
     row: DoorRowData,
@@ -566,7 +605,12 @@ internal fun DoorRow(
     /** Request cards (Trending, not on Glowfin) open their own page */
     onOpen: (Destination) -> Unit = {},
 ) {
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
+    val listState =
+        rememberLazyListState(
+            // The next few posters along the row are built (and their pictures asked for) before you reach them
+            cacheWindow = LazyLayoutCacheWindow(aheadFraction = POSTERS_AHEAD, behindFraction = POSTERS_BEHIND),
+            initialFirstVisibleItemIndex = startIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)),
+        )
     LaunchedEffect(scrollKey) {
         if (scrollKey > 0) listState.scrollToItem(focusIndex.coerceIn(0, (row.items.size - 1).coerceAtLeast(0)))
     }
@@ -648,6 +692,9 @@ internal fun DoorRow(
                         stripes = stripes,
                     )
                 } else {
+                    // (worked out once per poster, not on every redraw of the row)
+                    val dateChip =
+                        if (row.dates.isEmpty()) null else remember(row.dates, item.id) { releasedChip(row.dates[item.id.toString()]) }
                     DoorPoster(
                         item = item,
                         width = posterWidth,
@@ -656,7 +703,7 @@ internal fun DoorRow(
                         onFocus = { onFocus(index, item) },
                         modifier = mod,
                         stripes = stripes,
-                        dateChip = if (row.dates.isEmpty()) null else releasedChip(row.dates[item.id.toString()]),
+                        dateChip = dateChip,
                     )
                 }
             }
@@ -807,3 +854,9 @@ private const val FIRST_FOCUS_WAIT_MS = 4_000L
 private const val WAITING_ROWS = 3
 private const val WAITING_CARDS = 9
 private const val FOCUS_SETTLE_MS = 80L
+
+/** How much is built ahead of time, as a share of what is on screen (rows up and down, posters along a row) */
+private const val ROWS_AHEAD = 2f
+private const val ROWS_BEHIND = 1f
+private const val POSTERS_AHEAD = .5f
+private const val POSTERS_BEHIND = .25f

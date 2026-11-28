@@ -88,28 +88,34 @@ val FocusStripesRoom = 14.dp
  * logo. They are drawn just below the thing, in room the row keeps clear ([FocusStripesRoom]), so nothing
  * moves and nothing is covered. Plain lines, no blur, so they cost a slow TV next to nothing.
  */
-fun Modifier.focusStripes(on: Boolean): Modifier =
-    if (!on) {
-        this
-    } else {
-        drawWithContent {
-            drawContent()
-            val brush = if (KidsLook.on) SolidColor(BenflixColors.Focus) else Glowfin.GlowAcross
-            var y = size.height + 3.5.dp.toPx()
-            listOf(Triple(0.86f, 2.5f, 1f), Triple(0.62f, 2f, 0.6f), Triple(0.38f, 1.5f, 0.3f)).forEach { (wide, tall, alpha) ->
-                val w = size.width * wide
-                val h = tall.dp.toPx()
-                drawRoundRect(
-                    brush = brush,
-                    topLeft = Offset((size.width - w) / 2f, y),
-                    size = Size(w, h),
-                    cornerRadius = CornerRadius(h / 2f),
-                    alpha = alpha,
-                )
-                y += h + 2.dp.toPx()
-            }
+fun Modifier.focusStripes(on: Boolean): Modifier = if (!on) this else focusStripes { true }
+
+/**
+ * Speed check (Ben 2026-11-28): the same stripes, but whether they show is only looked at while drawing. A poster
+ * gaining or losing the remote is then just painted again, instead of being rebuilt.
+ */
+fun Modifier.focusStripes(on: () -> Boolean): Modifier =
+    drawWithContent {
+        drawContent()
+        if (!on()) return@drawWithContent
+        val brush = if (KidsLook.on) SolidColor(BenflixColors.Focus) else Glowfin.GlowAcross
+        var y = size.height + 3.5.dp.toPx()
+        STRIPES.forEach { (wide, tall, alpha) ->
+            val w = size.width * wide
+            val h = tall.dp.toPx()
+            drawRoundRect(
+                brush = brush,
+                topLeft = Offset((size.width - w) / 2f, y),
+                size = Size(w, h),
+                cornerRadius = CornerRadius(h / 2f),
+                alpha = alpha,
+            )
+            y += h + 2.dp.toPx()
         }
     }
+
+/** Each stripe: its share of the width, how thick it is (dp) and how see-through */
+private val STRIPES = listOf(Triple(0.86f, 2.5f, 1f), Triple(0.62f, 2f, 0.6f), Triple(0.38f, 1.5f, 0.3f))
 
 /** The dark band between a thing and its outer focus ring */
 private val FocusHalo = Color(0xE6000000)

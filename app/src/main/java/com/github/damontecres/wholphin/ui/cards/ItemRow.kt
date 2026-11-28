@@ -62,12 +62,13 @@ fun <T> ItemRow(
             }
         }
     // Lay out (and so start loading the posters of) about one more screen of cards ahead of where you are,
-    // so scrolling along a row shows pictures right away. Low-memory TVs in Lite mode skip this.
+    // so scrolling along a row shows pictures right away. Low-memory TVs in Lite mode get half as much.
     val context = LocalContext.current
     val lite = remember { LiteMode.isOn(context) }
     val state =
         if (lite) {
-            rememberLazyListState()
+            // Speed check (Ben 2026-11-28): the 2 GB TVs get a smaller head start instead of none at all
+            rememberLazyListState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = .5f, behindFraction = .25f))
         } else {
             rememberLazyListState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = .3f))
         }

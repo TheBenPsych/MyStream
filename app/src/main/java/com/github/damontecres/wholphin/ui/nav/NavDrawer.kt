@@ -684,7 +684,16 @@ fun NavDrawer(
             }
         }
     val nav = viewModel.navigationManager
-    val stack = nav.backStack.toList()
+    // Speed check (Ben 2026-11-28): the pages under this one, looked up once. Watching the live list meant the page
+    // you were leaving rebuilt its whole side menu and header at the very moment the next page was being drawn.
+    val stack =
+        remember(destination) {
+            androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation {
+                val all = nav.backStack.toList()
+                val at = all.lastIndexOf(destination)
+                if (at >= 0) all.subList(0, at + 1) else all
+            }
+        }
     val goPlace: (BenflixDoor, String) -> Unit = { door, key ->
         val frame =
             com.github.damontecres.wholphin.ui.door.DoorPlaces

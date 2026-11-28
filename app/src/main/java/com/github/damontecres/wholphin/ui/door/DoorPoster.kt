@@ -175,7 +175,7 @@ fun DoorPoster(
             modifier =
                 Modifier
                     .size(width, height)
-                    .focusStripes(stripes && focused)
+                    .then(if (stripes) Modifier.focusStripes { focused } else Modifier)
                     .onFocusChanged {
                         focused = it.isFocused
                         if (it.isFocused) onFocus?.invoke()

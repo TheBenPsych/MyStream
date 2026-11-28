@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -106,6 +107,7 @@ private sealed interface GridEntry {
  * Slim chips (sort, Anime, Watching), a slim info line and a small search box on top; the grid has
  * headings that follow the sort (letters for A to Z). The chips are remembered per person.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TitleGrid(
     title: String,
@@ -176,7 +178,8 @@ fun TitleGrid(
         }
 
     val isTv = rememberIsTv()
-    val gridState = rememberLazyGridState()
+    // The next screen of posters is built ahead of time, so scrolling down a big grid shows pictures right away
+    val gridState = rememberLazyGridState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = .5f))
     val scope = rememberCoroutineScope()
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (isTv && items.isNotEmpty()) first.tryRequestFocus() }
@@ -225,7 +228,7 @@ fun TitleGrid(
         val count = shown.size
         val (one, many) = noun ?: if (movies) ("movie" to "movies") else ("show" to "shows")
         val word = if (count == 1) one else many
-        val watched = shown.count { it.data.userData?.played == true }
+        val watched = remember(shown) { shown.count { it.data.userData?.played == true } }
         Text(
             text = "%,d %s · %,d watched · %s".format(count, word, watched, sort.label),
             color = BenflixColors.Muted,
@@ -270,7 +273,7 @@ fun TitleGrid(
                     else -> ((maxWidth / 110.dp).toInt()).coerceIn(3, 8)
                 }
             val width = (maxWidth - 12.dp * (columns - 1) - 8.dp) / columns
-            var firstTitle = -1
+            val firstTitle = remember(entries) { entries.indexOfFirst { it is GridEntry.Title } }
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Fixed(columns),
@@ -279,34 +282,40 @@ fun TitleGrid(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 40.dp, end = 8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                entries.forEachIndexed { index, entry ->
-                    when (entry) {
+                // Speed check (Ben 2026-11-28): one list of entries instead of one entry per poster, so a library
+                // of thousands isn't registered title by title every time the sort or the search box changes
+                items(
+                    count = entries.size,
+                    key = { index ->
+                        when (val entry = entries[index]) {
+                            is GridEntry.Heading -> "h-${entry.text}-$index"
+                            is GridEntry.Title -> entry.item.id.toString()
+                        }
+                    },
+                    span = { index -> if (entries[index] is GridEntry.Heading) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                    contentType = { index -> if (entries[index] is GridEntry.Heading) "heading" else "title" },
+                ) { index ->
+                    when (val entry = entries[index]) {
                         is GridEntry.Heading -> {
-                            item(key = "h-${entry.text}-$index", span = { GridItemSpan(maxLineSpan) }) {
-                                Text(
-                                    text = entry.text,
-                                    color = BenflixColors.Soft,
-                                    fontSize = BenflixType.lead,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    modifier = Modifier.padding(top = 8.dp),
-                                )
-                            }
+                            Text(
+                                text = entry.text,
+                                color = BenflixColors.Soft,
+                                fontSize = BenflixType.lead,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
                         }
 
                         is GridEntry.Title -> {
-                            if (firstTitle < 0) firstTitle = index
-                            val isFirst = firstTitle == index
-                            item(key = entry.item.id.toString()) {
-                                Box(contentAlignment = Alignment.TopCenter) {
-                                    DoorPoster(
-                                        item = entry.item,
-                                        width = width,
-                                        showName = !isTv,
-                                        onClick = { onClick(entry.item) },
-                                        stripes = isTv,
-                                        modifier = if (isFirst) Modifier.focusRequester(first) else Modifier,
-                                    )
-                                }
+                            Box(contentAlignment = Alignment.TopCenter) {
+                                DoorPoster(
+                                    item = entry.item,
+                                    width = width,
+                                    showName = !isTv,
+                                    onClick = { onClick(entry.item) },
+                                    stripes = isTv,
+                                    modifier = if (index == firstTitle) Modifier.focusRequester(first) else Modifier,
+                                )
                             }
                         }
                     }
