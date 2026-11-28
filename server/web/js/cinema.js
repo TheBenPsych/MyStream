@@ -174,7 +174,7 @@
     paint(c.getContext("2d"), w, h);
     const t = new T.CanvasTexture(c); t.anisotropy = 4; t.encoding = T.sRGBEncoding; return t;
   }
-  const FONT = '"Glowfin Sora", system-ui, "Segoe UI", sans-serif';
+  const FONT = '"Glowfin Lexend", system-ui, "Segoe UI", sans-serif';
   function signTex(text, bg, fg, sub) {
     return canvasTex(1024, 256, (g, w, h) => {
       g.fillStyle = bg; g.fillRect(0, 0, w, h);

@@ -42,6 +42,16 @@
         "filter": [
           "pad.js"
         ]
+      },
+      {
+        "from": "../server/web/fonts",
+        "to": "app/fonts",
+        "filter": [
+          "glowfin_lexend_light.ttf",
+          "glowfin_lexend_regular.ttf",
+          "glowfin_lexend_semibold.ttf",
+          "lexend.LICENSE.txt"
+        ]
       }
     ],
     "directories": {

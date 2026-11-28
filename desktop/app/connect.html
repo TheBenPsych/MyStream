@@ -9,8 +9,11 @@
      Works with a mouse, a keyboard or a controller (stick or D-pad moves, A picks). -->
 <style>
   :root { --tray: #0B0D1A; --pg3: #1A1E38; --line: #262A45; --ink: #ECEEFB; --ink2: #9AA0C3; --aqua: #3FE0E8; color-scheme: dark; }
+  @font-face { font-family: "Glowfin Lexend"; src: url("fonts/glowfin_lexend_light.ttf"); font-weight: 300; }
+  @font-face { font-family: "Glowfin Lexend"; src: url("fonts/glowfin_lexend_regular.ttf"); font-weight: 400 500; }
+  @font-face { font-family: "Glowfin Lexend"; src: url("fonts/glowfin_lexend_semibold.ttf"); font-weight: 600 900; }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: var(--tray); color: var(--ink); font: 18px/1.45 "Inter", "Segoe UI Variable", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  html, body { height: 100%; margin: 0; background: var(--tray); color: var(--ink); font: 18px/1.45 "Glowfin Lexend", "Segoe UI Variable", system-ui, -apple-system, "Segoe UI", sans-serif; }
   body { display: grid; place-items: center; padding: 24px; }
   main { width: min(560px, 100%); text-align: center; }
   img { width: 96px; height: 92px; margin: 0 auto 8px; display: block; }

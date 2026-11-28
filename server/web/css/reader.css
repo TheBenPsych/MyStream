@@ -1,5 +1,5 @@
 /* Benflix Books: the ebook reader (js/reader.js), in the browser and inside the TV and phone apps */
-.rd { position: fixed; inset: 0; z-index: 60; background: var(--rd-bg, #121318); color: var(--rd-ink, #D9DBE1); font-family: "Glowfin Inter", system-ui, sans-serif; outline: none; display: flex; flex-direction: column; }
+.rd { position: fixed; inset: 0; z-index: 60; background: var(--rd-bg, #121318); color: var(--rd-ink, #D9DBE1); font-family: "Glowfin Lexend", system-ui, sans-serif; outline: none; display: flex; flex-direction: column; }
 .rd-head { height: 46px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--rd-dim); font-size: 14px; padding: 0 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rd-head span { overflow: hidden; text-overflow: ellipsis; }
 .rd-stage { position: relative; flex: 1; margin: 6px 7% 0; min-height: 0; }

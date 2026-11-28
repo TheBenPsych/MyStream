@@ -49,7 +49,7 @@ fun benflixSettingCard(): Modifier = Modifier.padding(vertical = 1.dp)
 @Composable
 fun Modifier.benflixLookABackground(): Modifier = this.background(com.github.damontecres.wholphin.ui.theme.Glowfin.Ink)
 
-/** Glowfin (S1): the page's name in Sora at the top of a settings page */
+/** Glowfin (S1): the page's name in big letters at the top of a settings page */
 @Composable
 fun BenflixSettingsTitle(
     text: String,

@@ -11,10 +11,10 @@
   Opened by itself (web/lounge.html) it still works as a walk-around with nobody else in it.
 -->
 <style>
-  @font-face { font-family: "Glowfin Sora"; font-weight: 400; src: url("fonts/glowfin_sora_regular.ttf"); }
-  @font-face { font-family: "Glowfin Sora"; font-weight: 600; src: url("fonts/glowfin_sora_semibold.ttf"); }
-  @font-face { font-family: "Glowfin Sora"; font-weight: 800; src: url("fonts/glowfin_sora_bold.ttf"); }
-  :root { --line: #2A2F52; --ink: #ECEEFB; --ink2: #A3A9CC; --aqua: #3FE0E8; --raise2: #222645; --body: "Glowfin Sora", system-ui, sans-serif;
+  @font-face { font-family: "Glowfin Lexend"; font-weight: 400 500; src: url("fonts/glowfin_lexend_regular.ttf"); }
+  @font-face { font-family: "Glowfin Lexend"; font-weight: 600; src: url("fonts/glowfin_lexend_semibold.ttf"); }
+  @font-face { font-family: "Glowfin Lexend"; font-weight: 700 900; src: url("fonts/glowfin_lexend_bold.ttf"); }
+  :root { --line: #2A2F52; --ink: #ECEEFB; --ink2: #A3A9CC; --aqua: #3FE0E8; --raise2: #222645; --body: "Glowfin Lexend", system-ui, sans-serif;
     --glow: linear-gradient(135deg, #A55BE0, #1FA8E6 60%, #3FE0E8); }
   html, body { margin: 0; height: 100%; background: #0B0D1A; overflow: hidden; color: var(--ink); font: 500 14px var(--body); }
   [hidden] { display: none !important; }
@@ -62,7 +62,7 @@
   // Wait for the lettering font first, so every sign in the Lounge is drawn with it
   (function () {
     var go = function () { if (go.done) return; go.done = true; var s = document.createElement("script"); s.src = "js/lounge.js"; document.body.appendChild(s); };
-    try { Promise.all([document.fonts.load('800 20px "Glowfin Sora"'), document.fonts.load('600 20px "Glowfin Sora"')]).then(go, go); } catch (e) { go(); }
+    try { Promise.all([document.fonts.load('800 20px "Glowfin Lexend"'), document.fonts.load('600 20px "Glowfin Lexend"')]).then(go, go); } catch (e) { go(); }
     setTimeout(go, 2500);
   })();
 </script>

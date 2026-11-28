@@ -166,7 +166,7 @@
         const bx = w * 0.28, s = 7 * u;
         g.save(); g.translate(bx, by); g.rotate(clamp(vy / (120 * u), -0.5, 0.8));
         g.fillStyle = "#E50914"; rr(g, -s / 2, -s / 2, s, s, 1.4 * u); g.fill();
-        g.fillStyle = "#fff"; g.font = `800 ${5.2 * u}px 'Glowfin Sora', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("B", 0, 0.3 * u);
+        g.fillStyle = "#fff"; g.font = `800 ${5.2 * u}px 'Glowfin Lexend', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("B", 0, 0.3 * u);
         g.restore();
       },
     };
@@ -390,11 +390,11 @@
           g.save(); g.translate(r.x + r.w / 2, r.y + r.h / 2); g.scale(Math.max(0.04, k), 1);
           g.fillStyle = face ? (c.done ? "#FCE7F3" : "#fff") : "#DB2777"; rr(g, -r.w / 2, -r.h / 2, r.w, r.h, 1.4 * u); g.fill();
           if (face) { g.font = `${r.w * 0.5}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(c.icon, 0, r.h * 0.04); }
-          else { g.fillStyle = "rgba(255,255,255,.25)"; g.font = `800 ${r.w * 0.4}px 'Glowfin Sora', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("B", 0, 0); }
+          else { g.fillStyle = "rgba(255,255,255,.25)"; g.font = `800 ${r.w * 0.4}px 'Glowfin Lexend', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("B", 0, 0); }
           g.restore();
           if (j === sel && S.keys) { g.strokeStyle = "#fff"; g.lineWidth = 0.6 * u; rr(g, r.x - u, r.y - u, r.w + 2 * u, r.h + 2 * u, 2 * u); g.stroke(); }
         });
-        g.fillStyle = time < 10 ? "#F87171" : "#fff"; g.font = `700 ${4 * u}px 'Glowfin Sora', Arial, sans-serif`; g.textAlign = "right"; g.textBaseline = "top";
+        g.fillStyle = time < 10 ? "#F87171" : "#fff"; g.font = `700 ${4 * u}px 'Glowfin Lexend', Arial, sans-serif`; g.textAlign = "right"; g.textBaseline = "top";
         g.fillText(`${Math.ceil(time)} s`, w - 3 * u, 3 * u);
       },
     };
@@ -552,18 +552,18 @@
       S.draw(g, W, H);
       fx.forEach((f) => {
         g.globalAlpha = clamp(f.life * 1.6, 0, 1);
-        if (f.text) { g.fillStyle = "#FDE68A"; g.font = `800 ${4 * U}px 'Glowfin Sora', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(f.text, f.x, f.y); }
+        if (f.text) { g.fillStyle = "#FDE68A"; g.font = `800 ${4 * U}px 'Glowfin Lexend', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(f.text, f.x, f.y); }
         else { g.fillStyle = f.c; g.beginPath(); g.arc(f.x, f.y, 0.7 * U, 0, 7); g.fill(); }
         g.globalAlpha = 1;
       });
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      g.fillStyle = "#fff"; g.font = `800 ${6 * U}px 'Glowfin Sora', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "top";
+      g.fillStyle = "#fff"; g.font = `800 ${6 * U}px 'Glowfin Lexend', Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "top";
       if (S.touch !== "cards" || true) g.fillText(E.score.toLocaleString(), W / 2, 2.5 * U);
       if (phase === "count" || phase === "paused") {
         g.fillStyle = "rgba(0,0,0,.45)"; g.fillRect(0, 0, W, H);
         g.fillStyle = "#fff"; g.textBaseline = "middle";
-        if (phase === "count") { g.font = `800 ${22 * U}px 'Glowfin Sora', Arial, sans-serif`; g.fillText(String(Math.max(1, Math.ceil(count))), W / 2, H / 2); }
-        else { g.font = `800 ${8 * U}px 'Glowfin Sora', Arial, sans-serif`; g.fillText("Paused", W / 2, H / 2 - 4 * U); g.font = `600 ${3.4 * U}px 'Glowfin Sora', Arial, sans-serif`; g.fillText("Press Esc, P or tap to keep playing", W / 2, H / 2 + 5 * U); }
+        if (phase === "count") { g.font = `800 ${22 * U}px 'Glowfin Lexend', Arial, sans-serif`; g.fillText(String(Math.max(1, Math.ceil(count))), W / 2, H / 2); }
+        else { g.font = `800 ${8 * U}px 'Glowfin Lexend', Arial, sans-serif`; g.fillText("Paused", W / 2, H / 2 - 4 * U); g.font = `600 ${3.4 * U}px 'Glowfin Lexend', Arial, sans-serif`; g.fillText("Press Esc, P or tap to keep playing", W / 2, H / 2 + 5 * U); }
       }
       ctx.setScore(`Best ${ctx.best().toLocaleString()}`);
     };

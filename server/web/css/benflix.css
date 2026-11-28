@@ -17,7 +17,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 "Glowfin Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--tray); color: var(--ink); font: 16px/1.4 "Glowfin Lexend", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 body { overflow-x: hidden; min-height: 100vh; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
@@ -31,10 +31,10 @@ svg.i { width: 1.2em; height: 1.2em; flex: none; stroke: currentColor; fill: non
 
 /* ---------- logo ---------- */
 @font-face { font-family: "Glowfin Anton"; src: url("../fonts/glowfin_anton.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
-@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Glowfin Logo"; src: url("../fonts/glowfin_sora_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Glowfin Logo"; src: url("../fonts/glowfin_sora_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
 /* Glowfin logo (approved 2026-11-18): the fin mark, "Glow" light white + "fin" in the purple-to-cyan fade; Kids adds a small tag on the bottom line */
-.logo { display: inline-flex; align-items: baseline; gap: .3em; font-family: "Glowfin Sora", sans-serif; font-weight: 300; color: var(--ink); white-space: nowrap; line-height: 1; }
+.logo { display: inline-flex; align-items: baseline; gap: .3em; font-family: "Glowfin Logo", sans-serif; font-weight: 300; color: var(--ink); white-space: nowrap; line-height: 1; }
 .logo .fin { width: 1.3em; height: 1.25em; display: block; align-self: center; }
 .logo .lw b { font-weight: 600; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .logo .kt { display: none; position: relative; top: -.37em; font-weight: 600; font-size: .36em; line-height: 1.25; padding: 0 .55em; margin-left: -.05em; border-radius: 999px; color: #0B0C12; background: linear-gradient(100deg, #A55BE0, #1FA8E6 60%, #3FE0E8); }
@@ -944,7 +944,7 @@ body.reading .mbar { display: none; }
 .rqhead { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 14px; }
 .rqhead b { font-size: 22px; font-weight: 800; color: var(--ink); }
 .rqhead span { color: var(--ink3); font-size: 14px; }
-.rqrank { position: absolute; left: 8px; bottom: 8px; min-width: 32px; height: 32px; padding: 0 8px; display: grid; place-items: center; background: var(--ink); color: var(--tray); font: 700 17px "Glowfin Sora", sans-serif; border-radius: 9px; box-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
+.rqrank { position: absolute; left: 8px; bottom: 8px; min-width: 32px; height: 32px; padding: 0 8px; display: grid; place-items: center; background: var(--ink); color: var(--tray); font: 700 17px "Glowfin Lexend", sans-serif; border-radius: 9px; box-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
 .rqsplit .grid .poster .cap { display: block; }
 .rqgenres { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .rqgenres .chip { justify-content: center; padding: 12px 16px; font-size: 15px; }
@@ -957,7 +957,7 @@ body.reading .mbar { display: none; }
 .ancard.busy, .anep .busy { opacity: .6; cursor: progress; }
 .anfeels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .anfeel { display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; min-height: 108px; padding: 12px 14px; border: 0; border-radius: 14px; color: #fff; text-align: left; cursor: pointer; font: inherit; background: linear-gradient(140deg, var(--c), color-mix(in srgb, var(--c) 35%, #0B0C10)); }
-.anfeel b { font: 700 19px "Glowfin Sora", sans-serif; text-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+.anfeel b { font: 700 19px "Glowfin Lexend", sans-serif; text-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
 .anfeel span { font-size: 13px; opacity: .88; }
 .anfeel:hover, .anfeel:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .ancal { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
@@ -1118,7 +1118,7 @@ html.kids .tp .btns .btn.big { border-radius: 99px; padding: 16px 34px; font-siz
 .tp.tp-rows .tp-hero { height: auto; min-height: 66vh; }
 .tp.tp-rows .main { position: relative; inset: auto; min-height: 66vh; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: calc(var(--bar) + 4vh) var(--gutter) 8px; }
 .tp.tp-rows .tp-name { max-width: 55%; align-self: flex-start; }
-.tp.tp-rows .tp-name .t { font-family: "Glowfin Sora", sans-serif; font-weight: 600; }
+.tp.tp-rows .tp-name .t { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; }
 .tp.tp-rows .meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .tp.tp-rows .tp-scores { display: inline-flex; gap: 14px; }
 .tp.tp-rows .tp-scores span { color: var(--ink3); font-size: 14px; font-weight: 600; }
@@ -1873,12 +1873,12 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
 /* ---------- Glowfin base look (Ben's "Still Water" pick, 2026-11-18; the same as the TV and phone app) ----------
    Deep night-blue background, Inter for reading and Sora for titles, two-tone menu icons, and glow only on the
    thing you're on: an aqua ring with a soft violet glow, and nothing grows. Nothing here keeps running. */
-@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
-@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
-@font-face { font-family: "Glowfin Inter"; src: url("../fonts/glowfin_inter_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
-@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_regular.ttf") format("truetype"); font-weight: 400 500; font-display: swap; }
-@font-face { font-family: "Glowfin Sora"; src: url("../fonts/glowfin_sora_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+/* Lexend (Ben 2026-11-27): the one font for all of Glowfin and every theme; the logo keeps "Glowfin Logo" */
+@font-face { font-family: "Glowfin Lexend"; src: url("../fonts/glowfin_lexend_light.ttf") format("truetype"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Glowfin Lexend"; src: url("../fonts/glowfin_lexend_regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Glowfin Lexend"; src: url("../fonts/glowfin_lexend_medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Glowfin Lexend"; src: url("../fonts/glowfin_lexend_semibold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Glowfin Lexend"; src: url("../fonts/glowfin_lexend_bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
 :root {
   --tray: #0B0D1A; --trayrgb: 11,13,26; --pg2: #12152A; --pg3: #1A1E38; --pg4: #222645; --line: #262A45;
   --ink: #ECEEFB; --ink2: #9AA0C3; --ink3: #7A80A8; --dark: #0B0D1A;
@@ -1886,8 +1886,8 @@ body.nav-on:has(.brail.always) .np, body.nav-on:has(.brail.always) .lb, body.nav
   --glow: linear-gradient(135deg, var(--violet), var(--blue) 60%, var(--aqua));
   --glowring: 0 0 0 3px var(--aqua), 0 0 22px 4px rgba(165, 91, 224, .5);
 }
-html, body { font-family: "Glowfin Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
-h1, h2, h3, .who h1 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; letter-spacing: -.01em; }
+html, body { font-family: "Glowfin Lexend", system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1, h2, h3, .who h1 { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; letter-spacing: -.01em; }
 html.kids, html.kids body, html.kids h1, html.kids h2, html.kids h3 { font-family: "Fredoka", system-ui, sans-serif; }
 :focus-visible { outline-color: var(--aqua); }
 /* Cards: the Glow ring */
@@ -1917,7 +1917,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .rl-logo:focus-visible { outline-color: var(--aqua); }
 .npanel { background: var(--deep); animation: none; }
 .np-title { padding: 26px 22px 8px; }
-.np-title b { font-family: "Glowfin Sora", sans-serif; font-size: 24px; font-weight: 600; }
+.np-title b { font-family: "Glowfin Lexend", sans-serif; font-size: 24px; font-weight: 600; }
 .np-list a:focus-visible { outline-color: var(--aqua); }
 /* Phones: the bar along the bottom, the tab you're on sits on the glow */
 .bbar { background: var(--deep); }
@@ -1941,7 +1941,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 /* Glowfin (ui-7): Movies, Shows and Anime tabs along the top. The one you're on is white with the glow line under it */
 .ptabs { display: flex; gap: 6px; padding: 10px var(--edge, 40px) 4px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 3; }
 .ptabs::-webkit-scrollbar { display: none; }
-.ptabs a { flex: none; position: relative; padding: 8px 14px 12px; border-radius: 999px; color: #9AA0C3; font-family: "Glowfin Sora", sans-serif; font-weight: 600; font-size: 16px; text-decoration: none; white-space: nowrap; }
+.ptabs a { flex: none; position: relative; padding: 8px 14px 12px; border-radius: 999px; color: #9AA0C3; font-family: "Glowfin Lexend", sans-serif; font-weight: 600; font-size: 16px; text-decoration: none; white-space: nowrap; }
 .ptabs a .sm { display: none; }
 .ptabs a:hover, .ptabs a:focus-visible { background: #222645; color: #ECEEFB; outline: 2.5px solid #3FE0E8; outline-offset: 0; box-shadow: 0 0 0 6px rgba(165,91,224,.25); }
 .ptabs a.on { color: #ECEEFB; font-weight: 700; }
@@ -1956,7 +1956,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 /* ---------- Glowfin player (P1, Ben 2026-11-18): the Wholphin bar in Glowfin colours, same as the TV ----------
    Name top left, the glow progress line cut into chapters, then Back 10, Pause, Ahead 10, Next episode on the
    left and labelled round Subtitles, Audio, Episodes, Settings and Volume on the right. */
-.player .topline .tt { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+.player .topline .tt { font-family: "Glowfin Lexend", sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
 .player .topline .rating { color: #D6D9EC; font-size: 16px; margin-top: 2px; }
 .player .topline .rating:empty { display: none; }
 .player .shadeB { height: 300px; background: linear-gradient(rgba(11,13,26,0), rgba(11,13,26,.92)); }
@@ -2036,7 +2036,7 @@ svg.gi path.gd { stroke-width: 3.6; }
    Previous / Back 10 / Pause / Ahead 10 / Next in the exact middle, Subtitles + Audio (and the small extras) right. */
 .player .controls.p4 { bottom: 20px; }
 .player .p4 .tline { display: flex; align-items: baseline; gap: 12px; padding: 0 4px 2px; min-width: 0; }
-.player .p4 .tline .tt { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.player .p4 .tline .tt { font-family: "Glowfin Lexend", sans-serif; font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .player .p4 .tline .st { color: #D6D9EC; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
 .player .p4 .tline .ends { color: #D6D9EC; font-size: 15px; white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; }
 .player .p4 .srow { display: flex; align-items: center; gap: 14px; font-size: 15px; color: #D6D9EC; font-variant-numeric: tabular-nums; }
@@ -2074,7 +2074,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 /* ---------- Glowfin Settings, Help and Server (Ben's pick S1, 2026-11-18): the same plain side list as the TV ---------- */
 .split { padding-left: 0; gap: 32px; }
 .split nav { background: var(--deep); border-right: 1px solid var(--line); padding: 18px 14px; min-height: calc(100vh - var(--bar) - 10px); }
-.split nav .splith { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; font-size: 26px; padding: 2px 8px 14px; color: var(--ink); }
+.split nav .splith { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; font-size: 26px; padding: 2px 8px 14px; color: var(--ink); }
 .split nav .navsearch { border-radius: 99px; background: var(--raise); padding: 10px 16px; font-size: 15px; }
 .split nav .navsearch:focus { outline: none; border-color: var(--aqua); }
 .split nav a { gap: 0; padding: 11px 14px; color: var(--ink); font-weight: 400; position: relative; }
@@ -2083,7 +2083,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .split nav a.on::before, .split nav a:hover::before, .split nav a:focus-visible::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--aqua); border-radius: 10px 0 0 10px; }
 .split nav a.admin { color: var(--check); }
 .split main { padding-top: 18px; }
-.split h2 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 600; font-size: 26px; }
+.split h2 { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; font-size: 26px; }
 .setrow { background: none; padding: 13px 16px; margin-bottom: 2px; border-radius: 10px; }
 .setrow .t { font-weight: 400; }
 .setrow .s { display: none; color: var(--ink2); font-size: 13px; }
@@ -2095,7 +2095,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .setrow button.valbtn:hover, .setrow a.valbtn:hover, .setrow label.valbtn:hover { background: none; text-decoration: underline; }
 .setrow .valbtn:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; border-radius: 6px; }
 .dropdown.sidelist { right: 24px; top: calc(var(--bar) + 12px); bottom: 24px; left: auto; width: min(360px, calc(100vw - 32px)); max-height: none; background: var(--deep); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
-.dropdown.sidelist .sl-h { font-family: "Glowfin Sora", sans-serif; font-weight: 600; font-size: 20px; padding: 4px 8px 12px; }
+.dropdown.sidelist .sl-h { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; font-size: 20px; padding: 4px 8px 12px; }
 .dropdown.sidelist button { position: relative; padding: 11px 14px; font-weight: 400; flex: none; }
 .dropdown.sidelist button.on { background: var(--raise); box-shadow: none; font-weight: 600; }
 .dropdown.sidelist button.on::after { content: "✓"; position: absolute; right: 14px; color: var(--aqua); }
@@ -2201,7 +2201,7 @@ svg.gi path.gd { stroke-width: 3.6; }
    Real live channels only. Shows on now sit on the raised colour, later ones on the deep one; the one you're
    on turns white with the aqua ring. An aqua line marks now. Upright phones get a Now / Next list. */
 .livep { display: inline-flex; align-items: center; background: var(--aqua); color: #06121a; font-weight: 800; font-size: 12px; letter-spacing: .06em; border-radius: 99px; padding: 1px 9px; margin-right: 4px; }
-#liveInfo .t { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; }
+#liveInfo .t { font-family: "Glowfin Lexend", sans-serif; }
 .livebar { width: 220px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .14); overflow: hidden; margin-top: 8px; }
 .livebar i { display: block; height: 100%; background: var(--glow); }
 .chcard .im { background: var(--raise); }
@@ -2255,7 +2255,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .mtop .art .im { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
 .mtop .info { position: relative; max-width: min(620px, calc(100% - 300px)); padding-bottom: 10px; }
 .mtop .mtop-kick { color: var(--ink2); font-size: 14px; font-weight: 600; }
-.mtop h1 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 38px; font-weight: 700; margin: 4px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtop h1 { font-family: "Glowfin Lexend", sans-serif; font-size: 38px; font-weight: 700; margin: 4px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mtop p { color: var(--ink2); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mlib-fill { flex: 1; }
 .mcard.mix .collage b { background: linear-gradient(90deg, rgba(165, 91, 224, .92), rgba(31, 168, 230, .92) 60%, rgba(63, 224, 232, .92)); color: #fff; }
@@ -2263,7 +2263,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .mcard .im.ask { background: var(--raise); color: var(--aqua); display: flex; flex-direction: column; gap: 8px; }
 .mcard .im.ask svg.i { width: 30%; height: 30%; }
 .mcard .im.ask i { font-style: normal; font-weight: 700; font-size: 14px; color: var(--ink2); }
-.mhero h1, .mhero-words h1, .mtitle { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 700; }
+.mhero h1, .mhero-words h1, .mtitle { font-family: "Glowfin Lexend", sans-serif; font-weight: 700; }
 .mkick { color: var(--ink2); }
 .srow.now .st b { color: var(--aqua); }
 .bars i { background: var(--violet); }
@@ -2350,7 +2350,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .tp-why.bk-place { color: var(--books); }
 .bk-mbar [data-a=sleep].on { color: var(--books); }
 .bk-chlist { position: fixed; right: 24px; bottom: 96px; z-index: 95; width: min(360px, calc(100vw - 32px)); max-height: 50vh; overflow-y: auto; background: #12152A; border: 1px solid #262A45; border-radius: 14px; padding: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, .5); }
-.bk-chlist b { display: block; padding: 4px 8px 8px; font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.bk-chlist b { display: block; padding: 4px 8px 8px; font-family: "Glowfin Lexend", sans-serif; }
 .bk-chlist button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--ink2); font: inherit; text-align: left; cursor: pointer; }
 .bk-chlist button span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-chlist button:hover, .bk-chlist button:focus-visible { background: #222645; color: var(--ink); }
@@ -2366,14 +2366,14 @@ svg.gi path.gd { stroke-width: 3.6; }
    puzzles, Favourites and Arcade. Scores: one card per game, its top 5 and your best. */
 .gtop { height: auto; min-height: 250px; padding-bottom: 16px; }
 .gtop .kick, .door-top .kick { color: var(--ink2); font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-.gtop .t { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-weight: 700; }
+.gtop .t { font-family: "Glowfin Lexend", sans-serif; font-weight: 700; }
 .gw-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .gw-chip { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: var(--raise); border: 1px solid #262A45; color: var(--ink); font-size: 13px; font-weight: 600; }
 .bg-top3 { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--ink2); font-size: 14px; font-weight: 700; }
 .gscores { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding: 4px var(--gutter) 10px; }
 .gscore { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: var(--raise); color: var(--ink); text-decoration: none; }
 .gscore:hover, .gscore:focus-visible { box-shadow: var(--glowring); outline: 0; }
-.gscore b { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 17px; }
+.gscore b { font-family: "Glowfin Lexend", sans-serif; font-size: 17px; }
 .gscore ol { margin: 0; padding: 0; list-style: none; counter-reset: g; display: flex; flex-direction: column; gap: 4px; }
 .gscore li { counter-increment: g; display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 700; }
 .gscore li span:first-child::before { content: counter(g) ". "; color: var(--ink2); }
@@ -2410,7 +2410,7 @@ svg.gi path.gd { stroke-width: 3.6; }
 .tp .tp-kick { font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--door); }
 .bg-how { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0 var(--gutter); max-width: 1100px; }
 .bg-step { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 14px; background: var(--raise); line-height: 1.45; }
-.bg-step > b { font-family: "Glowfin Sora", sans-serif; font-size: 22px; color: var(--door); }
+.bg-step > b { font-family: "Glowfin Lexend", sans-serif; font-size: 22px; color: var(--door); }
 .bg-step.bg-anime { margin: 0; align-items: flex-start; }
 .bg-board { display: flex; flex-direction: column; margin: 0 var(--gutter); max-width: 520px; padding: 8px 18px 12px; border-radius: 14px; background: var(--raise); }
 .bg-board > div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
@@ -2835,10 +2835,10 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .live-top .art.on { opacity: 1; }
 .live-top .art::after { background: linear-gradient(90deg, rgba(var(--trayrgb),.88) 0%, rgba(var(--trayrgb),.55) 38%, rgba(var(--trayrgb),0) 66%), linear-gradient(180deg, rgba(var(--trayrgb),0) 0%, rgba(var(--trayrgb),0) 45%, rgba(var(--trayrgb),.75) 72%, var(--tray) 100%); }
 .live-top .info { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; max-width: min(640px, 60%); text-shadow: 0 1px 4px rgba(0,0,0,.5); }
-.live-top .lt-ch { display: flex; align-items: center; gap: 10px; font: 700 16px "Glowfin Sora", "Glowfin Inter", sans-serif; }
+.live-top .lt-ch { display: flex; align-items: center; gap: 10px; font: 700 16px "Glowfin Lexend", sans-serif; }
 .live-top .lt-plate { height: 30px; width: 45px; border-radius: 6px; background: #fff; display: grid; place-items: center; padding: 3px; flex: none; }
 .live-top .lt-plate img { max-height: 100%; max-width: 100%; object-fit: contain; }
-.live-top .t { font: 800 clamp(30px, 3.2vw, 52px)/1.08 "Glowfin Sora", "Glowfin Inter", sans-serif; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.live-top .t { font: 800 clamp(30px, 3.2vw, 52px)/1.08 "Glowfin Lexend", sans-serif; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .live-top .meta { color: var(--ink); font-weight: 600; margin: 0; gap: 0; }
 .live-top .meta span + span::before { content: "·"; margin: 0 10px; color: rgba(236,238,251,.55); }
 .live-top .lt-tags { display: flex; gap: 8px; align-items: center; }
@@ -2928,7 +2928,7 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .rqtabs .rqround { flex: none; width: 38px; height: 38px; border-radius: 50%; display: inline-grid; place-items: center; background: rgba(11,13,26,.35); border: 1px solid rgba(255,255,255,.14); color: #ECEEFB; cursor: pointer; }
 .rqtabs .rqround .i { width: 18px; height: 18px; }
 .rqtabs .rqround:hover, .rqtabs .rqround:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; }
-.rqtabs .rqwaitp { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 12px; border-radius: 999px; background: rgba(242,179,61,.2); border: 1px solid rgba(242,179,61,.6); color: #FFE3A6; font-family: "Glowfin Sora", sans-serif; font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.rqtabs .rqwaitp { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 12px; border-radius: 999px; background: rgba(242,179,61,.2); border: 1px solid rgba(242,179,61,.6); color: #FFE3A6; font-family: "Glowfin Lexend", sans-serif; font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
 .rqtabs .rqwaitp::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #F2B33D; }
 .rqtabs .rqwaitp:hover, .rqtabs .rqwaitp:focus-visible { background: #fff; color: #0B0D1A; outline: 2.5px solid #3FE0E8; }
 /* The coloured status tag at the top and the small dot on covers already asked for */
@@ -2971,7 +2971,7 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .mg-list .item:hover, .mg-list .item:focus-within { background: rgba(26, 30, 56, .85); border-color: rgba(255, 255, 255, .25); }
 .mg-side { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .mg-side .mg-art { aspect-ratio: 16 / 9; border-radius: 16px; background: center/cover no-repeat var(--deep, #12152a); box-shadow: 0 14px 36px rgba(0, 0, 0, .5); margin-bottom: 6px; }
-.mg-side h2 { font-family: "Glowfin Sora", "Glowfin Inter", sans-serif; font-size: 30px; margin: 0; }
+.mg-side h2 { font-family: "Glowfin Lexend", sans-serif; font-size: 30px; margin: 0; }
 .mg-side .mg-facts { color: var(--ink2); margin: 0; }
 .mg-side .rqtag { align-self: flex-start; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; border: 1.5px solid; }
 .mg-side .rqtag.wt { background: rgba(242, 179, 61, .18); border-color: rgba(242, 179, 61, .65); color: #FFE7B5; }
@@ -3002,7 +3002,7 @@ span[data-s="user"] b { background: #4A4F66 !important; color: #fff !important; 
 .srch .sx-kinds { padding: 0; flex: 0 1 auto; }
 .srch .sx-kinds:empty { display: none; }
 .srch .sx-tip { margin-left: auto; font-size: 14px; }
-.srch .sx-tip kbd { font: 700 13px "Glowfin Sora", sans-serif; padding: 1px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); }
+.srch .sx-tip kbd { font: 700 13px "Glowfin Lexend", sans-serif; padding: 1px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35); }
 .srch .sx-recent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 14px; }
 .srch .sx-lab { font-weight: 600; margin-right: 4px; }
 .srch .sx-empty { padding-top: 40px; font-size: 20px; font-weight: 600; }
