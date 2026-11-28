@@ -106,8 +106,15 @@ fonts/lexend.LICENSE.txt
 try-list.json
 movie-quotes.json
 js/btable.js
+js/bcards.js
 img/games/table_solitaire.png
 img/games/table_checkers.png
 img/games/table_chess.png
 img/games/table_four_row.png
 img/games/table_five_dice.png
+img/games/table_hearts.png
+img/games/table_spades.png
+img/games/table_crazy_eights.png
+img/games/table_rummy.png
+img/games/table_go_fish.png
+img/games/table_holdem.png

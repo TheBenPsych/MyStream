@@ -42,6 +42,12 @@
     { key: "TABLE_CHESS", game: "CHESS", title: "Chess", group: "Board game", players: "2 players", minutes: "About 30 min", about: "The full game, with every rule. Pass the device, or play Glowfin at three levels.", steps: ["Pick a piece. Dots show where it can go.", "Trap the other king to win.", "Take back a move from the menu."], versus: true, colors: C("#4338CA", "#1E1B4B") },
     { key: "TABLE_FOUR_ROW", game: "FOUR_ROW", title: "Four in a Row", group: "Board game", players: "2 players", minutes: "About 5 min", about: "Drop discs into the frame. First to get four in a line wins.", steps: ["Pick a column.", "Your disc drops to the bottom.", "Four in a row in any direction wins."], versus: true, colors: C("#CA8A04", "#422006") },
     { key: "TABLE_FIVE_DICE", game: "FIVE_DICE", title: "Five Dice", group: "Dice game", players: "1 to 6 players", minutes: "About 15 min", about: "Roll five dice up to three times a turn, keep the ones you like, and fill your score sheet.", steps: ["Roll, then click a die to keep it for the next roll.", "After up to three rolls, pick a box on your sheet.", "13 turns each. The biggest total wins."], versus: true, colors: C("#9333EA", "#3B0764") },
+    { key: "TABLE_HEARTS", game: "HEARTS", title: "Hearts", group: "Card game", players: "4 players", minutes: "About 20 min", about: "Dodge the hearts and the queen of spades. Lowest score wins. Glowfin plays the other seats.", steps: ["Pass 3 cards, then follow the suit that was led if you can.", "Each heart is 1 point and the queen of spades is 13.", "Take every one of them and everyone else gets 26. First to 50 ends it."], versus: true, colors: C("#E11D48", "#4C0519") },
+    { key: "TABLE_SPADES", game: "SPADES", title: "Spades", group: "Card game", players: "4 players in teams", minutes: "About 30 min", about: "Bid how many tricks you'll win with your partner across the table. Spades beat everything.", steps: ["Say how many tricks you'll win (Nil means none).", "Follow suit if you can; spades win over other suits.", "Make your bid for 10 a trick. First team to 300 wins."], versus: true, colors: C("#334155", "#0F172A") },
+    { key: "TABLE_CRAZY_EIGHTS", game: "CRAZY_EIGHTS", title: "Crazy Eights", group: "Card game", players: "2 to 6 players", minutes: "About 10 min", about: "Match the suit or number. Eights are wild. First with no cards wins.", steps: ["Play a card that matches the top card's suit or number.", "An 8 goes on anything, and you pick the new suit.", "Can't play? Draw one."], versus: true, colors: C("#16A34A", "#052E16") },
+    { key: "TABLE_RUMMY", game: "RUMMY", title: "Rummy", group: "Card game", players: "2 to 4 players", minutes: "About 15 min", about: "Make sets and runs and get rid of every card first.", steps: ["Take a card from the deck or the discard pile.", "Lay down sets (3 or 4 of a number) or runs (3 in a row, one suit).", "Discard one to end your turn. First out wins."], versus: true, colors: C("#0891B2", "#083344") },
+    { key: "TABLE_GO_FISH", game: "GO_FISH", title: "Go Fish", group: "Card game", players: "2 to 5 players", minutes: "About 10 min", about: "Ask for cards, collect sets of four, and go fish when they don't have it.", steps: ["Pick a card you hold, then who to ask.", "They hand over every card of that number, or say Go fish.", "Four of a number is a book. Most books wins."], versus: true, colors: C("#2563EB", "#172554") },
+    { key: "TABLE_HOLDEM", game: "HOLDEM", title: "Hold'em night", group: "Card game", players: "2 to 8 players", minutes: "About 30 min", about: "Texas Hold'em with pretend chips. No money anywhere. Last one with chips wins.", steps: ["Two cards each, then five shared cards in three steps.", "Fold, call or raise between each step.", "Best five-card hand takes the pot."], versus: true, colors: C("#15803D", "#14532D"), grownUps: true },
     { key: "TABLE_SOLITAIRE", game: "SOLITAIRE", title: "Solitaire", group: "Card game", players: "1 player", minutes: "About 10 min", about: "The classic one-player card game. Build four piles from ace to king, one suit each.", steps: ["Move cards onto the next card down in the other colour.", "Click a card, then where it goes. Double-click sends it home.", "Only a king goes in an empty space."], versus: false, colors: C("#7C3AED", "#2E1065") },
   ];
   B.bgTableGames = TABLE;
@@ -54,7 +60,7 @@
     const y = PARTY.find((g) => g.key === key);
     if (y) return Object.assign({ kind: "party", about: y.short, steps: [], icon: "phone" }, y);
     const t = TABLE.find((g) => g.key === key);
-    if (t) return Object.assign({ kind: "table", short: t.about, icon: "dice", kids: true }, t);
+    if (t) return Object.assign({ kind: "table", short: t.about, icon: "dice", kids: !t.grownUps }, t);
     return null;
   };
 
@@ -129,7 +135,7 @@
       puzzles: () => B.row("Movie puzzles", puzzles.map((g) => tile(g, badge(g.board)))),
       party: () => B.row("Party · needs phones", party.map((g) => tile(g, "Needs the TV and phones"))),
       arcade: () => B.row("Arcade", [...ARCADE.map((g) => tile(g, badge(g.key))), `<a class="poster bgm" href="#/playb/surprise" title="Surprise me"><div class="im"><img class="art" src="${art({ key: "SURPRISE" })}" alt=""></div><div class="cap"><span class="nm">Surprise me</span><small>Random</small></div></a>`]),
-      table: () => B.row("Board and dice games", TABLE.filter((g) => g.group !== "Card game").map((g) => tile(g, g.players))) + B.row("Card games", TABLE.filter((g) => g.group === "Card game").map((g) => tile(g, g.players))),
+      table: () => B.row("Board and dice games", TABLE.filter((g) => g.group !== "Card game").map((g) => tile(g, g.players))) + B.row("Card games", TABLE.filter((g) => g.group === "Card game" && !(g.grownUps && kids())).map((g) => tile(g, g.players))),
       ember: () => `<div class="wrap"><a class="bg-ember" href="#/bgame/EMBER"><b>Ember Road</b><span>Glowfin's own adventure game. Plays on the TV with your phone.</span></a></div>`,
     };
     return (keys || Object.keys(parts)).map((k) => (parts[k] ? parts[k]() : "")).join("");
@@ -184,7 +190,7 @@
     const boardHtml = g.board
       ? `<h3 class="tp-h">Leaderboard · all time</h3><div class="bg-board">${t.length ? t.map((sc, i) => `<div><span><b class="m${i + 1}">${i + 1}</b>${esc(sc.name)}</span><b>${sc.score.toLocaleString()}</b></div>`).join("") : `<div><span class="dim">No scores yet. Be the first!</span></div>`}<div class="you"><span>Your best</span><b>${best ? best.toLocaleString() : "None yet"}</b></div><small class="dim">Ranked by ${esc(g.ranked || "most points")}</small></div>`
       : "";
-    const sameKind = g.kind === "arcade" ? ARCADE.map((x) => find(x.key)) : table ? TABLE.map((x) => find(x.key)) : party ? PARTY.map((x) => find(x.key)) : PUZZLES.map((x) => find(x.key));
+    const sameKind = g.kind === "arcade" ? ARCADE.map((x) => find(x.key)) : table ? TABLE.filter((x) => !(x.grownUps && kids())).map((x) => find(x.key)) : party ? PARTY.map((x) => find(x.key)) : PUZZLES.map((x) => find(x.key));
     const more = sameKind.filter((x) => x && x.key !== g.key && (!kids() || x.kind === "arcade" || x.kids));
     const moreName = g.kind === "arcade" ? "More Glowfin arcade" : table ? "More table games" : party ? "More party games" : "More movie puzzles";
     B.titlePage({

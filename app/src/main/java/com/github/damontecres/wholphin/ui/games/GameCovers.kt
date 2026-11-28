@@ -55,6 +55,12 @@ internal fun gameCover(key: String): Int? =
         "TABLE_CHESS" -> R.drawable.game_cover_table_chess
         "TABLE_FOUR_ROW" -> R.drawable.game_cover_table_four_row
         "TABLE_FIVE_DICE" -> R.drawable.game_cover_table_five_dice
+        "TABLE_HEARTS" -> R.drawable.game_cover_table_hearts
+        "TABLE_SPADES" -> R.drawable.game_cover_table_spades
+        "TABLE_CRAZY_EIGHTS" -> R.drawable.game_cover_table_crazy_eights
+        "TABLE_RUMMY" -> R.drawable.game_cover_table_rummy
+        "TABLE_GO_FISH" -> R.drawable.game_cover_table_go_fish
+        "TABLE_HOLDEM" -> R.drawable.game_cover_table_holdem
         "SURPRISE" -> R.drawable.game_cover_surprise
         else -> null
     }
