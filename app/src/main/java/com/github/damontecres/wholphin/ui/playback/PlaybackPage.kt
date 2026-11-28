@@ -738,6 +738,7 @@ fun PlaybackPageContent(
                         seekPositionMs = skipPosition,
                         trickplayInfo = state.currentMediaInfo.trickPlayInfo,
                         trickplayUrlFor = viewModel::getTrickplayUrl,
+                        chapters = state.currentMediaInfo.chapters,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomCenter)

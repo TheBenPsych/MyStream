@@ -3225,3 +3225,48 @@ body.nav-on.rail-push #page .top .clock { transform: translateX(calc(var(--nrail
   .bg-thumbs span { width: 46px; }
   .bg-face img { aspect-ratio: 1; }
 }
+
+/* ---------- Simple player (Ben approved 2026-11-27): two rows only, low on the screen. The bar with the two times
+   on its line; then one row with the name on the left, Play in the middle of the screen and Subtitles to Settings
+   on the right. Plain white icons with no names and no circles; only the one you're on turns solid white. A plain
+   white bar cut into chapters by small gaps, on a dark strip that is solid behind the controls. No blur. */
+.player .controls.p4 { bottom: 10px; }
+.player .shadeB { height: 190px; background: linear-gradient(rgba(6,7,14,0), rgba(6,7,14,.9) 40%, #06070E 52%); }
+.player .p4 .srow { display: flex; align-items: center; gap: 14px; font-weight: 600; color: #fff; }
+.player .p4 .srow .bar { flex: 1; min-width: 0; height: 24px; }
+.player .bar .track { background: rgba(255,255,255,.28); }
+.player .bar .track u { background: rgba(255,255,255,.3); }
+.player .bar .track b { background: #fff; }
+.player .bar .tick { width: 4px; height: 9px; margin: -4.5px 0 0 -2px; border-radius: 0; background: #06070E; }
+.player .bar .knob { box-shadow: 0 0 0 1px rgba(6,7,14,.35); }
+.player .bar .hovert { bottom: 28px; background: #fff; color: #0B0D1A; font-weight: 700; border-radius: 99px; padding: 4px 12px; white-space: nowrap; }
+.player .p4 .row2.p1row.sp1 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 0; }
+.player .p4 .sp1 .p1l { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; min-width: 0; padding-left: 4px; }
+.player .p4 .sp1 .p1l .tt { max-width: 100%; font-size: 19px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .p4 .sp1 .p1l .st { max-width: 100%; font-size: 14px; font-weight: 500; color: #B4B8D0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .p4 .sp1 .p1c { justify-content: center; gap: 10px; }
+.player .p4 .sp1 .p1r { justify-content: flex-end; gap: 10px; }
+.player .p4 .sp1 .pbtn { background: none; border: 0; box-shadow: none; color: #fff; }
+.player .p4 .sp1 .pbtn.lab { width: 48px; height: 48px; margin: 0; }
+.player .p4 .sp1 .pbtn.lab em, .player .p4 .sp1 .vlab > em { display: none; }
+.player .p4 .sp1 .pbtn svg.i { width: 28px; height: 28px; }
+.player .p4 .sp1 .pbtn.play { width: 54px; height: 54px; }
+.player .p4 .sp1 .pbtn.play svg.i { width: 32px; height: 32px; }
+.player .p4 .sp1 .extra .pbtn { width: 40px; height: 40px; }
+.player .p4 .sp1 .extra .pbtn svg.i { width: 22px; height: 22px; }
+.player .p4 .sp1 .pbtn:hover, .player .p4 .sp1 .pbtn:focus-visible { background: #fff; color: #0B0D1A; box-shadow: none; }
+.player .p4 .sp1 .pbtn:disabled, .player .p4 .sp1 .pbtn:disabled:hover { opacity: .35; cursor: default; background: none; color: #fff; }
+@media (max-width: 900px) {
+  .player .p4 .sp1 .p1c, .player .p4 .sp1 .p1r { gap: 4px; }
+  .player .p4 .sp1 .pbtn.lab { width: 42px; height: 42px; }
+  .player .p4 .sp1 .pbtn.play { width: 48px; height: 48px; }
+  .player .p4 .sp1 .p1l .tt { font-size: 16px; }
+  .player .p4 .sp1 .p1l .st { font-size: 13px; }
+}
+/* Upright phones: no room for three parts side by side, so the middle buttons get their own line and the name goes */
+@media (max-width: 700px) {
+  .player .p4 .row2.p1row.sp1 { grid-template-columns: 1fr; row-gap: 2px; }
+  .player .p4 .sp1 .p1l { display: none; }
+  .player .p4 .sp1 .p1c { grid-column: 1; grid-row: 1; }
+  .player .p4 .sp1 .p1r { grid-column: 1; grid-row: 2; justify-content: center; }
+}
