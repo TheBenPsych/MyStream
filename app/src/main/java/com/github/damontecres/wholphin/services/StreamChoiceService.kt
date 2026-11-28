@@ -214,17 +214,20 @@ class StreamChoiceService
                 }
             } else {
                 val audioLanguage = getPreferredLanguage(MediaStreamType.AUDIO, prefs, userConfig)
+                // Benflix (Idea Box 31): never start on a commentary or audio description track,
+                // even when the file marks it as the default. They stay in the Sound list.
+                val main = BenflixSideAudio.mainTracks(candidates)
                 val stream =
                     if (audioLanguage.isNotNullOrBlank()) {
                         val sorted =
-                            candidates.sortedWith(compareBy<MediaStream> { it.language }.thenByDescending { it.channels })
+                            main.sortedWith(compareBy<MediaStream> { it.language }.thenByDescending { it.channels })
                         sorted.firstOrNull { it.language == audioLanguage && it.isDefault }
                             ?: sorted.firstOrNull { it.language == audioLanguage }
                             ?: sorted.firstOrNull { it.isDefault }
                             ?: sorted.firstOrNull()
                     } else {
-                        candidates.firstOrNull { it.isDefault }
-                            ?: candidates.firstOrNull()
+                        main.firstOrNull { it.isDefault }
+                            ?: main.firstOrNull()
                     }
                 stream with StreamChoiceReason.UserPreferences
             }
@@ -900,4 +903,30 @@ sealed interface StreamChoiceReason {
         private val SERIES_PROVIDER: StringProvider by lazy { ResStringProvider(R.string.series) }
         private val SEASON_PROVIDER: StringProvider by lazy { ResStringProvider(R.string.tv_season) }
     }
+}
+
+/**
+ * Benflix: sound tracks that talk over the film (director's commentary, audio description for
+ * people who can't see the picture). Glowfin never picks these by itself.
+ */
+object BenflixSideAudio {
+    private val SIDE =
+        listOf(
+            "commentary",
+            "comment",
+            "audio description",
+            "audio-description",
+            "descriptive",
+            "described",
+            "visually impaired",
+            "narrated description",
+        )
+
+    fun isSide(track: MediaStream): Boolean {
+        val name = listOfNotNull(track.title, track.displayTitle).joinToString(" ").lowercase()
+        return SIDE.any { it in name } || Regex("""(^|[^a-z])ad([^a-z]|$)""").containsMatchIn(track.title.orEmpty().lowercase())
+    }
+
+    /** The tracks that are the film's own sound, or every track when that would leave none */
+    fun mainTracks(candidates: List<MediaStream>): List<MediaStream> = candidates.filterNot { isSide(it) }.ifEmpty { candidates }
 }

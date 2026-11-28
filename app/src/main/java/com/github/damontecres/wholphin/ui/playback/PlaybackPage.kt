@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.playback
 
+import androidx.compose.foundation.layout.aspectRatio
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -282,6 +283,13 @@ fun PlaybackPageContent(
         focusRequester.tryRequestFocus()
     }
     val controllerViewState = remember { viewModel.controllerViewState }
+    // Benflix end of episode screen (Idea Box 31): while the next episode or movie is offered, the credits
+    // shrink into a small window top right and the offer takes the screen. Watch credits or the controls
+    // bring the video back to full size.
+    var watchCredits by remember { mutableStateOf(false) }
+    val endOfferId = state.nextUp?.id ?: state.movieNext?.id
+    LaunchedEffect(endOfferId) { watchCredits = false }
+    val endScreen = endOfferId != null && !watchCredits && !controllerViewState.controlsVisible
 
     var skipIndicatorDuration by remember { mutableLongStateOf(0L) }
     com.github.damontecres.wholphin.util.PlayerBarTiming(
@@ -677,7 +685,17 @@ fun PlaybackPageContent(
                 player = player,
                 surfaceType = SURFACE_TYPE_SURFACE_VIEW,
                 modifier =
-                    scaledModifier.onSizeChanged {
+                    (
+                        if (endScreen) {
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 24.dp, end = 24.dp)
+                                .fillMaxWidth(END_SCREEN_VIDEO_WIDTH)
+                                .aspectRatio(16f / 9f)
+                        } else {
+                            scaledModifier
+                        }
+                    ).onSizeChanged {
                         playerSurfaceSize = it
                     },
             )
@@ -1205,33 +1223,56 @@ fun PlaybackPageContent(
                         viewModel.autoPlayMovieNext()
                     }
                 }
-                NextUpEpisode(
-                    title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
-                    description = it.data.overview,
-                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
-                    aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
-                    onClick = {
-                        viewModel.reportInteraction()
-                        viewModel.playMovieNext()
-                    },
-                    timeLeft = if (autoPlay) movieTimeLeft.seconds else null,
-                    totalCountdown = if (autoPlay) MOVIE_COUNTDOWN_SECONDS.seconds else null,
-                    runtime = it.data.runTimeTicks?.ticks,
-                    heading = stringResource(R.string.player_watch_next),
-                    buttonText = stringResource(R.string.player_play_this),
-                    countdownTextRes = R.string.player_plays_in,
-                    onNotNow = viewModel::dismissMovieNext,
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 32.dp, vertical = 40.dp)
-                            .widthIn(max = 760.dp)
-                            .fillMaxWidth()
-                            .height(170.dp)
-                            .background(
-                                Color.Black.copy(alpha = .82f),
-                                shape = BenflixShapes.Card,
-                            ),
-                )
+                if (endScreen) {
+                    NextUpScreen(imageUrl = LocalImageUrlService.current.rememberImageUrl(it, org.jellyfin.sdk.model.api.ImageType.BACKDROP)) {
+                        NextUpEpisode(
+                            title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
+                            description = it.data.overview,
+                            imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                            aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                            onClick = {
+                                viewModel.reportInteraction()
+                                viewModel.playMovieNext()
+                            },
+                            timeLeft = if (autoPlay) movieTimeLeft.seconds else null,
+                            totalCountdown = if (autoPlay) MOVIE_COUNTDOWN_SECONDS.seconds else null,
+                            runtime = it.data.runTimeTicks?.ticks,
+                            heading = stringResource(R.string.player_watch_next),
+                            buttonText = stringResource(R.string.player_play_this),
+                            countdownTextRes = R.string.player_plays_in,
+                            onNotNow = viewModel::dismissMovieNext,
+                            big = true,
+                        )
+                    }
+                } else {
+                    NextUpEpisode(
+                        title = listOfNotNull(it.name, it.data.productionYear?.toString()).joinToString(" · "),
+                        description = it.data.overview,
+                        imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                        aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                        onClick = {
+                            viewModel.reportInteraction()
+                            viewModel.playMovieNext()
+                        },
+                        timeLeft = if (autoPlay) movieTimeLeft.seconds else null,
+                        totalCountdown = if (autoPlay) MOVIE_COUNTDOWN_SECONDS.seconds else null,
+                        runtime = it.data.runTimeTicks?.ticks,
+                        heading = stringResource(R.string.player_watch_next),
+                        buttonText = stringResource(R.string.player_play_this),
+                        countdownTextRes = R.string.player_plays_in,
+                        onNotNow = viewModel::dismissMovieNext,
+                        modifier =
+                            Modifier
+                                .padding(horizontal = 32.dp, vertical = 40.dp)
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                                .height(170.dp)
+                                .background(
+                                    Color.Black.copy(alpha = .82f),
+                                    shape = BenflixShapes.Card,
+                                ),
+                    )
+                }
             }
         }
 
@@ -1261,6 +1302,7 @@ fun PlaybackPageContent(
                 BackHandler(timeLeft > 0 && autoPlayEnabled) {
                     timeLeft = -1
                     autoPlayEnabled = false
+                    watchCredits = true
                 }
                 if (autoPlayEnabled) {
                     LaunchedEffect(Unit) {
@@ -1275,44 +1317,80 @@ fun PlaybackPageContent(
                         }
                     }
                 }
-                NextUpEpisode(
-                    title =
-                        listOfNotNull(
-                            it.data.seasonEpisode,
-                            it.name,
-                        ).joinToString(" - "),
-                    description = it.data.overview,
-                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
-                    aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
-                    onClick = {
-                        viewModel.reportInteraction()
-                        controllerViewState.hideControls()
-                        viewModel.playNextUp()
-                    },
-                    timeLeft = if (autoPlayEnabled) timeLeft.seconds else null,
-                    runtime = it.data.runTimeTicks?.ticks,
-                    totalCountdown = preferences.appPreferences.playbackPreferences.autoPlayNextDelaySeconds.seconds,
-                    // Benflix: no "Watch credits" once the credits were skipped or the episode ended
-                    onWatchCredits =
-                        if (state.noCreditsLeft) {
-                            null
-                        } else {
-                            {
-                                timeLeft = -1
-                                autoPlayEnabled = false
-                            }
+                if (endScreen) {
+                    NextUpScreen(imageUrl = LocalImageUrlService.current.rememberImageUrl(it)) {
+                        NextUpEpisode(
+                            title =
+                                listOfNotNull(
+                                    it.data.seasonEpisode,
+                                    it.name,
+                                ).joinToString(" - "),
+                            description = it.data.overview,
+                            imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                            aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                            onClick = {
+                                viewModel.reportInteraction()
+                                controllerViewState.hideControls()
+                                viewModel.playNextUp()
+                            },
+                            timeLeft = if (autoPlayEnabled) timeLeft.seconds else null,
+                            runtime = it.data.runTimeTicks?.ticks,
+                            totalCountdown = preferences.appPreferences.playbackPreferences.autoPlayNextDelaySeconds.seconds,
+                            // Benflix: no "Watch credits" once the credits were skipped or the episode ended
+                            onWatchCredits =
+                                if (state.noCreditsLeft) {
+                                    null
+                                } else {
+                                    {
+                                        timeLeft = -1
+                                        autoPlayEnabled = false
+                                        watchCredits = true
+                                    }
+                                },
+                            big = true,
+                        )
+                    }
+                } else {
+                    NextUpEpisode(
+                        title =
+                            listOfNotNull(
+                                it.data.seasonEpisode,
+                                it.name,
+                            ).joinToString(" - "),
+                        description = it.data.overview,
+                        imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                        aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                        onClick = {
+                            viewModel.reportInteraction()
+                            controllerViewState.hideControls()
+                            viewModel.playNextUp()
                         },
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 32.dp, vertical = 40.dp)
-                            .widthIn(max = 760.dp)
-                            .fillMaxWidth()
-                            .height(170.dp)
-                            .background(
-                                Color.Black.copy(alpha = .82f),
-                                shape = BenflixShapes.Card,
-                            ),
-                )
+                        timeLeft = if (autoPlayEnabled) timeLeft.seconds else null,
+                        runtime = it.data.runTimeTicks?.ticks,
+                        totalCountdown = preferences.appPreferences.playbackPreferences.autoPlayNextDelaySeconds.seconds,
+                        // Benflix: no "Watch credits" once the credits were skipped or the episode ended
+                        onWatchCredits =
+                            if (state.noCreditsLeft) {
+                                null
+                            } else {
+                                {
+                                    timeLeft = -1
+                                    autoPlayEnabled = false
+                                    watchCredits = true
+                                }
+                            },
+                        modifier =
+                            Modifier
+                                .padding(horizontal = 32.dp, vertical = 40.dp)
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                                .height(170.dp)
+                                .background(
+                                    Color.Black.copy(alpha = .82f),
+                                    shape = BenflixShapes.Card,
+                                ),
+                    )
+                }
             }
         }
 

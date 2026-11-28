@@ -3270,3 +3270,21 @@ body.nav-on.rail-push #page .top .clock { transform: translateX(calc(var(--nrail
   .player .p4 .sp1 .p1c { grid-column: 1; grid-row: 1; }
   .player .p4 .sp1 .p1r { grid-column: 1; grid-row: 2; justify-content: center; }
 }
+
+/* End of episode screen (Idea Box 31, Ben 2026-11-27): the credits play in a small window top right and
+   the next episode or movie takes the rest of the screen. Watch credits takes the class away again. */
+.player.endscr video { inset: 24px 24px auto auto; width: 32%; height: auto; aspect-ratio: 16/9; z-index: 3; border-radius: 10px; }
+.player.endscr .controls, .player.endscr .shadeB, .player.endscr .pends { display: none; }
+.player.endscr .pcorner { inset: 0; right: 0; bottom: 0; display: block; z-index: 2; }
+.player.endscr .upnext { position: absolute; inset: 0; width: auto; max-width: none; border: 0; border-radius: 0; background: #000; padding: 0; display: block; }
+.player.endscr .upnext .endart { position: absolute; inset: 0 34% 0 0; background: #111 center/cover no-repeat; }
+.player.endscr .upnext .endart::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.8) 70%, #000), linear-gradient(180deg, transparent 35%, rgba(0,0,0,.9)); }
+.player.endscr .upnext .endwords { position: absolute; left: 48px; bottom: 56px; width: min(600px, 62%); display: flex; flex-direction: column; gap: 10px; }
+.player .upnext .endhead { color: var(--aqua, #3FE0E8); font-weight: 700; font-size: 18px; }
+.player .upnext .endname { font-size: 30px; font-weight: 700; line-height: 1.2; }
+.player .upnext .endov { color: rgba(255,255,255,.8); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.player:not(.endscr) .upnext .endart { flex: 0 1 auto; min-height: 0; aspect-ratio: 16/9; border-radius: 10px; background: #222 center/cover no-repeat; }
+.player:not(.endscr) .upnext .endov, .player:not(.endscr) .upnext .endhead { display: none; }
+.player:not(.endscr) .upnext .endwords { display: flex; flex-direction: column; gap: 10px; }
+.player:not(.endscr) .upnext .endname { font-size: 16px; }
+@media (max-width: 700px) { .player.endscr video { width: 46%; } .player.endscr .upnext .endwords { left: 16px; right: 16px; width: auto; bottom: 24px; } .player.endscr .upnext .endart { inset: 0; } }
