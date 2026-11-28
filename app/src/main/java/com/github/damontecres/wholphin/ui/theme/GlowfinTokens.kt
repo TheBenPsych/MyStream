@@ -83,6 +83,8 @@ fun Modifier.glowFocus(
                 val steps = GLOW_STEPS
                 val stroke = haloPx / steps + 1f
                 val ring = shape.createOutline(Size(size.width + ringPx, size.height + ringPx), layoutDirection, this)
+                val framePx = FRAME_WIDTH.toPx()
+                val frame = shape.createOutline(Size(size.width - framePx, size.height - framePx), layoutDirection, this)
                 val outlines: List<Pair<Float, Outline>> =
                     (1..steps).map { i ->
                         val out = ringPx + haloPx * i / steps
@@ -90,12 +92,23 @@ fun Modifier.glowFocus(
                     }
                 onDrawWithContent {
                     drawContent()
+                    val kids = KidsLook.on
+                    val look = GlowfinTheme.look
+                    val frameColor = if (kids) null else look.frame
+                    if (!focused && frameColor != null) {
+                        // A theme's resting frame (Slate), drawn just inside the card's edge
+                        translate(framePx / 2f, framePx / 2f) {
+                            drawOutline(frame, frameColor, style = Stroke(width = framePx))
+                        }
+                    }
                     if (focused) {
-                        val halo = BenflixColors.Focus
-                        outlines.forEachIndexed { index, (out, outline) ->
-                            val a = GLOW_ALPHA * (1f - index.toFloat() / steps)
-                            translate(-out, -out) {
-                                drawOutline(outline, halo.copy(alpha = a), style = Stroke(width = stroke))
+                        if (kids || look.halo) {
+                            val halo = BenflixColors.Focus
+                            outlines.forEachIndexed { index, (out, outline) ->
+                                val a = GLOW_ALPHA * (1f - index.toFloat() / steps)
+                                translate(-out, -out) {
+                                    drawOutline(outline, halo.copy(alpha = a), style = Stroke(width = stroke))
+                                }
                             }
                         }
                         translate(-ringPx / 2f, -ringPx / 2f) {
@@ -109,6 +122,7 @@ fun Modifier.glowFocus(
 private const val GLOW_STEPS = 4
 private const val GLOW_ALPHA = .45f
 private val HALO_MAX = 6.dp
+private val FRAME_WIDTH = 1.5.dp
 
 /** Where the glow's gradient runs for a box of [size] (bottom-left to top-right, like the logo) */
 fun glowBrushFor(size: Size): Brush =

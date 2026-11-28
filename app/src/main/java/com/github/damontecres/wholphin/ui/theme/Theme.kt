@@ -69,13 +69,13 @@ fun WholphinTheme(
  * The highlight colour. Glowfin: the logo's aqua for everyone (it used to be red, then white). The name
  * stayed so the many progress lines, Play buttons and highlights keep working.
  */
-val BenflixRedBase: Color get() = GlowfinTheme.look.focus
+val BenflixRedBase: Color get() = GlowfinTheme.look.accent
 
 /** What to write on top of [BenflixRed] (dark, since aqua is bright) */
-val OnBenflixRed: Color get() = Glowfin.Ink
+val OnBenflixRed: Color get() = GlowfinTheme.look.onAccent
 
 /** The highlight colour (Glowfin aqua) */
-val LocalBenflixAccent = staticCompositionLocalOf { BluePurpleLook.focus }
+val LocalBenflixAccent = staticCompositionLocalOf { BluePurpleLook.accent }
 
 /** Used for watch progress bars everywhere (cards, banners, player). Glowfin aqua. */
 val BenflixRed: Color

@@ -1900,6 +1900,31 @@ html.th-sunset:not(.kids) {
   --movies: #FFB36B; --shows: #FFB36B; --live: #FFB36B; --games: #FFB36B; --music: #FFB36B; --books: #FFB36B;
   --onmusic: #24120A;
 }
+/* Slate (Ben 2026-11-27, inspired by ElegantFin): blue-grey, framed cards, softer corners, one indigo, no glow */
+html.th-slate:not(.kids) {
+  --tray: #141B29; --trayrgb: 20,27,41; --pg2: #1E2836; --pg3: #1F2937; --pg4: #2A3545; --line: #31373F;
+  --ink: #F3F4F6; --ink2: #9CA3AF; --ink3: #7C8492; --dark: #111827;
+  --deep: #1E2836; --raise: #1F2937; --violet: #5D55E7; --blue: #5D55E7; --aqua: #756FE2;
+  --aquargb: 117,111,226; --violetrgb: 93,85,231; --bluergb: 93,85,231; --onwhite: #111827;
+  --night: #141B29; --nightrgb: 20,27,41; --snow: #F3F4F6; --edge: #31373F; --rowlit: #2A3545;
+  --movies: #756FE2; --shows: #756FE2; --live: #756FE2; --games: #756FE2; --music: #756FE2; --books: #756FE2;
+  --onmusic: #FFFFFF;
+  --r: 16px; --r2: 16px; --r-s: 8px; --r-c: 16px; --r-p: 16px; --r-pill: 10px;
+  --glowring: 0 0 0 3px #fff;
+}
+html.th-slate:not(.kids) .poster .im, html.th-slate:not(.kids) .wide .im, html.th-slate:not(.kids) .mcard .im { outline: 2px solid var(--edge); outline-offset: -2px; }
+/* Classic (Ben 2026-11-27): the plain stock-Jellyfin look. Near-black, square corners, one blue */
+html.th-classic:not(.kids) {
+  --tray: #101010; --trayrgb: 16,16,16; --pg2: #1C1C1C; --pg3: #202020; --pg4: #2A2A2A; --line: #2E2E2E;
+  --ink: #F2F2F2; --ink2: #A0A0A0; --ink3: #808080; --dark: #101010;
+  --deep: #1C1C1C; --raise: #202020; --violet: #00A4DC; --blue: #00A4DC; --aqua: #00A4DC;
+  --aquargb: 0,164,220; --violetrgb: 0,164,220; --bluergb: 0,164,220; --onwhite: #101010;
+  --night: #101010; --nightrgb: 16,16,16; --snow: #F2F2F2; --edge: #2E2E2E; --rowlit: #2A2A2A;
+  --movies: #00A4DC; --shows: #00A4DC; --live: #00A4DC; --games: #00A4DC; --music: #00A4DC; --books: #00A4DC;
+  --onmusic: #FFFFFF;
+  --r: 4px; --r2: 4px; --r-s: 3px; --r-c: 3px; --r-p: 4px; --r-pill: 4px;
+  --glowring: 0 0 0 3px #00A4DC;
+}
 html, body { font-family: "Glowfin Lexend", system-ui, -apple-system, "Segoe UI", sans-serif; }
 h1, h2, h3, .who h1 { font-family: "Glowfin Lexend", sans-serif; font-weight: 600; letter-spacing: -.01em; }
 html.kids, html.kids body, html.kids h1, html.kids h2, html.kids h3 { font-family: "Fredoka", system-ui, sans-serif; }

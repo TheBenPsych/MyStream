@@ -329,6 +329,8 @@ message BenflixPreferences {
 enum GlowfinLook {
   LOOK_BLUE_PURPLE = 0;
   LOOK_SUNSET = 1;
+  LOOK_SLATE = 2;
+  LOOK_CLASSIC = 3;
 }
 
 enum BenflixAccent {

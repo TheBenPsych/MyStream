@@ -37,8 +37,11 @@ data class ThemeLook(
     val glowC: Color,
     /** One colour for places that can't take the glow (filled buttons) */
     val fillMid: Color,
-    /** The soft ring round whatever the remote is on, and the highlight colour (progress lines, Play) */
+    /** The ring round the button the remote is on, and the soft ring round a lit card */
     val focus: Color,
+    /** The highlight colour (progress lines, the Play button, ticks) with [onAccent] words on it */
+    val accent: Color,
+    val onAccent: Color,
     /** The outline round a lit poster or card */
     val outline: Color,
     /** A lit button fills with this, with [onFocusFill] words on it */
@@ -52,6 +55,10 @@ data class ThemeLook(
     val card: RoundedCornerShape,
     val panel: RoundedCornerShape,
     val button: RoundedCornerShape,
+    /** The soft glow outside a lit card (off = just the outline) */
+    val halo: Boolean = true,
+    /** A thin frame round every card while the remote is somewhere else (none on Glowfin) */
+    val frame: Color? = null,
 )
 
 /** Glowfin as it has always looked: night blue with the logo's violet > blue > aqua glow */
@@ -70,6 +77,8 @@ val BluePurpleLook =
         glowC = Color(0xFF3FE0E8),
         fillMid = Color(0xFF6C6FE8),
         focus = Color(0xFF3FE0E8),
+        accent = Color(0xFF3FE0E8),
+        onAccent = Color(0xFF0B0D1A),
         outline = Color.White,
         focusFill = Color.White,
         onFocusFill = Color(0xFF1B1F3A),
@@ -97,9 +106,75 @@ val SunsetLook =
         glowC = Color(0xFFFFC24A),
         fillMid = Color(0xFFF7743F),
         focus = Color(0xFFFFC24A),
+        accent = Color(0xFFFFC24A),
+        onAccent = Color(0xFF140B12),
         onFocusFill = Color(0xFF2A1420),
         area = Color(0xFFFFB36B),
         onArea = Color(0xFF24120A),
+    )
+
+/**
+ * Slate (Ben 2026-11-27, inspired by the ElegantFin Jellyfin theme): calm blue-grey, every card in a thin
+ * frame, softer square-ish corners, one indigo colour and a plain white outline with no glow.
+ */
+val SlateLook =
+    ThemeLook(
+        ink = Color(0xFF141B29),
+        deep = Color(0xFF1E2836),
+        raise = Color(0xFF1F2937),
+        line = Color(0xFF31373F),
+        focusRow = Color(0xFF2A3545),
+        text = Color(0xFFF3F4F6),
+        soft = Color(0xFFD1D5DB),
+        dim = Color(0xFF9CA3AF),
+        glowA = Color(0xFF5D55E7),
+        glowB = Color(0xFF5D55E7),
+        glowC = Color(0xFF756FE2),
+        fillMid = Color(0xFF5D55E7),
+        focus = Color.White,
+        accent = Color(0xFF756FE2),
+        onAccent = Color.White,
+        outline = Color.White,
+        focusFill = Color.White,
+        onFocusFill = Color(0xFF111827),
+        area = Color(0xFF756FE2),
+        onArea = Color.White,
+        small = RoundedCornerShape(8.dp),
+        card = RoundedCornerShape(16.dp),
+        panel = RoundedCornerShape(16.dp),
+        button = RoundedCornerShape(10.dp),
+        halo = false,
+        frame = Color(0xFF31373F),
+    )
+
+/** Classic (Ben 2026-11-27): the plain stock-Jellyfin look. Near-black, square corners, one blue. */
+val ClassicLook =
+    ThemeLook(
+        ink = Color(0xFF101010),
+        deep = Color(0xFF1C1C1C),
+        raise = Color(0xFF202020),
+        line = Color(0xFF2E2E2E),
+        focusRow = Color(0xFF2A2A2A),
+        text = Color(0xFFF2F2F2),
+        soft = Color(0xFFD0D0D0),
+        dim = Color(0xFFA0A0A0),
+        glowA = Color(0xFF00A4DC),
+        glowB = Color(0xFF00A4DC),
+        glowC = Color(0xFF00A4DC),
+        fillMid = Color(0xFF00A4DC),
+        focus = Color.White,
+        accent = Color(0xFF00A4DC),
+        onAccent = Color.White,
+        outline = Color(0xFF00A4DC),
+        focusFill = Color(0xFF00A4DC),
+        onFocusFill = Color.White,
+        area = Color(0xFF00A4DC),
+        onArea = Color.White,
+        small = RoundedCornerShape(3.dp),
+        card = RoundedCornerShape(3.dp),
+        panel = RoundedCornerShape(4.dp),
+        button = RoundedCornerShape(4.dp),
+        halo = false,
     )
 
 /**
@@ -118,6 +193,8 @@ val ThemeChoices =
     listOf(
         ThemeChoice(GlowfinLook.LOOK_BLUE_PURPLE, "glowfin", "Blue-purple", "Glowfin as you know it", BluePurpleLook),
         ThemeChoice(GlowfinLook.LOOK_SUNSET, "sunset", "Sunset", "Rose, orange and gold on a warm dark", SunsetLook),
+        ThemeChoice(GlowfinLook.LOOK_SLATE, "slate", "Slate", "Calm blue-grey with framed cards and indigo", SlateLook),
+        ThemeChoice(GlowfinLook.LOOK_CLASSIC, "classic", "Classic", "Plain and square, like stock Jellyfin", ClassicLook),
     )
 
 /** The theme for a saved pick (anything this version doesn't know shows as Blue-purple) */

@@ -272,14 +272,14 @@ B.route(/^\/settings(?:\/(\w+))?/, async (m, nav) => {
 B.applyLook = () => { const w = B.me ? B.webSettings() : {}; const s = w.textSize || 100; document.body.style.zoom = s === 100 ? "" : s / 100; B.kidsLook(); B.themeLook(); };
 // Themes (Ben 2026-11-27): the same short names the TV and phone app saves ("glowfin", "sunset"), kept on the
 // person's account under "glowfin.theme" so a pick made here shows up there and the other way round.
-B.THEMES = [{ value: "glowfin", label: "Blue-purple" }, { value: "sunset", label: "Sunset" }];
+B.THEMES = [{ value: "glowfin", label: "Blue-purple" }, { value: "sunset", label: "Sunset" }, { value: "slate", label: "Slate" }, { value: "classic", label: "Classic" }];
 B.theme = () => { const t = B.me ? B.webSettings().theme : null; return B.THEMES.some((x) => x.value === t) ? t : "glowfin"; };
 B.themeLook = () => {
   const t = B.theme();
   const root = document.documentElement;
   B.THEMES.forEach((x) => root.classList.toggle("th-" + x.value, x.value === t && t !== "glowfin"));
   const bar = document.querySelector('meta[name="theme-color"]');
-  if (bar) bar.content = t === "sunset" && !(B.me && B.me.kids) ? "#140B12" : "#0B0C10";
+  if (bar) bar.content = (B.me && B.me.kids ? null : { sunset: "#140B12", slate: "#141B29", classic: "#101010" }[t]) || "#0B0C10";
   // Once per person per visit: pick up a theme chosen on a TV or phone
   if (B.me && B.themeAsked !== B.me.id) {
     B.themeAsked = B.me.id;
