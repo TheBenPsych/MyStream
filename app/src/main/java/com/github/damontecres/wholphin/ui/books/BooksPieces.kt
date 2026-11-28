@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -140,7 +139,7 @@ fun BookCard(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(6.dp)
-                                .background(BenflixColors.Dim, RoundedCornerShape(50))
+                                .background(BenflixColors.Dim, BenflixShapes.Pill)
                                 .padding(5.dp),
                     ) {
                         BenflixIconImage(BenflixIcon.HEADPHONES, color = BenflixColors.Text, size = 14.dp)
@@ -153,7 +152,7 @@ fun BookCard(
                             Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(6.dp)
-                                .background(BenflixColors.Books, RoundedCornerShape(50))
+                                .background(BenflixColors.Books, BenflixShapes.Pill)
                                 .padding(4.dp),
                     ) {
                         BenflixIconImage(BenflixIcon.CHECK, color = BenflixColors.OnBooks, size = 14.dp)

@@ -154,7 +154,7 @@ fun SearchStart(
                                 RecentSearches.clear(context, account)
                                 recent = emptyList()
                             },
-                            shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+                            shape = ButtonDefaults.shape(BenflixShapes.Pill),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                             colors =
                                 ButtonDefaults.colors(

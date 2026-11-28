@@ -385,7 +385,7 @@ private fun PlayerChips(names: List<String>) {
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
-                modifier = Modifier.background(Color(0xFF33333A), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 6.dp),
+                modifier = Modifier.background(Color(0xFF33333A), BenflixShapes.Pill).padding(horizontal = 14.dp, vertical = 6.dp),
             )
         }
     }

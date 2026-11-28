@@ -925,7 +925,7 @@ private fun CountDot(
         textAlign = TextAlign.Center,
         modifier =
             modifier
-                .background(BenflixColors.LiveTv, RoundedCornerShape(50))
+                .background(BenflixColors.LiveTv, BenflixShapes.Pill)
                 .padding(horizontal = 5.dp * scale, vertical = 1.dp),
     )
 }
@@ -1307,13 +1307,13 @@ private fun NowPlayingRailButton(
                                 .padding(top = 2.dp * scale)
                                 .fillMaxWidth()
                                 .height(2.dp * scale)
-                                .background(Glowfin.Line, RoundedCornerShape(50)),
+                                .background(Glowfin.Line, BenflixShapes.Pill),
                         ) {
                             Box(
                                 Modifier
                                     .fillMaxHeight()
                                     .fillMaxWidth(progress)
-                                    .background(Glowfin.GlowAcross, RoundedCornerShape(50)),
+                                    .background(Glowfin.GlowAcross, BenflixShapes.Pill),
                             )
                         }
                     }

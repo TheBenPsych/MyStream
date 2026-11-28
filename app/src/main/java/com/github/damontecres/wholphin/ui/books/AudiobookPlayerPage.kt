@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.ui.music.RoundWordButton
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -392,7 +393,7 @@ fun AudiobookPill(
 ) {
     val now by viewModel.audiobooks.now.collectAsState()
     val n = now ?: return
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = viewModel::open,
         shape = ClickableSurfaceDefaults.shape(shape),

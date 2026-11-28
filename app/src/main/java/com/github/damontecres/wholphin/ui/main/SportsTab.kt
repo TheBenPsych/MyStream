@@ -492,7 +492,7 @@ private fun GameCard(
 /** The small gold "Your team" tag */
 @Composable
 internal fun YourTeamTag(modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Text(
         "Your team",
         color = Color(0xFFFCE3B0),

@@ -681,7 +681,7 @@ private fun ResultPosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val (w, h) = cardSize(line, isTv)
-    val shape = if (shapeOf(line) == CardShape.ROUND) RoundedCornerShape(50) else RoundedCornerShape(8.dp)
+    val shape = if (shapeOf(line) == CardShape.ROUND) BenflixShapes.Pill else RoundedCornerShape(8.dp)
     val px = with(LocalDensity.current) { h.roundToPx() }
     val look = rememberCardLook(line, px)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.width(w)) {
@@ -733,7 +733,7 @@ private fun ResultPosterCard(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(5.dp)
-                                .background(if (look.asked) BenflixColors.Text else ASK_YELLOW, RoundedCornerShape(50))
+                                .background(if (look.asked) BenflixColors.Text else ASK_YELLOW, BenflixShapes.Pill)
                                 .padding(horizontal = 7.dp, vertical = 1.dp),
                     )
                 }
@@ -1212,7 +1212,7 @@ private fun MusicAskDialog(
 
 @Composable
 private fun SeeAllChip(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

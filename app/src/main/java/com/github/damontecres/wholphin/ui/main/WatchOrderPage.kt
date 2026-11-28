@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -628,7 +627,7 @@ private fun OrderChip(
 ) {
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+        shape = ButtonDefaults.shape(BenflixShapes.Pill),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
         colors =
             ButtonDefaults.colors(

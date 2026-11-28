@@ -43,6 +43,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 
@@ -213,7 +214,7 @@ internal fun SearchPill(
     small: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     val inside: @Composable (Color) -> Unit = { ink ->
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -356,7 +357,7 @@ internal fun LinePill(
     ghost: Boolean = false,
     contentDescription: String? = null,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = BenflixShapes.Pill
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -405,7 +406,7 @@ internal fun MicPill(
     var focused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.White.copy(alpha = .12f),

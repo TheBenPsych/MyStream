@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +36,7 @@ import com.github.damontecres.wholphin.services.HiddenGenresStore
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -172,7 +172,7 @@ fun HiddenGenresPicker(
             val off = genre.lowercase() in hidden
             Surface(
                 onClick = { viewModel.toggle(genre) },
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Pill),
                 colors =
                     ClickableSurfaceDefaults.colors(
                         containerColor = if (off) BenflixRed else Color(0xFF2A2A30),
@@ -182,7 +182,7 @@ fun HiddenGenresPicker(
                     ),
                 border =
                     ClickableSurfaceDefaults.border(
-                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(50)),
+                        focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = BenflixShapes.Pill),
                     ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                 modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,

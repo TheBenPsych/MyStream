@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,6 +52,7 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import kotlinx.coroutines.delay
 
@@ -398,7 +398,7 @@ private fun VoiceSearchOverlay(
                         OutlinedButton(
                             onClick = onRetry,
                             modifier = Modifier.padding(top = 16.dp),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+                            shape = ButtonDefaults.shape(BenflixShapes.Pill),
                             colors =
                                 OutlinedButtonDefaults.colors(
                                     contentColor = MaterialTheme.colorScheme.onSurface,

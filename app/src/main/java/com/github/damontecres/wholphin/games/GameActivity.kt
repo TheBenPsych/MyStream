@@ -1715,8 +1715,7 @@ class GameActivity : ComponentActivity() {
                                     Modifier
                                         .background(
                                             Color(0xFFF2B544),
-                                            androidx.compose.foundation.shape
-                                                .RoundedCornerShape(50),
+                                            BenflixShapes.Pill,
                                         ).padding(horizontal = 12.dp, vertical = 4.dp),
                             )
                         }
