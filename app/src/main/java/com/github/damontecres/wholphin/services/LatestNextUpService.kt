@@ -21,6 +21,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.MediaType
 import org.jellyfin.sdk.model.api.SortOrder
@@ -151,6 +152,89 @@ class LatestNextUpService
                 emptyList()
             }
         }
+
+        /**
+         * Benflix "Part 2 is here" (Idea Box 30): a movie added in the last 3 weeks whose earlier movie in the same
+         * set (TMDB collection) this person has watched, while they haven't watched this one yet. Goes first in
+         * Keep watching with a "PART 2 IS HERE" tag (remembered in [SequelArrived]).
+         */
+        suspend fun getSequelsArrived(userId: UUID): List<BaseItem> =
+            try {
+                val fresh =
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                recursive = true,
+                                isPlayed = false,
+                                sortBy = listOf(ItemSortBy.DATE_CREATED),
+                                sortOrder = listOf(SortOrder.DESCENDING),
+                                fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS),
+                                enableUserData = true,
+                                limit = 40,
+                                enableTotalRecordCount = false,
+                            ),
+                        ).content.items
+                        .filter { it.dateCreated?.isAfter(LocalDateTime.now().minusDays(SequelArrived.DAYS)) == true }
+                        .filter { !it.providerIds?.get("TmdbCollection").isNullOrBlank() }
+                        .filter { (it.userData?.playbackPositionTicks ?: 0L) == 0L }
+                        .take(8)
+                if (fresh.isEmpty()) {
+                    SequelArrived.labels = emptyMap()
+                    emptyList()
+                } else {
+                    val sets =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = userId,
+                                    includeItemTypes = listOf(BaseItemKind.BOX_SET),
+                                    recursive = true,
+                                    fields = listOf(ItemFields.PROVIDER_IDS),
+                                    enableImages = false,
+                                ),
+                            ).content.items
+                    val labels = mutableMapOf<UUID, String>()
+                    val found =
+                        fresh.filter { movie ->
+                            val tmdb = movie.providerIds?.get("TmdbCollection") ?: return@filter false
+                            val set =
+                                sets.firstOrNull {
+                                    it.providerIds?.get("Tmdb") == tmdb || it.providerIds?.get("TmdbCollection") == tmdb
+                                } ?: return@filter false
+                            val movies =
+                                api.itemsApi
+                                    .getItems(
+                                        GetItemsRequest(
+                                            userId = userId,
+                                            parentId = set.id,
+                                            includeItemTypes = listOf(BaseItemKind.MOVIE),
+                                            sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.PRODUCTION_YEAR),
+                                            sortOrder = listOf(SortOrder.ASCENDING),
+                                            enableUserData = true,
+                                            enableImages = false,
+                                            enableTotalRecordCount = false,
+                                        ),
+                                    ).content.items
+                            val index = movies.indexOfFirst { it.id == movie.id }
+                            val before = movies.getOrNull(index - 1)
+                            if (index > 0 && before?.userData?.played == true) {
+                                labels[movie.id] = "PART ${index + 1} IS HERE"
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    SequelArrived.labels = labels
+                    found.map { BaseItem(it, false) }
+                }
+            } catch (ex: kotlinx.coroutines.CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Couldn't look for sequels")
+                emptyList()
+            }
 
         /**
          * Get next up items for a user
@@ -353,6 +437,16 @@ class LatestNextUpService
 data class RemovedSeriesIds(
     val value: Map<UUID, LocalDateTime>,
 )
+
+/** Benflix: movies whose earlier part this person watched, just arrived (see getSequelsArrived) */
+object SequelArrived {
+    const val DAYS = 21L
+
+    /** Movie id -> "PART 2 IS HERE" */
+    @Volatile var labels: Map<UUID, String> = emptyMap()
+
+    fun label(item: BaseItem): String? = labels[item.id]
+}
 
 /** Benflix: shows that just got a new season, for people who had finished them (see getNewSeasonsBack) */
 object NewSeasonBack {

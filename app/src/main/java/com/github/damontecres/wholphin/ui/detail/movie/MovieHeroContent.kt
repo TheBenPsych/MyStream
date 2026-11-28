@@ -75,6 +75,8 @@ class MovieHeroActions(
     val pickPoster: (() -> Unit)? = null,
     /** Change logo in More (the poster picker on its logo tab) */
     val pickLogo: (() -> Unit)? = null,
+    /** Pick the cut (Idea Box 30): Theatrical, Extended, Director's cut... remembered for this movie */
+    val pickCut: ((org.jellyfin.sdk.model.api.MediaSourceInfo) -> Unit)? = null,
 )
 
 /**
@@ -100,6 +102,11 @@ fun MovieHeroContent(
     var showMore by remember { mutableStateOf(false) }
     var showRate by remember { mutableStateOf(false) }
     var showLinks by remember { mutableStateOf(false) }
+    var showCuts by remember { mutableStateOf(false) }
+    // Pick the cut (Idea Box 30): movies that come in more than one version
+    val cuts = remember(movie) { MovieCuts.of(movie) }
+    val chosenCutId = state.chosenStreams?.source?.id
+    val chosenCut = cuts.firstOrNull { it.id == chosenCutId } ?: cuts.firstOrNull()
     val left =
         if (canResume) {
             dto.runTimeTicks
@@ -128,6 +135,16 @@ fun MovieHeroContent(
             )
             // Glowfin Kids (K1): just Play, big and round. No trailer, My List, rating or More.
             if (easy) return@buildList
+            if (cuts.size > 1 && chosenCut != null && actions.pickCut != null) {
+                add(
+                    TitleButton(
+                        label = MovieCuts.name(chosenCut),
+                        icon = BenflixIcon.FILM,
+                        onClick = { showCuts = true },
+                        note = "${cuts.size} cuts of this movie. Press to pick one.",
+                    ),
+                )
+            }
             val trailer = state.trailers.firstOrNull()
             add(
                 TitleButton(
@@ -342,6 +359,33 @@ fun MovieHeroContent(
                 ),
         )
     }
+    if (showCuts && actions.pickCut != null) {
+        val shortest = cuts.mapNotNull { it.runTimeTicks }.minOrNull()
+        BenflixChoiceDialog(
+            title = "Which cut?",
+            subtitle = "Glowfin remembers your pick for this movie. Play uses it.",
+            onDismissRequest = { showCuts = false },
+            choices =
+                cuts.map { cut ->
+                    val length = cut.runTimeTicks?.ticks
+                    val extra =
+                        cut.runTimeTicks?.let { t -> shortest?.let { (t - it).ticks } }?.takeIf { it.inWholeMinutes >= 1 }
+                    BenflixChoice(
+                        MovieCuts.name(cut),
+                        {
+                            showCuts = false
+                            actions.pickCut?.invoke(cut)
+                        },
+                        note =
+                            listOfNotNull(
+                                length?.let { lengthText(it) },
+                                extra?.let { "+${it.inWholeMinutes} min" },
+                            ).joinToString("  ·  ").ifBlank { null },
+                        selected = cut.id == chosenCut?.id,
+                    )
+                },
+        )
+    }
     if (showLinks) {
         val info = AniListFacts.info.value[movie.id]
         if (info == null) {
@@ -472,5 +516,40 @@ private fun openLink(
         )
     } catch (ex: Exception) {
         timber.log.Timber.w(ex, "Could not open %s", url)
+    }
+}
+
+/** Pick the cut (Idea Box 30): the versions of a movie, with names people know */
+object MovieCuts {
+    fun of(movie: BaseItem): List<org.jellyfin.sdk.model.api.MediaSourceInfo> =
+        movie.data.mediaSources
+            .orEmpty()
+            .filter { it.id != null }
+            .distinctBy { it.id }
+
+    private val KNOWN =
+        listOf(
+            "director's cut" to "Director's cut",
+            "directors cut" to "Director's cut",
+            "extended" to "Extended",
+            "theatrical" to "Theatrical",
+            "unrated" to "Unrated",
+            "uncut" to "Uncut",
+            "imax" to "IMAX",
+            "final cut" to "Final cut",
+            "ultimate" to "Ultimate cut",
+            "special edition" to "Special edition",
+            "remastered" to "Remastered",
+            "4k" to "4K",
+            "2160p" to "4K",
+            "1080p" to "1080p",
+        )
+
+    /** "Extended", "Director's cut"... from the version's name (Jellyfin takes it from the file name) */
+    fun name(source: org.jellyfin.sdk.model.api.MediaSourceInfo): String {
+        val raw = source.name.orEmpty()
+        val low = raw.lowercase().replace('’', '\'')
+        KNOWN.firstOrNull { low.contains(it.first) }?.let { return it.second }
+        return raw.substringAfterLast(" - ").trim().ifBlank { "Version" }.take(28)
     }
 }

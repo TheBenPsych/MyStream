@@ -59,9 +59,15 @@ fun PersonTitlePage(
     val info =
         remember(birthdate, deathdate, birthPlace) {
             val f = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault())
+            // Idea Box 31 actor page: how old they are (or were) on the info line too
+            val age =
+                birthdate
+                    ?.let { java.time.Period.between(it, deathdate ?: LocalDate.now()).years }
+                    ?.takeIf { it in 1..129 }
             listOfNotNull(
                 birthdate?.let { "Born ${it.format(f)}" },
                 deathdate?.let { "Died ${it.format(f)}" },
+                age?.let { "Age $it" },
                 birthPlace,
             ).joinToString(" · ")
         }

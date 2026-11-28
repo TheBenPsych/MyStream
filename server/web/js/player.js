@@ -159,12 +159,12 @@ B.route(/^\/play\/([\w-]+)/, async (m, nav) => {
     const forceStream = !!noDirect || (source && (source.DefaultAudioStreamIndex === -99 || otherSound(source.MediaStreams)));
     info = await B.jf("POST", `/Items/${it.Id}/PlaybackInfo?userId=${u}`, {
       DeviceProfile: B.deviceProfile(QUALITY[settings.quality || "auto"] || QUALITY.auto),
-      StartTimeTicks: Math.round((atSeconds || 0) * B.TICKS), AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex,
+      StartTimeTicks: Math.round((atSeconds || 0) * B.TICKS), AudioStreamIndex: audioIndex, SubtitleStreamIndex: subIndex, MediaSourceId: B.q("source") || undefined,
       MaxStreamingBitrate: QUALITY[settings.quality || "auto"] || QUALITY.auto,
       EnableDirectPlay: !forceStream && (settings.quality || "auto") === "auto", EnableDirectStream: true, EnableTranscoding: true, AutoOpenLiveStream: true,
     });
     if (!here()) return;
-    source = (info.MediaSources || [])[0];
+    source = (info.MediaSources || []).find((x) => B.q("source") && x.Id === B.q("source")) || (info.MediaSources || [])[0];
     if (!source) throw new Error("Tower couldn't find a way to play this.");
     playSession = info.PlaySessionId;
     if (audioIndex == null) {

@@ -852,6 +852,7 @@ fun ServerStatusPage(
                         towerCardItems("animemovies", "Anime movies into their shows")
                         towerCardItems("onepace", "One Pace")
                         towerCardItems("specialsbonus", "Specials & bonus")
+                        towerCardItems("groups", "Skipped release groups")
                         careLibraryItems(carePlaytest, careTidy, careTicked, careBiggest, careProblem, care)
                     }
 
@@ -909,6 +910,8 @@ fun ServerStatusPage(
                         driveHealthItems()
                         towerCardItems("backup", "Safety copy")
                         towerCardItems("away", "Away check")
+                        towerCardItems("drivemap", "What's on each drive")
+                        towerCardItems("updates", "Night updates")
                         towerCardItems("addons", "Jellyfin add-ons")
                         bookListItems()
                         towerCardItems("jellyfin", "Rarely needed (these stay in Jellyfin)")

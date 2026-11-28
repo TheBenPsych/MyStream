@@ -562,9 +562,10 @@ class CollectionViewModel
 data class CollectionState(
     val loadingState: LoadingState = LoadingState.Pending,
     val collection: BaseItem? = null,
+    // Benflix (Idea Box 31): a box set opens in story order, part 1 first
     val sortAndDirection: SortAndDirection =
         SortAndDirection(
-            ItemSortBy.DEFAULT,
+            ItemSortBy.PREMIERE_DATE,
             SortOrder.ASCENDING,
         ),
     val itemFilter: GetItemsFilter = GetItemsFilter(),
