@@ -66,6 +66,7 @@ import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import com.github.damontecres.wholphin.ui.nav.underRail
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -137,7 +138,8 @@ internal fun WideRowsTitlePage(
     LaunchedEffect(Unit) {
         if (isTv) {
             delay(60)
-            firstButton.tryRequestFocus()
+            // Back from a title opened from this page: the remote goes back to that card, not to Play
+            if (!ReturnSpot.settle()) firstButton.tryRequestFocus()
         }
     }
     // Once the rows cover the picture it dims, so the row names stay easy to read

@@ -87,6 +87,7 @@ fun MePage(modifier: Modifier = Modifier) {
     LaunchedEffect(MeFocus.picks) {
         if (!tv) return@LaunchedEffect
         delay(60)
+        if (ReturnSpot.settle()) return@LaunchedEffect
         repeat(FOCUS_TRIES) {
             if (firstFocused) return@LaunchedEffect
             first.tryRequestFocus()
@@ -144,6 +145,7 @@ fun MePage(modifier: Modifier = Modifier) {
                         modifier =
                             Modifier
                                 .weight(1f)
+                                .returnHere("me-" + item.title)
                                 .then(
                                     if (r == 0 && c == 0) {
                                         Modifier

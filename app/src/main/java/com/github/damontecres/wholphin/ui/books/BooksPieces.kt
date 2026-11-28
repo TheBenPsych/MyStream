@@ -38,6 +38,7 @@ import com.github.damontecres.wholphin.services.BookTile
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.components.BenflixIconImage
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
+import com.github.damontecres.wholphin.ui.nav.returnHere
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
@@ -97,7 +98,8 @@ fun BookCard(
     onFocus: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier.width(width)) {
+    // Back from a book puts the remote on this card again
+    Column(modifier = Modifier.returnHere("book-" + tile.id).then(modifier).width(width)) {
         Surface(
             onClick = onClick,
             onLongClick = onLongClick,

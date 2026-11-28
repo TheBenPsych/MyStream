@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.services
 
 import androidx.navigation3.runtime.NavBackStack
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import org.acra.ACRA
 import timber.log.Timber
 import javax.inject.Inject
@@ -20,6 +21,8 @@ class NavigationManager
          * Go to the specified [com.github.damontecres.wholphin.ui.nav.Destination]
          */
         fun navigateTo(destination: Destination) {
+            // Back to this page later puts the remote on the card that was opened
+            ReturnSpot.leaving(backStack.lastOrNull(), backStack.lastIndex, destination)
             backStack.add(destination)
             log()
         }
@@ -48,6 +51,7 @@ class NavigationManager
             synchronized(this) {
                 if (backStack.size > 1) {
                     backStack.removeLastOrNull()
+                    ReturnSpot.backTo(backStack.lastOrNull(), backStack.lastIndex)
                 }
             }
             log()
@@ -67,6 +71,7 @@ class NavigationManager
          * Go all the way back to the home page
          */
         fun goToHome() {
+            ReturnSpot.forget()
             while (backStack.size > 1) {
                 backStack.removeLastOrNull()
             }
@@ -90,6 +95,7 @@ class NavigationManager
          * Resets the backstack to the specified destination
          */
         fun replace(destination: Destination) {
+            ReturnSpot.forget()
             while (backStack.size > 1) {
                 backStack.removeLastOrNull()
             }

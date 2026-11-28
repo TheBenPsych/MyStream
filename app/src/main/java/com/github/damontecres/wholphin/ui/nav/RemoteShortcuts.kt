@@ -1,10 +1,8 @@
 package com.github.damontecres.wholphin.ui.nav
 
 import android.view.KeyEvent
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
-import androidx.compose.ui.focus.onFocusChanged
 import com.github.damontecres.wholphin.data.model.BaseItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -181,19 +179,3 @@ object RemoteShortcuts {
     private const val POSTERS_PER_PAGE = 7
     private const val STEP_MS = 45L
 }
-
-/** Lets the remote's Play button start [item] while this card has the focus */
-fun Modifier.playButtonPlays(item: BaseItem?): Modifier =
-    if (item == null) {
-        this
-    } else {
-        // The "where am I" line on phones names title pages from the posters on the way there
-        WhereAmI.remember(item)
-        this.onFocusChanged {
-            if (it.hasFocus) {
-                RemoteShortcuts.focused = item
-            } else if (RemoteShortcuts.focused?.id == item.id) {
-                RemoteShortcuts.focused = null
-            }
-        }
-    }

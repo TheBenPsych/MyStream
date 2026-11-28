@@ -26,6 +26,7 @@ import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.SeerrService
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -165,7 +166,7 @@ internal fun FamousListsPage(
     LaunchedEffect(firstKey) {
         if (isTv && firstKey != null) {
             delay(120)
-            first.tryRequestFocus()
+            if (!ReturnSpot.settle()) first.tryRequestFocus()
         }
     }
     if (state.rows.isEmpty()) {

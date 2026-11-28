@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.components.BenflixChoice
 import com.github.damontecres.wholphin.ui.components.BenflixChoiceDialog
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -142,7 +144,7 @@ fun TitleGrid(
             WatchingFilter.entries.firstOrNull { it.name == prefs.getString("$rememberKey-watching", null) } ?: WatchingFilter.ALL,
         )
     }
-    var search by remember { mutableStateOf("") }
+    var search by rememberSaveable { mutableStateOf("") }
     var pickSort by remember { mutableStateOf(false) }
     val save = { key: String, value: String -> prefs.edit { putString("$rememberKey-$key", value) } }
 
@@ -182,7 +184,8 @@ fun TitleGrid(
     val gridState = rememberLazyGridState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = .5f))
     val scope = rememberCoroutineScope()
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (isTv && items.isNotEmpty()) first.tryRequestFocus() }
+    // Back from a title: the remote goes back to the poster that was opened, not to the top of the grid
+    LaunchedEffect(Unit) { if (isTv && items.isNotEmpty() && !ReturnSpot.settle()) first.tryRequestFocus() }
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(

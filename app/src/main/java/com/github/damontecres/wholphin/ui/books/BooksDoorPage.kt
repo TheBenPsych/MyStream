@@ -79,6 +79,7 @@ import com.github.damontecres.wholphin.ui.music.MusicRowName
 import com.github.damontecres.wholphin.ui.music.rememberCoverGlow
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.LocalTopBarOverlap
+import com.github.damontecres.wholphin.ui.nav.ReturnSpot
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
 import com.github.damontecres.wholphin.ui.theme.BenflixShapes
@@ -282,6 +283,8 @@ private fun BooksForYou(
         // TV: Books opens on the first book of Keep going. The cards can take a moment to appear (and the menu
         // may grab focus first), so keep asking for a little while until a card has it.
         if (!isTv) return@LaunchedEffect
+        // Back from a book: the remote goes back to that book
+        if (topRequest == 0 && ReturnSpot.settle()) return@LaunchedEffect
         var steady = 0
         repeat(40) {
             delay(60)

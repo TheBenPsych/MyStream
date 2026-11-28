@@ -23,8 +23,16 @@ object LastRemoteKey {
     var pressAt: Long = 0L
         private set
 
+    /** When Up or Down was last pressed (rows put the remote back on the poster it was on in them) */
+    @Volatile
+    var upDownAt: Long = 0L
+        private set
+
     fun onKey(event: KeyEvent) {
         if (event.action != KeyEvent.ACTION_DOWN) return
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_UP || event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            upDownAt = android.os.SystemClock.uptimeMillis()
+        }
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_DPAD_RIGHT,
@@ -58,4 +66,7 @@ object LastRemoteKey {
 
     /** True if Left/Up/Down was pressed in the last [withinMs] */
     fun movedRecently(withinMs: Long = 900L): Boolean = android.os.SystemClock.uptimeMillis() - moveAt < withinMs
+
+    /** True if Up or Down was pressed just now (this very press is still being handled) */
+    fun upDownJustNow(withinMs: Long = 250L): Boolean = android.os.SystemClock.uptimeMillis() - upDownAt < withinMs
 }
