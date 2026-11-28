@@ -462,6 +462,8 @@
 
   B.bgTable = (ctx) => {
     style();
+    // Hearts, Spades, Crazy Eights, Rummy, Go Fish and Hold'em live in js/bcards.js
+    if (B.cardTable && B.cardTable.games.includes(ctx.game.game)) return B.cardTable.play(ctx);
     const g = ctx.game, stage = ctx.stage;
     const me = (B.me && B.me.name ? String(B.me.name).trim().split(/\s+/)[0] : "") || "Player 1";
     stage.style.alignItems = "center";

@@ -162,7 +162,7 @@ internal fun GameRows(
             )
 
     fun tableRow(games: List<com.github.damontecres.wholphin.ui.games.table.TableGame>) =
-        games.map { g ->
+        games.filter { it.kids || !kids }.map { g ->
             RowGame(
                 "table_${g.name}",
                 g.title,

@@ -59,6 +59,12 @@ data class PhoneView(
     val secret: String = "",
     /** Party games: changes whenever a new question starts, so the phone clears its input */
     val round: Int = 0,
+    /** Table card games: this phone's hand, as card codes ("12-3" = queen of spades) */
+    val hand: List<String> = emptyList(),
+    /** Table card games: the hand cards that can be picked now */
+    val playable: List<Int> = emptyList(),
+    /** Table card games: the hand cards picked so far */
+    val picked: List<Int> = emptyList(),
 )
 
 @Serializable
