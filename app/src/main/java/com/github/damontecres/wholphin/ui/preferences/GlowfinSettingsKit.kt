@@ -48,6 +48,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.components.BenflixIcon
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -79,10 +80,10 @@ internal val GlowfinGlass = Color.White.copy(alpha = .06f)
 private val GlassEdge = Color.White.copy(alpha = .08f)
 
 /** The soft aqua ring around whatever the remote is on */
-internal val GlowfinRing = Glowfin.Aqua.copy(alpha = .6f)
+internal val GlowfinRing get() = Glowfin.Aqua.copy(alpha = .6f)
 
 /** Words on a solid white pill or row */
-internal val OnWhiteText = Glowfin.Ink
+internal val OnWhiteText get() = Glowfin.Ink
 private val OnWhiteValue = Color(0xFF0B7D86)
 private val OnWhiteDim = Color(0xFF4A4F72)
 private val OnWhiteYellow = Color(0xFF8A5A00)
@@ -385,7 +386,7 @@ fun GlowfinChoiceSheet(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
-            val shape = RoundedCornerShape(16.dp)
+            val shape = BenflixShapes.Panel
             Column(
                 modifier =
                     Modifier
@@ -521,7 +522,7 @@ fun GlowfinTextButton(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val container = if (primary) Glowfin.Text else Glowfin.Raise
     val content = if (primary) Glowfin.Ink else Glowfin.Text
     Surface(

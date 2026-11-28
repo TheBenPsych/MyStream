@@ -26,33 +26,33 @@ import androidx.compose.ui.unit.dp
  */
 object Glowfin {
     /** The background everything sits on */
-    val Ink = Color(0xFF0B0D1A)
+    val Ink: Color get() = GlowfinTheme.look.ink
 
     /** Menus, panels and the open side menu */
-    val Deep = Color(0xFF12152A)
+    val Deep: Color get() = GlowfinTheme.look.deep
 
     /** Raised things: chips, cards without a picture, sheets */
-    val Raise = Color(0xFF1A1E38)
+    val Raise: Color get() = GlowfinTheme.look.raise
 
     /** Thin lines and panel edges */
-    val Line = Color(0xFF262A45)
+    val Line: Color get() = GlowfinTheme.look.line
 
     /** The row the remote is on in a list */
-    val FocusRow = Color(0xFF222645)
+    val FocusRow: Color get() = GlowfinTheme.look.focusRow
 
     /** Main words */
-    val Text = Color(0xFFECEEFB)
+    val Text: Color get() = GlowfinTheme.look.text
 
     /** Quiet words */
-    val Dim = Color(0xFF9AA0C3)
+    val Dim: Color get() = GlowfinTheme.look.dim
 
-    /** The logo's three colours */
-    val Violet = Color(0xFFA55BE0)
-    val Blue = Color(0xFF1FA8E6)
-    val Aqua = Color(0xFF3FE0E8)
+    /** The glow's three colours (the logo's, on the Blue-purple theme) */
+    val Violet: Color get() = GlowfinTheme.look.glowA
+    val Blue: Color get() = GlowfinTheme.look.glowB
+    val Aqua: Color get() = GlowfinTheme.look.glowC
 
     /** A single colour for places that can't take the glow (filled buttons): the glow's violet-blue middle */
-    val FillMid = Color(0xFF6C6FE8)
+    val FillMid: Color get() = GlowfinTheme.look.fillMid
 
     /** The glow itself, corner to corner, for buttons, the menu pill and the picked menu circle */
     val Glow: Brush
@@ -91,7 +91,7 @@ fun Modifier.glowFocus(
                 onDrawWithContent {
                     drawContent()
                     if (focused) {
-                        val halo = KidsLook.palette?.accent ?: Glowfin.Aqua
+                        val halo = BenflixColors.Focus
                         outlines.forEachIndexed { index, (out, outline) ->
                             val a = GLOW_ALPHA * (1f - index.toFloat() / steps)
                             translate(-out, -out) {

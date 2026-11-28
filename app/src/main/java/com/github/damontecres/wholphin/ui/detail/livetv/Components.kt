@@ -30,6 +30,7 @@ import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.formatSeasonEpisode
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import java.time.LocalDateTime
 
@@ -153,10 +154,10 @@ fun Channel(
     Surface(
         border =
             com.github.damontecres.wholphin.ui.theme
-                .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                .benflixFocusBorder(BenflixShapes.Card),
         onClick = onClick,
         onLongClick = onLongClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
         scale = ClickableSurfaceDefaults.scale(1f, 1f, .95f),
         colors =
             ClickableSurfaceDefaults.colors(

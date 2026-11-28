@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.LoadingShape
 import com.github.damontecres.wholphin.ui.premiereDay
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -511,7 +512,7 @@ fun WatchOrderPage(
                                 color = Color.White,
                                 modifier =
                                     Modifier
-                                        .background(Color(0xFFE5303A), RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFE5303A), BenflixShapes.Small)
                                         .padding(horizontal = 5.dp, vertical = 1.dp),
                             )
                         }
@@ -533,7 +534,7 @@ private fun MissingCard(
         // to the end even when the last row is only titles you don't have
         Surface(
             onClick = onClick,
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+            shape = ClickableSurfaceDefaults.shape(BenflixShapes.Small),
             colors =
                 ClickableSurfaceDefaults.colors(
                     containerColor = Color.Transparent,
@@ -543,8 +544,8 @@ private fun MissingCard(
                 ),
             border =
                 ClickableSurfaceDefaults.border(
-                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), shape = RoundedCornerShape(6.dp)),
-                    focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = RoundedCornerShape(6.dp)),
+                    border = Border(BorderStroke(1.dp, Color.White.copy(alpha = .3f)), shape = BenflixShapes.Small),
+                    focusedBorder = Border(BorderStroke(3.dp, BenflixColors.Focus), shape = BenflixShapes.Small),
                 ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
             modifier =
@@ -583,10 +584,10 @@ private fun OrderTabButton(
 ) {
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+        shape = ButtonDefaults.shape(BenflixShapes.Small),
         border =
             com.github.damontecres.wholphin.ui.theme
-                .glowfinButtonBorder(RoundedCornerShape(6.dp)),
+                .glowfinButtonBorder(BenflixShapes.Small),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
         colors =
             ButtonDefaults.colors(
@@ -615,7 +616,7 @@ private fun OrderTabButton(
 private fun Modifier.androidxBackground(): Modifier =
     this
         .then(
-            Modifier.background(Color.White, RoundedCornerShape(6.dp)),
+            Modifier.background(Color.White, BenflixShapes.Small),
         ).padding(horizontal = 8.dp, vertical = 2.dp)
 
 @Composable

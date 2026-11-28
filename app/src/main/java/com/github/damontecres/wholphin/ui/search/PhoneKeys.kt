@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,6 +37,7 @@ import com.github.damontecres.wholphin.services.RemoteKeys
 import com.github.damontecres.wholphin.services.RemoteKeysRequest
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -158,7 +158,7 @@ fun PhoneKeysPrompt(viewModel: PhoneKeysViewModel = hiltViewModel()) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF26262B), RoundedCornerShape(10.dp))
+                                .background(Color(0xFF26262B), BenflixShapes.Card)
                                 .padding(12.dp),
                     ) {
                         if (text.isEmpty()) Text("Movie, show or actor", color = Color.Gray)

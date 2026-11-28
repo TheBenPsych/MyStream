@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,6 +36,7 @@ import com.github.damontecres.wholphin.ui.discover.CantFindViewModel
 import com.github.damontecres.wholphin.ui.discover.cantFindKey
 import com.github.damontecres.wholphin.ui.nav.RequestsWaiting
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -271,7 +271,7 @@ fun WhoAskedBlock(
         rows.forEach { (entry, text) ->
             val boxModifier =
                 Modifier
-                    .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                    .background(Color(0x22FFFFFF), BenflixShapes.Card)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             val label: @Composable () -> Unit = {
                 Text(

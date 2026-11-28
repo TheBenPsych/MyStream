@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.games.puzzles.PuzzleBg
 import com.github.damontecres.wholphin.ui.games.puzzles.PuzzlePool
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
@@ -502,7 +503,7 @@ private fun Section(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             modifier
-                .background(Color.White.copy(alpha = .06f), RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = .06f), BenflixShapes.Panel)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text(title.uppercase(), fontSize = BenflixType.small, fontWeight = FontWeight.SemiBold, color = BenflixColors.Muted)

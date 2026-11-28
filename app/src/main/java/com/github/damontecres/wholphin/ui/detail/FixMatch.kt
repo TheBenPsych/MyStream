@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +43,7 @@ import com.github.damontecres.wholphin.ui.components.SearchEditTextBox
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -198,10 +198,10 @@ fun FixMatchDialog(
                             Surface(
                                 border =
                                     com.github.damontecres.wholphin.ui.theme
-                                        .benflixFocusBorder(RoundedCornerShape(10.dp)),
+                                        .benflixFocusBorder(BenflixShapes.Card),
                                 onClick = { viewModel.apply(item, result, onFixed) },
                                 enabled = !working,
-                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                                shape = ClickableSurfaceDefaults.shape(BenflixShapes.Card),
                                 modifier = Modifier.fillMaxWidth(),
                                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
                             ) {
@@ -218,7 +218,7 @@ fun FixMatchDialog(
                                             Modifier
                                                 .width(48.dp)
                                                 .height(72.dp)
-                                                .clip(RoundedCornerShape(6.dp))
+                                                .clip(BenflixShapes.Small)
                                                 .background(Color.DarkGray),
                                     )
                                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

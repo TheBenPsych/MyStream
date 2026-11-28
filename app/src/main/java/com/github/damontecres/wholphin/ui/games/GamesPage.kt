@@ -94,6 +94,7 @@ import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
@@ -472,7 +473,7 @@ fun GamesPage(
                                             .wrapContentWidth(Alignment.Start, unbounded = true),
                                 ) {
                                     repeat(8) {
-                                        Box(cardSize.background(BenflixColors.Raised, RoundedCornerShape(10.dp)))
+                                        Box(cardSize.background(BenflixColors.Raised, BenflixShapes.Card))
                                     }
                                 }
                             }
@@ -925,7 +926,7 @@ internal fun ActionTile(
     subtitle: String,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -958,7 +959,7 @@ internal fun ServerGameCard(
     playWith: List<PlayWith> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val context = LocalContext.current
     Surface(
         onClick = onClick,
@@ -1133,8 +1134,7 @@ internal fun PlayersTag(
             modifier
                 .background(
                     Color.White,
-                    androidx.compose.foundation.shape
-                        .RoundedCornerShape(6.dp),
+                    BenflixShapes.Small,
                 ).padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,6 +30,7 @@ import com.github.damontecres.wholphin.services.AniListSync
 import com.github.damontecres.wholphin.services.MalSync
 import com.github.damontecres.wholphin.services.ResumeTimer
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -186,7 +186,7 @@ private fun AniListSignOutDialog(
                 modifier =
                     Modifier
                         .widthIn(max = 420.dp)
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface, BenflixShapes.Panel)
                         .padding(24.dp),
             ) {
                 Text(

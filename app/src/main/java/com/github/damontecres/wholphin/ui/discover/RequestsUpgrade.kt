@@ -53,6 +53,7 @@ import com.github.damontecres.wholphin.data.model.SeerrAvailability
 import com.github.damontecres.wholphin.data.model.SeerrItemType
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.benflixOuterFocusRing
@@ -63,7 +64,7 @@ import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val RED = BenflixColors.Text
+private val RED get() = BenflixColors.Text
 private val PANEL = Color(0xFF18181C)
 private val CHIP = Color(0xFF2C2C33)
 private val MUTED = Color(0xFFA1A1AA)
@@ -383,7 +384,7 @@ fun RequestsSearchBox(
                 unfocusedContainerColor = PANEL,
                 cursorColor = RED,
             ),
-        shape = RoundedCornerShape(10.dp),
+        shape = BenflixShapes.Card,
         modifier =
             modifier
                 .widthIn(max = 640.dp)
@@ -432,7 +433,7 @@ fun QuickMenuDialog(
                     Modifier
                         .width(96.dp)
                         .height(144.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(BenflixShapes.Card)
                         .background(CHIP),
             )
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

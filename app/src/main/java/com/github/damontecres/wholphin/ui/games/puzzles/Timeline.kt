@@ -38,6 +38,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
 import com.github.damontecres.wholphin.ui.theme.Button
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -273,7 +274,7 @@ private fun TimelinePlay(
                             shape = ButtonDefaults.shape(CircleShape),
                             colors =
                                 ButtonDefaults.colors(
-                                    containerColor = Color(0xFF1A1E38),
+                                    containerColor = Glowfin.Raise,
                                     contentColor = PuzzleAqua,
                                     focusedContainerColor = PuzzleGold,
                                     focusedContentColor = Color.Black,

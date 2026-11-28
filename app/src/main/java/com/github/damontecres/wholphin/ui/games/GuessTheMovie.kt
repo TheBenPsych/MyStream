@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,6 +47,7 @@ import com.github.damontecres.wholphin.ui.games.puzzles.lookAlikes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -413,7 +413,7 @@ private fun RoundContent(
                     modifier =
                         (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(BenflixShapes.Card)
                             .background(Color(0xFF1C1C1F)),
                 ) { url ->
                     AsyncImage(
@@ -431,7 +431,7 @@ private fun RoundContent(
                     modifier =
                         (if (isTv) Modifier.height(tvPictureHeight(0.4f)) else Modifier.fillMaxWidth())
                             .aspectRatio(16f / 7f)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(BenflixShapes.Card)
                             .background(Color(0xFF1C1C1F))
                             .padding(24.dp),
                 ) {

@@ -30,6 +30,7 @@ import com.github.damontecres.wholphin.services.BenflixWatchTime
 import com.github.damontecres.wholphin.services.MusicLibrary
 import com.github.damontecres.wholphin.services.weekStart
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -106,7 +107,7 @@ fun MusicStatsCard(
         modifier =
             modifier
                 .widthIn(max = 720.dp)
-                .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                .background(BenflixColors.Panel, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text("MUSIC", fontSize = BenflixType.tag, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp, color = BenflixColors.Music)

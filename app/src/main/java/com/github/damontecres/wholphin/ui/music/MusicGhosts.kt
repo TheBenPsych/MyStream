@@ -150,8 +150,8 @@ fun MissingSongRow(
             ) {
                 if (withCover) {
                     Box(Modifier.size(if (big) 48.dp else 40.dp)) {
-                        CoverImage(song.cover, Modifier.fillMaxSize(), shape = RoundedCornerShape(6.dp))
-                        Box(Modifier.fillMaxSize().background(Color(0x88000000), RoundedCornerShape(6.dp)))
+                        CoverImage(song.cover, Modifier.fillMaxSize(), shape = BenflixShapes.Small)
+                        Box(Modifier.fillMaxSize().background(Color(0x88000000), BenflixShapes.Small))
                     }
                 } else {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.width(28.dp)) {
@@ -258,7 +258,7 @@ fun CatalogueAlbumCard(
                     Modifier
                         .align(Alignment.BottomStart)
                         .padding(6.dp)
-                        .background(MusicAskColor, RoundedCornerShape(6.dp))
+                        .background(MusicAskColor, BenflixShapes.Small)
                         .padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }

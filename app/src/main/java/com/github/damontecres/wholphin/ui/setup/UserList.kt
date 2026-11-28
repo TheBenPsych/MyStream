@@ -59,6 +59,7 @@ import com.github.damontecres.wholphin.ui.components.DialogItem
 import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
@@ -297,7 +298,7 @@ fun AvatarPickerDialog(
                 Modifier
                     .background(
                         com.github.damontecres.wholphin.ui.theme.Glowfin.Deep,
-                        RoundedCornerShape(16.dp),
+                        BenflixShapes.Panel,
                     ).padding(24.dp),
         ) {
             Column(

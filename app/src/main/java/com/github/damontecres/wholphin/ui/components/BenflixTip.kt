@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +32,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import kotlinx.coroutines.delay
 
@@ -108,7 +108,7 @@ fun BenflixTip(
                     Modifier
                         .padding(24.dp)
                         .widthIn(max = 420.dp)
-                        .background(Color(0xE6202024), RoundedCornerShape(10.dp))
+                        .background(Color(0xE6202024), BenflixShapes.Card)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
             )
         }

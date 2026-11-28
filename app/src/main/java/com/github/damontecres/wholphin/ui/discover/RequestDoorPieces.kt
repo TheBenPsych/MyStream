@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,6 +44,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.AdultContentFlags
 import com.github.damontecres.wholphin.ui.door.POSTER_RATIO
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.util.scrollAsOneBlock
 
@@ -212,7 +212,7 @@ fun RequestPoster(
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(start = 6.dp, end = 6.dp, bottom = if (adult || cantFind) 26.dp else 6.dp)
-                                .background(Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = .75f), BenflixShapes.Small)
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                     )
                 }
@@ -224,7 +224,7 @@ fun RequestPoster(
                     Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp)
-                        .background(BenflixColors.Panel, RoundedCornerShape(6.dp))
+                        .background(BenflixColors.Panel, BenflixShapes.Small)
                         .padding(horizontal = 6.dp, vertical = 4.dp),
             ) {
                 Text(
@@ -257,5 +257,5 @@ fun orderRequestRows(rows: List<FindRow>): List<FindRow> =
         }
     }
 
-private val POSTER_SHAPE = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
+private val POSTER_SHAPE get() = com.github.damontecres.wholphin.ui.theme.BenflixShapes.Card
 private val SIDE_ROW = 16.dp

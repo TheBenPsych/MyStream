@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +67,7 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.roundMinutes
 import com.github.damontecres.wholphin.ui.theme.BenflixMotion
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -152,7 +152,7 @@ fun CollectionFolderViewScope.CollectionFolderList(
                             .fillMaxHeight()
                             .background(
                                 color = Color.Transparent, // MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = BenflixShapes.Panel,
                             ).padding(8.dp),
                 )
             }
@@ -247,7 +247,7 @@ fun CollectionFolderListDetails(
             contentDescription = null,
             modifier =
                 Modifier
-                    .clip(shape = RoundedCornerShape(10.dp))
+                    .clip(shape = BenflixShapes.Card)
                     .weight(1f),
         )
 

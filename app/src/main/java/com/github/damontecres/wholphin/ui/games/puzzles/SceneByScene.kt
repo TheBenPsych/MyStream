@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +37,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.services.GameLibraryClient
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -286,7 +286,7 @@ fun SceneBySceneScreen(
                         modifier =
                             (if (isTv) Modifier.width(tvPictureHeight(0.46f) * (16f / 9f)) else Modifier.fillMaxWidth())
                                 .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(BenflixShapes.Card)
                                 .background(PuzzlePanel),
                     ) {
                         // Load this round's other scenes (and the next round's first) early, so a wrong
@@ -317,10 +317,10 @@ fun SceneBySceneScreen(
                                     Modifier
                                         .width(if (isTv) 72.dp else 60.dp)
                                         .aspectRatio(16f / 9f)
-                                        .clip(RoundedCornerShape(6.dp))
+                                        .clip(BenflixShapes.Small)
                                         .background(Color.White.copy(alpha = .08f))
                                         .then(
-                                            if (i == s.shown) Modifier.border(2.dp, PuzzleGold, RoundedCornerShape(6.dp)) else Modifier,
+                                            if (i == s.shown) Modifier.border(2.dp, PuzzleGold, BenflixShapes.Small) else Modifier,
                                         ),
                             ) {
                                 if (i <= s.shown) {

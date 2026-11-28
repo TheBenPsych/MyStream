@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,6 +42,7 @@ import com.github.damontecres.wholphin.ui.games.puzzles.lookAlikes
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -589,7 +589,7 @@ private fun RiddleRound(
             Modifier
                 .weight(1f)
                 .height(8.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(BenflixShapes.Small)
                 .background(Color.White.copy(alpha = .12f)),
         ) {
             Box(
@@ -618,7 +618,7 @@ private fun RiddleRound(
             modifier =
                 Modifier
                     .fillMaxWidth(if (isTv) 0.7f else 1f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(BenflixShapes.Card)
                     .background(Color(0xFF1C1C1F))
                     .padding(horizontal = 20.dp, vertical = if (isTv) 12.dp else 16.dp),
         ) {

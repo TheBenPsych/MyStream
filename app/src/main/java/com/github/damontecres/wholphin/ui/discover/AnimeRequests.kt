@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +67,7 @@ import com.github.damontecres.wholphin.ui.detail.discover.searchNameFor
 import com.github.damontecres.wholphin.ui.detail.title.StripPart
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
@@ -813,7 +813,7 @@ private fun AnimeCardPoster(
     /** Words under the name in place of the year ("Today 9:30 pm · Ep 7") */
     caption: String? = null,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     Column(modifier.width(width).then(if (onFocus != null) Modifier.onFocusChanged { if (it.hasFocus) onFocus() } else Modifier)) {
         Surface(
             onClick = onClick,
@@ -866,7 +866,7 @@ private fun AnimeCardPoster(
                         modifier =
                             Modifier
                                 .align(Alignment.Center)
-                                .background(Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = .75f), BenflixShapes.Small)
                                 .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                 }
@@ -877,7 +877,7 @@ private fun AnimeCardPoster(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
-                    .background(BenflixColors.Panel, RoundedCornerShape(6.dp))
+                    .background(BenflixColors.Panel, BenflixShapes.Small)
                     .padding(horizontal = 6.dp, vertical = 4.dp),
         ) {
             Text(
@@ -910,7 +910,7 @@ private fun Badge(
         overflow = TextOverflow.Ellipsis,
         modifier =
             modifier
-                .background(if (light) BenflixColors.Text else Color.Black.copy(alpha = .75f), RoundedCornerShape(6.dp))
+                .background(if (light) BenflixColors.Text else Color.Black.copy(alpha = .75f), BenflixShapes.Small)
                 .padding(horizontal = 5.dp, vertical = 1.dp),
     )
 }

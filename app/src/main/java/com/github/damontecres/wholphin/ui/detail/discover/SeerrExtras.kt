@@ -43,6 +43,7 @@ import com.github.damontecres.wholphin.services.OmdbScores
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.detail.title.ScoreBox
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -707,7 +708,7 @@ private fun ScoresCard(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier =
             modifier
-                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .background(CARD_BACKGROUND, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         FactLabel("Scores")
@@ -737,7 +738,7 @@ private fun FactsCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier =
             modifier
-                .background(CARD_BACKGROUND, RoundedCornerShape(16.dp))
+                .background(CARD_BACKGROUND, BenflixShapes.Panel)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         facts.chunked(2).forEach { pair ->
@@ -791,7 +792,7 @@ private fun Pill(
         fontWeight = FontWeight.Bold,
         modifier =
             Modifier
-                .background(background, RoundedCornerShape(6.dp))
+                .background(background, BenflixShapes.Small)
                 .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }

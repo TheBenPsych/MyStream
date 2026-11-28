@@ -73,6 +73,7 @@ import com.github.damontecres.wholphin.ui.door.DoorPoster
 import com.github.damontecres.wholphin.ui.door.doorFocusBorder
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
 import com.github.damontecres.wholphin.ui.theme.BenflixShade
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixSpace
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -750,7 +751,7 @@ internal fun BoxScope.TitlePictureView(
                                 .padding(top = 92.dp, end = 72.dp)
                                 .fillMaxHeight(if (picture.ratio >= 1f) .56f else .66f)
                                 .aspectRatio(picture.ratio)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(BenflixShapes.Card)
                         } else if (wide) {
                             Modifier
                                 .align(Alignment.TopEnd)
@@ -1166,7 +1167,7 @@ internal fun PhoneIconButton(
     button: TitleButton,
     onOffTap: (String) -> Unit,
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = BenflixShapes.Card
     val off = button.off
     Surface(
         border =
@@ -1223,7 +1224,7 @@ private fun TabLine(
     ) {
         itemsIndexed(tabs, key = { _, it -> it.name }) { index, t ->
             val on = index == tab
-            val shape = RoundedCornerShape(6.dp)
+            val shape = BenflixShapes.Small
             Surface(
                 onClick = { onTab(index) },
                 shape = ClickableSurfaceDefaults.shape(shape),
@@ -1388,7 +1389,7 @@ fun TitleTextLink(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(6.dp)
+    val shape = BenflixShapes.Small
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape),

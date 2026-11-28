@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +59,7 @@ import com.github.damontecres.wholphin.ui.components.MinButtonSize
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_HEIGHT_FRACTION
 import com.github.damontecres.wholphin.ui.nav.BACKDROP_WIDTH_FRACTION
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlin.time.Duration
@@ -227,7 +227,7 @@ private fun SlideArrow(
         onClick = onClick,
         shape =
             androidx.tv.material3.ClickableSurfaceDefaults
-                .shape(shape = RoundedCornerShape(10.dp)),
+                .shape(shape = BenflixShapes.Card),
         scale =
             androidx.tv.material3.ClickableSurfaceDefaults
                 .scale(focusedScale = 1f, pressedScale = .97f),
@@ -288,7 +288,7 @@ fun SlideDots(
                 modifier =
                     Modifier
                         .height(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(BenflixShapes.Small)
                         .focusRequester(dotRequesters[i])
                         .onFocusChanged { if (it.isFocused && i != currentIndex) onSelect(i) }
                         .clickable(interactionSource = interaction, indication = null) { onSelect(i) }
@@ -308,7 +308,7 @@ fun SlideDots(
 
                                     else -> Color.White.copy(alpha = .35f)
                                 },
-                                RoundedCornerShape(6.dp),
+                                BenflixShapes.Small,
                             ),
                 ) {
                     if (selected && !focused) {
@@ -321,7 +321,7 @@ fun SlideDots(
                                     .fillMaxWidth()
                                     .background(
                                         if (autoAdvanceMs != null) DOT_RED else Color.White,
-                                        RoundedCornerShape(6.dp),
+                                        BenflixShapes.Small,
                                     ),
                         )
                     }

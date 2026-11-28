@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicSecureTextField
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -45,6 +44,7 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 
 /**
@@ -114,7 +114,7 @@ fun EditTextBox(
                         Modifier
                             .background(
                                 containerColor,
-                                shape = if (maxLines > 1) RoundedCornerShape(10.dp) else CircleShape,
+                                shape = if (maxLines > 1) BenflixShapes.Card else CircleShape,
                             ).padding(8.dp),
                 ) {
                     CompositionLocalProvider(

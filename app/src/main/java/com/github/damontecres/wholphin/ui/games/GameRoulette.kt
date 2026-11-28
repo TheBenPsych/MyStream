@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.games.GameRef
 import com.github.damontecres.wholphin.services.ServerGame
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.Dialog
@@ -75,7 +75,7 @@ fun GameRouletteDialog(
                 Modifier
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
-                    .background(BenflixColors.Panel, RoundedCornerShape(16.dp))
+                    .background(BenflixColors.Panel, BenflixShapes.Panel)
                     .padding(24.dp),
         ) {
             Text(

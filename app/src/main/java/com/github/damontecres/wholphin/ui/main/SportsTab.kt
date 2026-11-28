@@ -61,6 +61,7 @@ import com.github.damontecres.wholphin.ui.door.MatchHelperEntryPoint
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.focusRing
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.theme.GlowfinDisplayFont
@@ -310,7 +311,7 @@ private fun FollowCard(
     onPick: () -> Unit,
     onNotNow: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = BenflixShapes.Panel
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(20.dp),

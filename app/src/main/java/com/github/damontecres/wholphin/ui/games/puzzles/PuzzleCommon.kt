@@ -59,8 +59,10 @@ import com.github.damontecres.wholphin.ui.games.FitScreen
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixFont
 import com.github.damontecres.wholphin.ui.theme.BenflixRed
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
+import com.github.damontecres.wholphin.ui.theme.Glowfin
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -74,8 +76,8 @@ val PuzzleGreen = Color(0xFF46D37A)
 val PuzzleGold = Color(0xFFFFC94D)
 val PuzzleBg = Color(0xFF0B0C10)
 val PuzzlePanel = Color(0xFF1C1C1F)
-val PuzzleAqua = Color(0xFF3FE0E8)
-private val BarFill = Color(0xFF1A1E38)
+val PuzzleAqua get() = Glowfin.Aqua
+private val BarFill get() = Glowfin.Raise
 
 /** The game's own two colours (from MovieGame), for the glow behind it and the scoreboard bar */
 val LocalPuzzleAccent = staticCompositionLocalOf { listOf(Color(0xFF7E22CE), Color(0xFF3B0764)) }
@@ -183,9 +185,9 @@ fun PuzzleHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(BenflixShapes.Panel)
                 .background(BarFill.copy(alpha = .78f))
-                .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(16.dp))
+                .border(1.dp, Color.White.copy(alpha = .07f), BenflixShapes.Panel)
                 .padding(horizontal = if (isTv) 18.dp else 12.dp, vertical = if (isTv) 10.dp else 8.dp),
     ) {
         Box(
@@ -394,7 +396,7 @@ fun PuzzlePoster(
     Box(
         modifier
             .aspectRatio(2f / 3f)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(BenflixShapes.Card)
             .background(PuzzlePanel),
     ) {
         AsyncImage(model = url, contentDescription = name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

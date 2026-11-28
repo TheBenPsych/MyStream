@@ -65,6 +65,7 @@ import com.github.damontecres.wholphin.ui.door.DoorSection
 import com.github.damontecres.wholphin.ui.preferences.StringInput
 import com.github.damontecres.wholphin.ui.preferences.StringInputDialog
 import com.github.damontecres.wholphin.ui.theme.BenflixColors
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.touch.PhonePullToRefresh
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -1171,7 +1172,7 @@ private fun LazyListScope.watchingItems(
                                 Modifier
                                     .width(54.dp)
                                     .height(80.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(BenflixShapes.Small)
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
                     },
@@ -1445,7 +1446,7 @@ internal fun LoadingBox(text: String) {
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
@@ -1500,7 +1501,7 @@ private fun BigNumber(
     Column(
         modifier =
             modifier
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(12.dp),
     ) {
         // Benflix: a dash while the number is still loading
@@ -1523,7 +1524,7 @@ private fun DiskBar(disk: ServerDisk) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(ServerCardColor, RoundedCornerShape(10.dp))
+                .background(ServerCardColor, BenflixShapes.Card)
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

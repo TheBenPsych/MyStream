@@ -66,7 +66,7 @@ internal enum class ManageLane(
     val color: Color,
     val empty: String,
 ) {
-    NEEDS("Needs you", "Say yes or no", Color(0xFFECEEFB), "Nobody is waiting on you right now."),
+    NEEDS("Needs you", "Say yes or no", Glowfin.Text, "Nobody is waiting on you right now."),
     WAY("On its way", "Tower is getting these", Color(0xFF7AA7FF), "Nothing is on its way right now."),
     STUCK("Stuck", "Looking for 5 days or more", Color(0xFFF2B544), "Nothing is stuck. Good."),
     READY("Ready", "Arrived", Color(0xFF5BD18B), "Nothing has arrived yet."),

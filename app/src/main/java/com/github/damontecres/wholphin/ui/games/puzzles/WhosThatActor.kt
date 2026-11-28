@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.ui.games.tvPictureHeight
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -313,7 +313,7 @@ fun WhosThatActorScreen(
                                     1f - s.reveal
                                 },
                             ).padding(7.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(BenflixShapes.Card)
                             .background(PuzzlePanel),
                     ) {
                         val zoom = 1f + 3.5f * (1f - s.reveal)

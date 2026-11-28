@@ -39,6 +39,7 @@ import com.github.damontecres.wholphin.ui.main.MoodRow
 import com.github.damontecres.wholphin.ui.main.openGenreHub
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.theme.BenflixDoor
+import com.github.damontecres.wholphin.ui.theme.BenflixShapes
 import com.github.damontecres.wholphin.ui.theme.BenflixType
 import com.github.damontecres.wholphin.ui.theme.Button
 import com.github.damontecres.wholphin.ui.touch.rememberIsTv
@@ -349,10 +350,10 @@ private fun StartButton(
 ) {
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
+        shape = ButtonDefaults.shape(BenflixShapes.Card),
         border =
             com.github.damontecres.wholphin.ui.theme
-                .glowfinButtonBorder(RoundedCornerShape(10.dp)),
+                .glowfinButtonBorder(BenflixShapes.Card),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors =
             ButtonDefaults.colors(
