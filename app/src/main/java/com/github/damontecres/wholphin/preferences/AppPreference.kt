@@ -1039,6 +1039,12 @@ sealed interface AppPreference<Pref, T> {
                 title = R.string.benflix_hidden_genres,
             )
 
+        /** Glowfin themes: Settings > Look > Theme (opens the theme picker) */
+        val ThemePref =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.glowfin_theme,
+            )
+
         /** Glowfin (ui-7): Settings > Look > Home rows, switch rows of Home, Movies, Shows and Anime on or off and reorder them */
         val HomeRowsPref =
             AppClickablePreference<AppPreferences>(
@@ -1454,6 +1460,7 @@ val basicPreferences =
             title = R.string.benflix_settings_look,
             preferences =
                 listOf(
+                    AppPreference.ThemePref,
                     AppPreference.HomeRowsPref,
                     AppPreference.LateNightLook,
                     AppPreference.RememberSelectedTab,
